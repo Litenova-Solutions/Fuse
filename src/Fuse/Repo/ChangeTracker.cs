@@ -1,48 +1,37 @@
-using System.Collections.Concurrent;
-using Fuse.Dotnet;
-using Fuse.Failures;
 using Fuse.Paths;
 
 namespace Fuse.Repo;
 
-/// <summary>What changed on disk since the previous <see cref="ChangeTracker.SyncAsync"/>.</summary>
-/// <param name="HeadMoved">HEAD points at a different commit than the baseline, so every baseline is stale.</param>
-/// <param name="SourcePaths">Absolute paths of C# and Razor files whose content may differ from what the engine last saw.</param>
-/// <param name="ProjectFilesChanged">A project, props, targets, editorconfig or global.json file changed, so evaluation is stale.</param>
-/// <param name="Storm">HEAD moved, the watcher overflowed, or more than 300 paths changed; reloading is cheaper than patching.</param>
-/// <param name="VanishedDirectories">Directories missing from disk (deleted or renamed); sources the engine holds under them are gone.</param>
-/// <param name="Trigger">A path that caused a reload, for the log.</param>
-internal sealed record ChangeBatch(
-    bool HeadMoved,
-    IReadOnlyCollection<string> SourcePaths,
-    bool ProjectFilesChanged,
-    bool Storm,
-    IReadOnlyCollection<string> VanishedDirectories,
-    string? Trigger = null);
-
 /// <summary>
-///     Tracks which source files differ from HEAD. It seeds the set from <c>git status</c> once, then follows a
-///     file watcher, and verifies each reported path by comparing its content with the HEAD blob.
+///     Tracks which source files differ from HEAD. It seeds the set from <see cref="GitStatus"/>, then follows the
+///     events <see cref="WatchedPaths"/> records, and verifies each reported path by comparing its content with the HEAD
+///     blob (<see cref="HeadComparison"/>). A sync it cannot follow file by file seeds the set again.
 /// </summary>
 internal sealed class ChangeTracker : IDisposable
 {
-    private const int StormThreshold = 300;
+    /// <summary>
+    ///     The most changed sources a sync patches one at a time. Past it, reloading the projects and reading git status
+    ///     again costs less than comparing and applying each file.
+    /// </summary>
+    private const int MaxPatchedPaths = 300;
 
     private readonly RepoRoot _root;
-    private readonly GitHead _gitHead;
+    private readonly HeadResolver _head;
+    private readonly WatchedPaths _watched;
     private readonly GitBlobReader _blobs;
-    private readonly ConcurrentDictionary<string, byte> _dirty = new(PathRules.PathComparer);
-    private readonly ConcurrentDictionary<string, byte> _structural = new(PathRules.PathComparer);
     private readonly HashSet<string> _changed = new(PathRules.PathComparer);
-    private FileSystemWatcher? _watcher;
-    private volatile bool _overflow;
-    private volatile bool _projectFilesDirty;
-    private volatile string? _trigger;
 
     public ChangeTracker(RepoRoot root)
+        : this(root, new WatchedPaths(root))
+    {
+    }
+
+    /// <summary>Follows the events <paramref name="watched"/> records, so a test can record them itself instead of waiting for the watcher.</summary>
+    public ChangeTracker(RepoRoot root, WatchedPaths watched)
     {
         _root = root;
-        _gitHead = new GitHead(root.Path);
+        _head = new HeadResolver(root);
+        _watched = watched;
         _blobs = new GitBlobReader(root.Path);
     }
 
@@ -52,83 +41,49 @@ internal sealed class ChangeTracker : IDisposable
     /// <summary>Absolute paths of C# and Razor files that differ from HEAD, including deleted ones.</summary>
     public IReadOnlyCollection<string> Changed => _changed;
 
-    /// <summary>Reads git state and starts watching. Call once before <see cref="Sync"/>.</summary>
+    /// <summary>Reads git state and starts watching. Call once before <see cref="SyncAsync"/>.</summary>
     public async Task InitializeAsync(CancellationToken cancellationToken)
     {
-        Head = await ResolveHeadAsync(cancellationToken).ConfigureAwait(false);
+        Head = await _head.ResolveAsync(Head, cancellationToken).ConfigureAwait(false);
         await ReseedAsync(cancellationToken).ConfigureAwait(false);
-        _watcher = new FileSystemWatcher(_root.Path)
-        {
-            IncludeSubdirectories = true,
-            NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.LastWrite | NotifyFilters.Size,
-            InternalBufferSize = 64 * 1024,
-        };
-        _watcher.Changed += (_, e) => OnEvent(e.FullPath, structural: false);
-        _watcher.Created += (_, e) => OnEvent(e.FullPath, structural: true);
-        _watcher.Deleted += (_, e) => OnEvent(e.FullPath, structural: true);
-        _watcher.Renamed += (_, e) =>
-        {
-            OnEvent(e.OldFullPath, structural: true);
-            OnEvent(e.FullPath, structural: true);
-        };
-        _watcher.Error += (_, e) =>
-        {
-            _trigger = "watcher error: " + e.GetException().Message;
-            _overflow = true;
-        };
-        _watcher.EnableRaisingEvents = true;
+        _watched.Start();
     }
 
-    /// <summary>Folds every change seen since the last call into <see cref="Changed"/> and reports what moved.</summary>
+    /// <summary>Folds every change seen since the last call into <see cref="Changed"/> and says how the workspace follows it.</summary>
     /// <param name="knownPaths">Paths a hook reports as written, checked even if their watcher event has not arrived.</param>
     /// <param name="cancellationToken">Cancels a reseed from git.</param>
-    public async Task<ChangeBatch> SyncAsync(IEnumerable<string> knownPaths, CancellationToken cancellationToken)
+    public async Task<SyncResult> SyncAsync(IEnumerable<string> knownPaths, CancellationToken cancellationToken)
     {
-        var head = await ResolveHeadAsync(cancellationToken).ConfigureAwait(false);
+        var head = await _head.ResolveAsync(Head, cancellationToken).ConfigureAwait(false);
         var headMoved = !string.Equals(head, Head, StringComparison.Ordinal);
-        var overflow = _overflow;
-        _overflow = false;
-        var projectFiles = _projectFilesDirty;
-        _projectFilesDirty = false;
-
-        var paths = new HashSet<string>(PathRules.PathComparer);
-        foreach (var key in _dirty.Keys)
-        {
-            if (_dirty.TryRemove(key, out _))
-                paths.Add(key);
-        }
-
+        var watched = _watched.Drain();
+        var paths = new HashSet<string>(watched.Sources, PathRules.PathComparer);
         foreach (var path in knownPaths)
         {
             if (PathRules.IsSource(path))
                 paths.Add(Path.GetFullPath(path));
         }
 
-        // Extensionless paths in create, delete and rename events may be directories, whose files arrive without
-        // their own events. An existing directory contributes its sources; a missing one is reported so the
-        // workspace can drop what it knows under it.
-        var vanished = new List<string>();
-        foreach (var key in _structural.Keys)
-        {
-            if (!_structural.TryRemove(key, out _))
-                continue;
-            if (Directory.Exists(key))
-                paths.UnionWith(SourcesUnder(key));
-            else if (!File.Exists(key))
-                vanished.Add(key);
-        }
-
-        if (headMoved || overflow || paths.Count > StormThreshold)
+        // After HEAD moves or the watcher loses events, the reported paths are not the whole change, and past the limit
+        // comparing them one at a time costs more than asking git again. Every path that may differ from what the
+        // workspace holds goes back: changed before the reseed, changed after it, or reported.
+        if (headMoved || watched.WatcherErrors.Count > 0 || paths.Count > MaxPatchedPaths)
         {
             Head = head;
-            var before = new HashSet<string>(_changed, PathRules.PathComparer);
+            var reported = paths.Count;
+            paths.UnionWith(_changed);
             await ReseedAsync(cancellationToken).ConfigureAwait(false);
-            before.UnionWith(_changed);
-            before.UnionWith(paths);
-            return new ChangeBatch(headMoved, before, projectFiles || headMoved || overflow, Storm: true, vanished, _trigger);
+            paths.UnionWith(_changed);
+            if (headMoved)
+                return new SyncResult.Reevaluate(paths, head is null ? "HEAD has no commit" : $"HEAD moved to {head[..Math.Min(12, head.Length)]}");
+            if (watched.WatcherErrors.Count > 0)
+                return new SyncResult.Reevaluate(paths, "watcher error: " + watched.WatcherErrors[^1]);
+            if (watched.ProjectFiles.Count > 0)
+                return new SyncResult.Reevaluate(paths, watched.ProjectFiles[^1]);
+            return new SyncResult.Reload(paths, $"{reported} changed files");
         }
 
-        foreach (var directory in vanished)
+        foreach (var directory in watched.VanishedDirectories)
         {
             var prefix = directory.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
             paths.UnionWith(_changed.Where(c => c.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)));
@@ -136,44 +91,9 @@ internal sealed class ChangeTracker : IDisposable
 
         foreach (var path in paths)
             Refresh(path);
-        return new ChangeBatch(false, paths, projectFiles, Storm: false, vanished, projectFiles ? _trigger : null);
-    }
-
-    /// <summary>
-    ///     The commit HEAD points at, or null in a repository without commits. The ref files answer almost always;
-    ///     git answers for the rest (packed or reftable refs, unusual layouts).
-    /// </summary>
-    /// <exception cref="FuseException">git cannot resolve HEAD although the repository has commits, or cannot read the repository at all.</exception>
-    private async Task<string?> ResolveHeadAsync(CancellationToken cancellationToken)
-    {
-        var head = _gitHead.Read();
-        if (head is not null && head == Head)
-            return head;
-        if (head is null)
-        {
-            var resolved = await ProcessRunner.RunAsync("git", ["rev-parse", "--verify", "-q", "HEAD"], _root.Path, cancellationToken).ConfigureAwait(false);
-            if (resolved.ExitCode == 0 && resolved.Output.Trim().Length >= 40)
-                head = resolved.Output.Trim();
-            else
-            {
-                var anyCommit = await ProcessRunner.RunAsync("git", ["rev-list", "-n", "1", "--all"], _root.Path, cancellationToken).ConfigureAwait(false);
-                if (anyCommit.ExitCode == 0 && anyCommit.Output.Trim().Length == 0)
-                    return null; // No commits yet: everything is new.
-                throw GitFailure("resolving HEAD", anyCommit.ExitCode != 0 ? anyCommit : resolved);
-            }
-        }
-
-        // A new HEAD must be readable, or every file would look new and a broken commit would pass as clean.
-        var readable = await ProcessRunner.RunAsync("git", ["cat-file", "-e", head + "^{tree}"], _root.Path, cancellationToken).ConfigureAwait(false);
-        if (readable.ExitCode != 0)
-            throw GitFailure($"reading commit {head[..Math.Min(12, head.Length)]}", readable);
-        return head;
-    }
-
-    private FuseException GitFailure(string action, ProcessResult result)
-    {
-        var detail = result.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault() ?? $"exit code {result.ExitCode}";
-        return new FuseException(ErrorCode.LoadFailed, $"git failed {action} in {_root.Path} ({detail}); the repository may be damaged, see `git status` and `git fsck`");
+        return watched.ProjectFiles.Count > 0
+            ? new SyncResult.Reevaluate(paths, watched.ProjectFiles[^1])
+            : new SyncResult.Patch(paths, watched.VanishedDirectories);
     }
 
     /// <summary>Reads a file as it is at HEAD, or null when it does not exist there.</summary>
@@ -182,45 +102,16 @@ internal sealed class ChangeTracker : IDisposable
     private async Task ReseedAsync(CancellationToken cancellationToken)
     {
         _changed.Clear();
-        // -z gives one NUL-separated record per change with the path exactly as it is on disk. Without it git C-quotes a
-        // path that holds a quote, a backslash or a control character, and the two are not the same string: the path is
-        // read from the repository, not from git's spelling of it.
-        var result = await ProcessRunner.RunAsync(
-            "git",
-            ["-c", "core.quotepath=off", "status", "--porcelain=v1", "-z", "--untracked-files=all", "--no-renames", "--ignored=no"],
-            _root.Path,
-            cancellationToken).ConfigureAwait(false);
-        if (result.ExitCode != 0)
-            throw GitFailure("git status", result);
-        foreach (var record in result.Output.Split('\0', StringSplitOptions.RemoveEmptyEntries))
+        foreach (var path in await GitStatus.ChangedPathsAsync(_root, cancellationToken).ConfigureAwait(false))
         {
-            // Each record is two status characters and a space, then the path. Nothing is trimmed off the path: a name may
-            // begin or end with a space, and trimming it would name a file that is not there.
-            if (record.Length < 4)
-                continue;
-            var absolute = Path.GetFullPath(Path.Combine(_root.Path, record[3..]));
-            if (PathRules.IsSource(absolute) && !IsIgnoredDirectory(absolute))
-                _changed.Add(absolute);
-        }
-    }
-
-    private List<string> SourcesUnder(string directory)
-    {
-        try
-        {
-            return Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories)
-                .Where(f => PathRules.IsSource(f) && !IsIgnoredDirectory(f))
-                .ToList();
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-        {
-            return [];
+            if (PathRules.IsSource(path) && !_watched.IsIgnored(path))
+                _changed.Add(path);
         }
     }
 
     private void Refresh(string path)
     {
-        if (IsIgnoredDirectory(path))
+        if (_watched.IsIgnored(path))
             return;
         if (DiffersFromHead(path))
             _changed.Add(path);
@@ -230,17 +121,17 @@ internal sealed class ChangeTracker : IDisposable
 
     private bool DiffersFromHead(string path)
     {
-        var headBytes = ReadHead(path);
-        byte[]? diskBytes = null;
+        var atHead = ReadHead(path);
+        byte[]? onDisk = null;
         try
         {
             if (File.Exists(path))
-                diskBytes = File.ReadAllBytes(path);
+                onDisk = File.ReadAllBytes(path);
         }
         catch (IOException)
         {
             // Still being written: treat it as changed and look again at the next sync.
-            _dirty[path] = 0;
+            _watched.MarkDirty(path);
             return true;
         }
         catch (UnauthorizedAccessException)
@@ -248,76 +139,12 @@ internal sealed class ChangeTracker : IDisposable
             return true;
         }
 
-        if (headBytes is null || diskBytes is null)
-            return headBytes is not null || diskBytes is not null;
-        return !SameIgnoringLineEndings(headBytes, diskBytes);
-    }
-
-    private static bool SameIgnoringLineEndings(byte[] a, byte[] b)
-    {
-        int i = 0, j = 0;
-        while (true)
-        {
-            if (i < a.Length && a[i] == '\r')
-            {
-                i++;
-                continue;
-            }
-
-            if (j < b.Length && b[j] == '\r')
-            {
-                j++;
-                continue;
-            }
-
-            if (i == a.Length || j == b.Length)
-                return i == a.Length && j == b.Length;
-            if (a[i] != b[j])
-                return false;
-            i++;
-            j++;
-        }
-    }
-
-    private void OnEvent(string fullPath, bool structural)
-    {
-        if (IsIgnoredDirectory(fullPath))
-            return;
-        if (PathRules.IsSource(fullPath))
-            _dirty[fullPath] = 0;
-        else if (PathRules.IsProjectFile(fullPath))
-        {
-            _trigger = fullPath;
-            _projectFilesDirty = true;
-        }
-        else if (structural && !Path.HasExtension(fullPath))
-        {
-            // Possibly a directory; resolved at the next sync. (A Changed event on a directory only means its
-            // listing changed; the files in it report themselves.)
-            _structural[fullPath] = 0;
-        }
-    }
-
-    private bool IsIgnoredDirectory(string path)
-    {
-        if (path.StartsWith(_gitHead.GitDirectory, StringComparison.OrdinalIgnoreCase))
-            return true;
-        var relative = Path.GetRelativePath(_root.Path, path);
-        foreach (var segment in relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
-        {
-            if (segment.Equals("bin", StringComparison.OrdinalIgnoreCase)
-                || segment.Equals("obj", StringComparison.OrdinalIgnoreCase)
-                || segment.Equals(".git", StringComparison.OrdinalIgnoreCase)
-                || segment.Equals("node_modules", StringComparison.OrdinalIgnoreCase))
-                return true;
-        }
-
-        return false;
+        return HeadComparison.Differs(atHead, onDisk);
     }
 
     public void Dispose()
     {
-        _watcher?.Dispose();
+        _watched.Dispose();
         _blobs.Dispose();
     }
 }

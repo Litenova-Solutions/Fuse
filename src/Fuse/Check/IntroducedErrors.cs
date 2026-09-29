@@ -18,7 +18,7 @@ internal sealed class IntroducedErrors
     public IntroducedErrors(RepoWorkspace workspace)
     {
         _workspace = workspace;
-        _collector = new DiagnosticCollector(workspace.Root, () => workspace.LoaderGeneration);
+        _collector = new DiagnosticCollector(workspace.Root, () => workspace.ConfigurationGeneration);
     }
 
     /// <summary>Time spent binding and running analyzers since the last call, summed over files, for the engine log.</summary>

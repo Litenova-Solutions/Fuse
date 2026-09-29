@@ -161,12 +161,32 @@ A selection never reaches the wire: `TestFilter` turns it into the filter of a r
 
 ## Workspace and sources
 
-| Class today | Lines | Becomes |
-| --- | --- | --- |
-| `Workspace/RepoWorkspace.cs` | 388 | `ProjectLoader` (MSBuildWorkspace, restore check, load failures, configuration generation); `SolutionViews` (current and baseline, baseline generation, applying disk or HEAD content to a document); `WorkspaceSync` (acting on a `SyncResult`); `RepoWorkspace` as the entry point features use |
-| `Repo/ChangeTracker.cs` | 350 | `HeadResolver` (HEAD and its readability); `GitStatus` (the NUL-separated `git status` seed); `WatchedPaths` (the file watcher and the dirty sets); `HeadComparison` (whether a file differs from HEAD, ignoring line endings); `ChangeTracker` composing them |
+`Fuse.Repo` finds which files differ from HEAD, and `Fuse.Workspace` keeps the current and baseline solutions in step with them. Every request starts with a sync: `ChangeTracker` folds what changed into its set and returns a `SyncResult`, and `WorkspaceSync` acts on it.
 
-`ChangeBatch` becomes `SyncResult`, a variant with one case per response: `Reevaluate`, `Reload` and `Patch(paths, vanishedDirectories)`. Today it carries three booleans, `HeadMoved`, `ProjectFilesChanged` and `Storm`, from which `RepoWorkspace.SyncAsync` derives the response, and they can express combinations that never happen. `ChangeTracker.SyncAsync` returns `HeadMoved: true` only together with `Storm: true`, and `RepoWorkspace.SyncAsync` returns on `Storm` before it reaches `if (batch.HeadMoved || _rebuildPending)`, so `batch.HeadMoved` is always false in that condition. With named cases only the real combinations can be written.
+**Change tracking** (`Fuse.Repo`):
+
+1. `HeadResolver`: the commit HEAD points at and whether git can read it. `GitHead` reads the ref files, loose or packed, without starting git; git answers when they do not (reftable refs, unusual layouts), and a new HEAD is checked with `git cat-file` so a broken commit cannot pass as clean. `HeadResolver.GitFailure` words the failure when git cannot read the repository, which `GitStatus` reports too.
+2. `GitStatus`: the seed. It reads the NUL-separated records of `git status --porcelain=v1 -z` and takes each path exactly as git wrote it, since a name may begin or end with a space, hold a quote or not be ASCII.
+3. `WatchedPaths`: the file watcher and what it recorded since the last sync, which `Drain` hands over as `WatchedChanges`: the sources, the directories that are gone, the project files that changed and the watcher's errors. It also decides which paths are ignored (git's own directory, and `bin`, `obj`, `.git` and `node_modules` folders).
+4. `HeadComparison`: whether a file on disk differs from HEAD. Every carriage return is skipped on both sides, so a checkout that converts line endings is no change, and a file on one side only always is.
+5. `ChangeTracker`: composes them. It holds HEAD and the set of changed sources, and reads a file at HEAD through `GitBlobReader`. After HEAD moves, after a watcher error, or when more than 300 sources changed (`MaxPatchedPaths`), it seeds the set again from `GitStatus`, because the recorded events are not the whole change; otherwise it compares each reported path with HEAD.
+
+`SyncResult` has one case per response, and `ChangeTracker` chooses them in this order:
+
+| Case | Chosen when | Carries | `WorkspaceSync` then |
+| --- | --- | --- | --- |
+| `Reevaluate(Paths, Trigger)` | HEAD moved, the watcher reported an error, or a project, props, targets, editorconfig or global.json file changed | the files to apply again; the trigger names the new commit, the watcher's error or the last project file | evaluates every project, closes them all, reopens the ones that were loaded and applies the files again |
+| `Reload(Paths, Trigger)` | more than 300 sources changed, and none of the above | the same; the trigger names how many files changed | the same, without evaluating |
+| `Patch(Paths, VanishedDirectories)` | otherwise | the files to apply and the directories that are gone | applies each file, and each file it holds under a vanished directory, to both views, after deriving them again if a background load opened a project |
+
+It replaces `ChangeBatch`, whose three booleans (`HeadMoved`, `ProjectFilesChanged`, `Storm`) could express combinations that never happen. `HeadMoved` was true only together with `Storm`, and `RepoWorkspace.SyncAsync` returned on `Storm` before it reached `if (batch.HeadMoved || _rebuildPending)`, so `batch.HeadMoved` was always false there. With named cases only the real combinations can be written: a moved HEAD always re-evaluates, because the commit it moved to can have other project files. The engine log names the case and the trigger, as in `reloading: Reevaluate trigger=HEAD moved to <commit>` and `reloading: Reload trigger=<count> changed files`.
+
+**Workspace** (`Fuse.Workspace`):
+
+1. `ProjectLoader`: evaluates every project into the `RepoGraph` and opens the ones requests need in an MSBuildWorkspace, which is used only as a loader because its `TryApplyChanges` writes to disk. It refuses a project that is not restored (`RestoreNeeded`, naming the `dotnet restore` to run) or that did not load (`LoadFailed`, with `LoadFailure` telling a real failure from a restore warning), and increments `ConfigurationGeneration` whenever it closes every project. A background load (`PreloadAsync`) leaves a mark that the next request takes (`TakePreloaded`), because neither view holds the project yet.
+2. `SolutionViews`: the current and baseline solutions, both derived from the loader's solution with the repository's own analyzers loaded from a copy (`AnalyzerShadow`), and `BaselineGeneration`, which changes only when the baseline's content does. It applies a file's disk content to the current solution and its HEAD content to the baseline, adding or removing documents as needed, and remembers every path it applied so that a rebuild from the loader applies them again.
+3. `WorkspaceSync`: acts on each `SyncResult`, and folds the projects the loader opens into both views (`EnsureLoadedAsync`), rebuilding them once for a request's own load and a background load together.
+4. `RepoWorkspace`: the entry point the features use. It composes the tracker and the three classes above and adds no rule of its own.
 
 ## Harnesses
 
@@ -375,9 +395,15 @@ Every name that changes, with the migration step that changes it. Reach says who
 | `kind=Check` and `kind=TestPlan` in the phase line; `Check all`, `Check <files>` and `TestPlan all` in the engine log | the case: `CheckChanges`, `CheckFiles <files>`, `PlanAffectedTests`, `PlanAllTests` | internal | 6 |
 | `RequestRouter.CheckScopeOf` and `TestScopeOf` | one case per scope in `RequestRouter.HandleAsync` | internal | 6 |
 | `CheckOperation.RunAsync(wait)` | `waitForLoad` | internal | 6 |
-| `ChangeBatch` (`HeadMoved`, `ProjectFilesChanged`, `Storm`) | `SyncResult` (`Reevaluate`, `Reload`, `Patch`) | internal | 7 |
-| `storm=` in the engine log | the `SyncResult` case name | internal | 7 |
+| `ChangeBatch` (`HeadMoved`, `SourcePaths`, `ProjectFilesChanged`, `Storm`, `VanishedDirectories`, `Trigger`) | `SyncResult` (`Reevaluate(Paths, Trigger)`, `Reload(Paths, Trigger)`, `Patch(Paths, VanishedDirectories)`) | internal | 7 |
+| `reloading: project files changed=... storm=... headMoved=... trigger=...` in the engine log | `reloading: <case> trigger=<why>`, the `SyncResult` case name and the new commit, the watcher's error, the last project file or the number of changed files | internal | 7 |
 | `LoaderGeneration`, `configurationGeneration` | `ConfigurationGeneration` | internal | 7 |
+| `RepoWorkspace` | `ProjectLoader`, `SolutionViews`, `WorkspaceSync`, and `RepoWorkspace` as the entry point | internal | 7 |
+| `RepoWorkspace.RebuildAsync(headMoved)`, always called with false | `SolutionViews.RebuildAsync` | internal | 7 |
+| `ChangeTracker` | `HeadResolver`, `GitStatus`, `WatchedPaths` with `WatchedChanges`, `HeadComparison`, and `ChangeTracker` composing them | internal | 7 |
+| `ChangeTracker.ResolveHeadAsync`, `GitFailure` | `HeadResolver.ResolveAsync`, `HeadResolver.GitFailure` | internal | 7 |
+| `ChangeTracker.StormThreshold` | `ChangeTracker.MaxPatchedPaths` | internal | 7 |
+| `ChangeTracker.IsIgnoredDirectory` | `WatchedPaths.IsIgnored` | internal | 7 |
 | `Fuse.Hooks.InitCommand` | `Fuse.Harnesses.InitCommand` | internal | 8 |
 | harness name strings, and `HookCommand.Harnesses` | `Harness` and its six implementations (`ClaudeCode`, `Cursor`, `GeminiCli`, `Codex`, `CopilotCli`, `OpenCode`), listed and found by name in `SupportedHarnesses` | internal | 8 |
 | the per-harness flags and `InitCommand.WriteClaude`, `WriteCursor`, `WriteGemini`, `WriteCodex`, `WriteCopilot`, `WriteOpenCode` | `IsUsedIn` and `RegisterHooks` on each harness | internal | 8 |

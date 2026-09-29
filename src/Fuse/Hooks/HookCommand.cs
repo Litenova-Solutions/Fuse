@@ -67,9 +67,14 @@ internal static class HookCommand
         }
     }
 
-    /// <summary>Rewrites <c>dotnet build</c> and <c>dotnet test</c> in the command the agent is about to run; any other command gets no answer.</summary>
-    private static HookAnswer PreShell(Harness harness, HookPayload payload) =>
-        payload.Command is { } command && CommandRewriter.Rewrite(command) is { } rewritten
+    /// <summary>
+    ///     Rewrites <c>dotnet build</c> and <c>dotnet test</c> in the command the agent is about to run; any other command
+    ///     gets no answer. A harness whose answer approves the command gets one only for a command that is one plain
+    ///     invocation, rewritten whole (<see cref="Harness.ApprovesRewrittenCommand"/>).
+    /// </summary>
+    internal static HookAnswer PreShell(Harness harness, HookPayload payload) =>
+        payload.Command is { } command
+        && (harness.ApprovesRewrittenCommand ? CommandRewriter.RewriteWhole(command) : CommandRewriter.Rewrite(command)) is { } rewritten
             ? harness.ReplaceShellCommand(payload.ToolInput, rewritten)
             : HookAnswer.None;
 

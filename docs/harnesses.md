@@ -211,7 +211,7 @@ Gemini CLI timeouts are in milliseconds.
 ```
 
 - **post-edit** reads the edited files from the `apply_patch` patch and answers `{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"..."}}`, inline.
-- **pre-shell** answers `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow","updatedInput":{"command":"..."}}}`. Codex applies a rewritten command only together with an allow decision, so the answer allows the whole rewritten command line, including its segments other than `fuse build` and `fuse test`.
+- **pre-shell** answers `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow","updatedInput":{"command":"..."}}}`. Codex applies a rewritten command only together with an allow decision, which runs the command without asking you, so the hook answers only when the whole command is one `dotnet build` or `dotnet test` with plain arguments, such as `dotnet test --no-build`. Any other command, such as `cd Lib && dotnet build` or one with a pipe, a redirection, a quote, `$`, a backtick or a line break, gets no answer and goes through Codex's approval as the agent wrote it, without the build lock or test selection.
 - **stop** answers `{"decision":"block","reason":"..."}`, and `{}` when there are no errors.
 
 ## GitHub Copilot CLI

@@ -39,6 +39,12 @@ public class HarnessTests
         Assert.Equal(["claude"], SupportedHarnesses.All.Where(h => h.IsAlsoRunByCursor).Select(h => h.Name));
     }
 
+    [Fact]
+    public void Only_Codex_approves_the_command_it_is_given_instead()
+    {
+        Assert.Equal(["codex"], SupportedHarnesses.All.Where(h => h.ApprovesRewrittenCommand).Select(h => h.Name));
+    }
+
     [Theory]
     [InlineData("claude", """{"hookSpecificOutput":{"hookEventName":"PreToolUse","updatedInput":{"command":"fuse test --no-build","description":"tests"}}}""")]
     [InlineData("cursor", "")]

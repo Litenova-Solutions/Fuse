@@ -36,7 +36,7 @@ Fuse answers from a Roslyn compilation of what MSBuild's evaluation describes, a
 ## Builds and the build lock
 
 - **Only builds through Fuse take the lock.** A `dotnet build` run directly, by a person, a script, an IDE, or an agent in a harness without a pre-shell hook (Cursor and GitHub Copilot CLI), can still collide with a build Fuse runs. Run builds and tests through `fuse build` and `fuse test` in a repository that several agents work in.
-- **What the pre-shell hook rewrites.** The hook rewrites `dotnet build` and `dotnet test` where a command segment starts. `dotnet msbuild`, `dotnet run`, `dotnet publish` and scripts that call `dotnet` themselves run as they are.
+- **What the pre-shell hook rewrites.** The hook rewrites `dotnet build` and `dotnet test` where a command segment starts. `dotnet msbuild`, `dotnet run`, `dotnet publish` and scripts that call `dotnet` themselves run as they are. In Codex it rewrites only a command that is one `dotnet build` or `dotnet test` with plain arguments, so `cd Lib && dotnet build` runs there as it is ([Harnesses](harnesses.md#codex)).
 
 ## The engine
 

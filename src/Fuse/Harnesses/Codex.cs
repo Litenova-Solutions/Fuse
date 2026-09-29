@@ -9,6 +9,9 @@ internal sealed class Codex : Harness
 {
     public override string Name => "codex";
 
+    /// <summary>Codex honours <c>updatedInput</c> only together with an allow decision, which runs the command without asking the user.</summary>
+    public override bool ApprovesRewrittenCommand => true;
+
     public override bool IsUsedIn(RepoRoot root) => HasAny(root, ".codex");
 
     public override string RegisterHooks(RepoRoot root)
@@ -22,7 +25,10 @@ internal sealed class Codex : Harness
         return SettingsFile.Write(root, path, settings);
     }
 
-    /// <summary>Codex honours <c>updatedInput</c> only together with an allow decision.</summary>
+    /// <summary>
+    ///     Codex honours <c>updatedInput</c> only together with an allow decision, so this answer approves
+    ///     <paramref name="command"/>; <see cref="ApprovesRewrittenCommand"/> keeps it to a command Fuse rewrote whole.
+    /// </summary>
     public override HookAnswer ReplaceShellCommand(JsonElement? toolInput, string command) =>
         HookAnswer.Json(new JsonObject
         {

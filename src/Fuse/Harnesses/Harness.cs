@@ -7,8 +7,8 @@ namespace Fuse.Harnesses;
 /// <summary>
 ///     An agent host that runs Fuse's hooks. Each implementation owns everything that differs between harnesses: how
 ///     <c>fuse init</c> detects it in a repository, where and in what shape its hooks are registered, how
-///     <c>fuse hook</c> answers each event in the harness's format, and whether the harness runs the post-edit hook in
-///     the background.
+///     <c>fuse hook</c> answers each event in the harness's format, whether that answer approves a rewritten command, and
+///     whether the harness runs the post-edit hook in the background.
 /// </summary>
 /// <remarks>
 ///     <c>fuse hook</c> does the work that is the same for every harness (rewriting the command, running the check) and
@@ -34,6 +34,14 @@ internal abstract class Harness
     ///     the event to the hook Fuse registered with Cursor, so the agent is not told twice.
     /// </summary>
     public virtual bool IsAlsoRunByCursor => false;
+
+    /// <summary>
+    ///     Whether the harness's answer to a pre-shell event approves the command it is given, so the harness runs it
+    ///     without asking the user. <c>fuse hook</c> then rewrites only a command that is one <c>dotnet build</c> or
+    ///     <c>dotnet test</c> with plain arguments and gives any other command no answer, so the approval never covers a
+    ///     command the agent wrote besides it.
+    /// </summary>
+    public virtual bool ApprovesRewrittenCommand => false;
 
     /// <summary>Whether the repository shows that it uses this harness, from the harness's settings directory or instructions file.</summary>
     public abstract bool IsUsedIn(RepoRoot root);

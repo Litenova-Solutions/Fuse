@@ -44,7 +44,7 @@ The client and the engine are separate processes. `fuse init`, `fuse hook`, `fus
 | `Fuse.Graph` | `Fuse.Repo`, `Fuse.Dotnet`, Foundation |
 | `Fuse.Workspace` | Sources, Foundation |
 | `Fuse.Changes` | `Fuse.Workspace`, Sources, Foundation |
-| `Fuse.Check.Model` | Foundation |
+| `Fuse.Check.Model`, `Fuse.Testing.Model` | Foundation |
 | `Fuse.Check`, `Fuse.Testing` | their own `Model` namespace, `Fuse.Changes`, `Fuse.Workspace`, Sources, Foundation; never each other |
 | `Fuse.Engine` | Features and everything below them, `Fuse.Protocol` |
 | `Fuse.Protocol` | Foundation, `Fuse.Check.Model` (for `CompilerError` only, [D11](#decisions)) |
@@ -127,19 +127,23 @@ The steps follow the numbered list in [design.md](design.md#check). Each is one 
 | Type | Cases or fields | Replaces |
 | --- | --- | --- |
 | `TestScope` | `Affected`, `All` | `bool AllTests` |
-| `TestSelection` | `Whole(reason)`, `Methods(patterns)` | `ProjectSelection`, a mutable class whose `All`, `AllReason` and `Patterns` can disagree |
-| `RunMode` | `Shadow(assembly)`, `Build` | `TestRun.ShadowAssembly`, where null means build |
+| `TestSelection` | `Whole(reason)`, `Methods(ImmutableHashSet<string> patterns)` | `ProjectSelection`, a mutable class whose `All`, `AllReason` and `Patterns` can disagree |
+| `RunMode` | `Shadow(assembly)`, `Build` | `TestRun.ShadowAssembly`, where null means build, and the null `ShadowEmitter` returned when a shadow run was not safe |
+| `PlannedRun` | test project, name, `RunMode`, filter, whether it uses Microsoft.Testing.Platform | `Protocol.TestRun` used as the domain result |
 | `TestPlanResult` | one `PlannedRun` per run, selected and total test counts, summary | `Protocol.TestPlan` used as the domain result |
+
+A selection never reaches the wire: `TestFilter` turns it into the filter of a run. The run mode does, as `Protocol.TestRunMode`, a record with the same two cases that System.Text.Json writes with a `kind` property (`"mode":{"kind":"Shadow","assembly":"..."}` or `"mode":{"kind":"Build"}`) through `[JsonPolymorphic]` and `[JsonDerivedType]`. It is a second record because `Fuse.Protocol` may not use a feature's model beyond [D11](#decisions), and naming rule 5 keeps the two names apart.
 
 **Steps** (`Fuse.Testing`), following [design.md](design.md#test-selection):
 
-1. `TypeGraph`: the type-level walk from syntax.
-2. `MemberWalk`: the member-level refinement within its 8 second budget. Today it is the `Walk` class nested inside `TestSelector`.
-3. `HostRule`: application code reached through an application host selects every test project that depends on the application. Today it is `IsFrameworkInvoked` and `IsEntryPoint` inside `Walk`.
-4. `TestSelector`: chooses between the walks and merges their selections.
-5. `TestFilter`: builds the VSTest filter and collapses it when it grows too long. Today it is `TestPlanner.Filter`.
-6. `ShadowEmitter`: prepares a shadow run, or says it is not safe.
-7. `TestPlanner`: turns the selections into a `TestPlanResult`.
+1. `TypeGraph`: which types name which, built from syntax with each file's facts cached by text version, and its reverse closure.
+2. `TypeWalk`: the class-level answer. It walks `TypeGraph` back from the types that declare a changed declaration and selects each test class it reaches. A reached test file without classes selects its project whole, and a reached application applies `HostRule`.
+3. `MemberWalk`: the member-level refinement within its budget of 300 symbols and 8 seconds. It also seeds both walks: it finds each changed file's changed declarations, selects the ones in test projects at once, and selects the test projects behind an application whole when its top-level statements change.
+4. `HostRule`: application code reached through an application host selects every test project that depends on the application. It decides which members an application host or a framework calls (`IsEntryPoint`, `IsFrameworkInvoked`, `IsCalledByHost`) and which test projects that selects (`DependentTestProjects`).
+5. `TestSelector`: chooses between the walks and merges their selections. The class-level answer is the projects the seeds selected whole, overlaid by the type walk, whose whole selections replace the seeds' reasons. The member walk's answer replaces it only when at most 40 test classes are reachable and the walk finishes, and then a project the seeds selected whole keeps the class-level answer's reason, so the summary does not depend on which answer was returned. `SelectionBuilder` holds one walk's selections while it runs.
+6. `TestFilter`: builds the VSTest filter for a `TestSelection` and collapses it when it grows past 8,000 characters, to class prefixes and then to no filter.
+7. `ShadowEmitter`: prepares a shadow run and returns `RunMode.Shadow`, or returns `RunMode.Build` when a shadow run is not safe.
+8. `TestPlanner`: turns the selections into a `TestPlanResult`, with `TestCounter` counting tests from source for the summary, and records the `sync`, `selection` and `mirror` phases.
 
 ## Workspace and sources
 
@@ -322,10 +326,15 @@ Every name that changes, with the migration step that changes it. Reach says who
 | "whole projects bound" | "checked whole projects" | output | 3 |
 | "N more error(s) with no cause line" | "N cause(s) left out" | output | 3 |
 | `TestPlan.Scope`; `scope` locals in the operations | `Summary`; `summary` | wire | 4 |
-| `TestRun.ShadowAssembly` | `RunMode` (`Shadow(assembly)`, `Build`) | wire | 4 |
+| `TestRun.ShadowAssembly` | `TestRun.Mode`, a `TestRunMode` (`Shadow(assembly)`, `Build`) mapped from the model's `RunMode` | wire | 4 |
 | `TestRun.TestingPlatform` | `UsesTestingPlatform` | wire | 4 |
 | `ProjectSelection` | `TestSelection` (`Whole`, `Methods`) | internal | 4 |
 | `TestSelector.Walk` | `MemberWalk` | internal | 4 |
+| `TestSelector.SelectByTypeGraphAsync` | `TypeWalk.SelectAsync` | internal | 4 |
+| `Walk.IsFrameworkInvoked`, `Walk.IsEntryPoint` | `HostRule.IsFrameworkInvoked`, `IsEntryPoint`, `IsCalledByHost`, `DependentTestProjects` | internal | 4 |
+| `TestPlanner.Filter` | `TestFilter.For(TestSelection)` | internal | 4 |
+| `ShadowEmitter.TryPrepareAsync`, null when not safe | `ShadowEmitter.PrepareAsync`, returning a `RunMode` | internal | 4 |
+| `TestPlanner.PlanAsync(bool all)`; `RequestRouter.ScopeOf` | `PlanAsync(TestScope)`; `RequestRouter.CheckScopeOf` and `TestScopeOf` | internal | 4 |
 | "fast path", "fast path for N of M project(s)" | "without MSBuild", "without MSBuild for N of M project(s)" | output | 4 |
 | "ran the tests you selected" | "ran the tests your dotnet test arguments name" | output | 4 |
 | "no test reaches the changed code" | "no test is affected by the changes" | output | 4 |

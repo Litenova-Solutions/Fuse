@@ -1,12 +1,14 @@
 using Fuse.Check.Model;
 using Fuse.Engine;
 using Fuse.Protocol;
+using Fuse.Testing.Model;
 
 namespace Fuse.Tests.Unit;
 
 /// <summary>
-///     The one place a check's result becomes what the client receives. A field the mapper drops or swaps is a count or a
-///     cause line the agent never sees, so every field is pinned here, and so is the JSON the pipe carries.
+///     The one place a check's result and a test plan become what the client receives. A field the mapper drops or swaps
+///     is a count, a cause line or a test run the agent never sees, so every field is pinned here, and so is the JSON the
+///     pipe carries.
 /// </summary>
 public class ResponseMapperTests
 {
@@ -26,6 +28,16 @@ public class ResponseMapperTests
         DependentProjectsChecked: 3,
         CheckedWholeProjects: true,
         CausesLeftOut: 4);
+
+    private static readonly TestPlanResult Plan = new(
+        [
+            new PlannedRun("C:/repo/Lib.Tests/Lib.Tests.csproj", "Lib.Tests(net8.0)", new RunMode.Shadow("C:/state/shadow/Lib.Tests-net8.0/Lib.Tests.dll"), "FullyQualifiedName~Lib.Tests.CalcTests.", false),
+            new PlannedRun("C:/repo/App.Tests/App.Tests.csproj", "App.Tests", new RunMode.Build(), null, false),
+            new PlannedRun("C:/repo/Mtp.Tests/Mtp.Tests.csproj", "Mtp.Tests", new RunMode.Build(), null, true),
+        ],
+        SelectedTests: 12,
+        TotalTests: 40,
+        Summary: "ran 12 test(s) affected by your changes out of 40 (whole projects where the change reaches App, which runs behind a host); fuse test --all runs everything");
 
     [Fact]
     public void A_check_result_maps_to_its_report_field_by_field()
@@ -66,6 +78,39 @@ public class ResponseMapperTests
         Assert.Equal(["Lib"], report.DeclarationsChangedIn);
         // The field names are the ones the Renames table in docs/architecture.md gives the wire.
         foreach (var name in new[] { "\"errors\"", "\"cause\"", "\"kind\":\"Removed\"", "\"fromAnalyzer\":true", "\"declarationsChangedIn\"", "\"checkedWholeProjects\"", "\"causesLeftOut\"" })
+            Assert.Contains(name, line, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_test_plan_result_maps_to_its_plan_field_by_field()
+    {
+        var plan = ResponseMapper.Plan(Plan);
+
+        Assert.Equal(
+            [
+                new TestRun("C:/repo/Lib.Tests/Lib.Tests.csproj", "Lib.Tests(net8.0)", new TestRunMode.Shadow("C:/state/shadow/Lib.Tests-net8.0/Lib.Tests.dll"), "FullyQualifiedName~Lib.Tests.CalcTests.", false),
+                new TestRun("C:/repo/App.Tests/App.Tests.csproj", "App.Tests", new TestRunMode.Build(), null, false),
+                new TestRun("C:/repo/Mtp.Tests/Mtp.Tests.csproj", "Mtp.Tests", new TestRunMode.Build(), null, true),
+            ],
+            plan.Runs);
+        Assert.Equal((12, 40), (plan.SelectedTests, plan.TotalTests));
+        Assert.Equal(Plan.Summary, plan.Summary);
+    }
+
+    [Fact]
+    public void An_answered_test_plan_carries_both_run_modes_across_the_pipe()
+    {
+        var line = ProtocolJson.Serialize(ResponseMapper.Answered(Plan));
+        var read = ProtocolJson.ReadResponse(line);
+
+        Assert.Equal(ResponseStatus.Ok, read?.Status);
+        var plan = Assert.IsType<TestPlan>(read?.Tests);
+        Assert.Equal(ResponseMapper.Plan(Plan).Runs, plan.Runs);
+        Assert.Equal("C:/state/shadow/Lib.Tests-net8.0/Lib.Tests.dll", Assert.IsType<TestRunMode.Shadow>(plan.Runs[0].Mode).Assembly);
+        Assert.IsType<TestRunMode.Build>(plan.Runs[1].Mode);
+        Assert.Equal((12, 40, Plan.Summary), (plan.SelectedTests, plan.TotalTests, plan.Summary));
+        // The field names are the ones the Renames table in docs/architecture.md gives the wire.
+        foreach (var name in new[] { "\"summary\"", "\"mode\":{\"kind\":\"Shadow\",\"assembly\":", "\"mode\":{\"kind\":\"Build\"}", "\"usesTestingPlatform\":true" })
             Assert.Contains(name, line, StringComparison.Ordinal);
     }
 }

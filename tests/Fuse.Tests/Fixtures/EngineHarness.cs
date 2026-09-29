@@ -15,7 +15,7 @@ internal sealed class EngineHarness : IAsyncDisposable
         Workspace = new RepoWorkspace(repo.Root, _ => { });
         Checker = new Checker(Workspace);
         Planner = new TestPlanner(Workspace);
-        Selector = new TestSelector(Workspace);
+        Selector = new TestSelector(Workspace, TimeProvider.System);
     }
 
     public FixtureRepo Repo { get; }

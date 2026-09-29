@@ -1,10 +1,12 @@
+using Fuse.Telemetry;
+using Fuse.Testing.Model;
 using Fuse.Tests.Fixtures;
 
 namespace Fuse.Tests.Engine;
 
 /// <summary>
-///     Every check records how long each phase took, because the engine writes one phase line per request and the evals
-///     read it back to say where a check spends its time.
+///     Every check and test plan records how long each phase took, because the engine writes one phase line per request
+///     and the evals read it back to say where a request spends its time.
 /// </summary>
 public class PhaseTimingTests
 {
@@ -34,5 +36,20 @@ public class PhaseTimingTests
         Assert.Equal(["sync", "load", "bindTargets", "surfaceDiff", "load", "referenceSearch", "bindCandidates"], phases.Select(p => p.Phase));
         Assert.All(phases, p => Assert.True(p.Ms >= 0, $"{p.Phase} was {p.Ms}"));
         Assert.True(result.DependentProjectsChecked > 0, $"checked {result.DependentProjectsChecked} dependent project(s)");
+    }
+
+    [Fact]
+    public async Task A_test_plan_times_the_sync_the_selection_and_the_shadow_preparation()
+    {
+        await using var engine = await EngineHarness.StartAsync();
+        engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
+        await Task.Delay(400, TestContext.Current.CancellationToken);
+
+        var phases = new PhaseTimes();
+        var plan = await engine.Planner.PlanAsync(new TestScope.Affected(), phases, TestContext.Current.CancellationToken);
+
+        Assert.Equal(["sync", "selection", "mirror"], phases.All.Select(p => p.Phase));
+        Assert.All(phases.All, p => Assert.True(p.Ms >= 0, $"{p.Phase} was {p.Ms}"));
+        Assert.NotEmpty(plan.Runs);
     }
 }

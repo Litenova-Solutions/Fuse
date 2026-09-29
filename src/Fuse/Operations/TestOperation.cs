@@ -29,7 +29,7 @@ internal static class TestOperation
         if (arguments.Count > 0)
         {
             var (outcome, buildFailure) = await RunDotnetTestAsync(root, workingDirectory, [.. arguments], cancellationToken).ConfigureAwait(false);
-            return Render(outcome, buildFailure, root, "ran the tests you selected", Seconds(started));
+            return Render(outcome, buildFailure, root, "ran the tests your dotnet test arguments name", Seconds(started));
         }
 
         var response = await EngineClient.SendAsync(root, new EngineRequest("", RequestKind.TestPlan, AllTests: all), TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
@@ -37,21 +37,21 @@ internal static class TestOperation
             return new OperationResult(Outcome.Unanswered, $"fuse: {response.Message ?? "the engine gave no answer"}");
         var plan = response.Tests;
         if (plan.Runs.Length == 0)
-            return new OperationResult(Outcome.Clean, $"fuse: {plan.Scope}");
+            return new OperationResult(Outcome.Clean, $"fuse: {plan.Summary}");
 
         // Shadow runs touch no build output, so they run in parallel. MSBuild runs share obj and bin folders across
         // projects, so they run one after another.
         var groups = plan.Runs.GroupBy(r => r.Project, StringComparer.OrdinalIgnoreCase).ToList();
-        var fastGroups = groups.Where(g => g.All(r => r.ShadowAssembly is not null && !r.TestingPlatform)).ToList();
+        var shadowGroups = groups.Where(g => g.All(r => r.Mode is TestRunMode.Shadow && !r.UsesTestingPlatform)).ToList();
         var outcomes = new System.Collections.Concurrent.ConcurrentDictionary<string, TestOutcome>(StringComparer.OrdinalIgnoreCase);
         await Parallel.ForEachAsync(
-            fastGroups,
+            shadowGroups,
             new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2), CancellationToken = cancellationToken },
             async (group, ct) =>
             {
-                // One process per target framework, in parallel.
+                // One process per target framework, in parallel. Every run in a shadow group is a shadow run.
                 var results = await Task.WhenAll(group.Select(run => RunDotnetTestAsync(
-                    root, root.Path, [run.ShadowAssembly!, .. (run.Filter is null ? Array.Empty<string>() : ["--filter", run.Filter])], ct, assembly: true))).ConfigureAwait(false);
+                    root, root.Path, [((TestRunMode.Shadow)run.Mode).Assembly, .. (run.Filter is null ? Array.Empty<string>() : ["--filter", run.Filter])], ct, assembly: true))).ConfigureAwait(false);
                 // A shadow that could not run (a host or adapter problem) sends the whole project through MSBuild below.
                 if (results.Any(r => r.Outcome is null))
                     return;
@@ -62,19 +62,19 @@ internal static class TestOperation
         OperationResult? failure = null;
         foreach (var group in groups)
         {
-            if (outcomes.TryGetValue(group.Key, out var fastOutcome))
+            if (outcomes.TryGetValue(group.Key, out var shadowOutcome))
             {
-                aggregate = aggregate.Add(fastOutcome);
+                aggregate = aggregate.Add(shadowOutcome);
                 continue;
             }
 
             var run = group.First();
-            var (outcome, buildFailure) = run.TestingPlatform
+            var (outcome, buildFailure) = run.UsesTestingPlatform
                 ? await RunDotnetTestAsync(root, root.Path, ["--project", run.Project, "--no-restore"], cancellationToken, testingPlatform: true).ConfigureAwait(false)
                 : await RunDotnetTestAsync(root, root.Path, [run.Project, "--no-restore", .. (run.Filter is null ? Array.Empty<string>() : ["--filter", run.Filter])], cancellationToken).ConfigureAwait(false);
             if (outcome is null)
             {
-                failure ??= Render(null, buildFailure, root, plan.Scope, Seconds(started));
+                failure ??= Render(null, buildFailure, root, plan.Summary, Seconds(started));
                 continue;
             }
 
@@ -83,9 +83,9 @@ internal static class TestOperation
 
         if (failure is not null && aggregate.Total == 0)
             return failure;
-        var fast = outcomes.Count;
-        var mode = fast == groups.Count ? "fast path" : fast > 0 ? $"fast path for {fast} of {groups.Count} project(s)" : "built with MSBuild";
-        return Render(aggregate, null, root, $"{plan.Scope}; {mode}", Seconds(started));
+        var shadowRuns = outcomes.Count;
+        var mode = shadowRuns == groups.Count ? "without MSBuild" : shadowRuns > 0 ? $"without MSBuild for {shadowRuns} of {groups.Count} project(s)" : "built with MSBuild";
+        return Render(aggregate, null, root, $"{plan.Summary}; {mode}", Seconds(started));
     }
 
     private static double Seconds(long started) => (Environment.TickCount64 - started) / 1000.0;
@@ -124,7 +124,7 @@ internal static class TestOperation
         }
     }
 
-    private static OperationResult Render(TestOutcome? outcome, ProcessResult? buildFailure, RepoRoot root, string scope, double seconds)
+    private static OperationResult Render(TestOutcome? outcome, ProcessResult? buildFailure, RepoRoot root, string summary, double seconds)
     {
         if (outcome is null)
         {
@@ -135,7 +135,7 @@ internal static class TestOperation
             }
 
             // Microsoft.Testing.Platform run that passed: its console output is the only report.
-            return new OperationResult(Outcome.Clean, $"fuse: tests passed in {seconds:0.0} s; {scope}");
+            return new OperationResult(Outcome.Clean, $"fuse: tests passed in {seconds:0.0} s; {summary}");
         }
 
         var text = new StringBuilder();
@@ -159,7 +159,7 @@ internal static class TestOperation
                 text.Append($"  ... and {rest.Count - MaxNamesShown} more\n");
         }
         var skipped = outcome.Skipped > 0 ? $", {outcome.Skipped} skipped" : "";
-        text.Append($"fuse: {outcome.Failed} failed, {outcome.Passed} passed{skipped} in {seconds:0.0} s; {scope}");
+        text.Append($"fuse: {outcome.Failed} failed, {outcome.Passed} passed{skipped} in {seconds:0.0} s; {summary}");
         return new OperationResult(outcome.Failed > 0 ? Outcome.ProblemsFound : Outcome.Clean, text.ToString());
     }
 }

@@ -37,9 +37,10 @@ public class NamespaceDependencyTests
         ["Fuse.Workspace"] = [.. Sources, .. Foundation],
         ["Fuse.Changes"] = ["Fuse.Workspace", .. Sources, .. Foundation],
         ["Fuse.Check.Model"] = [.. Foundation],
+        ["Fuse.Testing.Model"] = [.. Foundation],
         ["Fuse.Check"] = ["Fuse.Check.Model", "Fuse.Changes", "Fuse.Workspace", .. Sources, .. Foundation],
-        ["Fuse.Testing"] = ["Fuse.Changes", "Fuse.Workspace", .. Sources, .. Foundation],
-        ["Fuse.Engine"] = ["Fuse.Check", "Fuse.Check.Model", "Fuse.Testing", "Fuse.Changes", "Fuse.Workspace", .. Sources, .. Foundation, "Fuse.Protocol"],
+        ["Fuse.Testing"] = ["Fuse.Testing.Model", "Fuse.Changes", "Fuse.Workspace", .. Sources, .. Foundation],
+        ["Fuse.Engine"] = ["Fuse.Check", "Fuse.Check.Model", "Fuse.Testing", "Fuse.Testing.Model", "Fuse.Changes", "Fuse.Workspace", .. Sources, .. Foundation, "Fuse.Protocol"],
         // Decision D11: the wire carries the check model's CompilerError unchanged.
         ["Fuse.Protocol"] = [.. Foundation, "Fuse.Check.Model"],
         ["Fuse.Engine.Client"] = ["Fuse.Protocol", "Fuse.Repo", "Fuse.Dotnet", .. Foundation],
@@ -66,11 +67,7 @@ public class NamespaceDependencyTests
     ///     docs/architecture.md. Each names the step that deletes it, and Every_transitional_entry_is_still_needed fails
     ///     once one is unused.
     /// </summary>
-    private static readonly (string From, string To, string Step)[] TransitionalUses =
-    [
-        // TestPlanner returns Protocol.TestPlan until step 4 gives Testing its own result model.
-        ("Fuse.Testing", "Fuse.Protocol", "step 4"),
-    ];
+    private static readonly (string From, string To, string Step)[] TransitionalUses = [];
 
     private static readonly Lazy<Scan> Code = new(Scan.Read);
 

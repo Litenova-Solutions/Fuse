@@ -1,11 +1,13 @@
+using System.Diagnostics;
 using Fuse.Graph;
 using Fuse.Paths;
+using Fuse.Testing.Model;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Fuse.Testing;
 
-/// <summary>Counts test methods by parsing test project sources, so the scope line can say "38 of 2,914" without discovery.</summary>
+/// <summary>Counts test methods by parsing test project sources, so the summary can say "38 of 2,914" without discovery.</summary>
 internal sealed class TestCounter
 {
     private readonly Dictionary<string, (DateTime Stamp, List<string> Tests)> _cache = new(PathRules.PathComparer);
@@ -32,8 +34,12 @@ internal sealed class TestCounter
     }
 
     /// <summary>How many of <paramref name="tests"/> a selection matches, estimated from test methods declared in source.</summary>
-    public static int Count(IReadOnlyList<string> tests, ProjectSelection selection) =>
-        selection.All ? tests.Count : tests.Count(t => selection.Patterns.Any(p => t.Contains(p, StringComparison.Ordinal)));
+    public static int Count(IReadOnlyList<string> tests, TestSelection selection) => selection switch
+    {
+        TestSelection.Whole => tests.Count,
+        TestSelection.Methods methods => tests.Count(t => methods.Patterns.Any(p => t.Contains(p, StringComparison.Ordinal))),
+        _ => throw new UnreachableException($"a selection is whole or methods, not {selection.GetType().Name}"),
+    };
 
     private static List<string> Parse(string file)
     {

@@ -17,6 +17,8 @@ namespace Fuse.Testing;
 /// </remarks>
 internal sealed class TypeGraph
 {
+    private const string FilePrefix = "file:";
+
     private readonly Dictionary<TypeKey, TypeEntry> _types = [];
     private readonly Dictionary<TypeKey, HashSet<TypeKey>> _dependents = [];
 
@@ -166,7 +168,10 @@ internal sealed class TypeGraph
         return last < 0 ? qualified : qualified[(last + 1)..];
     }
 
-    internal static string FileKey(string filePath) => "file:" + filePath;
+    internal static string FileKey(string filePath) => FilePrefix + filePath;
+
+    /// <summary>True when <paramref name="name"/> keys a file without type declarations rather than a type.</summary>
+    internal static bool IsFileKey(string name) => name.StartsWith(FilePrefix, StringComparison.Ordinal);
 
     /// <summary>Namespace-qualified name with nested types joined by <c>+</c>, as test adapters report it.</summary>
     internal static string QualifiedName(SyntaxNode type)

@@ -1,8 +1,8 @@
 # Architecture
 
-This page describes how Fuse's code is organized: its layers, which namespace may use which, the order to read it in, the types each feature is built from, and the words those types are named with. It is for contributors and coding agents changing Fuse. Read it before adding a namespace, a type that other namespaces use, a step to the check or test pipeline, or a word to the output. [design.md](design.md) describes what Fuse does; this page describes where that behavior lives and what it is called.
+This page describes how Fuse's code is organized: its layers, which namespace may use which, the order to read it in, the types each feature is built from, and the words those types are named with. It is for contributors and coding agents changing Fuse. Read it before adding a namespace, a type that other namespaces use, a step to the check or test pipeline, or a word to the output. [How it works](how-it-works.md) describes what Fuse does; this page describes where that behavior lives and what it is called.
 
-Status: decided on 2026-09-28, against commit `20199cb` on `release/v5.1.0`. The code does not match it yet, and breaking changes to the wire, the output and the hook tokens are accepted to get there. [Where the code is today](#where-the-code-is-today) lists every gap, [Renames](#renames) every name that changes, and [Migration order](#migration-order) the steps that close them. Delete the first two sections once they are empty.
+Two tests hold the code to this page: `tests/Fuse.Tests/Architecture/NamespaceDependencyTests.cs` for the layers and `PathComparisonTests.cs` for how paths compare. A change that contradicts a rule here changes the page, the tests and the code together, and records a decision in [Decisions](#decisions).
 
 ## Principles
 
@@ -59,7 +59,7 @@ The client and the engine are separate processes. `fuse init`, `fuse hook`, `fus
 Three rules carry most of the value:
 
 1. **Features never use `Fuse.Engine`, `Fuse.Protocol` or anything above them.** A check is testable without a pipe, and the wire can change without touching the algorithm.
-2. **No client namespace uses `Microsoft.CodeAnalysis`, `Microsoft.Build`, or a Fuse namespace that does.** Those are `Fuse.Graph`, `Fuse.Workspace`, `Fuse.Changes`, the features and `Fuse.Engine`. A hook pays for every assembly it loads. Today no client file references Roslyn or MSBuild, but only because the runtime loads an assembly when a method that uses it first runs; nothing prevents a client call from reaching one.
+2. **No client namespace uses `Microsoft.CodeAnalysis`, `Microsoft.Build`, or a Fuse namespace that does.** Those are `Fuse.Graph`, `Fuse.Workspace`, `Fuse.Changes`, the features and `Fuse.Engine`. A hook pays for every assembly it loads, and the runtime loads one as soon as a method that uses it runs, so a single client call into an engine namespace would load Roslyn into every hook.
 3. **`Program` is the only type that references both the client and the engine**, because it is where `fuse engine` and the client commands are told apart.
 
 `tests/Fuse.Tests/Architecture/NamespaceDependencyTests.cs` enforces the table and rule 2. It reads every `.cs` file under `src/Fuse`, takes the file's namespace from its `namespace` line, and collects every `Fuse.X`, `Microsoft.CodeAnalysis` and `Microsoft.Build` name in its `using` directives and in fully qualified references. It fails naming the file, the namespace it used and the rule it broke. A new namespace fails the test until it has a row, which is the point at which its layer is decided. The table on this page and the test change together.
@@ -68,7 +68,7 @@ Three rules carry most of the value:
 
 For a contributor new to the code:
 
-1. [design.md](design.md): what Fuse does and why.
+1. [How it works](how-it-works.md): what Fuse does and why.
 2. `Fuse.Protocol`: the questions the engine answers and the shape of each answer. It is small and is the product's contract.
 3. `Fuse.Check.Model`, then the steps in `Fuse.Check` in the order [Check](#check) lists them.
 4. `Fuse.Testing.Model`, then the steps in `Fuse.Testing`.
@@ -81,12 +81,12 @@ Model types sit in a `Model` folder and namespace inside their feature (`src/Fus
 
 | Type | Namespace | What it is |
 | --- | --- | --- |
-| `RepoRoot` | `Fuse.Paths` | The canonical repository root, its pipe name and its state directory. Moves from `Fuse.Repo`. |
+| `RepoRoot` | `Fuse.Paths` | The canonical repository root, its pipe name and its state directory. |
 | `RepoPath` | `Fuse.Paths` | A file or directory of the repository, by its absolute path. A `readonly struct` that holds the root, the absolute path and its hash, computed once; it compares the way the file system does (ignoring case on Windows, ordinally elsewhere), so every set and dictionary of paths takes no comparer. `Relative` gives the repository-relative path with forward slashes, `FileName` the last segment, `IsUnder` whether it lies in a directory, and `Matches` whether a path Roslyn or MSBuild reports is the same spelling, which needs no canonicalization. `RepoRoot.PathOf` is the only way to make one: it takes a path absolute or relative to the root, and canonicalizes any spelling not under the root's own (a junction, a symlink, a `subst` drive), so each file has one value. A path outside the root, such as a project in a sibling folder, is a value too, and its relative form starts with `../`. The wire, command-line arguments and the Roslyn and MSBuild APIs keep strings: `RequestRouter` turns the files a request names into values and answers an empty or invalid one with `ErrorCode.InvalidPath`, and `ResponseMapper` writes them back as absolute strings. `tests/Fuse.Tests/Architecture/PathComparisonTests.cs` fails when a string comparison chosen by the operating system appears outside `RepoPath`, when code outside `Fuse.Paths` uses `RepoPath.Comparison`, or when `Fuse.Protocol` names `RepoPath`. |
-| `PathRules` | `Fuse.Paths` | Which files are sources, project inputs or build output. Moves from the static members of `ChangeTracker`, which the client and the engine both use. |
-| `FuseException`, `ErrorCode` | `Fuse.Failures` | A failure that ends a request, with the message that names the fix. Moves from `Fuse.Workspace` and `Fuse.Protocol`. `ErrorCode` gains `NotARepository`, so every failure a client or the engine reports has a code ([D8](#decisions)). |
+| `PathRules` | `Fuse.Paths` | Which files are sources, project inputs or build output, which the client and the engine both use. |
+| `FuseException`, `ErrorCode` | `Fuse.Failures` | A failure that ends a request, with the message that names the fix. `ErrorMessages` holds each message that does not depend on the request, so every surface words a failure the same way ([D8](#decisions)). |
 | `PhaseTimes`, `Phase`, `PhaseLine` | `Fuse.Telemetry` | The timed phases of one request, the phase names as constants, and the one log line that carries them. The engine writes the line and `evals/Fuse.Evals` reads it, so the names and the format are a contract and live in one place. `PhaseTimes.None` records nothing, so no caller passes or checks a null collector. |
-| `EngineLog` | `Fuse.Telemetry` | The engine log writer. Features take it directly rather than through `RepoWorkspace.Log`. |
+| `EngineLog` | `Fuse.Telemetry` | The engine log writer. Features write to it through `RepoWorkspace.Log`, so none of them takes a second constructor argument. |
 
 ## Changes
 
@@ -94,11 +94,11 @@ Model types sit in a `Model` folder and namespace inside their feature (`src/Fus
 
 **Model** (`Fuse.Changes.Model`). It uses only Foundation and no Roslyn, so a feature's model may use it:
 
-| Type | Cases or fields | Replaces |
-| --- | --- | --- |
-| `DeclarationKey` | `Using(directive)`, `GlobalUsing(directive)`, `AssemblyAttribute(attributes)`, `TopLevelStatements`, `NamedType(name)` for a type or delegate, `Member(NamedType container, signature)` | two string keys for one declaration: `SurfaceMap`'s (``M:N.C`0.Add`0( int)``, read back with `StartsWith("U:")`) and `ChangedDeclarations`' (``N.C\|M:Add`0(int)``) |
-| `DeclarationChange` | `Added(after)`, `Removed(before)`, `Changed(before, after)`, each with its key and the names other code reaches it by; the texts are the header as written | `SurfaceChange`, whose null `Before` or `After` said which case it was |
-| `FileChanges` | the declaration changes of one file, and `HasBroadChange` | the list `SurfaceMap.Changes` returned, from which `ChangeReach` decided change by change whether the reach was broad |
+| Type | Cases or fields |
+| --- | --- |
+| `DeclarationKey` | `Using(directive)`, `GlobalUsing(directive)`, `AssemblyAttribute(attributes)`, `TopLevelStatements`, `NamedType(name)` for a type or delegate, `Member(NamedType container, signature)` |
+| `DeclarationChange` | `Added(after)`, `Removed(before)`, `Changed(before, after)`, each with its key and the names other code reaches it by; the texts are the header as written |
+| `FileChanges` | the declaration changes of one file, and `HasBroadChange` |
 
 A key is read from syntax alone. A member's signature holds its kind, name, explicit interface, arity and parameter types with their modifiers, `checked` for a checked operator, and a conversion's target type, so overloads, a static constructor, an explicit implementation, a checked operator and two conversions to one type each have their own key. An extension block has no name, so its key is its receiver's type. A field has one key per variable. When a file declares one key more than once (the parts of a partial type or member, or two extension blocks for the same receiver), the parts are one declaration: its surface holds every part's, so a change to any part is a change to the declaration, and `CodeDiff` compares the parts one by one.
 
@@ -111,17 +111,17 @@ A key is read from syntax alone. A member's signature holds its kind, name, expl
 
 ## Check
 
-The steps follow the numbered list in [design.md](design.md#check). Each is one class.
+The steps follow the numbered list in [How it works](how-it-works.md#check). Each is one class.
 
 **Model** (`Fuse.Check.Model`):
 
-| Type | Cases or fields | Replaces |
-| --- | --- | --- |
-| `CheckScope` | `AllChanges`, `Files(IReadOnlyList<RepoPath>)` | `IReadOnlyCollection<string>? files`, where null means every change |
-| `Reach` | `None` (no declaration change), `Broad(IReadOnlySet<RepoPath>)` (every file in the reached projects), `Precise(IReadOnlyDictionary<RepoPath, Cause>)` | `ReachProvenance?` together with a project count, which `Checker` reads in one conditional |
-| `Cause` | `Changed(declaration)`, `Removed(declaration as it was at HEAD)` | `(string Declaration, bool Removed)` |
-| `IntroducedError` | `CompilerError`, `Cause?` | the pair `CheckReport.Introduced` and `CheckReport.Context`, two arrays that must stay the same length |
-| `CheckResult` | introduced errors, files checked, the projects the errors are in, projects with declaration changes, dependents checked, whether whole projects were checked, causes left out | `CheckReport` used as the domain result |
+| Type | Cases or fields |
+| --- | --- |
+| `CheckScope` | `AllChanges`, `Files(IReadOnlyList<RepoPath>)` |
+| `Reach` | `None` (no declaration change), `Broad(IReadOnlySet<RepoPath>)` (every file in the reached projects), `Precise(IReadOnlyDictionary<RepoPath, Cause>)` |
+| `Cause` | `Changed(declaration)`, `Removed(declaration as it was at HEAD)` |
+| `IntroducedError` | `CompilerError`, `Cause?`, and `IsCauseLeftOut` when the cap on causes left its cause out |
+| `CheckResult` | introduced errors, files checked, the projects the errors are in, projects with declaration changes, dependents checked, whether whole projects were checked |
 
 `CompilerError` lives in `Fuse.Check.Model` and `Fuse.Protocol` uses it, because the wire carries it unchanged ([D11](#decisions)). The cause is nullable because only rendering reads it: an error in a target file, an analyzer error and an error past the cap all print with no cause line.
 
@@ -138,17 +138,17 @@ The steps follow the numbered list in [design.md](design.md#check). Each is one 
 
 **Model** (`Fuse.Testing.Model`):
 
-| Type | Cases or fields | Replaces |
-| --- | --- | --- |
-| `TestScope` | `Affected`, `All` | `bool AllTests` |
-| `TestSelection` | `Whole(reason)`, `Methods(ImmutableHashSet<string> patterns)` | `ProjectSelection`, a mutable class whose `All`, `AllReason` and `Patterns` can disagree |
-| `RunMode` | `Shadow(assembly)`, `Build` | `TestRun.ShadowAssembly`, where null means build, and the null `ShadowEmitter` returned when a shadow run was not safe |
-| `PlannedRun` | test project, name, `RunMode`, filter, whether it uses Microsoft.Testing.Platform | `Protocol.TestRun` used as the domain result |
-| `TestPlanResult` | one `PlannedRun` per run, selected and total test counts, summary | `Protocol.TestPlan` used as the domain result |
+| Type | Cases or fields |
+| --- | --- |
+| `TestScope` | `Affected`, `All` |
+| `TestSelection` | `Whole(reason)`, `Methods(ImmutableHashSet<string> patterns)` |
+| `RunMode` | `Shadow(assembly)`, `Build` |
+| `PlannedRun` | test project, name, `RunMode`, filter, whether it uses Microsoft.Testing.Platform |
+| `TestPlanResult` | one `PlannedRun` per run, selected and total test counts, summary |
 
 A selection never reaches the wire: `TestFilter` turns it into the filter of a run. The run mode does, as `Protocol.TestRunMode`, a record with the same two cases that System.Text.Json writes with a `kind` property (`"mode":{"kind":"Shadow","assembly":"..."}` or `"mode":{"kind":"Build"}`) through `[JsonPolymorphic]` and `[JsonDerivedType]`. It is a second record because `Fuse.Protocol` may not use a feature's model beyond [D11](#decisions), and naming rule 5 keeps the two names apart.
 
-**Steps** (`Fuse.Testing`), following [design.md](design.md#test-selection):
+**Steps** (`Fuse.Testing`), following [How it works](how-it-works.md#test-selection):
 
 1. `TypeGraph`: which types name which, built from syntax with each file's facts cached by text version, and its reverse closure.
 2. `TypeWalk`: the class-level answer. It walks `TypeGraph` back from the types that declare a changed declaration and selects each test class it reaches. A reached test file without classes selects its project whole, and a reached application applies `HostRule`.
@@ -179,7 +179,7 @@ A selection never reaches the wire: `TestFilter` turns it into the filter of a r
 | `Reload(Paths, Trigger)` | more than 300 sources changed, and none of the above | the same; the trigger names how many files changed | the same, without evaluating |
 | `Patch(Paths, VanishedDirectories)` | otherwise | the files to apply and the directories that are gone | applies each file, and each file it holds under a vanished directory, to both views, after deriving them again if the loader holds a project they lack |
 
-It replaces `ChangeBatch`, whose three booleans (`HeadMoved`, `ProjectFilesChanged`, `Storm`) could express combinations that never happen. `HeadMoved` was true only together with `Storm`, and `RepoWorkspace.SyncAsync` returned on `Storm` before it reached `if (batch.HeadMoved || _rebuildPending)`, so `batch.HeadMoved` was always false there. With named cases only the real combinations can be written: a moved HEAD always re-evaluates, because the commit it moved to can have other project files. The engine log names the case and the trigger, as in `reloading: Reevaluate trigger=HEAD moved to <commit>` and `reloading: Reload trigger=<count> changed files`.
+Each case is one response, so a combination that cannot happen cannot be written. A moved HEAD always re-evaluates, because the commit it moved to can have other project files. The engine log names the case and the trigger, as in `reloading: Reevaluate trigger=HEAD moved to <commit>` and `reloading: Reload trigger=<count> changed files`.
 
 **Workspace** (`Fuse.Workspace`):
 
@@ -205,9 +205,9 @@ The base class holds only that contract and the helpers the six share: the hook 
 
 ## Engine and client
 
-`Fuse.Engine.Client` takes `EngineClient` and `EngineLauncher`. `EngineVersion` moves to `Fuse.Protocol`, because the build id it defines is part of every request.
+`Fuse.Engine.Client` holds `EngineClient`, which finds, starts and calls the engine, and `EngineLauncher`, which starts it detached from the caller. `EngineVersion` is in `Fuse.Protocol`, because the build id it defines is part of every request.
 
-`EngineHost` (205 lines) splits into:
+The engine process is `EngineServer`, the pipe server, and four classes behind it:
 
 - `RequestRouter`: initialization and routing a request to its feature.
 - `Preloader`: the background load of dependents, one load at a time, and the projects that failed to preload, each tried again once the projects reload or a restore writes a `project.assets.json` in its closure.
@@ -216,12 +216,12 @@ The base class holds only that contract and the helpers the six share: the hook 
 
 `EngineRequest` and `EngineResponse` are variants, which System.Text.Json source generation writes through `[JsonPolymorphic]` and `[JsonDerivedType]` with the case in a property written first. Every request carries `BuildId` and `RequestId` on the base record. A request line that leaves out an optional field reads it as its default (an empty build id or request id, an empty file list, not waiting for the load), because the source-generated reader would otherwise set it to null, and `RequestRouter` releases the request lock in a `finally` of its own around the request log.
 
-| Record | Cases | Replaces |
-| --- | --- | --- |
-| `EngineRequest`, its case in a `request` property | `Ping`, `ShutDown`, `CheckChanges(WaitForLoad)`, `CheckFiles(Files, WaitForLoad)`, `PlanAffectedTests`, `PlanAllTests` | `RequestKind` with `Files`, where null meant every change, `Wait` and `AllTests` |
-| `EngineResponse`, its case in a `status` property | `Acknowledged` (to `Ping` and `ShutDown`), `CheckAnswered(Report)`, `PlanAnswered(Plan)`, `Unanswered(Code, Message)`, `Restart` | `ResponseStatus` (`Ok`, `Error`, `Restart`) with nullable `Error`, `Message`, `Check` and `Tests` |
+| Record | Cases |
+| --- | --- |
+| `EngineRequest`, its case in a `request` property | `Ping`, `ShutDown`, `CheckChanges(WaitForLoad)`, `CheckFiles(Files, WaitForLoad)`, `PlanAffectedTests`, `PlanAllTests` |
+| `EngineResponse`, its case in a `status` property | `Acknowledged` (to `Ping` and `ShutDown`), `CheckAnswered(Report)`, `PlanAnswered(Plan)`, `Unanswered(Code, Message)`, `Restart` |
 
-The scope is part of the request's case, so the wire has no null that means every change and no `AllTests` flag, and `Fuse.Protocol` still uses no feature type beyond `CompilerError` ([D11](#decisions)). `RequestRouter` turns each case into a `CheckScope` or a `TestScope`. A plan request always waits for the engine to finish loading, because `fuse test` runs nothing until it has the plan; only a check can ask not to wait. The engine's failure word is the operation's: an `Unanswered` response becomes the `Unanswered` outcome.
+The scope is part of the request's case, so the wire has no null that means every change and no flag for every test, and `Fuse.Protocol` still uses no feature type beyond `CompilerError` ([D11](#decisions)). `RequestRouter` turns each case into a `CheckScope` or a `TestScope`. A plan request always waits for the engine to finish loading, because `fuse test` runs nothing until it has the plan; only a check can ask not to wait. The engine's failure word is the operation's: an `Unanswered` response becomes the `Unanswered` outcome.
 
 The engine reads `BuildId` from the request line before the case (`ProtocolJson.ReadBuildId`), so a client of any other build gets `Restart`, whatever shape that build gives its requests. The case properties are named so that an engine of an earlier build can answer too: it reads `kind` into its own enum and drops a request whose value it does not know, so no request has a `kind` property, and it writes `Restart` as `{"status":"Restart"}`, which this build reads as `EngineResponse.Restart`. Because a mismatched engine restarts, changing these records needs no compatibility code.
 
@@ -268,12 +268,12 @@ Each word names one thing. "Output" says whether agents and people see the word 
 
 ## Naming rules
 
-These decide a name the vocabulary does not list yet. Each came from a pattern the code had repeated at least twice.
+These decide a name the vocabulary does not list yet. Each exists because breaking it once made two things share a name.
 
-1. **A word in the vocabulary is reserved.** A second concept gets a different word, and the collision is added to the "Do not write" column. Before this rule, "failed" meant both a test failure and Fuse not answering.
-2. **One concept, one word.** Review rejects a synonym, in code, docs and output alike. Before this rule, the cause had four names.
-3. **Output uses only words marked yes.** Compiler and implementation words (bind, shadow, surface, reach) stay in code and contributor docs. Before this rule, the output said "whole projects bound" and "fast path".
-4. **No Fuse type shares a simple name with a BCL, Roslyn or MSBuild type.** An alias to resolve a clash is the signal. Before this rule, `Diagnostic` needed `FuseDiagnostic` and `RoslynDiagnostic`.
+1. **A word in the vocabulary is reserved.** A second concept gets a different word, and the collision is added to the "Do not write" column. Without it, "failed" would mean both a test failure and Fuse not answering.
+2. **One concept, one word.** Review rejects a synonym, in code, docs and output alike. Without it, one concept collects several names, as the cause once had four.
+3. **Output uses only words marked yes.** Compiler and implementation words (bind, shadow, surface, reach) stay in code and contributor docs. A reader of the output does not know what "bound" or "fast path" mean.
+4. **No Fuse type shares a simple name with a BCL, Roslyn or MSBuild type.** An alias to resolve a clash is the signal, as a Fuse `Diagnostic` next to Roslyn's would need.
 5. **A domain type and the wire record it maps to never share a name.** Features return `*Result` types (`CheckResult`, `TestPlanResult`); `Protocol` records are named for what the client receives (`CheckReport`, `TestPlan`).
 6. **A boolean reads as a yes-or-no question**: `Is`, `Has`, `Uses`, or a verb phrase such as `WaitForLoad` or `FromAnalyzer`.
 7. **A request is a verb; a result is a noun; a variant case names the state.** `CheckFiles`, `PlanAffectedTests`; `CheckResult`; `AllChanges`, `Whole`, `Unanswered`.
@@ -283,20 +283,20 @@ These decide a name the vocabulary does not list yet. Each came from a pattern t
 
 ## Decisions
 
-Accepted on 2026-09-28. A later change that contradicts one records a new decision here rather than editing the old one.
+A later change that contradicts one records a new decision here rather than editing the old one.
 
 | Id | Decision | Why |
 | --- | --- | --- |
 | D1 | Foundation is three namespaces: `Fuse.Paths`, `Fuse.Failures`, `Fuse.Telemetry`. | Naming rule 8. A single `Fuse.Core` would name nothing and collect unrelated types. |
 | D2 | Each feature keeps its model types in a `Model` sub-namespace. | It makes the reading order visible in the tree. The cost is one `using` per step file. |
 | D3 | Fuse stays one project. Layering, including keeping Roslyn and MSBuild out of the client, is enforced by `NamespaceDependencyTests`. | The test catches every edge a project split would, including the Roslyn ban, without extra projects, packing or internal-visibility wiring. Revisit only if the test is worked around. |
-| D4 | The output says "introduced", as the code does. | One word per concept in code and output. "fuse: 2 errors introduced in 2 files" and "fuse: no errors introduced" read as plainly as "new" does. |
-| D5 | The shell event is `pre-shell`. `fuse init` writes it, and `fuse hook` also accepts `pre-bash`. | "pre-bash" names one harness's tool. An unknown event gets a usage line on standard error and exit code 0 ([HookCommand.cs:29](../src/Fuse/Hooks/HookCommand.cs#L29)), so dropping `pre-bash` would not break a session, but it would switch off the `dotnet` rewrite for every user who does not rerun `fuse init`. One accepted alias costs one pattern. |
-| D6 | Fuse's error record is `CompilerError`, with `FromAnalyzer`. | Analyzers run inside the compilation, and the README already calls them compiler errors. `Diagnostic` clashed with Roslyn's type (naming rule 4). |
+| D4 | The output says "introduced", as the code does. | One word per concept in code and output. "fuse: 2 error(s) introduced in 2 file(s)" and "fuse: no errors introduced" read as plainly as "new" does. |
+| D5 | The shell event is `pre-shell`. `fuse init` writes it, and `fuse hook` also accepts `pre-bash`. Replaced by D12. | "pre-bash" names one harness's tool. An unknown event gets a usage line on standard error and exit code 0, so dropping `pre-bash` would not break a session. |
+| D6 | Fuse's error record is `CompilerError`, with `FromAnalyzer`. | Analyzers run inside the compilation, and the docs call what they report compiler errors. `Diagnostic` would clash with Roslyn's type (naming rule 4). |
 | D7 | HEAD is the only name for the comparison point, in code, output, MCP descriptions and docs. | It is git's term, and "the last commit" is wrong on a detached HEAD or an older checkout ([git glossary](https://git-scm.com/docs/gitglossary)). |
-| D8 | Every failure has an `ErrorCode`, including `NotARepository`, and each message is written once. | design.md already promised a "not a repository" code. Today three places (`Program.cs:90`, `InitCommand.cs:23`, `McpCommand.cs:68`) word it three ways. |
+| D8 | Every failure has an `ErrorCode`, including `NotARepository`, and each message is written once, in `ErrorMessages` when it does not depend on the request. | The command line, `fuse init` and the MCP server each detect some failures on their own, and one wording keeps them saying the same thing. |
 | D9 | Domain results and wire records are named apart (naming rule 5). | `ResponseMapper` needs no aliases, and a reader always knows which side of the pipe a type is on. |
-| D10 | An operation's outcome is an enum, `Clean`, `ProblemsFound`, `Unanswered`, and the exit code derives from it. | "Failed" meant Fuse not answering while the output next to it said "1 failed" for tests. |
+| D10 | An operation's outcome is an enum, `Clean`, `ProblemsFound`, `Unanswered`, and the exit code derives from it. | "Failed" is the word for a test, so Fuse not answering needs another. |
 | D11 | `CompilerError` lives in `Fuse.Check.Model`, and `Fuse.Protocol` may use that one type. | The wire carries it unchanged, and features may not use `Fuse.Protocol`, so it cannot live there. A second record with the same fields would only add a copy step. `Fuse.Check.Model` has no Roslyn or MSBuild reference, so a client that uses `Fuse.Protocol` still loads neither. |
 | D12 | `fuse hook` accepts only `pre-shell`. This replaces [D5](#decisions)'s accepted `pre-bash` alias. | Fuse carries no compatibility code for earlier builds, and one alias is one more thing to remove later. A user who does not rerun `fuse init` after updating loses the `dotnet` rewrite until they do, and the changelog says so. |
 
@@ -311,125 +311,3 @@ These are decisions that bend a principle, recorded so they are not copied as pr
 | Hooks catch every exception | `HookCommand.RunAsync` | A hook must never break the agent's session ([AGENTS.md](../AGENTS.md)). The failure is logged to `hook.log`. |
 | Wire records keep nullable fields that are only printed | `Fuse.Protocol` | Principle 5 applies where code branches on the null; a message or a count that is absent is not a second concept. |
 | The `Engine` prefix repeats inside `Fuse.Engine` | `EngineClient`, `EngineLauncher`, `EngineServer`, `EngineLog`, `EngineVersion` | These types are mostly named from outside the namespace, where the prefix carries meaning. New types that never leave the namespace do not take it. |
-
-## Where the code is today
-
-Measured at commit `20199cb`, including the uncommitted work on `release/v5.1.0` (`ErrorContext`, `ReachProvenance`).
-
-**Namespace cycles.** Each row lists the Fuse namespaces the namespace uses:
-
-```text
-Repo      -> Dotnet Protocol Workspace
-Graph     -> Dotnet Protocol Repo Workspace
-Workspace -> Graph Protocol Repo
-Check     -> Engine Graph Protocol Repo Workspace
-Testing   -> Engine Graph Protocol Repo Workspace
-Engine    -> Check Graph Protocol Repo Testing Workspace
-Cli       -> Dotnet Engine Protocol Repo
-Hooks     -> Cli Protocol Repo
-Mcp       -> Cli Engine Repo
-```
-
-There are four cycles (Repo and Workspace, Graph and Workspace, Check and Engine, Testing and Engine), all from three misplaced types: `FuseException` in `Workspace` is thrown by `Repo` and `Graph`; `ErrorCode` in `Protocol` is used by `Repo`; `PhaseTimes` in `Engine` is used 19 times by `Check` and `Testing`.
-
-**Features return wire records.** `Checker.CheckManyAsync` returns `Protocol.CheckReport` and `TestPlanner.PlanAsync` returns `Protocol.TestPlan`.
-
-**Large classes.** `Checker.CheckManyAsync` is about 150 lines covering every step in [Check](#check). `TestSelector` is 437 lines, of which the nested `Walk` class is about 285. `RepoWorkspace`, `ChangeTracker`, `EngineHost` and the per-harness code are described in their sections above.
-
-**Names.** Every entry in [Renames](#renames) is a name the code has today.
-
-## Renames
-
-Every name that changes, with the migration step that changes it. Reach says who notices: internal (identifiers only), wire (the pipe protocol, free because the engine restarts on a build mismatch), output (text agents and people read; README examples change with it), configuration (written into users' harness settings).
-
-| Today | Becomes | Reach | Step |
-| --- | --- | --- | --- |
-| `Fuse.Repo.RepoRoot` | `Fuse.Paths.RepoRoot` | internal | 1 |
-| `ChangeTracker.IsSource`, `IsProjectFile`, `IsBuildOutput`, `PathComparer` | `Fuse.Paths.PathRules` | internal | 1 |
-| `Fuse.Workspace.FuseException` | `Fuse.Failures.FuseException` | internal | 1 |
-| `Fuse.Protocol.ErrorCode` | `Fuse.Failures.ErrorCode`, plus `NotARepository` | wire | 1 |
-| `Fuse.Engine.PhaseTimes`, phase string literals | `Fuse.Telemetry.PhaseTimes`, `Phase` constants | internal | 1 |
-| `Fuse.Engine.EngineLog` | `Fuse.Telemetry.EngineLog` | internal | 1 |
-| `Fuse.Cli` | `Fuse.Operations` | internal | 2 |
-| `OperationResult.ExitCode`, `Found`, `Failed` | `OperationResult.Outcome` (`Clean`, `ProblemsFound`, `Unanswered`) | internal | 2 |
-| `EngineClient`, `EngineLauncher` in `Fuse.Engine` | the same names in `Fuse.Engine.Client` | internal | 2 |
-| `Fuse.Engine.EngineVersion` | `Fuse.Protocol.EngineVersion` | internal | 2 |
-| `EngineRequest.Version` | `BuildId` | wire | 2 |
-| `EngineHost` | `RequestRouter`, `Preloader`, `RequestLog`, `ResponseMapper` | internal | 2 |
-| three "not inside a git repository" messages | one message for `ErrorCode.NotARepository` | output | 2 |
-| `Protocol.Diagnostic`, `Analyzer` | `CompilerError`, `FromAnalyzer` | wire | 3 |
-| `CheckReport.Introduced` and `Context` | `CheckReport.Errors`, each a `ReportedError` with its cause | wire | 3 |
-| `CheckReport.ContextLeftOut` | `CausesLeftOut` | wire | 3 |
-| `CheckReport.SurfaceChangedIn` | `DeclarationsChangedIn` | wire | 3 |
-| `CheckReport.WholeProjects` | `CheckedWholeProjects` | wire | 3 |
-| `ChangeReach.HasSurfaceChangeAsync` | `HasDeclarationChangeAsync` | internal | 3 |
-| `ErrorContext` | `CauseLines` | internal | 3 |
-| `ReachProvenance` | `Reach.Precise` | internal | 3 |
-| "fuse: N new error(s) in M file(s)" | "fuse: N error(s) introduced in M file(s)" | output | 3 |
-| "fuse: no new errors" | "fuse: no errors introduced" | output | 3 |
-| "whole projects bound" | "checked whole projects" | output | 3 |
-| "N more error(s) with no cause line" | "N cause(s) left out" | output | 3 |
-| `TestPlan.Scope`; `scope` locals in the operations | `Summary`; `summary` | wire | 4 |
-| `TestRun.ShadowAssembly` | `TestRun.Mode`, a `TestRunMode` (`Shadow(assembly)`, `Build`) mapped from the model's `RunMode` | wire | 4 |
-| `TestRun.TestingPlatform` | `UsesTestingPlatform` | wire | 4 |
-| `ProjectSelection` | `TestSelection` (`Whole`, `Methods`) | internal | 4 |
-| `TestSelector.Walk` | `MemberWalk` | internal | 4 |
-| `TestSelector.SelectByTypeGraphAsync` | `TypeWalk.SelectAsync` | internal | 4 |
-| `Walk.IsFrameworkInvoked`, `Walk.IsEntryPoint` | `HostRule.IsFrameworkInvoked`, `IsEntryPoint`, `IsCalledByHost`, `DependentTestProjects` | internal | 4 |
-| `TestPlanner.Filter` | `TestFilter.For(TestSelection)` | internal | 4 |
-| `ShadowEmitter.TryPrepareAsync`, null when not safe | `ShadowEmitter.PrepareAsync`, returning a `RunMode` | internal | 4 |
-| `TestPlanner.PlanAsync(bool all)`; `RequestRouter.ScopeOf` | `PlanAsync(TestScope)`; `RequestRouter.CheckScopeOf` and `TestScopeOf` | internal | 4 |
-| "fast path", "fast path for N of M project(s)" | "without MSBuild", "without MSBuild for N of M project(s)" | output | 4 |
-| "ran the tests you selected" | "ran the tests your dotnet test arguments name" | output | 4 |
-| "no test reaches the changed code" | "no test is affected by the changes" | output | 4 |
-| `SurfaceMap` and `ChangedDeclarations` string keys | `DeclarationKey` | internal | 5 |
-| `SurfaceMap.Compute` and `ChangedDeclarations.Index`; `SurfaceEntry` | `FileDeclarations.Of`; `DeclarationNode` | internal | 5 |
-| `SurfaceMap.Changes`, returning `SurfaceChange` | `SurfaceDiff.Compare`, returning `FileChanges` with each `DeclarationChange` (`Added`, `Removed`, `Changed`) | internal | 5 |
-| `SurfaceMap.Declaration` | `DeclarationHeader.Of` | internal | 5 |
-| `Fuse.Testing.ChangedDeclarations.Find` | `Fuse.Changes.CodeDiff.Find` | internal | 5 |
-| `RequestKind` (`Ping`, `Check`, `TestPlan`, `Shutdown`) in a `kind` property | request variants `Ping`, `ShutDown`, `CheckChanges`, `CheckFiles`, `PlanAffectedTests`, `PlanAllTests` in a `request` property | wire | 6 |
-| `EngineRequest.Files`, `Wait`, `AllTests` | `CheckFiles(Files, WaitForLoad)`, `CheckChanges(WaitForLoad)`, `PlanAllTests` | wire | 6 |
-| `ResponseStatus` (`Ok`, `Error`, `Restart`), `EngineResponse.Ok`, `Fail`, `Error`, `Check`, `Tests` | response variants `Acknowledged`, `CheckAnswered(Report)`, `PlanAnswered(Plan)`, `Unanswered(Code, Message)`, `Restart` in a `status` property, so the engine and the operation use one word | wire | 6 |
-| `kind=Check` and `kind=TestPlan` in the phase line; `Check all`, `Check <files>` and `TestPlan all` in the engine log | the case: `CheckChanges`, `CheckFiles <files>`, `PlanAffectedTests`, `PlanAllTests` | internal | 6 |
-| `RequestRouter.CheckScopeOf` and `TestScopeOf` | one case per scope in `RequestRouter.HandleAsync` | internal | 6 |
-| `CheckOperation.RunAsync(wait)` | `waitForLoad` | internal | 6 |
-| `ChangeBatch` (`HeadMoved`, `SourcePaths`, `ProjectFilesChanged`, `Storm`, `VanishedDirectories`, `Trigger`) | `SyncResult` (`Reevaluate(Paths, Trigger)`, `Reload(Paths, Trigger)`, `Patch(Paths, VanishedDirectories)`) | internal | 7 |
-| `reloading: project files changed=... storm=... headMoved=... trigger=...` in the engine log | `reloading: <case> trigger=<why>`, the `SyncResult` case name and the new commit, the watcher's error, the last project file or the number of changed files | internal | 7 |
-| `LoaderGeneration`, `configurationGeneration` | `ConfigurationGeneration` | internal | 7 |
-| `RepoWorkspace` | `ProjectLoader`, `SolutionViews`, `WorkspaceSync`, and `RepoWorkspace` as the entry point | internal | 7 |
-| `RepoWorkspace.RebuildAsync(headMoved)`, always called with false | `SolutionViews.RebuildAsync` | internal | 7 |
-| `ChangeTracker` | `HeadResolver`, `GitStatus`, `WatchedPaths` with `WatchedChanges`, `HeadComparison`, and `ChangeTracker` composing them | internal | 7 |
-| `ChangeTracker.ResolveHeadAsync`, `GitFailure` | `HeadResolver.ResolveAsync`, `HeadResolver.GitFailure` | internal | 7 |
-| `ChangeTracker.StormThreshold` | `ChangeTracker.MaxPatchedPaths` | internal | 7 |
-| `ChangeTracker.IsIgnoredDirectory` | `WatchedPaths.IsIgnored` | internal | 7 |
-| `Fuse.Hooks.InitCommand` | `Fuse.Harnesses.InitCommand` | internal | 8 |
-| harness name strings, and `HookCommand.Harnesses` | `Harness` and its six implementations (`ClaudeCode`, `Cursor`, `GeminiCli`, `Codex`, `CopilotCli`, `OpenCode`), listed and found by name in `SupportedHarnesses` | internal | 8 |
-| the per-harness flags and `InitCommand.WriteClaude`, `WriteCursor`, `WriteGemini`, `WriteCodex`, `WriteCopilot`, `WriteOpenCode` | `IsUsedIn` and `RegisterHooks` on each harness | internal | 8 |
-| `InitCommand.WriteVsCode` | `InitCommand.RegisterMcpServer` | internal | 8 |
-| `InitCommand.Load`, `Save`, `SaveText`, `Object` | `SettingsFile.Read`, `Write`, `WriteText`, `GetOrAddObject` | internal | 8 |
-| `InitCommand.SetHook`, `SetFlatHook`, `IsFuse` | `Harness.SetNestedHook` and `IsFuse`; `SetFlatHook` in `Cursor` | internal | 8 |
-| `HookCommand.PreBash`; the harness branches in it, `Report`, `Clean` and `StopAsync`; `harness == "claude"` in `PostEditAsync` and before the event | `HookCommand.PreShell`; `ReplaceShellCommand`, `ReportAfterEdit`, `AllowStop` and `BlockStop` on each harness, returning a `HookAnswer`; `RunsPostEditInBackground` and `IsAlsoRunByCursor` | internal | 8 |
-| `Hooks/opencode-plugin.js`, resource `Fuse.Hooks.opencode-plugin.js` | `Harnesses/opencode-plugin.js`, resource `Fuse.Harnesses.opencode-plugin.js` | internal | 8 |
-| `fuse hook <harness> pre-bash`, in `fuse init`'s commands, the OpenCode plugin and the usage line | `fuse hook <harness> pre-shell`, and `pre-bash` is no longer accepted ([D12](#decisions)) | configuration | 8 |
-| strings for paths in the engine and the features, and `PathRules.PathComparer` passed to each set, dictionary and comparison of them | `RepoPath`, from `RepoRoot.PathOf`; `PathRules.PathComparer` is deleted | internal | 9 |
-| `RepoRoot.Absolute(path)`, `RepoRoot.Relative(path)` | `RepoRoot.PathOf(path).Absolute`, `.Relative` | internal | 9 |
-| a `CheckFiles` request naming an empty path (dropped from the check) or an invalid one (`Internal`) | `Unanswered` with `ErrorCode.InvalidPath`, naming the path | wire | 9 |
-| "the last commit" in the README, MCP descriptions and `site/how-it-works.html` | HEAD | output | 10 |
-| "fuse" for the product in messages | "Fuse" | output | 10 |
-
-## Migration order
-
-Each step builds, passes the tests and can merge on its own. Each step renames what the table above lists for it, updates the README examples its output changes, and adds the words it introduces to [Vocabulary](#vocabulary).
-
-1. Create `Fuse.Paths`, `Fuse.Failures` and `Fuse.Telemetry`, and move the Foundation types into them. This removes all four cycles. Add `NamespaceDependencyTests` in the same change.
-2. Split `Fuse.Engine.Client` from `Fuse.Engine`, rename `Fuse.Cli` to `Fuse.Operations`, give `OperationResult` its `Outcome`, and split `EngineHost`.
-3. Check: add the model types, split `Checker` into its steps, and move the mapping to `CheckReport` into `ResponseMapper`.
-4. Testing: the same, with `TestSelection`, `RunMode` and `TestPlanResult`.
-5. `Fuse.Changes`: move `SurfaceMap` and `ChangedDeclarations` onto the shared model.
-6. `EngineRequest` and `EngineResponse` as variants.
-7. `RepoWorkspace`, `ChangeTracker` and `SyncResult`.
-8. `Fuse.Harnesses` with the six implementations, and the `pre-shell` event.
-9. `RepoPath`, which touches every layer and is easiest once the others have settled.
-10. The wording pass: HEAD and product-name casing in the README, the MCP descriptions and the site. Then update the layout section of [AGENTS.md](../AGENTS.md) to this page's layers, and link this page from there.
-
-Start after the `release/v5.1.0` work is committed. Steps 3 and 7 rewrite `Checker`, `ErrorContext` and `RepoWorkspace`, which that branch changes.

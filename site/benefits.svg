@@ -1,64 +1,121 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 458" width="760" height="458" role="img" aria-labelledby="t d">
-<title id="t">Fuse time as a share of the dotnet command it replaces</title>
-<desc id="d">check, Small solution, 5 projects: 0.18 s with Fuse against 1.14 s with dotnet; tests, Small solution, 5 projects: 1.27 s with Fuse against 4.17 s with dotnet; check, NodaTime, 15 projects: 0.63 s with Fuse against 1.45 s with dotnet; tests, NodaTime, 42,700 tests: 32.0 s with Fuse against 44.4 s with dotnet; check, Jellyfin, 40 projects: 0.70 s with Fuse against 4.26 s with dotnet; tests, Jellyfin, 2,535 tests: 165.3 s with Fuse against 226.6 s with dotnet; check, Community Toolkit, 26 projects: 0.45 s with Fuse against 4.48 s with dotnet; tests, Community Toolkit, 12,449 tests: 65.1 s with Fuse against 428.5 s with dotnet</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 708" width="800" height="708" role="img" aria-labelledby="t d">
+<title id="t">Fuse compared with dotnet build and dotnet test</title>
+<desc id="d">Check an edit, fuse check against dotnet build. Small solution (5 projects): 0.18 seconds with Fuse, 1.14 seconds with dotnet, 6.4x faster; NodaTime (15 projects): 0.63 seconds with Fuse, 1.45 seconds with dotnet, 2.3x faster; Jellyfin (40 projects): 0.70 seconds with Fuse, 4.26 seconds with dotnet, 6.1x faster; Community Toolkit (26 projects): 0.45 seconds with Fuse, 4.48 seconds with dotnet, 10.0x faster. Run the affected tests, fuse test against dotnet test. Small solution (5 projects): 1.27 seconds with Fuse, 4.17 seconds with dotnet, 3.3x faster; NodaTime (42,700 tests): 32.0 seconds with Fuse, 44.4 seconds with dotnet, 1.4x faster; Jellyfin (2,535 tests): 165.3 seconds with Fuse, 226.6 seconds with dotnet, 1.4x faster; Community Toolkit (12,449 tests): 65.1 seconds with Fuse, 428.5 seconds with dotnet, 6.6x faster. Median times over the eval cases on one Windows machine.</desc>
 <style>
-  .bg { fill: #fcfcfb; }
-  .title { fill: #0b0b0b; font: 600 17px system-ui, -apple-system, 'Segoe UI', sans-serif; }
-  .sub, .axis, .val { fill: #52514e; font: 13px system-ui, -apple-system, 'Segoe UI', sans-serif; }
-  .group { fill: #0b0b0b; font: 600 14px system-ui, -apple-system, 'Segoe UI', sans-serif; }
-  .label { fill: #0b0b0b; font: 14px system-ui, -apple-system, 'Segoe UI', sans-serif; }
-  .val { font-variant-numeric: tabular-nums; }
-  .val-in { fill: #ffffff; font: 600 13px system-ui, -apple-system, 'Segoe UI', sans-serif; font-variant-numeric: tabular-nums; }
-  .grid { stroke: #e2e1dc; stroke-width: 1; }
-  .ref { stroke: #8a8984; stroke-width: 1.5; stroke-dasharray: 4 3; }
-  .bar { fill: #6d4aff; }
+  .bg { fill: #fcfcfb; stroke: #e4e3de; }
+  .rule { stroke: #e4e3de; }
+  text { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; fill: #0b0b0b; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; }
+  .panel { font-size: 21px; font-weight: 700; letter-spacing: -0.3px; }
+  .sub { font-size: 14px; fill: #5b5a55; }
+  .sub .mono { font-size: 13px; }
+  .repo { font-size: 15px; font-weight: 600; }
+  .meta, .note { font-size: 13px; fill: #5b5a55; }
+  .note { font-size: 12.5px; }
+  .cmd, .t { font-size: 13.5px; fill: #5b5a55; }
+  .t { font-variant-numeric: tabular-nums; }
+  .fuse-text { fill: #0b0b0b; font-weight: 600; }
+  .speed { font-size: 13px; fill: #5b5a55; }
+  .speed tspan { fill: #0b0b0b; font-weight: 600; }
+  .track { fill: #ebeae6; }
+  .fill-slow { fill: #b4b3ad; }
+  .fill-fuse { fill: #6d4aff; }
   @media (prefers-color-scheme: dark) {
-    .bg { fill: #1a1a19; }
-    .title, .group, .label { fill: #ffffff; }
-    .sub, .axis, .val { fill: #c3c2b7; }
-    .grid { stroke: #34332f; }
-    .ref { stroke: #8f8e87; }
-    .bar { fill: #9b85ff; }
+    .bg { fill: #1a1a19; stroke: #34332f; }
+    .rule { stroke: #34332f; }
+    text, .fuse-text, .speed tspan { fill: #f4f4f0; }
+    .sub, .meta, .note, .cmd, .t, .speed { fill: #b9b8af; }
+    .fuse-text { fill: #f4f4f0; }
+    .track { fill: #2e2d2a; }
+    .fill-slow { fill: #6f6e68; }
+    .fill-fuse { fill: #9b85ff; }
   }
 </style>
-<rect class="bg" width="760" height="458" rx="10"/>
-<text class="title" x="20" y="34">Time until the agent knows</text>
-<text class="sub" x="20" y="56">Fuse's median time as a share of the dotnet command it replaces. Shorter is better.</text>
-<line class="grid" x1="260" y1="80" x2="260" y2="422"/>
-<text class="axis" x="260" y="440" text-anchor="middle">0%</text>
-<line class="grid" x1="380" y1="80" x2="380" y2="422"/>
-<text class="axis" x="380" y="440" text-anchor="middle">25%</text>
-<line class="grid" x1="500" y1="80" x2="500" y2="422"/>
-<text class="axis" x="500" y="440" text-anchor="middle">50%</text>
-<line class="grid" x1="620" y1="80" x2="620" y2="422"/>
-<text class="axis" x="620" y="440" text-anchor="middle">75%</text>
-<line class="ref" x1="740" y1="80" x2="740" y2="422"/>
-<text class="axis" x="740" y="440" text-anchor="middle">100%</text>
-<text class="axis" x="734" y="92" text-anchor="end">dotnet = 100%</text>
-<text class="group" x="20" y="110">Check an edit: fuse check vs dotnet build</text>
-<text class="label" x="32" y="140">Small solution, 5 projects</text>
-<path class="bar" d="M260,128h71.2a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-71.2z"><title>Small solution, 5 projects: 0.18 s vs 1.14 s</title></path>
-<text class="val" x="343.2" y="140">16%  (0.18 s vs 1.14 s)</text>
-<text class="label" x="32" y="174">NodaTime, 15 projects</text>
-<path class="bar" d="M260,162h205.7a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-205.7z"><title>NodaTime, 15 projects: 0.63 s vs 1.45 s</title></path>
-<text class="val" x="477.7" y="174">44%  (0.63 s vs 1.45 s)</text>
-<text class="label" x="32" y="208">Jellyfin, 40 projects</text>
-<path class="bar" d="M260,196h75.2a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-75.2z"><title>Jellyfin, 40 projects: 0.70 s vs 4.26 s</title></path>
-<text class="val" x="347.2" y="208">17%  (0.70 s vs 4.26 s)</text>
-<text class="label" x="32" y="242">Community Toolkit, 26 projects</text>
-<path class="bar" d="M260,230h44a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-44z"><title>Community Toolkit, 26 projects: 0.45 s vs 4.48 s</title></path>
-<text class="val" x="316" y="242">10%  (0.45 s vs 4.48 s)</text>
-<text class="group" x="20" y="276">Run the affected tests: fuse test vs dotnet test</text>
-<text class="label" x="32" y="306">Small solution, 5 projects</text>
-<path class="bar" d="M260,294h142.3a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-142.3z"><title>Small solution, 5 projects: 1.27 s vs 4.17 s</title></path>
-<text class="val" x="414.3" y="306">30%  (1.27 s vs 4.17 s)</text>
-<text class="label" x="32" y="340">NodaTime, 42,700 tests</text>
-<path class="bar" d="M260,328h342.8a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-342.8z"><title>NodaTime, 42,700 tests: 32.0 s vs 44.4 s</title></path>
-<text class="val-in" x="598.8" y="340" text-anchor="end">72%  (32.0 s vs 44.4 s)</text>
-<text class="label" x="32" y="374">Jellyfin, 2,535 tests</text>
-<path class="bar" d="M260,362h346.2a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-346.2z"><title>Jellyfin, 2,535 tests: 165.3 s vs 226.6 s</title></path>
-<text class="val-in" x="602.2" y="374" text-anchor="end">73%  (165.3 s vs 226.6 s)</text>
-<text class="label" x="32" y="408">Community Toolkit, 12,449 tests</text>
-<path class="bar" d="M260,396h68.9a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4h-68.9z"><title>Community Toolkit, 12,449 tests: 65.1 s vs 428.5 s</title></path>
-<text class="val" x="340.9" y="408">15%  (65.1 s vs 428.5 s)</text>
+<rect class="bg" x="0.5" y="0.5" width="799" height="707" rx="12"/>
+<text class="panel" x="36" y="62">Check an edit</text>
+<text class="sub" x="36" y="86"><tspan class="mono">fuse check</tspan> vs <tspan class="mono">dotnet build</tspan></text>
+<text class="repo" x="36" y="120">Small solution</text>
+<text class="meta" x="372" y="120" text-anchor="end">5 projects</text>
+<text class="cmd mono fuse-text" x="36" y="149.5">fuse check</text>
+<path class="track" d="M144,140h156a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-156z"/>
+<path class="fill-fuse" d="M144,140h21.06a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-21.06z"/>
+<text class="t fuse-text" x="372" y="149.5" text-anchor="end">0.18 s</text>
+<text class="cmd mono" x="36" y="171.5">dotnet build</text>
+<path class="fill-slow" d="M144,162h156a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-156z"/>
+<text class="t" x="372" y="171.5" text-anchor="end">1.14 s</text>
+<text class="speed" x="36" y="197"><tspan>6.4x</tspan> faster</text>
+<text class="repo" x="428" y="120">NodaTime</text>
+<text class="meta" x="764" y="120" text-anchor="end">15 projects</text>
+<text class="cmd mono fuse-text" x="428" y="149.5">fuse check</text>
+<path class="track" d="M536,140h156a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-156z"/>
+<path class="fill-fuse" d="M536,140h65.89a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-65.89z"/>
+<text class="t fuse-text" x="764" y="149.5" text-anchor="end">0.63 s</text>
+<text class="cmd mono" x="428" y="171.5">dotnet build</text>
+<path class="fill-slow" d="M536,162h156a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-156z"/>
+<text class="t" x="764" y="171.5" text-anchor="end">1.45 s</text>
+<text class="speed" x="428" y="197"><tspan>2.3x</tspan> faster</text>
+<text class="repo" x="36" y="230">Jellyfin</text>
+<text class="meta" x="372" y="230" text-anchor="end">40 projects</text>
+<text class="cmd mono fuse-text" x="36" y="259.5">fuse check</text>
+<path class="track" d="M144,250h156a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-156z"/>
+<path class="fill-fuse" d="M144,250h22.42a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-22.42z"/>
+<text class="t fuse-text" x="372" y="259.5" text-anchor="end">0.70 s</text>
+<text class="cmd mono" x="36" y="281.5">dotnet build</text>
+<path class="fill-slow" d="M144,272h156a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-156z"/>
+<text class="t" x="372" y="281.5" text-anchor="end">4.26 s</text>
+<text class="speed" x="36" y="307"><tspan>6.1x</tspan> faster</text>
+<text class="repo" x="428" y="230">Community Toolkit</text>
+<text class="meta" x="764" y="230" text-anchor="end">26 projects</text>
+<text class="cmd mono fuse-text" x="428" y="259.5">fuse check</text>
+<path class="track" d="M536,250h156a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-156z"/>
+<path class="fill-fuse" d="M536,250h11.99a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-11.99z"/>
+<text class="t fuse-text" x="764" y="259.5" text-anchor="end">0.45 s</text>
+<text class="cmd mono" x="428" y="281.5">dotnet build</text>
+<path class="fill-slow" d="M536,272h156a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-156z"/>
+<text class="t" x="764" y="281.5" text-anchor="end">4.48 s</text>
+<text class="speed" x="428" y="307"><tspan>10.0x</tspan> faster</text>
+<line class="rule" x1="36" y1="340" x2="764" y2="340"/>
+<text class="panel" x="36" y="388">Run the affected tests</text>
+<text class="sub" x="36" y="412"><tspan class="mono">fuse test</tspan> vs <tspan class="mono">dotnet test</tspan></text>
+<text class="repo" x="36" y="446">Small solution</text>
+<text class="meta" x="372" y="446" text-anchor="end">5 projects</text>
+<text class="cmd mono fuse-text" x="36" y="475.5">fuse test</text>
+<path class="track" d="M144,466h156a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-156z"/>
+<path class="fill-fuse" d="M144,466h44.77a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-44.77z"/>
+<text class="t fuse-text" x="372" y="475.5" text-anchor="end">1.27 s</text>
+<text class="cmd mono" x="36" y="497.5">dotnet test</text>
+<path class="fill-slow" d="M144,488h156a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-156z"/>
+<text class="t" x="372" y="497.5" text-anchor="end">4.17 s</text>
+<text class="speed" x="36" y="523"><tspan>3.3x</tspan> faster</text>
+<text class="repo" x="428" y="446">NodaTime</text>
+<text class="meta" x="764" y="446" text-anchor="end">42,700 tests</text>
+<text class="cmd mono fuse-text" x="428" y="475.5">fuse test</text>
+<path class="track" d="M536,466h156a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-156z"/>
+<path class="fill-fuse" d="M536,466h111.59a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-111.59z"/>
+<text class="t fuse-text" x="764" y="475.5" text-anchor="end">32.0 s</text>
+<text class="cmd mono" x="428" y="497.5">dotnet test</text>
+<path class="fill-slow" d="M536,488h156a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-156z"/>
+<text class="t" x="764" y="497.5" text-anchor="end">44.4 s</text>
+<text class="speed" x="428" y="523"><tspan>1.4x</tspan> faster</text>
+<text class="repo" x="36" y="556">Jellyfin</text>
+<text class="meta" x="372" y="556" text-anchor="end">2,535 tests</text>
+<text class="cmd mono fuse-text" x="36" y="585.5">fuse test</text>
+<path class="track" d="M144,576h156a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-156z"/>
+<path class="fill-fuse" d="M144,576h112.74a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-112.74z"/>
+<text class="t fuse-text" x="372" y="585.5" text-anchor="end">165.3 s</text>
+<text class="cmd mono" x="36" y="607.5">dotnet test</text>
+<path class="fill-slow" d="M144,598h156a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-156z"/>
+<text class="t" x="372" y="607.5" text-anchor="end">226.6 s</text>
+<text class="speed" x="36" y="633"><tspan>1.4x</tspan> faster</text>
+<text class="repo" x="428" y="556">Community Toolkit</text>
+<text class="meta" x="764" y="556" text-anchor="end">12,449 tests</text>
+<text class="cmd mono fuse-text" x="428" y="585.5">fuse test</text>
+<path class="track" d="M536,576h156a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-156z"/>
+<path class="fill-fuse" d="M536,576h20.3a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-20.3z"/>
+<text class="t fuse-text" x="764" y="585.5" text-anchor="end">65.1 s</text>
+<text class="cmd mono" x="428" y="607.5">dotnet test</text>
+<path class="fill-slow" d="M536,598h156a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-156z"/>
+<text class="t" x="764" y="607.5" text-anchor="end">428.5 s</text>
+<text class="speed" x="428" y="633"><tspan>6.6x</tspan> faster</text>
+<text class="note" x="36" y="682">Each dotnet bar is 100 percent, and each Fuse bar is Fuse's time as a share of it. Medians over the eval cases, one Windows machine.</text>
 </svg>

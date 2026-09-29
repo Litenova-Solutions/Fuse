@@ -46,7 +46,7 @@ The client and the engine are separate processes. `fuse init`, `fuse hook`, `fus
 | `Fuse.Changes` | `Fuse.Workspace`, Sources, Foundation |
 | `Fuse.Check`, `Fuse.Testing` | `Fuse.Changes`, `Fuse.Workspace`, Sources, Foundation; never each other |
 | `Fuse.Engine` | Features and everything below them, `Fuse.Protocol` |
-| `Fuse.Protocol` | Foundation |
+| `Fuse.Protocol` | Foundation, `Fuse.Check.Model` (for `CompilerError` only, [D11](#decisions)) |
 | `Fuse.Engine.Client` | `Fuse.Protocol`, `Fuse.Repo`, `Fuse.Dotnet`, Foundation |
 | `Fuse.Operations` | `Fuse.Engine.Client`, `Fuse.Protocol`, `Fuse.Repo`, `Fuse.Dotnet`, Foundation |
 | `Fuse.Harnesses` | `Fuse.Operations`, `Fuse.Protocol`, `Fuse.Repo`, Foundation |
@@ -83,7 +83,7 @@ Model types sit in a `Model` folder and namespace inside their feature (`src/Fus
 | `RepoPath` | `Fuse.Paths` | A path inside the repository. It holds the absolute path, gives the repository-relative one with forward slashes, and compares the way the file system does. It replaces the bare strings and the `ChangeTracker.PathComparer` passed to every set and dictionary. |
 | `PathRules` | `Fuse.Paths` | Which files are sources, project inputs or build output. Moves from the static members of `ChangeTracker`, which the client and the engine both use. |
 | `FuseException`, `ErrorCode` | `Fuse.Failures` | A failure that ends a request, with the message that names the fix. Moves from `Fuse.Workspace` and `Fuse.Protocol`. `ErrorCode` gains `NotARepository`, so every failure a client or the engine reports has a code ([D8](#decisions)). |
-| `PhaseTimes`, `Phase` | `Fuse.Telemetry` | The timed phases of one request, and the phase names as constants. The names are read by `evals/Fuse.Evals` and by tests, so they are a contract and live in one place. `PhaseTimes.None` records nothing, so no caller passes or checks a null collector. |
+| `PhaseTimes`, `Phase`, `PhaseLine` | `Fuse.Telemetry` | The timed phases of one request, the phase names as constants, and the one log line that carries them. The engine writes the line and `evals/Fuse.Evals` reads it, so the names and the format are a contract and live in one place. `PhaseTimes.None` records nothing, so no caller passes or checks a null collector. |
 | `EngineLog` | `Fuse.Telemetry` | The engine log writer. Features take it directly rather than through `RepoWorkspace.Log`. |
 
 ## Changes
@@ -108,7 +108,7 @@ The steps follow the numbered list in [design.md](design.md#check). Each is one 
 | `IntroducedError` | `CompilerError`, `Cause?` | the pair `CheckReport.Introduced` and `CheckReport.Context`, two arrays that must stay the same length |
 | `CheckResult` | introduced errors, files checked, projects with declaration changes, dependents checked, whether whole projects were checked, causes left out | `CheckReport` used as the domain result |
 
-`CompilerError` itself lives in `Fuse.Protocol`, because the wire carries it unchanged. The cause is nullable because only rendering reads it: an error in a target file, an analyzer error and an error past the cap all print with no cause line.
+`CompilerError` lives in `Fuse.Check.Model` and `Fuse.Protocol` uses it, because the wire carries it unchanged ([D11](#decisions)). The cause is nullable because only rendering reads it: an error in a target file, an analyzer error and an error past the cap all print with no cause line.
 
 **Steps** (`Fuse.Check`):
 
@@ -214,7 +214,7 @@ Each word names one thing. "Output" says whether agents and people see the word 
 | Harness | An agent host that runs Fuse's hooks. | yes | agent, IDE |
 | MCP host | The application that runs an MCP client, in the MCP specification's sense. Always written in full. | yes | host (alone) |
 | Application host | The host that framework-called code in an application runs behind. Always written in full. | yes | host (alone) |
-| Pre-shell, post-edit, stop | The three hook events. | yes (`fuse hook <harness> <event>`) | pre-bash (accepted as input only) |
+| Pre-shell, post-edit, stop | The three hook events. | yes (`fuse hook <harness> <event>`) | pre-bash |
 | Fuse, `fuse` | The product, and the command and the `fuse:` output prefix. | yes | fuse (for the product) |
 
 ## Naming rules
@@ -248,6 +248,8 @@ Accepted on 2026-09-28. A later change that contradicts one records a new decisi
 | D8 | Every failure has an `ErrorCode`, including `NotARepository`, and each message is written once. | design.md already promised a "not a repository" code. Today three places (`Program.cs:90`, `InitCommand.cs:23`, `McpCommand.cs:68`) word it three ways. |
 | D9 | Domain results and wire records are named apart (naming rule 5). | `ResponseMapper` needs no aliases, and a reader always knows which side of the pipe a type is on. |
 | D10 | An operation's outcome is an enum, `Clean`, `ProblemsFound`, `Unanswered`, and the exit code derives from it. | "Failed" meant Fuse not answering while the output next to it said "1 failed" for tests. |
+| D11 | `CompilerError` lives in `Fuse.Check.Model`, and `Fuse.Protocol` may use that one type. | The wire carries it unchanged, and features may not use `Fuse.Protocol`, so it cannot live there. A second record with the same fields would only add a copy step. `Fuse.Check.Model` has no Roslyn or MSBuild reference, so a client that uses `Fuse.Protocol` still loads neither. |
+| D12 | `fuse hook` accepts only `pre-shell`. This replaces [D5](#decisions)'s accepted `pre-bash` alias. | Fuse carries no compatibility code for earlier builds, and one alias is one more thing to remove later. A user who does not rerun `fuse init` after updating loses the `dotnet` rewrite until they do, and the changelog says so. |
 
 ## Known deviations
 
@@ -260,7 +262,6 @@ These are decisions that bend a principle, recorded so they are not copied as pr
 | Hooks catch every exception | `HookCommand.RunAsync` | A hook must never break the agent's session ([AGENTS.md](../AGENTS.md)). The failure is logged to `hook.log`. |
 | Wire records keep nullable fields that are only printed | `Fuse.Protocol` | Principle 5 applies where code branches on the null; a message or a count that is absent is not a second concept. |
 | The `Engine` prefix repeats inside `Fuse.Engine` | `EngineClient`, `EngineLauncher`, `EngineServer`, `EngineLog`, `EngineVersion` | These types are mostly named from outside the namespace, where the prefix carries meaning. New types that never leave the namespace do not take it. |
-| `pre-bash` is still accepted | `HookCommand` | D5. |
 
 ## Where the code is today
 
@@ -340,7 +341,7 @@ Every name that changes, with the migration step that changes it. Reach says who
 | `LoaderGeneration`, `configurationGeneration` | `ConfigurationGeneration` | internal | 7 |
 | `Fuse.Hooks.InitCommand` | `Fuse.Harnesses.InitCommand` | internal | 8 |
 | harness name strings | `Harness` and its six implementations | internal | 8 |
-| `fuse hook <harness> pre-bash` | `fuse hook <harness> pre-shell` (`pre-bash` still accepted) | configuration | 8 |
+| `fuse hook <harness> pre-bash` | `fuse hook <harness> pre-shell`, and `pre-bash` is no longer accepted ([D12](#decisions)) | configuration | 8 |
 | strings for paths | `RepoPath` | internal | 9 |
 | "the last commit" in the README, MCP descriptions and `site/how-it-works.html` | HEAD | output | 10 |
 | "fuse" for the product in messages | "Fuse" | output | 10 |

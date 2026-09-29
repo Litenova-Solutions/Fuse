@@ -100,7 +100,7 @@ internal sealed class ProjectLoader : IDisposable
         var missing = requested.Where(p => !_loaded.ContainsKey(p.Path)).ToList();
         if (missing.Count == 0)
             return false;
-        await OpenAsync(missing, cancellationToken).ConfigureAwait(false);
+        await OpenAsync(missing, background: false, cancellationToken).ConfigureAwait(false);
         return true;
     }
 
@@ -113,8 +113,7 @@ internal sealed class ProjectLoader : IDisposable
     {
         if (_loaded.ContainsKey(project.Path))
             return;
-        await OpenAsync([project], cancellationToken).ConfigureAwait(false);
-        _preloaded = true;
+        await OpenAsync([project], background: true, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -128,7 +127,15 @@ internal sealed class ProjectLoader : IDisposable
         return preloaded;
     }
 
-    private async Task OpenAsync(IReadOnlyList<ProjectNode> missing, CancellationToken cancellationToken)
+    /// <summary>Opens each of <paramref name="missing"/> that is not open yet, under the load lock.</summary>
+    /// <param name="missing">The projects to open.</param>
+    /// <param name="background">
+    ///     True for a load outside a request. It marks each project it opens for <see cref="TakePreloaded"/> before the
+    ///     project shows as loaded, because a request that finds a project loaded does not take the lock and folds it into
+    ///     the views only when the mark is there.
+    /// </param>
+    /// <param name="cancellationToken">Cancels waiting for the lock and loading.</param>
+    private async Task OpenAsync(IReadOnlyList<ProjectNode> missing, bool background, CancellationToken cancellationToken)
     {
         var unrestored = missing.SelectMany(Graph.ClosureOf).Where(p => !File.Exists(p.AssetsFile.Absolute)).Select(p => p.Path.Relative).Distinct().ToList();
         // The command names a project, because a bare `dotnet restore` restores a solution, which may leave out the very
@@ -154,6 +161,11 @@ internal sealed class ProjectLoader : IDisposable
                     throw LoadFailed(project, e.Message);
                 }
 
+                // Set before the project is published below: the loader's solution already holds it, so a request that
+                // takes the mark now derives views that include it. The field is volatile and the dictionary write
+                // follows it, so a request that sees the project loaded sees the mark too.
+                if (background)
+                    _preloaded = true;
                 foreach (var loadedProject in loader.CurrentSolution.Projects)
                 {
                     if (loadedProject.FilePath is not null)

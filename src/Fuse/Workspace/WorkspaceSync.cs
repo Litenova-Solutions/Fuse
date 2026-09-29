@@ -18,6 +18,13 @@ internal sealed class WorkspaceSync
     private readonly SolutionViews _views;
     private readonly Action<string> _log;
 
+    /// <summary>
+    ///     The result of a sync whose action did not finish, because it was cancelled or failed, or null. The tracker
+    ///     has already folded that sync's changes in (a moved HEAD is not reported again), so the next sync acts on this
+    ///     result followed by its own (<see cref="SyncResult.Then"/>) instead of losing it.
+    /// </summary>
+    private SyncResult? _unfinished;
+
     public WorkspaceSync(ChangeTracker tracker, ProjectLoader projects, SolutionViews views, Action<string> log)
     {
         _tracker = tracker;
@@ -33,12 +40,18 @@ internal sealed class WorkspaceSync
         _views.Clear();
     }
 
-    /// <summary>Folds disk changes into both views.</summary>
+    /// <summary>Folds disk changes into both views, after the changes of an earlier sync that did not finish.</summary>
     /// <param name="knownPaths">Files just written by the agent, checked even before their watcher event arrives.</param>
     /// <param name="cancellationToken">Cancels re-evaluation.</param>
+    /// <exception cref="FuseException">
+    ///     git or MSBuild failed. The result stays unfinished, so the next sync does the same work again.
+    /// </exception>
     public async Task SyncAsync(IEnumerable<RepoPath> knownPaths, CancellationToken cancellationToken)
     {
         var result = await _tracker.SyncAsync(knownPaths, cancellationToken).ConfigureAwait(false);
+        if (_unfinished is { } unfinished)
+            result = unfinished.Then(result);
+        _unfinished = result;
         switch (result)
         {
             case SyncResult.Reevaluate reevaluate:
@@ -49,6 +62,7 @@ internal sealed class WorkspaceSync
                 break;
             case SyncResult.Patch patch:
                 await PatchAsync(patch, cancellationToken).ConfigureAwait(false);
+                _unfinished = null;
                 break;
         }
     }
@@ -71,6 +85,12 @@ internal sealed class WorkspaceSync
     ///     Acts on <see cref="SyncResult.Reevaluate"/> and <see cref="SyncResult.Reload"/>, which differ only in whether
     ///     the projects are evaluated before every project is closed.
     /// </summary>
+    /// <remarks>
+    ///     The result is finished once every project is closed and both views are empty: from then on the graph, the
+    ///     loader and the views agree with the working tree and HEAD, and any load derives both views again. Reopening
+    ///     the projects that were loaded only saves the next check a cold load, so a reopen that is cut short leaves
+    ///     nothing to redo.
+    /// </remarks>
     private async Task ReloadAsync(SyncResult result, string trigger, CancellationToken cancellationToken)
     {
         _log($"reloading: {result.GetType().Name} trigger={trigger}");
@@ -81,6 +101,7 @@ internal sealed class WorkspaceSync
         else
             await _projects.ResetAsync(cancellationToken).ConfigureAwait(false);
         _views.Clear();
+        _unfinished = null;
         // Reopen the projects that were loaded, so the next check does not pay for a cold load it did not ask for.
         var nodes = reopen.Select(_projects.Graph.Find).OfType<ProjectNode>().ToList();
         if (nodes.Count > 0)

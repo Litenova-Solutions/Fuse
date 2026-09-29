@@ -60,6 +60,82 @@ public class WorkspaceSyncTests
     }
 
     [Fact]
+    public async Task After_head_moves_the_loaded_projects_are_open_again_and_an_error_committed_at_head_is_not_introduced()
+    {
+        await using var engine = await InProcessEngine.StartAsync();
+        engine.Repo.Replace("App/Report.cs", "Lib.Formatter.Format(value)", "Lib.Formatter.Format(value, 2)");
+        Assert.Equal("CS1501", Assert.Single((await engine.CheckAsync("App/Report.cs")).Errors).Error.Id);
+
+        engine.Repo.Commit("commit the error");
+        await engine.Workspace.SyncAsync([], TestContext.Current.CancellationToken);
+
+        // The graph was evaluated again, and the project the check had loaded is open under the new evaluation.
+        Assert.True(engine.Workspace.IsLoaded(engine.Workspace.Graph.Find(engine.Repo.PathOf("App/App.csproj"))!));
+        Assert.Empty((await engine.CheckAsync("App/Report.cs")).Errors);
+    }
+
+    [Fact]
+    public async Task A_reevaluation_after_head_moved_that_was_cancelled_runs_at_the_next_sync()
+    {
+        using var repo = FixtureRepo.CreateStandard();
+        using var cut = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        var armed = false;
+        var log = new ConcurrentQueue<string>();
+        using var workspace = new RepoWorkspace(repo.Root, message =>
+        {
+            log.Enqueue(message);
+            if (armed && message.StartsWith("reloading: Reevaluate", StringComparison.Ordinal))
+                cut.Cancel();
+        });
+        await workspace.InitializeAsync(TestContext.Current.CancellationToken);
+        var generation = workspace.ConfigurationGeneration;
+        var baseline = workspace.BaselineGeneration;
+
+        repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
+        repo.Commit("move HEAD");
+        armed = true;
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => workspace.SyncAsync([], cut.Token));
+        armed = false;
+        Assert.Equal(generation, workspace.ConfigurationGeneration);
+
+        // HEAD has not moved since the cancelled sync, and the projects are evaluated for it all the same.
+        await workspace.SyncAsync([], TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, log.Count(l => l.StartsWith("reloading: Reevaluate trigger=HEAD moved to ", StringComparison.Ordinal)));
+        Assert.Equal(2, log.Count(l => l.StartsWith("evaluated ", StringComparison.Ordinal)));
+        Assert.Equal(generation + 1, workspace.ConfigurationGeneration);
+        Assert.NotEqual(baseline, workspace.BaselineGeneration);
+    }
+
+    [Fact]
+    public async Task After_a_cancelled_reevaluation_an_error_committed_at_head_is_not_reported_as_introduced()
+    {
+        using var repo = FixtureRepo.CreateStandard();
+        using var cut = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        var armed = false;
+        using var workspace = new RepoWorkspace(repo.Root, message =>
+        {
+            if (armed && message.StartsWith("reloading: Reevaluate", StringComparison.Ordinal))
+                cut.Cancel();
+        });
+        await workspace.InitializeAsync(TestContext.Current.CancellationToken);
+        var checker = new Checker(workspace);
+        // Introduced while only the working tree has it, so the check keeps HEAD's clean result for the file.
+        repo.Replace("App/Report.cs", "Lib.Formatter.Format(value)", "Lib.Formatter.Format(value, 2)");
+        Assert.Equal("CS1501", Assert.Single((await CheckAsync(checker, repo, "App/Report.cs")).Errors).Error.Id);
+
+        // Committed, the error is part of HEAD; the re-evaluation that follows the moved HEAD is cancelled.
+        repo.Commit("commit the error");
+        armed = true;
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => workspace.SyncAsync([], cut.Token));
+        armed = false;
+
+        // A check that loads another project derives both views again before Report.cs is checked.
+        Assert.Empty((await CheckAsync(checker, repo, "Multi/Shape.cs")).Errors);
+        Assert.Empty((await CheckAsync(checker, repo, "App/Report.cs")).Errors);
+    }
+
+    [Fact]
     public async Task A_patch_keeps_the_configuration_generation()
     {
         await using var engine = await InProcessEngine.StartAsync();

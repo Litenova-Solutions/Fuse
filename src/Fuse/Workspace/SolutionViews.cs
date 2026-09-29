@@ -30,6 +30,13 @@ internal sealed class SolutionViews
     /// </summary>
     private Solution? _derivedFrom;
 
+    /// <summary>
+    ///     The HEAD the baseline's content was read at, by the last <see cref="Clear"/> or <see cref="RebuildAsync"/>. A
+    ///     rebuild at another HEAD reads other content for every changed file, so it increments
+    ///     <see cref="BaselineGeneration"/>.
+    /// </summary>
+    private string? _baselineHead;
+
     public SolutionViews(RepoRoot root, ChangeTracker tracker, ProjectLoader projects)
     {
         _root = root;
@@ -66,6 +73,7 @@ internal sealed class SolutionViews
         Current = new AdhocWorkspace().CurrentSolution;
         Baseline = Current;
         _derivedFrom = null;
+        _baselineHead = _tracker.Head;
         BaselineGeneration++;
     }
 
@@ -78,9 +86,10 @@ internal sealed class SolutionViews
 
     /// <summary>Derives both views from the loader's solution again, re-applying every touched and every changed file.</summary>
     /// <remarks>
-    ///     <see cref="BaselineGeneration"/> stays the same: the baseline always holds HEAD content for the loaded projects,
-    ///     and a load only adds projects, so diagnostics cached against it stay valid. When HEAD moves, the projects are
-    ///     evaluated again, which clears both views first.
+    ///     At the same HEAD, <see cref="BaselineGeneration"/> stays the same: the baseline always holds HEAD content for
+    ///     the loaded projects, and a load only adds projects, so diagnostics cached against it stay valid. A rebuild at a
+    ///     HEAD other than the one the baseline was read at increments it, so no diagnostic cached for the earlier HEAD is
+    ///     taken for the new one. A moved HEAD normally clears both views first, when the projects are evaluated again.
     /// </remarks>
     /// <param name="cancellationToken">Cancels reading file contents.</param>
     public async Task RebuildAsync(CancellationToken cancellationToken)
@@ -91,6 +100,7 @@ internal sealed class SolutionViews
         // The repository's own analyzers load from a copy, so a real build can still overwrite them.
         var current = _analyzers.Apply(loaded);
         var baseline = current;
+        var head = _tracker.Head;
         foreach (var path in _touched.Concat(_tracker.Changed).Distinct())
         {
             current = await WithDiskContentAsync(current, path, cancellationToken).ConfigureAwait(false);
@@ -100,6 +110,11 @@ internal sealed class SolutionViews
         Current = current;
         Baseline = baseline;
         _derivedFrom = loaded;
+        if (!string.Equals(head, _baselineHead, StringComparison.Ordinal))
+        {
+            _baselineHead = head;
+            BaselineGeneration++;
+        }
     }
 
     /// <summary>

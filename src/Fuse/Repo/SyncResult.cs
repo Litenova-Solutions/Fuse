@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Fuse.Paths;
 
 namespace Fuse.Repo;
@@ -20,6 +21,31 @@ internal abstract record SyncResult
     ///     applies them again, because the loader reads each file as it was when its project opened.
     /// </summary>
     public IReadOnlyCollection<RepoPath> Paths { get; }
+
+    /// <summary>
+    ///     This result followed by <paramref name="later"/>, as one result that does the work of both when acted on once:
+    ///     the case that does more wins (<see cref="Reevaluate"/>, then <see cref="Reload"/>, then <see cref="Patch"/>),
+    ///     with the paths of both and, when both are patches, the vanished directories of both.
+    /// </summary>
+    /// <remarks>
+    ///     The workspace uses it to finish a result it did not finish acting on, such as a re-evaluation after HEAD moved
+    ///     that was cancelled: the tracker has already taken the new HEAD, so it will not report the move again. When
+    ///     both are of the winning case, the later trigger is kept, because it names the latest reason.
+    /// </remarks>
+    public SyncResult Then(SyncResult later)
+    {
+        var paths = new HashSet<RepoPath>(Paths);
+        paths.UnionWith(later.Paths);
+        return (this, later) switch
+        {
+            (_, Reevaluate reevaluate) => new Reevaluate(paths, reevaluate.Trigger),
+            (Reevaluate reevaluate, _) => new Reevaluate(paths, reevaluate.Trigger),
+            (_, Reload reload) => new Reload(paths, reload.Trigger),
+            (Reload reload, _) => new Reload(paths, reload.Trigger),
+            (Patch earlier, Patch patch) => new Patch(paths, [.. earlier.VanishedDirectories.Union(patch.VanishedDirectories)]),
+            _ => throw new UnreachableException($"a sync result is a re-evaluation, a reload or a patch, not {GetType().Name} and {later.GetType().Name}"),
+        };
+    }
 
     /// <summary>
     ///     Project configuration may have changed: HEAD moved, a project, props, targets, editorconfig or global.json file

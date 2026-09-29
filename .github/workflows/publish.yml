@@ -29,11 +29,11 @@ jobs:
           fi
           echo "VERSION=$version" >> "$GITHUB_ENV"
 
-      - name: Release notes from CHANGELOG.md
+      - name: Release notes from docs/changelog.md
         shell: bash
         run: |
-          awk -v v="## $VERSION" '$0 == v {found=1; next} found && /^## / {exit} found {print}' CHANGELOG.md > release-notes.md
-          if [ ! -s release-notes.md ]; then echo "CHANGELOG.md has no section for $VERSION"; exit 1; fi
+          awk -v v="## $VERSION" '$0 == v {found=1; next} found && /^## / {exit} found {print}' docs/changelog.md > release-notes.md
+          if [ ! -s release-notes.md ]; then echo "docs/changelog.md has no section for $VERSION"; exit 1; fi
 
       - name: Pack
         run: dotnet pack src/Fuse/Fuse.csproj -c Release -o artifacts

@@ -43,9 +43,10 @@ The client and the engine are separate processes. `fuse init`, `fuse hook`, `fus
 | `Fuse.Repo` | `Fuse.Dotnet`, Foundation |
 | `Fuse.Graph` | `Fuse.Repo`, `Fuse.Dotnet`, Foundation |
 | `Fuse.Workspace` | Sources, Foundation |
-| `Fuse.Changes` | `Fuse.Workspace`, Sources, Foundation |
-| `Fuse.Check.Model`, `Fuse.Testing.Model` | Foundation |
-| `Fuse.Check`, `Fuse.Testing` | their own `Model` namespace, `Fuse.Changes`, `Fuse.Workspace`, Sources, Foundation; never each other |
+| `Fuse.Changes.Model` | Foundation |
+| `Fuse.Changes` | `Fuse.Changes.Model`, `Fuse.Workspace`, Sources, Foundation |
+| `Fuse.Check.Model`, `Fuse.Testing.Model` | `Fuse.Changes.Model`, Foundation; never `Fuse.Changes` |
+| `Fuse.Check`, `Fuse.Testing` | their own `Model` namespace, `Fuse.Changes`, `Fuse.Changes.Model`, `Fuse.Workspace`, Sources, Foundation; never each other |
 | `Fuse.Engine` | Features and everything below them, `Fuse.Protocol` |
 | `Fuse.Protocol` | Foundation, `Fuse.Check.Model` (for `CompilerError` only, [D11](#decisions)) |
 | `Fuse.Engine.Client` | `Fuse.Protocol`, `Fuse.Repo`, `Fuse.Dotnet`, Foundation |
@@ -71,7 +72,7 @@ For a contributor new to the code:
 2. `Fuse.Protocol`: the questions the engine answers and the shape of each answer. It is small and is the product's contract.
 3. `Fuse.Check.Model`, then the steps in `Fuse.Check` in the order [Check](#check) lists them.
 4. `Fuse.Testing.Model`, then the steps in `Fuse.Testing`.
-5. `Fuse.Changes`, `Fuse.Workspace` and the Sources layer, when a change needs them.
+5. `Fuse.Changes.Model`, then `Fuse.Changes`, `Fuse.Workspace` and the Sources layer, when a change needs them.
 6. `Fuse.Engine`, `Fuse.Engine.Client`, `Fuse.Operations` and the surfaces, for how a request travels.
 
 Model types sit in a `Model` folder and namespace inside their feature (`src/Fuse/Check/Model`, namespace `Fuse.Check.Model`). A model type uses only other model types of its feature, `Fuse.Changes` model types and Foundation, so a reader can understand the folder without opening anything else.
@@ -89,11 +90,24 @@ Model types sit in a `Model` folder and namespace inside their feature (`src/Fus
 
 ## Changes
 
-`Fuse.Changes` answers one question for both features: which declarations differ between a file at HEAD and on disk, decided from syntax. Today Check answers it with `Check/SurfaceMap.cs` and Testing with `Testing/ChangedDeclarations.cs`, each with its own keys and its own idea of a declaration. The two answer different questions (whether a file's visible declarations changed, and whether any member's code changed), so they stay two functions, but over one model:
+`Fuse.Changes` answers one question for both features: which declarations differ between a file at HEAD and on disk, decided from syntax. The features ask it in two forms, whether a file's visible declarations changed (Check) and whether any declaration's code changed (Testing), so there are two functions. Both read a file the same way, into the same declarations under the same key.
 
-- `DeclarationKey`: a stable identity for a type or member within a file.
-- `DeclarationChange`: one declaration that was added, removed or changed, with its text before and after.
-- `FileChanges`: the declaration changes of one file, and whether any of them is broad (a type header, delegate, global using or assembly attribute).
+**Model** (`Fuse.Changes.Model`). It uses only Foundation and no Roslyn, so a feature's model may use it:
+
+| Type | Cases or fields | Replaces |
+| --- | --- | --- |
+| `DeclarationKey` | `Using(directive)`, `GlobalUsing(directive)`, `AssemblyAttribute(attributes)`, `TopLevelStatements`, `NamedType(name)` for a type or delegate, `Member(NamedType container, signature)` | two string keys for one declaration: `SurfaceMap`'s (``M:N.C`0.Add`0( int)``, read back with `StartsWith("U:")`) and `ChangedDeclarations`' (``N.C\|M:Add`0(int)``) |
+| `DeclarationChange` | `Added(after)`, `Removed(before)`, `Changed(before, after)`, each with its key and the names other code reaches it by; the texts are the header as written | `SurfaceChange`, whose null `Before` or `After` said which case it was |
+| `FileChanges` | the declaration changes of one file, and `HasBroadChange` | the list `SurfaceMap.Changes` returned, from which `ChangeReach` decided change by change whether the reach was broad |
+
+A key is read from syntax alone. A member's signature holds its kind, name, explicit interface, arity and parameter types with their modifiers, so overloads, a static constructor and an explicit implementation each have their own key. A field has one key per variable. When a file declares one key twice (two parts of a partial type or member), the first is kept.
+
+**Steps** (`Fuse.Changes`):
+
+1. `FileDeclarations`: reads one version of a file into its declarations, each a `DeclarationNode` with its key, its syntax node, its surface (what other files can observe, with bodies and trivia removed; none for a finalizer or top-level statements), the names other code reaches it by, and its containing type. It is the one walk of namespaces, types and members that both functions use.
+2. `DeclarationHeader`: a declaration's header as written, on one line. `DeclarationChange` carries it and a cause quotes it.
+3. `SurfaceDiff`: Check's question. It compares the surfaces of two `FileDeclarations` and returns `FileChanges`, which is broad when a type header, a delegate, a global using or a file-level attribute list changed.
+4. `CodeDiff`: Testing's question. It compares the code of the same declarations, a type by its header (its surface) and anything else by its whole syntax, and returns the nodes the test walks start from: each added or changed declaration, the type of each removed member, the compilation unit when top-level statements change, and every type when the file's usings or file-level attributes change.
 
 ## Check
 
@@ -115,7 +129,7 @@ The steps follow the numbered list in [design.md](design.md#check). Each is one 
 
 1. `TargetResolver`: turns a `CheckScope` into the source files that have an owning project.
 2. `IntroducedErrors`: binds files or whole projects in both views and keeps the errors with no match at HEAD, using `DiagnosticCollector`, `AnalyzerSelector` and `DiagnosticDelta`.
-3. `ChangeReach`: turns the declaration changes of the targets into a `Reach`.
+3. `ChangeReach`: turns the declaration changes of the targets, as `SurfaceDiff` finds them, into a `Reach`.
 4. `CandidateBinding`: binds the reached files, or whole projects past 500 candidates.
 5. `CauseLines`: attaches causes to errors in candidate files, at most ten per answer.
 6. `Checker`: answers one check request, behind the engine's request lock. It syncs the workspace, loads the owners of the targets and later the dependents of the projects with declaration changes, runs steps 1 to 5 in order, records each as a `Phase`, and returns a `CheckResult`.
@@ -138,7 +152,7 @@ A selection never reaches the wire: `TestFilter` turns it into the filter of a r
 
 1. `TypeGraph`: which types name which, built from syntax with each file's facts cached by text version, and its reverse closure.
 2. `TypeWalk`: the class-level answer. It walks `TypeGraph` back from the types that declare a changed declaration and selects each test class it reaches. A reached test file without classes selects its project whole, and a reached application applies `HostRule`.
-3. `MemberWalk`: the member-level refinement within its budget of 300 symbols and 8 seconds. It also seeds both walks: it finds each changed file's changed declarations, selects the ones in test projects at once, and selects the test projects behind an application whole when its top-level statements change.
+3. `MemberWalk`: the member-level refinement within its budget of 300 symbols and 8 seconds. It also seeds both walks: it finds each changed file's changed declarations with `CodeDiff`, selects the ones in test projects at once, and selects the test projects behind an application whole when its top-level statements change.
 4. `HostRule`: application code reached through an application host selects every test project that depends on the application. It decides which members an application host or a framework calls (`IsEntryPoint`, `IsFrameworkInvoked`, `IsCalledByHost`) and which test projects that selects (`DependentTestProjects`).
 5. `TestSelector`: chooses between the walks and merges their selections. The class-level answer is the projects the seeds selected whole, overlaid by the type walk, whose whole selections replace the seeds' reasons. The member walk's answer replaces it only when at most 40 test classes are reachable and the walk finishes, and then a project the seeds selected whole keeps the class-level answer's reason, so the summary does not depend on which answer was returned. `SelectionBuilder` holds one walk's selections while it runs.
 6. `TestFilter`: builds the VSTest filter for a `TestSelection` and collapses it when it grows past 8,000 characters, to class prefixes and then to no filter.
@@ -338,7 +352,11 @@ Every name that changes, with the migration step that changes it. Reach says who
 | "fast path", "fast path for N of M project(s)" | "without MSBuild", "without MSBuild for N of M project(s)" | output | 4 |
 | "ran the tests you selected" | "ran the tests your dotnet test arguments name" | output | 4 |
 | "no test reaches the changed code" | "no test is affected by the changes" | output | 4 |
-| `SurfaceMap` and `ChangedDeclarations` keys | `DeclarationKey`, `DeclarationChange`, `FileChanges` | internal | 5 |
+| `SurfaceMap` and `ChangedDeclarations` string keys | `DeclarationKey` | internal | 5 |
+| `SurfaceMap.Compute` and `ChangedDeclarations.Index`; `SurfaceEntry` | `FileDeclarations.Of`; `DeclarationNode` | internal | 5 |
+| `SurfaceMap.Changes`, returning `SurfaceChange` | `SurfaceDiff.Compare`, returning `FileChanges` with each `DeclarationChange` (`Added`, `Removed`, `Changed`) | internal | 5 |
+| `SurfaceMap.Declaration` | `DeclarationHeader.Of` | internal | 5 |
+| `Fuse.Testing.ChangedDeclarations.Find` | `Fuse.Changes.CodeDiff.Find` | internal | 5 |
 | `RequestKind` (`Ping`, `Check`, `TestPlan`, `Shutdown`) | request variants `Ping`, `Check`, `PlanTests`, `ShutDown` | wire | 6 |
 | `EngineRequest.Files`, `Wait`, `AllTests` | `Check(CheckScope, WaitForLoad)`, `PlanTests(TestScope)` | wire | 6 |
 | `ResponseStatus.Error`, `EngineResponse.Error`, `EngineResponse.Fail` | `Unanswered(Code, Message)`, so the engine and the operation use one word | wire | 6 |

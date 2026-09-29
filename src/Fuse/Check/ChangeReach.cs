@@ -1,11 +1,13 @@
 using System.Collections.Immutable;
+using System.Diagnostics;
+using Fuse.Changes;
+using Fuse.Changes.Model;
 using Fuse.Check.Model;
 using Fuse.Graph;
 using Fuse.Paths;
 using Fuse.Workspace;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.FindSymbols;
 using Microsoft.CodeAnalysis.Text;
 
@@ -48,10 +50,10 @@ internal sealed class ChangeReach
             return false;
         if (!path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
             return true;
-        var before = head is null ? [] : SurfaceMap.Compute(await ParseAsync(head, cancellationToken).ConfigureAwait(false));
-        var after = now is null ? [] : SurfaceMap.Compute(await ParseAsync(now, cancellationToken).ConfigureAwait(false));
+        var before = head is null ? FileDeclarations.Empty : FileDeclarations.Of(await ParseAsync(head, cancellationToken).ConfigureAwait(false));
+        var after = now is null ? FileDeclarations.Empty : FileDeclarations.Of(await ParseAsync(now, cancellationToken).ConfigureAwait(false));
         // An added using changes nothing another file can see, so it alone does not send the check to the dependents.
-        return SurfaceMap.Changes(before, after).Any(c => !(c.Key.StartsWith("U:", StringComparison.Ordinal) && c.Before is null));
+        return SurfaceDiff.Compare(before, after).Changes.Any(c => !(c is DeclarationChange.Added && c.Key is DeclarationKey.Using));
     }
 
     /// <summary>
@@ -95,43 +97,41 @@ internal sealed class ChangeReach
             var beforeRoot = baselineDocument is null ? null : await baselineDocument.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
             var model = baselineDocument is null ? null : await baselineDocument.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
             var now = await CurrentTextAsync(path, cancellationToken).ConfigureAwait(false);
-            var before = beforeRoot is null ? [] : SurfaceMap.Compute(beforeRoot);
-            var after = now is null ? [] : SurfaceMap.Compute(await ParseAsync(now, cancellationToken).ConfigureAwait(false));
+            var before = beforeRoot is null ? FileDeclarations.Empty : FileDeclarations.Of(beforeRoot);
+            var after = now is null ? FileDeclarations.Empty : FileDeclarations.Of(await ParseAsync(now, cancellationToken).ConfigureAwait(false));
+            var changes = SurfaceDiff.Compare(before, after);
+            if (changes.HasBroadChange)
+                return Broad(projects);
 
-            foreach (var change in SurfaceMap.Changes(before, after))
+            foreach (var change in changes.Changes)
             {
-                var entry = change.After ?? change.Before!;
-                // A removal has no working-tree declaration, so the one that goes with it is the one at HEAD.
-                Cause cause = change.After is null ? new Cause.Removed(entry.Declaration) : new Cause.Changed(entry.Declaration);
-                if (change.Key.StartsWith("U:", StringComparison.Ordinal))
+                var cause = CauseOf(change);
+                if (change.Key is DeclarationKey.Using)
                 {
                     // An added using cannot change what another file sees. A removed one can change every signature in
                     // this file, so every file that names one of this file's types is a candidate.
                     if (cause is Cause.Removed)
                     {
-                        foreach (var typeName in entry.Names)
+                        foreach (var typeName in change.Names)
                             names.Add((typeName, cause));
                     }
 
                     continue;
                 }
 
-                if (change.Key.StartsWith("G:", StringComparison.Ordinal) || change.Key.StartsWith("A:", StringComparison.Ordinal) || entry.Node is DelegateDeclarationSyntax)
-                    return Broad(projects);
-                if (change.Key.StartsWith("T:", StringComparison.Ordinal))
+                if (change.Key is DeclarationKey.NamedType)
                 {
-                    if (change.Before is not null && change.After is not null)
-                        return Broad(projects);
-                    if (change.Before is not null && Declared(model, change.Before.Node, cancellationToken) is { } removedType)
+                    // A type whose header changed made the reach broad above, so this type was added or removed.
+                    if (change is DeclarationChange.Removed && Declared(model, before.Find(change.Key)?.Node, cancellationToken) is { } removedType)
                         changed.Add(new(removedType, cause, true));
                     else
-                        names.Add((entry.Names[0], new Cause.Changed(entry.Declaration)));
+                        names.Add((change.Names[0], new Cause.Changed(cause.Declaration)));
                     continue;
                 }
 
-                if (change.Before is not null)
+                if (change is not DeclarationChange.Added)
                 {
-                    if (Declared(model, change.Before.Node, cancellationToken) is not { } member)
+                    if (Declared(model, before.Find(change.Key)?.Node, cancellationToken) is not { } member)
                         return Broad(projects);
                     changed.Add(new(member, cause, true));
                     if (member is IMethodSymbol { MethodKind: MethodKind.Constructor, ContainingType: { } constructed })
@@ -140,10 +140,10 @@ internal sealed class ChangeReach
                 }
 
                 // An added member of a type that existed at HEAD.
-                if (entry.Container is null || !before.TryGetValue(entry.Container, out var container)
+                if (change.Key is not DeclarationKey.Member { Container: var containerKey } || before.Find(containerKey) is not { } container
                     || Declared(model, container.Node, cancellationToken) is not INamedTypeSymbol containingType)
                     continue;
-                var name = entry.Names[0];
+                var name = change.Names[0];
                 for (var type = containingType; type is not null; type = type.BaseType)
                     foreach (var member in type.GetMembers(name).Where(m => !m.IsImplicitlyDeclared))
                         changed.Add(new(member, cause, false));
@@ -192,6 +192,18 @@ internal sealed class ChangeReach
 
         return new Reach.Precise(causes);
     }
+
+    /// <summary>
+    ///     The cause an error in a file this change reaches names. A removal has no working-tree declaration, so the one
+    ///     that goes with it is the one at HEAD.
+    /// </summary>
+    private static Cause CauseOf(DeclarationChange change) => change switch
+    {
+        DeclarationChange.Added added => new Cause.Changed(added.After),
+        DeclarationChange.Changed edited => new Cause.Changed(edited.After),
+        DeclarationChange.Removed removed => new Cause.Removed(removed.Before),
+        _ => throw new UnreachableException($"a declaration change is added, changed or removed, not {change.GetType().Name}"),
+    };
 
     /// <summary>Every source file of <paramref name="projects"/>, for a change that a reference search cannot bound.</summary>
     private static Reach.Broad Broad(IReadOnlyList<Project> projects) =>

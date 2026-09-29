@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using Fuse.Changes;
 using Fuse.Graph;
 using Fuse.Testing.Model;
 using Fuse.Workspace;
@@ -83,7 +84,7 @@ internal sealed class MemberWalk
                 ? null
                 : await CSharpSyntaxTree.ParseText(headText, (CSharpParseOptions)root.SyntaxTree.Options, cancellationToken: cancellationToken).GetRootAsync(cancellationToken).ConfigureAwait(false);
             var node = NodeOf(document.Project);
-            foreach (var changed in ChangedDeclarations.Find(before, root))
+            foreach (var changed in CodeDiff.Find(before, root))
             {
                 seeds.Add((document, changed));
                 if (changed is CompilationUnitSyntax)

@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Text.RegularExpressions;
-using Fuse.Dotnet;
 using Fuse.Telemetry;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -128,8 +127,8 @@ internal static partial class MultiAgentScenario
                 checks,
                 unanswered,
                 notRun,
-                Stats(gates),
-                Stats(totals),
+                LatencyStats.Of(gates),
+                LatencyStats.Of(totals),
                 singleClientTotalP50);
         }
         finally
@@ -192,7 +191,7 @@ internal static partial class MultiAgentScenario
 
         var wall = watch.Elapsed.TotalMilliseconds;
         Console.WriteLine($"[multiAgent] builds: {Builders} client(s) x {BuildRounds} rounds in {wall:0} ms, {collisions} collision(s)");
-        return new MultiAgentBuilds(Builders, BuildRounds, wall, Stats(walls), collisions, samples);
+        return new MultiAgentBuilds(Builders, BuildRounds, wall, LatencyStats.Of(walls), collisions, samples);
     }
 
     /// <summary>
@@ -295,12 +294,6 @@ internal static partial class MultiAgentScenario
         return root.ReplaceNode(method.Body, method.Body.WithStatements(method.Body.Statements.Insert(0, statement))).ToFullString();
     }
 
-    private static LatencyStats Stats(List<double> values)
-    {
-        var sorted = values.OrderBy(v => v).ToList();
-        double At(double q) => sorted.Count == 0 ? 0 : sorted[Math.Min(sorted.Count - 1, (int)Math.Ceiling(q * sorted.Count) - 1)];
-        return new LatencyStats(Math.Round(At(0.5), 1), Math.Round(At(0.95), 1), Math.Round(sorted.LastOrDefault(), 1), sorted.Count);
-    }
 
     [GeneratedRegex(@"^test plan: (.+?) \[", RegexOptions.CultureInvariant)]
     private static partial Regex TestPlanProject();

@@ -43,7 +43,5 @@ internal sealed class Codex : Harness
     public override HookAnswer ReportAfterEdit(string report) =>
         HookAnswer.Json(new JsonObject { ["hookSpecificOutput"] = new JsonObject { ["hookEventName"] = "PostToolUse", ["additionalContext"] = report } });
 
-    public override HookAnswer AllowStop() => HookAnswer.Json([]);
 
-    public override HookAnswer BlockStop(string reason) => HookAnswer.Json(new JsonObject { ["decision"] = "block", ["reason"] = reason });
 }

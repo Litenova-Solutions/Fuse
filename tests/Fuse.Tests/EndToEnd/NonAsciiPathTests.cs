@@ -1,4 +1,3 @@
-using System.Text;
 using System.Text.Json.Nodes;
 using Fuse.Tests.Fixtures;
 

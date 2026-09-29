@@ -21,7 +21,7 @@ internal static class CheckOperation
         EngineRequest request = files is null ? new EngineRequest.CheckChanges(waitForLoad) : new EngineRequest.CheckFiles(files, waitForLoad);
         var response = await EngineClient.SendAsync(root, request, timeout, cancellationToken).ConfigureAwait(false);
         if (response is not EngineResponse.CheckAnswered answered)
-            return (new OperationResult(Outcome.Unanswered, $"fuse: {(response as EngineResponse.Unanswered)?.Message ?? $"the Fuse engine sent no check result ({response.GetType().Name}); run the command again"}"), response);
+            return (OperationResult.Unanswered(response, "check result"), response);
         return (Render(answered.Report), response);
     }
 

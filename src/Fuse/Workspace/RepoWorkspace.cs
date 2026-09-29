@@ -92,8 +92,6 @@ internal sealed class RepoWorkspace : IDisposable
     /// <inheritdoc cref="SolutionViews.HeadText"/>
     public SourceText? HeadText(RepoPath path) => _views.HeadText(path);
 
-    /// <inheritdoc cref="SolutionViews.Decode"/>
-    internal static SourceText Decode(byte[] bytes) => SolutionViews.Decode(bytes);
 
     public void Dispose()
     {

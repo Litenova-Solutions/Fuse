@@ -38,7 +38,7 @@ internal static class TestOperation
         EngineRequest request = all ? new EngineRequest.PlanAllTests() : new EngineRequest.PlanAffectedTests();
         var response = await EngineClient.SendAsync(root, request, TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
         if (response is not EngineResponse.PlanAnswered answered)
-            return new OperationResult(Outcome.Unanswered, $"fuse: {(response as EngineResponse.Unanswered)?.Message ?? $"the Fuse engine sent no test plan ({response.GetType().Name}); run the command again"}");
+            return OperationResult.Unanswered(response, "test plan");
         var plan = answered.Plan;
         if (plan.Runs.Length == 0)
             return new OperationResult(Outcome.Clean, $"fuse: {plan.Summary}");

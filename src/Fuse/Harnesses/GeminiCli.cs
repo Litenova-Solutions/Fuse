@@ -32,7 +32,6 @@ internal sealed class GeminiCli : Harness
     public override HookAnswer ReportAfterEdit(string report) =>
         HookAnswer.Json(new JsonObject { ["hookSpecificOutput"] = new JsonObject { ["hookEventName"] = "AfterTool", ["additionalContext"] = report } });
 
-    public override HookAnswer AllowStop() => HookAnswer.Json([]);
 
     /// <summary>Gemini CLI's decision for sending the agent back is <c>deny</c>, where the other harnesses use <c>block</c>.</summary>
     public override HookAnswer BlockStop(string reason) => HookAnswer.Json(new JsonObject { ["decision"] = "deny", ["reason"] = reason });

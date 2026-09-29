@@ -35,7 +35,5 @@ internal sealed class CopilotCli : Harness
 
     public override HookAnswer ReportAfterEdit(string report) => HookAnswer.Json(new JsonObject { ["additionalContext"] = report });
 
-    public override HookAnswer AllowStop() => HookAnswer.Json([]);
 
-    public override HookAnswer BlockStop(string reason) => HookAnswer.Json(new JsonObject { ["decision"] = "block", ["reason"] = reason });
 }

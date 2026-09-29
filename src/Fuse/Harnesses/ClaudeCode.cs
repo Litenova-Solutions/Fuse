@@ -65,7 +65,6 @@ internal sealed class ClaudeCode : Harness
 
     public override HookAnswer AllowStop() => HookAnswer.None;
 
-    public override HookAnswer BlockStop(string reason) => HookAnswer.Json(new JsonObject { ["decision"] = "block", ["reason"] = reason });
 
     private static JsonObject WithCommand(JsonElement? input, string command)
     {

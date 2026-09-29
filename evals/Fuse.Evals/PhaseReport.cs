@@ -36,18 +36,12 @@ internal static class PhaseReport
             // A call that did not reach the phase contributes nothing rather than zero: its time went somewhere else.
             var values = all.Where(c => c.Phases?.Phases.ContainsKey(name) == true).Select(c => c.Phases!.Phases[name]).ToList();
             if (values.Count > 0)
-                phases[name] = Percentiles(values);
+                phases[name] = LatencyStats.Of(values);
         }
 
-        return new PhaseStats(phases, Percentiles(all.Select(c => c.OutsideEngineMs).ToList()), all.Count);
+        return new PhaseStats(phases, LatencyStats.Of(all.Select(c => c.OutsideEngineMs).ToList()), all.Count);
     }
 
-    private static LatencyStats Percentiles(List<double> values)
-    {
-        var sorted = values.OrderBy(v => v).ToList();
-        double At(double q) => sorted.Count == 0 ? 0 : sorted[Math.Min(sorted.Count - 1, (int)Math.Ceiling(q * sorted.Count) - 1)];
-        return new LatencyStats(Math.Round(At(0.5), 1), Math.Round(At(0.95), 1), Math.Round(sorted.Last(), 1), sorted.Count);
-    }
 
     /// <summary>The phase names in a stable order, for a human reading the result file.</summary>
     public static string Describe(PhaseStats stats) =>

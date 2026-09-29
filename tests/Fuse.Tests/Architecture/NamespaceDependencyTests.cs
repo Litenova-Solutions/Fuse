@@ -64,13 +64,6 @@ public class NamespaceDependencyTests
     /// <summary>The namespaces rule 2 names as using Roslyn or MSBuild, whether or not a file in them names it directly.</summary>
     private static readonly string[] EngineSide = ["Fuse.Graph", "Fuse.Workspace", "Fuse.Changes", "Fuse.Check", "Fuse.Testing", "Fuse.Engine"];
 
-    /// <summary>
-    ///     Uses that a row does not allow yet: the code as it is today, before later steps of the migration order in
-    ///     docs/architecture.md. Each names the step that deletes it, and Every_transitional_entry_is_still_needed fails
-    ///     once one is unused.
-    /// </summary>
-    private static readonly (string From, string To, string Step)[] TransitionalUses = [];
-
     private static readonly Lazy<Scan> Code = new(Scan.Read);
 
     [Fact]
@@ -94,7 +87,7 @@ public class NamespaceDependencyTests
                 continue;
             foreach (var used in file.Uses.Where(u => u.StartsWith("Fuse", StringComparison.Ordinal) && u != file.Namespace))
             {
-                if (!allowed.Contains(used) && !IsTransitional(file.Namespace, used))
+                if (!allowed.Contains(used))
                     broken.Add($"{file.Path}: {file.Namespace} uses {used}, which its row in docs/architecture.md does not allow; {file.Namespace} may use {Describe(allowed)}");
             }
         }
@@ -161,25 +154,6 @@ public class NamespaceDependencyTests
 
         Assert.True(cycles.Count == 0, string.Join('\n', cycles));
     }
-
-    [Fact]
-    public void Every_transitional_entry_is_still_needed()
-    {
-        var code = Code.Value;
-        var slack = new List<string>();
-        foreach (var (from, to, step) in TransitionalUses)
-        {
-            if (!code.Edges.ContainsKey((from, to)))
-                slack.Add($"{from} no longer uses {to}; delete the transitional use ({step})");
-            else if (MayUse.GetValueOrDefault(from)?.Contains(to) != false)
-                slack.Add($"the row of {from} already allows {to}; delete the transitional use ({step})");
-        }
-
-        Assert.True(slack.Count == 0, string.Join('\n', slack));
-    }
-
-    private static bool IsTransitional(string from, string to) =>
-        TransitionalUses.Any(t => t.From == from && t.To == to);
 
     private static string Describe(string[] allowed) => allowed.Length == 0 ? "no Fuse namespace" : string.Join(", ", allowed);
 

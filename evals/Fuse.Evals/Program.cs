@@ -178,22 +178,10 @@ internal static class Program
         if (head is not { ExitCode: 0 } || head.Output.Trim() != commit)
         {
             if (head is null)
-                await GitOrFail(parent, "clone", "--quiet", pinned.LocalPath ?? pinned.Url ?? throw new ArgumentException($"{pinned.Name} has no source"), path);
+                await GitOrFail(parent, "clone", "--quiet", pinned.Url ?? throw new ArgumentException($"{pinned.Name} has no source"), path);
             else
                 await GitOrFail(path, "fetch", "--quiet", "origin");
             await GitOrFail(path, "checkout", "--quiet", "--detach", commit);
-        }
-
-        if (pinned.LocalFiles is { } files)
-        {
-            foreach (var file in files)
-            {
-                var source = Path.Combine(pinned.LocalPath ?? "", file);
-                if (File.Exists(source))
-                    File.Copy(source, Path.Combine(path, file), overwrite: true);
-                else
-                    Console.WriteLine($"{pinned.Name}: {file} not in {pinned.LocalPath}, so the build may fail without it");
-            }
         }
 
         var now = await GitAsync(path, "rev-parse", "HEAD");

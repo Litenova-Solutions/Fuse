@@ -138,7 +138,6 @@ internal static class FuseProcess
             }
         }
 
-        public int Id => _process.Id;
 
         /// <summary>True once the client process has exited.</summary>
         public bool HasExited => _process.HasExited;

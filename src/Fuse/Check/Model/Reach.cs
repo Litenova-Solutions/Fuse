@@ -25,7 +25,7 @@ internal abstract record Reach
 
     /// <summary>The files that use a changed declaration, each with the change that made it a candidate.</summary>
     /// <param name="Causes">
-    ////     Keyed by file. A file several changes reach keeps the first of them, taking the targets in path order and each
+    ///     Keyed by file. A file several changes reach keeps the first of them, taking the targets in path order and each
     ///     target's changes in the order <c>SurfaceDiff</c> lists them, so the same edits give the same cause on every run.
     /// </param>
     public sealed record Precise(IReadOnlyDictionary<RepoPath, Cause> Causes) : Reach;

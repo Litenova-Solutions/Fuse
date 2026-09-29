@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Fuse.Protocol;
 
 namespace Fuse.Operations;
 
@@ -15,4 +16,12 @@ internal sealed record OperationResult(Outcome Outcome, string Text)
         Outcome.Unanswered => 2,
         _ => throw new UnreachableException($"no exit code for outcome {Outcome}"),
     };
+
+    /// <summary>
+    ///     The result for an engine response that is not the answer <paramref name="expected"/> names: the engine's own
+    ///     message when it could not answer, otherwise what arrived instead.
+    /// </summary>
+    public static OperationResult Unanswered(EngineResponse response, string expected) => new(
+        Outcome.Unanswered,
+        $"fuse: {(response as EngineResponse.Unanswered)?.Message ?? $"the Fuse engine sent no {expected} ({response.GetType().Name}); run the command again"}");
 }

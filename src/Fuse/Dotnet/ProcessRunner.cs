@@ -14,13 +14,11 @@ internal static class ProcessRunner
     /// <summary>Runs a process to completion and captures its output.</summary>
     /// <param name="arguments">Arguments, passed without shell interpretation.</param>
     /// <param name="cancellationToken">Kills the process tree when cancelled.</param>
-    /// <param name="environment">Extra environment variables.</param>
     public static async Task<ProcessResult> RunAsync(
         string fileName,
         IEnumerable<string> arguments,
         string workingDirectory,
-        CancellationToken cancellationToken,
-        IReadOnlyDictionary<string, string>? environment = null)
+        CancellationToken cancellationToken)
     {
         var psi = new ProcessStartInfo(fileName)
         {
@@ -40,9 +38,6 @@ internal static class ProcessRunner
         psi.Environment["DOTNET_CLI_TELEMETRY_OPTOUT"] = "1";
         psi.Environment["DOTNET_NOLOGO"] = "1";
         psi.Environment["DOTNET_CLI_UI_LANGUAGE"] = "en";
-        if (environment is not null)
-            foreach (var (key, value) in environment)
-                psi.Environment[key] = value;
 
         var output = new StringBuilder();
         using var process = new Process { StartInfo = psi };

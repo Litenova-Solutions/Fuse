@@ -3,9 +3,11 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <LangVersion>latest</LangVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <!-- The compiler checks that every doc comment is well formed and that each cref and param names something, and IDE0005 reports unused usings. A comment documents only the parameters it has something to say about (CS1573), and public test classes need none (CS1591). -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1573;CS1591</NoWarn>
     <Version>5.1.0</Version>
     <Authors>Litenova Solutions</Authors>
     <Company>Litenova Solutions</Company>

@@ -3,7 +3,6 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <AssemblyName>fuse</AssemblyName>
-    <RootNamespace>Fuse</RootNamespace>
     <InvariantGlobalization>true</InvariantGlobalization>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <PackAsTool>true</PackAsTool>

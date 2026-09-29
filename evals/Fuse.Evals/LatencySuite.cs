@@ -102,11 +102,11 @@ internal static class LatencySuite
             referencingFilesInOtherProjects = references,
             coldCleanMs = coldClean.Milliseconds,
             coldBodyEditMs = coldEdit.Milliseconds,
-            bodyEdit = Stats(body),
-            signatureEdit = Stats(signature),
+            bodyEdit = LatencyStats.Of(body),
+            signatureEdit = LatencyStats.Of(signature),
             signatureEditSample = signatureSummary,
-            warmUnchanged = Stats(clean),
-            testRound = Stats(testRound),
+            warmUnchanged = LatencyStats.Of(clean),
+            testRound = LatencyStats.Of(testRound),
             bodyEditPhases = bodyPhases,
             signatureEditPhases = signaturePhases,
             warmUnchangedPhases = cleanPhases,
@@ -123,12 +123,6 @@ internal static class LatencySuite
 
     private static string Last(string output) => output.Trim().Split('\n').Last().Trim();
 
-    private static LatencyStats Stats(List<double> values)
-    {
-        var sorted = values.OrderBy(v => v).ToList();
-        double At(double q) => sorted.Count == 0 ? 0 : sorted[Math.Min(sorted.Count - 1, (int)Math.Ceiling(q * sorted.Count) - 1)];
-        return new LatencyStats(Math.Round(At(0.5), 1), Math.Round(At(0.95), 1), Math.Round(sorted.LastOrDefault(), 1), sorted.Count);
-    }
 
     /// <summary>A public method with a block body, in the code project with the most dependents, whose name other projects mention most.</summary>
     private static (string File, string Method, int References) PickTarget(SolutionInfo solution)
@@ -178,5 +172,3 @@ internal static class LatencySuite
     }
 }
 
-/// <summary>Percentiles of a series of wall times, in milliseconds.</summary>
-internal sealed record LatencyStats(double P50, double P95, double Max, int N);

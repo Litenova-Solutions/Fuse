@@ -61,12 +61,16 @@ internal abstract class Harness
     /// <param name="report">The check's output, which the agent reads.</param>
     public abstract HookAnswer ReportAfterEdit(string report);
 
-    /// <summary>The answer to a stop event that lets the agent finish: nothing to fix, or nothing Fuse could check.</summary>
-    public abstract HookAnswer AllowStop();
+    /// <summary>
+    ///     The answer to a stop event that lets the agent finish: nothing to fix, or nothing Fuse could check. Most
+    ///     harnesses read an empty JSON object as that.
+    /// </summary>
+    public virtual HookAnswer AllowStop() => HookAnswer.Json([]);
 
     /// <summary>The answer to a stop event that sends the agent back to fix the errors before it finishes.</summary>
     /// <param name="reason">The errors and the instruction to fix them, which the agent reads.</param>
-    public abstract HookAnswer BlockStop(string reason);
+    /// <remarks>Most harnesses read <c>{"decision":"block","reason":...}</c> as that.</remarks>
+    public virtual HookAnswer BlockStop(string reason) => HookAnswer.Json(new JsonObject { ["decision"] = "block", ["reason"] = reason });
 
     /// <summary>The hook command this harness runs for <paramref name="hookEvent"/>, one of the <see cref="HookEvent"/> names.</summary>
     protected string Command(string hookEvent) => $"fuse hook {Name} {hookEvent}";

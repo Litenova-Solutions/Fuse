@@ -1,13 +1,13 @@
 name: DCO
 
-# Developer Certificate of Origin check (L2). Every commit in a pull request must carry a
+# Developer Certificate of Origin check. Every commit in a pull request must carry a
 # "Signed-off-by:" trailer whose name and email match the commit author, attesting the DCO 1.1
 # statement in DCO.txt. Contributors add it with `git commit -s`. The check inspects only the commits a
 # pull request adds.
 
 on:
   pull_request:
-    branches: [main, master]
+    branches: [main]
 
 jobs:
   dco:

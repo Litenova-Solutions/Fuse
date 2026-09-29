@@ -30,7 +30,6 @@ internal sealed class Cursor : Harness
 
     public override HookAnswer ReportAfterEdit(string report) => HookAnswer.Json(new JsonObject { ["additional_context"] = report });
 
-    public override HookAnswer AllowStop() => HookAnswer.Json([]);
 
     /// <summary>Cursor sends <c>followup_message</c> to the agent as its next message.</summary>
     public override HookAnswer BlockStop(string reason) => HookAnswer.Json(new JsonObject { ["followup_message"] = reason });

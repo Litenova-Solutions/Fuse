@@ -80,7 +80,7 @@ internal sealed partial class EvalRepo
     }
 
     /// <summary>Where this repository's engine keeps its state, which is where its log is.</summary>
-    public string StateDirectory => RepoRoot.Find(Root)?.StateDirectory ?? Path.Combine(Root, "fuse-state");
+    public string StateDirectory => RepoRoot.Find(Root)?.StateDirectory ?? throw new InvalidOperationException($"{Root} is not in a git repository");
 
     /// <summary>
     ///     Runs <c>dotnet build</c> on the truth target and returns its error lines (relative paths, canonical form).

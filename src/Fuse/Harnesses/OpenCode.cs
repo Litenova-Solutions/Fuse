@@ -31,8 +31,5 @@ internal sealed class OpenCode : Harness
     /// <summary>The plugin adds the report to the edit tool's output.</summary>
     public override HookAnswer ReportAfterEdit(string report) => HookAnswer.Json(new JsonObject { ["additionalContext"] = report });
 
-    public override HookAnswer AllowStop() => HookAnswer.Json([]);
 
-    /// <summary>The plugin prompts the session with the reason when the decision is <c>block</c>.</summary>
-    public override HookAnswer BlockStop(string reason) => HookAnswer.Json(new JsonObject { ["decision"] = "block", ["reason"] = reason });
 }

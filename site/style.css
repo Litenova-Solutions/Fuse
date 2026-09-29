@@ -32,7 +32,7 @@ a:hover { text-decoration: underline; }
 p { margin: 0 0 1rem; }
 code { font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; font-size: 0.9em; white-space: nowrap; }
 /* Inline code in prose reads like rendered Markdown: a gray chip. Bar labels and command blocks keep their own style. */
-.hero code, .section-head code, .proof code, .page p code, .page li code, .page td code {
+.hero code, .section-head code, .proof code, .page p code, .page li code, .page td code, .page th code {
   background: var(--chip-bg); color: var(--text); border: 1px solid var(--chip-line);
   padding: 0.08em 0.4em; border-radius: 0.35em; font-size: 0.86em;
 }
@@ -114,7 +114,10 @@ main:focus { outline: none; }
 table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
 th, td { text-align: left; padding: 0.6rem 0.5rem; border-bottom: 1px solid var(--line); vertical-align: top; }
 th { font-weight: 600; color: var(--muted); }
-tbody th { font-weight: 400; color: var(--text); }
+tbody th { font-weight: 400; color: var(--text); min-width: 11rem; }
+th:first-child { position: sticky; left: 0; background: var(--bg); }
+/* On wide screens the results table uses the full width of the page frame, wider than the text column. */
+@media (min-width: 62rem) { .page .table-scroll { margin-left: -6rem; margin-right: -6rem; } }
 td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* Footer */

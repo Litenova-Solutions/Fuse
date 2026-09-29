@@ -3,80 +3,133 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Results | Fuse</title>
+<meta name="description" content="Measured results for Fuse against dotnet build and dotnet test on a small fixture and on NodaTime, Jellyfin and the .NET Community Toolkit.">
+<link rel="canonical" href="https://fuse.codes/results">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+<meta name="author" content="Litenova Solutions">
 <meta name="color-scheme" content="light">
-<title>Fuse Results</title>
-<meta name="description" content="How fast and how accurate Fuse is, measured against real dotnet build and dotnet test runs.">
-<link rel="icon" href="fuse-icon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="style.css">
+<meta name="theme-color" content="#fcfcfb">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Fuse">
+<meta property="og:locale" content="en_US">
+<meta property="og:title" content="Results">
+<meta property="og:description" content="Measured results for Fuse against dotnet build and dotnet test on a small fixture and on NodaTime, Jellyfin and the .NET Community Toolkit.">
+<meta property="og:url" content="https://fuse.codes/results">
+<meta property="og:image" content="https://fuse.codes/og.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="The Fuse icon and name above the text: Compiler feedback for AI coding agents on .NET. Checks each edit up to 10.0x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Results">
+<meta name="twitter:description" content="Measured results for Fuse against dotnet build and dotnet test on a small fixture and on NodaTime, Jellyfin and the .NET Community Toolkit.">
+<meta name="twitter:image" content="https://fuse.codes/og.png">
+<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Compiler feedback for AI coding agents on .NET. Checks each edit up to 10.0x faster than dotnet build. dotnet tool install -g Fuse.">
+<link rel="icon" href="/favicon.png" type="image/png" sizes="48x48">
+<link rel="icon" href="/fuse-icon.svg" type="image/svg+xml" sizes="any">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="sitemap" type="application/xml" href="/sitemap.xml">
+<link rel="stylesheet" href="/style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://fuse.codes/results#page",
+      "name": "Results",
+      "description": "Measured results for Fuse against dotnet build and dotnet test on a small fixture and on NodaTime, Jellyfin and the .NET Community Toolkit.",
+      "url": "https://fuse.codes/results",
+      "inLanguage": "en",
+      "dateModified": "2026-09-29",
+      "primaryImageOfPage": { "@type": "ImageObject", "url": "https://fuse.codes/og.png", "width": 1200, "height": 630 },
+      "about": { "@type": "SoftwareApplication", "name": "Fuse", "url": "https://fuse.codes/" },
+      "publisher": { "@type": "Organization", "name": "Litenova Solutions", "url": "https://github.com/Litenova-Solutions" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Fuse", "item": "https://fuse.codes/" },
+        { "@type": "ListItem", "position": 2, "name": "Results", "item": "https://fuse.codes/results" }
+      ]
+    }
+  ]
+}
+</script>
 </head>
 <body>
+<a class="skip-link" href="#main">Skip to main content</a>
 <div class="wrap">
   <header class="site-header">
-    <a class="brand" href="/"><img src="fuse-icon.svg" alt="">Fuse</a>
-    <nav>
-      <a href="how-it-works">How It Works</a>
-      <a href="results" aria-current="page">Results</a>
+    <a class="brand" href="/"><img src="/fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
+    <nav aria-label="Main">
+      <a href="/how-it-works">How It Works</a>
+      <a href="/results" aria-current="page">Results</a>
       <a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a>
     </nav>
   </header>
 
-  <main class="page">
+  <main id="main" class="page" tabindex="-1">
     <h1>Results</h1>
-    <p class="intro">Fuse was measured against the real <code>dotnet build</code> and <code>dotnet test</code> on a small fixture solution and on three open-source repositories: NodaTime, a date and time library; Jellyfin, a media server; and the .NET Community Toolkit, a set of libraries with one source generator per supported compiler version.</p>
+    <p class="intro">On four repositories, Fuse checked an edit 2.3x to 10.0x faster than <code>dotnet build</code> and ran the affected tests 1.4x to 6.6x faster than <code>dotnet test</code>. It missed 1 compiler error in 120 generated edits.</p>
+    <p>The four repositories are a small generated fixture solution and three open-source repositories: <a href="https://github.com/nodatime/nodatime">NodaTime</a>, a date and time library; <a href="https://github.com/jellyfin/jellyfin">Jellyfin</a>, a media server; and the <a href="https://github.com/CommunityToolkit/dotnet">.NET Community Toolkit</a>, a set of libraries with one source generator for each supported compiler version. Each was measured against the real <code>dotnet build</code> and <code>dotnet test</code>.</p>
 
     <figure>
-      <img src="benefits.svg" alt="Bar chart of Fuse's time as a share of the dotnet command it replaces. The numbers are in the table below.">
-      <figcaption>Medians over the eval cases, one Windows machine.</figcaption>
+      <img src="/benefits.svg" width="800" height="708" alt="Two panels that compare Fuse with the dotnet command it replaces on four repositories: one for checking an edit and one for running the affected tests. The table below lists every number.">
+      <figcaption>Medians over the eval cases, on one Windows machine. Each dotnet bar is 100 percent, and each Fuse bar is Fuse's time as a share of it.</figcaption>
     </figure>
 
-    <h2>Speed and Accuracy</h2>
-    <div class="table-scroll">
+    <h2>Speed and accuracy</h2>
+    <p>A warm check runs on an engine that is already running and has loaded the project. A body edit changes the inside of a method. A signature edit changes a declaration, so Fuse also checks the dependent projects. P50 is the median, and P95 is the time that 95 percent of the checks stayed under.</p>
+    <div class="table-scroll" role="region" aria-label="Results table" tabindex="0">
       <table>
-        <thead><tr><th></th><th>Small solution (fixture)</th><th><a href="https://github.com/nodatime/nodatime">NodaTime</a></th><th><a href="https://github.com/jellyfin/jellyfin">Jellyfin</a></th><th><a href="https://github.com/CommunityToolkit/dotnet">Community Toolkit</a></th></tr></thead>
+        <caption class="sr-only">Fuse measurements on the fixture, NodaTime, Jellyfin and the Community Toolkit</caption>
+        <thead><tr><th scope="col"><span class="sr-only">Measurement</span></th><th scope="col">Small solution (fixture)</th><th scope="col"><a href="https://github.com/nodatime/nodatime">NodaTime</a></th><th scope="col"><a href="https://github.com/jellyfin/jellyfin">Jellyfin</a></th><th scope="col"><a href="https://github.com/CommunityToolkit/dotnet">Community Toolkit</a></th></tr></thead>
         <tbody>
-          <tr><td>Size</td><td class="num">5 projects, 22 tests</td><td class="num">15 projects, 42,700 tests</td><td class="num">40 projects, 2,535 tests</td><td class="num">26 projects, 12,449 tests</td></tr>
-          <tr><td>Check an edit vs <code>dotnet build</code></td><td class="num">0.18 s vs 1.14 s</td><td class="num">0.63 s vs 1.45 s</td><td class="num">0.70 s vs 4.26 s</td><td class="num">0.45 s vs 4.48 s</td></tr>
-          <tr><td>Warm check, body edit (P50 / P95)</td><td class="num">168 / 252 ms</td><td class="num">778 / 933 ms</td><td class="num">239 / 393 ms</td><td class="num">1,266 / 1,667 ms</td></tr>
-          <tr><td>Warm check, signature edit (P50 / P95)</td><td class="num">206 / 2,241 ms</td><td class="num">2,326 / 10,273 ms</td><td class="num">184 / 52,315 ms</td><td class="num">568 / 35,178 ms</td></tr>
-          <tr><td>Affected tests vs <code>dotnet test</code></td><td class="num">1.27 s vs 4.17 s</td><td class="num">32.0 s vs 44.4 s</td><td class="num">165.3 s vs 226.6 s</td><td class="num">65.1 s vs 428.5 s</td></tr>
-          <tr><td>Share of tests run</td><td class="num">15 percent</td><td class="num">80 percent</td><td class="num">22.3 percent</td><td class="num">13.7 percent</td></tr>
-          <tr><td>Compiler errors missed</td><td class="num">0 in 30 cases</td><td class="num">1 in 30 cases</td><td class="num">0 in 30 cases</td><td class="num">0 in 30 cases</td></tr>
-          <tr><td>Errors reported that the build does not have</td><td class="num">0 in 30 cases</td><td class="num">0 in 30 cases</td><td class="num">0 in 30 cases</td><td class="num">0 in 30 cases</td></tr>
-          <tr><td>Failing tests missed</td><td class="num">0 in 10 cases</td><td class="num">0 in 10 cases</td><td class="num">0 in 10 cases</td><td class="num">0 in 10 cases</td></tr>
-          <tr><td>Cases too large to match name by name</td><td class="num">0</td><td class="num">2</td><td class="num">0</td><td class="num">0</td></tr>
-          <tr><td>Three builds at once, five rounds: lock collisions</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num">0</td></tr>
-          <tr><td>Engine memory</td><td class="num">271 MB</td><td class="num">865 MB</td><td class="num">1,019 MB</td><td class="num">2,029 MB</td></tr>
+          <tr><th scope="row">Size</th><td>5 projects, 22 tests</td><td>15 projects, 42,700 tests</td><td>40 projects, 2,535 tests</td><td>26 projects, 12,449 tests</td></tr>
+          <tr><th scope="row">Check an edit: <code>fuse check</code> vs <code>dotnet build</code>, median</th><td class="num">0.18 s vs 1.14 s</td><td class="num">0.63 s vs 1.45 s</td><td class="num">0.70 s vs 4.26 s</td><td class="num">0.45 s vs 4.48 s</td></tr>
+          <tr><th scope="row">Warm check after a body edit, P50 / P95</th><td class="num">168 / 252 ms</td><td class="num">778 / 933 ms</td><td class="num">239 / 393 ms</td><td class="num">1,266 / 1,667 ms</td></tr>
+          <tr><th scope="row">Warm check after a signature edit, P50 / P95</th><td class="num">206 / 2,241 ms</td><td class="num">2,326 / 10,273 ms</td><td class="num">184 / 52,315 ms</td><td class="num">568 / 35,178 ms</td></tr>
+          <tr><th scope="row">Run the affected tests: <code>fuse test</code> vs <code>dotnet test</code>, median</th><td class="num">1.27 s vs 4.17 s</td><td class="num">32.0 s vs 44.4 s</td><td class="num">165.3 s vs 226.6 s</td><td class="num">65.1 s vs 428.5 s</td></tr>
+          <tr><th scope="row">Share of tests run by <code>fuse test</code></th><td class="num">15 percent</td><td class="num">80 percent</td><td class="num">22.3 percent</td><td class="num">13.7 percent</td></tr>
+          <tr><th scope="row">Compiler errors missed</th><td class="num">0 in 30 cases</td><td class="num">1 in 30 cases</td><td class="num">0 in 30 cases</td><td class="num">0 in 30 cases</td></tr>
+          <tr><th scope="row">Errors reported that the build does not have</th><td class="num">0 in 30 cases</td><td class="num">0 in 30 cases</td><td class="num">0 in 30 cases</td><td class="num">0 in 30 cases</td></tr>
+          <tr><th scope="row">Failing tests missed</th><td class="num">0 in 10 cases</td><td class="num">0 in 10 cases</td><td class="num">0 in 10 cases</td><td class="num">0 in 10 cases</td></tr>
+          <tr><th scope="row">Cases too large to match name by name</th><td class="num">0</td><td class="num">2</td><td class="num">0</td><td class="num">0</td></tr>
+          <tr><th scope="row">Three <code>fuse build</code> runs at once, five rounds: lock collisions</th><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num">0</td></tr>
+          <tr><th scope="row">Engine memory</th><td class="num">271 MB</td><td class="num">865 MB</td><td class="num">1,019 MB</td><td class="num">2,029 MB</td></tr>
         </tbody>
       </table>
     </div>
 
-    <p class="sources">All measured on the Fuse 5.1.0 source at <code>14255ab</code>, at fixture <code>6c4e298</code>, NodaTime <code>fcd80e1</code>, Jellyfin <code>1d7c6af</code> and Community Toolkit <code>b135626</code>. From these twelve files: <code>correctness-fixture-20260929-0115.json</code>, <code>selection-fixture-20260928-2052.json</code>, <code>latency-fixture-20260928-2053.json</code>, <code>correctness-NodaTime-20260929-0117.json</code>, <code>selection-NodaTime-20260928-2109.json</code>, <code>latency-NodaTime-20260928-2116.json</code>, <code>correctness-Jellyfin-20260929-0124.json</code>, <code>selection-Jellyfin-20260928-2237.json</code>, <code>latency-Jellyfin-20260928-2251.json</code>, <code>correctness-CommunityToolkit-20260929-0130.json</code>, <code>selection-CommunityToolkit-20260929-0031.json</code> and <code>latency-CommunityToolkit-20260929-0049.json</code>.</p>
+    <p class="sources">Every number comes from these twelve result files: <code>correctness-fixture-20260929-0115.json</code>, <code>selection-fixture-20260928-2052.json</code>, <code>latency-fixture-20260928-2053.json</code>, <code>correctness-NodaTime-20260929-0117.json</code>, <code>selection-NodaTime-20260928-2109.json</code>, <code>latency-NodaTime-20260928-2116.json</code>, <code>correctness-Jellyfin-20260929-0124.json</code>, <code>selection-Jellyfin-20260928-2237.json</code>, <code>latency-Jellyfin-20260928-2251.json</code>, <code>correctness-CommunityToolkit-20260929-0130.json</code>, <code>selection-CommunityToolkit-20260929-0031.json</code> and <code>latency-CommunityToolkit-20260929-0049.json</code>. They were measured on the Fuse 5.1.0 source at commit <code>14255ab</code>, on the fixture at <code>6c4e298</code>, NodaTime at <code>fcd80e1</code>, Jellyfin at <code>1d7c6af</code> and Community Toolkit at <code>b135626</code>.</p>
 
-    <h2>Reading the Numbers</h2>
+    <h2>Reading the numbers</h2>
     <ul>
-      <li>On NodaTime the generated changes reach core types, so every test still runs. The saving there comes from skipping MSBuild, not from selecting fewer tests.</li>
-      <li>On the Community Toolkit the generated changes reach one area at a time, so a small share of the tests runs: 12,449 tests in the repository, and the selection is per change, not per repository.</li>
+      <li>On NodaTime the generated changes reach core types, so most tests still run (80 percent on average). The saving there comes from skipping MSBuild, not from selecting fewer tests.</li>
+      <li>On the Community Toolkit each generated change reaches one area of the code, so only a small share of the 12,449 tests runs (13.7 percent on average). Fuse selects tests for each change, so the share depends on the change.</li>
       <li>The signature-edit P95 includes the first such edit after the engine starts, which loads every dependent project. On Jellyfin and the Community Toolkit that first edit loads dozens of projects, which is why their P95 is in seconds.</li>
-      <li>NodaTime builds with warnings as errors, so each check there also runs the analyzers that can report a warning. That is why its body-edit check is slower than the small solution's.</li>
-      <li>When a project has a declaration error, the compiler stops before it binds method bodies or runs analyzers, and after any compiler error it skips its documentation checks. Fuse reports those errors at once; the evals count them as deferred, because the build reports them once the first error is fixed.</li>
-      <li>NodaTime's one missed error comes from the build compiling dependent projects against reference assemblies, which leave out private members. It reports "no definition" and one follow-on error where Fuse, compiling against source, reports "inaccessible".</li>
-      <li>In two NodaTime cases hundreds of tests fail, and <code>fuse test</code> lists at most 100 failing names, so those cases cannot be matched name by name. <code>fuse test</code> ran 42,689 of 42,700 tests in both.</li>
+      <li>NodaTime builds with warnings treated as errors, so each check there also runs the analyzers that can report a warning. That is why its body-edit check is slower than the small solution's.</li>
+      <li>The compiler reports fewer errors than exist in two cases. When a project has a declaration error, it stops before it checks method bodies or runs analyzers. After any compiler error, it skips its documentation checks. Fuse reports all of these errors at once, and the build reports the rest only after the first errors are fixed, so the evals count them as deferred.</li>
+      <li>NodaTime's one missed error comes from a difference in how the build and Fuse compile dependent projects. The build compiles against reference assemblies, which leave out private members, so it reports "no definition" and one follow-on error. Fuse compiles against the source, so it reports "inaccessible" instead.</li>
+      <li>In two NodaTime cases hundreds of tests fail, and <code>fuse test</code> lists at most 100 failing names, so those cases cannot be matched name by name. In both, <code>fuse test</code> ran 42,689 of the 42,700 tests.</li>
       <li>Timings on this machine vary by about 150 ms between runs of the same build.</li>
     </ul>
 
-    <h2>How It Was Measured</h2>
+    <h2>How it was measured</h2>
     <ul>
-      <li><strong>Correctness:</strong> generated edits that break or keep the build. An error the build reports and Fuse does not is "missed"; the reverse is "contradicted".</li>
-      <li><strong>Test selection:</strong> generated behavior changes that make tests fail. Failing test names are compared exactly with a full <code>dotnet test</code> run.</li>
-      <li><strong>Latency:</strong> repeated warm checks after body and signature edits, through the installed <code>fuse</code> command, plus a warm <code>fuse test</code> round and a three-client <code>fuse build</code> scenario.</li>
-      <li>Every result file records the commit of the repository it measured and the Fuse build that measured it, so a number here can be traced to the tree and the binary behind it.</li>
+      <li><strong>Correctness:</strong> the suite makes generated edits, some that break the build and some that do not, and compares Fuse's errors with a real <code>dotnet build</code>. An error the build reports and Fuse does not is "missed". An error Fuse reports and the build does not is "contradicted".</li>
+      <li><strong>Test selection:</strong> the suite makes generated changes to behavior that make tests fail. It compares the failing test names exactly with a full <code>dotnet test</code> run.</li>
+      <li><strong>Latency:</strong> the suite runs the installed <code>fuse</code> command repeatedly after generated body edits and signature edits, and times each warm check. It also times a warm <code>fuse test</code> round and a scenario where three clients run <code>fuse build</code> at once.</li>
+      <li>Every result file records the commit of the repository it measured and the Fuse build that measured it, so each number can be traced to the source and to the executable behind it.</li>
     </ul>
-    <p>The evals live in <a href="https://github.com/Litenova-Solutions/Fuse/tree/main/evals/Fuse.Evals">evals/Fuse.Evals</a>, and every result file is in <a href="https://github.com/Litenova-Solutions/Fuse/tree/main/evals/results">evals/results</a>.</p>
+    <p>The evals are in <a href="https://github.com/Litenova-Solutions/Fuse/tree/main/evals/Fuse.Evals">evals/Fuse.Evals</a>, and every result file is in <a href="https://github.com/Litenova-Solutions/Fuse/tree/main/evals/results">evals/results</a>.</p>
   </main>
 
   <footer class="site-footer">
     <span>Fuse &middot; Apache-2.0 &middot; Measured medians, one Windows machine</span>
-    <nav><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
+    <nav aria-label="Footer"><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
   </footer>
 </div>
 </body>

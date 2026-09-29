@@ -18,7 +18,8 @@ internal static class Program
           repo:  fixture (generated under evals/.work/fixture), a pinned repository name, or a path to a git repository
           clone: NodaTime | Jellyfin | CommunityToolkit, checked out at the pinned commit under
                  %LOCALAPPDATA%/fuse/evals/repos (outside this repository, so its build settings do not leak in)
-          clean: removes every checkout and the generated fixture; the result files in evals/results stay
+          clean: deletes %LOCALAPPDATA%/fuse/evals, which holds every checkout; the generated fixture in
+                 evals/.work/fixture and the result files in evals/results stay
         """;
 
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
@@ -120,8 +121,8 @@ internal static class Program
     }
 
     /// <summary>
-    ///     Deletes the evals' own state: the cloned checkouts and the generated fixture. The result files stay, since
-    ///     they are what the documentation quotes.
+    ///     Deletes the evals' state directory, which holds the cloned checkouts. The generated fixture lives in the Fuse
+    ///     checkout and stays, and so do the result files, since they are what the documentation quotes.
     /// </summary>
     private static int CleanAsync()
     {

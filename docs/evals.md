@@ -40,7 +40,8 @@ usage: Fuse.Evals <suite> <repo> [--mutations N] [--seed S] [--solution path] [-
   repo:  fixture (generated under evals/.work/fixture), a pinned repository name, or a path to a git repository
   clone: NodaTime | Jellyfin | CommunityToolkit, checked out at the pinned commit under
          %LOCALAPPDATA%/fuse/evals/repos (outside this repository, so its build settings do not leak in)
-  clean: removes every checkout and the generated fixture; the result files in evals/results stay
+  clean: deletes %LOCALAPPDATA%/fuse/evals, which holds every checkout; the generated fixture in
+         evals/.work/fixture and the result files in evals/results stay
 ```
 
 - **`<suite> <repo>`** runs `correctness`, `selection`, `latency`, or `all` three in that order, on one repository. `<repo>` is `fixture`, the name of a pinned repository that has been cloned, or a path to any git repository.
@@ -50,7 +51,7 @@ usage: Fuse.Evals <suite> <repo> [--mutations N] [--seed S] [--solution path] [-
     - `--fuse path`: the `fuse` executable to measure.
 - **`clone <repo>`** checks `NodaTime`, `Jellyfin` or `CommunityToolkit` out at its pinned commit in `fuse/evals/repos/<repo>` under the user's local application data (`%LOCALAPPDATA%` on Windows). A checkout already at that commit is left alone. The checkouts live outside the Fuse repository because a repository without its own `Directory.Packages.props` would inherit Fuse's and fail to restore.
 - **`chart`** renders `site/benefits.svg` from the newest correctness and selection file of each repository: one panel for `fuse check` against `dotnet build` and one for `fuse test` against `dotnet test`, with every time and speedup rounded as the results are.
-- **`clean`** deletes `fuse/evals` under the local application data, which holds the checkouts. The result files stay. The generated fixture under `evals/.work/fixture` stays too, although the usage text says otherwise; delete that folder by hand to regenerate it.
+- **`clean`** deletes `fuse/evals` under the local application data, which holds the checkouts. The result files stay, and so does the generated fixture under `evals/.work/fixture`; delete that folder by hand to regenerate it.
 
 Before a suite runs, the tool restores the solution and every project under the repository that the solution leaves out, because Fuse reads every project in the working tree and does not answer while one is unrestored. Every suite needs a clean working tree, fails otherwise, and discards each change it makes with `git checkout -- .` and `git clean -fdq`, so run the suites only on a checkout you do not work in.
 

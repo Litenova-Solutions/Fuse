@@ -45,7 +45,7 @@ internal sealed record PinnedRepo(
         new("CommunityToolkit", "https://github.com/CommunityToolkit/dotnet", null, null, "b135626dd54d33b8f05f2ff31591592c004aa848", "dotnet.slnx", "Community Toolkit, 26 projects", "Community Toolkit, 12,449 tests"),
     ];
 
-    /// <summary>Everything the evals keep outside the repository they run from: checkouts, and the fixture when it is cloned rather than generated.</summary>
+    /// <summary>Deletes <see cref="StateDirectory"/>, which holds the checkouts; the generated fixture is not in it.</summary>
     public static void Clean() => Directory.Delete(StateDirectory, recursive: true);
 
     /// <summary>Every repository the chart draws: the fixture first, then the cloned ones.</summary>

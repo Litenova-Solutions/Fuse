@@ -21,10 +21,16 @@ internal sealed class ProjectLoader : IDisposable
     private readonly RepoRoot _root;
     private readonly Action<string> _log;
     private readonly ConcurrentDictionary<RepoPath, byte> _loaded = new();
-    private readonly Dictionary<RepoPath, string> _loadFailures = [];
+
+    /// <summary>
+    ///     Why each project that did not load failed, by project file. The loader's failure handler writes it while a load
+    ///     holds the load lock, which may be a background load, and a request reads it without that lock, so it is
+    ///     concurrent.
+    /// </summary>
+    private readonly ConcurrentDictionary<RepoPath, string> _loadFailures = new();
+
     private readonly SemaphoreSlim _loadLock = new(1, 1);
     private MSBuildWorkspace? _loader;
-    private volatile bool _preloaded;
 
     public ProjectLoader(RepoRoot root, Action<string> log)
     {
@@ -76,7 +82,6 @@ internal sealed class ProjectLoader : IDisposable
             _loader = null;
             _loaded.Clear();
             _loadFailures.Clear();
-            _preloaded = false;
             ConfigurationGeneration++;
         }
         finally
@@ -86,9 +91,13 @@ internal sealed class ProjectLoader : IDisposable
     }
 
     /// <summary>Opens <paramref name="projects"/> and everything they reference, unless they are open already.</summary>
-    /// <returns>True when one of them was not open, so both views have to be derived from <see cref="Solution"/> again.</returns>
+    /// <remarks>
+    ///     Each project that opens is in <see cref="Solution"/> at once, even when a later one fails or the request is
+    ///     cancelled, so the caller compares the views with <see cref="Solution"/> rather than asking whether this call
+    ///     opened anything.
+    /// </remarks>
     /// <exception cref="FuseException">A project has not been restored or failed to load.</exception>
-    public async Task<bool> LoadAsync(IEnumerable<ProjectNode> projects, CancellationToken cancellationToken)
+    public async Task LoadAsync(IEnumerable<ProjectNode> projects, CancellationToken cancellationToken)
     {
         var requested = projects.DistinctBy(p => p.Path).ToList();
         foreach (var project in requested)
@@ -98,44 +107,27 @@ internal sealed class ProjectLoader : IDisposable
         }
 
         var missing = requested.Where(p => !_loaded.ContainsKey(p.Path)).ToList();
-        if (missing.Count == 0)
-            return false;
-        await OpenAsync(missing, background: false, cancellationToken).ConfigureAwait(false);
-        return true;
+        if (missing.Count > 0)
+            await OpenAsync(missing, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
     ///     Opens <paramref name="project"/> outside a request, so it can run while requests are served. Neither view holds
-    ///     it until the next request derives them again, which <see cref="TakePreloaded"/> tells that request to do.
+    ///     it until the next request derives them again, which that request does because the views are no longer derived
+    ///     from <see cref="Solution"/>.
     /// </summary>
     /// <exception cref="FuseException">The project has not been restored or failed to load.</exception>
     public async Task PreloadAsync(ProjectNode project, CancellationToken cancellationToken)
     {
         if (_loaded.ContainsKey(project.Path))
             return;
-        await OpenAsync([project], background: true, cancellationToken).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    ///     True when <see cref="PreloadAsync"/> opened a project since the last call or reset. Neither view holds such a
-    ///     project, so the caller derives both again. The answer is cleared, so each background load is folded in once.
-    /// </summary>
-    public bool TakePreloaded()
-    {
-        var preloaded = _preloaded;
-        _preloaded = false;
-        return preloaded;
+        await OpenAsync([project], cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Opens each of <paramref name="missing"/> that is not open yet, under the load lock.</summary>
     /// <param name="missing">The projects to open.</param>
-    /// <param name="background">
-    ///     True for a load outside a request. It marks each project it opens for <see cref="TakePreloaded"/> before the
-    ///     project shows as loaded, because a request that finds a project loaded does not take the lock and folds it into
-    ///     the views only when the mark is there.
-    /// </param>
     /// <param name="cancellationToken">Cancels waiting for the lock and loading.</param>
-    private async Task OpenAsync(IReadOnlyList<ProjectNode> missing, bool background, CancellationToken cancellationToken)
+    private async Task OpenAsync(IReadOnlyList<ProjectNode> missing, CancellationToken cancellationToken)
     {
         var unrestored = missing.SelectMany(Graph.ClosureOf).Where(p => !File.Exists(p.AssetsFile.Absolute)).Select(p => p.Path.Relative).Distinct().ToList();
         // The command names a project, because a bare `dotnet restore` restores a solution, which may leave out the very
@@ -161,11 +153,8 @@ internal sealed class ProjectLoader : IDisposable
                     throw LoadFailed(project, e.Message);
                 }
 
-                // Set before the project is published below: the loader's solution already holds it, so a request that
-                // takes the mark now derives views that include it. The field is volatile and the dictionary write
-                // follows it, so a request that sees the project loaded sees the mark too.
-                if (background)
-                    _preloaded = true;
+                // Published after the loader's solution holds the project, so a request that finds it loaded also finds
+                // the views behind that solution and derives them again.
                 foreach (var loadedProject in loader.CurrentSolution.Projects)
                 {
                     if (loadedProject.FilePath is not null)

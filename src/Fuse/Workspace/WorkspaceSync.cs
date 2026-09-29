@@ -9,7 +9,7 @@ namespace Fuse.Workspace;
 ///     Keeps both views in step with the working tree and with the projects the loader has open. Every request starts
 ///     with <see cref="SyncAsync"/>, which acts on the <see cref="SyncResult"/> the tracker returns, and opens what it
 ///     needs with <see cref="EnsureLoadedAsync"/>. Either derives both views again when the loader holds a project they
-///     lack.
+///     lack (<see cref="SolutionViews.HoldEveryOpenProject"/>).
 /// </summary>
 internal sealed class WorkspaceSync
 {
@@ -54,13 +54,16 @@ internal sealed class WorkspaceSync
     }
 
     /// <summary>Loads <paramref name="projects"/> and everything they reference, and makes them part of both views.</summary>
+    /// <remarks>
+    ///     Both views are derived again whenever the loader holds a project they lack, whether this call opened it or
+    ///     not: a background load, or a load an earlier request opened before it was cancelled, leaves such a project,
+    ///     and one rebuild folds in all of them.
+    /// </remarks>
     /// <exception cref="FuseException">A project has not been restored or failed to load.</exception>
     public async Task EnsureLoadedAsync(IEnumerable<ProjectNode> projects, CancellationToken cancellationToken)
     {
-        var opened = await _projects.LoadAsync(projects, cancellationToken).ConfigureAwait(false);
-        // Taken whether or not this call opened a project, so one rebuild folds in a background load as well.
-        var preloaded = _projects.TakePreloaded();
-        if (opened || preloaded)
+        await _projects.LoadAsync(projects, cancellationToken).ConfigureAwait(false);
+        if (!_views.HoldEveryOpenProject)
             await _views.RebuildAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -86,9 +89,10 @@ internal sealed class WorkspaceSync
 
     private async Task PatchAsync(SyncResult.Patch patch, CancellationToken cancellationToken)
     {
-        if (_projects.TakePreloaded())
+        if (!_views.HoldEveryOpenProject)
         {
-            // A background load added projects: derive both views from the loader again.
+            // The loader holds a project neither view has: derive both from it again, with the patched files touched so
+            // the rebuild applies them too.
             _views.Touch(patch.Paths);
             await _views.RebuildAsync(cancellationToken).ConfigureAwait(false);
         }

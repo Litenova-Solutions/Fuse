@@ -24,6 +24,12 @@ internal sealed class SolutionViews
     private readonly AnalyzerShadow _analyzers;
     private readonly HashSet<RepoPath> _touched = [];
 
+    /// <summary>
+    ///     The loader's solution both views were last derived from, or null after <see cref="Clear"/>. It is set only
+    ///     once a <see cref="RebuildAsync"/> has finished, so a rebuild that was cut short is done again.
+    /// </summary>
+    private Solution? _derivedFrom;
+
     public SolutionViews(RepoRoot root, ChangeTracker tracker, ProjectLoader projects)
     {
         _root = root;
@@ -41,11 +47,25 @@ internal sealed class SolutionViews
     /// <summary>Increments whenever the HEAD view's content changes (HEAD moved, projects reloaded), which invalidates everything cached against it.</summary>
     public int BaselineGeneration { get; private set; }
 
+    /// <summary>
+    ///     True when both views were derived from the loader's solution as it is now, so they hold every project the
+    ///     loader has open. A project a background load opened, or one a load opened before its request was cancelled,
+    ///     is in neither view until the next <see cref="RebuildAsync"/>.
+    /// </summary>
+    /// <remarks>
+    ///     The loader's solution is an immutable snapshot that the loader replaces when it opens a project, and Fuse never
+    ///     applies changes to it, so comparing the instance is enough. A background load publishes a project in
+    ///     <see cref="ProjectLoader.IsLoaded"/> after the loader's solution holds it, so a request that finds the project
+    ///     loaded also finds this false until it rebuilds.
+    /// </remarks>
+    public bool HoldEveryOpenProject => _projects.Solution is not { } loaded || ReferenceEquals(loaded, _derivedFrom);
+
     /// <summary>Empties both views, after the loader closed every project, and increments <see cref="BaselineGeneration"/>.</summary>
     public void Clear()
     {
         Current = new AdhocWorkspace().CurrentSolution;
         Baseline = Current;
+        _derivedFrom = null;
         BaselineGeneration++;
     }
 
@@ -79,6 +99,7 @@ internal sealed class SolutionViews
 
         Current = current;
         Baseline = baseline;
+        _derivedFrom = loaded;
     }
 
     /// <summary>

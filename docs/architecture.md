@@ -32,7 +32,7 @@ Listed from the top. Each layer may use the layers below it, with the exceptions
 | Sources | `Fuse.Repo`, `Fuse.Graph`, `Fuse.Dotnet` | git and the working tree, MSBuild evaluation, and child processes with their output parsers |
 | Foundation | `Fuse.Paths`, `Fuse.Failures`, `Fuse.Telemetry` | `RepoRoot`, `RepoPath` and `PathRules`; `FuseException` and `ErrorCode`; `PhaseTimes`, `Phase` and `EngineLog` |
 
-The client and the engine are separate processes. `fuse init`, `fuse hook`, `fuse check`, `fuse test`, `fuse build` and `fuse mcp` run in a short-lived client. `fuse engine <root>` runs the long-lived engine, which alone loads MSBuild and Roslyn. The layers above Wire run in the client and the layers from Engine down run in the engine; Wire, Foundation, `Fuse.Repo` and `Fuse.Dotnet` are shared.
+The client and the engine are separate processes. `fuse init`, `fuse hook`, `fuse check`, `fuse test`, `fuse build` and `fuse mcp` run in a short-lived client. `fuse engine <root>` runs the long-lived engine, which alone loads MSBuild and Roslyn. The layers above Wire run in the client and the layers from Engine down run in the engine; Wire, Foundation, `Fuse.Repo`, `Fuse.Dotnet` and `Fuse.Check.Model` (for `CompilerError`, [D11](#decisions)) are shared.
 
 ## Dependency rules
 
@@ -59,10 +59,10 @@ The client and the engine are separate processes. `fuse init`, `fuse hook`, `fus
 Three rules carry most of the value:
 
 1. **Features never use `Fuse.Engine`, `Fuse.Protocol` or anything above them.** A check is testable without a pipe, and the wire can change without touching the algorithm.
-2. **No client namespace uses `Microsoft.CodeAnalysis`, `Microsoft.Build`, or a Fuse namespace that does.** Those are `Fuse.Graph`, `Fuse.Workspace`, `Fuse.Changes`, the features and `Fuse.Engine`. A hook pays for every assembly it loads, and the runtime loads one as soon as a method that uses it runs, so a single client call into an engine namespace would load Roslyn into every hook.
+2. **No client namespace uses `Microsoft.CodeAnalysis`, `Microsoft.Build`, or a Fuse namespace that does.** Those are `Fuse.Graph`, `Fuse.Workspace`, `Fuse.Changes`, the features and `Fuse.Engine`. A hook pays for every assembly it loads, and the runtime loads one as soon as a method that uses it runs, so a single client call into an engine namespace would load Roslyn into every hook. The test follows every namespace a client namespace uses, directly or through others, and fails when that reaches Roslyn, MSBuild or an engine-side namespace.
 3. **`Program` is the only type that references both the client and the engine**, because it is where `fuse engine` and the client commands are told apart.
 
-`tests/Fuse.Tests/Architecture/NamespaceDependencyTests.cs` enforces the table and rule 2. It reads every `.cs` file under `src/Fuse`, takes the file's namespace from its `namespace` line, and collects every `Fuse.X`, `Microsoft.CodeAnalysis` and `Microsoft.Build` name in its `using` directives and in fully qualified references. It fails naming the file, the namespace it used and the rule it broke. A new namespace fails the test until it has a row, which is the point at which its layer is decided. The table on this page and the test change together.
+`tests/Fuse.Tests/Architecture/NamespaceDependencyTests.cs` enforces the table and rule 2. It reads every `.cs` file under `src/Fuse`, takes the file's namespace from its `namespace` line, and collects every `Fuse.X`, `Microsoft.CodeAnalysis` and `Microsoft.Build` name in its `using` directives and in fully qualified references. A type a file names from an enclosing namespace without a `using`, such as a `Fuse.Engine` type in `Fuse.Engine.Client`, counts too, and the test also fails on a cycle between namespaces. It fails naming the file, the namespace it used and the rule it broke. A new namespace fails the test until it has a row, which is the point at which its layer is decided. The table on this page and the test change together.
 
 ## Reading order
 
@@ -199,7 +199,7 @@ A harness is an agent host that runs Fuse's hooks: Claude Code, Cursor, Gemini C
 
 The base class holds only that contract and the helpers the six share: the hook command for an event, detection from paths in the repository, and replacing Fuse's handler in the nested hook format Claude Code, Gemini CLI and Codex use. Each harness's hook configuration keeps the harness's own event and tool names (Claude Code's `PreToolUse` with a `Bash` matcher, Gemini CLI's `BeforeTool`); only the command it runs names Fuse's event.
 
-`HookEvent` names the three events once, for the commands `RegisterHooks` writes and the events `fuse hook` accepts. `SupportedHarnesses` lists the harnesses in the order `fuse init` registers them and finds one by its name on the command line, for `fuse hook` and its usage line. `SettingsFile` reads and writes the files `fuse init` writes: it replaces a file through a temporary file beside it, and retries that move up to five times, 50 ms apart, while it fails with `IOException` or `UnauthorizedAccessException`, which is how Windows reports a file a virus scanner or the search indexer is holding.
+`HookEvent` names the three events once, for the commands `RegisterHooks` writes and the events `fuse hook` accepts. `SupportedHarnesses` lists the harnesses in the order `fuse init` registers them and finds one by its name on the command line, for `fuse hook` and its usage line. `SettingsFile` reads and writes the files `fuse init` writes: it replaces a file through a temporary file beside it, and tries that move up to five times, 50 ms apart, while it fails with `IOException` or `UnauthorizedAccessException`, which is how Windows reports a file a virus scanner or the search indexer is holding.
 
 `InitCommand` registers every harness it detects, or Claude Code when it detects neither a harness nor VS Code, plus the VS Code MCP server in `.vscode/mcp.json`, which is not a harness because VS Code runs no hooks. `HookCommand` in `Fuse.Hooks` reads the event and the payload (`HookPayload`), does the work that is the same for every harness (rewriting the command with `CommandRewriter`, running the check), and asks the harness for the answer. An unknown harness or event, `pre-bash` included ([D12](#decisions)), gets the usage line on standard error and exit code 0.
 
@@ -258,7 +258,7 @@ Each word names one thing. "Output" says whether agents and people see the word 
 | Client | The process that sent a request. | no | caller, agent (the agent is outside Fuse) |
 | Phase | One named, timed part of a request. | no | stage, step |
 | Configuration generation | The counter that invalidates everything derived from project configuration. | no | loader generation |
-| Unanswered | Fuse could not produce an answer: an `Unanswered` engine response, and exit code 2. | yes ("Fuse could not answer") | failed (for Fuse itself) |
+| Unanswered | Fuse could not produce an answer: an `Unanswered` engine response, and exit code 2. | yes (exit code 2, and `isError` in MCP) | failed (for Fuse itself) |
 | Failed | A test or a build failed. | yes | error (for a test); failed (for Fuse or the engine not answering) |
 | Harness | An agent host that runs Fuse's hooks. | yes | agent, IDE |
 | MCP host | The application that runs an MCP client, in the MCP specification's sense. Always written in full. | yes | host (alone) |
@@ -306,7 +306,7 @@ These are decisions that bend a principle, recorded so they are not copied as pr
 
 | Deviation | Where | Why it stands |
 | --- | --- | --- |
-| A failure that ends a request is an exception, not a result value | `FuseException`, thrown from Sources and Workspace | These failures (restore needed, load failed, git unreadable) end the whole request and start deep in loading. A result type would pass through every layer without making a caller safer. It is thrown only below Features and caught only in `Fuse.Engine` and at the top of `fuse hook`. |
+| A failure that ends a request is an exception, not a result value | `FuseException`, thrown from Sources and Workspace, and in the client by `Fuse.Engine.Client` | These failures (restore needed, load failed, git unreadable, no projects) end the whole request and start deep in loading. A result type would pass through every layer without making a caller safer. The engine catches it in `Fuse.Engine`, and the client in `Fuse.Engine.Client`, and each turns it into an `Unanswered` response. |
 | Layers are namespaces in one project, enforced by a test rather than by the compiler | `src/Fuse` | D3. |
 | Hooks catch every exception | `HookCommand.RunAsync` | A hook must never break the agent's session ([AGENTS.md](../AGENTS.md)). The failure is logged to `hook.log`. |
 | Wire records keep nullable fields that are only printed | `Fuse.Protocol` | Principle 5 applies where code branches on the null; a message or a count that is absent is not a second concept. |

@@ -2,7 +2,7 @@
 
 This page is the reference for every `fuse` command: its arguments, what it prints, its exit codes, and every message Fuse gives when it cannot answer, with the fix. [Getting started](getting-started.md) walks through the common commands on a sample repository.
 
-`fuse` is one executable. `check`, `test` and `build` are its three operations; `hook` runs them for a harness and `mcp` serves them to an MCP host, and both print the same text the command line does. Each command works on the git repository that contains the current directory (a hook, on the repository of the files its payload names), compares the working tree (the files on disk) with HEAD (the commit you have checked out), and reads no configuration.
+`fuse` is one executable. `check`, `test` and `build` are its three operations. `hook` runs the check for a harness and rewrites its `dotnet` commands to `fuse build` and `fuse test`, and `mcp` serves the three operations to an MCP host; both give the same text the command line prints. Each command works on the git repository that contains the current directory (a hook, on the repository of the files its payload names), compares the working tree (the files on disk) with HEAD (the commit you have checked out), and reads no configuration.
 
 ```text
 $ fuse help
@@ -65,18 +65,18 @@ fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations chan
 The output has three kinds of line.
 
 - **Error lines**, one per introduced error, as `path(line,column): error ID: message`, with the path relative to the repository root and forward slashes. The engine returns at most 200 errors, ordered by file and position, and the command prints the first 20.
-- **Cause lines**, indented by two spaces under an error in a file the check reached because of a declaration change: `changed:` and the changed declaration as the working tree has it, or `removed:` and the removed declaration as HEAD had it, on one line without its body. A field is quoted as its modifiers, type and name, as in `changed: public long Limit`, and a constant with its value. An error in a checked file itself, an analyzer error, and an error reached by a change that can break code without naming it (a type header, a delegate, a global using or an assembly attribute) get no cause line. An answer holds at most ten.
+- **Cause lines**, indented by two spaces under an error in a file the check reached because of a declaration change: `changed:` and the changed declaration as the working tree has it, or `removed:` and the removed declaration as HEAD had it, on one line without its body. A field is quoted as its modifiers, type and name, as in `changed: public long Limit`, and a constant with its value. An error in a checked file itself and an analyzer error get no cause line. When any change in the check can break code without naming it (a type header, a delegate, a global using or an assembly attribute), no error in the answer gets one. An answer holds at most ten.
 - **The summary line**, last, in one of two forms:
     - `fuse: N error(s) introduced in M file(s)` followed by `, first 20 shown` when N is over 20, and the projects the errors are in, in parentheses.
     - `fuse: no errors introduced (F file(s) checked)`, where F counts the checked files and the files the check reached.
 
-The summary ends with any of these parts, separated by semicolons:
+The summary ends with any of these parts, separated by semicolons; in the second form they go inside the parentheses, after `F file(s) checked`, as in `fuse: no errors introduced (3 file(s) checked; Lib declarations changed, 2 dependent project(s) checked)`:
 
 - `P declarations changed, K dependent project(s) checked`: the projects in which a checked file changed a declaration, and how many projects that depend on them the check searched.
 - `checked whole projects`: more than 500 files were in reach, so the check compiled the reached projects whole.
 - `C cause(s) left out`: more than ten errors had a cause, and C of them are printed without one.
 
-An error counts as introduced when HEAD has no error with the same file, id and message; line numbers are ignored, so an error that only moved is not reported. Errors are compiler errors, warnings the project treats as errors, and analyzer diagnostics at error severity. Warnings are not reported.
+An error counts as introduced when HEAD has fewer errors with the same file, id and message than the working tree; line numbers are ignored, so an error that only moved is not reported. Errors are compiler errors, warnings the project treats as errors, and analyzer diagnostics at error severity. Warnings are not reported.
 
 The exit code is 1 when an error was introduced and 0 when none was.
 
@@ -94,7 +94,7 @@ Runs tests and prints only failures, in one of three forms.
 - **`fuse test --all`** runs every test project whole, each built with MSBuild.
 - **`fuse test` with `dotnet test` arguments** runs `dotnet test` with those arguments in the current directory and adds result reporting. `--all` cannot be combined with them: `fuse test --all --filter Name=A` prints `fuse: --all runs every test and cannot be combined with other arguments; pass the arguments without --all to choose the scope` on standard error, runs nothing and exits with 2.
 
-Every form takes the [build lock](how-it-works.md#builds-and-the-build-lock) until its last `dotnet test` process exits. The first form waits for the engine's plan for up to 10 minutes.
+Every form takes the [build lock](how-it-works.md#builds-and-the-build-lock) until its last `dotnet test` process exits. The first two forms wait for the engine's plan for up to 10 minutes. A client that waits for the lock ends on Ctrl+C only once the lock is free.
 
 ```text
 $ fuse test
@@ -200,7 +200,7 @@ The command every installed hook runs. It reads the harness's JSON payload from 
 | --- | --- |
 | `post-edit` | Checks the source files the edit wrote and reports introduced errors. |
 | `pre-shell` | Rewrites `dotnet build` and `dotnet test` in a shell command to `fuse build` and `fuse test`. |
-| `stop` | Checks every change when the agent tries to finish, and sends it back once while errors are introduced. |
+| `stop` | Checks every change when the agent tries to finish, and sends it back once while errors are introduced or a project needs a restore. |
 
 **`post-edit`** reads the edited paths from the payload's tool input (`file_path`, `filePath`, `path` or `notebook_path`, and the files an `apply_patch` patch adds, updates, deletes or moves to), keeps the `.cs`, `.razor` and `.cshtml` files, and runs `fuse check` on them. Relative paths resolve against the payload's `cwd` (or the first of its `workspace_roots`), or the hook's own working directory when the payload names neither. For Claude Code, which runs the hook in the background, it waits for the engine to finish loading for up to 5 minutes, writes the check's output to standard error, and exits with 2, which wakes the agent. Every other harness runs the hook inline, so it answers only once the engine has loaded, waits up to 50 seconds, and writes its answer as JSON to standard output.
 
@@ -256,7 +256,7 @@ Git knows no `.csproj` file in the repository (the second line is `fuse init`'s)
 fuse: Fuse is still loading this repository; the next check will include these changes
 ```
 
-The engine answers a check with this while it is still evaluating the repository, when the check asked not to wait. Only the post-edit hook of a harness other than Claude Code asks that, and it stays silent on this answer. Fix: none; the stop hook and the next check cover the changes.
+The engine answers a check with this while it is still evaluating the repository or loading the projects that own uncommitted changes, when the check asked not to wait. Only the post-edit hook of a harness other than Claude Code asks that, and it stays silent on this answer. Fix: none; the stop hook and the next check cover the changes.
 
 ### `RestoreNeeded`
 

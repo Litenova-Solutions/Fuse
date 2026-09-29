@@ -6,11 +6,11 @@ Most problems show in one of two logs in the repository's state directory: `engi
 
 ## A hook prints nothing
 
-A hook prints something only when the edit introduced errors or a project needs a restore. A clean edit, an engine that is still loading, a timeout and an internal failure all print nothing, so that a hook never breaks the agent's session.
+A hook tells the agent something only when the edit introduced errors or a project needs a restore. A clean edit, an engine that is still loading, a timeout and an internal failure give the agent nothing to read (a stop hook still prints the empty answer its harness expects, such as `{}`), so that a hook never breaks the agent's session.
 
 1. Run `fuse check` in the repository. If it reports errors that the hook did not, the hook did not run or did not reach the engine; see [The agent does not see the hooks](#the-agent-does-not-see-the-hooks).
-2. Read `hook.log`. A payload that is not valid JSON and an exception inside the hook are written there with the harness and the event.
-3. Read the end of `engine.log`. A hook's check appears as a `CheckFiles` request with the edited file names ([reading a phase line](#reading-a-phase-line)).
+2. Read `hook.log`. It holds only a payload that is not valid JSON and an exception inside the hook, with the harness and the event. A timeout or an answer the engine could not give is not written there; `fuse check` in the same repository shows it.
+3. Read the end of `engine.log`. A post-edit check appears as a `CheckFiles` request with the edited file names, and a stop check as `CheckChanges` ([reading a phase line](#reading-a-phase-line)).
 
 ## The agent does not see the hooks
 
@@ -19,7 +19,7 @@ A hook prints something only when the edit introduced errors or a project needs 
 - **Cursor with only Claude Code settings.** Cursor also runs Claude Code's hooks, and Fuse ignores those in a Cursor session so that the Cursor hooks answer. Create `.cursor/` and run `fuse init` again.
 - **Cursor or GitHub Copilot CLI and `dotnet test`.** These two harnesses have no pre-shell hook, so their `dotnet build` and `dotnet test` run unchanged. Have the agent run `fuse test` and `fuse build` instead.
 
-## `dotnet build` and `dotnet test` are no longer rewritten after an update
+## `dotnet build` and `dotnet test` run unchanged after updating from 5.0.0
 
 Fuse 5.1.0 names the shell event `pre-shell`. Settings written by 5.0.0 call `fuse hook <harness> pre-bash`, which 5.1.0 answers with a usage line on standard error and exit code 0, so the harness runs the command unchanged. Run `fuse init` again in each repository after updating; it replaces Fuse's hook entries and the OpenCode plugin and keeps everything else ([Harnesses](harnesses.md#running-fuse-init-again)).
 
@@ -134,8 +134,8 @@ phases id=<client process id>-<n> kind=<request> <phase>=<ms> ... total=<ms>
     - `sync`: folding the file changes since the previous request into both views.
     - `load`: loading the projects that own the checked files, or for a test plan the projects it needs.
     - `loadDependents`: loading the dependents of the projects with a declaration change.
-    - `bindTargets`, `surfaceDiff`, `referenceSearch`, `bindCandidates`: the steps of a check, as [How it works](how-it-works.md#check) describes them.
-    - `selection` and `mirror`: selecting the tests, and preparing the copies for runs without MSBuild.
+    - `bindTargets`, `surfaceDiff` (comparing declarations with HEAD), `referenceSearch`, `bindCandidates`: the steps of a check, as [How it works](how-it-works.md#check) describes them.
+    - `selection` and `mirror`: selecting the tests, including loading the projects they need, and preparing the copies for runs without MSBuild.
     - `total`: the whole request from the moment it held the request lock. It is counted in system clock ticks, so on Windows a request that took less than about 16 ms shows `total=0.0`.
 
 ## Stopping or restarting the engine

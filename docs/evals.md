@@ -26,7 +26,7 @@ wrote evals\results\correctness-fixture-20260929-0452.json
 
 `<fuse>` stands for the path of the Fuse checkout, shortened here. In the second case the build reported 2 errors in `Services` and Fuse reported 4: the build's 2, and 2 in projects that reference `Services`. MSBuild skipped those projects because `Services` failed, so the suite counted Fuse's errors there as unverifiable rather than contradicted.
 
-A run with fewer cases than the default replaces the newest result for its suite and repository, so delete its file rather than commit it. Commit a result file only from a full run.
+Every run writes a new file, which becomes the newest for its suite and repository and the one `chart` reads, so delete the file of a shorter run rather than commit it. Commit a result file only from a full run.
 
 ## Commands
 
@@ -117,7 +117,7 @@ A suite writes `evals/results/<suite>-<repo>-<yyyyMMdd-HHmm>.json`, with the loc
 - `fuseBuild`: the build of `fuse` that was measured, as `<version>/<module id>`, the same id the engine compares.
 - `treeCleanAfter`: whether the suite left the working tree clean.
 
-**Correctness files** also hold `seed`, `requested` and `cases`; `breaking` and `neutral` (cases whose build failed or passed); `falseGreen`, `falseRedCases`, `falseRedErrors` (contradicted errors), `partialMisses`, `exactAgreement` and `fileAgreement` (cases whose errors are in the same files); `unverifiableErrors`, `deferredByCompilerErrors` and `messageMismatchErrors`; `causeLines`, `causeBytes` and `outputBytes` (cause lines, their size and the whole output's size); `fuseUnanswered` (cases where `fuse check` exited with neither 0 nor 1); `fuseMedianMs` and `buildMedianSeconds`; `headBuildErrors`; and `details`, one object per case with its edits, the truth and Fuse errors, each classification list, its verdict, and its times.
+**Correctness files** also hold `seed`, `requested` and `cases`; `breaking` and `neutral` (cases whose build reported errors beyond HEAD's, or none); `falseGreen`, `falseRedCases`, `falseRedErrors` (contradicted errors), `partialMisses`, `exactAgreement` and `fileAgreement` (cases whose errors are in the same files); `unverifiableErrors`, `deferredByCompilerErrors` and `messageMismatchErrors`; `causeLines`, `causeBytes` and `outputBytes` (cause lines, their size and the whole output's size); `fuseUnanswered` (cases where `fuse check` exited with neither 0 nor 1); `fuseMedianMs` and `buildMedianSeconds`; `headBuildErrors`; and `details`, one object per case with its edits, the truth and Fuse errors, each classification list, its verdict, and its times.
 
 **Selection files** also hold `seed`, `requested`, `cases`, `withFailures`, `missedCases`, `unverifiedCases`, `missedTests` and `unverifiedTests`; `totalTests` (the tests in a full run at HEAD); `meanSelectedFraction` (the mean share of those tests `fuse test` ran); `fuseMedianSeconds` and `dotnetMedianSeconds`; `skippedNonCompiling` and `projectsWithoutResults`; and `details`, one object per case with its edit, the truth and Fuse failures, Fuse's counts and summary line (`fuseSummary`), the misses, both times and its verdict.
 

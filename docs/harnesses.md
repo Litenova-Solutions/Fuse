@@ -4,7 +4,7 @@ This page is the reference for connecting Fuse to an agent: what `fuse init` det
 
 A harness is an agent host that runs Fuse's hooks: Claude Code, Cursor, Gemini CLI, Codex, GitHub Copilot CLI or OpenCode. `fuse init` registers hooks for every harness whose folder or file it finds in the repository root, and the MCP server for VS Code, which runs no hooks. When it finds none of them, it sets up Claude Code. Every hook calls `fuse hook <harness> <event>` with one of three events: `post-edit` checks the files an edit wrote, `pre-shell` rewrites `dotnet build` and `dotnet test` to `fuse build` and `fuse test`, and `stop` checks every change before the agent finishes. [Commands](commands.md#fuse-hook) describes what each event does.
 
-In a repository with every harness's folder, `fuse init` writes seven files:
+In a repository with every harness's folder and `.vscode/`, `fuse init` writes seven files:
 
 ```text
 $ fuse init
@@ -24,7 +24,7 @@ The configuration blocks on this page are the files that run wrote. Current buil
 
 | Harness | Detected by | File written | Events |
 | --- | --- | --- | --- |
-| Claude Code | `.claude/` or `CLAUDE.md`, or no other harness | `.claude/settings.json` | post-edit, pre-shell, stop |
+| Claude Code | `.claude/` or `CLAUDE.md`, or neither another harness nor `.vscode/` | `.claude/settings.json` | post-edit, pre-shell, stop |
 | Cursor | `.cursor/` | `.cursor/hooks.json` | post-edit, stop |
 | Gemini CLI | `.gemini/` or `GEMINI.md` | `.gemini/settings.json` | post-edit, pre-shell, stop |
 | Codex | `.codex/` | `.codex/hooks.json` | post-edit, pre-shell, stop |
@@ -83,7 +83,7 @@ Cursor and GitHub Copilot CLI get no pre-shell hook, so there an agent's `dotnet
 - **pre-shell** answers `{"hookSpecificOutput":{"hookEventName":"PreToolUse","updatedInput":{...}}}`, with every field of the original tool input and the rewritten `command`. It sets no permission decision, so the rewritten command goes through your normal permission rules.
 - **stop** answers `{"decision":"block","reason":"..."}` with the errors, and prints nothing when there are none.
 
-If the settings' `permissions.allow` list lets the agent run `dotnet build` or `dotnet test` without asking (`Bash(dotnet:*)`, `Bash(dotnet *)`, or a rule that starts with `Bash(dotnet build` or `Bash(dotnet test`), `fuse init` adds `Bash(fuse build:*)` or `Bash(fuse test:*)`, so the rewritten command is allowed too. It adds nothing you had not allowed for `dotnet`.
+If the settings' `permissions.allow` list lets the agent run `dotnet build` or `dotnet test` without asking (`Bash(dotnet:*)`, `Bash(dotnet *)`, or a rule that starts with `Bash(dotnet build` or `Bash(dotnet test`), `fuse init` adds `Bash(fuse build:*)`, `Bash(fuse test:*)` or both, so the rewritten command is allowed too. A narrower rule, such as one for `dotnet test` on one project, still adds the rule for every `fuse test`.
 
 Cursor also runs hooks from Claude Code's settings. A Claude Code hook whose payload comes from Cursor does nothing, so the Cursor hooks answer in a Cursor session; create `.cursor/` and run `fuse init` again to get them.
 
@@ -367,4 +367,4 @@ Run `fuse init` again after updating Fuse, so the settings and the OpenCode plug
 
 ## Tested versions
 
-The Claude Code integration is tested end to end with Claude Code 2.1.282, and the OpenCode plugin with OpenCode 2.0.15. The Cursor, Gemini CLI, Codex and Copilot CLI adapters, and the OpenCode 1 plugin format, follow each harness's documented hook format and are covered by payload tests.
+Fuse 5.0.0 was run by hand end to end with Claude Code 2.1.282 and with OpenCode 2.0.15. Every harness's answers and the files `fuse init` writes have unit tests; the Cursor, Gemini CLI, Codex and Copilot CLI adapters, and the OpenCode 1 plugin format, follow each harness's documented hook format, and the plugin's JavaScript has no tests of its own.

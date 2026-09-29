@@ -27,7 +27,7 @@ body:
         directory: `%LOCALAPPDATA%\fuse\repos\<id>` on Windows, `~/.local/share/fuse/repos/<id>` (or
         `$XDG_DATA_HOME/fuse/repos/<id>` when that is set) on Linux, and `~/Library/Application Support/fuse/repos/<id>`
         on macOS.
-        [Where the logs are](https://github.com/Litenova-Solutions/Fuse/blob/main/docs/troubleshooting.md#where-the-logs-are)
+        [Where the logs are](https://fuse.codes/troubleshooting#where-the-logs-are)
         shows how to find `<id>`.
     validations:
       required: true

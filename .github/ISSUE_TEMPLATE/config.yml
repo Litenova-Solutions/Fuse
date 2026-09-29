@@ -7,5 +7,5 @@ contact_links:
     url: https://github.com/Litenova-Solutions/Fuse/blob/main/SECURITY.md
     about: Report a vulnerability privately, not in a public issue.
   - name: Troubleshooting
-    url: https://github.com/Litenova-Solutions/Fuse/blob/main/docs/troubleshooting.md
+    url: https://fuse.codes/troubleshooting
     about: Why Fuse is silent, slow or failing, and where its logs are.

@@ -9,6 +9,9 @@ namespace Fuse.Tests.Fixtures;
 /// </summary>
 internal sealed class FixtureRepo : IDisposable
 {
+    private static readonly Lazy<RepoRoot> Checkout = new(() =>
+        RepoRoot.Find(AppContext.BaseDirectory) ?? throw new InvalidOperationException($"no git repository above {AppContext.BaseDirectory}"));
+
     private FixtureRepo(string path)
     {
         Path = path;
@@ -19,6 +22,12 @@ internal sealed class FixtureRepo : IDisposable
     public string Path { get; }
 
     public RepoRoot Root { get; }
+
+    /// <summary>
+    ///     The root of the Fuse checkout the tests run from, for a test that builds repository paths but reads no file
+    ///     through them, so it needs no repository of its own.
+    /// </summary>
+    public static RepoRoot CheckoutRoot => Checkout.Value;
 
     /// <summary>Copies the standard template (see <see cref="FixtureTemplate"/>) and restores it in its new location.</summary>
     public static FixtureRepo CreateStandard() => CreateStandard(NewDirectory());
@@ -50,6 +59,9 @@ internal sealed class FixtureRepo : IDisposable
     }
 
     public string Full(string relative) => System.IO.Path.GetFullPath(System.IO.Path.Combine(Root.Path, relative));
+
+    /// <summary>The repository path of a repository-relative file, as the engine names it.</summary>
+    public RepoPath PathOf(string relative) => Root.PathOf(relative);
 
     public string Read(string relative) => Lf(File.ReadAllText(Full(relative)));
 

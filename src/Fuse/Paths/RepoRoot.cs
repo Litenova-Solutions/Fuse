@@ -6,7 +6,8 @@ namespace Fuse.Paths;
 
 /// <summary>
 ///     The canonical root of a git repository: the nearest ancestor holding <c>.git</c>, resolved through
-///     junctions, symlinks, <c>subst</c> drives and 8.3 short names so every spelling of a path maps to one engine.
+///     junctions, symlinks, <c>subst</c> drives and 8.3 short names so every spelling of a path maps to one engine. Every
+///     <see cref="RepoPath"/> comes from it (<see cref="PathOf"/>), so one file has one value however it is spelled.
 /// </summary>
 internal sealed class RepoRoot
 {
@@ -45,30 +46,34 @@ internal sealed class RepoRoot
     }
 
     /// <summary>Returns the repository-relative form of an absolute path, with forward slashes.</summary>
-    public string Relative(string absolute)
-    {
-        var full = System.IO.Path.GetFullPath(absolute);
-        var rel = System.IO.Path.GetRelativePath(Path, full);
-        if (rel.StartsWith("..", StringComparison.Ordinal) || System.IO.Path.IsPathRooted(rel))
-        {
-            // The caller may have used a different spelling of the root (a junction or short name).
-            var canonical = Canonicalize(full);
-            rel = System.IO.Path.GetRelativePath(Path, canonical);
-        }
-
-        return rel.Replace('\\', '/');
-    }
+    public string Relative(string absolute) => PathOf(absolute).Relative;
 
     /// <summary>Returns the absolute form of a path given relative to the root or absolute; a path outside the root's spelling is canonicalized.</summary>
-    public string Absolute(string path)
+    public string Absolute(string path) => PathOf(path).Absolute;
+
+    /// <summary>The repository path <paramref name="path"/> names, given absolute or relative to the root.</summary>
+    /// <remarks>
+    ///     A path spelled under the root is only made absolute and normalized (separators, <c>.</c> and <c>..</c>
+    ///     segments, and 8.3 short names, which <see cref="System.IO.Path.GetFullPath(string)"/> expands). Any other
+    ///     spelling is canonicalized, so a path given through a junction, a symlink or a <c>subst</c> drive of the root is
+    ///     the same value as the path spelled under the root. That costs a file system call, which the common case, a
+    ///     path spelled under the root, does not pay.
+    /// </remarks>
+    /// <exception cref="ArgumentException"><paramref name="path"/> is null or not a valid path, for example because it holds a NUL character.</exception>
+    public RepoPath PathOf(string path)
     {
-        var full = System.IO.Path.IsPathRooted(path) ? path : System.IO.Path.Combine(Path, path);
-        full = System.IO.Path.GetFullPath(full);
-        if (full.StartsWith(Path, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
-            return full;
-        var canonical = Canonicalize(full);
-        return canonical;
+        var full = System.IO.Path.GetFullPath(System.IO.Path.IsPathRooted(path) ? path : System.IO.Path.Combine(Path, path));
+        return new RepoPath(this, Contains(full) ? full : Canonicalize(full));
     }
+
+    /// <summary>
+    ///     True when <paramref name="absolute"/> is the root or a path under it in the root's own spelling, compared the
+    ///     way the file system does. It canonicalizes nothing, so it costs no file system call, and a path under another
+    ///     spelling of the root is not contained.
+    /// </summary>
+    public bool Contains(string absolute) =>
+        absolute.StartsWith(Path, RepoPath.Comparison)
+        && (absolute.Length == Path.Length || absolute[Path.Length] == System.IO.Path.DirectorySeparatorChar || absolute[Path.Length] == System.IO.Path.AltDirectorySeparatorChar);
 
     private static string Hash(string value)
     {

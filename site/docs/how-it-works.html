@@ -88,68 +88,6 @@
           "item": "https://fuse.codes/docs/how-it-works"
         }
       ]
-    },
-    {
-      "@type": "FAQPage",
-      "@id": "https://fuse.codes/docs/how-it-works#questions",
-      "mainEntity": [
-        {
-          "@type": "Question",
-          "name": "What is Fuse?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Fuse is a .NET command-line tool that gives AI coding agents compiler feedback right after each edit. It keeps a repository's solution compiled in memory with Roslyn, reports the errors an edit introduced, runs the tests the edit can reach, and prints build output in a short form."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Which harnesses does Fuse support?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Fuse supports Claude Code, Cursor, Gemini CLI, Codex, GitHub Copilot CLI and OpenCode through hooks, and VS Code agent mode and any other MCP host through fuse mcp. Claude Code and OpenCode are tested end to end. The others follow each harness's documented hook format and are covered by payload tests."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Does Fuse need configuration?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "No. Run fuse init once in the repository and it writes the hook settings for each harness it finds. Fuse has no configuration file and no environment variables of its own. It needs the .NET 10 SDK and restored projects; if a restore is missing, it says so and names the dotnet restore command to run."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Does Fuse send my code or data anywhere?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "No. Everything runs locally, and Fuse has no telemetry and makes no network calls of its own. It never edits your code; the only files it writes in your repository are the hook settings from fuse init. Commands Fuse runs for you, such as dotnet build, act as they normally would."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "How is Fuse different from dotnet build?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "dotnet build starts MSBuild, builds the projects and lists every error, including errors that already exist. Fuse keeps the solution compiled in memory and reports only the errors an edit introduced, so it answers sooner: in the measurements the median check took between 0.18 and 0.87 seconds where the median dotnet build took between 1.14 and 6.45 seconds. It does not replace the build; fuse build runs the real dotnet build."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "What can Fuse not check?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Fuse checks C# only. A check cannot see custom MSBuild targets that change compiler inputs or IL weaving, and it runs compilation-end analyzers only when it compiles whole projects, which happens past 500 files in reach; fuse build runs the real build. Test selection is static, so a test that reaches code only through reflection may not be selected. Limits lists every case."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Which platforms does Fuse run on?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Fuse needs the .NET 10 SDK. It is used day to day on Windows, and its automated tests also pass on Linux and macOS."
-          }
-        }
-      ]
     }
   ]
 }
@@ -191,7 +129,6 @@
         <li><a href="#builds-and-the-build-lock">Builds and the build lock</a></li>
         <li><a href="#failure-handling">When Fuse cannot answer</a></li>
         <li><a href="#privacy">Privacy and footprint</a></li>
-        <li><a href="#questions">Questions</a></li>
       </ol>
     </nav>
 
@@ -315,29 +252,7 @@
       <li>In a repository without a <code>.csproj</code> file, hooks return at once and no engine starts.</li>
       <li>Fuse has no configuration file and no environment variables of its own.</li>
     </ul>
-
-    <h2 id="questions">Questions <a class="anchor" href="#questions" aria-label="Link to this section">#</a></h2>
-
-    <h3 id="what-is-fuse">What is Fuse? <a class="anchor" href="#what-is-fuse" aria-label="Link to this section">#</a></h3>
-    <p>Fuse is a .NET command-line tool that gives AI coding agents compiler feedback right after each edit. It keeps a repository's solution compiled in memory with Roslyn, reports the errors an edit introduced, runs the tests the edit can reach, and prints build output in a short form.</p>
-
-    <h3 id="which-harnesses-does-fuse-support">Which harnesses does Fuse support? <a class="anchor" href="#which-harnesses-does-fuse-support" aria-label="Link to this section">#</a></h3>
-    <p>Fuse supports Claude Code, Cursor, Gemini CLI, Codex, GitHub Copilot CLI and OpenCode through hooks, and VS Code agent mode and any other MCP host through <code>fuse mcp</code>. Claude Code and OpenCode are tested end to end. The others follow each harness's documented hook format and are covered by payload tests.</p>
-
-    <h3 id="does-fuse-need-configuration">Does Fuse need configuration? <a class="anchor" href="#does-fuse-need-configuration" aria-label="Link to this section">#</a></h3>
-    <p>No. Run <code>fuse init</code> once in the repository and it writes the hook settings for each harness it finds. Fuse has no configuration file and no environment variables of its own. It needs the .NET 10 SDK and restored projects; if a restore is missing, it says so and names the <code>dotnet restore</code> command to run.</p>
-
-    <h3 id="does-fuse-send-my-code-or-data-anywhere">Does Fuse send my code or data anywhere? <a class="anchor" href="#does-fuse-send-my-code-or-data-anywhere" aria-label="Link to this section">#</a></h3>
-    <p>No. Everything runs locally, and Fuse has no telemetry and makes no network calls of its own. It never edits your code; the only files it writes in your repository are the hook settings from <code>fuse init</code>. Commands Fuse runs for you, such as <code>dotnet build</code>, act as they normally would.</p>
-
-    <h3 id="how-is-fuse-different-from-dotnet-build">How is Fuse different from dotnet build? <a class="anchor" href="#how-is-fuse-different-from-dotnet-build" aria-label="Link to this section">#</a></h3>
-    <p><code>dotnet build</code> starts MSBuild, builds the projects and lists every error, including errors that already exist. Fuse keeps the solution compiled in memory and reports only the errors an edit introduced, so it answers sooner: in the measurements the median check took between 0.18 and 0.87 seconds where the median <code>dotnet build</code> took between 1.14 and 6.45 seconds. It does not replace the build; <code>fuse build</code> runs the real <code>dotnet build</code>.</p>
-
-    <h3 id="what-can-fuse-not-check">What can Fuse not check? <a class="anchor" href="#what-can-fuse-not-check" aria-label="Link to this section">#</a></h3>
-    <p>Fuse checks C# only. A check cannot see custom MSBuild targets that change compiler inputs or IL weaving, and it runs compilation-end analyzers only when it compiles whole projects, which happens past 500 files in reach; <code>fuse build</code> runs the real build. Test selection is static, so a test that reaches code only through reflection may not be selected. <a href="limits.html">Limits</a> lists every case.</p>
-
-    <h3 id="which-platforms-does-fuse-run-on">Which platforms does Fuse run on? <a class="anchor" href="#which-platforms-does-fuse-run-on" aria-label="Link to this section">#</a></h3>
-    <p>Fuse needs the .NET 10 SDK. It is used day to day on Windows, and its automated tests also pass on Linux and macOS.</p>
+    <p>Common questions, and how Fuse differs from language servers and other tools, are answered in the <a href="faq.html">FAQ</a>.</p>
 
     <nav class="pager" aria-label="Previous and next page">
       <a href="harnesses.html"><span>Previous</span>Connect your agent</a>
@@ -357,6 +272,7 @@
         <li><a href="how-it-works.html" aria-current="page">How it works</a></li>
         <li><a href="limits.html">Limits</a></li>
         <li><a href="results.html">Results</a></li>
+        <li><a href="faq.html">FAQ</a></li>
       </ul>
       <h2>Reference</h2>
       <ul>

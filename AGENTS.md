@@ -1,24 +1,25 @@
 # Fuse: contributor and agent guide
 
-Fuse is one .NET tool (`fuse`) that keeps a warm Roslyn compilation of a repository and gives coding agents the errors their edits introduced, affected-test runs, and compact build output, through agent hooks and a three-tool MCP server. [README.md](README.md) describes the product; [docs/design.md](docs/design.md) describes how it works.
+Fuse is one .NET tool (`fuse`) that keeps a warm Roslyn compilation of a repository and gives coding agents the errors their edits introduced, affected-test runs, and compact build output, through agent hooks and a three-tool MCP server. [README.md](README.md) describes the product, [docs/README.md](docs/README.md) indexes the documentation, and [docs/how-it-works.md](docs/how-it-works.md) describes how it works.
 
 ## Layout
 
-- `src/Fuse`: the only product project, packed as the `Fuse` dotnet tool.
-  - `Cli/`: the check, test and build operations shared by the CLI, hooks and MCP.
-  - `Engine/`: the per-repository engine process, its pipe protocol client, and the detached launcher.
-  - `Protocol/`: request and response records for the pipe.
-  - `Repo/`: repository root, git HEAD and blob reading, change tracking.
-  - `Graph/`: MSBuild evaluation of every project (ownership, references, test projects).
-  - `Workspace/`: the lazily loaded current and HEAD-baseline solutions.
-  - `Check/`: the check algorithm (surface diff, scoping, analyzer selection, delta).
-  - `Testing/`: affected-test selection, the shadow-emit fast path, planning.
-  - `Dotnet/`: process running and output parsing.
-  - `Hooks/`: `fuse hook` adapters per harness and `fuse init`.
-  - `Mcp/`: the MCP server.
-- `tests/Fuse.Tests`: unit, engine and process tests over generated fixture repositories.
+- `src/Fuse`: the only product project, packed as the `Fuse` dotnet tool. Its namespaces are layers; [docs/architecture.md](docs/architecture.md) says which may use which, in what order to read them, and what its words mean. From the top:
+  - `Program.cs`: parses the command line and picks a surface or the engine.
+  - `Hooks/`, `Mcp/`, `Harnesses/`: `fuse hook`, `fuse mcp`, and `fuse init` with one class per harness.
+  - `Operations/`: the check, test and build operations shared by every surface, and their output.
+  - `Engine/Client/`: finds, starts and calls the engine.
+  - `Protocol/`: the pipe's request and response records.
+  - `Engine/`: the engine process: pipe server, request routing, preload, mapping results to `Protocol`.
+  - `Check/`, `Testing/`: the check algorithm and test selection, each with a `Model/` folder read first.
+  - `Changes/`: which declarations differ between HEAD and the working tree.
+  - `Workspace/`: the current and baseline Roslyn solutions.
+  - `Repo/`, `Graph/`, `Dotnet/`: git and the working tree, MSBuild evaluation, child processes and their output parsers.
+  - `Paths/`, `Failures/`, `Telemetry/`: `RepoRoot` and `RepoPath`, `FuseException` and `ErrorCode`, `PhaseTimes` and `EngineLog`.
+- `tests/Fuse.Tests`: unit, engine and process tests over generated fixture repositories, and `Architecture/NamespaceDependencyTests`, which fails the build when a namespace uses one it may not.
 - `evals/Fuse.Evals`: the correctness, selection and latency evals, and the chart renderer; results in `evals/results`.
-- `site/`: the website at fuse.codes, three static pages (`index.html`, `how-it-works.html`, `results.html`) sharing `style.css`, the icon, and `benefits.svg`, which `dotnet run --project evals/Fuse.Evals -c Release -- chart` renders from `evals/results`. Vercel deploys it from `main` with `site` as the project root and no build step.
+- `docs/`: all documentation except this file and the README.
+- `site/`: the website at fuse.codes, static pages sharing `style.css`, with `robots.txt`, `sitemap.xml` and `llms.txt` for crawlers and agents, and `benefits.svg`, which `dotnet run --project evals/Fuse.Evals -c Release -- chart` renders from `evals/results`. Vercel deploys it from `main` with `site` as the project root and no build step.
 
 ## Build, test, format
 
@@ -33,15 +34,17 @@ Tests generate real git repositories and restore them, so the first run needs Nu
 ## Rules
 
 - The product answers from the working tree as it is on disk, compared with HEAD. Never report an error that already existed at HEAD as introduced.
-- A hook must never break the agent's session: `fuse hook` reports only new errors and missing restores, and every internal failure exits 0 with no output and logs to `hook.log` in the state directory.
+- A hook must never break the agent's session: `fuse hook` reports only introduced errors and missing restores, and every internal failure exits 0 with no output and logs to `hook.log` in the state directory.
 - No configuration knobs. A behavior that needs a setting is a behavior to decide, not to expose.
 - The engine never writes the working tree and never runs `dotnet restore` on its own. Its state (logs, shadow test output) lives in the user's local application data, never in the repository.
 - The pipe protocol needs no versioning by hand: every request carries `EngineVersion.Build`, and an engine from another build restarts.
 - Child processes take argument lists, never shell strings. Variable-length lists (paths, filters) are bounded or chunked.
 - Numbers quoted in docs come from files in `evals/results`. Counts are quoted exactly. Times, sizes and percentages are rounded half up for display: seconds to two decimals below 10 s and one decimal from 10 s, milliseconds and megabytes to whole numbers, percentages to at most one decimal. Each results table names the result files it comes from.
 - A file holds one type plus its private helpers. No interface without two implementations.
+- Layers follow [docs/architecture.md](docs/architecture.md). A new namespace gets a row in its dependency table and in `NamespaceDependencyTests` in the same change.
+- One word per concept, in code, output, comments and docs: the vocabulary in [docs/architecture.md](docs/architecture.md) decides. Text says what is true now, in plain sentences, with keyboard punctuation only.
 - New tests must run: confirm the test count went up.
 
 ## Releases
 
-The version lives in `Directory.Build.props`. A release is a `vX.Y.Z` tag matching it; the publish workflow checks the match. A release description is scoped to one baseline, named in the text: a major and its first preview carry the full changelog for that major, and every later release compares against the immediately previous version only. `CHANGELOG.md` keeps the cumulative history.
+The version lives in `Directory.Build.props`. A release is a `vX.Y.Z` tag matching it; the publish workflow checks the match. A release description is scoped to one baseline, named in the text: a major and its first preview carry the full changelog for that major, and every later release compares against the immediately previous version only. [docs/changelog.md](docs/changelog.md) keeps the cumulative history.

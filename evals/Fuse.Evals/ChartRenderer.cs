@@ -184,7 +184,11 @@ internal static class ChartRenderer
 
             if (Latest(results, $"selection-{repo.Name}-") is { } selection)
             {
+                // The test panel gives every repository's size as its test count, taken from the result file it draws:
+                // the tests in a full run at HEAD. The label's own size is only for a file that does not record it.
                 var (name, detail) = SplitLabel(repo.TestLabel);
+                if (selection.TryGetProperty("totalTests", out var total))
+                    detail = string.Create(CultureInfo.InvariantCulture, $"{total.GetInt32():N0} tests");
                 rows.Add(new Row(Test, name, detail, selection.GetProperty("fuseMedianSeconds").GetDouble(), selection.GetProperty("dotnetMedianSeconds").GetDouble()));
             }
         }

@@ -42,6 +42,7 @@ Three surfaces run the same three operations (check, test and build) and print t
     - A removed or changed constructor also reaches every type that derives from its type, because a derived constructor calls it without naming it.
     - An added member reaches the users of same-named members of its type and its base types, because an added overload can make a call ambiguous, and for an interface or abstract type, every implementation.
     - An added type reaches every file that mentions its name, because it can clash with a type of the same name, and a changed Razor file (`.razor`, `.cshtml`) reaches every file that mentions the file's name.
+    - An added, changed or removed conversion operator also reaches every file that mentions its type's name, because the reference search does not return the places an implicit conversion is applied.
     - A removed `using` directive can change what the file's type names resolve to without changing their text, so it reaches every file that names one of the file's types.
     - A changed type header (attributes, modifiers, kind, type parameters, primary constructor, constraints or base types), a delegate, a global using or an assembly attribute can break code that never names it, so it reaches every file in the owning project and its dependents.
 4. **Candidates.** The reached files, the candidates, are bound the same way as the targets, in parallel. Past 500 candidates the check binds the reached projects whole instead, and the summary says `checked whole projects`.

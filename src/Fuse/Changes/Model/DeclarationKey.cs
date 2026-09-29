@@ -44,9 +44,11 @@ internal abstract record DeclarationKey
     /// <param name="Container">The type that declares the member.</param>
     /// <param name="Signature">
     ///     A letter for the kind of member and what tells it apart from the type's other members: the name, the explicit
-    ///     interface for an explicit implementation, the arity, and the parameter types with their modifiers
-    ///     (<c>M:Add`0( int, int)</c>, <c>P:Name</c>, <c>C:( string)</c>, <c>C:static()</c>). A field or an event field
-    ///     with several variables has one key per variable.
+    ///     interface for an explicit implementation, the arity, the parameter types with their modifiers, <c>checked</c>
+    ///     for a checked operator, and a conversion's target type (<c>M:Add`0( int, int)</c>, <c>P:Name</c>,
+    ///     <c>C:( string)</c>, <c>C:static()</c>, <c>I:IBag .[ int]</c>, <c>O:checked +( V, V)</c>,
+    ///     <c>O:implicit Result &lt; T &gt;( T)</c>). A field or an event field with several variables has one key per
+    ///     variable.
     /// </param>
     public sealed record Member(NamedType Container, string Signature) : DeclarationKey;
 }

@@ -8,6 +8,7 @@ using Fuse.Paths;
 using Fuse.Workspace;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.FindSymbols;
 using Microsoft.CodeAnalysis.Text;
 
@@ -27,6 +28,10 @@ namespace Fuse.Check;
 ///             make a call ambiguous), and, for an interface or abstract type, every implementation.
 ///         </item>
 ///         <item>A removed type: files referencing it. An added type: files mentioning its name (it can clash with a same-named type).</item>
+///         <item>
+///             A conversion operator: additionally every file mentioning its type's name, because a reference search does
+///             not return the places an implicit conversion is applied.
+///         </item>
 ///         <item>
 ///             A changed type header, delegate, global using or assembly attribute can break code that never names it,
 ///             so the reach is <see cref="Reach.Broad"/> and the caller re-checks every file in the reached projects.
@@ -117,6 +122,13 @@ internal sealed class ChangeReach
                     }
 
                     continue;
+                }
+
+                if ((after.Find(change.Key) ?? before.Find(change.Key))?.Node is ConversionOperatorDeclarationSyntax)
+                {
+                    // A reference search does not return the places an implicit conversion is applied, so every file that
+                    // names the type is a candidate too.
+                    names.Add((change.Names[0], cause));
                 }
 
                 if (change.Key is DeclarationKey.NamedType)

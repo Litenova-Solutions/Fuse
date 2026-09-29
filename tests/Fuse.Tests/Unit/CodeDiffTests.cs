@@ -114,6 +114,12 @@ public class CodeDiffTests
     }
 
     [Fact]
+    public void Whitespace_between_parameter_modifiers_marks_nothing()
+    {
+        Assert.Empty(Changed("static class C { static void M(this ref int a) {} }", "static class C { static void M(this  ref int a) {} }"));
+    }
+
+    [Fact]
     public void A_body_edit_to_a_partial_method_s_implementation_in_the_same_file_marks_the_implementation()
     {
         const string Before = "partial class C { partial void M(); partial void M() { A(); } void A() {} }";

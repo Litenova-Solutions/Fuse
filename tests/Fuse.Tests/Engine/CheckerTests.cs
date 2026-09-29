@@ -315,6 +315,31 @@ public class CheckerTests
         Assert.Equal("CS1674", Assert.Single(report.Errors, e => e.Error.Path == "App/UsePart.cs").Error.Id);
     }
 
+    [Fact]
+    public async Task An_indexer_made_internal_beside_an_explicit_one_breaks_its_callers()
+    {
+        await using var engine = await StartWithAsync(
+            ("Lib/Bag.cs", "namespace Lib;\n\npublic interface IBag\n{\n    int this[int i] { get; }\n}\n\npublic class Bag : IBag\n{\n    int IBag.this[int i] => i;\n\n    public int this[int i] => i + 1;\n}\n"),
+            ("App/UseBag.cs", "namespace App;\n\npublic static class UseBag\n{\n    public static int Run() => new Lib.Bag()[0];\n}\n"));
+        engine.Repo.Replace("Lib/Bag.cs", "public int this[int i]", "internal int this[int i]");
+        var report = await engine.CheckAsync("Lib/Bag.cs");
+        Assert.Contains(report.Errors, e => e.Error.Path == "App/UseBag.cs");
+    }
+
+    [Fact]
+    public async Task An_implicit_conversion_made_explicit_breaks_the_files_that_name_its_type()
+    {
+        await using var engine = await StartWithAsync(
+            ("Lib/Result.cs", "namespace Lib;\n\npublic sealed class Failure\n{\n}\n\npublic readonly struct Result<T>\n{\n    public static implicit operator Result<T>(T value) => default;\n\n    public static implicit operator Result<T>(Failure failure) => default;\n}\n"),
+            ("App/UseResult.cs", "namespace App;\n\npublic static class UseResult\n{\n    public static Lib.Result<int> Run() => 5;\n}\n"));
+        engine.Repo.Replace("Lib/Result.cs", "public static implicit operator Result<T>(T value)", "public static explicit operator Result<T>(T value)");
+        var report = await engine.CheckAsync("Lib/Result.cs");
+        // A reference search does not return the places an implicit conversion is applied, so the type's name reaches them.
+        var error = Assert.Single(report.Errors, e => e.Error.Path == "App/UseResult.cs");
+        Assert.Equal("CS0266", error.Error.Id);
+        Assert.Equal(new Cause.Removed("public static implicit operator Result<T>(T value)"), error.Cause);
+    }
+
     /// <summary>The standard fixture with <paramref name="files"/> written and committed, so they are part of HEAD.</summary>
     private static async Task<InProcessEngine> StartWithAsync(params (string Path, string Content)[] files)
     {

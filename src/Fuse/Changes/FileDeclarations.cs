@@ -102,7 +102,7 @@ internal sealed class FileDeclarations
             switch (child)
             {
                 case BaseNamespaceDeclarationSyntax ns:
-                    Walk(ns, Qualify(container, ns.Name.ToString()));
+                    Walk(ns, Qualify(container, Dotted(ns.Name)));
                     break;
                 case DelegateDeclarationSyntax del:
                     Add(new DeclarationKey.NamedType($"{Qualify(container, del.Identifier.Text)}`{Arity(del.TypeParameterList)}"), del, Flat(del), [del.Identifier.Text], null);
@@ -133,7 +133,7 @@ internal sealed class FileDeclarations
         }
 
         var header = new StringBuilder();
-        header.Append(Flat(type.AttributeLists)).Append(' ').Append(type.Modifiers.ToString()).Append(' ');
+        header.Append(Flat(type.AttributeLists)).Append(' ').Append(Flat(type.Modifiers)).Append(' ');
         header.Append(type switch
         {
             RecordDeclarationSyntax r => r.Keyword.Text + r.ClassOrStructKeyword.Text,
@@ -164,7 +164,7 @@ internal sealed class FileDeclarations
 
     private void AddMember(MemberDeclarationSyntax member, DeclarationKey.NamedType type, string typeName)
     {
-        var prefix = Flat(member.AttributeLists) + " " + member.Modifiers;
+        var prefix = Flat(member.AttributeLists) + " " + Flat(member.Modifiers);
         switch (member)
         {
             case BaseTypeDeclarationSyntax nested:
@@ -200,14 +200,14 @@ internal sealed class FileDeclarations
                 break;
             case IndexerDeclarationSyntax indexer:
                 Add(
-                    new DeclarationKey.Member(type, $"I:[{ParameterTypes(indexer.ParameterList)}]"),
+                    new DeclarationKey.Member(type, $"I:{Flat(indexer.ExplicitInterfaceSpecifier)}[{ParameterTypes(indexer.ParameterList)}]"),
                     indexer,
                     $"{prefix} {Flat(indexer.Type)} {Flat(indexer.ParameterList)} {Accessors(indexer.AccessorList, indexer.ExpressionBody)}",
                     [typeName],
                     type);
                 break;
             case EventDeclarationSyntax evt:
-                Add(new DeclarationKey.Member(type, $"E:{evt.Identifier.Text}"), evt, $"{prefix} {Flat(evt.Type)}", [evt.Identifier.Text, typeName], type);
+                Add(new DeclarationKey.Member(type, $"E:{Flat(evt.ExplicitInterfaceSpecifier)}{evt.Identifier.Text}"), evt, $"{prefix} {Flat(evt.Type)}", [evt.Identifier.Text, typeName], type);
                 break;
             case EventFieldDeclarationSyntax eventField:
                 foreach (var variable in eventField.Declaration.Variables)
@@ -224,10 +224,10 @@ internal sealed class FileDeclarations
 
                 break;
             case OperatorDeclarationSyntax op:
-                Add(new DeclarationKey.Member(type, $"O:{op.OperatorToken.Text}({ParameterTypes(op.ParameterList)})"), op, $"{prefix} {Flat(op.ReturnType)} {Flat(op.ParameterList)}", [typeName], type);
+                Add(new DeclarationKey.Member(type, $"O:{Flat(op.ExplicitInterfaceSpecifier)}{CheckedMarker(op.CheckedKeyword)}{op.OperatorToken.Text}({ParameterTypes(op.ParameterList)})"), op, $"{prefix} {Flat(op.ReturnType)} {Flat(op.ParameterList)}", [typeName], type);
                 break;
             case ConversionOperatorDeclarationSyntax conversion:
-                Add(new DeclarationKey.Member(type, $"O:{conversion.ImplicitOrExplicitKeyword.Text}({Flat(conversion.Type)})"), conversion, $"{prefix} {Flat(conversion.ParameterList)}", [typeName], type);
+                Add(new DeclarationKey.Member(type, $"O:{Flat(conversion.ExplicitInterfaceSpecifier)}{conversion.ImplicitOrExplicitKeyword.Text} {CheckedMarker(conversion.CheckedKeyword)}{Flat(conversion.Type)}({ParameterTypes(conversion.ParameterList)})"), conversion, $"{prefix} {Flat(conversion.ParameterList)}", [typeName], type);
                 break;
         }
     }
@@ -236,11 +236,14 @@ internal sealed class FileDeclarations
     {
         if (accessors is null)
             return expressionBody is null ? "" : "get";
-        return string.Join(' ', accessors.Accessors.Select(a => $"{Flat(a.AttributeLists)} {a.Modifiers} {a.Keyword.Text}"));
+        return string.Join(' ', accessors.Accessors.Select(a => $"{Flat(a.AttributeLists)} {Flat(a.Modifiers)} {a.Keyword.Text}"));
     }
 
     private static string ParameterTypes(BaseParameterListSyntax? list) =>
-        list is null ? "" : string.Join(",", list.Parameters.Select(p => $"{p.Modifiers} {Flat(p.Type)}"));
+        list is null ? "" : string.Join(",", list.Parameters.Select(p => $"{Flat(p.Modifiers)} {Flat(p.Type)}"));
+
+    /// <summary>A checked operator and its unchecked form are two members, so the key tells them apart.</summary>
+    private static string CheckedMarker(SyntaxToken checkedKeyword) => checkedKeyword.IsKind(SyntaxKind.CheckedKeyword) ? "checked " : "";
 
     private static int Arity(TypeParameterListSyntax? list) => list?.Parameters.Count ?? 0;
 
@@ -264,4 +267,10 @@ internal sealed class FileDeclarations
 
     private static string Flat<T>(SyntaxList<T> list)
         where T : SyntaxNode => string.Join(" ", list.Select(n => Flat(n)));
+
+    /// <summary>Modifiers separated by single spaces, where <see cref="SyntaxTokenList.ToString"/> keeps the whitespace between them.</summary>
+    private static string Flat(SyntaxTokenList tokens) => string.Join(" ", tokens.Select(t => t.Text));
+
+    /// <summary>A namespace name with its trivia removed, <c>A.B</c> however it is spaced.</summary>
+    private static string Dotted(NameSyntax name) => string.Concat(name.DescendantTokens().Select(t => t.Text));
 }

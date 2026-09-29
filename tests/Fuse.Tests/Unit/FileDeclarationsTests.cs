@@ -40,6 +40,33 @@ public class FileDeclarationsTests
         Assert.Equal(2, members.Distinct().Count());
     }
 
+    [Theory]
+    [InlineData("interface IBag { int this[int i] { get; } } class C : IBag { int IBag.this[int i] => i; public int this[int i] => i + 1; }", "I:")]
+    [InlineData("interface IBag { event System.EventHandler E; } class C : IBag { event System.EventHandler IBag.E { add { } remove { } } public event System.EventHandler E { add { } remove { } } }", "E:")]
+    [InlineData("struct C { public static C operator +(C a, C b) => a; public static C operator checked +(C a, C b) => a; }", "O:")]
+    [InlineData("struct C { public static explicit operator int(C c) => 0; public static explicit operator checked int(C c) => 0; }", "O:")]
+    [InlineData("struct C { public static implicit operator C(int value) => default; public static implicit operator C(string text) => default; }", "O:")]
+    [InlineData("struct C { public static implicit operator int(C c) => 0; public static implicit operator long(C c) => 0; }", "O:")]
+    public void Two_members_that_differ_only_in_explicit_interface_checked_or_conversion_types_have_their_own_keys(string source, string kind)
+    {
+        var members = Of(source).All.Where(d => d.Key is DeclarationKey.Member { Container.Name: "C`0" } m && m.Signature.StartsWith(kind, StringComparison.Ordinal)).ToList();
+        Assert.Equal(2, members.Count);
+        Assert.All(members, m => Assert.Single(m.Parts));
+    }
+
+    [Theory]
+    [InlineData("static class C { static void M(this ref int a) { } }", "static class C { static void M(this  ref int a) { } }")]
+    [InlineData("public static class C { }", "public  static class C { }")]
+    [InlineData("class C { public static int M() => 1; }", "class C { public  static int M() => 1; }")]
+    [InlineData("class C { public int P { get; protected internal set; } }", "class C { public int P { get; protected  internal set; } }")]
+    [InlineData("namespace A.B { class C { } }", "namespace A . B { class C { } }")]
+    public void Whitespace_between_modifiers_or_in_a_namespace_name_changes_no_key_or_surface(string before, string after)
+    {
+        var old = Of(before).All;
+        var now = Of(after).All;
+        Assert.Equal(old.Select(d => (d.Key, d.Surface)), now.Select(d => (d.Key, d.Surface)));
+    }
+
     [Fact]
     public void Each_variable_of_a_field_has_its_own_key_and_its_declarator()
     {

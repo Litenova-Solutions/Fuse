@@ -13,7 +13,7 @@ public class EngineProcessTests
         {
             var first = await FuseProcess.RunAsync(repo.Path, null, "check");
             Assert.Equal(0, first.ExitCode);
-            Assert.Contains("fuse: no new errors", first.Stdout, StringComparison.Ordinal);
+            Assert.Contains("fuse: no errors introduced", first.Stdout, StringComparison.Ordinal);
 
             repo.Replace("Lib/Calc.cs", "public int Add(", "public int Plus(");
             var second = await FuseProcess.RunAsync(repo.Path, null, "check", "Lib/Calc.cs");

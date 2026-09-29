@@ -25,7 +25,7 @@ Listed from the top. Each layer may use the layers below it, with the exceptions
 | Operations | `Fuse.Operations` | Check, test and build as a client runs them, and rendering their output |
 | Client | `Fuse.Engine.Client` | Finding, starting and calling the engine |
 | Wire | `Fuse.Protocol` | Request and response records, their JSON, and `EngineVersion` |
-| Engine | `Fuse.Engine` | The engine process: pipe server, request routing, batching, preload, mapping results to `Protocol` |
+| Engine | `Fuse.Engine` | The engine process: pipe server, request routing, preload, mapping results to `Protocol` |
 | Features | `Fuse.Check`, `Fuse.Testing` | The check algorithm, and test selection and planning |
 | Changes | `Fuse.Changes` | Which declarations differ between HEAD and the working tree, from syntax |
 | Workspace | `Fuse.Workspace` | The current and baseline Roslyn solutions, project loading, and keeping both views current |
@@ -44,7 +44,8 @@ The client and the engine are separate processes. `fuse init`, `fuse hook`, `fus
 | `Fuse.Graph` | `Fuse.Repo`, `Fuse.Dotnet`, Foundation |
 | `Fuse.Workspace` | Sources, Foundation |
 | `Fuse.Changes` | `Fuse.Workspace`, Sources, Foundation |
-| `Fuse.Check`, `Fuse.Testing` | `Fuse.Changes`, `Fuse.Workspace`, Sources, Foundation; never each other |
+| `Fuse.Check.Model` | Foundation |
+| `Fuse.Check`, `Fuse.Testing` | their own `Model` namespace, `Fuse.Changes`, `Fuse.Workspace`, Sources, Foundation; never each other |
 | `Fuse.Engine` | Features and everything below them, `Fuse.Protocol` |
 | `Fuse.Protocol` | Foundation, `Fuse.Check.Model` (for `CompilerError` only, [D11](#decisions)) |
 | `Fuse.Engine.Client` | `Fuse.Protocol`, `Fuse.Repo`, `Fuse.Dotnet`, Foundation |
@@ -103,10 +104,10 @@ The steps follow the numbered list in [design.md](design.md#check). Each is one 
 | Type | Cases or fields | Replaces |
 | --- | --- | --- |
 | `CheckScope` | `AllChanges`, `Files(IReadOnlyList<RepoPath>)` | `IReadOnlyCollection<string>? files`, where null means every change |
-| `Reach` | `None` (no declaration change), `Broad(projects)` (every file in the reached projects), `Precise(IReadOnlyDictionary<RepoPath, Cause>)` | `ReachProvenance?` together with a project count, which `Checker` reads in one conditional |
+| `Reach` | `None` (no declaration change), `Broad(IReadOnlySet<RepoPath>)` (every file in the reached projects), `Precise(IReadOnlyDictionary<RepoPath, Cause>)` | `ReachProvenance?` together with a project count, which `Checker` reads in one conditional |
 | `Cause` | `Changed(declaration)`, `Removed(declaration as it was at HEAD)` | `(string Declaration, bool Removed)` |
 | `IntroducedError` | `CompilerError`, `Cause?` | the pair `CheckReport.Introduced` and `CheckReport.Context`, two arrays that must stay the same length |
-| `CheckResult` | introduced errors, files checked, projects with declaration changes, dependents checked, whether whole projects were checked, causes left out | `CheckReport` used as the domain result |
+| `CheckResult` | introduced errors, files checked, the projects the errors are in, projects with declaration changes, dependents checked, whether whole projects were checked, causes left out | `CheckReport` used as the domain result |
 
 `CompilerError` lives in `Fuse.Check.Model` and `Fuse.Protocol` uses it, because the wire carries it unchanged ([D11](#decisions)). The cause is nullable because only rendering reads it: an error in a target file, an analyzer error and an error past the cap all print with no cause line.
 
@@ -117,8 +118,7 @@ The steps follow the numbered list in [design.md](design.md#check). Each is one 
 3. `ChangeReach`: turns the declaration changes of the targets into a `Reach`.
 4. `CandidateBinding`: binds the reached files, or whole projects past 500 candidates.
 5. `CauseLines`: attaches causes to errors in candidate files, at most ten per answer.
-6. `Checker`: runs one batch. The work clients share (sync, loading, binding) runs once, and each client's `ClientSlice` then gets its own `CheckResult`.
-7. `CheckBatch`: the 50 ms window that turns concurrent requests into one batch, each held as a `PendingCheck`.
+6. `Checker`: answers one check request, behind the engine's request lock. It syncs the workspace, loads the owners of the targets and later the dependents of the projects with declaration changes, runs steps 1 to 5 in order, records each as a `Phase`, and returns a `CheckResult`.
 
 ## Testing
 
@@ -148,7 +148,7 @@ The steps follow the numbered list in [design.md](design.md#check). Each is one 
 | `Workspace/RepoWorkspace.cs` | 388 | `ProjectLoader` (MSBuildWorkspace, restore check, load failures, configuration generation); `SolutionViews` (current and baseline, baseline generation, applying disk or HEAD content to a document); `WorkspaceSync` (acting on a `SyncResult`); `RepoWorkspace` as the entry point features use |
 | `Repo/ChangeTracker.cs` | 350 | `HeadResolver` (HEAD and its readability); `GitStatus` (the NUL-separated `git status` seed); `WatchedPaths` (the file watcher and the dirty sets); `HeadComparison` (whether a file differs from HEAD, ignoring line endings); `ChangeTracker` composing them |
 
-`ChangeBatch` becomes `SyncResult`, a variant with one case per response: `Reevaluate`, `Reload` and `Patch(paths, vanishedDirectories)`. Today it carries three booleans, `HeadMoved`, `ProjectFilesChanged` and `Storm`, from which `RepoWorkspace.SyncAsync` derives the response, and they can express combinations that never happen. `ChangeTracker.SyncAsync` returns `HeadMoved: true` only together with `Storm: true`, and `RepoWorkspace.SyncAsync` returns on `Storm` before it reaches `if (batch.HeadMoved || _rebuildPending)`, so `batch.HeadMoved` is always false in that condition. With named cases only the real combinations can be written, and "batch" is left to mean concurrent check requests only.
+`ChangeBatch` becomes `SyncResult`, a variant with one case per response: `Reevaluate`, `Reload` and `Patch(paths, vanishedDirectories)`. Today it carries three booleans, `HeadMoved`, `ProjectFilesChanged` and `Storm`, from which `RepoWorkspace.SyncAsync` derives the response, and they can express combinations that never happen. `ChangeTracker.SyncAsync` returns `HeadMoved: true` only together with `Storm: true`, and `RepoWorkspace.SyncAsync` returns on `Storm` before it reaches `if (batch.HeadMoved || _rebuildPending)`, so `batch.HeadMoved` is always false in that condition. With named cases only the real combinations can be written.
 
 ## Harnesses
 
@@ -205,8 +205,7 @@ Each word names one thing. "Output" says whether agents and people see the word 
 | Plan | Every selection, and how each runs. | no | |
 | Shadow run | Running a test assembly from a copy of its build output with the changed assemblies emitted into it. | yes ("without MSBuild") | fast path, fast build |
 | Summary | The sentence at the end of an answer that says what was done and why. | no | scope, message |
-| Batch | Check requests answered together within one window. | no | group; also not for a sync |
-| Client | One requester in a batch, or the process that sent a request. | no | caller, agent (the agent is outside Fuse) |
+| Client | The process that sent a request. | no | caller, agent (the agent is outside Fuse) |
 | Phase | One named, timed part of a request. | no | stage, step |
 | Configuration generation | The counter that invalidates everything derived from project configuration. | no | loader generation |
 | Unanswered | Fuse could not produce an answer: an `Unanswered` engine response, and exit code 2. | yes ("Fuse could not answer") | failed (for Fuse itself) |
@@ -221,7 +220,7 @@ Each word names one thing. "Output" says whether agents and people see the word 
 
 These decide a name the vocabulary does not list yet. Each came from a pattern the code had repeated at least twice.
 
-1. **A word in the vocabulary is reserved.** A second concept gets a different word, and the collision is added to the "Do not write" column. Before this rule, "failed" meant both a test failure and Fuse not answering, and "batch" meant both a sync and concurrent checks.
+1. **A word in the vocabulary is reserved.** A second concept gets a different word, and the collision is added to the "Do not write" column. Before this rule, "failed" meant both a test failure and Fuse not answering.
 2. **One concept, one word.** Review rejects a synonym, in code, docs and output alike. Before this rule, the cause had four names.
 3. **Output uses only words marked yes.** Compiler and implementation words (bind, shadow, surface, reach) stay in code and contributor docs. Before this rule, the output said "whole projects bound" and "fast path".
 4. **No Fuse type shares a simple name with a BCL, Roslyn or MSBuild type.** An alias to resolve a clash is the signal. Before this rule, `Diagnostic` needed `FuseDiagnostic` and `RoslynDiagnostic`.
@@ -229,7 +228,7 @@ These decide a name the vocabulary does not list yet. Each came from a pattern t
 6. **A boolean reads as a yes-or-no question**: `Is`, `Has`, `Uses`, or a verb phrase such as `WaitForLoad` or `FromAnalyzer`.
 7. **A request is a verb; a result is a noun; a variant case names the state.** `Check`, `PlanTests`; `CheckResult`; `AllChanges`, `Whole`, `Unanswered`.
 8. **A namespace is named for what it owns**, which is also its layer on this page, not for one of its callers.
-9. **A class is named for its one responsibility.** A nested or private helper type gets a real name too (`ClientSlice`, `PendingCheck`, `MemberWalk`), never a placeholder such as `Own`, `Waiting` or `Walk`. `Native`, the .NET convention for P/Invoke declarations, is the exception.
+9. **A class is named for its one responsibility.** A nested or private helper type gets a real name too (`MemberWalk`), never a placeholder such as `Walk`. `Native`, the .NET convention for P/Invoke declarations, is the exception.
 10. **A number with a unit carries the unit** in its name (`TotalMs`) or is a `TimeSpan`.
 
 ## Decisions
@@ -265,7 +264,7 @@ These are decisions that bend a principle, recorded so they are not copied as pr
 
 ## Where the code is today
 
-Measured at commit `20199cb`, including the uncommitted work on `release/v5.1.0` (`CheckBatch`, `ErrorContext`, `ReachProvenance`).
+Measured at commit `20199cb`, including the uncommitted work on `release/v5.1.0` (`ErrorContext`, `ReachProvenance`).
 
 **Namespace cycles.** Each row lists the Fuse namespaces the namespace uses:
 
@@ -318,8 +317,6 @@ Every name that changes, with the migration step that changes it. Reach says who
 | `ChangeReach.HasSurfaceChangeAsync` | `HasDeclarationChangeAsync` | internal | 3 |
 | `ErrorContext` | `CauseLines` | internal | 3 |
 | `ReachProvenance` | `Reach.Precise` | internal | 3 |
-| `Checker.Own` | `ClientSlice` | internal | 3 |
-| `CheckBatch.Waiting` | `PendingCheck` | internal | 3 |
 | "fuse: N new error(s) in M file(s)" | "fuse: N error(s) introduced in M file(s)" | output | 3 |
 | "fuse: no new errors" | "fuse: no errors introduced" | output | 3 |
 | "whole projects bound" | "checked whole projects" | output | 3 |
@@ -361,4 +358,4 @@ Each step builds, passes the tests and can merge on its own. Each step renames w
 9. `RepoPath`, which touches every layer and is easiest once the others have settled.
 10. The wording pass: HEAD and product-name casing in the README, the MCP descriptions and the site. Then update the layout section of [AGENTS.md](../AGENTS.md) to this page's layers, and link this page from there.
 
-Start after the `release/v5.1.0` work is committed. Steps 3 and 7 rewrite `Checker`, `CheckBatch`, `ErrorContext` and `RepoWorkspace`, which that branch changes.
+Start after the `release/v5.1.0` work is committed. Steps 3 and 7 rewrite `Checker`, `ErrorContext` and `RepoWorkspace`, which that branch changes.

@@ -32,7 +32,7 @@ public class NonAsciiPathTests
             repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
             var result = await FuseProcess.RunAsync(repo.Path, null, "check", "Lib/Calc.cs");
             Assert.Equal(0, result.ExitCode);
-            Assert.Contains("no new errors", result.Stdout, StringComparison.Ordinal);
+            Assert.Contains("no errors introduced", result.Stdout, StringComparison.Ordinal);
         }
         finally
         {
@@ -144,7 +144,7 @@ public class NonAsciiPathTests
             repo.Replace("Lib/trailing .cs", "=> 1;", "=> 1 + 1;");
             var result = await FuseProcess.RunAsync(repo.Path, null, "check");
             Assert.Equal(0, result.ExitCode);
-            Assert.Contains("no new errors", result.Stdout, StringComparison.Ordinal);
+            Assert.Contains("no errors introduced", result.Stdout, StringComparison.Ordinal);
         }
         finally
         {

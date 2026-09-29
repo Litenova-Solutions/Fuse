@@ -1,4 +1,6 @@
 using System.Collections.Immutable;
+using Fuse.Check.Model;
+using Fuse.Graph;
 using Fuse.Paths;
 using Fuse.Workspace;
 using Microsoft.CodeAnalysis;
@@ -25,7 +27,7 @@ namespace Fuse.Check;
 ///         <item>A removed type: files referencing it. An added type: files mentioning its name (it can clash with a same-named type).</item>
 ///         <item>
 ///             A changed type header, delegate, global using or assembly attribute can break code that never names it,
-///             so it is reported as broad and the caller re-checks every file in reach.
+///             so the reach is <see cref="Reach.Broad"/> and the caller re-checks every file in the reached projects.
 ///         </item>
 ///     </list>
 /// </remarks>
@@ -37,8 +39,8 @@ internal sealed class ChangeReach
 
     public ChangeReach(RepoWorkspace workspace) => _workspace = workspace;
 
-    /// <summary>True when the file's declarations differ from HEAD. Syntax only; binds nothing.</summary>
-    public async Task<bool> HasSurfaceChangeAsync(string path, CancellationToken cancellationToken)
+    /// <summary>True when the file has a declaration change against HEAD. Syntax only; binds nothing.</summary>
+    public async Task<bool> HasDeclarationChangeAsync(string path, CancellationToken cancellationToken)
     {
         var head = _workspace.HeadText(path);
         var now = await CurrentTextAsync(path, cancellationToken).ConfigureAwait(false);
@@ -52,18 +54,17 @@ internal sealed class ChangeReach
         return SurfaceMap.Changes(before, after).Any(c => !(c.Key.StartsWith("U:", StringComparison.Ordinal) && c.Before is null));
     }
 
-    /// <summary>The files in <paramref name="reach"/> that the declaration changes in <paramref name="paths"/> can break, or null when a change is broad.</summary>
-    public async Task<HashSet<string>?> FilesAsync(IReadOnlyList<string> paths, IReadOnlyList<Project> reach, CancellationToken cancellationToken) =>
-        (await ProvenanceAsync(paths, reach, cancellationToken).ConfigureAwait(false))?.Files;
-
     /// <summary>
-    ///     The files the declaration changes in <paramref name="paths"/> can break, each with the changed declaration that
-    ///     makes it a candidate, or null when a change is broad and the caller has to bind everything. The candidate set is
-    ///     the same one <see cref="FilesAsync"/> returns; this keeps the reason for each file with it, so an error in a
-    ///     candidate can name the declaration that put the file in scope.
+    ///     The files in the reached projects that the declaration changes in <paramref name="paths"/> can break. The reach
+    ///     is <see cref="Reach.Precise"/>, with the change that made each file a candidate so an error there can name its
+    ///     cause, unless one change is broad, which makes it <see cref="Reach.Broad"/>.
     /// </summary>
-    public async Task<ReachProvenance?> ProvenanceAsync(IReadOnlyList<string> paths, IReadOnlyList<Project> reach, CancellationToken cancellationToken)
+    /// <param name="paths">Absolute paths of the targets with a declaration change.</param>
+    /// <param name="reached">The projects that own those targets, and their dependents, all loaded.</param>
+    /// <param name="cancellationToken">Cancels the search.</param>
+    public async Task<Reach> ReachAsync(IReadOnlyList<string> paths, IReadOnlyList<ProjectNode> reached, CancellationToken cancellationToken)
     {
+        var projects = reached.SelectMany(n => RepoWorkspace.ProjectsFor(_workspace.Current, n)).ToList();
         if (_cachedGeneration != _workspace.BaselineGeneration)
         {
             _cache.Clear();
@@ -71,22 +72,22 @@ internal sealed class ChangeReach
         }
 
         var baseline = _workspace.Baseline;
-        var reachIds = reach.Select(p => p.Id).ToHashSet();
+        var reachIds = projects.Select(p => p.Id).ToHashSet();
         // Reference sets depend on which projects were searched; a background load widens the reach.
         var reachKey = string.Join(",", reachIds.Select(id => id.Id.ToString("N")).Order(StringComparer.Ordinal));
         var baselineProjects = baseline.Projects.Where(p => reachIds.Contains(p.Id)).ToImmutableHashSet();
         var baselineDocuments = baselineProjects.SelectMany(p => p.Documents).ToImmutableHashSet();
 
         var changed = new List<Change>();
-        var derivedFrom = new List<(INamedTypeSymbol Type, string Declaration, bool Removed)>();
-        var names = new List<(string Name, string Declaration, bool Removed)>();
+        var derivedFrom = new List<(INamedTypeSymbol Type, Cause Cause)>();
+        var names = new List<(string Name, Cause Cause)>();
         foreach (var path in paths)
         {
             if (!path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
             {
                 // A Razor component or view is used by its file name.
                 var name = Path.GetFileNameWithoutExtension(path);
-                names.Add((name, name, false));
+                names.Add((name, new Cause.Changed(name)));
                 continue;
             }
 
@@ -101,40 +102,40 @@ internal sealed class ChangeReach
             {
                 var entry = change.After ?? change.Before!;
                 // A removal has no working-tree declaration, so the one that goes with it is the one at HEAD.
-                var removed = change.After is null;
+                Cause cause = change.After is null ? new Cause.Removed(entry.Declaration) : new Cause.Changed(entry.Declaration);
                 if (change.Key.StartsWith("U:", StringComparison.Ordinal))
                 {
                     // An added using cannot change what another file sees. A removed one can change every signature in
                     // this file, so every file that names one of this file's types is a candidate.
-                    if (removed)
+                    if (cause is Cause.Removed)
                     {
                         foreach (var typeName in entry.Names)
-                            names.Add((typeName, entry.Declaration, true));
+                            names.Add((typeName, cause));
                     }
 
                     continue;
                 }
 
                 if (change.Key.StartsWith("G:", StringComparison.Ordinal) || change.Key.StartsWith("A:", StringComparison.Ordinal) || entry.Node is DelegateDeclarationSyntax)
-                    return null;
+                    return Broad(projects);
                 if (change.Key.StartsWith("T:", StringComparison.Ordinal))
                 {
                     if (change.Before is not null && change.After is not null)
-                        return null;
+                        return Broad(projects);
                     if (change.Before is not null && Declared(model, change.Before.Node, cancellationToken) is { } removedType)
-                        changed.Add(new(removedType, entry.Declaration, removed, true));
+                        changed.Add(new(removedType, cause, true));
                     else
-                        names.Add((entry.Names[0], entry.Declaration, false));
+                        names.Add((entry.Names[0], new Cause.Changed(entry.Declaration)));
                     continue;
                 }
 
                 if (change.Before is not null)
                 {
                     if (Declared(model, change.Before.Node, cancellationToken) is not { } member)
-                        return null;
-                    changed.Add(new(member, entry.Declaration, removed, true));
+                        return Broad(projects);
+                    changed.Add(new(member, cause, true));
                     if (member is IMethodSymbol { MethodKind: MethodKind.Constructor, ContainingType: { } constructed })
-                        derivedFrom.Add((constructed, entry.Declaration, removed));
+                        derivedFrom.Add((constructed, cause));
                     continue;
                 }
 
@@ -145,13 +146,14 @@ internal sealed class ChangeReach
                 var name = entry.Names[0];
                 for (var type = containingType; type is not null; type = type.BaseType)
                     foreach (var member in type.GetMembers(name).Where(m => !m.IsImplicitlyDeclared))
-                        changed.Add(new(member, entry.Declaration, removed, false));
+                        changed.Add(new(member, cause, false));
                 if (containingType.TypeKind == TypeKind.Interface || containingType.IsAbstract)
-                    derivedFrom.Add((containingType, entry.Declaration, removed));
+                    derivedFrom.Add((containingType, cause));
             }
         }
 
-        var provenance = new ReachProvenance();
+        // A file several changes reach keeps the first change that reached it, in the order the changes were seen.
+        var causes = new Dictionary<string, Cause>(PathRules.PathComparer);
         foreach (var change in changed.GroupBy(c => c.Symbol, SymbolEqualityComparer.Default).Select(g => g.First()))
         {
             // A copy: the reference set is cached, and the implementations and overrides below are added to this one.
@@ -162,32 +164,38 @@ internal sealed class ChangeReach
                 files.UnionWith(Declarations(await SymbolFinder.FindOverridesAsync(change.Symbol, baseline, baselineProjects, cancellationToken).ConfigureAwait(false)));
             }
 
-            provenance.AddRange(files, change.Declaration, change.Removed);
+            foreach (var file in files)
+                causes.TryAdd(file, change.Cause);
         }
 
-        foreach (var (type, declaration, removed) in derivedFrom.DistinctBy(d => d.Type, SymbolEqualityComparer.Default))
+        foreach (var (type, cause) in derivedFrom.DistinctBy(d => d.Type, SymbolEqualityComparer.Default))
         {
             var files = Declarations(await SymbolFinder.FindDerivedClassesAsync(type, baseline, transitive: true, baselineProjects, cancellationToken).ConfigureAwait(false));
             if (type.TypeKind == TypeKind.Interface)
                 files = files.Concat(Declarations(await SymbolFinder.FindImplementationsAsync(type, baseline, baselineProjects, cancellationToken).ConfigureAwait(false)));
-            provenance.AddRange(files, declaration, removed);
+            foreach (var file in files)
+                causes.TryAdd(file, cause);
         }
 
         if (names.Count > 0)
         {
-            foreach (var document in reach.SelectMany(p => p.Documents.Concat<TextDocument>(p.AdditionalDocuments)))
+            foreach (var document in projects.SelectMany(p => p.Documents.Concat<TextDocument>(p.AdditionalDocuments)))
             {
                 if (document.FilePath is null)
                     continue;
                 var text = (await document.GetTextAsync(cancellationToken).ConfigureAwait(false)).ToString();
                 var name = names.FirstOrDefault(n => text.Contains(n.Name, StringComparison.Ordinal));
                 if (name.Name is not null)
-                    provenance.Add(document.FilePath, name.Declaration, name.Removed);
+                    causes.TryAdd(document.FilePath, name.Cause);
             }
         }
 
-        return provenance;
+        return new Reach.Precise(causes);
     }
+
+    /// <summary>Every source file of <paramref name="projects"/>, for a change that a reference search cannot bound.</summary>
+    private static Reach.Broad Broad(IReadOnlyList<Project> projects) =>
+        new(projects.SelectMany(p => p.Documents).Select(d => d.FilePath).OfType<string>().ToHashSet(PathRules.PathComparer));
 
     private async Task<IEnumerable<string>> ReferencingFilesAsync(ISymbol symbol, string reachKey, Solution baseline, IImmutableSet<Document> documents, CancellationToken cancellationToken)
     {
@@ -229,9 +237,9 @@ internal sealed class ChangeReach
             .GetRootAsync(cancellationToken);
 
     /// <summary>
-    ///     One changed declaration resolved to its symbol at HEAD, with the declaration text an error can name and
-    ///     whether anything implements or derives from it.
+    ///     One changed declaration resolved to its symbol at HEAD, with the cause an error in a file that uses it names,
+    ///     and whether anything implements or derives from it.
     /// </summary>
     /// <param name="Implemented">Whether to look for implementations and overrides of the symbol.</param>
-    private sealed record Change(ISymbol Symbol, string Declaration, bool Removed, bool Implemented);
+    private sealed record Change(ISymbol Symbol, Cause Cause, bool Implemented);
 }

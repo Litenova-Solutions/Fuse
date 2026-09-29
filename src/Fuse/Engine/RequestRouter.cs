@@ -1,4 +1,5 @@
 using Fuse.Check;
+using Fuse.Check.Model;
 using Fuse.Failures;
 using Fuse.Paths;
 using Fuse.Protocol;
@@ -109,7 +110,7 @@ internal sealed class RequestRouter : IDisposable
         {
             return request.Kind switch
             {
-                RequestKind.Check => ResponseMapper.Answered(await _checker.CheckAsync(request.Files, phases, cancellationToken).ConfigureAwait(false)),
+                RequestKind.Check => ResponseMapper.Answered(await _checker.CheckAsync(ScopeOf(request), phases, cancellationToken).ConfigureAwait(false)),
                 RequestKind.TestPlan => ResponseMapper.Answered(await _planner.PlanAsync(request.AllTests, phases, cancellationToken).ConfigureAwait(false)),
                 _ => EngineResponse.Fail(ErrorCode.Internal, $"unknown request {request.Kind}"),
             };
@@ -130,6 +131,10 @@ internal sealed class RequestRouter : IDisposable
             _preloader.Schedule(_shutdown);
         }
     }
+
+    /// <summary>What a check request covers: the files it names, or every change when it names none.</summary>
+    private static CheckScope ScopeOf(EngineRequest request) =>
+        request.Files is null ? new CheckScope.AllChanges() : new CheckScope.Files(request.Files);
 
     /// <summary>
     ///     Waits for a background load to stop, after the shutdown token has been cancelled, so the workspace is never

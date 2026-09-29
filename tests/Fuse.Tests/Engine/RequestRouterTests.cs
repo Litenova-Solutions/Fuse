@@ -37,8 +37,8 @@ public class RequestRouterTests
         var formatter = repo.Full("Lib/Formatter.cs").Replace('\\', '/');
         var answers = await Task.WhenAll(engine.CheckAsync(calc), engine.CheckAsync(formatter));
 
-        Assert.Contains(answers, a => a.Check!.Introduced.Any(d => d.Message.Contains("'Add'", StringComparison.Ordinal)));
-        Assert.Contains(answers, a => a.Check!.Introduced.Any(d => d.Message.Contains("'Format'", StringComparison.Ordinal)));
+        Assert.Contains(answers, a => a.Check!.Errors.Any(e => e.Error.Message.Contains("'Add'", StringComparison.Ordinal)));
+        Assert.Contains(answers, a => a.Check!.Errors.Any(e => e.Error.Message.Contains("'Format'", StringComparison.Ordinal)));
     }
 
     [Fact]

@@ -1,8 +1,7 @@
 using System.Collections.Concurrent;
+using Fuse.Check.Model;
 using Fuse.Paths;
 using Microsoft.CodeAnalysis;
-using RoslynDiagnostic = Microsoft.CodeAnalysis.Diagnostic;
-using FuseDiagnostic = Fuse.Protocol.Diagnostic;
 
 namespace Fuse.Check;
 
@@ -15,7 +14,7 @@ internal sealed class DiagnosticCollector
 {
     private readonly RepoRoot _root;
     private readonly AnalyzerSelector _analyzers;
-    private readonly ConcurrentDictionary<string, IReadOnlyList<FuseDiagnostic>> _baselineCache = new(PathRules.PathComparer);
+    private readonly ConcurrentDictionary<string, IReadOnlyList<CompilerError>> _baselineCache = new(PathRules.PathComparer);
     private int _cachedGeneration = -1;
 
     private long _compilerTicks;
@@ -38,9 +37,9 @@ internal sealed class DiagnosticCollector
     }
 
     /// <summary>Errors reported in <paramref name="path"/>, from the regular documents and from Razor-generated code mapped back to it.</summary>
-    public async Task<IReadOnlyList<FuseDiagnostic>> ForFileAsync(Solution solution, string path, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<CompilerError>> ForFileAsync(Solution solution, string path, CancellationToken cancellationToken)
     {
-        var result = new List<FuseDiagnostic>();
+        var result = new List<CompilerError>();
         foreach (var id in solution.GetDocumentIdsWithFilePath(path))
         {
             var document = solution.GetDocument(id);
@@ -58,7 +57,7 @@ internal sealed class DiagnosticCollector
     }
 
     /// <summary>Same as <see cref="ForFileAsync"/> against the baseline, cached until the baseline changes.</summary>
-    public async Task<IReadOnlyList<FuseDiagnostic>> ForBaselineFileAsync(Solution baseline, int generation, string path, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<CompilerError>> ForBaselineFileAsync(Solution baseline, int generation, string path, CancellationToken cancellationToken)
     {
         if (generation != _cachedGeneration)
         {
@@ -74,7 +73,7 @@ internal sealed class DiagnosticCollector
     }
 
     /// <summary>Same as <see cref="ForProjectAsync"/> against the baseline, cached until the baseline changes.</summary>
-    public async Task<IReadOnlyList<FuseDiagnostic>> ForBaselineProjectAsync(Project project, int generation, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<CompilerError>> ForBaselineProjectAsync(Project project, int generation, CancellationToken cancellationToken)
     {
         if (generation != _cachedGeneration)
         {
@@ -91,7 +90,7 @@ internal sealed class DiagnosticCollector
     }
 
     /// <summary>Every error in the project, bound whole. Used when the set of files a change can reach is too large to enumerate.</summary>
-    public async Task<IReadOnlyList<FuseDiagnostic>> ForProjectAsync(Project project, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<CompilerError>> ForProjectAsync(Project project, CancellationToken cancellationToken)
     {
         var compilation = await project.GetCompilationAsync(cancellationToken).ConfigureAwait(false);
         if (compilation is null)
@@ -101,24 +100,24 @@ internal sealed class DiagnosticCollector
         var diagnostics = withAnalyzers is null
             ? compilation.GetDiagnostics(cancellationToken)
             : await withAnalyzers.GetAllDiagnosticsAsync(cancellationToken).ConfigureAwait(false);
-        return Distinct(diagnostics.Where(IsError).Select(d => ToFuse(d, analyzer: false)).OfType<FuseDiagnostic>());
+        return Distinct(diagnostics.Where(IsError).Select(d => ToCompilerError(d, fromAnalyzer: false)).OfType<CompilerError>());
     }
 
-    private async Task<IEnumerable<FuseDiagnostic>> ForDocumentAsync(Document document, CancellationToken cancellationToken)
+    private async Task<IEnumerable<CompilerError>> ForDocumentAsync(Document document, CancellationToken cancellationToken)
     {
         var model = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
         if (model is null)
             return [];
 
         var started = System.Diagnostics.Stopwatch.GetTimestamp();
-        var diagnostics = model.GetDiagnostics(cancellationToken: cancellationToken).Where(IsError).Select(d => (Roslyn: d, Analyzer: false)).ToList();
+        var diagnostics = model.GetDiagnostics(cancellationToken: cancellationToken).Where(IsError).Select(d => (Roslyn: d, FromAnalyzer: false)).ToList();
         Interlocked.Add(ref _compilerTicks, System.Diagnostics.Stopwatch.GetTimestamp() - started);
-        diagnostics.AddRange((await RunAnalyzersAsync(document.Project, model, cancellationToken).ConfigureAwait(false)).Select(d => (Roslyn: d, Analyzer: true)));
+        diagnostics.AddRange((await RunAnalyzersAsync(document.Project, model, cancellationToken).ConfigureAwait(false)).Select(d => (Roslyn: d, FromAnalyzer: true)));
 
-        return diagnostics.Select(d => ToFuse(d.Roslyn, d.Analyzer)).OfType<FuseDiagnostic>();
+        return diagnostics.Select(d => ToCompilerError(d.Roslyn, d.FromAnalyzer)).OfType<CompilerError>();
     }
 
-    private async Task<IEnumerable<RoslynDiagnostic>> RunAnalyzersAsync(Project project, SemanticModel model, CancellationToken cancellationToken)
+    private async Task<IEnumerable<Diagnostic>> RunAnalyzersAsync(Project project, SemanticModel model, CancellationToken cancellationToken)
     {
         var withAnalyzers = _analyzers.For(project, model.Compilation);
         if (withAnalyzers is null)
@@ -132,10 +131,10 @@ internal sealed class DiagnosticCollector
     }
 
     /// <summary>Errors in source-generated documents whose <c>#line</c> mappings point at <paramref name="path"/> (Razor components and views).</summary>
-    private async Task<IEnumerable<FuseDiagnostic>> ForGeneratedFromAsync(Project project, string path, CancellationToken cancellationToken)
+    private async Task<IEnumerable<CompilerError>> ForGeneratedFromAsync(Project project, string path, CancellationToken cancellationToken)
     {
         var fileName = Path.GetFileName(path);
-        var result = new List<FuseDiagnostic>();
+        var result = new List<CompilerError>();
         foreach (var generated in await project.GetSourceGeneratedDocumentsAsync(cancellationToken).ConfigureAwait(false))
         {
             var text = await generated.GetTextAsync(cancellationToken).ConfigureAwait(false);
@@ -151,26 +150,26 @@ internal sealed class DiagnosticCollector
         return result;
     }
 
-    private static bool IsError(RoslynDiagnostic diagnostic) =>
+    private static bool IsError(Diagnostic diagnostic) =>
         diagnostic.Severity == DiagnosticSeverity.Error && !diagnostic.IsSuppressed;
 
-    private FuseDiagnostic? ToFuse(RoslynDiagnostic diagnostic, bool analyzer)
+    private CompilerError? ToCompilerError(Diagnostic diagnostic, bool fromAnalyzer)
     {
         if (!diagnostic.Location.IsInSource && diagnostic.Location.Kind != LocationKind.ExternalFile)
             return null;
         var span = diagnostic.Location.GetMappedLineSpan();
         if (!span.IsValid || string.IsNullOrEmpty(span.Path))
             return null;
-        return new FuseDiagnostic(
+        return new CompilerError(
             _root.Relative(span.Path),
             span.StartLinePosition.Line + 1,
             span.StartLinePosition.Character + 1,
             diagnostic.Id,
             diagnostic.GetMessage(System.Globalization.CultureInfo.InvariantCulture),
-            analyzer);
+            fromAnalyzer);
     }
 
     /// <summary>Removes duplicates that come from compiling one file for several target frameworks.</summary>
-    private static List<FuseDiagnostic> Distinct(IEnumerable<FuseDiagnostic> diagnostics) =>
+    private static List<CompilerError> Distinct(IEnumerable<CompilerError> diagnostics) =>
         diagnostics.Distinct().OrderBy(d => d.Path, StringComparer.Ordinal).ThenBy(d => d.Line).ThenBy(d => d.Column).ToList();
 }

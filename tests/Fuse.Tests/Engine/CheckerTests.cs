@@ -1,7 +1,6 @@
-using Fuse.Check;
+using Fuse.Check.Model;
 using Fuse.Failures;
 using Fuse.Tests.Fixtures;
-using Fuse.Workspace;
 
 namespace Fuse.Tests.Engine;
 
@@ -12,7 +11,7 @@ public class CheckerTests
     {
         await using var engine = await EngineHarness.StartAsync();
         var report = await engine.CheckAllAsync();
-        Assert.Empty(report.Introduced);
+        Assert.Empty(report.Errors);
         Assert.Equal(0, report.FilesChecked);
     }
 
@@ -22,8 +21,8 @@ public class CheckerTests
         await using var engine = await EngineHarness.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
         var report = await engine.CheckAsync("Lib/Calc.cs");
-        Assert.Empty(report.Introduced);
-        Assert.Empty(report.SurfaceChangedIn);
+        Assert.Empty(report.Errors);
+        Assert.Empty(report.DeclarationsChangedIn);
         Assert.Equal(0, report.DependentProjectsChecked);
         Assert.Equal(1, report.FilesChecked);
     }
@@ -34,10 +33,10 @@ public class CheckerTests
         await using var engine = await EngineHarness.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * undefinedValue;");
         var report = await engine.CheckAsync("Lib/Calc.cs");
-        var diagnostic = Assert.Single(report.Introduced);
-        Assert.Equal("Lib/Calc.cs", diagnostic.Path);
-        Assert.Equal("CS0103", diagnostic.Id);
-        Assert.Equal(7, diagnostic.Line);
+        var error = Assert.Single(report.Errors).Error;
+        Assert.Equal("Lib/Calc.cs", error.Path);
+        Assert.Equal("CS0103", error.Id);
+        Assert.Equal(7, error.Line);
     }
 
     [Fact]
@@ -46,9 +45,9 @@ public class CheckerTests
         await using var engine = await EngineHarness.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "public int Add(", "public int Plus(");
         var report = await engine.CheckAsync("Lib/Calc.cs");
-        Assert.Equal(["App/Program.cs", "Lib.Tests/CalcTests.cs"], report.Introduced.Select(d => d.Path).Order(StringComparer.Ordinal));
-        Assert.All(report.Introduced, d => Assert.Equal("CS1061", d.Id));
-        Assert.Equal(["Lib"], report.SurfaceChangedIn);
+        Assert.Equal(["App/Program.cs", "Lib.Tests/CalcTests.cs"], report.Errors.Select(e => e.Error.Path).Order(StringComparer.Ordinal));
+        Assert.All(report.Errors, e => Assert.Equal("CS1061", e.Error.Id));
+        Assert.Equal(["Lib"], report.DeclarationsChangedIn);
         Assert.True(report.DependentProjectsChecked >= 2);
     }
 
@@ -58,8 +57,8 @@ public class CheckerTests
         await using var engine = await EngineHarness.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "    public int Mul(int a, int b) => a * b;\n", "");
         var report = await engine.CheckAsync("Lib/Calc.cs");
-        var diagnostic = Assert.Single(report.Introduced);
-        Assert.Equal("Lib.Tests/CalcTests.cs", diagnostic.Path);
+        var error = Assert.Single(report.Errors).Error;
+        Assert.Equal("Lib.Tests/CalcTests.cs", error.Path);
     }
 
     [Fact]
@@ -68,7 +67,7 @@ public class CheckerTests
         await using var engine = await EngineHarness.StartAsync();
         engine.Repo.Replace("Lib/Greeting.cs", "string Greet(string name);", "string Greet(string name, bool loud);");
         var report = await engine.CheckAsync("Lib/Greeting.cs");
-        var paths = report.Introduced.Select(d => d.Path).Distinct().Order(StringComparer.Ordinal).ToList();
+        var paths = report.Errors.Select(e => e.Error.Path).Distinct().Order(StringComparer.Ordinal).ToList();
         // Greeter's method does not match the interface, and both callers pass too few arguments.
         Assert.Equal(["App/Program.cs", "Lib.Tests/GreeterTests.cs", "Lib/Greeting.cs"], paths);
     }
@@ -82,8 +81,8 @@ public class CheckerTests
             "public int Add(int a, int b) => a + b;",
             "public long Add(long a, int b) => a + b;\n\n    public long Add(int a, long b) => a + b;");
         var report = await engine.CheckAsync("Lib/Calc.cs");
-        Assert.Contains(report.Introduced, d => d.Id == "CS0121" && d.Path == "App/Program.cs");
-        Assert.Contains(report.Introduced, d => d.Id == "CS0121" && d.Path == "Lib.Tests/CalcTests.cs");
+        Assert.Contains(report.Errors, e => e.Error.Id == "CS0121" && e.Error.Path == "App/Program.cs");
+        Assert.Contains(report.Errors, e => e.Error.Id == "CS0121" && e.Error.Path == "Lib.Tests/CalcTests.cs");
     }
 
     [Fact]
@@ -92,9 +91,9 @@ public class CheckerTests
         await using var engine = await EngineHarness.StartAsync();
         engine.Repo.Write("Lib/Extra.cs", "namespace Lib;\n\npublic static class Extra\n{\n    public static int Value() => missing;\n}\n");
         var report = await engine.CheckAsync("Lib/Extra.cs");
-        var diagnostic = Assert.Single(report.Introduced);
-        Assert.Equal("Lib/Extra.cs", diagnostic.Path);
-        Assert.Equal("CS0103", diagnostic.Id);
+        var error = Assert.Single(report.Errors).Error;
+        Assert.Equal("Lib/Extra.cs", error.Path);
+        Assert.Equal("CS0103", error.Id);
     }
 
     [Fact]
@@ -104,7 +103,7 @@ public class CheckerTests
         engine.Repo.Write("Lib/Extra.cs", "namespace Lib;\n\npublic static class Extra\n{\n    public static int Value() => 42;\n}\n");
         engine.Repo.Replace("App/Report.cs", "\"value=\" + Lib.Formatter.Format(value)", "\"value=\" + Lib.Formatter.Format(value + Lib.Extra.Value())");
         var report = await engine.CheckAsync("Lib/Extra.cs", "App/Report.cs");
-        Assert.Empty(report.Introduced);
+        Assert.Empty(report.Errors);
     }
 
     [Fact]
@@ -113,9 +112,9 @@ public class CheckerTests
         await using var engine = await EngineHarness.StartAsync();
         engine.Repo.Delete("Lib/Formatter.cs");
         var report = await engine.CheckAsync("Lib/Formatter.cs");
-        var diagnostic = Assert.Single(report.Introduced);
-        Assert.Equal("App/Report.cs", diagnostic.Path);
-        Assert.Equal("CS0234", diagnostic.Id);
+        var error = Assert.Single(report.Errors).Error;
+        Assert.Equal("App/Report.cs", error.Path);
+        Assert.Equal("CS0234", error.Id);
     }
 
     [Fact]
@@ -124,17 +123,17 @@ public class CheckerTests
         await using var engine = await EngineHarness.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "public int Add(", "public int Plus(");
         var broken = await engine.CheckAsync("Lib/Calc.cs");
-        Assert.Equal(2, broken.Introduced.Length);
+        Assert.Equal(2, broken.Errors.Count);
 
         engine.Repo.Replace("App/Program.cs", "calc.Add(1, 2)", "calc.Plus(1, 2)");
         var partly = await engine.CheckAsync("App/Program.cs");
-        Assert.Empty(partly.Introduced);
+        Assert.Empty(partly.Errors);
         var stillBroken = await engine.CheckAllAsync();
-        Assert.Equal("Lib.Tests/CalcTests.cs", Assert.Single(stillBroken.Introduced).Path);
+        Assert.Equal("Lib.Tests/CalcTests.cs", Assert.Single(stillBroken.Errors).Error.Path);
 
         engine.Repo.Replace("Lib.Tests/CalcTests.cs", "NewCalc().Add(1, 2)", "NewCalc().Plus(1, 2)");
         var fixedReport = await engine.CheckAllAsync();
-        Assert.Empty(fixedReport.Introduced);
+        Assert.Empty(fixedReport.Errors);
     }
 
     [Fact]
@@ -142,9 +141,9 @@ public class CheckerTests
     {
         await using var engine = await EngineHarness.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * nope;");
-        Assert.Single((await engine.CheckAsync("Lib/Calc.cs")).Introduced);
+        Assert.Single((await engine.CheckAsync("Lib/Calc.cs")).Errors);
         engine.Repo.Replace("Lib/Calc.cs", "a * nope;", "a * b;");
-        Assert.Empty((await engine.CheckAsync("Lib/Calc.cs")).Introduced);
+        Assert.Empty((await engine.CheckAsync("Lib/Calc.cs")).Errors);
     }
 
     [Fact]
@@ -155,7 +154,7 @@ public class CheckerTests
         engine.Repo.Replace("App/Report.cs", "Line(int value)", "Line2(int value)");
         engine.Repo.Replace("Lib/Calc.cs", "Add(int a, int b)", "Add2(int a, int b)");
 
-        // The provenance queries run after a real check, so the HEAD view is loaded the way the check loads it.
+        // The reach queries run after a real check, so the HEAD view is loaded the way the check loads it.
         await engine.CheckAsync("App/Report.cs");
         var fromApp = await CandidatesAsync(engine, "App/Report.cs");
         var fromLib = await CandidatesAsync(engine, "Lib/Calc.cs");
@@ -173,25 +172,14 @@ public class CheckerTests
         engine.Repo.Replace("Lib/Greeting.cs", "string Greet(string name);", "string Greet(string name, bool loud);");
         var report = await engine.CheckAsync("Lib/Calc.cs", "Lib/Greeting.cs");
 
-        var lines = report.Context?.OfType<string>().ToList() ?? [];
-        Assert.Contains(lines, l => l.Contains("Add", StringComparison.Ordinal));
-        Assert.Contains(lines, l => l.Contains("Greet", StringComparison.Ordinal) && l.StartsWith("removed: ", StringComparison.Ordinal));
+        var causes = report.Errors.Select(e => e.Cause).OfType<Cause>().ToList();
+        Assert.Contains(causes, c => c.Declaration.Contains("Add", StringComparison.Ordinal));
+        Assert.Contains(causes, c => c.Declaration.Contains("Greet", StringComparison.Ordinal) && c is Cause.Removed);
     }
 
     /// <summary>The files the change in <paramref name="relative"/> puts in scope, the way the checker computes them.</summary>
-    private static async Task<List<string>> CandidatesAsync(EngineHarness engine, string relative)
-    {
-        var graph = engine.Workspace.Graph;
-        var path = engine.Repo.Full(relative);
-        var owners = graph.OwnersOf(path).ToList();
-        await engine.Workspace.EnsureLoadedAsync(owners, TestContext.Current.CancellationToken);
-        var dependents = owners.SelectMany(graph.DependentsOf).DistinctBy(p => p.Path)
-            .Where(p => !owners.Any(o => string.Equals(o.Path, p.Path, StringComparison.OrdinalIgnoreCase))).ToList();
-        await engine.Workspace.EnsureLoadedAsync(dependents, TestContext.Current.CancellationToken);
-        var reach = owners.Concat(dependents).SelectMany(n => RepoWorkspace.ProjectsFor(engine.Workspace.Current, n)).ToList();
-        var provenance = await new ChangeReach(engine.Workspace).ProvenanceAsync([path], reach, TestContext.Current.CancellationToken);
-        return provenance?.Files.Order(StringComparer.Ordinal).ToList() ?? [];
-    }
+    private static async Task<List<string>> CandidatesAsync(EngineHarness engine, string relative) =>
+        [.. Assert.IsType<Reach.Precise>(await engine.ReachAsync(relative)).Causes.Keys.Order(StringComparer.Ordinal)];
 
     [Fact]
     public async Task Errors_already_present_at_head_are_not_reported()
@@ -200,12 +188,12 @@ public class CheckerTests
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * existingError;");
         engine.Repo.Commit("commit a broken file");
         var atHead = await engine.CheckAllAsync();
-        Assert.Empty(atHead.Introduced);
+        Assert.Empty(atHead.Errors);
 
         engine.Repo.Replace("Lib/Calc.cs", "a + b;", "a + anotherError;");
         var report = await engine.CheckAsync("Lib/Calc.cs");
-        var diagnostic = Assert.Single(report.Introduced);
-        Assert.Contains("anotherError", diagnostic.Message, StringComparison.Ordinal);
+        var error = Assert.Single(report.Errors).Error;
+        Assert.Contains("anotherError", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -214,7 +202,7 @@ public class CheckerTests
         await using var engine = await EngineHarness.StartAsync();
         engine.Repo.Replace("Strict/Thing.cs", "public static int Value() => 1;", "public static int Value()\n    {\n        int unused = 0;\n        return 1;\n    }");
         var report = await engine.CheckAsync("Strict/Thing.cs");
-        Assert.Equal("CS0219", Assert.Single(report.Introduced).Id);
+        Assert.Equal("CS0219", Assert.Single(report.Errors).Error.Id);
     }
 
     [Fact]
@@ -223,7 +211,7 @@ public class CheckerTests
         await using var engine = await EngineHarness.StartAsync();
         engine.Repo.Replace("Strict/Thing.cs", "public static int Value() => 1;", "public static int Value() => new int[0].Length + 1;");
         var report = await engine.CheckAsync("Strict/Thing.cs");
-        Assert.Equal("CA1825", Assert.Single(report.Introduced).Id);
+        Assert.Equal("CA1825", Assert.Single(report.Errors).Error.Id);
     }
 
     [Fact]
@@ -232,7 +220,7 @@ public class CheckerTests
         await using var engine = await EngineHarness.StartAsync();
         engine.Repo.Replace("Multi/Shape.cs", "=> count;", "=> count + missing;");
         var report = await engine.CheckAsync("Multi/Shape.cs");
-        Assert.Equal("CS0103", Assert.Single(report.Introduced).Id);
+        Assert.Equal("CS0103", Assert.Single(report.Errors).Error.Id);
     }
 
     [Fact]
@@ -240,12 +228,12 @@ public class CheckerTests
     {
         await using var engine = await EngineHarness.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "public int Mul(", "#if FUSE_FLAG\n    public int Broken => missingSymbol;\n#endif\n\n    public int Mul(");
-        Assert.Empty((await engine.CheckAsync("Lib/Calc.cs")).Introduced);
+        Assert.Empty((await engine.CheckAsync("Lib/Calc.cs")).Errors);
 
         engine.Repo.Replace("Lib/Lib.csproj", "<TargetFramework>net10.0</TargetFramework>", "<TargetFramework>net10.0</TargetFramework><DefineConstants>$(DefineConstants);FUSE_FLAG</DefineConstants>");
         await Task.Delay(600, TestContext.Current.CancellationToken);
         var report = await engine.CheckAsync("Lib/Calc.cs");
-        Assert.Contains(report.Introduced, d => d.Message.Contains("missingSymbol", StringComparison.Ordinal));
+        Assert.Contains(report.Errors, e => e.Error.Message.Contains("missingSymbol", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -253,12 +241,12 @@ public class CheckerTests
     {
         await using var engine = await EngineHarness.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "public int Add(", "public int Plus(");
-        Assert.NotEmpty((await engine.CheckAsync("Lib/Calc.cs")).Introduced);
+        Assert.NotEmpty((await engine.CheckAsync("Lib/Calc.cs")).Errors);
 
         // Committing the rename moves HEAD: the callers' errors are in the baseline, so they are not introduced.
         engine.Repo.Commit("rename");
         var report = await engine.CheckAllAsync();
-        Assert.Empty(report.Introduced);
+        Assert.Empty(report.Errors);
     }
 
     [Fact]
@@ -274,10 +262,10 @@ public class CheckerTests
         engine.Repo.Replace("Lib/Runner.cs", "using System.Collections.ObjectModel;\n", "");
         var report = await engine.CheckAsync("Lib/Runner.cs");
 
-        Assert.Contains(report.Introduced, d => d.Path == "Lib/Runner.cs" && d.Id == "CS0246");
-        var index = Array.FindIndex(report.Introduced, d => d.Path == "Lib/RunnerImpl.cs");
-        Assert.True(index >= 0, $"the implementation's break was not reported: {string.Join("; ", report.Introduced.Select(d => d.ToString()))}");
-        Assert.Equal("removed: using System.Collections.ObjectModel;", report.ContextFor(index));
+        Assert.Contains(report.Errors, e => e.Error.Path == "Lib/Runner.cs" && e.Error.Id == "CS0246");
+        var implementation = report.Errors.FirstOrDefault(e => e.Error.Path == "Lib/RunnerImpl.cs");
+        Assert.True(implementation is not null, $"the implementation's break was not reported: {string.Join("; ", report.Errors.Select(e => e.Error.ToString()))}");
+        Assert.Equal(new Cause.Removed("using System.Collections.ObjectModel;"), implementation.Cause);
     }
 
     [Fact]
@@ -287,7 +275,7 @@ public class CheckerTests
         engine.Repo.Replace("Lib/Calc.cs", "namespace Lib;", "using System.Text;\n\nnamespace Lib;");
         var report = await engine.CheckAsync("Lib/Calc.cs");
 
-        Assert.Empty(report.SurfaceChangedIn);
+        Assert.Empty(report.DeclarationsChangedIn);
         Assert.Equal(0, report.DependentProjectsChecked);
     }
 

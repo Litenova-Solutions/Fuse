@@ -190,7 +190,7 @@ internal sealed partial class EvalRepo
     public static List<string> ParseFuseErrors(string output) =>
         [.. output.Split('\n').Select(l => l.TrimEnd('\r')).Where(l => FuseError().IsMatch(l))];
 
-    /// <summary>The count in the "fuse: N new error(s)" summary line, or 0 when there is none.</summary>
+    /// <summary>The count in the "fuse: N error(s) introduced" summary line, or 0 when there is none.</summary>
     public static int ParseFuseCount(string output)
     {
         var match = FuseCount().Match(output);
@@ -199,7 +199,7 @@ internal sealed partial class EvalRepo
 
     [GeneratedRegex(@"^[^\r\n]+\(\d+,\d+\): error [A-Za-z]+\d+: .*$")]
     private static partial Regex FuseError();
-    [GeneratedRegex(@"fuse: (\d+) new error")]
+    [GeneratedRegex(@"fuse: (\d+) error\(s\) introduced")]
     private static partial Regex FuseCount();
 
     // The engine prefixes every line with "yyyy-MM-dd HH:mm:ss.fff ", two fields separated by a space.

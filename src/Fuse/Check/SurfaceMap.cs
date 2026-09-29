@@ -13,8 +13,8 @@ namespace Fuse.Check;
 internal sealed record SurfaceEntry(string Signature, string[] Names, SyntaxNode? Node = null, string? Container = null)
 {
     /// <summary>
-    ///     The declaration as it is written in the file, with its body and its trivia dropped. This is what a context line
-    ///     shows, so it differs from <see cref="Signature"/>, which flattens the tokens and pads the punctuation for
+    ///     The declaration as it is written in the file, with its body and its trivia dropped. This is what a cause
+    ///     quotes, so it differs from <see cref="Signature"/>, which flattens the tokens and pads the punctuation for
     ///     comparison rather than for reading.
     /// </summary>
     public string Declaration => Node is null ? Signature : SurfaceMap.Declaration(Node);

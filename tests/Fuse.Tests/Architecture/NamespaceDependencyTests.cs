@@ -36,10 +36,12 @@ public class NamespaceDependencyTests
         ["Fuse.Graph"] = ["Fuse.Repo", "Fuse.Dotnet", .. Foundation],
         ["Fuse.Workspace"] = [.. Sources, .. Foundation],
         ["Fuse.Changes"] = ["Fuse.Workspace", .. Sources, .. Foundation],
-        ["Fuse.Check"] = ["Fuse.Changes", "Fuse.Workspace", .. Sources, .. Foundation],
+        ["Fuse.Check.Model"] = [.. Foundation],
+        ["Fuse.Check"] = ["Fuse.Check.Model", "Fuse.Changes", "Fuse.Workspace", .. Sources, .. Foundation],
         ["Fuse.Testing"] = ["Fuse.Changes", "Fuse.Workspace", .. Sources, .. Foundation],
-        ["Fuse.Engine"] = ["Fuse.Check", "Fuse.Testing", "Fuse.Changes", "Fuse.Workspace", .. Sources, .. Foundation, "Fuse.Protocol"],
-        ["Fuse.Protocol"] = [.. Foundation],
+        ["Fuse.Engine"] = ["Fuse.Check", "Fuse.Check.Model", "Fuse.Testing", "Fuse.Changes", "Fuse.Workspace", .. Sources, .. Foundation, "Fuse.Protocol"],
+        // Decision D11: the wire carries the check model's CompilerError unchanged.
+        ["Fuse.Protocol"] = [.. Foundation, "Fuse.Check.Model"],
         ["Fuse.Engine.Client"] = ["Fuse.Protocol", "Fuse.Repo", "Fuse.Dotnet", .. Foundation],
         ["Fuse.Operations"] = ["Fuse.Engine.Client", "Fuse.Protocol", "Fuse.Repo", "Fuse.Dotnet", .. Foundation],
         ["Fuse.Harnesses"] = ["Fuse.Operations", "Fuse.Protocol", "Fuse.Repo", .. Foundation],
@@ -50,10 +52,11 @@ public class NamespaceDependencyTests
 
     /// <summary>
     ///     The namespaces whose code runs in the short-lived client: the surfaces, the operations and the client, and the
-    ///     layers the client shares with the engine. A hook pays for every assembly it loads.
+    ///     layers the client shares with the engine, which include the check model because the wire carries its
+    ///     <c>CompilerError</c>. A hook pays for every assembly it loads.
     /// </summary>
     private static readonly string[] ClientSide =
-        ["Fuse.Hooks", "Fuse.Mcp", "Fuse.Harnesses", "Fuse.Operations", "Fuse.Engine.Client", "Fuse.Protocol", "Fuse.Repo", "Fuse.Dotnet", .. Foundation];
+        ["Fuse.Hooks", "Fuse.Mcp", "Fuse.Harnesses", "Fuse.Operations", "Fuse.Engine.Client", "Fuse.Protocol", "Fuse.Check.Model", "Fuse.Repo", "Fuse.Dotnet", .. Foundation];
 
     /// <summary>The namespaces rule 2 names as using Roslyn or MSBuild, whether or not a file in them names it directly.</summary>
     private static readonly string[] EngineSide = ["Fuse.Graph", "Fuse.Workspace", "Fuse.Changes", "Fuse.Check", "Fuse.Testing", "Fuse.Engine"];
@@ -65,8 +68,6 @@ public class NamespaceDependencyTests
     /// </summary>
     private static readonly (string From, string To, string Step)[] TransitionalUses =
     [
-        // Checker returns Protocol.CheckReport until step 3 gives Check its own result model.
-        ("Fuse.Check", "Fuse.Protocol", "step 3"),
         // TestPlanner returns Protocol.TestPlan until step 4 gives Testing its own result model.
         ("Fuse.Testing", "Fuse.Protocol", "step 4"),
     ];

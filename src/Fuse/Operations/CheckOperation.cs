@@ -29,33 +29,32 @@ internal static class CheckOperation
     internal static OperationResult Render(CheckReport report)
     {
         var text = new StringBuilder();
-        var shown = report.Introduced.Take(MaxShown).ToArray();
-        for (var i = 0; i < shown.Length; i++)
+        foreach (var reported in report.Errors.Take(MaxShown))
         {
-            text.Append(shown[i]).Append('\n');
+            text.Append(reported.Error).Append('\n');
             // The line under an error in a file the agent did not edit says which of its edits put the file in scope.
-            if (report.ContextFor(i) is { } context)
-                text.Append("  ").Append(context).Append('\n');
+            if (reported.Cause is { } cause)
+                text.Append("  ").Append(cause.Kind == CauseKind.Removed ? "removed" : "changed").Append(": ").Append(cause.Declaration).Append('\n');
         }
 
         var scope = new List<string>();
-        if (report.SurfaceChangedIn.Length > 0)
-            scope.Add($"{string.Join(", ", report.SurfaceChangedIn)} declarations changed, {report.DependentProjectsChecked} dependent project(s) checked");
-        if (report.WholeProjects)
-            scope.Add("whole projects bound");
-        if (report.ContextLeftOut > 0)
-            scope.Add($"{report.ContextLeftOut} more error(s) with no cause line");
+        if (report.DeclarationsChangedIn.Length > 0)
+            scope.Add($"{string.Join(", ", report.DeclarationsChangedIn)} declarations changed, {report.DependentProjectsChecked} dependent project(s) checked");
+        if (report.CheckedWholeProjects)
+            scope.Add("checked whole projects");
+        if (report.CausesLeftOut > 0)
+            scope.Add($"{report.CausesLeftOut} cause(s) left out");
         var scopeText = scope.Count > 0 ? "; " + string.Join("; ", scope) : "";
 
-        if (report.Introduced.Length == 0)
+        if (report.Errors.Length == 0)
         {
-            text.Append($"fuse: no new errors ({report.FilesChecked} file(s) checked{scopeText})");
+            text.Append($"fuse: no errors introduced ({report.FilesChecked} file(s) checked{scopeText})");
             return new OperationResult(Outcome.Clean, text.ToString());
         }
 
-        var files = report.Introduced.Select(d => d.Path).Distinct().Count();
-        var more = report.Introduced.Length > MaxShown ? $", first {MaxShown} shown" : "";
-        text.Append($"fuse: {report.Introduced.Length} new error(s) in {files} file(s){more} ({string.Join(", ", report.Projects)}){scopeText}");
+        var files = report.Errors.Select(e => e.Error.Path).Distinct().Count();
+        var more = report.Errors.Length > MaxShown ? $", first {MaxShown} shown" : "";
+        text.Append($"fuse: {report.Errors.Length} error(s) introduced in {files} file(s){more} ({string.Join(", ", report.Projects)}){scopeText}");
         return new OperationResult(Outcome.ProblemsFound, text.ToString());
     }
 }

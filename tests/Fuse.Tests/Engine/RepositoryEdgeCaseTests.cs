@@ -39,7 +39,7 @@ public class RepositoryEdgeCaseTests
         await using var engine = await EngineHarness.StartAsync();
         engine.Repo.Write("Lib/obj/Generated.cs", "namespace Lib; public class Generated { public int V => \"text\"; }\n");
         var report = await engine.CheckAsync("Lib/obj/Generated.cs");
-        Assert.Empty(report.Introduced);
+        Assert.Empty(report.Errors);
         Assert.Equal(0, report.FilesChecked);
     }
 
@@ -75,6 +75,6 @@ public class RepositoryEdgeCaseTests
         await using var engine = await EngineHarness.StartAsync(repo);
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * undefinedValue;");
         var report = await engine.CheckAsync("Lib/Calc.cs");
-        Assert.Contains(report.Introduced, d => d.Id == "CS0103");
+        Assert.Contains(report.Errors, e => e.Error.Id == "CS0103");
     }
 }

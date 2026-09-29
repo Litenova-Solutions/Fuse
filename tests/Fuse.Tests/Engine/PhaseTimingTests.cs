@@ -14,12 +14,12 @@ public class PhaseTimingTests
         await using var engine = await EngineHarness.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * undefinedValue;");
 
-        var (report, phases) = await engine.CheckWithPhasesAsync("Lib/Calc.cs");
+        var (result, phases) = await engine.CheckWithPhasesAsync("Lib/Calc.cs");
 
         // A body-only edit reaches no other file, so the check ends after the declaration diff and binds no candidates.
         Assert.Equal(["sync", "load", "bindTargets", "surfaceDiff"], phases.Select(p => p.Phase));
         Assert.All(phases, p => Assert.True(p.Ms >= 0, $"{p.Phase} was {p.Ms}"));
-        Assert.NotEmpty(report.Introduced);
+        Assert.NotEmpty(result.Errors);
     }
 
     [Fact]
@@ -29,10 +29,10 @@ public class PhaseTimingTests
         // Renaming a declaration sends the check past the target files into the projects that use it.
         engine.Repo.Replace("Lib/Calc.cs", "public int Add(", "public int AddRenamed(");
 
-        var (report, phases) = await engine.CheckWithPhasesAsync("Lib/Calc.cs");
+        var (result, phases) = await engine.CheckWithPhasesAsync("Lib/Calc.cs");
 
         Assert.Equal(["sync", "load", "bindTargets", "surfaceDiff", "load", "referenceSearch", "bindCandidates"], phases.Select(p => p.Phase));
         Assert.All(phases, p => Assert.True(p.Ms >= 0, $"{p.Phase} was {p.Ms}"));
-        Assert.True(report.DependentProjectsChecked > 0, $"checked {report.DependentProjectsChecked} dependent project(s)");
+        Assert.True(result.DependentProjectsChecked > 0, $"checked {result.DependentProjectsChecked} dependent project(s)");
     }
 }

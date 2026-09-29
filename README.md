@@ -66,6 +66,7 @@ fuse init
 
 ```text
 wrote .claude/settings.json
+wrote .gitignore
 fuse: hooks registered; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors
 ```
 

@@ -160,7 +160,47 @@ public class InitCommandTests
         Assert.Equal(0, InitCommand.Run(repo.Root.Path, output, error));
         Assert.Equal("fuse", Json(repo, ".vscode/mcp.json")["servers"]!["fuse"]!["command"]!.GetValue<string>());
         Assert.False(Directory.Exists(repo.Full(".claude")));
-        Assert.StartsWith("wrote .vscode/mcp.json" + Environment.NewLine + "fuse: MCP server registered in .vscode/mcp.json", output.ToString(), StringComparison.Ordinal);
+        Assert.StartsWith(
+            "wrote .vscode/mcp.json" + Environment.NewLine + "wrote .gitignore" + Environment.NewLine + "fuse: MCP server registered in .vscode/mcp.json",
+            output.ToString(),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Adds_the_fuse_folder_to_a_new_gitignore_once()
+    {
+        using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["App/App.csproj"] = "<Project />" });
+        using var first = new StringWriter();
+        Assert.Equal(0, InitCommand.Run(repo.Root.Path, first, TextWriter.Null));
+        using var second = new StringWriter();
+        Assert.Equal(0, InitCommand.Run(repo.Root.Path, second, TextWriter.Null));
+
+        Assert.Equal(".fuse/\n", repo.Read(".gitignore"));
+        Assert.Contains("wrote .gitignore", first.ToString(), StringComparison.Ordinal);
+        // The second run finds the entry and neither writes the file nor names it.
+        Assert.DoesNotContain(".gitignore", second.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Appends_the_fuse_folder_to_an_existing_gitignore_in_its_line_endings()
+    {
+        using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["App/App.csproj"] = "<Project />" });
+        // No newline after the last line, so the entry has to start a line of its own.
+        File.WriteAllText(repo.Full(".gitignore"), "bin/\r\nobj/");
+        Assert.Equal(0, Init(repo));
+        Assert.Equal("bin/\r\nobj/\r\n.fuse/\r\n", File.ReadAllText(repo.Full(".gitignore")));
+    }
+
+    [Theory]
+    [InlineData("/.fuse\n")]
+    [InlineData("  .fuse  \n")]
+    [InlineData("**/.fuse/\n")]
+    [InlineData("!.fuse/\n")]
+    public void Leaves_a_gitignore_that_already_decides_about_the_fuse_folder(string content)
+    {
+        using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["App/App.csproj"] = "<Project />", [".gitignore"] = "bin/\n" + content });
+        Assert.Equal(0, Init(repo));
+        Assert.Equal("bin/\n" + content, File.ReadAllText(repo.Full(".gitignore")));
     }
 
     [Theory]

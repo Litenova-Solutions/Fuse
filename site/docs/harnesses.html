@@ -130,6 +130,7 @@
         <li><a href="#vs-code-agent-mode">VS Code agent mode</a></li>
         <li><a href="#other-mcp-hosts">Other MCP hosts</a></li>
         <li><a href="#running-fuse-init-again">Running fuse init again</a></li>
+        <li><a href="#the-fuse-folder">The .fuse folder</a></li>
         <li><a href="#tested-versions">Tested versions</a></li>
       </ol>
     </nav>
@@ -148,7 +149,7 @@
     <p>VS Code agent mode runs no hooks. For it, and for any other MCP host, Fuse runs as an MCP server instead, and the agent calls its tools when it decides to.</p>
 
     <h2 id="detection">What fuse init detects and writes <a class="anchor" href="#detection" aria-label="Link to this section">#</a></h2>
-    <p><code>fuse init</code> looks in the repository root for each harness's folder or file, and writes settings for every harness it finds. When it finds none, it sets up Claude Code.</p>
+    <p><code>fuse init</code> looks in the repository root for each harness's folder or file, and writes settings for every harness it finds. When it finds none, it sets up Claude Code. It also adds <code>.fuse/</code> to the root <code>.gitignore</code> (<a href="#the-fuse-folder">The .fuse folder</a>).</p>
     <div class="table-scroll" role="region" aria-label="Harness detection" tabindex="0">
       <table>
         <thead><tr><th scope="col">Harness</th><th scope="col">Detected by</th><th scope="col">File written</th><th scope="col">Events</th></tr></thead>
@@ -166,7 +167,7 @@
     <div class="callout warn">
       <p><b>Cursor and GitHub Copilot CLI have no pre-shell hook.</b> In those two harnesses an agent's <code>dotnet build</code> and <code>dotnet test</code> run as the agent wrote them: every test runs, and the build does not take Fuse's build lock. Ask the agent to run <code>fuse test</code> and <code>fuse build</code> instead.</p>
     </div>
-    <p>A repository with only <code>.vscode/</code> gets only <code>.vscode/mcp.json</code>, and no Claude Code settings. In a repository with every harness's folder and <code>.vscode/</code>, <code>fuse init</code> writes seven files:</p>
+    <p>A repository with only <code>.vscode/</code> gets only <code>.vscode/mcp.json</code>, and no Claude Code settings. In a repository with every harness's folder and <code>.vscode/</code>, <code>fuse init</code> writes seven settings files and <code>.gitignore</code>:</p>
     <pre class="out" data-label="Output"><code>$ fuse init
 wrote .claude/settings.json
 wrote .cursor/hooks.json
@@ -175,6 +176,7 @@ wrote .codex/hooks.json
 wrote .github/hooks/fuse.json
 wrote .opencode/plugins/fuse.js
 wrote .vscode/mcp.json
+wrote .gitignore
 fuse: hooks registered; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors</code></pre>
     <p>The settings blocks below are the files that run wrote, and current builds write them as shown.</p>
 
@@ -411,6 +413,7 @@ fuse: hooks registered; after each edit your agent gets the compiler errors the 
     <ul>
       <li>In the settings files shared with other tools (<code>.claude/settings.json</code>, <code>.cursor/hooks.json</code>, <code>.gemini/settings.json</code>, <code>.codex/hooks.json</code> and <code>.vscode/mcp.json</code>), it removes Fuse's own entries, the handlers whose command starts with <code>fuse hook</code> and the <code>fuse</code> MCP server, and writes them again. Every other entry is kept. The file is read with comments and trailing commas allowed and written back as plain JSON, so comments are not kept.</li>
       <li><code>.github/hooks/fuse.json</code> and <code>.opencode/plugins/fuse.js</code> belong to Fuse and are written whole.</li>
+      <li><code>.gitignore</code> is changed only when it has no line about the <code>.fuse</code> folder (<a href="#the-fuse-folder">The .fuse folder</a>).</li>
     </ul>
     <p>For example, take a Claude Code settings file that holds a comment, a formatter hook and a <code>dotnet test</code> allowance:</p>
     <pre data-label="Before"><code>{
@@ -483,6 +486,14 @@ fuse: hooks registered; after each edit your agent gets the compiler errors the 
     ]
   }
 }</code></pre>
+
+    <h2 id="the-fuse-folder">The .fuse folder <a class="anchor" href="#the-fuse-folder" aria-label="Link to this section">#</a></h2>
+    <p>The <code>.fuse</code> folder in the repository root is reserved for files Fuse may keep inside a repository, such as an index. Fuse 5 writes nothing there today, and Fuse 4 kept its index there. <code>fuse init</code> adds <code>.fuse/</code> to the root <code>.gitignore</code>, creating the file when there is none, so that folder is never committed:</p>
+    <ul>
+      <li>The line is appended at the end, in the line endings the file already uses, and the rest of the file is left as it was.</li>
+      <li>A file that already has a line about the folder, such as <code>.fuse</code>, <code>/.fuse/</code>, <code>**/.fuse</code> or <code>!.fuse/</code>, is not changed, so a repository that chose to commit the folder keeps that choice.</li>
+      <li><code>fuse init</code> prints <code>wrote .gitignore</code> only when it changed the file.</li>
+    </ul>
 
     <h2 id="tested-versions">Tested versions <a class="anchor" href="#tested-versions" aria-label="Link to this section">#</a></h2>
     <p>Fuse 5.0.0 was run by hand end to end with Claude Code 2.1.282 and with OpenCode 2.0.15. Every harness's answers and the files <code>fuse init</code> writes have unit tests. The Cursor, Gemini CLI, Codex and Copilot CLI adapters, and the OpenCode 1 plugin format, follow each harness's documented hook format, and the plugin's JavaScript has no tests of its own.</p>

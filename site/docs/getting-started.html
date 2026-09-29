@@ -190,8 +190,9 @@ dotnet build</code></pre>
     <h2 id="register-the-hooks">4. Register the hooks <a class="anchor" href="#register-the-hooks" aria-label="Link to this section">#</a></h2>
     <pre data-label="bash"><code>fuse init</code></pre>
     <pre class="out" data-label="Output"><code>wrote .claude/settings.json
+wrote .gitignore
 fuse: hooks registered; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors</code></pre>
-    <p><code>fuse init</code> looks in the repository root for each harness's folder, such as <code>.cursor/</code> or <code>.gemini/</code>, and writes that harness's settings. The sample has none, so it set up Claude Code, which is the default. <a href="harnesses.html">Connect your agent</a> shows the file it wrote and what every other harness gets.</p>
+    <p><code>fuse init</code> looks in the repository root for each harness's folder, such as <code>.cursor/</code> or <code>.gemini/</code>, and writes that harness's settings. The sample has none, so it set up Claude Code, which is the default. It also added <code>.fuse/</code> to <code>.gitignore</code>, a folder Fuse reserves for files it may keep in the repository. <a href="harnesses.html">Connect your agent</a> shows the file it wrote and what every other harness gets.</p>
     <p>Run a first check:</p>
     <pre data-label="bash"><code>fuse check</code></pre>
     <pre class="out" data-label="Output"><code>fuse: no errors introduced (0 file(s) checked)</code></pre>

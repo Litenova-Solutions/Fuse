@@ -7,7 +7,7 @@ namespace Fuse.Harnesses;
 
 /// <summary>
 ///     <c>fuse init</c>: registers Fuse's hooks with every harness the repository already uses, and the MCP server with
-///     VS Code, which runs no hooks. Fuse entries in shared settings files are replaced and other entries kept; <c>.github/hooks/fuse.json</c> and <c>.opencode/plugins/fuse.js</c> belong to Fuse and are written whole.
+///     VS Code, which runs no hooks, and adds the <c>.fuse</c> folder to <c>.gitignore</c>. Fuse entries in shared settings files are replaced and other entries kept; <c>.github/hooks/fuse.json</c> and <c>.opencode/plugins/fuse.js</c> belong to Fuse and are written whole.
 /// </summary>
 internal static class InitCommand
 {
@@ -36,14 +36,16 @@ internal static class InitCommand
             harnesses.Add(new ClaudeCode());
 
         // Each file is named as it is written, so a failure part way leaves a list of what was written before it.
-        var registrations = harnesses.Select<Harness, Func<string>>(h => () => h.RegisterHooks(root)).ToList();
+        var registrations = harnesses.Select<Harness, Func<string?>>(h => () => h.RegisterHooks(root)).ToList();
         if (vsCode)
             registrations.Add(() => RegisterMcpServer(root));
+        registrations.Add(() => GitIgnore.AddFuseFolder(root));
         foreach (var register in registrations)
         {
             try
             {
-                output.WriteLine($"wrote {register()}");
+                if (register() is { } written)
+                    output.WriteLine($"wrote {written}");
             }
             catch (Exception e) when (e is System.Text.Json.JsonException or IOException)
             {

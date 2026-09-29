@@ -15,7 +15,7 @@ Do not open a public GitHub issue for a security report. Report it privately wit
 In scope:
 
 - The `fuse` command, its hooks, the per-repository engine process and its named pipe, and the MCP server (`fuse mcp`).
-- Code execution, or a file written inside the repository or outside Fuse's own state directory, other than the hook settings `fuse init` writes, `fuse build` (which runs `dotnet build`) and `fuse test` (which runs `dotnet test`).
+- Code execution, or a file written inside the repository or outside Fuse's own state directory, other than the hook settings and the `.gitignore` entry `fuse init` writes, `fuse build` (which runs `dotnet build`) and `fuse test` (which runs `dotnet test`).
 - Another local user reaching the engine's pipe, which accepts connections from the current user only.
 - A command a hook approves on your behalf. Fuse never approves a command it did not rewrite whole. Codex applies a rewritten command only together with an allow decision, so for Codex the pre-shell hook rewrites and approves only a command that is one `dotnet build` or `dotnet test` with plain arguments, and gives no answer for any other command, which then goes through Codex's own approval. The other harnesses get the rewritten command without a decision, so it goes through their normal permission rules.
 

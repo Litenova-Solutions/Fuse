@@ -44,11 +44,12 @@ Compared with 5.0.0. After updating, run `fuse init` again in each repository: t
 - `fuse init` on a settings file it cannot read, such as malformed JSON, names the file and exits with 2 instead of crashing, and treats an empty or comment-only file as empty. It leaves no temporary file behind.
 - `fuse check` with an empty or invalid file argument says which argument and exits with 2 before it starts the engine.
 - The stop hook tells the agent `HEAD does not have them, so your changes introduced them`, where 5.0.0 said `they are not in the last commit`, and the MCP check tool's description says HEAD too. `fuse init` says `hooks registered`, or `MCP server registered in .vscode/mcp.json` when it registered only that, and messages name the product Fuse.
+- `fuse init` adds `.fuse/` to the root `.gitignore`, creating the file when there is none, unless a line already names the folder. The `.fuse` folder is reserved for files Fuse may keep in a repository, such as an index; 5.1.0 writes nothing there.
 - `fuse init` and `fuse mcp` outside a git repository say `fuse: not inside a git repository; Fuse compares your changes with HEAD, so it needs one`, the message `fuse check` gives.
 
 ## 5.0.0
 
-5.0.0 is a complete rewrite with no migration path from 4.x: nothing 4.x wrote, including the `.fuse` folder, is read, and all of it can be removed, as the [changelog page](https://fuse.codes/docs/changelog#moving-from-4-x) lists. Versions before 5.0.0 are deprecated.
+5.0.0 is a complete rewrite with no migration path from 4.x: nothing 4.x wrote, including the `.fuse` folder, is read, and the [changelog page](https://fuse.codes/docs/changelog#moving-from-4-x) lists what to remove. Versions before 5.0.0 are deprecated.
 
 Fuse keeps a warm Roslyn compilation of a .NET repository and gives coding agents the compiler errors their edits introduced, affected-test runs, and compact build output, through agent hooks and a three-tool MCP server.
 

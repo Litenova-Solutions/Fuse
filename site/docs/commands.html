@@ -160,9 +160,10 @@ fuse - faster C# compiler feedback and affected-test runs for coding agents
     <p><code>fuse hook</code> exits with 0 in every case except one: the Claude Code post-edit hook exits with 2 to wake the agent, as <a href="#fuse-hook">fuse hook</a> describes.</p>
 
     <h2 id="fuse-init">fuse init <a class="anchor" href="#fuse-init" aria-label="Link to this section">#</a></h2>
-    <p>Registers Fuse's hooks with every harness the repository uses, and the MCP server with VS Code. It detects a harness by its folder or file in the repository root and sets up Claude Code when it finds none. <a href="harnesses.html">Connect your agent</a> lists what it detects and writes, and how running it again behaves.</p>
+    <p>Registers Fuse's hooks with every harness the repository uses, and the MCP server with VS Code, and adds <code>.fuse/</code> to the root <code>.gitignore</code> (<a href="harnesses.html#the-fuse-folder">The .fuse folder</a>). It detects a harness by its folder or file in the repository root and sets up Claude Code when it finds none. <a href="harnesses.html">Connect your agent</a> lists what it detects and writes, and how running it again behaves.</p>
     <pre class="out" data-label="Output"><code>$ fuse init
 wrote .claude/settings.json
+wrote .gitignore
 fuse: hooks registered; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors</code></pre>
     <p>It exits with 2 outside a git repository and in a repository where git knows no <code>.csproj</code> file. It also exits with 2, after the <code>wrote</code> lines of the files it wrote before, when a settings file it has to change is not valid JSON (<code>fuse: &lt;file&gt; is not valid JSON (&lt;reason&gt;); fix or remove it</code>, leaving the file as it was) or cannot be written (<code>fuse: could not write &lt;file&gt; (&lt;reason&gt;)</code>, leaving no temporary file). An empty settings file, or one that holds only comments, counts as an empty object.</p>
 

@@ -9,9 +9,10 @@ Fuse needs the .NET 10 SDK. Install it with `dotnet tool install -g Fuse`, then 
 - [Overview](https://fuse.codes/docs/): what Fuse is, the words the documentation uses, and which page answers which question
 - [Getting started](https://fuse.codes/docs/getting-started): install Fuse and see what it reports on a sample repository
 - [Connect your agent](https://fuse.codes/docs/harnesses): what fuse init writes for each harness, and how an MCP host runs fuse mcp
-- [How it works](https://fuse.codes/docs/how-it-works): how Fuse checks an edit, selects tests and runs them, and common questions
+- [How it works](https://fuse.codes/docs/how-it-works): how Fuse checks an edit, selects tests and runs them
 - [Limits](https://fuse.codes/docs/limits): what Fuse cannot check, and what to do about it
 - [Results](https://fuse.codes/docs/results): measurements on four repositories, with the result file behind each number
+- [FAQ](https://fuse.codes/docs/faq): common questions, and how Fuse differs from language servers, Roslyn MCP servers, code search tools and test impact analysis tools
 - [Commands](https://fuse.codes/docs/commands): every fuse command, its arguments, its output and its exit codes
 - [Messages and fixes](https://fuse.codes/docs/messages): every message Fuse prints when it cannot answer, and the fix
 - [Troubleshooting](https://fuse.codes/docs/troubleshooting): silent hooks, slow checks, log locations and how to stop the engine

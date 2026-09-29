@@ -208,7 +208,7 @@ The command every installed hook runs. It reads the harness's JSON payload from 
 
 **`stop`** checks every change, waiting for the engine for up to 5 minutes. It sends the agent back with the check's output and `Fix these errors before finishing; they are not in the last commit.` When the payload says the agent is already continuing because of an earlier stop hook (`stop_hook_active` is `true`, or `loop_count` is above 0), it lets the agent finish, so it sends an agent back at most once in a row.
 
-A hook reports only introduced errors and a missing restore. Every other outcome, including a loading engine, a timeout and an internal failure, exits with 0 and prints nothing (or `{}` where the harness expects JSON), so a hook never breaks the agent's session. A payload that is not valid JSON and an exception are written to `hook.log` in the [state directory](troubleshooting.md#where-the-logs-are). Claude Code hooks whose payload comes from Cursor, which also runs Claude Code's settings, do nothing, so the Cursor hook answers there.
+A hook reports only introduced errors and a missing restore. Every other outcome, including a loading engine, a timeout and an internal failure, exits with 0 and prints nothing (or `{}` where the harness expects JSON), so a hook never breaks the agent's session. A payload that is not valid JSON or not a JSON object, and an exception, are written to `hook.log` in the [state directory](troubleshooting.md#where-the-logs-are). Claude Code hooks whose payload comes from Cursor, which also runs Claude Code's settings, do nothing, so the Cursor hook answers there.
 
 ## `fuse --version` and `fuse help`
 

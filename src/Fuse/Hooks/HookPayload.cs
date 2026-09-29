@@ -10,9 +10,16 @@ internal sealed partial class HookPayload
 
     private HookPayload(JsonElement root) => _root = root;
 
+    /// <summary>Reads a harness's hook input. Empty input reads as an empty object.</summary>
+    /// <exception cref="JsonException">
+    ///     The input is not JSON, or is JSON whose root is not an object. Every field is read from an object, so any other
+    ///     root is refused here, where <c>fuse hook</c> logs it and exits 0.
+    /// </exception>
     public static HookPayload Parse(string json)
     {
         using var document = JsonDocument.Parse(string.IsNullOrWhiteSpace(json) ? "{}" : json);
+        if (document.RootElement.ValueKind != JsonValueKind.Object)
+            throw new JsonException($"a hook payload is a JSON object, not {document.RootElement.ValueKind.ToString().ToLowerInvariant()}");
         return new HookPayload(document.RootElement.Clone());
     }
 

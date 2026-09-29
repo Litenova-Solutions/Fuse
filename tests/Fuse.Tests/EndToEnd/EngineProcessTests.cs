@@ -212,6 +212,20 @@ public class EngineProcessTests
     }
 
     [Theory]
+    [InlineData("claude", "post-edit", "[]")]
+    [InlineData("claude", "stop", "null")]
+    [InlineData("cursor", "post-edit", "\"x\"")]
+    [InlineData("codex", "pre-shell", "42")]
+    public async Task A_hook_payload_that_is_json_but_not_an_object_exits_zero_without_output(string harness, string hookEvent, string payload)
+    {
+        using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });
+        var result = await FuseProcess.RunAsync(repo.Path, payload, "hook", harness, hookEvent);
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("", result.Stdout + result.Stderr);
+        Assert.Contains("payload was not valid JSON", File.ReadAllText(Path.Combine(repo.Root.StateDirectory, "hook.log")), StringComparison.Ordinal);
+    }
+
+    [Theory]
     [InlineData("")]
     [InlineData("  ")]
     public async Task Check_of_an_empty_file_argument_is_refused_with_exit_code_2(string file)

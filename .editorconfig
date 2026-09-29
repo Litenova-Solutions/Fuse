@@ -9,6 +9,8 @@ indent_style = space
 [*.cs]
 indent_size = 4
 csharp_style_namespace_declarations = file_scoped:suggestion
+# An unused using fails dotnet format --verify-no-changes.
+dotnet_diagnostic.IDE0005.severity = warning
 
 [*.{csproj,props,targets,slnx,xml,json,yml,yaml,md,html,css,svg}]
 indent_size = 2

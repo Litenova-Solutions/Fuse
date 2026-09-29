@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Text;
-using Fuse.Protocol;
-using Fuse.Workspace;
+using Fuse.Failures;
 
 namespace Fuse.Repo;
 
@@ -12,7 +11,7 @@ namespace Fuse.Repo;
 internal sealed class GitBlobReader : IDisposable
 {
     private readonly string _root;
-    private readonly Lock _gate = new();
+    private readonly Lock _processLock = new();
     private Process? _process;
 
     public GitBlobReader(string root) => _root = root;
@@ -20,7 +19,7 @@ internal sealed class GitBlobReader : IDisposable
     /// <summary>Returns the bytes of <paramref name="relativePath"/> at <paramref name="commit"/>, or null when the file is not in that commit.</summary>
     public byte[]? Read(string commit, string relativePath)
     {
-        lock (_gate)
+        lock (_processLock)
         {
             for (var attempt = 0; ; attempt++)
             {
@@ -30,7 +29,7 @@ internal sealed class GitBlobReader : IDisposable
                 }
                 catch (IOException) when (attempt == 0)
                 {
-                    // The git process exits unexpectedly (for example when git is replaced on disk); restart it once.
+                    // The git process exited (for example because git was replaced on disk); start it once more.
                     Stop();
                 }
                 catch (IOException)
@@ -115,7 +114,7 @@ internal sealed class GitBlobReader : IDisposable
 
     public void Dispose()
     {
-        lock (_gate)
+        lock (_processLock)
             Stop();
     }
 }

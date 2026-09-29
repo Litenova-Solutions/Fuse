@@ -1,0 +1,18 @@
+version: 2
+updates:
+  # NuGet packages, pinned centrally in Directory.Packages.props.
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      nuget:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        update-types: [minor, patch]

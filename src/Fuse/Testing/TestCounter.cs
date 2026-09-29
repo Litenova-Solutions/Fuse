@@ -1,27 +1,29 @@
+using System.Diagnostics;
 using Fuse.Graph;
-using Fuse.Repo;
+using Fuse.Paths;
+using Fuse.Testing.Model;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Fuse.Testing;
 
-/// <summary>Counts test methods by parsing test project sources, so the scope line can say "38 of 2,914" without discovery.</summary>
+/// <summary>Counts test methods by parsing test project sources, so the summary can say "38 of 2,914" without discovery.</summary>
 internal sealed class TestCounter
 {
-    private readonly Dictionary<string, (DateTime Stamp, List<string> Tests)> _cache = new(ChangeTracker.PathComparer);
+    private readonly Dictionary<RepoPath, (DateTime Stamp, List<string> Tests)> _cache = [];
 
     /// <summary>Fully qualified names (<c>Ns.Outer+Inner.Method</c>) of the test methods in <paramref name="project"/>.</summary>
     public IReadOnlyList<string> TestsIn(ProjectNode project)
     {
         var result = new List<string>();
-        foreach (var file in project.Sources.Where(s => s.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)))
+        foreach (var file in project.Sources.Where(s => s.Absolute.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)))
         {
-            if (!File.Exists(file))
+            if (!File.Exists(file.Absolute))
                 continue;
-            var stamp = File.GetLastWriteTimeUtc(file);
+            var stamp = File.GetLastWriteTimeUtc(file.Absolute);
             if (!_cache.TryGetValue(file, out var entry) || entry.Stamp != stamp)
             {
-                entry = (stamp, Parse(file));
+                entry = (stamp, Parse(file.Absolute));
                 _cache[file] = entry;
             }
 
@@ -32,8 +34,12 @@ internal sealed class TestCounter
     }
 
     /// <summary>How many of <paramref name="tests"/> a selection matches, estimated from test methods declared in source.</summary>
-    public static int Count(IReadOnlyList<string> tests, ProjectSelection selection) =>
-        selection.All ? tests.Count : tests.Count(t => selection.Patterns.Any(p => t.Contains(p, StringComparison.Ordinal)));
+    public static int Count(IReadOnlyList<string> tests, TestSelection selection) => selection switch
+    {
+        TestSelection.Whole => tests.Count,
+        TestSelection.Methods methods => tests.Count(t => methods.Patterns.Any(p => t.Contains(p, StringComparison.Ordinal))),
+        _ => throw new UnreachableException($"a selection is whole or methods, not {selection.GetType().Name}"),
+    };
 
     private static List<string> Parse(string file)
     {

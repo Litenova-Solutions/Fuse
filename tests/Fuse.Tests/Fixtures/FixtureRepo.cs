@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using Fuse.Repo;
+using Fuse.Paths;
 
 namespace Fuse.Tests.Fixtures;
 
@@ -9,6 +9,9 @@ namespace Fuse.Tests.Fixtures;
 /// </summary>
 internal sealed class FixtureRepo : IDisposable
 {
+    private static readonly Lazy<RepoRoot> Checkout = new(() =>
+        RepoRoot.Find(AppContext.BaseDirectory) ?? throw new InvalidOperationException($"no git repository above {AppContext.BaseDirectory}"));
+
     private FixtureRepo(string path)
     {
         Path = path;
@@ -20,11 +23,19 @@ internal sealed class FixtureRepo : IDisposable
 
     public RepoRoot Root { get; }
 
+    /// <summary>
+    ///     The root of the Fuse checkout the tests run from, for a test that builds repository paths but reads no file
+    ///     through them, so it needs no repository of its own.
+    /// </summary>
+    public static RepoRoot CheckoutRoot => Checkout.Value;
+
     /// <summary>Copies the standard template (see <see cref="FixtureTemplate"/>) and restores it in its new location.</summary>
-    public static FixtureRepo CreateStandard()
+    public static FixtureRepo CreateStandard() => CreateStandard(NewDirectory());
+
+    /// <summary>The standard template restored under <paramref name="target"/>, for a path whose spelling matters.</summary>
+    public static FixtureRepo CreateStandard(string target)
     {
         var template = FixtureTemplate.Standard.Value;
-        var target = NewDirectory();
         CopyDirectory(template, target);
         // project.assets.json and the generated nuget props hold absolute paths, so the copy is restored in place.
         // Every package is already in the local cache, so this is an offline no-op restore of a few seconds.
@@ -48,6 +59,9 @@ internal sealed class FixtureRepo : IDisposable
     }
 
     public string Full(string relative) => System.IO.Path.GetFullPath(System.IO.Path.Combine(Root.Path, relative));
+
+    /// <summary>The repository path of a repository-relative file, as the engine names it.</summary>
+    public RepoPath PathOf(string relative) => Root.PathOf(relative);
 
     public string Read(string relative) => Lf(File.ReadAllText(Full(relative)));
 
@@ -83,6 +97,17 @@ internal sealed class FixtureRepo : IDisposable
     internal static string NewDirectory()
     {
         var path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "fuse-tests", Guid.NewGuid().ToString("N")[..10]);
+        Directory.CreateDirectory(path);
+        return path;
+    }
+
+    /// <summary>
+    ///     A directory whose own name is not ASCII, under <c>fuse-tests</c>. Everything else about the repository is the
+    ///     standard template, so a difference in behaviour can only come from the path.
+    /// </summary>
+    internal static string NewNonAsciiDirectory()
+    {
+        var path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "fuse-tests", "blåbærgrød-" + Guid.NewGuid().ToString("N")[..8]);
         Directory.CreateDirectory(path);
         return path;
     }

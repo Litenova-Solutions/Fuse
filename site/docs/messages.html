@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Messages and Fixes | Fuse</title>
+<meta name="description" content="Every message Fuse prints when it cannot answer, what causes it, and the fix.">
+<link rel="canonical" href="https://fuse.codes/docs/messages">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+<meta name="author" content="Litenova Solutions">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#fcfcfb">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Fuse">
+<meta property="og:locale" content="en_US">
+<meta property="og:title" content="Messages and Fixes">
+<meta property="og:description" content="Every message Fuse prints when it cannot answer, what causes it, and the fix.">
+<meta property="og:url" content="https://fuse.codes/docs/messages">
+<meta property="og:image" content="https://fuse.codes/assets/og.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster compiler feedback for AI coding agents on .NET. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Messages and Fixes">
+<meta name="twitter:description" content="Every message Fuse prints when it cannot answer, what causes it, and the fix.">
+<meta name="twitter:image" content="https://fuse.codes/assets/og.png">
+<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster compiler feedback for AI coding agents on .NET. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
+<link rel="icon" href="../assets/fuse-icon.svg" type="image/svg+xml" sizes="any">
+<link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<link rel="sitemap" type="application/xml" href="../sitemap.xml">
+<link rel="stylesheet" href="../assets/style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "@id": "https://fuse.codes/docs/messages#article",
+      "headline": "Messages and Fixes",
+      "description": "Every message Fuse prints when it cannot answer, what causes it, and the fix.",
+      "url": "https://fuse.codes/docs/messages",
+      "mainEntityOfPage": "https://fuse.codes/docs/messages",
+      "inLanguage": "en",
+      "dateModified": "2026-09-29",
+      "image": "https://fuse.codes/assets/og.png",
+      "isPartOf": {
+        "@type": "WebSite",
+        "name": "Fuse",
+        "url": "https://fuse.codes/"
+      },
+      "about": {
+        "@type": "SoftwareApplication",
+        "name": "Fuse",
+        "url": "https://fuse.codes/"
+      },
+      "author": {
+        "@type": "Organization",
+        "name": "Litenova Solutions",
+        "url": "https://github.com/Litenova-Solutions"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "Litenova Solutions",
+        "url": "https://github.com/Litenova-Solutions"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Fuse",
+          "item": "https://fuse.codes/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Documentation",
+          "item": "https://fuse.codes/docs/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Messages and Fixes",
+          "item": "https://fuse.codes/docs/messages"
+        }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to main content</a>
+<div class="wrap wide">
+  <header class="site-header">
+    <a class="brand" href="../index.html"><img src="../assets/fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
+    <nav aria-label="Main">
+      <a href="index.html" aria-current="page">Docs</a>
+      <a href="results.html">Results</a>
+      <a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a>
+    </nav>
+  </header>
+
+  <div class="docs">
+    <main id="main" class="page" tabindex="-1">
+    <p class="crumbs"><a href="index.html">Docs</a> / Reference</p>
+    <h1>Messages and Fixes</h1>
+    <p class="jump"><a href="#docs-nav">All documentation pages</a></p>
+    <p class="intro">When Fuse cannot answer, it prints <code>fuse:</code> and one of the messages on this page, and exits with 2. Each message names its fix.</p>
+    <div class="audience">
+      <p><b>This page is for</b> anyone who got one of these messages from a command, an MCP tool, or a hook, and wants to know what caused it and what to run.</p>
+      <p><b>If there was no message at all</b>, for example a hook that says nothing, read <a href="troubleshooting.html">Troubleshooting</a> instead.</p>
+    </div>
+    <p>Each message has a code, which the MCP server and the hooks act on. The MCP server returns every one as an error result. A hook reports <code>RestoreNeeded</code>, because the agent can fix it by running the command, and stays silent on the rest, because a hook never breaks the agent's session. Text in angle brackets varies.</p>
+
+    <nav class="toc" aria-label="On this page">
+      <p>On this page</p>
+      <ol>
+        <li><a href="#notarepository">NotARepository</a></li>
+        <li><a href="#noprojects">NoProjects</a></li>
+        <li><a href="#loading">Loading</a></li>
+        <li><a href="#restoreneeded">RestoreNeeded</a></li>
+        <li><a href="#loadfailed">LoadFailed</a></li>
+        <li><a href="#timeout">Timeout</a></li>
+        <li><a href="#invalidpath">InvalidPath</a></li>
+        <li><a href="#internal">Internal</a></li>
+        <li><a href="#other-lines">Other lines on standard error</a></li>
+      </ol>
+    </nav>
+
+    <h2 id="notarepository">NotARepository <a class="anchor" href="#notarepository" aria-label="Link to this section">#</a></h2>
+    <pre class="out" data-label="Message"><code>fuse: not inside a git repository; Fuse compares your changes with HEAD, so it needs one</code></pre>
+    <p><strong>Cause.</strong> <code>fuse check</code>, <code>fuse test</code> and <code>fuse init</code> print it on standard error, and <code>fuse mcp</code> returns it, when the working directory is in no git repository. For an MCP server, that is the directory it was started in.</p>
+    <p><strong>Fix.</strong> Run the command inside the repository, or run <code>git init</code> and commit.</p>
+
+    <h2 id="noprojects">NoProjects <a class="anchor" href="#noprojects" aria-label="Link to this section">#</a></h2>
+    <pre class="out" data-label="Message"><code>fuse: no C# projects (.csproj) in this repository, so Fuse has nothing to check
+fuse: no C# project could be evaluated: &lt;path&gt;: &lt;MSBuild message&gt;</code></pre>
+    <p><strong>Cause.</strong> Git knows no <code>.csproj</code> file in the repository (the second line is <code>fuse init</code>'s), the project files git knows are missing from disk, or MSBuild could evaluate none of them.</p>
+    <p><strong>Fix.</strong> Add or commit a project. For the second line, fix the project file the message names, which <code>dotnet build</code> also fails on.</p>
+
+    <h2 id="loading">Loading <a class="anchor" href="#loading" aria-label="Link to this section">#</a></h2>
+    <pre class="out" data-label="Message"><code>fuse: Fuse is still loading this repository; the next check will include these changes</code></pre>
+    <p><strong>Cause.</strong> The engine answers a check with this while it is still evaluating the repository or loading the projects that own uncommitted changes, when the check asked not to wait. Only the post-edit hook of a harness other than Claude Code asks that, because the agent waits for that hook, and it stays silent on this answer.</p>
+    <p><strong>Fix.</strong> None; the stop hook and the next check cover the changes.</p>
+
+    <h2 id="restoreneeded">RestoreNeeded <a class="anchor" href="#restoreneeded" aria-label="Link to this section">#</a></h2>
+    <pre class="out" data-label="Message"><code>fuse: restore needed: run `dotnet restore Lib/Lib.csproj` (Lib/Lib.csproj not restored)</code></pre>
+    <p><strong>Cause.</strong> A project the request needs, or a project it references, has no <code>project.assets.json</code>, the file <code>dotnet restore</code> writes. The message names the first such project, adds <code>and the same for each project listed</code> when there are more, and lists up to three. It names a project rather than the solution, because a solution can leave out the project that is missing its restore.</p>
+    <p><strong>Fix.</strong> Run the command it names for each project listed. Fuse never restores on its own. Every hook reports this message too, so an agent sees it and can run the command.</p>
+
+    <h2 id="loadfailed">LoadFailed <a class="anchor" href="#loadfailed" aria-label="Link to this section">#</a></h2>
+    <pre class="out" data-label="Message"><code>fuse: could not load &lt;project&gt;: &lt;message&gt;
+fuse: Fuse could not evaluate the repository's projects: &lt;message&gt;
+fuse: git failed &lt;action&gt; in &lt;root&gt; (&lt;git's message&gt;); the repository may be damaged, see `git status` and `git fsck`
+fuse: git cannot read &lt;path&gt; at HEAD; the repository may be damaged (run `git fsck`)
+fuse: git cannot list the repository's files (&lt;git's message&gt;); see `git status`</code></pre>
+    <p><strong>Cause.</strong> A project could not be loaded (a missing project reference or an SDK that does not resolve, which <code>dotnet build</code> also fails on), the evaluation failed, or git could not read the repository. A NuGet restore warning, such as a package advisory, does not count as a failure.</p>
+    <p><strong>Fix.</strong> Run <code>dotnet build</code> on the project to see the same failure, or <code>git status</code> and <code>git fsck</code> for the git messages.</p>
+
+    <h2 id="timeout">Timeout <a class="anchor" href="#timeout" aria-label="Link to this section">#</a></h2>
+    <pre class="out" data-label="Message"><code>fuse: the Fuse engine did not answer within &lt;seconds&gt; s
+fuse: the request is cancelled</code></pre>
+    <p><strong>Cause.</strong> The engine did not answer within the command's limit:</p>
+    <table>
+      <thead><tr><th scope="col">Caller</th><th scope="col">Limit</th></tr></thead>
+      <tbody>
+        <tr><td><code>fuse check</code>, <code>fuse test</code> and the MCP tools</td><td class="num">600 s</td></tr>
+        <tr><td>The Claude Code post-edit hook and every stop hook</td><td class="num">300 s</td></tr>
+        <tr><td>The other post-edit hooks</td><td class="num">50 s</td></tr>
+      </tbody>
+    </table>
+    <p>A request that reaches projects the engine has not loaded waits for them to load; in the <a href="results.html">measurements</a> the slowest such load took 25,747 ms, for Jellyfin's dependent projects. The second line is the engine's answer when a request is cancelled while it runs.</p>
+    <p><strong>Fix.</strong> Run the command again; the engine keeps loading in between. <a href="troubleshooting.html#a-command-times-out">Troubleshooting</a> shows how to see what it is doing.</p>
+
+    <h2 id="invalidpath">InvalidPath <a class="anchor" href="#invalidpath" aria-label="Link to this section">#</a></h2>
+    <pre class="out" data-label="Message"><code>fuse: a file named in the check is empty; name each file by its path
+fuse: "&lt;file&gt;" named in the check is not a valid path</code></pre>
+    <p><strong>Cause.</strong> <code>fuse check</code> and the <code>fuse_check</code> tool print it when a file argument is empty or blank, is not a string, or is not a path (for example because it holds a NUL character), and check nothing.</p>
+    <p><strong>Fix.</strong> Name each file by its path, relative or absolute.</p>
+
+    <h2 id="internal">Internal <a class="anchor" href="#internal" aria-label="Link to this section">#</a></h2>
+    <pre class="out" data-label="Message"><code>fuse: internal error: &lt;message&gt; (details in &lt;state directory&gt;/engine.log)
+fuse: the Fuse engine closed the connection (see &lt;state directory&gt;/engine.log)
+fuse: the Fuse engine sent an answer this client cannot read (&lt;reason&gt;; see &lt;state directory&gt;/engine.log)
+fuse: could not connect to the Fuse engine: &lt;message&gt;
+fuse: could not start the Fuse engine: &lt;message&gt;
+fuse: the Fuse engine sent no check result (&lt;response&gt;); run the command again
+fuse: the Fuse engine sent no test plan (&lt;response&gt;); run the command again</code></pre>
+    <p><strong>Cause.</strong> Something failed inside Fuse. <code>could not connect to the Fuse engine: it did not start within 15 s</code> means the engine process did not open its pipe.</p>
+    <p><strong>Fix.</strong> Read the lines of <code>engine.log</code> the message names, then run the command again. <a href="troubleshooting.html#internal-errors">Troubleshooting</a> lists the details to collect for a bug report.</p>
+
+    <h2 id="other-lines">Other lines on standard error <a class="anchor" href="#other-lines" aria-label="Link to this section">#</a></h2>
+    <p>These two lines are not failures: the command goes on after printing them.</p>
+    <pre class="out" data-label="Message"><code>fuse: waiting for another build or test in this repository
+fuse: running without the per-repository build lock: &lt;reason&gt;</code></pre>
+    <p><code>fuse build</code> and <code>fuse test</code> print the first once when another client holds the <a href="how-it-works.html#builds-and-the-build-lock">build lock</a>, and keep waiting. They print the second when the state directory cannot be written, and build without the lock.</p>
+
+    <nav class="pager" aria-label="Previous and next page">
+      <a href="commands.html"><span>Previous</span>Commands</a>
+      <a class="next-page" href="troubleshooting.html"><span>Next</span>Troubleshooting</a>
+    </nav>
+    </main>
+
+    <nav class="sidebar" id="docs-nav" aria-label="Documentation">
+      <h2>Start here</h2>
+      <ul>
+        <li><a href="index.html">Overview</a></li>
+        <li><a href="getting-started.html">Getting started</a></li>
+        <li><a href="harnesses.html">Connect your agent</a></li>
+      </ul>
+      <h2>Understand</h2>
+      <ul>
+        <li><a href="how-it-works.html">How it works</a></li>
+        <li><a href="limits.html">Limits</a></li>
+        <li><a href="results.html">Results</a></li>
+      </ul>
+      <h2>Reference</h2>
+      <ul>
+        <li><a href="commands.html">Commands</a></li>
+        <li><a href="messages.html" aria-current="page">Messages and fixes</a></li>
+        <li><a href="troubleshooting.html">Troubleshooting</a></li>
+        <li><a href="changelog.html">Changelog</a></li>
+      </ul>
+      <h2>Contribute</h2>
+      <ul>
+        <li><a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/main/CONTRIBUTING.md">Contributing</a></li>
+        <li><a href="architecture.html">Architecture</a></li>
+        <li><a href="evals.html">Evals</a></li>
+        <li><a href="ai-policy.html">AI policy</a></li>
+        <li><a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/main/SECURITY.md">Security</a></li>
+      </ul>
+    </nav>
+  </div>
+
+  <footer class="site-footer">
+    <span>Fuse, Apache-2.0. Measured medians, one Windows machine.</span>
+    <nav aria-label="Footer"><a href="index.html">Docs</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
+  </footer>
+</div>
+</body>
+</html>

@@ -21,7 +21,14 @@ body:
     id: repro
     attributes:
       label: Steps to reproduce
-      description: Commands, the hook or MCP call, or a minimal repository layout. Attach obj/fuse/engine.log if relevant.
+      description: >-
+        Commands, the hook or MCP call, or a minimal repository layout. If the engine or a hook is involved,
+        attach the lines of `engine.log` or `hook.log` around the failure. Both are in the repository's state
+        directory: `%LOCALAPPDATA%\fuse\repos\<id>` on Windows, `~/.local/share/fuse/repos/<id>` (or
+        `$XDG_DATA_HOME/fuse/repos/<id>` when that is set) on Linux, and `~/Library/Application Support/fuse/repos/<id>`
+        on macOS.
+        [Where the logs are](https://fuse.codes/docs/troubleshooting#where-the-logs-are)
+        shows how to find `<id>`.
     validations:
       required: true
   - type: dropdown

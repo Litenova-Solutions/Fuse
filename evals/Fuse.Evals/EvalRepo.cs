@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 using Fuse.Dotnet;
+using Fuse.Paths;
 
 namespace Fuse.Evals;
 
@@ -36,8 +37,72 @@ internal sealed partial class EvalRepo
 
     public async Task<bool> IsCleanAsync() => (await GitAsync("status", "--porcelain")).Output.Trim().Length == 0;
 
-    /// <summary>Runs <c>dotnet build</c> on the truth target and returns its error lines (relative paths, canonical form).</summary>
+    /// <summary>The commit the repository is measured at, so a result file names the tree behind its numbers.</summary>
+    public async Task<string> HeadAsync()
+    {
+        var result = await GitAsync("rev-parse", "HEAD");
+        return result.ExitCode == 0 ? result.Output.Trim() : "";
+    }
+
+    /// <summary>
+    ///     The build under test, in the form the engine compares (<c>version/module id</c>), so two result files from two
+    ///     builds of one version can be told apart. Falls back to the printed version when the assembly cannot be read.
+    /// </summary>
+    public async Task<string> VersionAsync()
+    {
+        var version = (await FuseAsync("--version")).Result.Output.Trim();
+        var assembly = Path.ChangeExtension(Fuse, ".dll");
+        try
+        {
+            using var stream = File.OpenRead(assembly);
+            using var pe = new System.Reflection.PortableExecutable.PEReader(stream);
+            var metadata = System.Reflection.Metadata.PEReaderExtensions.GetMetadataReader(pe);
+            return $"{version}/{metadata.GetGuid(metadata.GetModuleDefinition().Mvid):N}";
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or BadImageFormatException or InvalidOperationException)
+        {
+            return version;
+        }
+    }
+
+    /// <summary>
+    ///     The engine log this repository's engine writes, read as lines with the leading timestamp stripped, so a caller
+    ///     can match them against the formats in <see cref="Fuse.Telemetry.PhaseLine"/>. The engine is the only writer and
+    ///     it is idle between requests, so a read cannot catch a line half-written.
+    /// </summary>
+    public IReadOnlyList<string> EngineLogLines()
+    {
+        var path = Path.Combine(StateDirectory, "engine.log");
+        if (!File.Exists(path))
+            return [];
+
+        return [.. File.ReadAllLines(path).Select(line => Timestamp().Replace(line, "", 1).Trim()).Where(line => line.Length > 0)];
+    }
+
+    /// <summary>Where this repository's engine keeps its state, which is where its log is.</summary>
+    public string StateDirectory => RepoRoot.Find(Root)?.StateDirectory ?? throw new InvalidOperationException($"{Root} is not in a git repository");
+
+    /// <summary>
+    ///     Runs <c>dotnet build</c> on the truth target and returns its error lines (relative paths, canonical form).
+    ///     A warm engine must not hold a file this build writes; if the build fails to copy one (MSB3021, MSB3027), that is
+    ///     a product defect a user would hit, so the suite stops and says so rather than measuring a broken truth build.
+    /// </summary>
     public async Task<(List<string> Errors, int ExitCode, double Seconds)> BuildAsync()
+    {
+        var (errors, exitCode, seconds) = await BuildOnceAsync();
+        ThrowIfLocked(errors, "the truth build");
+        return (errors, exitCode, seconds);
+    }
+
+    /// <summary>Stops the suite when <paramref name="errors"/> show a build could not replace a file something held open.</summary>
+    internal static void ThrowIfLocked(IEnumerable<string> errors, string what)
+    {
+        var locked = errors.FirstOrDefault(e => e.Contains("MSB3021", StringComparison.Ordinal) || e.Contains("MSB3027", StringComparison.Ordinal));
+        if (locked is not null)
+            throw new InvalidOperationException($"{what} could not replace a file that another process holds open, which is a defect to fix, not a result: {locked}");
+    }
+
+    private async Task<(List<string> Errors, int ExitCode, double Seconds)> BuildOnceAsync()
     {
         var watch = Stopwatch.StartNew();
         var result = await ProcessRunner.RunAsync(
@@ -56,14 +121,21 @@ internal sealed partial class EvalRepo
         return (result, watch.Elapsed.TotalMilliseconds);
     }
 
-    /// <summary>Stops every fuse engine serving this repository so the next call starts cold.</summary>
+    /// <summary>Runs fuse with arguments and returns its output and wall time.</summary>
+    public async Task<FuseRun> FuseTimedAsync(params string[] args)
+    {
+        var (result, milliseconds) = await FuseAsync(args);
+        return new FuseRun(result, milliseconds);
+    }
+
+    /// <summary>Stops every Fuse engine serving this repository so the next call starts cold.</summary>
     public async Task KillEngineAsync()
     {
         foreach (var process in await EngineProcessesAsync())
         {
             try
             {
-                Process.GetProcessById(process.Pid).Kill();
+                Process.GetProcessById(process.Pid).Kill(entireProcessTree: true);
             }
             catch (Exception e) when (e is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception)
             {
@@ -73,7 +145,7 @@ internal sealed partial class EvalRepo
         await Task.Delay(500);
     }
 
-    /// <summary>The fuse engine processes whose command line names this repository, with their working set in bytes.</summary>
+    /// <summary>The Fuse engine processes whose command line names this repository, with their working set in bytes.</summary>
     public async Task<List<(int Pid, long WorkingSet)>> EngineProcessesAsync()
     {
         var result = new List<(int, long)>();
@@ -117,7 +189,7 @@ internal sealed partial class EvalRepo
     public static List<string> ParseFuseErrors(string output) =>
         [.. output.Split('\n').Select(l => l.TrimEnd('\r')).Where(l => FuseError().IsMatch(l))];
 
-    /// <summary>The count in the "fuse: N new error(s)" summary line, or 0 when there is none.</summary>
+    /// <summary>The count in the "fuse: N error(s) introduced" summary line, or 0 when there is none.</summary>
     public static int ParseFuseCount(string output)
     {
         var match = FuseCount().Match(output);
@@ -126,7 +198,18 @@ internal sealed partial class EvalRepo
 
     [GeneratedRegex(@"^[^\r\n]+\(\d+,\d+\): error [A-Za-z]+\d+: .*$")]
     private static partial Regex FuseError();
-
-    [GeneratedRegex(@"fuse: (\d+) new error")]
+    [GeneratedRegex(@"fuse: (\d+) error\(s\) introduced")]
     private static partial Regex FuseCount();
+
+    // The engine prefixes every line with "yyyy-MM-dd HH:mm:ss.fff ", two fields separated by a space.
+    [GeneratedRegex(@"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ ")]
+    private static partial Regex Timestamp();
+}
+
+/// <summary>One run of the fuse executable: what it printed, how long the client waited, and its exit code.</summary>
+internal sealed record FuseRun(ProcessResult Result, double Milliseconds)
+{
+    public int ExitCode => Result.ExitCode;
+
+    public string Output => Result.Output;
 }

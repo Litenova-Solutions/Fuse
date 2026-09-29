@@ -1,14 +1,16 @@
 using System.IO.Pipes;
 using System.Runtime.InteropServices;
 using System.Text;
+using Fuse.Failures;
+using Fuse.Paths;
 using Fuse.Protocol;
-using Fuse.Repo;
+using Fuse.Telemetry;
 
 namespace Fuse.Engine;
 
 /// <summary>
 ///     The engine process: one per repository root, guarded by a named mutex, serving one request per pipe
-///     connection. It exits after <see cref="IdleTimeout"/> without requests, when a client of a different version
+///     connection. It exits after <see cref="IdleTimeout"/> without requests, when a client of another build
 ///     connects, or when the repository disappears.
 /// </summary>
 internal static class EngineServer
@@ -38,8 +40,8 @@ internal static class EngineServer
         var log = new EngineLog(root.StateDirectory);
         log.Write($"engine {EngineVersion.Build} started for {root.Path} (pid {Environment.ProcessId})");
         using var shutdown = new CancellationTokenSource();
-        using var host = new EngineHost(root, log);
-        _ = host.InitializeAsync(shutdown.Token);
+        using var router = new RequestRouter(root, log);
+        _ = router.InitializeAsync(shutdown.Token);
 
         var state = new ServerState();
         var watchdog = WatchIdleAsync(root, state, shutdown, log);
@@ -69,63 +71,72 @@ internal static class EngineServer
                     continue;
                 }
 
-                _ = ServeAsync(pipe, host, state, shutdown, log);
+                _ = ServeAsync(pipe, router, state, shutdown, log);
             }
         }
         finally
         {
             await shutdown.CancelAsync().ConfigureAwait(false);
             await watchdog.ConfigureAwait(false);
+            // The router is disposed when this method returns; a background load must stop before its workspace goes.
+            await router.WaitForPreloadAsync().ConfigureAwait(false);
             log.Write("engine stopped");
         }
 
         return 0;
     }
 
-    private static async Task ServeAsync(NamedPipeServerStream pipe, EngineHost host, ServerState state, CancellationTokenSource shutdown, EngineLog log)
+    private static async Task ServeAsync(NamedPipeServerStream pipe, RequestRouter router, ServerState state, CancellationTokenSource shutdown, EngineLog log)
     {
         await using (pipe.ConfigureAwait(false))
         {
             try
             {
-                var line = await ReadLineAsync(pipe, shutdown.Token).ConfigureAwait(false);
-                var request = line is null ? null : ProtocolJson.ReadRequest(line);
-                if (request is null)
+                var line = await PipeFraming.ReadLineAsync(pipe, shutdown.Token).ConfigureAwait(false);
+                if (line is null)
                     return;
                 state.Touch();
-                if (request.Version != EngineVersion.Build)
+                // The build id is read before the request's case, which a client of another build may name differently or
+                // not at all, so every such client gets Restart.
+                var buildId = ProtocolJson.ReadBuildId(line);
+                if (buildId != EngineVersion.Build)
                 {
-                    log.Write($"client version {request.Version} differs; exiting so the client can start a matching engine");
-                    await WriteAsync(pipe, new EngineResponse(ResponseStatus.Restart), CancellationToken.None).ConfigureAwait(false);
+                    // A request of 5.0.0 names its build id otherwise, so none is read from it.
+                    log.Write($"client build {buildId ?? "(none)"} differs; exiting so the client can start a matching engine");
+                    await WriteAsync(pipe, new EngineResponse.Restart(), CancellationToken.None).ConfigureAwait(false);
                     await shutdown.CancelAsync().ConfigureAwait(false);
                     return;
                 }
 
+                var request = ProtocolJson.ReadRequest(line);
+                if (request is null)
+                    return;
+
                 Interlocked.Increment(ref state.Active);
                 try
                 {
-                    using var request_ = CancellationTokenSource.CreateLinkedTokenSource(shutdown.Token);
+                    using var requestCancellation = CancellationTokenSource.CreateLinkedTokenSource(shutdown.Token);
                     // The client sends nothing after its request, so a completed read means it disconnected: stop the work.
-                    var disconnect = WatchDisconnectAsync(pipe, request_);
+                    var disconnect = WatchDisconnectAsync(pipe, requestCancellation);
                     EngineResponse response;
                     try
                     {
-                        response = await host.HandleAsync(request, request_.Token).ConfigureAwait(false);
+                        response = await router.HandleAsync(request, requestCancellation.Token).ConfigureAwait(false);
                     }
                     catch (OperationCanceledException)
                     {
-                        response = EngineResponse.Fail(ErrorCode.Timeout, "the request is cancelled");
+                        response = new EngineResponse.Unanswered(ErrorCode.Timeout, "the request is cancelled");
                     }
 
-                    if (!request_.IsCancellationRequested)
-                        await WriteAsync(pipe, response, request_.Token).ConfigureAwait(false);
+                    if (!requestCancellation.IsCancellationRequested)
+                        await WriteAsync(pipe, response, requestCancellation.Token).ConfigureAwait(false);
 
                     // Let the client read the answer and close its end first: on Unix, where the pipe is a socket,
                     // cancelling the pending read can reset the connection before the client has read the answer.
                     await Task.WhenAny(disconnect, Task.Delay(TimeSpan.FromSeconds(5), CancellationToken.None)).ConfigureAwait(false);
-                    if (request.Kind == RequestKind.Shutdown)
+                    if (request is EngineRequest.ShutDown)
                         await shutdown.CancelAsync().ConfigureAwait(false);
-                    await request_.CancelAsync().ConfigureAwait(false);
+                    await requestCancellation.CancelAsync().ConfigureAwait(false);
                     await disconnect.ConfigureAwait(false);
                 }
                 finally
@@ -182,30 +193,6 @@ internal static class EngineServer
         }
         catch (OperationCanceledException)
         {
-        }
-    }
-
-    /// <summary>
-    ///     Reads one newline-terminated UTF-8 line in 4 KB chunks. Each connection carries exactly one message in each
-    ///     direction, so anything after the newline cannot exist and nothing is lost by reading ahead.
-    /// </summary>
-    internal static async Task<string?> ReadLineAsync(Stream stream, CancellationToken cancellationToken)
-    {
-        using var line = new MemoryStream();
-        var buffer = new byte[4096];
-        while (true)
-        {
-            var read = await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
-            if (read == 0)
-                return line.Length == 0 ? null : Encoding.UTF8.GetString(line.GetBuffer(), 0, (int)line.Length);
-            var newline = Array.IndexOf(buffer, (byte)'\n', 0, read);
-            if (newline >= 0)
-            {
-                line.Write(buffer, 0, newline);
-                return Encoding.UTF8.GetString(line.GetBuffer(), 0, (int)line.Length);
-            }
-
-            line.Write(buffer, 0, read);
         }
     }
 

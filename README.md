@@ -1,120 +1,119 @@
-# Fuse
+# ![Fuse logo](site/assets/fuse-icon.svg) Fuse
 
-Near-instant compiler feedback for AI coding agents on .NET.
+[![NuGet](https://img.shields.io/nuget/v/Fuse)](https://www.nuget.org/packages/Fuse)
+[![NuGet downloads](https://img.shields.io/nuget/dt/Fuse)](https://www.nuget.org/packages/Fuse)
+[![CI](https://github.com/Litenova-Solutions/Fuse/actions/workflows/ci.yml/badge.svg)](https://github.com/Litenova-Solutions/Fuse/actions/workflows/ci.yml)
+[![.NET 10](https://img.shields.io/badge/.NET-10-512BD4)](https://dotnet.microsoft.com/download/dotnet/10.0)
+[![License](https://img.shields.io/github/license/Litenova-Solutions/Fuse)](https://github.com/Litenova-Solutions/Fuse/blob/main/LICENSE)
 
-Fuse keeps your solution compiled in memory with Roslyn and plugs it into coding agents through hooks. After every edit, the agent learns which compiler errors that edit introduced, including breaks in projects that depend on it, up to 6.8x faster than `dotnet build`. When the agent runs `dotnet test`, only the tests the change can reach run, and only failures are printed.
+Faster compiler feedback for AI coding agents on .NET.
+
+Fuse keeps your solution compiled in memory with Roslyn and checks each edit against it, up to 7.4x faster than `dotnet build`. The agent gets only the errors its edit introduced, including breaks in other projects, and when it runs `dotnet test`, only the tests the change can reach run and only failures are printed.
+
+Fuse is built for AI coding agents. After `fuse init`, the agent's harness runs Fuse after every edit and before the agent finishes, and in most harnesses on every `dotnet build` and `dotnet test`, so you do not run it yourself. Its commands also run from a terminal, to try Fuse out, see what the agent receives, or find out why a hook is silent.
+
+[Website](https://fuse.codes) | [Documentation](https://fuse.codes/docs/) | [Getting started](https://fuse.codes/docs/getting-started) | [Results](https://fuse.codes/docs/results) | [Changelog](https://github.com/Litenova-Solutions/Fuse/blob/main/CHANGELOG.md)
+
+![Fuse's time as a share of the dotnet command it replaces](site/assets/benefits.svg)
+
+## Features
+
+- **Introduced errors only.** Fuse compares the working tree, your files as they are on disk, with HEAD, the commit you have checked out, and never reports an error HEAD already has.
+- **Breaks across projects.** When an edit changes a declaration, Fuse checks the dependent projects that use it and names the change that broke each file.
+- **Affected tests.** `fuse test` runs only the tests the change can reach, and prints only the failures.
+- **Compact builds.** `fuse build` runs `dotnet build` and prints only its errors.
+- **Hooks for your agent.** `fuse init` registers hooks with your agent's harness that check each edit, check every change before the agent finishes, and rewrite `dotnet build` and `dotnet test` to their Fuse equivalents.
+- **An MCP server.** `fuse mcp` serves the check, test and build operations to MCP hosts that run no hooks.
+- **Local, with nothing to configure.** Fuse runs on your machine, has no telemetry, makes no network calls of its own, and reads no configuration.
+
+## Supported harnesses
+
+| Harness | Integration |
+| --- | --- |
+| Claude Code | Hooks |
+| Cursor | Hooks |
+| Gemini CLI | Hooks |
+| Codex | Hooks |
+| GitHub Copilot CLI | Hooks |
+| OpenCode | Plugin |
+| VS Code agent mode | MCP server, since VS Code runs no hooks |
+
+`fuse init` detects each one by its folder or file in the repository root and sets up Claude Code when it finds none. [Connect your agent](https://fuse.codes/docs/harnesses) lists what it writes for each one.
+
+## Getting started
+
+### Requirements
+
+- The .NET 10 SDK
+- git, and a repository with at least one commit
+- Restored projects: Fuse never runs `dotnet restore` on its own
+
+### Install
 
 ```bash
 dotnet tool install -g Fuse
-cd your-repo
+```
+
+`dotnet tool install -g` puts `fuse` in `~/.dotnet/tools` (`%USERPROFILE%\.dotnet\tools` on Windows), which has to be on your `PATH`, for you and for your agent.
+
+### Set up a repository
+
+Run `fuse init` in the repository to register Fuse's hooks with your agent's harness:
+
+```bash
 fuse init
 ```
 
-That is the setup. The hooks run on their own, so the agent needs no instructions and no tool to remember. Website: [fuse.codes](https://fuse.codes).
-
-![Fuse's time as a share of the dotnet command it replaces](https://raw.githubusercontent.com/Litenova-Solutions/Fuse/main/site/benefits.svg)
-
-## What the agent sees
-
-After an edit that renames `Calc.Add` to `Calc.Plus` in a library, the post-edit hook wakes the agent with:
-
 ```text
-App/Program.cs(2,28): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)
-Lib.Tests/UnitTest1.cs(4,65): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)
-fuse: 2 new error(s) in 2 file(s) (App, Lib.Tests); Lib declarations changed, 2 dependent project(s) checked
+wrote .claude/settings.json
+wrote .gitignore
+fuse: hooks registered; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors
 ```
 
-An edit that introduces no error produces no output. Errors that exist at the last commit are never reported.
+That is the whole setup. From then on the agent hears from Fuse only when an edit introduced an error, and you do not need to run any other command.
 
-When the agent runs `dotnet test`, the command runs as `fuse test`:
+### Try it from the command line
+
+The hooks run the same operations that the commands below run, so a terminal shows what the agent receives. Use them to try Fuse out, to test it on your repository, or to investigate a hook that says nothing; in day-to-day work the agent runs them. After an edit that renames `Calc.Add` in a library, `fuse check` reports the callers it broke in the projects that depend on it:
 
 ```text
-FAILED Lib.Tests.CalcTests.Multiplies
-  Assert.Equal() Failure: Values differ
-  Expected: 6
-  Actual:   7
-  at Lib.Tests.CalcTests.Multiplies() in Lib.Tests/UnitTest1.cs:line 5
-fuse: 1 failed, 0 passed in 1.3 s; ran 1 test(s) affected by your changes out of 2; fuse test --all runs everything; fast path
+$ fuse check
+App/Program.cs(3,30): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)
+  removed: public int Add(int a, int b)
+Lib.Tests/CalcTests.cs(6,54): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)
+  removed: public int Add(int a, int b)
+fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations changed, 2 dependent project(s) checked
 ```
-
-When the agent tries to finish while its changes leave errors that are not at the last commit, the stop hook sends it back once with the list.
-
-## Commands
 
 | Command | What it does |
-|---|---|
-| `fuse init` | Registers the hooks with every agent harness the repository uses |
-| `fuse check [files...]` | Errors the working tree has that HEAD does not, in the changed files and everything that depends on them |
-| `fuse test` | Runs the tests affected by the working-tree changes and prints failures |
-| `fuse test [dotnet test args]` | Runs the scope `dotnet test` would run with those arguments, printing failures |
-| `fuse test --all` | Runs every test, printing failures |
-| `fuse build [dotnet build args]` | The real `dotnet build`, printing its errors (or the end of its output when no error line parses) |
-| `fuse mcp` | Stdio MCP server with `fuse_check`, `fuse_test` and `fuse_build` |
+| --- | --- |
+| `fuse init` | Registers Fuse's hooks with the harnesses this repository uses |
+| `fuse check [files...]` | Reports the errors the working tree has that HEAD does not, across dependent projects |
+| `fuse test [args...]` | Runs the tests affected by your changes |
+| `fuse test --all` | Runs every test |
+| `fuse build [args...]` | Runs `dotnet build` and prints its errors |
+| `fuse mcp` | Serves `fuse_check`, `fuse_test` and `fuse_build` over stdio to an MCP host |
 
-Exit codes: 0 clean, 1 errors or failed tests, 2 Fuse could not answer (the message says why and what to run).
+The [getting started tutorial](https://fuse.codes/docs/getting-started) walks through these on a sample repository, including what the hooks send the agent.
 
-There is no configuration file and there are no environment variables. Fuse finds every `.csproj` git knows about and needs the projects to be restored. In a repository without a `.csproj`, every command and hook returns at once without starting anything.
+## Documentation
 
-## Harnesses
+- [Getting started](https://fuse.codes/docs/getting-started): set Fuse up in a sample repository and see what it reports.
+- [Commands](https://fuse.codes/docs/commands): every command, its output and its exit codes.
+- [Messages and fixes](https://fuse.codes/docs/messages): what each message means when Fuse cannot answer, and the fix.
+- [Connect your agent](https://fuse.codes/docs/harnesses): what `fuse init` sets up for each harness, and how an MCP host runs Fuse.
+- [How it works](https://fuse.codes/docs/how-it-works): how Fuse checks an edit, selects tests and runs them.
+- [Limits](https://fuse.codes/docs/limits): what a check cannot see, and what to do about it.
+- [Troubleshooting](https://fuse.codes/docs/troubleshooting): why Fuse is silent, slow or failing, and where its logs are.
+- [Results](https://fuse.codes/docs/results): measured speed and accuracy on four repositories.
+- [All documentation](https://fuse.codes/docs/)
 
-`fuse init` looks for each harness's folder and writes its hooks there. With none found, it sets up Claude Code.
+## Contributing
 
-| Harness | Detected by | Hooks written |
-|---|---|---|
-| Claude Code | `.claude/` or `CLAUDE.md` | `.claude/settings.json`: post-edit check (in the background, wakes the agent only on new errors), `dotnet build` and `dotnet test` rewrite, stop check |
-| Cursor | `.cursor/` | `.cursor/hooks.json`: post-edit check, stop follow-up |
-| Gemini CLI | `.gemini/` or `GEMINI.md` | `.gemini/settings.json`: post-edit check, `dotnet` rewrite, stop check |
-| Codex | `.codex/` | `.codex/hooks.json`: post-`apply_patch` check, `dotnet` rewrite, stop check |
-| GitHub Copilot CLI | `.github/copilot-instructions.md` or `.github/hooks/` | `.github/hooks/fuse.json`: post-edit check, stop check |
-| OpenCode | `.opencode/`, `opencode.json` or `opencode.jsonc` | `.opencode/plugins/fuse.js`: post-edit check, `dotnet` rewrite, stop check |
-| VS Code agent mode | `.vscode/` | `.vscode/mcp.json`: the MCP server |
+Bug reports, feature requests and pull requests are welcome on [GitHub](https://github.com/Litenova-Solutions/Fuse/issues), and questions in [Discussions](https://github.com/Litenova-Solutions/Fuse/discussions). [Contributing](https://github.com/Litenova-Solutions/Fuse/blob/main/CONTRIBUTING.md) describes how to build, test and submit a change, and every commit needs a Developer Certificate of Origin sign-off. AI-assisted contributions are welcome under the [AI policy](https://fuse.codes/docs/ai-policy), and everyone follows the [code of conduct](https://github.com/Litenova-Solutions/Fuse/blob/main/.github/CODE_OF_CONDUCT.md).
 
-Running `fuse init` again replaces Fuse's entries in shared settings files and keeps the other entries (comments in those JSON files are not kept); `.github/hooks/fuse.json` and `.opencode/plugins/fuse.js` belong to Fuse and are written whole. OpenCode runs plugins rather than commands, so its plugin passes each tool event to `fuse hook opencode`; it supports OpenCode 1 and 2 plugin formats. If your Claude Code settings allow `dotnet build` or `dotnet test` without asking, `init` adds the same allowance for `fuse build` and `fuse test`. Any other MCP host can run `fuse mcp` from the repository directory.
-
-The Claude Code integration is tested end to end with Claude Code 2.1.282, and the OpenCode plugin with OpenCode 2.0.15. The Cursor, Gemini CLI, Codex and Copilot CLI adapters, and the OpenCode 1 plugin format, follow each harness's documented hook format and are covered by payload tests.
-
-## How it works
-
-One `fuse engine` process runs per repository. The first command or hook starts it, and it exits after 30 minutes without a request. It evaluates every project with MSBuild, without building, and loads a project's compilation only when a change touches it.
-
-- **Checking.** Fuse binds each changed file in the working tree and at HEAD and reports only the difference. When a file's declarations change, it finds the code that uses them with Roslyn's symbol search, in the owning project and every dependent project, and checks that code too. Analyzers run when the project configures one of their diagnostics as an error. Warnings are not reported.
-- **Testing.** Fuse walks from the changed code to the test classes that can reach it, and refines that to test methods when the set is small. Application code (controllers, handlers, hosted services, top-level statements) runs behind a host, so reaching it selects every test project that depends on the application. When the test projects have build output and only C# sources changed since, Fuse emits the changed assemblies from memory into a copy of that output and runs the tests there without MSBuild.
-- **Staying current.** A file watcher and a content comparison against HEAD track what changed. Project files, props, targets, `global.json` and `.editorconfig` re-evaluate the projects. A commit or branch switch moves the baseline.
-
-[docs/design.md](docs/design.md) describes each part in detail.
-
-## Measured
-
-From the evals in `evals/Fuse.Evals`, run through the `fuse` executable on one Windows machine. Results are in `evals/results`.
-
-| Eval | Small solution (fixture: 5 projects, 22 tests) | NodaTime (17 projects, 42,681 tests) |
-|---|---|---|
-| Correctness: generated edits compared with a real `dotnet build` | 30 cases: 0 missed, 0 contradicted | 20 cases: 0 missed, 0 contradicted |
-| `fuse check` vs `dotnet build`, median | 0.17 s vs 1.16 s | 0.59 s vs 1.54 s |
-| Warm check after a body edit, P50 / P95 | 166 / 278 ms | 526 / 666 ms |
-| Warm check after a signature edit, P50 / P95 | 196 / 2,617 ms | 1,463 / 7,971 ms |
-| Test selection: failing tests missed | 0 in 10 cases | 0 in 5 cases |
-| Tests run by `fuse test` | 15 percent | all (the changes reach core types) |
-| `fuse test` vs `dotnet test`, median | 1.41 s vs 4.46 s | 35.5 s vs 50.0 s |
-| Engine memory | 241 MB | 832 MB |
-
-"Contradicted" means Fuse reported an error the build does not have. Errors Fuse reports in projects the build skips after an earlier failure cannot be compared; the result files count them separately. The signature-edit P95 includes the first such edit after the engine starts, which loads every dependent project. NodaTime builds with `TreatWarningsAsErrors`, so each check there also runs the analyzers that can report a warning.
-
-## Limits
-
-- C# only. Fuse needs the .NET 10 SDK and restored projects.
-- A check compiles what MSBuild's evaluation describes. Custom targets that change compilation inputs, source generators that read files outside the project's additional files, and IL weaving are invisible to it; `fuse build` runs the real build.
-- Compilation-end analyzers do not run in a check.
-- Test selection is static. Tests that reach code only through reflection are selected when the walk reaches an application's host, not otherwise.
-- Test projects on Microsoft.Testing.Platform (opted in through `global.json`) run whole, without selection or the fast path.
-- The fast test path takes resources and content files from the last real build; when any of them changed, Fuse builds with MSBuild instead.
-
-## Troubleshooting
-
-- **`restore needed`**: run `dotnet restore`. Fuse never restores on its own.
-- **Logs**: `engine.log` and `hook.log` in `%LOCALAPPDATA%\fuse\repos\<id>` on Windows, `~/.local/share/fuse/repos/<id>` on Linux, `~/Library/Application Support/fuse/repos/<id>` on macOS.
-- **Stopping the engine**: it exits on its own after 30 idle minutes; ending the `fuse` process is safe.
+To report a vulnerability, follow [Security](https://github.com/Litenova-Solutions/Fuse/blob/main/SECURITY.md) instead of opening a public issue.
 
 ## License
 
-Apache-2.0. See [LICENSE](LICENSE).
+Fuse is licensed under the [Apache License 2.0](https://github.com/Litenova-Solutions/Fuse/blob/main/LICENSE).

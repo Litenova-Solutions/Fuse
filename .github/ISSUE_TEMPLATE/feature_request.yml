@@ -22,11 +22,11 @@ body:
     attributes:
       label: Area
       options:
-        - Verification (fuse_check)
-        - Retrieval / scoping
-        - .NET wiring graph
-        - MCP tools
-        - CLI
+        - Check (fuse check)
+        - Test selection and runs (fuse test)
+        - Build (fuse build)
+        - Hooks and harnesses (fuse init, fuse hook)
+        - MCP server (fuse mcp)
         - Documentation
         - Other
     validations:

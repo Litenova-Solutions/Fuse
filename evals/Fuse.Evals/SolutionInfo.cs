@@ -114,6 +114,36 @@ internal sealed partial class SolutionInfo
                || Path.GetFileNameWithoutExtension(project).EndsWith(".Tests", StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    ///     True when the project runs its tests on Microsoft.Testing.Platform, from the project file or from a
+    ///     <c>global.json</c> test runner at or above it. That runner is a separate executable, not VSTest, so it ignores
+    ///     <c>--logger trx</c> and the run contributes no results to compare against.
+    /// </summary>
+    public static bool IsMicrosoftTestingPlatform(string project)
+    {
+        if (File.ReadAllText(project).Contains("UseMicrosoftTestingPlatformRunner", StringComparison.OrdinalIgnoreCase))
+            return true;
+        for (var dir = Path.GetDirectoryName(project); dir is not null; dir = Path.GetDirectoryName(dir))
+        {
+            var global = Path.Combine(dir, "global.json");
+            if (!File.Exists(global))
+                continue;
+            try
+            {
+                using var document = System.Text.Json.JsonDocument.Parse(File.ReadAllText(global));
+                if (document.RootElement.TryGetProperty("test", out var test) && test.ValueKind is System.Text.Json.JsonValueKind.Object
+                    && test.TryGetProperty("runner", out var runner) && runner.GetString() == "Microsoft.Testing.Platform")
+                    return true;
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                // A global.json the evals cannot read says nothing about the runner; treat it as VSTest.
+            }
+        }
+
+        return false;
+    }
+
     [GeneratedRegex(@"<ProjectReference\s+Include=""([^""]+)""")]
     private static partial Regex ProjectReference();
 

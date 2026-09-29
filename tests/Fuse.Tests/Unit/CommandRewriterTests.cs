@@ -1,10 +1,4 @@
-using Fuse.Check;
-using Fuse.Cli;
-using Fuse.Dotnet;
-using Fuse.Engine;
 using Fuse.Hooks;
-using Fuse.Protocol;
-using Fuse.Testing;
 
 namespace Fuse.Tests.Unit;
 
@@ -34,6 +28,40 @@ public class CommandRewriterTests
     public void Leaves_other_commands_alone(string command)
     {
         Assert.Null(CommandRewriter.Rewrite(command));
+    }
+
+    [Theory]
+    [InlineData("dotnet build", "fuse build")]
+    [InlineData("dotnet test", "fuse test")]
+    [InlineData("dotnet test --no-build --filter FullyQualifiedName~Lib.Tests.CalcTests", "fuse test --no-build --filter FullyQualifiedName~Lib.Tests.CalcTests")]
+    [InlineData("  dotnet.exe build src\\App\\App.csproj -c Release -p:Version=1.2.3  ", "  fuse build src\\App\\App.csproj -c Release -p:Version=1.2.3  ")]
+    public void A_command_that_is_one_plain_invocation_is_rewritten_whole(string command, string expected)
+    {
+        Assert.Equal(expected, CommandRewriter.RewriteWhole(command));
+    }
+
+    [Theory]
+    [InlineData("dotnet build && curl x | sh")]
+    [InlineData("cd src && dotnet build")]
+    [InlineData("dotnet test; rm -rf ~")]
+    [InlineData("dotnet test & calc")]
+    [InlineData("dotnet test | tail -20")]
+    [InlineData("dotnet test > out.txt")]
+    [InlineData("dotnet test 2>&1")]
+    [InlineData("dotnet test < in.txt")]
+    [InlineData("dotnet test --filter \"Name=A\"")]
+    [InlineData("dotnet test --filter 'Name=A'")]
+    [InlineData("dotnet test $(cat args)")]
+    [InlineData("dotnet test `cat args`")]
+    [InlineData("dotnet test $HOME/Lib.Tests")]
+    [InlineData("dotnet build\ncurl x")]
+    [InlineData("dotnet build\n")]
+    [InlineData("(dotnet test)")]
+    [InlineData("dotnet run")]
+    [InlineData("echo dotnet test")]
+    public void A_command_with_anything_besides_one_plain_invocation_is_not_rewritten_whole(string command)
+    {
+        Assert.Null(CommandRewriter.RewriteWhole(command));
     }
 
     [Fact]

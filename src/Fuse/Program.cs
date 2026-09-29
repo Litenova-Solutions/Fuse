@@ -1,24 +1,27 @@
 using System.Text;
-using Fuse.Cli;
 using Fuse.Engine;
+using Fuse.Failures;
+using Fuse.Harnesses;
 using Fuse.Hooks;
 using Fuse.Mcp;
-using Fuse.Repo;
+using Fuse.Operations;
+using Fuse.Paths;
+using Fuse.Protocol;
 
 namespace Fuse;
 
 internal static class Program
 {
     private const string Usage = """
-        fuse - instant C# compiler feedback and affected-test runs for coding agents
+        fuse - faster C# compiler feedback and affected-test runs for coding agents
 
           fuse init                 register Fuse's hooks with the agent harnesses this repository uses
-          fuse check [files...]     errors the working tree has that HEAD did not, across dependent projects
-          fuse test [args...]       run the tests affected by your changes (with args: the scope dotnet test would run)
+          fuse check [files...]     errors the working tree has that HEAD does not, across dependent projects
+          fuse test [args...]       run the tests affected by your changes (with args: the tests those dotnet test arguments name)
           fuse test --all           run every test
           fuse build [args...]      dotnet build, printing its errors
-          fuse mcp                  stdio MCP server (fuse_check, fuse_test, fuse_build) for hosts without hooks
-          fuse hook <harness> <event>   entry point for installed hooks
+          fuse mcp                  stdio MCP server (fuse_check, fuse_test, fuse_build) for MCP hosts that run no hooks
+          fuse hook <harness> <event>   the command registered hooks run
         """;
 
     public static async Task<int> Main(string[] args)
@@ -60,18 +63,35 @@ internal static class Program
         var root = RequireRoot();
         if (root is null)
             return 2;
-        var absolute = files.Length == 0 ? null : files.Select(Path.GetFullPath).ToList();
-        var (result, _) = await CheckOperation.RunAsync(root, absolute, wait: true, TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
+        IReadOnlyList<string>? absolute = null;
+        if (files.Length > 0)
+        {
+            (absolute, var refusal) = CheckOperation.ResolveFiles(files, Path.GetFullPath);
+            if (refusal is not null)
+                return Print(refusal);
+        }
+
+        var (result, _) = await CheckOperation.RunAsync(root, absolute, waitForLoad: true, TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
         return Print(result);
     }
 
+    /// <summary>
+    ///     <c>fuse test</c>. <c>--all</c> and <c>dotnet test</c> arguments each choose the scope, so the two together are a
+    ///     usage failure rather than one of them quietly winning.
+    /// </summary>
     private static async Task<int> TestAsync(string[] args, CancellationToken cancellationToken)
     {
+        var all = args.Contains("--all");
+        var passthrough = args.Where(a => a != "--all").ToList();
+        if (all && passthrough.Count > 0)
+        {
+            Console.Error.WriteLine("fuse: --all runs every test and cannot be combined with other arguments; pass the arguments without --all to choose the scope");
+            return 2;
+        }
+
         var root = RequireRoot();
         if (root is null)
             return 2;
-        var all = args.Contains("--all");
-        var passthrough = args.Where(a => a != "--all").ToList();
         var result = await TestOperation.RunAsync(root, Environment.CurrentDirectory, passthrough, all, cancellationToken).ConfigureAwait(false);
         return Print(result);
     }
@@ -79,7 +99,7 @@ internal static class Program
     private static async Task<int> BuildAsync(string[] args, CancellationToken cancellationToken)
     {
         var root = RepoRoot.Find(Environment.CurrentDirectory);
-        var result = await BuildOperation.RunAsync(Environment.CurrentDirectory, root?.Path ?? Environment.CurrentDirectory, args, cancellationToken).ConfigureAwait(false);
+        var result = await BuildOperation.RunAsync(root, Environment.CurrentDirectory, args, cancellationToken).ConfigureAwait(false);
         return Print(result);
     }
 
@@ -87,7 +107,7 @@ internal static class Program
     {
         var root = RepoRoot.Find(Environment.CurrentDirectory);
         if (root is null)
-            Console.Error.WriteLine("fuse: not inside a git repository; Fuse compares your changes with HEAD, so it needs one");
+            Console.Error.WriteLine($"fuse: {ErrorMessages.NotARepository}");
         return root;
     }
 

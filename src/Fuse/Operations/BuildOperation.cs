@@ -1,0 +1,61 @@
+using System.Text;
+using Fuse.Dotnet;
+using Fuse.Paths;
+
+namespace Fuse.Operations;
+
+/// <summary>Runs the real <c>dotnet build</c> and prints its errors, or the end of its output when no error line parses.</summary>
+internal static class BuildOperation
+{
+    private const int MaxShown = 20;
+
+    private static readonly string[] QuietArguments = ["-nologo", "-tl:off", "-v:q", "-clp:ErrorsOnly;NoSummary"];
+
+    public static async Task<OperationResult> RunAsync(RepoRoot? root, string workingDirectory, IReadOnlyList<string> arguments, CancellationToken cancellationToken)
+    {
+        // The arguments are the user's, unchanged, so an implicit restore still happens: an agent that has just added a
+        // package reference and then builds needs it. Fuse adds the lock and leaves the command as it is.
+        if (root is null)
+            return await BuildAsync(workingDirectory, workingDirectory, arguments, cancellationToken).ConfigureAwait(false);
+
+        using var buildLock = BuildLock.AcquireForClient(root);
+        return await BuildAsync(workingDirectory, root.Path, arguments, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task<OperationResult> BuildAsync(string workingDirectory, string root, IReadOnlyList<string> arguments, CancellationToken cancellationToken)
+    {
+        var started = Environment.TickCount64;
+        var result = await ProcessRunner.RunAsync("dotnet", ["build", .. arguments, .. QuietArguments], workingDirectory, cancellationToken).ConfigureAwait(false);
+        var seconds = (Environment.TickCount64 - started) / 1000.0;
+        return Render(result, root, seconds, "build");
+    }
+
+    internal static OperationResult Render(ProcessResult result, string root, double seconds, string operation)
+    {
+        var errors = BuildOutputParser.Errors(result.Output, root);
+        var text = new StringBuilder();
+        foreach (var error in errors.Take(MaxShown))
+            text.Append(error).Append('\n');
+        if (result.ExitCode == 0)
+        {
+            text.Append($"fuse: {operation} succeeded in {seconds:0.0} s");
+            return new OperationResult(Outcome.Clean, text.ToString());
+        }
+
+        if (errors.Count == 0)
+        {
+            // Nothing matched the diagnostic format: show the tail, which is where MSBuild puts the failure.
+            text.Append(Tail(result.Output)).Append('\n');
+            text.Append($"fuse: {operation} failed (exit code {result.ExitCode}) in {seconds:0.0} s");
+            return new OperationResult(Outcome.ProblemsFound, text.ToString());
+        }
+
+        var more = errors.Count > MaxShown ? $", first {MaxShown} shown" : "";
+        text.Append($"fuse: {operation} failed with {errors.Count} error(s){more} in {seconds:0.0} s");
+        return new OperationResult(Outcome.ProblemsFound, text.ToString());
+    }
+
+    /// <summary>The last 30 non-empty lines of a process's output, which is where a failure without an error line is described.</summary>
+    internal static string Tail(string output) =>
+        string.Join('\n', output.Split('\n', StringSplitOptions.RemoveEmptyEntries).TakeLast(30));
+}

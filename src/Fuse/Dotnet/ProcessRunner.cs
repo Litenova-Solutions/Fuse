@@ -12,17 +12,13 @@ internal sealed record ProcessResult(int ExitCode, string Output);
 internal static class ProcessRunner
 {
     /// <summary>Runs a process to completion and captures its output.</summary>
-    /// <param name="fileName">Executable to run.</param>
     /// <param name="arguments">Arguments, passed without shell interpretation.</param>
-    /// <param name="workingDirectory">Working directory for the process.</param>
     /// <param name="cancellationToken">Kills the process tree when cancelled.</param>
-    /// <param name="environment">Extra environment variables.</param>
     public static async Task<ProcessResult> RunAsync(
         string fileName,
         IEnumerable<string> arguments,
         string workingDirectory,
-        CancellationToken cancellationToken,
-        IReadOnlyDictionary<string, string>? environment = null)
+        CancellationToken cancellationToken)
     {
         var psi = new ProcessStartInfo(fileName)
         {
@@ -37,14 +33,11 @@ internal static class ProcessRunner
         };
         foreach (var argument in arguments)
             psi.ArgumentList.Add(argument);
-        // Child dotnet processes must not start their own long-lived build servers inside a hook's process tree,
-        // and must never prompt.
+        // English output, so BuildOutputParser and TrxReader can parse it, and no telemetry notice or logo in the
+        // captured output.
         psi.Environment["DOTNET_CLI_TELEMETRY_OPTOUT"] = "1";
         psi.Environment["DOTNET_NOLOGO"] = "1";
         psi.Environment["DOTNET_CLI_UI_LANGUAGE"] = "en";
-        if (environment is not null)
-            foreach (var (key, value) in environment)
-                psi.Environment[key] = value;
 
         var output = new StringBuilder();
         using var process = new Process { StartInfo = psi };

@@ -1,10 +1,4 @@
-using Fuse.Check;
-using Fuse.Cli;
-using Fuse.Dotnet;
-using Fuse.Engine;
 using Fuse.Hooks;
-using Fuse.Protocol;
-using Fuse.Testing;
 
 namespace Fuse.Tests.Unit;
 
@@ -64,6 +58,13 @@ public class HookPayloadTests
     }
 
     [Fact]
+    public void A_file_named_twice_in_one_spelling_is_listed_once()
+    {
+        var payload = Parse(new { cwd = Repo, file_path = At("src", "A.cs"), tool_input = new { file_path = "src/A.cs", path = At("src", "A.cs") } });
+        Assert.Equal([At("src", "A.cs")], payload.EditedFiles());
+    }
+
+    [Fact]
     public void Stop_payload_flags()
     {
         Assert.True(HookPayload.Parse("""{"stop_hook_active":true}""").StopHookActive);
@@ -81,5 +82,12 @@ public class HookPayloadTests
     public void Empty_input_is_tolerated()
     {
         Assert.Empty(HookPayload.Parse("").EditedFiles());
+    }
+
+    [Fact]
+    public void A_blank_cwd_falls_back_to_the_process_directory()
+    {
+        Assert.Equal(Environment.CurrentDirectory, Parse(new { cwd = "" }).Cwd);
+        Assert.Equal(Environment.CurrentDirectory, HookPayload.Parse("""{"cwd":"  ","workspace_roots":[""]}""").Cwd);
     }
 }

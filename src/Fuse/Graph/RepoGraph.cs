@@ -1,7 +1,6 @@
 using Fuse.Dotnet;
-using Fuse.Protocol;
-using Fuse.Repo;
-using Fuse.Workspace;
+using Fuse.Failures;
+using Fuse.Paths;
 using Microsoft.Build.Evaluation;
 using Microsoft.Build.Exceptions;
 
@@ -16,17 +15,17 @@ internal sealed class RepoGraph
     private static readonly string[] TestFrameworkPackages =
         ["xunit", "xunit.v3", "xunit.core", "NUnit", "MSTest", "MSTest.TestFramework", "Microsoft.Testing.Platform", "TUnit", "Microsoft.NET.Test.Sdk"];
 
-    private readonly Dictionary<string, ProjectNode> _byPath;
-    private readonly Dictionary<string, List<ProjectNode>> _owners;
-    private readonly Dictionary<string, List<ProjectNode>> _directDependents;
+    private readonly Dictionary<RepoPath, ProjectNode> _byPath;
+    private readonly Dictionary<RepoPath, List<ProjectNode>> _owners;
+    private readonly Dictionary<RepoPath, List<ProjectNode>> _directDependents;
 
     private RepoGraph(IReadOnlyList<ProjectNode> projects, IReadOnlyList<string> failures)
     {
         Projects = projects;
         Failures = failures;
-        _byPath = projects.ToDictionary(p => p.Path, ChangeTracker.PathComparer);
-        _owners = new Dictionary<string, List<ProjectNode>>(ChangeTracker.PathComparer);
-        _directDependents = projects.ToDictionary(p => p.Path, _ => new List<ProjectNode>(), ChangeTracker.PathComparer);
+        _byPath = projects.ToDictionary(p => p.Path);
+        _owners = [];
+        _directDependents = projects.ToDictionary(p => p.Path, _ => new List<ProjectNode>());
         foreach (var project in projects)
         {
             foreach (var source in project.Sources)
@@ -49,33 +48,32 @@ internal sealed class RepoGraph
     /// <summary>One line per project that could not be evaluated.</summary>
     public IReadOnlyList<string> Failures { get; }
 
-    public ProjectNode? Find(string projectPath) => _byPath.GetValueOrDefault(projectPath);
+    /// <summary>The project whose file is <paramref name="projectPath"/>, or null when no evaluated project has it.</summary>
+    public ProjectNode? Find(RepoPath projectPath) => _byPath.GetValueOrDefault(projectPath);
 
     /// <summary>The projects that compile <paramref name="path"/>. A file created after evaluation belongs to the deepest project directory containing it.</summary>
-    public IReadOnlyList<ProjectNode> OwnersOf(string path)
+    public IReadOnlyList<ProjectNode> OwnersOf(RepoPath path)
     {
         if (_owners.TryGetValue(path, out var owners))
             return owners;
-        if (!ChangeTracker.IsSource(path))
+        if (!PathRules.IsSource(path.Absolute))
             return [];
         ProjectNode? best = null;
         foreach (var project in Projects)
         {
-            var dir = project.Directory + System.IO.Path.DirectorySeparatorChar;
-            if (path.StartsWith(dir, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal)
-                && (best is null || project.Directory.Length > best.Directory.Length))
+            if (path.IsUnder(project.Directory) && (best is null || project.Directory.Absolute.Length > best.Directory.Absolute.Length))
                 best = project;
         }
 
         // A new file belongs to the deepest project directory holding it, unless it sits in build output.
-        return best is null || ChangeTracker.IsBuildOutput(best.Directory, path) ? [] : [best];
+        return best is null || PathRules.IsBuildOutput(best.Directory.Absolute, path.Absolute) ? [] : [best];
     }
 
     /// <summary>Every project that references <paramref name="project"/>, directly or transitively.</summary>
     public IReadOnlyList<ProjectNode> DependentsOf(ProjectNode project)
     {
         var result = new List<ProjectNode>();
-        var seen = new HashSet<string>(ChangeTracker.PathComparer) { project.Path };
+        var seen = new HashSet<RepoPath> { project.Path };
         var queue = new Queue<ProjectNode>([project]);
         while (queue.Count > 0)
         {
@@ -96,7 +94,7 @@ internal sealed class RepoGraph
     public IReadOnlyList<ProjectNode> ClosureOf(ProjectNode project)
     {
         var result = new List<ProjectNode>();
-        var seen = new HashSet<string>(ChangeTracker.PathComparer);
+        var seen = new HashSet<RepoPath>();
         var stack = new Stack<ProjectNode>([project]);
         while (stack.Count > 0)
         {
@@ -117,24 +115,26 @@ internal sealed class RepoGraph
     /// <summary>Evaluates every project file git knows about (tracked or untracked, not ignored).</summary>
     public static async Task<RepoGraph> EvaluateAsync(RepoRoot root, CancellationToken cancellationToken)
     {
+        // -z gives one NUL-separated path per project file, exactly as it is on disk; without it git C-quotes a path that
+        // holds a quote, a backslash or a control character, and the two are not the same string.
         var listing = await ProcessRunner.RunAsync(
             "git",
-            ["-c", "core.quotepath=off", "ls-files", "--cached", "--others", "--exclude-standard", "--", "*.csproj"],
+            ["-c", "core.quotepath=off", "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", "*.csproj"],
             root.Path,
             cancellationToken).ConfigureAwait(false);
         if (listing.ExitCode != 0)
-            throw new FuseException(ErrorCode.LoadFailed, $"git cannot list the repository's files ({listing.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault()}); see `git status`");
-        var paths = listing.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(p => System.IO.Path.GetFullPath(System.IO.Path.Combine(root.Path, p)))
-            .Where(File.Exists)
-            .Distinct(ChangeTracker.PathComparer)
+            throw new FuseException(ErrorCode.LoadFailed, $"git cannot list the repository's files ({listing.Output.Split('\0', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()}); see `git status`");
+        var paths = listing.Output.Split('\0', StringSplitOptions.RemoveEmptyEntries)
+            .Select(root.PathOf)
+            .Where(p => File.Exists(p.Absolute))
+            .Distinct()
             .ToList();
 
         MsBuildSetup.EnsureRegistered();
         return Evaluate(root, paths, cancellationToken);
     }
 
-    private static RepoGraph Evaluate(RepoRoot root, List<string> paths, CancellationToken cancellationToken)
+    private static RepoGraph Evaluate(RepoRoot root, List<RepoPath> paths, CancellationToken cancellationToken)
     {
         // Evaluation is CPU-bound and independent per project. A ProjectCollection is not thread-safe, so each worker
         // evaluates with its own; results keep the input order so the graph is deterministic.
@@ -157,7 +157,7 @@ internal sealed class RepoGraph
                 }
                 catch (InvalidProjectFileException e)
                 {
-                    failures[i] = $"{root.Relative(paths[i])}: {e.BaseMessage}";
+                    failures[i] = $"{paths[i].Relative}: {e.BaseMessage}";
                 }
             });
         }
@@ -170,16 +170,16 @@ internal sealed class RepoGraph
         return new RepoGraph([.. nodes.OfType<ProjectNode>()], [.. failures.OfType<string>()]);
     }
 
-    private static ProjectNode EvaluateOne(RepoRoot root, ProjectCollection collection, string path)
+    private static ProjectNode EvaluateOne(RepoRoot root, ProjectCollection collection, RepoPath path)
     {
-        var outer = collection.LoadProject(path);
+        var outer = collection.LoadProject(path.Absolute);
         var evaluations = new List<Project> { outer };
         // A multi-targeted project's outer evaluation defines no Compile items and may condition references on the
         // target framework, so each framework's inner evaluation is read too and the results are unioned.
         if (string.IsNullOrEmpty(outer.GetPropertyValue("TargetFramework")))
         {
             foreach (var framework in outer.GetPropertyValue("TargetFrameworks").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-                evaluations.Add(collection.LoadProject(path, new Dictionary<string, string> { ["TargetFramework"] = framework }, toolsVersion: null));
+                evaluations.Add(collection.LoadProject(path.Absolute, new Dictionary<string, string> { ["TargetFramework"] = framework }, toolsVersion: null));
         }
 
         try
@@ -197,12 +197,13 @@ internal sealed class RepoGraph
     {
         var project = evaluations[0];
         var dir = project.DirectoryPath;
-        string Full(string include) => System.IO.Path.GetFullPath(System.IO.Path.Combine(dir, include));
+        RepoPath Full(string include) => root.PathOf(System.IO.Path.Combine(dir, include));
 
-        var sources = new HashSet<string>(ChangeTracker.PathComparer);
-        var references = new HashSet<string>(ChangeTracker.PathComparer);
+        var path = root.PathOf(project.FullPath);
+        var sources = new HashSet<RepoPath>();
+        var references = new HashSet<RepoPath>();
         var packages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var inputs = new HashSet<string>(ChangeTracker.PathComparer) { project.FullPath };
+        var inputs = new HashSet<RepoPath> { path };
         var isTestProperty = false;
         var isTestingPlatformApplication = false;
         foreach (var evaluation in evaluations)
@@ -213,7 +214,7 @@ internal sealed class RepoGraph
             {
                 foreach (var item in evaluation.GetItems(itemType))
                 {
-                    if (ChangeTracker.IsSource(item.EvaluatedInclude))
+                    if (PathRules.IsSource(item.EvaluatedInclude))
                         sources.Add(Full(item.EvaluatedInclude));
                 }
             }
@@ -225,10 +226,12 @@ internal sealed class RepoGraph
                                             && !evaluation.GetPropertyValue("UseMicrosoftTestingPlatformRunner").Equals("false", StringComparison.OrdinalIgnoreCase);
             foreach (var import in evaluation.Imports)
             {
+                // Most imports are the SDK's, outside the repository; testing the spelling first keeps them from
+                // costing a file system call each.
                 var importPath = import.ImportedProject.FullPath;
-                if (importPath.StartsWith(root.Path, StringComparison.OrdinalIgnoreCase)
+                if (root.Contains(importPath)
                     && !importPath.Contains($"{System.IO.Path.DirectorySeparatorChar}obj{System.IO.Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
-                    inputs.Add(importPath);
+                    inputs.Add(root.PathOf(importPath));
             }
         }
 
@@ -240,15 +243,15 @@ internal sealed class RepoGraph
         var assets = project.GetPropertyValue("ProjectAssetsFile");
         return new ProjectNode
         {
-            Path = project.FullPath,
+            Path = path,
             Name = System.IO.Path.GetFileNameWithoutExtension(project.FullPath),
-            Directory = dir.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar),
+            Directory = root.PathOf(dir.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar)),
             References = [.. references],
             Sources = sources,
             EvaluationInputs = inputs,
-            AssetsFile = string.IsNullOrEmpty(assets) ? System.IO.Path.Combine(dir, "obj", "project.assets.json") : Full(assets),
+            AssetsFile = Full(string.IsNullOrEmpty(assets) ? System.IO.Path.Combine("obj", "project.assets.json") : assets),
             IsTest = isTest,
-            IsTestingPlatform = isTestingPlatform,
+            UsesTestingPlatform = isTestingPlatform,
             IsExecutable = !isTest && (outputType.Equals("Exe", StringComparison.OrdinalIgnoreCase) || outputType.Equals("WinExe", StringComparison.OrdinalIgnoreCase) || isWeb),
         };
     }

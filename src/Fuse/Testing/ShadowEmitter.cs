@@ -1,18 +1,21 @@
 using Fuse.Graph;
-using Fuse.Repo;
+using Fuse.Paths;
+using Fuse.Testing.Model;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Emit;
 
 namespace Fuse.Testing;
 
 /// <summary>
-///     Prepares a test assembly to run without MSBuild: copies the test project's last build output into a shadow
-///     directory and overwrites the assemblies whose sources changed with ones emitted from the warm compilations.
+///     Prepares a shadow run of a test assembly: copies the test project's last build output into a shadow directory and
+///     overwrites the assemblies whose sources changed, or whose copy there is not their project's last build, with ones
+///     emitted from the warm compilations.
 /// </summary>
 /// <remarks>
-///     The shadow is used only when no project file, import, resource or content file in the involved project
+///     A shadow run is prepared only when no project file, import, resource or content file in the involved project
 ///     directories has a timestamp newer than the build output (freshness is judged by timestamps, not content).
-///     Otherwise <see cref="TryPrepareAsync"/> returns null and the caller runs <c>dotnet test</c> normally.
+///     Otherwise <see cref="PrepareAsync"/> returns <see cref="RunMode.Build"/> and the client runs <c>dotnet test</c>
+///     on the project, which builds it with MSBuild.
 /// </remarks>
 internal sealed class ShadowEmitter
 {
@@ -26,49 +29,52 @@ internal sealed class ShadowEmitter
         _graph = graph;
     }
 
-    /// <summary>Returns the path of the runnable shadow test assembly, or null when the fast path is not safe.</summary>
+    /// <summary>Returns a shadow run of the prepared test assembly, or a build with MSBuild when a shadow run is not safe.</summary>
     /// <param name="testProject">The Roslyn project for one target framework of the test project.</param>
-    /// <param name="log">Receives the reason when the fast path is refused.</param>
+    /// <param name="log">Receives the reason when a shadow run is refused.</param>
     /// <param name="cancellationToken">Cancels emitting.</param>
-    public async Task<string?> TryPrepareAsync(Project testProject, Action<string> log, CancellationToken cancellationToken)
+    public async Task<RunMode> PrepareAsync(Project testProject, Action<string> log, CancellationToken cancellationToken)
     {
         var solution = testProject.Solution;
         var testOutput = testProject.OutputFilePath;
         if (testOutput is null || !File.Exists(testOutput))
         {
             log($"{testProject.Name}: no build output yet");
-            return null;
+            return new RunMode.Build();
         }
 
         // Every project the test assembly loads, with the build output it would be copied from.
         var closure = Closure(testProject).ToList();
+        var testOutputDirectory = Path.GetDirectoryName(testOutput)!;
         var stale = new HashSet<ProjectId>();
         foreach (var project in closure)
         {
             if (project.OutputFilePath is null || !File.Exists(project.OutputFilePath))
             {
                 log($"{project.Name}: no build output yet");
-                return null;
+                return new RunMode.Build();
             }
 
             var built = File.GetLastWriteTimeUtc(project.OutputFilePath);
-            var node = project.FilePath is null ? null : _graph.Find(project.FilePath);
+            var node = project.FilePath is null ? null : _graph.Find(_root.PathOf(project.FilePath));
             if (node is null)
-                return null;
-            if (node.EvaluationInputs.Any(i => File.Exists(i) && File.GetLastWriteTimeUtc(i) > built))
+                return new RunMode.Build();
+            if (node.EvaluationInputs.Any(i => File.Exists(i.Absolute) && File.GetLastWriteTimeUtc(i.Absolute) > built))
             {
                 log($"{project.Name}: project file changed since the last build");
-                return null;
+                return new RunMode.Build();
             }
 
             var (sourcesNewer, otherNewer) = Freshness(node, built);
             if (otherNewer is not null)
             {
-                log($"{project.Name}: {_root.Relative(otherNewer)} changed since the last build");
-                return null;
+                log($"{project.Name}: {_root.PathOf(otherNewer).Relative} changed since the last build");
+                return new RunMode.Build();
             }
 
-            if (sourcesNewer)
+            // The shadow starts as a copy of the test project's output, which can hold an older build of a project that
+            // was built on its own since; that copy is replaced with one emitted from the working tree.
+            if (sourcesNewer || (project.Id != testProject.Id && !HoldsBuildOf(testOutputDirectory, project.OutputFilePath)))
                 stale.Add(project.Id);
         }
 
@@ -87,7 +93,7 @@ internal sealed class ShadowEmitter
         while (grew);
 
         var shadow = Path.Combine(_root.StateDirectory, "shadow", $"{testProject.Name.Replace('(', '-').Replace(")", "")}");
-        Mirror(Path.GetDirectoryName(testOutput)!, shadow);
+        Mirror(testOutputDirectory, shadow);
         foreach (var id in emit)
         {
             var project = solution.GetProject(id)!;
@@ -95,7 +101,7 @@ internal sealed class ShadowEmitter
             if (image is null)
             {
                 log($"{project.Name}: does not compile; building with MSBuild to report the errors");
-                return null;
+                return new RunMode.Build();
             }
 
             var target = Path.Combine(shadow, Path.GetFileName(project.OutputFilePath!));
@@ -103,7 +109,7 @@ internal sealed class ShadowEmitter
             await File.WriteAllBytesAsync(Path.ChangeExtension(target, ".pdb"), image.Value.Pdb, cancellationToken).ConfigureAwait(false);
         }
 
-        return Path.Combine(shadow, Path.GetFileName(testOutput));
+        return new RunMode.Shadow(Path.Combine(shadow, Path.GetFileName(testOutput)));
     }
 
     /// <summary>Emits a project's assembly once per plan; several test assemblies usually load the same changed project.</summary>
@@ -151,20 +157,37 @@ internal sealed class ShadowEmitter
     ///     in the project directory that did (a resource or content file the emitted assembly would not include). A
     ///     directory newer than the output means its file set changed, which also makes the sources stale.
     /// </summary>
+    /// <remarks>
+    ///     The entries stay the strings the directory listing returns, because each only goes back to a file system
+    ///     call; only the one entry named in the log becomes a <see cref="RepoPath"/>.
+    /// </remarks>
     private static (bool SourcesNewer, string? OtherNewer) Freshness(ProjectNode node, DateTime built)
     {
         var sourcesNewer = false;
-        foreach (var entry in EnumerateProjectEntries(node.Directory))
+        foreach (var entry in EnumerateProjectEntries(node.Directory.Absolute))
         {
             if (File.GetLastWriteTimeUtc(entry) <= built && Directory.GetLastWriteTimeUtc(entry) <= built)
                 continue;
-            if (Directory.Exists(entry) || ChangeTracker.IsSource(entry))
+            if (Directory.Exists(entry) || PathRules.IsSource(entry))
                 sourcesNewer = true;
-            else if (!ChangeTracker.IsProjectFile(entry))
+            else if (!PathRules.IsProjectFile(entry))
                 return (sourcesNewer, entry);
         }
 
         return (sourcesNewer, null);
+    }
+
+    /// <summary>
+    ///     Whether <paramref name="testOutputDirectory"/> holds the same build of the assembly at <paramref name="built"/>:
+    ///     a file of the same name, length and last write time. MSBuild keeps the write time when it copies a referenced
+    ///     assembly into a test project's output, so a copy that is missing or differs is not that build.
+    /// </summary>
+    /// <remarks>An assembly can keep its length across a small edit, so the length alone does not tell two builds apart.</remarks>
+    private static bool HoldsBuildOf(string testOutputDirectory, string built)
+    {
+        var copy = new FileInfo(Path.Combine(testOutputDirectory, Path.GetFileName(built)));
+        var original = new FileInfo(built);
+        return copy.Exists && copy.Length == original.Length && copy.LastWriteTimeUtc == original.LastWriteTimeUtc;
     }
 
     /// <summary>Every directory and file under the project directory, skipping build output, hidden folders and nested projects.</summary>

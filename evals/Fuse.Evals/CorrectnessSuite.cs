@@ -22,10 +22,20 @@ internal sealed record CorrectnessCase(
     List<string> DeferredByCompiler,
     List<string> MessageMismatch,
     bool FileAgreement,
-    string? Note);
+    string? Note)
+{
+    /// <summary>How many cause lines fuse printed, one under an error in a file the case did not edit.</summary>
+    public int CauseLines { get; init; }
+
+    /// <summary>How many bytes fuse printed, so the cause lines' share of a response is visible.</summary>
+    public int OutputBytes { get; init; }
+
+    /// <summary>How many bytes the cause lines account for.</summary>
+    public int CauseBytes { get; init; }
+}
 
 /// <summary>
-///     Applies API-shape mutations (single edits and 2-3 edit sequences across projects), then compares the
+///     Applies mutations that change a declaration other files use (single edits and 2-3 edit sequences across projects), then compares the
 ///     errors <c>fuse check</c> reports with the errors a real <c>dotnet build</c> reports beyond the HEAD build.
 /// </summary>
 internal static partial class CorrectnessSuite
@@ -59,12 +69,19 @@ internal static partial class CorrectnessSuite
             }
 
             var fuse = await repo.FuseAsync(["check", .. edits.Select(e => Path.Combine(repo.Root, e.Path))]);
+            // The cause lines `fuse check` prints under an error in a file this case did not edit.
+            List<Match> Context() => [.. fuse.Result.Output.Split('\n').Select(l => CauseLine().Match(l.TrimEnd('\r'))).Where(m => m.Success)];
             var build = await repo.BuildAsync();
             var truth = Subtract(build.Errors, head.Errors);
             var fuseErrors = EvalRepo.ParseFuseErrors(fuse.Result.Output);
             var fuseCount = EvalRepo.ParseFuseCount(fuse.Result.Output);
             var result = Classify(solution, i, edits, truth, fuseErrors, fuseCount, fuse.Result.ExitCode, fuse.Milliseconds, build.Seconds,
-                fuse.Result.ExitCode is 0 or 1 ? null : fuse.Result.Output.Trim());
+                fuse.Result.ExitCode is 0 or 1 ? null : fuse.Result.Output.Trim()) with
+            {
+                CauseLines = Context().Count(m => m.Success),
+                OutputBytes = System.Text.Encoding.UTF8.GetByteCount(fuse.Result.Output),
+                CauseBytes = System.Text.Encoding.UTF8.GetByteCount(string.Join("\n", Context().Select(m => m.Value))),
+            };
             cases.Add(result);
             Console.WriteLine($"[correctness] {i + 1}/{count} {result.Verdict,-12} truth={truth.Count,3} fuse={fuseCount,3} {fuse.Milliseconds,6:0} ms  {string.Join(" + ", edits.Select(e => $"{e.Kind} {e.Path}"))}");
             await repo.ResetAsync();
@@ -77,6 +94,8 @@ internal static partial class CorrectnessSuite
         {
             suite = "correctness",
             repo = repo.Name,
+            commit = await repo.HeadAsync(),
+            fuseBuild = await repo.VersionAsync(),
             seed,
             requested = count,
             cases = cases.Count,
@@ -84,21 +103,24 @@ internal static partial class CorrectnessSuite
             neutral = cases.Count - breaking,
             falseGreen = cases.Count(c => c.Verdict == "false-green"),
             falseRedCases = cases.Count(c => c.FalseRed.Count > 0),
-            falseRedDiagnostics = cases.Sum(c => c.FalseRed.Count),
-            unverifiableDiagnostics = cases.Sum(c => c.Unverifiable.Count),
-            deferredByCompilerDiagnostics = cases.Sum(c => c.DeferredByCompiler.Count),
-            messageMismatchDiagnostics = cases.Sum(c => c.MessageMismatch.Count),
+            falseRedErrors = cases.Sum(c => c.FalseRed.Count),
+            unverifiableErrors = cases.Sum(c => c.Unverifiable.Count),
+            deferredByCompilerErrors = cases.Sum(c => c.DeferredByCompiler.Count),
+            messageMismatchErrors = cases.Sum(c => c.MessageMismatch.Count),
+            causeLines = cases.Sum(c => c.CauseLines),
+            causeBytes = cases.Sum(c => c.CauseBytes),
+            outputBytes = cases.Sum(c => c.OutputBytes),
             partialMisses = cases.Count(c => c.Verdict == "partial"),
             exactAgreement = cases.Count(c => c.Verdict is "agree" or "agree-clean"),
             fileAgreement = cases.Count(c => c.FileAgreement),
-            fuseFailures = cases.Count(c => c.FuseExit is not (0 or 1)),
+            fuseUnanswered = cases.Count(c => c.FuseExit is not (0 or 1)),
             fuseMedianMs = Median(cases.Select(c => c.FuseMilliseconds)),
             buildMedianSeconds = Median(cases.Select(c => c.BuildSeconds)),
             headBuildErrors = head.Errors.Count,
             treeCleanAfter = clean,
             details = cases,
         };
-        Console.WriteLine($"[correctness] {repo.Name}: {cases.Count} cases, {breaking} breaking, false green {summary.falseGreen}, false-red cases {summary.falseRedCases}, unverifiable diagnostics {summary.unverifiableDiagnostics}, deferred by csc {summary.deferredByCompilerDiagnostics}, message mismatches {summary.messageMismatchDiagnostics}, partial {summary.partialMisses}, exact {summary.exactAgreement}, file agreement {summary.fileAgreement}, tree clean {clean}");
+        Console.WriteLine($"[correctness] {repo.Name}: {cases.Count} cases, {breaking} breaking, false green {summary.falseGreen}, false-red cases {summary.falseRedCases}, unverifiable errors {summary.unverifiableErrors}, deferred by csc {summary.deferredByCompilerErrors}, message mismatches {summary.messageMismatchErrors}, partial {summary.partialMisses}, exact {summary.exactAgreement}, file agreement {summary.fileAgreement}, tree clean {clean}");
         return summary;
     }
 
@@ -125,9 +147,9 @@ internal static partial class CorrectnessSuite
     }
 
     /// <summary>
-    ///     Compares fuse's errors with the build's. Errors are matched by position (file, line, column); a match whose id
+    ///     Compares Fuse's errors with the build's. Errors are matched by position (file, line, column); a match whose id
     ///     or message differs is counted as a message mismatch, not a disagreement (the build compiles against reference
-    ///     assemblies, which omit private members, so it says "no definition" where fuse says "inaccessible"). A fuse
+    ///     assemblies, which omit private members, so it says "no definition" where Fuse says "inaccessible"). A Fuse
     ///     error in a project the build never compiled, because a project it references failed, is unverifiable: MSBuild
     ///     skips such projects, so the build has no answer there.
     /// </summary>
@@ -162,7 +184,7 @@ internal static partial class CorrectnessSuite
         }
 
         var missed = truth.Where((_, i) => !fusePositions.Contains(truthPositions[i])).ToList();
-        // fuse prints at most 20 diagnostics; misses beyond what it printed are only real when its total is lower.
+        // `fuse check` prints at most 20 errors; misses beyond what it printed are only real when its total is lower.
         var capped = fuseCount > fuse.Count;
         if (capped && fuseCount >= truth.Count)
             missed.Clear();
@@ -170,9 +192,9 @@ internal static partial class CorrectnessSuite
         var fuseFiles = fuse.Where(f => !unverifiable.Contains(f) && !deferred.Contains(f)).Select(FileOf).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var fileAgreement = capped ? truthFiles.IsSupersetOf(fuseFiles) : truthFiles.SetEquals(fuseFiles);
         string verdict;
-        // Exit 2 is fuse declining to answer; anything else outside 0/1 means the process did not run (-1: failed to start).
+        // Exit 2 is Fuse not answering (Unanswered); anything else outside 0/1 means the process did not run (-1: failed to start).
         if (fuseExit is not (0 or 1))
-            verdict = "fuse-failed";
+            verdict = "fuse-unanswered";
         else if (truth.Count > 0 && fuseCount == 0)
             verdict = "false-green";
         else if (falseRed.Count > 0)
@@ -189,10 +211,45 @@ internal static partial class CorrectnessSuite
     ///     is inside one. csc reports declaration errors and stops before binding method bodies, so it cannot report
     ///     the body error; fuse binds every body. The mutated files are still on disk when this runs.
     /// </summary>
+    /// <remarks>
+    ///     Analyzers and XML documentation checks run after that stage too, so the same build reports no analyzer or
+    ///     documentation error for the project either: with a duplicate member (CS0111) added to a Jellyfin file that also
+    ///     misindents a member, the build reports CS0111 alone, where without the duplicate it reports SA1137 and the rest.
+    /// </remarks>
     private static bool CompilerSkippedBodies(SolutionInfo solution, string project, List<string> truth, string fuseError)
     {
-        var projectErrors = truth.Where(t => string.Equals(solution.ProjectFileOf(FileOf(t)), project, StringComparison.OrdinalIgnoreCase)).ToList();
-        return projectErrors.Count > 0 && InBody(solution.Root, fuseError) && projectErrors.All(e => !InBody(solution.Root, e));
+        // Only the compiler's own errors say where csc stopped: a source generator reports its diagnostics (MVVMTK0022 in
+        // the Community Toolkit) before declarations are compiled, so they appear next to declaration errors.
+        var compilerErrors = truth.Where(t => string.Equals(solution.ProjectFileOf(FileOf(t)), project, StringComparison.OrdinalIgnoreCase) && IsCompiler(t)).ToList();
+        // The compiler's XML documentation checks are skipped after any compiler error, a body error included: in a
+        // Jellyfin probe a CS0103 made the build drop CS1591 while its analyzers still reported.
+        if (compilerErrors.Count > 0 && IsDocumentation(fuseError))
+            return true;
+        return compilerErrors.Count > 0
+               && (InBody(solution.Root, fuseError) || AfterDeclarations(fuseError))
+               && compilerErrors.All(e => !InBody(solution.Root, e) && !AfterDeclarations(e));
+    }
+
+    private static bool IsCompiler(string error) => Canonical().Match(error).Groups["id"].Value.StartsWith("CS", StringComparison.Ordinal);
+
+    /// <summary>
+    ///     True for a diagnostic csc only reports once declarations compile: any analyzer id (not <c>CS</c>), and the
+    ///     compiler's XML documentation checks, CS1570 to CS1592.
+    /// </summary>
+    private static bool AfterDeclarations(string error)
+    {
+        var id = Canonical().Match(error).Groups["id"].Value;
+        if (id.Length == 0)
+            return false;
+        return !id.StartsWith("CS", StringComparison.Ordinal) || IsDocumentation(error);
+    }
+
+    /// <summary>True for the compiler's XML documentation checks, CS1570 to CS1592.</summary>
+    private static bool IsDocumentation(string error)
+    {
+        var id = Canonical().Match(error).Groups["id"].Value;
+        return id.StartsWith("CS", StringComparison.Ordinal)
+               && int.TryParse(id[2..], System.Globalization.CultureInfo.InvariantCulture, out var number) && number is >= 1570 and <= 1592;
     }
 
     private static bool InBody(string root, string error)
@@ -203,10 +260,20 @@ internal static partial class CorrectnessSuite
         var path = Path.Combine(root, match.Groups["file"].Value);
         if (!File.Exists(path))
             return false;
-        var tree = CSharpSyntaxTree.ParseText(File.ReadAllText(path));
-        var text = tree.GetText();
+        var source = File.ReadAllText(path);
         var line = int.Parse(match.Groups["line"].Value, System.Globalization.CultureInfo.InvariantCulture) - 1;
         var col = int.Parse(match.Groups["col"].Value, System.Globalization.CultureInfo.InvariantCulture) - 1;
+        // An error inside an #if region was reported by the target framework that defines its symbol, and parsed without
+        // it the region is disabled text. So the file is parsed as it is and with every symbol its #if lines name.
+        var symbols = Conditional().Matches(source).SelectMany(m => Identifier().Matches(m.Groups["condition"].Value).Select(i => i.Value))
+            .Where(s => s is not ("true" or "false")).Distinct(StringComparer.Ordinal).ToArray();
+        return InBody(CSharpSyntaxTree.ParseText(source), line, col)
+               || (symbols.Length > 0 && InBody(CSharpSyntaxTree.ParseText(source, CSharpParseOptions.Default.WithPreprocessorSymbols(symbols)), line, col));
+    }
+
+    private static bool InBody(SyntaxTree tree, int line, int col)
+    {
+        var text = tree.GetText();
         if (line >= text.Lines.Count)
             return false;
         var position = Math.Min(text.Lines[line].Start + col, text.Length - 1);
@@ -221,6 +288,12 @@ internal static partial class CorrectnessSuite
             || n is EqualsValueClauseSyntax { Parent: VariableDeclaratorSyntax { Parent.Parent: FieldDeclarationSyntax } }
             || n is GlobalStatementSyntax) ?? false;
     }
+
+    [GeneratedRegex(@"^[ \t]*#[ \t]*(?:if|elif)\b(?<condition>.*)$", RegexOptions.Multiline | RegexOptions.CultureInvariant)]
+    private static partial Regex Conditional();
+
+    [GeneratedRegex(@"[A-Za-z_][A-Za-z0-9_]*", RegexOptions.CultureInvariant)]
+    private static partial Regex Identifier();
 
     /// <summary>Multiset difference: the errors in <paramref name="after"/> beyond those in <paramref name="before"/>, matched on file, id and message.</summary>
     internal static List<string> Subtract(List<string> after, List<string> before)
@@ -266,4 +339,8 @@ internal static partial class CorrectnessSuite
 
     [GeneratedRegex(@"^(?<file>[^\r\n]+?)(?:\((?<line>\d+),(?<col>\d+)\))?: error (?<id>[A-Za-z]+\d+): (?<msg>.*)$")]
     private static partial Regex Canonical();
+
+    // The cause line `fuse check` prints under an error in a file the case did not edit, indented by two spaces.
+    [GeneratedRegex(@"^ {2}(?<state>changed|removed): (?<declaration>.+)$")]
+    private static partial Regex CauseLine();
 }

@@ -10,14 +10,24 @@ internal sealed partial class HookPayload
 
     private HookPayload(JsonElement root) => _root = root;
 
+    /// <summary>Reads a harness's hook input. Empty input reads as an empty object.</summary>
+    /// <exception cref="JsonException">
+    ///     The input is not JSON, or is JSON whose root is not an object. Every field is read from an object, so any other
+    ///     root is refused here, where <c>fuse hook</c> logs it and exits 0.
+    /// </exception>
     public static HookPayload Parse(string json)
     {
         using var document = JsonDocument.Parse(string.IsNullOrWhiteSpace(json) ? "{}" : json);
+        if (document.RootElement.ValueKind != JsonValueKind.Object)
+            throw new JsonException($"a hook payload is a JSON object, not {document.RootElement.ValueKind.ToString().ToLowerInvariant()}");
         return new HookPayload(document.RootElement.Clone());
     }
 
     /// <summary>The working directory the harness reports, or the process's own.</summary>
-    public string Cwd => String("cwd") ?? String("workspace_roots", 0) ?? Environment.CurrentDirectory;
+    /// <remarks>An empty or blank value counts as absent, so a harness that sends <c>"cwd": ""</c> falls back too.</remarks>
+    public string Cwd => NonBlank(StringProperty("cwd")) ?? NonBlank(StringProperty("workspace_roots", 0)) ?? Environment.CurrentDirectory;
+
+    private static string? NonBlank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
 
     /// <summary>True when Cursor runs a hook it loaded from Claude Code's settings.</summary>
     public bool FromCursor => _root.TryGetProperty("cursor_version", out _);
@@ -57,9 +67,13 @@ internal sealed partial class HookPayload
     }
 
     /// <summary>The shell command of a Bash-like tool call.</summary>
-    public string? Command => ToolInput is { } input && input.TryGetProperty("command", out var c) && c.ValueKind == JsonValueKind.String ? c.GetString() : String("command");
+    public string? Command => ToolInput is { } input && input.TryGetProperty("command", out var c) && c.ValueKind == JsonValueKind.String ? c.GetString() : StringProperty("command");
 
-    /// <summary>Absolute paths of the files an edit tool wrote, including files named in a Codex or OpenCode <c>apply_patch</c> patch.</summary>
+    /// <summary>
+    ///     Absolute paths of the files an edit tool wrote, including files named in a Codex or OpenCode <c>apply_patch</c>
+    ///     patch. A path named twice in the same spelling is listed once; the hook finds the repository before it can
+    ///     tell two spellings of one file apart.
+    /// </summary>
     public IReadOnlyList<string> EditedFiles()
     {
         var paths = new List<string>();
@@ -78,17 +92,17 @@ internal sealed partial class HookPayload
             }
         }
 
-        if (String("file_path") is { } topLevel)
+        if (StringProperty("file_path") is { } topLevel)
             paths.Add(topLevel);
         var cwd = Cwd;
-        return paths.Select(p => Path.GetFullPath(Path.IsPathRooted(p) ? p : Path.Combine(cwd, p))).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        return paths.Select(p => Path.GetFullPath(Path.IsPathRooted(p) ? p : Path.Combine(cwd, p))).Distinct().ToList();
     }
 
     /// <summary>Files an apply_patch patch adds, updates, deletes or moves to.</summary>
     internal static IEnumerable<string> PatchFiles(string patch) =>
         PatchHeader().Matches(patch).Select(m => m.Groups["path"].Value.Trim());
 
-    private string? String(string name, int index = -1)
+    private string? StringProperty(string name, int index = -1)
     {
         if (!_root.TryGetProperty(name, out var value))
             return null;

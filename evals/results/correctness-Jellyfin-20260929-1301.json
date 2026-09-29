@@ -1,0 +1,1507 @@
+{
+  "suite": "correctness",
+  "repo": "Jellyfin",
+  "commit": "1d7c6af520da5c84ceac1c21a1d2da34837540ac",
+  "fuseBuild": "5.1.0/a4bde0171a0649da8dec851447e6299b",
+  "seed": 1,
+  "requested": 30,
+  "cases": 30,
+  "breaking": 27,
+  "neutral": 3,
+  "falseGreen": 0,
+  "falseRedCases": 0,
+  "falseRedErrors": 0,
+  "unverifiableErrors": 140,
+  "deferredByCompilerErrors": 40,
+  "messageMismatchErrors": 7,
+  "causeLines": 102,
+  "causeBytes": 6151,
+  "outputBytes": 60093,
+  "partialMisses": 0,
+  "exactAgreement": 30,
+  "fileAgreement": 30,
+  "fuseUnanswered": 0,
+  "fuseMedianMs": 604.52075,
+  "buildMedianSeconds": 4.20488075,
+  "headBuildErrors": 0,
+  "treeCleanAfter": true,
+  "details": [
+    {
+      "index": 0,
+      "edits": [
+        {
+          "path": "Jellyfin.Api/Models/SystemInfoDtos/LibraryStorageDto.cs",
+          "kind": "change-return-type",
+          "description": "changed the return type of LibraryStorageDto.FromLibraryStorageModel from LibraryStorageDto to object",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "Jellyfin.Api/Models/SystemInfoDtos/SystemStorageDto.cs(64,25): error CS0266: Cannot implicitly convert type \u0027object[]\u0027 to \u0027System.Collections.Generic.IReadOnlyCollection\u003CJellyfin.Api.Models.SystemInfoDtos.LibraryStorageDto\u003E\u0027. An explicit conversion exists (are you missing a cast?)",
+        "Jellyfin.Api/Models/SystemInfoDtos/LibraryStorageDto.cs(32,13): error CS0117: \u0027object\u0027 does not contain a definition for \u0027Id\u0027",
+        "Jellyfin.Api/Models/SystemInfoDtos/LibraryStorageDto.cs(33,13): error CS0117: \u0027object\u0027 does not contain a definition for \u0027Name\u0027",
+        "Jellyfin.Api/Models/SystemInfoDtos/LibraryStorageDto.cs(34,13): error CS0117: \u0027object\u0027 does not contain a definition for \u0027Folders\u0027"
+      ],
+      "fuse": [
+        "Jellyfin.Api/Models/SystemInfoDtos/LibraryStorageDto.cs(32,13): error CS0117: \u0027object\u0027 does not contain a definition for \u0027Id\u0027",
+        "Jellyfin.Api/Models/SystemInfoDtos/LibraryStorageDto.cs(33,13): error CS0117: \u0027object\u0027 does not contain a definition for \u0027Name\u0027",
+        "Jellyfin.Api/Models/SystemInfoDtos/LibraryStorageDto.cs(34,13): error CS0117: \u0027object\u0027 does not contain a definition for \u0027Folders\u0027",
+        "Jellyfin.Api/Models/SystemInfoDtos/SystemStorageDto.cs(64,25): error CS0266: Cannot implicitly convert type \u0027object[]\u0027 to \u0027System.Collections.Generic.IReadOnlyCollection\u003CJellyfin.Api.Models.SystemInfoDtos.LibraryStorageDto\u003E\u0027. An explicit conversion exists (are you missing a cast?)"
+      ],
+      "fuseCount": 4,
+      "fuseExit": 1,
+      "fuseMilliseconds": 19338.4591,
+      "buildSeconds": 11.8617024,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 1,
+      "outputBytes": 874,
+      "causeBytes": 83
+    },
+    {
+      "index": 1,
+      "edits": [
+        {
+          "path": "Emby.Naming/TV/SeriesPathParser.cs",
+          "kind": "remove-member",
+          "description": "removed SeriesPathParser.Parse",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "Emby.Naming/TV/SeriesResolver.cs(51,62): error CS0122: \u0027SeriesPathParser.Parse(string, EpisodeExpression)\u0027 is inaccessible due to its protection level",
+        "Emby.Naming/TV/SeriesPathParser.cs(10,5): error SA1505: An opening brace should not be followed by a blank line (https://github.com/DotNetAnalyzers/StyleCopAnalyzers/blob/master/documentation/SA1505.md)"
+      ],
+      "fuse": [
+        "Emby.Naming/TV/SeriesPathParser.cs(10,5): error SA1505: An opening brace should not be followed by a blank line",
+        "Emby.Naming/TV/SeriesResolver.cs(51,62): error CS0122: \u0027SeriesPathParser.Parse(string, EpisodeExpression)\u0027 is inaccessible due to its protection level",
+        "tests/Jellyfin.Naming.Tests/TV/SeriesPathParserTest.cs(23,40): error CS0122: \u0027SeriesPathParser.Parse(string, EpisodeExpression)\u0027 is inaccessible due to its protection level"
+      ],
+      "fuseCount": 3,
+      "fuseExit": 1,
+      "fuseMilliseconds": 15905.6334,
+      "buildSeconds": 2.4043658,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "tests/Jellyfin.Naming.Tests/TV/SeriesPathParserTest.cs(23,40): error CS0122: \u0027SeriesPathParser.Parse(string, EpisodeExpression)\u0027 is inaccessible due to its protection level"
+      ],
+      "deferredByCompiler": [],
+      "messageMismatch": [
+        "Emby.Naming/TV/SeriesPathParser.cs(10,5): error SA1505: An opening brace should not be followed by a blank line"
+      ],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 2,
+      "outputBytes": 761,
+      "causeBytes": 179
+    },
+    {
+      "index": 2,
+      "edits": [
+        {
+          "path": "Emby.Naming/Video/VideoResolver.cs",
+          "kind": "change-parameters",
+          "description": "added an int parameter to VideoResolver.IsStubFile",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "Emby.Naming/Video/StackResolver.cs(74,116): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027VideoResolver.IsStubFile(string, NamingOptions, int)\u0027",
+        "Emby.Naming/Video/StackResolver.cs(94,37): error CS8629: Nullable value type may be null.",
+        "Emby.Naming/Video/VideoResolver.cs(131,84): error SA1611: The documentation for parameter \u0027fuseExtra\u0027 is missing (https://github.com/DotNetAnalyzers/StyleCopAnalyzers/blob/master/documentation/SA1611.md)",
+        "Emby.Naming/Video/VideoResolver.cs(131,79): error SA1001: Commas should be followed by whitespace (https://github.com/DotNetAnalyzers/StyleCopAnalyzers/blob/master/documentation/SA1001.md)"
+      ],
+      "fuse": [
+        "Emby.Naming/Video/StackResolver.cs(74,116): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027VideoResolver.IsStubFile(string, NamingOptions, int)\u0027",
+        "Emby.Naming/Video/StackResolver.cs(94,37): error CS8629: Nullable value type may be null.",
+        "Emby.Naming/Video/VideoResolver.cs(131,79): error SA1001: Commas should be followed by whitespace",
+        "Emby.Naming/Video/VideoResolver.cs(131,84): error SA1611: The documentation for parameter \u0027fuseExtra\u0027 is missing",
+        "Emby.Naming/Video/VideoResolver.cs(131,84): error CS1573: Parameter \u0027fuseExtra\u0027 has no matching param tag in the XML comment for \u0027VideoResolver.IsStubFile(string, NamingOptions, int)\u0027 (but other parameters do)"
+      ],
+      "fuseCount": 5,
+      "fuseExit": 1,
+      "fuseMilliseconds": 462.2615,
+      "buildSeconds": 2.2365372,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [
+        "Emby.Naming/Video/VideoResolver.cs(131,79): error SA1001: Commas should be followed by whitespace",
+        "Emby.Naming/Video/VideoResolver.cs(131,84): error SA1611: The documentation for parameter \u0027fuseExtra\u0027 is missing",
+        "Emby.Naming/Video/VideoResolver.cs(131,84): error CS1573: Parameter \u0027fuseExtra\u0027 has no matching param tag in the XML comment for \u0027VideoResolver.IsStubFile(string, NamingOptions, int)\u0027 (but other parameters do)"
+      ],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 2,
+      "outputBytes": 997,
+      "causeBytes": 165
+    },
+    {
+      "index": 3,
+      "edits": [
+        {
+          "path": "Jellyfin.Server.Implementations/FullSystemBackup/BackupService.cs",
+          "kind": "rename-member",
+          "description": "renamed BackupService.GetBackupManifest to GetBackupManifestRenamed",
+          "newText": null
+        },
+        {
+          "path": "Jellyfin.Api/Controllers/TvShowsController.cs",
+          "kind": "change-return-type",
+          "description": "changed the return type of TvShowsController.GetNextUp from ActionResult\u003CQueryResult\u003CBaseItemDto\u003E\u003E to object",
+          "newText": null
+        },
+        {
+          "path": "src/Jellyfin.Database/Jellyfin.Database.Implementations/Entities/Libraries/Photo.cs",
+          "kind": "remove-using",
+          "description": "removed using Jellyfin.Database.Implementations.Interfaces",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/Jellyfin.Database/Jellyfin.Database.Implementations/Entities/Libraries/Photo.cs(8,39): error CS0246: The type or namespace name \u0027IHasReleases\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuse": [
+        "Jellyfin.Server.Implementations/FullSystemBackup/BackupService.cs(27,30): error CS0535: \u0027BackupService\u0027 does not implement interface member \u0027IBackupService.GetBackupManifest(string)\u0027",
+        "Jellyfin.Server.Implementations/FullSystemBackup/BackupService.cs(438,9): error SA1648: inheritdoc should be used with inheriting class",
+        "src/Jellyfin.Database/Jellyfin.Database.Implementations/Entities/Libraries/Photo.cs(8,39): error CS0246: The type or namespace name \u0027IHasReleases\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/Jellyfin.Database/Jellyfin.Database.Implementations/Entities/Libraries/Photo.cs(25,13): error SA1648: inheritdoc should be used with inheriting class"
+      ],
+      "fuseCount": 4,
+      "fuseExit": 1,
+      "fuseMilliseconds": 6521.136,
+      "buildSeconds": 1.3463116,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "Jellyfin.Server.Implementations/FullSystemBackup/BackupService.cs(27,30): error CS0535: \u0027BackupService\u0027 does not implement interface member \u0027IBackupService.GetBackupManifest(string)\u0027",
+        "Jellyfin.Server.Implementations/FullSystemBackup/BackupService.cs(438,9): error SA1648: inheritdoc should be used with inheriting class"
+      ],
+      "deferredByCompiler": [
+        "src/Jellyfin.Database/Jellyfin.Database.Implementations/Entities/Libraries/Photo.cs(25,13): error SA1648: inheritdoc should be used with inheriting class"
+      ],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 0,
+      "outputBytes": 947,
+      "causeBytes": 0
+    },
+    {
+      "index": 4,
+      "edits": [
+        {
+          "path": "MediaBrowser.Providers/Plugins/Tmdb/TV/TmdbSeasonImageProvider.cs",
+          "kind": "duplicate-signature",
+          "description": "duplicated the signature of TmdbSeasonImageProvider.GetSupportedImages",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "MediaBrowser.Providers/Plugins/Tmdb/TV/TmdbSeasonImageProvider.cs(54,31): error CS0111: Type \u0027TmdbSeasonImageProvider\u0027 already defines a member called \u0027GetSupportedImages\u0027 with the same parameter types"
+      ],
+      "fuse": [
+        "MediaBrowser.Providers/Plugins/Tmdb/TV/TmdbSeasonImageProvider.cs(54,1): error SA1137: Elements should have the same indentation",
+        "MediaBrowser.Providers/Plugins/Tmdb/TV/TmdbSeasonImageProvider.cs(54,31): error CS1591: Missing XML comment for publicly visible type or member \u0027TmdbSeasonImageProvider.GetSupportedImages(BaseItem)\u0027",
+        "MediaBrowser.Providers/Plugins/Tmdb/TV/TmdbSeasonImageProvider.cs(54,31): error CS0111: Type \u0027TmdbSeasonImageProvider\u0027 already defines a member called \u0027GetSupportedImages\u0027 with the same parameter types"
+      ],
+      "fuseCount": 3,
+      "fuseExit": 1,
+      "fuseMilliseconds": 616.3981,
+      "buildSeconds": 13.9760298,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [
+        "MediaBrowser.Providers/Plugins/Tmdb/TV/TmdbSeasonImageProvider.cs(54,1): error SA1137: Elements should have the same indentation"
+      ],
+      "messageMismatch": [
+        "MediaBrowser.Providers/Plugins/Tmdb/TV/TmdbSeasonImageProvider.cs(54,31): error CS1591: Missing XML comment for publicly visible type or member \u0027TmdbSeasonImageProvider.GetSupportedImages(BaseItem)\u0027"
+      ],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 0,
+      "outputBytes": 673,
+      "causeBytes": 0
+    },
+    {
+      "index": 5,
+      "edits": [
+        {
+          "path": "src/Jellyfin.Drawing.Skia/SkiaEncoder.cs",
+          "kind": "change-return-type",
+          "description": "changed the return type of SkiaEncoder.Decode from SKBitmap? to object",
+          "newText": null
+        },
+        {
+          "path": "src/Jellyfin.Database/Jellyfin.Database.Implementations/ModelConfiguration/PermissionConfiguration.cs",
+          "kind": "make-private",
+          "description": "made PermissionConfiguration.Configure private",
+          "newText": null
+        },
+        {
+          "path": "MediaBrowser.Controller/SyncPlay/PlaybackRequests/AbstractPlaybackRequest.cs",
+          "kind": "remove-member",
+          "description": "removed AbstractPlaybackRequest.Apply",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/Jellyfin.Database/Jellyfin.Database.Implementations/ModelConfiguration/PermissionConfiguration.cs(10,44): error CS0737: \u0027PermissionConfiguration\u0027 does not implement interface member \u0027IEntityTypeConfiguration\u003CPermission\u003E.Configure(EntityTypeBuilder\u003CPermission\u003E)\u0027. \u0027PermissionConfiguration.Configure(EntityTypeBuilder\u003CPermission\u003E)\u0027 cannot implement an interface member because it is not public."
+      ],
+      "fuse": [
+        "MediaBrowser.Controller/SyncPlay/PlaybackRequests/AbstractPlaybackRequest.cs(12,53): error CS0535: \u0027AbstractPlaybackRequest\u0027 does not implement interface member \u0027IGroupPlaybackRequest.Apply(IGroupStateContext, IGroupState, SessionInfo, CancellationToken)\u0027",
+        "MediaBrowser.Controller/SyncPlay/PlaybackRequests/BufferGroupRequest.cs(58,30): error CS0115: \u0027BufferGroupRequest.Apply(IGroupStateContext, IGroupState, SessionInfo, CancellationToken)\u0027: no suitable method found to override",
+        "MediaBrowser.Controller/SyncPlay/PlaybackRequests/IgnoreWaitGroupRequest.cs(33,30): error CS0115: \u0027IgnoreWaitGroupRequest.Apply(IGroupStateContext, IGroupState, SessionInfo, CancellationToken)\u0027: no suitable method found to override",
+        "MediaBrowser.Controller/SyncPlay/PlaybackRequests/MovePlaylistItemGroupRequest.cs(42,30): error CS0115: \u0027MovePlaylistItemGroupRequest.Apply(IGroupStateContext, IGroupState, SessionInfo, CancellationToken)\u0027: no suitable method found to override",
+        "MediaBrowser.Controller/SyncPlay/PlaybackRequests/NextItemGroupRequest.cs(34,30): error CS0115: \u0027NextItemGroupRequest.Apply(IGroupStateContext, IGroupState, SessionInfo, CancellationToken)\u0027: no suitable method found to override",
+        "MediaBrowser.Controller/SyncPlay/PlaybackRequests/PauseGroupRequest.cs(18,30): error CS0115: \u0027PauseGroupRequest.Apply(IGroupStateContext, IGroupState, SessionInfo, CancellationToken)\u0027: no suitable method found to override",
+        "MediaBrowser.Controller/SyncPlay/PlaybackRequests/PingGroupRequest.cs(33,30): error CS0115: \u0027PingGroupRequest.Apply(IGroupStateContext, IGroupState, SessionInfo, CancellationToken)\u0027: no suitable method found to override",
+        "MediaBrowser.Controller/SyncPlay/PlaybackRequests/PlayGroupRequest.cs(51,30): error CS0115: \u0027PlayGroupRequest.Apply(IGroupStateContext, IGroupState, SessionInfo, CancellationToken)\u0027: no suitable method found to override",
+        "MediaBrowser.Controller/SyncPlay/PlaybackRequests/PreviousItemGroupRequest.cs(34,30): error CS0115: \u0027PreviousItemGroupRequest.Apply(IGroupStateContext, IGroupState, SessionInfo, CancellationToken)\u0027: no suitable method found to override",
+        "MediaBrowser.Controller/SyncPlay/PlaybackRequests/QueueGroupRequest.cs(43,30): error CS0115: \u0027QueueGroupRequest.Apply(IGroupStateContext, IGroupState, SessionInfo, CancellationToken)\u0027: no suitable method found to override",
+        "MediaBrowser.Controller/SyncPlay/PlaybackRequests/ReadyGroupRequest.cs(58,30): error CS0115: \u0027ReadyGroupRequest.Apply(IGroupStateContext, IGroupState, SessionInfo, CancellationToken)\u0027: no suitable method found to override",
+        "MediaBrowser.Controller/SyncPlay/PlaybackRequests/RemoveFromPlaylistGroupRequest.cs(51,30): error CS0115: \u0027RemoveFromPlaylistGroupRequest.Apply(IGroupStateContext, IGroupState, SessionInfo, CancellationToken)\u0027: no suitable method found to override",
+        "MediaBrowser.Controller/SyncPlay/PlaybackRequests/SeekGroupRequest.cs(33,30): error CS0115: \u0027SeekGroupRequest.Apply(IGroupStateContext, IGroupState, SessionInfo, CancellationToken)\u0027: no suitable method found to override",
+        "MediaBrowser.Controller/SyncPlay/PlaybackRequests/SetPlaylistItemGroupRequest.cs(34,30): error CS0115: \u0027SetPlaylistItemGroupRequest.Apply(IGroupStateContext, IGroupState, SessionInfo, CancellationToken)\u0027: no suitable method found to override",
+        "MediaBrowser.Controller/SyncPlay/PlaybackRequests/SetRepeatModeGroupRequest.cs(33,30): error CS0115: \u0027SetRepeatModeGroupRequest.Apply(IGroupStateContext, IGroupState, SessionInfo, CancellationToken)\u0027: no suitable method found to override",
+        "MediaBrowser.Controller/SyncPlay/PlaybackRequests/SetShuffleModeGroupRequest.cs(33,30): error CS0115: \u0027SetShuffleModeGroupRequest.Apply(IGroupStateContext, IGroupState, SessionInfo, CancellationToken)\u0027: no suitable method found to override",
+        "MediaBrowser.Controller/SyncPlay/PlaybackRequests/StopGroupRequest.cs(16,30): error CS0115: \u0027StopGroupRequest.Apply(IGroupStateContext, IGroupState, SessionInfo, CancellationToken)\u0027: no suitable method found to override",
+        "MediaBrowser.Controller/SyncPlay/PlaybackRequests/UnpauseGroupRequest.cs(16,30): error CS0115: \u0027UnpauseGroupRequest.Apply(IGroupStateContext, IGroupState, SessionInfo, CancellationToken)\u0027: no suitable method found to override",
+        "src/Jellyfin.Database/Jellyfin.Database.Implementations/ModelConfiguration/PermissionConfiguration.cs(10,44): error CS0737: \u0027PermissionConfiguration\u0027 does not implement interface member \u0027IEntityTypeConfiguration\u003CPermission\u003E.Configure(EntityTypeBuilder\u003CPermission\u003E)\u0027. \u0027PermissionConfiguration.Configure(EntityTypeBuilder\u003CPermission\u003E)\u0027 cannot implement an interface member because it is not public.",
+        "src/Jellyfin.Database/Jellyfin.Database.Implementations/ModelConfiguration/PermissionConfiguration.cs(12,13): error SA1648: inheritdoc should be used with inheriting class"
+      ],
+      "fuseCount": 37,
+      "fuseExit": 1,
+      "fuseMilliseconds": 1430.5892,
+      "buildSeconds": 1.489505,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "MediaBrowser.Controller/SyncPlay/PlaybackRequests/AbstractPlaybackRequest.cs(12,53): error CS0535: \u0027AbstractPlaybackRequest\u0027 does not implement interface member \u0027IGroupPlaybackRequest.Apply(IGroupStateContext, IGroupState, SessionInfo, CancellationToken)\u0027",
+        "MediaBrowser.Controller/SyncPlay/PlaybackRequests/BufferGroupRequest.cs(58,30): error CS0115: \u0027BufferGroupRequest.Apply(IGroupStateContext, IGroupState, SessionInfo, CancellationToken)\u0027: no suitable method found to override",
+        "MediaBrowser.Controller/SyncPlay/PlaybackRequests/IgnoreWaitGroupRequest.cs(33,30): error CS0115: \u0027IgnoreWaitGroupRequest.Apply(IGroupStateContext, IGroupState, SessionInfo, CancellationToken)\u0027: no suitable method found to override",
+        "MediaBrowser.Controller/SyncPlay/PlaybackRequests/MovePlaylistItemGroupRequest.cs(42,30): error CS0115: \u0027MovePlaylistItemGroupRequest.Apply(IGroupStateContext, IGroupState, SessionInfo, CancellationToken)\u0027: no suitable method found to override",
+        "MediaBrowser.Controller/SyncPlay/PlaybackRequests/NextItemGroupRequest.cs(34,30): error CS0115: \u0027NextItemGroupRequest.Apply(IGroupStateContext, IGroupState, SessionInfo, CancellationToken)\u0027: no suitable method found to override",
+        "MediaBrowser.Controller/SyncPlay/PlaybackRequests/PauseGroupRequest.cs(18,30): error CS0115: \u0027PauseGroupRequest.Apply(IGroupStateContext, IGroupState, SessionInfo, CancellationToken)\u0027: no suitable method found to override",
+        "MediaBrowser.Controller/SyncPlay/PlaybackRequests/PingGroupRequest.cs(33,30): error CS0115: \u0027PingGroupRequest.Apply(IGroupStateContext, IGroupState, SessionInfo, CancellationToken)\u0027: no suitable method found to override",
+        "MediaBrowser.Controller/SyncPlay/PlaybackRequests/PlayGroupRequest.cs(51,30): error CS0115: \u0027PlayGroupRequest.Apply(IGroupStateContext, IGroupState, SessionInfo, CancellationToken)\u0027: no suitable method found to override",
+        "MediaBrowser.Controller/SyncPlay/PlaybackRequests/PreviousItemGroupRequest.cs(34,30): error CS0115: \u0027PreviousItemGroupRequest.Apply(IGroupStateContext, IGroupState, SessionInfo, CancellationToken)\u0027: no suitable method found to override",
+        "MediaBrowser.Controller/SyncPlay/PlaybackRequests/QueueGroupRequest.cs(43,30): error CS0115: \u0027QueueGroupRequest.Apply(IGroupStateContext, IGroupState, SessionInfo, CancellationToken)\u0027: no suitable method found to override",
+        "MediaBrowser.Controller/SyncPlay/PlaybackRequests/ReadyGroupRequest.cs(58,30): error CS0115: \u0027ReadyGroupRequest.Apply(IGroupStateContext, IGroupState, SessionInfo, CancellationToken)\u0027: no suitable method found to override",
+        "MediaBrowser.Controller/SyncPlay/PlaybackRequests/RemoveFromPlaylistGroupRequest.cs(51,30): error CS0115: \u0027RemoveFromPlaylistGroupRequest.Apply(IGroupStateContext, IGroupState, SessionInfo, CancellationToken)\u0027: no suitable method found to override",
+        "MediaBrowser.Controller/SyncPlay/PlaybackRequests/SeekGroupRequest.cs(33,30): error CS0115: \u0027SeekGroupRequest.Apply(IGroupStateContext, IGroupState, SessionInfo, CancellationToken)\u0027: no suitable method found to override",
+        "MediaBrowser.Controller/SyncPlay/PlaybackRequests/SetPlaylistItemGroupRequest.cs(34,30): error CS0115: \u0027SetPlaylistItemGroupRequest.Apply(IGroupStateContext, IGroupState, SessionInfo, CancellationToken)\u0027: no suitable method found to override",
+        "MediaBrowser.Controller/SyncPlay/PlaybackRequests/SetRepeatModeGroupRequest.cs(33,30): error CS0115: \u0027SetRepeatModeGroupRequest.Apply(IGroupStateContext, IGroupState, SessionInfo, CancellationToken)\u0027: no suitable method found to override",
+        "MediaBrowser.Controller/SyncPlay/PlaybackRequests/SetShuffleModeGroupRequest.cs(33,30): error CS0115: \u0027SetShuffleModeGroupRequest.Apply(IGroupStateContext, IGroupState, SessionInfo, CancellationToken)\u0027: no suitable method found to override",
+        "MediaBrowser.Controller/SyncPlay/PlaybackRequests/StopGroupRequest.cs(16,30): error CS0115: \u0027StopGroupRequest.Apply(IGroupStateContext, IGroupState, SessionInfo, CancellationToken)\u0027: no suitable method found to override",
+        "MediaBrowser.Controller/SyncPlay/PlaybackRequests/UnpauseGroupRequest.cs(16,30): error CS0115: \u0027UnpauseGroupRequest.Apply(IGroupStateContext, IGroupState, SessionInfo, CancellationToken)\u0027: no suitable method found to override"
+      ],
+      "deferredByCompiler": [
+        "src/Jellyfin.Database/Jellyfin.Database.Implementations/ModelConfiguration/PermissionConfiguration.cs(12,13): error SA1648: inheritdoc should be used with inheriting class"
+      ],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 10,
+      "outputBytes": 6460,
+      "causeBytes": 1429
+    },
+    {
+      "index": 6,
+      "edits": [
+        {
+          "path": "MediaBrowser.Model/Drawing/ImageDimensions.cs",
+          "kind": "delete-file",
+          "description": "deleted the file",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "MediaBrowser.Model/Drawing/DrawingUtils.cs(20,13): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Model/Drawing/DrawingUtils.cs(19,23): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Model/Drawing/DrawingUtils.cs(69,13): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Model/Drawing/DrawingUtils.cs(68,23): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuse": [
+        "Emby.Server.Implementations/Dto/DtoService.cs(1510,28): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Emby.Server.Implementations/Library/LibraryManager.cs(2108,17): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Emby.Server.Implementations/Library/LibraryManager.cs(2111,28): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Emby.Server.Implementations/Library/LibraryManager.cs(2125,36): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Controller/Drawing/IImageEncoder.cs(46,9): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Controller/Drawing/IImageProcessor.cs(36,9): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Controller/Drawing/IImageProcessor.cs(44,9): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Controller/Drawing/IImageProcessor.cs(59,46): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Controller/Drawing/ImageHelper.cs(9,23): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Controller/Drawing/ImageHelper.cs(9,87): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Controller/Drawing/ImageProcessingOptions.cs(66,65): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Controller/MediaEncoding/EncodingJobInfo.cs(156,36): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Controller/MediaEncoding/EncodingJobInfo.cs(183,36): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Model/Dlna/StreamInfo.cs(741,17): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Model/Dlna/StreamInfo.cs(741,44): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Model/Dlna/StreamInfo.cs(764,17): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Model/Dlna/StreamInfo.cs(764,44): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Model/Drawing/DrawingUtils.cs(19,23): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Model/Drawing/DrawingUtils.cs(20,13): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Model/Drawing/DrawingUtils.cs(57,24): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuseCount": 50,
+      "fuseExit": 1,
+      "fuseMilliseconds": 36064.7061,
+      "buildSeconds": 2.0334122,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "Emby.Server.Implementations/Dto/DtoService.cs(1510,28): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Emby.Server.Implementations/Library/LibraryManager.cs(2108,17): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Emby.Server.Implementations/Library/LibraryManager.cs(2111,28): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Emby.Server.Implementations/Library/LibraryManager.cs(2125,36): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Controller/Drawing/IImageEncoder.cs(46,9): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Controller/Drawing/IImageProcessor.cs(36,9): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Controller/Drawing/IImageProcessor.cs(44,9): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Controller/Drawing/IImageProcessor.cs(59,46): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Controller/Drawing/ImageHelper.cs(9,23): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Controller/Drawing/ImageHelper.cs(9,87): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Controller/Drawing/ImageProcessingOptions.cs(66,65): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Controller/MediaEncoding/EncodingJobInfo.cs(156,36): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Controller/MediaEncoding/EncodingJobInfo.cs(183,36): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "deferredByCompiler": [
+        "MediaBrowser.Model/Dlna/StreamInfo.cs(741,17): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Model/Dlna/StreamInfo.cs(741,44): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Model/Dlna/StreamInfo.cs(764,17): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Model/Dlna/StreamInfo.cs(764,44): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Model/Drawing/DrawingUtils.cs(57,24): error CS0246: The type or namespace name \u0027ImageDimensions\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 10,
+      "outputBytes": 4676,
+      "causeBytes": 478
+    },
+    {
+      "index": 7,
+      "edits": [
+        {
+          "path": "Jellyfin.Api/Models/UserDtos/ForgotPasswordPinDto.cs",
+          "kind": "delete-file",
+          "description": "deleted the file",
+          "newText": null
+        },
+        {
+          "path": "Jellyfin.Server/Filters/IgnoreEnumSchemaFilter.cs",
+          "kind": "duplicate-signature",
+          "description": "duplicated the signature of IgnoreEnumSchemaFilter.Apply",
+          "newText": null
+        },
+        {
+          "path": "src/Jellyfin.LiveTv/LiveTvMediaSourceProvider.cs",
+          "kind": "remove-using",
+          "description": "removed using System.Collections.Generic",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/Jellyfin.LiveTv/LiveTvMediaSourceProvider.cs(52,21): error CS0246: The type or namespace name \u0027IEnumerable\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/Jellyfin.LiveTv/LiveTvMediaSourceProvider.cs(67,28): error CS0246: The type or namespace name \u0027IEnumerable\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/Jellyfin.LiveTv/LiveTvMediaSourceProvider.cs(130,74): error CS0246: The type or namespace name \u0027List\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/Jellyfin.LiveTv/LiveTvMediaSourceProvider.cs(261,13): error CS0246: The type or namespace name \u0027List\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/Jellyfin.LiveTv/LiveTvMediaSourceProvider.cs(309,28): error CS0246: The type or namespace name \u0027List\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/Jellyfin.LiveTv/LiveTvMediaSourceProvider.cs(24,46): error CS0738: \u0027LiveTvMediaSourceProvider\u0027 does not implement interface member \u0027IMediaSourceProvider.GetMediaSources(BaseItem, CancellationToken)\u0027. \u0027LiveTvMediaSourceProvider.GetMediaSources(BaseItem, CancellationToken)\u0027 cannot implement \u0027IMediaSourceProvider.GetMediaSources(BaseItem, CancellationToken)\u0027 because it does not have the matching return type of \u0027Task\u003CIEnumerable\u003CMediaSourceInfo\u003E\u003E\u0027.",
+        "src/Jellyfin.LiveTv/LiveTvMediaSourceProvider.cs(24,46): error CS0535: \u0027LiveTvMediaSourceProvider\u0027 does not implement interface member \u0027IMediaSourceProvider.OpenMediaSource(string, List\u003CILiveStream\u003E, CancellationToken)\u0027",
+        "src/Jellyfin.LiveTv/LiveTvMediaSourceProvider.cs(42,13): error CS0246: The type or namespace name \u0027IEnumerable\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Api/Controllers/UserController.cs(588,93): error CS0246: The type or namespace name \u0027ForgotPasswordPinDto\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuse": [
+        "Jellyfin.Api/Controllers/UserController.cs(588,93): error CS0246: The type or namespace name \u0027ForgotPasswordPinDto\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server/Filters/IgnoreEnumSchemaFilter.cs(43,1): error SA1137: Elements should have the same indentation",
+        "Jellyfin.Server/Filters/IgnoreEnumSchemaFilter.cs(43,13): error CS1591: Missing XML comment for publicly visible type or member \u0027IgnoreEnumSchemaFilter.Apply(OpenApiSchema, SchemaFilterContext)\u0027",
+        "Jellyfin.Server/Filters/IgnoreEnumSchemaFilter.cs(43,13): error CS0111: Type \u0027IgnoreEnumSchemaFilter\u0027 already defines a member called \u0027Apply\u0027 with the same parameter types",
+        "src/Jellyfin.LiveTv/LiveTvMediaSourceProvider.cs(24,46): error CS0535: \u0027LiveTvMediaSourceProvider\u0027 does not implement interface member \u0027IMediaSourceProvider.OpenMediaSource(string, List\u003CILiveStream\u003E, CancellationToken)\u0027",
+        "src/Jellyfin.LiveTv/LiveTvMediaSourceProvider.cs(24,46): error CS0738: \u0027LiveTvMediaSourceProvider\u0027 does not implement interface member \u0027IMediaSourceProvider.GetMediaSources(BaseItem, CancellationToken)\u0027. \u0027LiveTvMediaSourceProvider.GetMediaSources(BaseItem, CancellationToken)\u0027 cannot implement \u0027IMediaSourceProvider.GetMediaSources(BaseItem, CancellationToken)\u0027 because it does not have the matching return type of \u0027Task\u003CIEnumerable\u003CMediaSourceInfo\u003E\u003E\u0027.",
+        "src/Jellyfin.LiveTv/LiveTvMediaSourceProvider.cs(42,13): error CS0246: The type or namespace name \u0027IEnumerable\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/Jellyfin.LiveTv/LiveTvMediaSourceProvider.cs(52,21): error CS0246: The type or namespace name \u0027IEnumerable\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/Jellyfin.LiveTv/LiveTvMediaSourceProvider.cs(67,28): error CS0246: The type or namespace name \u0027IEnumerable\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/Jellyfin.LiveTv/LiveTvMediaSourceProvider.cs(69,13): error CS0246: The type or namespace name \u0027IEnumerable\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/Jellyfin.LiveTv/LiveTvMediaSourceProvider.cs(107,40): error CS0246: The type or namespace name \u0027List\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/Jellyfin.LiveTv/LiveTvMediaSourceProvider.cs(129,13): error SA1648: inheritdoc should be used with inheriting class",
+        "src/Jellyfin.LiveTv/LiveTvMediaSourceProvider.cs(130,74): error CS0246: The type or namespace name \u0027List\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/Jellyfin.LiveTv/LiveTvMediaSourceProvider.cs(261,13): error CS0246: The type or namespace name \u0027List\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/Jellyfin.LiveTv/LiveTvMediaSourceProvider.cs(309,28): error CS0246: The type or namespace name \u0027List\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuseCount": 15,
+      "fuseExit": 1,
+      "fuseMilliseconds": 578.6355,
+      "buildSeconds": 9.7069473,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "Jellyfin.Server/Filters/IgnoreEnumSchemaFilter.cs(43,1): error SA1137: Elements should have the same indentation",
+        "Jellyfin.Server/Filters/IgnoreEnumSchemaFilter.cs(43,13): error CS1591: Missing XML comment for publicly visible type or member \u0027IgnoreEnumSchemaFilter.Apply(OpenApiSchema, SchemaFilterContext)\u0027",
+        "Jellyfin.Server/Filters/IgnoreEnumSchemaFilter.cs(43,13): error CS0111: Type \u0027IgnoreEnumSchemaFilter\u0027 already defines a member called \u0027Apply\u0027 with the same parameter types"
+      ],
+      "deferredByCompiler": [
+        "src/Jellyfin.LiveTv/LiveTvMediaSourceProvider.cs(69,13): error CS0246: The type or namespace name \u0027IEnumerable\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/Jellyfin.LiveTv/LiveTvMediaSourceProvider.cs(107,40): error CS0246: The type or namespace name \u0027List\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/Jellyfin.LiveTv/LiveTvMediaSourceProvider.cs(129,13): error SA1648: inheritdoc should be used with inheriting class"
+      ],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 1,
+      "outputBytes": 3243,
+      "causeBytes": 44
+    },
+    {
+      "index": 8,
+      "edits": [
+        {
+          "path": "src/Jellyfin.LiveTv/TunerHosts/LiveStream.cs",
+          "kind": "make-private",
+          "description": "made LiveStream.Close private",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/Jellyfin.LiveTv/TunerHosts/LiveStream.cs(20,31): error CS0737: \u0027LiveStream\u0027 does not implement interface member \u0027ILiveStream.Close()\u0027. \u0027LiveStream.Close()\u0027 cannot implement an interface member because it is not public."
+      ],
+      "fuse": [
+        "src/Jellyfin.LiveTv/TunerHosts/LiveStream.cs(20,31): error CS0737: \u0027LiveStream\u0027 does not implement interface member \u0027ILiveStream.Close()\u0027. \u0027LiveStream.Close()\u0027 cannot implement an interface member because it is not public."
+      ],
+      "fuseCount": 1,
+      "fuseExit": 1,
+      "fuseMilliseconds": 225.6545,
+      "buildSeconds": 10.6834135,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 0,
+      "outputBytes": 352,
+      "causeBytes": 0
+    },
+    {
+      "index": 9,
+      "edits": [
+        {
+          "path": "Emby.Server.Implementations/HttpServer/WebSocketConnection.cs",
+          "kind": "change-parameters",
+          "description": "added an int parameter to WebSocketConnection.SendAsync",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "Emby.Server.Implementations/HttpServer/WebSocketConnection.cs(22,40): error CS0535: \u0027WebSocketConnection\u0027 does not implement interface member \u0027IWebSocketConnection.SendAsync(OutboundWebSocketMessage, CancellationToken)\u0027"
+      ],
+      "fuse": [
+        "Emby.Server.Implementations/HttpServer/WebSocketConnection.cs(22,40): error CS0535: \u0027WebSocketConnection\u0027 does not implement interface member \u0027IWebSocketConnection.SendAsync(OutboundWebSocketMessage, CancellationToken)\u0027",
+        "Emby.Server.Implementations/HttpServer/WebSocketConnection.cs(84,13): error SA1648: inheritdoc should be used with inheriting class",
+        "Emby.Server.Implementations/HttpServer/WebSocketConnection.cs(85,106): error SA1001: Commas should be followed by whitespace",
+        "Emby.Server.Implementations/HttpServer/WebSocketConnection.cs(230,19): error CS0411: The type arguments for method \u0027WebSocketConnection.SendAsync\u003CT\u003E(OutboundWebSocketMessage\u003CT\u003E, CancellationToken)\u0027 cannot be inferred from the usage. Try specifying the type arguments explicitly."
+      ],
+      "fuseCount": 4,
+      "fuseExit": 1,
+      "fuseMilliseconds": 339.7733,
+      "buildSeconds": 4.4070797,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [
+        "Emby.Server.Implementations/HttpServer/WebSocketConnection.cs(84,13): error SA1648: inheritdoc should be used with inheriting class",
+        "Emby.Server.Implementations/HttpServer/WebSocketConnection.cs(85,106): error SA1001: Commas should be followed by whitespace",
+        "Emby.Server.Implementations/HttpServer/WebSocketConnection.cs(230,19): error CS0411: The type arguments for method \u0027WebSocketConnection.SendAsync\u003CT\u003E(OutboundWebSocketMessage\u003CT\u003E, CancellationToken)\u0027 cannot be inferred from the usage. Try specifying the type arguments explicitly."
+      ],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 0,
+      "outputBytes": 909,
+      "causeBytes": 0
+    },
+    {
+      "index": 10,
+      "edits": [
+        {
+          "path": "MediaBrowser.Controller/Net/AuthorizationInfo.cs",
+          "kind": "remove-using",
+          "description": "removed using Jellyfin.Database.Implementations.Entities",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "MediaBrowser.Controller/Net/AuthorizationInfo.cs(55,16): error CS0246: The type or namespace name \u0027User\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuse": [
+        "Emby.Server.Implementations/HttpServer/Security/AuthService.cs(35,22): error CS0246: The type or namespace name \u0027User\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Api/WebSocketListeners/ActivityLogWebSocketListener.cs(75,54): error CS0246: The type or namespace name \u0027User\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Api/WebSocketListeners/ActivityLogWebSocketListener.cs(76,58): error CS0246: The type or namespace name \u0027User\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Api/WebSocketListeners/SessionInfoWebSocketListener.cs(64,43): error CS0246: The type or namespace name \u0027User\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Api/WebSocketListeners/SessionInfoWebSocketListener.cs(66,43): error CS0246: The type or namespace name \u0027User\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Api/WebSocketListeners/SessionInfoWebSocketListener.cs(68,55): error CS0246: The type or namespace name \u0027User\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Api/WebSocketListeners/SessionInfoWebSocketListener.cs(100,50): error CS0246: The type or namespace name \u0027User\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Controller/Net/AuthorizationInfo.cs(55,16): error CS0246: The type or namespace name \u0027User\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Jellyfin.Api.Tests/Auth/CustomAuthenticationHandlerTests.cs(104,46): error CS0246: The type or namespace name \u0027User\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Jellyfin.Api.Tests/Auth/CustomAuthenticationHandlerTests.cs(105,99): error CS0246: The type or namespace name \u0027User\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Jellyfin.Api.Tests/Auth/CustomAuthenticationHandlerTests.cs(116,46): error CS0246: The type or namespace name \u0027User\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Jellyfin.Api.Tests/Auth/CustomAuthenticationHandlerTests.cs(117,50): error CS0246: The type or namespace name \u0027User\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Jellyfin.Api.Tests/Auth/CustomAuthenticationHandlerTests.cs(133,31): error CS0246: The type or namespace name \u0027User\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Jellyfin.Api.Tests/Auth/CustomAuthenticationHandlerTests.cs(134,31): error CS0246: The type or namespace name \u0027User\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Jellyfin.Api.Tests/Auth/CustomAuthenticationHandlerTests.cs(135,31): error CS0246: The type or namespace name \u0027User\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Jellyfin.Api.Tests/Auth/CustomAuthenticationHandlerTests.cs(136,31): error CS0246: The type or namespace name \u0027User\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuseCount": 16,
+      "fuseExit": 1,
+      "fuseMilliseconds": 646.5988,
+      "buildSeconds": 2.1079868,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "Emby.Server.Implementations/HttpServer/Security/AuthService.cs(35,22): error CS0246: The type or namespace name \u0027User\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Api/WebSocketListeners/ActivityLogWebSocketListener.cs(75,54): error CS0246: The type or namespace name \u0027User\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Api/WebSocketListeners/ActivityLogWebSocketListener.cs(76,58): error CS0246: The type or namespace name \u0027User\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Api/WebSocketListeners/SessionInfoWebSocketListener.cs(64,43): error CS0246: The type or namespace name \u0027User\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Api/WebSocketListeners/SessionInfoWebSocketListener.cs(66,43): error CS0246: The type or namespace name \u0027User\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Api/WebSocketListeners/SessionInfoWebSocketListener.cs(68,55): error CS0246: The type or namespace name \u0027User\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Api/WebSocketListeners/SessionInfoWebSocketListener.cs(100,50): error CS0246: The type or namespace name \u0027User\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Jellyfin.Api.Tests/Auth/CustomAuthenticationHandlerTests.cs(104,46): error CS0246: The type or namespace name \u0027User\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Jellyfin.Api.Tests/Auth/CustomAuthenticationHandlerTests.cs(105,99): error CS0246: The type or namespace name \u0027User\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Jellyfin.Api.Tests/Auth/CustomAuthenticationHandlerTests.cs(116,46): error CS0246: The type or namespace name \u0027User\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Jellyfin.Api.Tests/Auth/CustomAuthenticationHandlerTests.cs(117,50): error CS0246: The type or namespace name \u0027User\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Jellyfin.Api.Tests/Auth/CustomAuthenticationHandlerTests.cs(133,31): error CS0246: The type or namespace name \u0027User\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Jellyfin.Api.Tests/Auth/CustomAuthenticationHandlerTests.cs(134,31): error CS0246: The type or namespace name \u0027User\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Jellyfin.Api.Tests/Auth/CustomAuthenticationHandlerTests.cs(135,31): error CS0246: The type or namespace name \u0027User\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Jellyfin.Api.Tests/Auth/CustomAuthenticationHandlerTests.cs(136,31): error CS0246: The type or namespace name \u0027User\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 10,
+      "outputBytes": 4066,
+      "causeBytes": 609
+    },
+    {
+      "index": 11,
+      "edits": [
+        {
+          "path": "src/Jellyfin.LiveTv/DefaultLiveTvService.cs",
+          "kind": "change-return-type",
+          "description": "changed the return type of DefaultLiveTvService.GetChannelStream from Task\u003CMediaSourceInfo\u003E to object",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/Jellyfin.LiveTv/DefaultLiveTvService.cs(30,48): error CS0738: \u0027DefaultLiveTvService\u0027 does not implement interface member \u0027ILiveTvService.GetChannelStream(string, string, CancellationToken)\u0027. \u0027DefaultLiveTvService.GetChannelStream(string, string, CancellationToken)\u0027 cannot implement \u0027ILiveTvService.GetChannelStream(string, string, CancellationToken)\u0027 because it does not have the matching return type of \u0027Task\u003CMediaSourceInfo\u003E\u0027."
+      ],
+      "fuse": [
+        "src/Jellyfin.LiveTv/DefaultLiveTvService.cs(30,48): error CS0738: \u0027DefaultLiveTvService\u0027 does not implement interface member \u0027ILiveTvService.GetChannelStream(string, string, CancellationToken)\u0027. \u0027DefaultLiveTvService.GetChannelStream(string, string, CancellationToken)\u0027 cannot implement \u0027ILiveTvService.GetChannelStream(string, string, CancellationToken)\u0027 because it does not have the matching return type of \u0027Task\u003CMediaSourceInfo\u003E\u0027."
+      ],
+      "fuseCount": 1,
+      "fuseExit": 1,
+      "fuseMilliseconds": 385.49,
+      "buildSeconds": 7.2431967,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 0,
+      "outputBytes": 563,
+      "causeBytes": 0
+    },
+    {
+      "index": 12,
+      "edits": [
+        {
+          "path": "Jellyfin.Api/Controllers/ArtistsController.cs",
+          "kind": "rename-member",
+          "description": "renamed ArtistsController.GetArtists to GetArtistsRenamed",
+          "newText": null
+        }
+      ],
+      "truth": [],
+      "fuse": [],
+      "fuseCount": 0,
+      "fuseExit": 0,
+      "fuseMilliseconds": 253.3965,
+      "buildSeconds": 18.0661145,
+      "verdict": "agree-clean",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 0,
+      "outputBytes": 114,
+      "causeBytes": 0
+    },
+    {
+      "index": 13,
+      "edits": [
+        {
+          "path": "MediaBrowser.Controller/Entities/PeopleHelper.cs",
+          "kind": "delete-file",
+          "description": "deleted the file",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "MediaBrowser.Controller/Providers/MetadataResult.cs(56,13): error CS0103: The name \u0027PeopleHelper\u0027 does not exist in the current context"
+      ],
+      "fuse": [
+        "MediaBrowser.Controller/Providers/MetadataResult.cs(56,13): error CS0103: The name \u0027PeopleHelper\u0027 does not exist in the current context",
+        "MediaBrowser.Providers/MediaInfo/AudioFileProber.cs(219,25): error CS0103: The name \u0027PeopleHelper\u0027 does not exist in the current context",
+        "MediaBrowser.Providers/MediaInfo/AudioFileProber.cs(251,25): error CS0103: The name \u0027PeopleHelper\u0027 does not exist in the current context",
+        "MediaBrowser.Providers/MediaInfo/AudioFileProber.cs(265,29): error CS0103: The name \u0027PeopleHelper\u0027 does not exist in the current context",
+        "MediaBrowser.Providers/MediaInfo/FFProbeVideoInfo.cs(519,25): error CS0103: The name \u0027PeopleHelper\u0027 does not exist in the current context",
+        "MediaBrowser.Providers/Music/AlbumMetadataService.cs(205,21): error CS0103: The name \u0027PeopleHelper\u0027 does not exist in the current context",
+        "MediaBrowser.Providers/Music/AlbumMetadataService.cs(217,21): error CS0103: The name \u0027PeopleHelper\u0027 does not exist in the current context"
+      ],
+      "fuseCount": 7,
+      "fuseExit": 1,
+      "fuseMilliseconds": 562.0878,
+      "buildSeconds": 4.0026818,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "MediaBrowser.Providers/MediaInfo/AudioFileProber.cs(219,25): error CS0103: The name \u0027PeopleHelper\u0027 does not exist in the current context",
+        "MediaBrowser.Providers/MediaInfo/AudioFileProber.cs(251,25): error CS0103: The name \u0027PeopleHelper\u0027 does not exist in the current context",
+        "MediaBrowser.Providers/MediaInfo/AudioFileProber.cs(265,29): error CS0103: The name \u0027PeopleHelper\u0027 does not exist in the current context",
+        "MediaBrowser.Providers/MediaInfo/FFProbeVideoInfo.cs(519,25): error CS0103: The name \u0027PeopleHelper\u0027 does not exist in the current context",
+        "MediaBrowser.Providers/Music/AlbumMetadataService.cs(205,21): error CS0103: The name \u0027PeopleHelper\u0027 does not exist in the current context",
+        "MediaBrowser.Providers/Music/AlbumMetadataService.cs(217,21): error CS0103: The name \u0027PeopleHelper\u0027 does not exist in the current context"
+      ],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 7,
+      "outputBytes": 1439,
+      "causeBytes": 307
+    },
+    {
+      "index": 14,
+      "edits": [
+        {
+          "path": "src/Jellyfin.Networking/Manager/NetworkManager.cs",
+          "kind": "delete-file",
+          "description": "deleted the file",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "tests/Jellyfin.Networking.Tests/NetworkManagerTests.cs(2,27): error CS0234: The type or namespace name \u0027Manager\u0027 does not exist in the namespace \u0027Jellyfin.Networking\u0027 (are you missing an assembly reference?)",
+        "tests/Jellyfin.Networking.Tests/NetworkParseTests.cs(5,27): error CS0234: The type or namespace name \u0027Manager\u0027 does not exist in the namespace \u0027Jellyfin.Networking\u0027 (are you missing an assembly reference?)",
+        "Emby.Server.Implementations/ApplicationHost.cs(41,27): error CS0234: The type or namespace name \u0027Manager\u0027 does not exist in the namespace \u0027Jellyfin.Networking\u0027 (are you missing an assembly reference?)"
+      ],
+      "fuse": [
+        "Emby.Server.Implementations/ApplicationHost.cs(41,27): error CS0234: The type or namespace name \u0027Manager\u0027 does not exist in the namespace \u0027Jellyfin.Networking\u0027 (are you missing an assembly reference?)",
+        "Emby.Server.Implementations/ApplicationHost.cs(438,30): error CS0246: The type or namespace name \u0027NetworkManager\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Emby.Server.Implementations/ApplicationHost.cs(438,110): error CS0246: The type or namespace name \u0027NetworkManager\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Emby.Server.Implementations/ApplicationHost.cs(857,33): error CS0246: The type or namespace name \u0027NetworkManager\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server/ServerSetupApp/SetupServer.cs(12,27): error CS0234: The type or namespace name \u0027Manager\u0027 does not exist in the namespace \u0027Jellyfin.Networking\u0027 (are you missing an assembly reference?)",
+        "Jellyfin.Server/ServerSetupApp/SetupServer.cs(163,63): error CS0103: The name \u0027NetworkManager\u0027 does not exist in the current context",
+        "Jellyfin.Server/ServerSetupApp/SetupServer.cs(164,59): error CS0103: The name \u0027NetworkManager\u0027 does not exist in the current context",
+        "Jellyfin.Server/ServerSetupApp/SetupServer.cs(165,58): error CS0103: The name \u0027NetworkManager\u0027 does not exist in the current context",
+        "tests/Jellyfin.Networking.Tests/NetworkManagerTests.cs(2,27): error CS0234: The type or namespace name \u0027Manager\u0027 does not exist in the namespace \u0027Jellyfin.Networking\u0027 (are you missing an assembly reference?)",
+        "tests/Jellyfin.Networking.Tests/NetworkManagerTests.cs(34,44): error CS0246: The type or namespace name \u0027NetworkManager\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Jellyfin.Networking.Tests/NetworkManagerTests.cs(34,133): error CS0246: The type or namespace name \u0027NetworkManager\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Jellyfin.Networking.Tests/NetworkManagerTests.cs(63,44): error CS0246: The type or namespace name \u0027NetworkManager\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Jellyfin.Networking.Tests/NetworkManagerTests.cs(63,133): error CS0246: The type or namespace name \u0027NetworkManager\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Jellyfin.Networking.Tests/NetworkParseTests.cs(5,27): error CS0234: The type or namespace name \u0027Manager\u0027 does not exist in the namespace \u0027Jellyfin.Networking\u0027 (are you missing an assembly reference?)",
+        "tests/Jellyfin.Networking.Tests/NetworkParseTests.cs(57,13): error CS0103: The name \u0027NetworkManager\u0027 does not exist in the current context",
+        "tests/Jellyfin.Networking.Tests/NetworkParseTests.cs(59,32): error CS0246: The type or namespace name \u0027NetworkManager\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Jellyfin.Networking.Tests/NetworkParseTests.cs(59,121): error CS0246: The type or namespace name \u0027NetworkManager\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Jellyfin.Networking.Tests/NetworkParseTests.cs(60,13): error CS0103: The name \u0027NetworkManager\u0027 does not exist in the current context",
+        "tests/Jellyfin.Networking.Tests/NetworkParseTests.cs(202,13): error CS0103: The name \u0027NetworkManager\u0027 does not exist in the current context",
+        "tests/Jellyfin.Networking.Tests/NetworkParseTests.cs(204,32): error CS0246: The type or namespace name \u0027NetworkManager\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuseCount": 43,
+      "fuseExit": 1,
+      "fuseMilliseconds": 4425.5138,
+      "buildSeconds": 13.8888558,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "Jellyfin.Server/ServerSetupApp/SetupServer.cs(12,27): error CS0234: The type or namespace name \u0027Manager\u0027 does not exist in the namespace \u0027Jellyfin.Networking\u0027 (are you missing an assembly reference?)",
+        "Jellyfin.Server/ServerSetupApp/SetupServer.cs(163,63): error CS0103: The name \u0027NetworkManager\u0027 does not exist in the current context",
+        "Jellyfin.Server/ServerSetupApp/SetupServer.cs(164,59): error CS0103: The name \u0027NetworkManager\u0027 does not exist in the current context",
+        "Jellyfin.Server/ServerSetupApp/SetupServer.cs(165,58): error CS0103: The name \u0027NetworkManager\u0027 does not exist in the current context"
+      ],
+      "deferredByCompiler": [
+        "Emby.Server.Implementations/ApplicationHost.cs(438,30): error CS0246: The type or namespace name \u0027NetworkManager\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Emby.Server.Implementations/ApplicationHost.cs(438,110): error CS0246: The type or namespace name \u0027NetworkManager\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Emby.Server.Implementations/ApplicationHost.cs(857,33): error CS0246: The type or namespace name \u0027NetworkManager\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Jellyfin.Networking.Tests/NetworkManagerTests.cs(34,44): error CS0246: The type or namespace name \u0027NetworkManager\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Jellyfin.Networking.Tests/NetworkManagerTests.cs(34,133): error CS0246: The type or namespace name \u0027NetworkManager\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Jellyfin.Networking.Tests/NetworkManagerTests.cs(63,44): error CS0246: The type or namespace name \u0027NetworkManager\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Jellyfin.Networking.Tests/NetworkManagerTests.cs(63,133): error CS0246: The type or namespace name \u0027NetworkManager\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Jellyfin.Networking.Tests/NetworkParseTests.cs(57,13): error CS0103: The name \u0027NetworkManager\u0027 does not exist in the current context",
+        "tests/Jellyfin.Networking.Tests/NetworkParseTests.cs(59,32): error CS0246: The type or namespace name \u0027NetworkManager\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Jellyfin.Networking.Tests/NetworkParseTests.cs(59,121): error CS0246: The type or namespace name \u0027NetworkManager\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Jellyfin.Networking.Tests/NetworkParseTests.cs(60,13): error CS0103: The name \u0027NetworkManager\u0027 does not exist in the current context",
+        "tests/Jellyfin.Networking.Tests/NetworkParseTests.cs(202,13): error CS0103: The name \u0027NetworkManager\u0027 does not exist in the current context",
+        "tests/Jellyfin.Networking.Tests/NetworkParseTests.cs(204,32): error CS0246: The type or namespace name \u0027NetworkManager\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 10,
+      "outputBytes": 4581,
+      "causeBytes": 699
+    },
+    {
+      "index": 15,
+      "edits": [
+        {
+          "path": "src/Jellyfin.MediaEncoding.Keyframes/FfTool/FfToolKeyframeExtractor.cs",
+          "kind": "change-return-type",
+          "description": "changed the return type of FfToolKeyframeExtractor.GetKeyframeData from KeyframeData to object",
+          "newText": null
+        }
+      ],
+      "truth": [],
+      "fuse": [],
+      "fuseCount": 0,
+      "fuseExit": 0,
+      "fuseMilliseconds": 1529.3321,
+      "buildSeconds": 26.7636529,
+      "verdict": "agree-clean",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 0,
+      "outputBytes": 135,
+      "causeBytes": 0
+    },
+    {
+      "index": 16,
+      "edits": [
+        {
+          "path": "MediaBrowser.Controller/Entities/Person.cs",
+          "kind": "change-return-type",
+          "description": "changed the return type of Person.GetPath from string to object",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "Emby.Server.Implementations/Library/LibraryManager.cs(961,46): error CS1503: Argument 1: cannot convert from \u0027object\u0027 to \u0027string\u0027",
+        "Emby.Server.Implementations/Library/LibraryManager.cs(3106,62): error CS1503: Argument 1: cannot convert from \u0027object\u0027 to \u0027string\u0027",
+        "Emby.Server.Implementations/Library/LibraryManager.cs(3110,58): error CS1503: Argument 1: cannot convert from \u0027object\u0027 to \u0027string\u0027",
+        "Emby.Server.Implementations/Library/LibraryManager.cs(3113,36): error CS0266: Cannot implicitly convert type \u0027object\u0027 to \u0027string\u0027. An explicit conversion exists (are you missing a cast?)"
+      ],
+      "fuse": [
+        "Emby.Server.Implementations/Library/LibraryManager.cs(961,46): error CS1503: Argument 1: cannot convert from \u0027object\u0027 to \u0027string\u0027",
+        "Emby.Server.Implementations/Library/LibraryManager.cs(3106,62): error CS1503: Argument 1: cannot convert from \u0027object\u0027 to \u0027string\u0027",
+        "Emby.Server.Implementations/Library/LibraryManager.cs(3110,58): error CS1503: Argument 1: cannot convert from \u0027object\u0027 to \u0027string\u0027",
+        "Emby.Server.Implementations/Library/LibraryManager.cs(3113,36): error CS0266: Cannot implicitly convert type \u0027object\u0027 to \u0027string\u0027. An explicit conversion exists (are you missing a cast?)"
+      ],
+      "fuseCount": 4,
+      "fuseExit": 1,
+      "fuseMilliseconds": 649.0227,
+      "buildSeconds": 25.3167092,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 4,
+      "outputBytes": 941,
+      "causeBytes": 211
+    },
+    {
+      "index": 17,
+      "edits": [
+        {
+          "path": "Jellyfin.Server/Migrations/Routines/MigrateLibraryUserData.cs",
+          "kind": "duplicate-signature",
+          "description": "duplicated the signature of MigrateLibraryUserData.PerformAsync",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "Jellyfin.Server/Migrations/Routines/MigrateLibraryUserData.cs(124,19): error CS0111: Type \u0027MigrateLibraryUserData\u0027 already defines a member called \u0027PerformAsync\u0027 with the same parameter types"
+      ],
+      "fuse": [
+        "Jellyfin.Server/Migrations/Routines/MigrateLibraryUserData.cs(124,1): error SA1137: Elements should have the same indentation",
+        "Jellyfin.Server/Migrations/Routines/MigrateLibraryUserData.cs(124,19): error CS0111: Type \u0027MigrateLibraryUserData\u0027 already defines a member called \u0027PerformAsync\u0027 with the same parameter types"
+      ],
+      "fuseCount": 2,
+      "fuseExit": 1,
+      "fuseMilliseconds": 478.7004,
+      "buildSeconds": 24.9653582,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [
+        "Jellyfin.Server/Migrations/Routines/MigrateLibraryUserData.cs(124,1): error SA1137: Elements should have the same indentation"
+      ],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 0,
+      "outputBytes": 447,
+      "causeBytes": 0
+    },
+    {
+      "index": 18,
+      "edits": [
+        {
+          "path": "Emby.Server.Implementations/ScheduledTasks/Triggers/StartupTrigger.cs",
+          "kind": "duplicate-signature",
+          "description": "duplicated the signature of StartupTrigger.Start",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "Emby.Server.Implementations/ScheduledTasks/Triggers/StartupTrigger.cs(41,19): error CS0111: Type \u0027StartupTrigger\u0027 already defines a member called \u0027Start\u0027 with the same parameter types"
+      ],
+      "fuse": [
+        "Emby.Server.Implementations/ScheduledTasks/Triggers/StartupTrigger.cs(41,1): error SA1137: Elements should have the same indentation",
+        "Emby.Server.Implementations/ScheduledTasks/Triggers/StartupTrigger.cs(41,19): error CS1591: Missing XML comment for publicly visible type or member \u0027StartupTrigger.Start(TaskResult?, ILogger, string, bool)\u0027",
+        "Emby.Server.Implementations/ScheduledTasks/Triggers/StartupTrigger.cs(41,19): error CS0111: Type \u0027StartupTrigger\u0027 already defines a member called \u0027Start\u0027 with the same parameter types"
+      ],
+      "fuseCount": 3,
+      "fuseExit": 1,
+      "fuseMilliseconds": 268.1875,
+      "buildSeconds": 2.7215655,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [
+        "Emby.Server.Implementations/ScheduledTasks/Triggers/StartupTrigger.cs(41,1): error SA1137: Elements should have the same indentation"
+      ],
+      "messageMismatch": [
+        "Emby.Server.Implementations/ScheduledTasks/Triggers/StartupTrigger.cs(41,19): error CS1591: Missing XML comment for publicly visible type or member \u0027StartupTrigger.Start(TaskResult?, ILogger, string, bool)\u0027"
+      ],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 0,
+      "outputBytes": 677,
+      "causeBytes": 0
+    },
+    {
+      "index": 19,
+      "edits": [
+        {
+          "path": "MediaBrowser.Controller/Providers/SongInfo.cs",
+          "kind": "delete-file",
+          "description": "deleted the file",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "MediaBrowser.Controller/Entities/Audio/Audio.cs(24,24): error CS0246: The type or namespace name \u0027SongInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Controller/Providers/ArtistInfo.cs(14,21): error CS0246: The type or namespace name \u0027SongInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Controller/Providers/AlbumInfo.cs(29,21): error CS0246: The type or namespace name \u0027SongInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Controller/Entities/Audio/Audio.cs(139,16): error CS0246: The type or namespace name \u0027SongInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Controller/Entities/AudioBook.cs(13,70): error CS0246: The type or namespace name \u0027SongInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuse": [
+        "MediaBrowser.Controller/Entities/Audio/Audio.cs(24,24): error CS0246: The type or namespace name \u0027SongInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Controller/Entities/Audio/Audio.cs(139,16): error CS0246: The type or namespace name \u0027SongInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Controller/Entities/Audio/Audio.cs(141,42): error CS0246: The type or namespace name \u0027SongInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Controller/Entities/AudioBook.cs(13,70): error CS0246: The type or namespace name \u0027SongInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Controller/Providers/AlbumInfo.cs(13,34): error CS0246: The type or namespace name \u0027SongInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Controller/Providers/AlbumInfo.cs(29,21): error CS0246: The type or namespace name \u0027SongInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Controller/Providers/ArtistInfo.cs(11,34): error CS0246: The type or namespace name \u0027SongInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Controller/Providers/ArtistInfo.cs(14,21): error CS0246: The type or namespace name \u0027SongInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Providers/Books/AudioBookMetadataService.cs(17,14): error CS0311: The type \u0027MediaBrowser.Controller.Entities.AudioBook\u0027 cannot be used as type parameter \u0027TItemType\u0027 in the generic type or method \u0027MetadataService\u003CTItemType, TIdType\u003E\u0027. There is no implicit reference conversion from \u0027MediaBrowser.Controller.Entities.AudioBook\u0027 to \u0027MediaBrowser.Controller.Providers.IHasLookupInfo\u003CSongInfo\u003E\u0027.",
+        "MediaBrowser.Providers/Books/AudioBookMetadataService.cs(17,68): error CS0246: The type or namespace name \u0027SongInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Providers/Music/AlbumInfoExtensions.cs(13,37): error CS0411: The type arguments for method \u0027Enumerable.SelectMany\u003CTSource, TResult\u003E(IEnumerable\u003CTSource\u003E, Func\u003CTSource, IEnumerable\u003CTResult\u003E\u003E)\u0027 cannot be inferred from the usage. Try specifying the type arguments explicitly.",
+        "MediaBrowser.Providers/Music/AudioMetadataService.cs(19,14): error CS0311: The type \u0027MediaBrowser.Controller.Entities.Audio.Audio\u0027 cannot be used as type parameter \u0027TItemType\u0027 in the generic type or method \u0027MetadataService\u003CTItemType, TIdType\u003E\u0027. There is no implicit reference conversion from \u0027MediaBrowser.Controller.Entities.Audio.Audio\u0027 to \u0027MediaBrowser.Controller.Providers.IHasLookupInfo\u003CSongInfo\u003E\u0027.",
+        "MediaBrowser.Providers/Music/AudioMetadataService.cs(19,60): error CS0246: The type or namespace name \u0027SongInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Jellyfin.Providers.Tests/Manager/MetadataServiceTests.cs(124,26): error CS0311: The type \u0027MediaBrowser.Controller.Entities.Audio.Audio\u0027 cannot be used as type parameter \u0027TItemType\u0027 in the generic type or method \u0027MetadataServiceTests.TestMergeBaseItemData\u003CTItemType, TIdType\u003E(string, object?, object?, MetadataField?, bool, out object?)\u0027. There is no implicit reference conversion from \u0027MediaBrowser.Controller.Entities.Audio.Audio\u0027 to \u0027MediaBrowser.Controller.Providers.IHasLookupInfo\u003CSongInfo\u003E\u0027.",
+        "tests/Jellyfin.Providers.Tests/Manager/MetadataServiceTests.cs(124,55): error CS0246: The type or namespace name \u0027SongInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Jellyfin.Providers.Tests/Manager/MetadataServiceTests.cs(127,30): error CS0311: The type \u0027MediaBrowser.Controller.Entities.Audio.Audio\u0027 cannot be used as type parameter \u0027TItemType\u0027 in the generic type or method \u0027MetadataServiceTests.TestMergeBaseItemData\u003CTItemType, TIdType\u003E(string, object?, object?, MetadataField?, bool, out object?)\u0027. There is no implicit reference conversion from \u0027MediaBrowser.Controller.Entities.Audio.Audio\u0027 to \u0027MediaBrowser.Controller.Providers.IHasLookupInfo\u003CSongInfo\u003E\u0027.",
+        "tests/Jellyfin.Providers.Tests/Manager/MetadataServiceTests.cs(127,59): error CS0246: The type or namespace name \u0027SongInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Jellyfin.Providers.Tests/Manager/MetadataServiceTests.cs(128,30): error CS0311: The type \u0027MediaBrowser.Controller.Entities.Audio.Audio\u0027 cannot be used as type parameter \u0027TItemType\u0027 in the generic type or method \u0027MetadataServiceTests.TestMergeBaseItemData\u003CTItemType, TIdType\u003E(string, object?, object?, MetadataField?, bool, out object?)\u0027. There is no implicit reference conversion from \u0027MediaBrowser.Controller.Entities.Audio.Audio\u0027 to \u0027MediaBrowser.Controller.Providers.IHasLookupInfo\u003CSongInfo\u003E\u0027.",
+        "tests/Jellyfin.Providers.Tests/Manager/MetadataServiceTests.cs(128,59): error CS0246: The type or namespace name \u0027SongInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Jellyfin.Providers.Tests/Manager/MetadataServiceTests.cs(131,25): error CS0311: The type \u0027MediaBrowser.Controller.Entities.Audio.Audio\u0027 cannot be used as type parameter \u0027TItemType\u0027 in the generic type or method \u0027MetadataServiceTests.TestMergeBaseItemData\u003CTItemType, TIdType\u003E(string, object?, object?, MetadataField?, bool, out object?)\u0027. There is no implicit reference conversion from \u0027MediaBrowser.Controller.Entities.Audio.Audio\u0027 to \u0027MediaBrowser.Controller.Providers.IHasLookupInfo\u003CSongInfo\u003E\u0027."
+      ],
+      "fuseCount": 25,
+      "fuseExit": 1,
+      "fuseMilliseconds": 564.8256,
+      "buildSeconds": 1.9701562,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "MediaBrowser.Providers/Books/AudioBookMetadataService.cs(17,14): error CS0311: The type \u0027MediaBrowser.Controller.Entities.AudioBook\u0027 cannot be used as type parameter \u0027TItemType\u0027 in the generic type or method \u0027MetadataService\u003CTItemType, TIdType\u003E\u0027. There is no implicit reference conversion from \u0027MediaBrowser.Controller.Entities.AudioBook\u0027 to \u0027MediaBrowser.Controller.Providers.IHasLookupInfo\u003CSongInfo\u003E\u0027.",
+        "MediaBrowser.Providers/Books/AudioBookMetadataService.cs(17,68): error CS0246: The type or namespace name \u0027SongInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Providers/Music/AlbumInfoExtensions.cs(13,37): error CS0411: The type arguments for method \u0027Enumerable.SelectMany\u003CTSource, TResult\u003E(IEnumerable\u003CTSource\u003E, Func\u003CTSource, IEnumerable\u003CTResult\u003E\u003E)\u0027 cannot be inferred from the usage. Try specifying the type arguments explicitly.",
+        "MediaBrowser.Providers/Music/AudioMetadataService.cs(19,14): error CS0311: The type \u0027MediaBrowser.Controller.Entities.Audio.Audio\u0027 cannot be used as type parameter \u0027TItemType\u0027 in the generic type or method \u0027MetadataService\u003CTItemType, TIdType\u003E\u0027. There is no implicit reference conversion from \u0027MediaBrowser.Controller.Entities.Audio.Audio\u0027 to \u0027MediaBrowser.Controller.Providers.IHasLookupInfo\u003CSongInfo\u003E\u0027.",
+        "MediaBrowser.Providers/Music/AudioMetadataService.cs(19,60): error CS0246: The type or namespace name \u0027SongInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Jellyfin.Providers.Tests/Manager/MetadataServiceTests.cs(124,26): error CS0311: The type \u0027MediaBrowser.Controller.Entities.Audio.Audio\u0027 cannot be used as type parameter \u0027TItemType\u0027 in the generic type or method \u0027MetadataServiceTests.TestMergeBaseItemData\u003CTItemType, TIdType\u003E(string, object?, object?, MetadataField?, bool, out object?)\u0027. There is no implicit reference conversion from \u0027MediaBrowser.Controller.Entities.Audio.Audio\u0027 to \u0027MediaBrowser.Controller.Providers.IHasLookupInfo\u003CSongInfo\u003E\u0027.",
+        "tests/Jellyfin.Providers.Tests/Manager/MetadataServiceTests.cs(124,55): error CS0246: The type or namespace name \u0027SongInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Jellyfin.Providers.Tests/Manager/MetadataServiceTests.cs(127,30): error CS0311: The type \u0027MediaBrowser.Controller.Entities.Audio.Audio\u0027 cannot be used as type parameter \u0027TItemType\u0027 in the generic type or method \u0027MetadataServiceTests.TestMergeBaseItemData\u003CTItemType, TIdType\u003E(string, object?, object?, MetadataField?, bool, out object?)\u0027. There is no implicit reference conversion from \u0027MediaBrowser.Controller.Entities.Audio.Audio\u0027 to \u0027MediaBrowser.Controller.Providers.IHasLookupInfo\u003CSongInfo\u003E\u0027.",
+        "tests/Jellyfin.Providers.Tests/Manager/MetadataServiceTests.cs(127,59): error CS0246: The type or namespace name \u0027SongInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Jellyfin.Providers.Tests/Manager/MetadataServiceTests.cs(128,30): error CS0311: The type \u0027MediaBrowser.Controller.Entities.Audio.Audio\u0027 cannot be used as type parameter \u0027TItemType\u0027 in the generic type or method \u0027MetadataServiceTests.TestMergeBaseItemData\u003CTItemType, TIdType\u003E(string, object?, object?, MetadataField?, bool, out object?)\u0027. There is no implicit reference conversion from \u0027MediaBrowser.Controller.Entities.Audio.Audio\u0027 to \u0027MediaBrowser.Controller.Providers.IHasLookupInfo\u003CSongInfo\u003E\u0027.",
+        "tests/Jellyfin.Providers.Tests/Manager/MetadataServiceTests.cs(128,59): error CS0246: The type or namespace name \u0027SongInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "tests/Jellyfin.Providers.Tests/Manager/MetadataServiceTests.cs(131,25): error CS0311: The type \u0027MediaBrowser.Controller.Entities.Audio.Audio\u0027 cannot be used as type parameter \u0027TItemType\u0027 in the generic type or method \u0027MetadataServiceTests.TestMergeBaseItemData\u003CTItemType, TIdType\u003E(string, object?, object?, MetadataField?, bool, out object?)\u0027. There is no implicit reference conversion from \u0027MediaBrowser.Controller.Entities.Audio.Audio\u0027 to \u0027MediaBrowser.Controller.Providers.IHasLookupInfo\u003CSongInfo\u003E\u0027."
+      ],
+      "deferredByCompiler": [
+        "MediaBrowser.Controller/Entities/Audio/Audio.cs(141,42): error CS0246: The type or namespace name \u0027SongInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Controller/Providers/AlbumInfo.cs(13,34): error CS0246: The type or namespace name \u0027SongInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Controller/Providers/ArtistInfo.cs(11,34): error CS0246: The type or namespace name \u0027SongInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 10,
+      "outputBytes": 6358,
+      "causeBytes": 499
+    },
+    {
+      "index": 20,
+      "edits": [
+        {
+          "path": "MediaBrowser.Model/LiveTv/ListingsProviderInfo.cs",
+          "kind": "remove-using",
+          "description": "removed using MediaBrowser.Model.Dto",
+          "newText": null
+        },
+        {
+          "path": "src/Jellyfin.LiveTv/LiveTvDtoService.cs",
+          "kind": "remove-using",
+          "description": "removed using MediaBrowser.Common.Extensions",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "MediaBrowser.Model/LiveTv/ListingsProviderInfo.cs(49,16): error CS0246: The type or namespace name \u0027NameValuePair\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuse": [
+        "MediaBrowser.Model/LiveTv/ListingsProviderInfo.cs(18,43): error CS0246: The type or namespace name \u0027NameValuePair\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Model/LiveTv/ListingsProviderInfo.cs(49,16): error CS0246: The type or namespace name \u0027NameValuePair\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/Jellyfin.LiveTv/Listings/ListingsManager.cs(139,60): error CS1503: Argument 1: cannot convert from \u0027NameValuePair[]\u0027 to \u0027MediaBrowser.Model.Dto.NameValuePair[]\u0027",
+        "src/Jellyfin.LiveTv/Listings/ListingsManager.cs(214,81): error CS1503: Argument 2: cannot convert from \u0027NameValuePair[]\u0027 to \u0027MediaBrowser.Model.Dto.NameValuePair[]\u0027",
+        "src/Jellyfin.LiveTv/Listings/ListingsManager.cs(260,52): error CS1503: Argument 2: cannot convert from \u0027NameValuePair[]\u0027 to \u0027MediaBrowser.Model.Dto.NameValuePair[]\u0027",
+        "src/Jellyfin.LiveTv/Listings/ListingsManager.cs(287,60): error CS1503: Argument 1: cannot convert from \u0027NameValuePair[]\u0027 to \u0027MediaBrowser.Model.Dto.NameValuePair[]\u0027",
+        "src/Jellyfin.LiveTv/LiveTvDtoService.cs(413,44): error CS1061: \u0027string\u0027 does not contain a definition for \u0027GetMD5\u0027 and no accessible extension method \u0027GetMD5\u0027 accepting a first argument of type \u0027string\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "src/Jellyfin.LiveTv/LiveTvDtoService.cs(420,44): error CS1061: \u0027string\u0027 does not contain a definition for \u0027GetMD5\u0027 and no accessible extension method \u0027GetMD5\u0027 accepting a first argument of type \u0027string\u0027 could be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuseCount": 8,
+      "fuseExit": 1,
+      "fuseMilliseconds": 924.92,
+      "buildSeconds": 1.2580152,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "src/Jellyfin.LiveTv/Listings/ListingsManager.cs(139,60): error CS1503: Argument 1: cannot convert from \u0027NameValuePair[]\u0027 to \u0027MediaBrowser.Model.Dto.NameValuePair[]\u0027",
+        "src/Jellyfin.LiveTv/Listings/ListingsManager.cs(214,81): error CS1503: Argument 2: cannot convert from \u0027NameValuePair[]\u0027 to \u0027MediaBrowser.Model.Dto.NameValuePair[]\u0027",
+        "src/Jellyfin.LiveTv/Listings/ListingsManager.cs(260,52): error CS1503: Argument 2: cannot convert from \u0027NameValuePair[]\u0027 to \u0027MediaBrowser.Model.Dto.NameValuePair[]\u0027",
+        "src/Jellyfin.LiveTv/Listings/ListingsManager.cs(287,60): error CS1503: Argument 1: cannot convert from \u0027NameValuePair[]\u0027 to \u0027MediaBrowser.Model.Dto.NameValuePair[]\u0027",
+        "src/Jellyfin.LiveTv/LiveTvDtoService.cs(413,44): error CS1061: \u0027string\u0027 does not contain a definition for \u0027GetMD5\u0027 and no accessible extension method \u0027GetMD5\u0027 accepting a first argument of type \u0027string\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "src/Jellyfin.LiveTv/LiveTvDtoService.cs(420,44): error CS1061: \u0027string\u0027 does not contain a definition for \u0027GetMD5\u0027 and no accessible extension method \u0027GetMD5\u0027 accepting a first argument of type \u0027string\u0027 could be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "deferredByCompiler": [
+        "MediaBrowser.Model/LiveTv/ListingsProviderInfo.cs(18,43): error CS0246: The type or namespace name \u0027NameValuePair\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 4,
+      "outputBytes": 1946,
+      "causeBytes": 163
+    },
+    {
+      "index": 21,
+      "edits": [
+        {
+          "path": "Jellyfin.Api/WebSocketListeners/ScheduledTasksWebSocketListener.cs",
+          "kind": "remove-using",
+          "description": "removed using Jellyfin.Data.Events",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "Jellyfin.Api/WebSocketListeners/ScheduledTasksWebSocketListener.cs(78,50): error CS0246: The type or namespace name \u0027GenericEventArgs\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Api/WebSocketListeners/ScheduledTasksWebSocketListener.cs(84,49): error CS0246: The type or namespace name \u0027GenericEventArgs\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuse": [
+        "Jellyfin.Api/WebSocketListeners/ScheduledTasksWebSocketListener.cs(34,9): error CS0123: No overload for \u0027OnTaskExecuting\u0027 matches delegate \u0027EventHandler\u003CGenericEventArgs\u003CIScheduledTaskWorker\u003E\u003E\u0027",
+        "Jellyfin.Api/WebSocketListeners/ScheduledTasksWebSocketListener.cs(64,13): error CS0123: No overload for \u0027OnTaskExecuting\u0027 matches delegate \u0027EventHandler\u003CGenericEventArgs\u003CIScheduledTaskWorker\u003E\u003E\u0027",
+        "Jellyfin.Api/WebSocketListeners/ScheduledTasksWebSocketListener.cs(74,9): error CS0123: No overload for \u0027OnTaskProgress\u0027 matches delegate \u0027EventHandler\u003CGenericEventArgs\u003Cdouble\u003E\u003E\u0027",
+        "Jellyfin.Api/WebSocketListeners/ScheduledTasksWebSocketListener.cs(78,50): error CS0246: The type or namespace name \u0027GenericEventArgs\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Api/WebSocketListeners/ScheduledTasksWebSocketListener.cs(84,49): error CS0246: The type or namespace name \u0027GenericEventArgs\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuseCount": 5,
+      "fuseExit": 1,
+      "fuseMilliseconds": 396.4412,
+      "buildSeconds": 8.8037037,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [
+        "Jellyfin.Api/WebSocketListeners/ScheduledTasksWebSocketListener.cs(34,9): error CS0123: No overload for \u0027OnTaskExecuting\u0027 matches delegate \u0027EventHandler\u003CGenericEventArgs\u003CIScheduledTaskWorker\u003E\u003E\u0027",
+        "Jellyfin.Api/WebSocketListeners/ScheduledTasksWebSocketListener.cs(64,13): error CS0123: No overload for \u0027OnTaskExecuting\u0027 matches delegate \u0027EventHandler\u003CGenericEventArgs\u003CIScheduledTaskWorker\u003E\u003E\u0027",
+        "Jellyfin.Api/WebSocketListeners/ScheduledTasksWebSocketListener.cs(74,9): error CS0123: No overload for \u0027OnTaskProgress\u0027 matches delegate \u0027EventHandler\u003CGenericEventArgs\u003Cdouble\u003E\u003E\u0027"
+      ],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 0,
+      "outputBytes": 1127,
+      "causeBytes": 0
+    },
+    {
+      "index": 22,
+      "edits": [
+        {
+          "path": "MediaBrowser.Providers/Plugins/Tmdb/BoxSets/TmdbBoxSetProvider.cs",
+          "kind": "remove-member",
+          "description": "removed TmdbBoxSetProvider.GetMetadata",
+          "newText": null
+        },
+        {
+          "path": "MediaBrowser.Model/Plugins/PluginPageInfo.cs",
+          "kind": "delete-file",
+          "description": "deleted the file",
+          "newText": null
+        },
+        {
+          "path": "src/Jellyfin.Database/Jellyfin.Database.Implementations/Locking/NoLockBehavior.cs",
+          "kind": "remove-using",
+          "description": "removed using System.Threading.Tasks",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/Jellyfin.Database/Jellyfin.Database.Implementations/Locking/NoLockBehavior.cs(36,74): error CS0246: The type or namespace name \u0027Task\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/Jellyfin.Database/Jellyfin.Database.Implementations/Locking/NoLockBehavior.cs(36,18): error CS0246: The type or namespace name \u0027Task\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/Jellyfin.Database/Jellyfin.Database.Implementations/Locking/NoLockBehavior.cs(10,31): error CS0535: \u0027NoLockBehavior\u0027 does not implement interface member \u0027IEntityFrameworkCoreLockingBehavior.OnSaveChangesAsync(JellyfinDbContext, Func\u003CTask\u003E)\u0027"
+      ],
+      "fuse": [
+        "Jellyfin.Api/Controllers/DashboardController.cs(101,31): error CS0246: The type or namespace name \u0027PluginPageInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Api/Controllers/DashboardController.cs(105,43): error CS0246: The type or namespace name \u0027PluginPageInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Api/Controllers/DashboardController.cs(108,16): error CS0246: The type or namespace name \u0027PluginPageInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Api/Controllers/DashboardController.cs(108,61): error CS0246: The type or namespace name \u0027PluginPageInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Api/Controllers/DashboardController.cs(111,31): error CS0246: The type or namespace name \u0027PluginPageInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Api/Models/ConfigurationPageInfo.cs(16,51): error CS1574: XML comment has cref attribute \u0027PluginPageInfo\u0027 that could not be resolved",
+        "Jellyfin.Api/Models/ConfigurationPageInfo.cs(17,51): error CS0246: The type or namespace name \u0027PluginPageInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Model/Plugins/IHasWebPages.cs(9,21): error CS0246: The type or namespace name \u0027PluginPageInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Providers/Plugins/AudioDb/Plugin.cs(13,60): error CS0738: \u0027Plugin\u0027 does not implement interface member \u0027IHasWebPages.GetPages()\u0027. \u0027Plugin.GetPages()\u0027 cannot implement \u0027IHasWebPages.GetPages()\u0027 because it does not have the matching return type of \u0027IEnumerable\u003CPluginPageInfo\u003E\u0027.",
+        "MediaBrowser.Providers/Plugins/AudioDb/Plugin.cs(32,28): error CS0246: The type or namespace name \u0027PluginPageInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Providers/Plugins/AudioDb/Plugin.cs(34,30): error CS0246: The type or namespace name \u0027PluginPageInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Providers/Plugins/MusicBrainz/Plugin.cs(17,56): error CS0738: \u0027Plugin\u0027 does not implement interface member \u0027IHasWebPages.GetPages()\u0027. \u0027Plugin.GetPages()\u0027 cannot implement \u0027IHasWebPages.GetPages()\u0027 because it does not have the matching return type of \u0027IEnumerable\u003CPluginPageInfo\u003E\u0027.",
+        "MediaBrowser.Providers/Plugins/MusicBrainz/Plugin.cs(55,9): error SA1648: inheritdoc should be used with inheriting class",
+        "MediaBrowser.Providers/Plugins/MusicBrainz/Plugin.cs(56,24): error CS0246: The type or namespace name \u0027PluginPageInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Providers/Plugins/MusicBrainz/Plugin.cs(58,26): error CS0246: The type or namespace name \u0027PluginPageInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Providers/Plugins/Omdb/Plugin.cs(13,60): error CS0738: \u0027Plugin\u0027 does not implement interface member \u0027IHasWebPages.GetPages()\u0027. \u0027Plugin.GetPages()\u0027 cannot implement \u0027IHasWebPages.GetPages()\u0027 because it does not have the matching return type of \u0027IEnumerable\u003CPluginPageInfo\u003E\u0027.",
+        "MediaBrowser.Providers/Plugins/Omdb/Plugin.cs(32,28): error CS0246: The type or namespace name \u0027PluginPageInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Providers/Plugins/Omdb/Plugin.cs(34,30): error CS0246: The type or namespace name \u0027PluginPageInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Providers/Plugins/StudioImages/Plugin.cs(16,60): error CS0738: \u0027Plugin\u0027 does not implement interface member \u0027IHasWebPages.GetPages()\u0027. \u0027Plugin.GetPages()\u0027 cannot implement \u0027IHasWebPages.GetPages()\u0027 because it does not have the matching return type of \u0027IEnumerable\u003CPluginPageInfo\u003E\u0027.",
+        "MediaBrowser.Providers/Plugins/StudioImages/Plugin.cs(53,13): error SA1648: inheritdoc should be used with inheriting class"
+      ],
+      "fuseCount": 35,
+      "fuseExit": 1,
+      "fuseMilliseconds": 1032.8566,
+      "buildSeconds": 1.1106163,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "Jellyfin.Api/Controllers/DashboardController.cs(101,31): error CS0246: The type or namespace name \u0027PluginPageInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Api/Controllers/DashboardController.cs(105,43): error CS0246: The type or namespace name \u0027PluginPageInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Api/Controllers/DashboardController.cs(108,16): error CS0246: The type or namespace name \u0027PluginPageInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Api/Controllers/DashboardController.cs(108,61): error CS0246: The type or namespace name \u0027PluginPageInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Api/Controllers/DashboardController.cs(111,31): error CS0246: The type or namespace name \u0027PluginPageInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Api/Models/ConfigurationPageInfo.cs(16,51): error CS1574: XML comment has cref attribute \u0027PluginPageInfo\u0027 that could not be resolved",
+        "Jellyfin.Api/Models/ConfigurationPageInfo.cs(17,51): error CS0246: The type or namespace name \u0027PluginPageInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Model/Plugins/IHasWebPages.cs(9,21): error CS0246: The type or namespace name \u0027PluginPageInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Providers/Plugins/AudioDb/Plugin.cs(13,60): error CS0738: \u0027Plugin\u0027 does not implement interface member \u0027IHasWebPages.GetPages()\u0027. \u0027Plugin.GetPages()\u0027 cannot implement \u0027IHasWebPages.GetPages()\u0027 because it does not have the matching return type of \u0027IEnumerable\u003CPluginPageInfo\u003E\u0027.",
+        "MediaBrowser.Providers/Plugins/AudioDb/Plugin.cs(32,28): error CS0246: The type or namespace name \u0027PluginPageInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Providers/Plugins/AudioDb/Plugin.cs(34,30): error CS0246: The type or namespace name \u0027PluginPageInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Providers/Plugins/MusicBrainz/Plugin.cs(17,56): error CS0738: \u0027Plugin\u0027 does not implement interface member \u0027IHasWebPages.GetPages()\u0027. \u0027Plugin.GetPages()\u0027 cannot implement \u0027IHasWebPages.GetPages()\u0027 because it does not have the matching return type of \u0027IEnumerable\u003CPluginPageInfo\u003E\u0027.",
+        "MediaBrowser.Providers/Plugins/MusicBrainz/Plugin.cs(55,9): error SA1648: inheritdoc should be used with inheriting class",
+        "MediaBrowser.Providers/Plugins/MusicBrainz/Plugin.cs(56,24): error CS0246: The type or namespace name \u0027PluginPageInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Providers/Plugins/MusicBrainz/Plugin.cs(58,26): error CS0246: The type or namespace name \u0027PluginPageInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Providers/Plugins/Omdb/Plugin.cs(13,60): error CS0738: \u0027Plugin\u0027 does not implement interface member \u0027IHasWebPages.GetPages()\u0027. \u0027Plugin.GetPages()\u0027 cannot implement \u0027IHasWebPages.GetPages()\u0027 because it does not have the matching return type of \u0027IEnumerable\u003CPluginPageInfo\u003E\u0027.",
+        "MediaBrowser.Providers/Plugins/Omdb/Plugin.cs(32,28): error CS0246: The type or namespace name \u0027PluginPageInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Providers/Plugins/Omdb/Plugin.cs(34,30): error CS0246: The type or namespace name \u0027PluginPageInfo\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Providers/Plugins/StudioImages/Plugin.cs(16,60): error CS0738: \u0027Plugin\u0027 does not implement interface member \u0027IHasWebPages.GetPages()\u0027. \u0027Plugin.GetPages()\u0027 cannot implement \u0027IHasWebPages.GetPages()\u0027 because it does not have the matching return type of \u0027IEnumerable\u003CPluginPageInfo\u003E\u0027.",
+        "MediaBrowser.Providers/Plugins/StudioImages/Plugin.cs(53,13): error SA1648: inheritdoc should be used with inheriting class"
+      ],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 10,
+      "outputBytes": 4825,
+      "causeBytes": 389
+    },
+    {
+      "index": 23,
+      "edits": [
+        {
+          "path": "MediaBrowser.Model/MediaSegments/MediaSegmentDto.cs",
+          "kind": "delete-file",
+          "description": "deleted the file",
+          "newText": null
+        },
+        {
+          "path": "MediaBrowser.Common/Extensions/ProcessExtensions.cs",
+          "kind": "delete-file",
+          "description": "deleted the file",
+          "newText": null
+        },
+        {
+          "path": "Jellyfin.Server.Implementations/Events/Consumers/Users/UserDeletedLogger.cs",
+          "kind": "rename-member",
+          "description": "renamed UserDeletedLogger.OnEvent to OnEventRenamed",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "MediaBrowser.Model/MediaSegments/MediaSegmentGenerationRequest.cs(4,26): error CS0234: The type or namespace name \u0027MediaSegments\u0027 does not exist in the namespace \u0027MediaBrowser.Model\u0027 (are you missing an assembly reference?)",
+        "MediaBrowser.Model/MediaSegments/MediaSegmentGenerationRequest.cs(21,35): error CS0246: The type or namespace name \u0027MediaSegmentDto\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuse": [
+        "Jellyfin.Api/Controllers/MediaSegmentsController.cs(11,26): error CS0234: The type or namespace name \u0027MediaSegments\u0027 does not exist in the namespace \u0027MediaBrowser.Model\u0027 (are you missing an assembly reference?)",
+        "Jellyfin.Api/Controllers/MediaSegmentsController.cs(48,48): error CS0246: The type or namespace name \u0027MediaSegmentDto\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Api/Controllers/MediaSegmentsController.cs(59,27): error CS0246: The type or namespace name \u0027MediaSegmentDto\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Api/Controllers/MediaSegmentsController.cs(59,108): error CS0246: The type or namespace name \u0027MediaSegmentDto\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Api/Controllers/MediaSegmentsController.cs(60,35): error CS0246: The type or namespace name \u0027MediaSegmentDto\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server.Implementations/Events/Consumers/Users/UserDeletedLogger.cs(15,38): error CS0535: \u0027UserDeletedLogger\u0027 does not implement interface member \u0027IEventConsumer\u003CUserDeletedEventArgs\u003E.OnEvent(UserDeletedEventArgs)\u0027",
+        "Jellyfin.Server.Implementations/Events/Consumers/Users/UserDeletedLogger.cs(31,13): error SA1648: inheritdoc should be used with inheriting class",
+        "Jellyfin.Server.Implementations/MediaSegments/MediaSegmentManager.cs(19,26): error CS0234: The type or namespace name \u0027MediaSegments\u0027 does not exist in the namespace \u0027MediaBrowser.Model\u0027 (are you missing an assembly reference?)",
+        "Jellyfin.Server.Implementations/MediaSegments/MediaSegmentManager.cs(28,36): error CS0738: \u0027MediaSegmentManager\u0027 does not implement interface member \u0027IMediaSegmentManager.GetSegmentsAsync(BaseItem, IEnumerable\u003CMediaSegmentType\u003E?, LibraryOptions, bool)\u0027. \u0027MediaSegmentManager.GetSegmentsAsync(BaseItem?, IEnumerable\u003CMediaSegmentType\u003E?, LibraryOptions, bool)\u0027 cannot implement \u0027IMediaSegmentManager.GetSegmentsAsync(BaseItem, IEnumerable\u003CMediaSegmentType\u003E?, LibraryOptions, bool)\u0027 because it does not have the matching return type of \u0027Task\u003CIEnumerable\u003CMediaSegmentDto\u003E\u003E\u0027.",
+        "Jellyfin.Server.Implementations/MediaSegments/MediaSegmentManager.cs(28,36): error CS0535: \u0027MediaSegmentManager\u0027 does not implement interface member \u0027IMediaSegmentManager.CreateSegmentAsync(MediaSegmentDto, string)\u0027",
+        "Jellyfin.Server.Implementations/MediaSegments/MediaSegmentManager.cs(157,9): error SA1648: inheritdoc should be used with inheriting class",
+        "Jellyfin.Server.Implementations/MediaSegments/MediaSegmentManager.cs(158,23): error CS0246: The type or namespace name \u0027MediaSegmentDto\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server.Implementations/MediaSegments/MediaSegmentManager.cs(158,59): error CS0246: The type or namespace name \u0027MediaSegmentDto\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server.Implementations/MediaSegments/MediaSegmentManager.cs(192,9): error SA1648: inheritdoc should be used with inheriting class",
+        "Jellyfin.Server.Implementations/MediaSegments/MediaSegmentManager.cs(193,35): error CS0246: The type or namespace name \u0027MediaSegmentDto\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server.Implementations/MediaSegments/MediaSegmentManager.cs(235,20): error CS0246: The type or namespace name \u0027MediaSegmentDto\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server.Implementations/MediaSegments/MediaSegmentManager.cs(237,20): error CS0246: The type or namespace name \u0027MediaSegmentDto\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server.Implementations/MediaSegments/MediaSegmentManager.cs(247,37): error CS0246: The type or namespace name \u0027MediaSegmentDto\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Controller/MediaSegments/IMediaSegmentManager.cs(9,26): error CS0234: The type or namespace name \u0027MediaSegments\u0027 does not exist in the namespace \u0027MediaBrowser.Model\u0027 (are you missing an assembly reference?)",
+        "MediaBrowser.Controller/MediaSegments/IMediaSegmentManager.cs(41,10): error CS0246: The type or namespace name \u0027MediaSegmentDto\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuseCount": 32,
+      "fuseExit": 1,
+      "fuseMilliseconds": 1331.1947,
+      "buildSeconds": 1.841214,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "Jellyfin.Api/Controllers/MediaSegmentsController.cs(11,26): error CS0234: The type or namespace name \u0027MediaSegments\u0027 does not exist in the namespace \u0027MediaBrowser.Model\u0027 (are you missing an assembly reference?)",
+        "Jellyfin.Api/Controllers/MediaSegmentsController.cs(48,48): error CS0246: The type or namespace name \u0027MediaSegmentDto\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Api/Controllers/MediaSegmentsController.cs(59,27): error CS0246: The type or namespace name \u0027MediaSegmentDto\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Api/Controllers/MediaSegmentsController.cs(59,108): error CS0246: The type or namespace name \u0027MediaSegmentDto\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Api/Controllers/MediaSegmentsController.cs(60,35): error CS0246: The type or namespace name \u0027MediaSegmentDto\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server.Implementations/Events/Consumers/Users/UserDeletedLogger.cs(15,38): error CS0535: \u0027UserDeletedLogger\u0027 does not implement interface member \u0027IEventConsumer\u003CUserDeletedEventArgs\u003E.OnEvent(UserDeletedEventArgs)\u0027",
+        "Jellyfin.Server.Implementations/Events/Consumers/Users/UserDeletedLogger.cs(31,13): error SA1648: inheritdoc should be used with inheriting class",
+        "Jellyfin.Server.Implementations/MediaSegments/MediaSegmentManager.cs(19,26): error CS0234: The type or namespace name \u0027MediaSegments\u0027 does not exist in the namespace \u0027MediaBrowser.Model\u0027 (are you missing an assembly reference?)",
+        "Jellyfin.Server.Implementations/MediaSegments/MediaSegmentManager.cs(28,36): error CS0738: \u0027MediaSegmentManager\u0027 does not implement interface member \u0027IMediaSegmentManager.GetSegmentsAsync(BaseItem, IEnumerable\u003CMediaSegmentType\u003E?, LibraryOptions, bool)\u0027. \u0027MediaSegmentManager.GetSegmentsAsync(BaseItem?, IEnumerable\u003CMediaSegmentType\u003E?, LibraryOptions, bool)\u0027 cannot implement \u0027IMediaSegmentManager.GetSegmentsAsync(BaseItem, IEnumerable\u003CMediaSegmentType\u003E?, LibraryOptions, bool)\u0027 because it does not have the matching return type of \u0027Task\u003CIEnumerable\u003CMediaSegmentDto\u003E\u003E\u0027.",
+        "Jellyfin.Server.Implementations/MediaSegments/MediaSegmentManager.cs(28,36): error CS0535: \u0027MediaSegmentManager\u0027 does not implement interface member \u0027IMediaSegmentManager.CreateSegmentAsync(MediaSegmentDto, string)\u0027",
+        "Jellyfin.Server.Implementations/MediaSegments/MediaSegmentManager.cs(157,9): error SA1648: inheritdoc should be used with inheriting class",
+        "Jellyfin.Server.Implementations/MediaSegments/MediaSegmentManager.cs(158,23): error CS0246: The type or namespace name \u0027MediaSegmentDto\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server.Implementations/MediaSegments/MediaSegmentManager.cs(158,59): error CS0246: The type or namespace name \u0027MediaSegmentDto\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server.Implementations/MediaSegments/MediaSegmentManager.cs(192,9): error SA1648: inheritdoc should be used with inheriting class",
+        "Jellyfin.Server.Implementations/MediaSegments/MediaSegmentManager.cs(193,35): error CS0246: The type or namespace name \u0027MediaSegmentDto\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server.Implementations/MediaSegments/MediaSegmentManager.cs(235,20): error CS0246: The type or namespace name \u0027MediaSegmentDto\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server.Implementations/MediaSegments/MediaSegmentManager.cs(237,20): error CS0246: The type or namespace name \u0027MediaSegmentDto\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server.Implementations/MediaSegments/MediaSegmentManager.cs(247,37): error CS0246: The type or namespace name \u0027MediaSegmentDto\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "MediaBrowser.Controller/MediaSegments/IMediaSegmentManager.cs(9,26): error CS0234: The type or namespace name \u0027MediaSegments\u0027 does not exist in the namespace \u0027MediaBrowser.Model\u0027 (are you missing an assembly reference?)",
+        "MediaBrowser.Controller/MediaSegments/IMediaSegmentManager.cs(41,10): error CS0246: The type or namespace name \u0027MediaSegmentDto\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 10,
+      "outputBytes": 5139,
+      "causeBytes": 399
+    },
+    {
+      "index": 24,
+      "edits": [
+        {
+          "path": "MediaBrowser.XbmcMetadata/Properties/AssemblyInfo.cs",
+          "kind": "remove-using",
+          "description": "removed using System.Runtime.CompilerServices",
+          "newText": null
+        },
+        {
+          "path": "src/Jellyfin.Database/Jellyfin.Database.Implementations/Entities/ItemDisplayPreferences.cs",
+          "kind": "delete-file",
+          "description": "deleted the file",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/Jellyfin.Database/Jellyfin.Database.Implementations/JellyfinDbContext.cs(64,18): error CS0246: The type or namespace name \u0027ItemDisplayPreferences\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/Jellyfin.Database/Jellyfin.Database.Implementations/Entities/User.cs(306,36): error CS0246: The type or namespace name \u0027ItemDisplayPreferences\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuse": [
+        "Jellyfin.Api/Controllers/DisplayPreferencesController.cs(63,31): error CS0246: The type or namespace name \u0027ItemDisplayPreferences\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Api/Controllers/DisplayPreferencesController.cs(201,25): error CS0246: The type or namespace name \u0027ItemDisplayPreferences\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Api/Controllers/DisplayPreferencesController.cs(210,9): error CS0246: The type or namespace name \u0027ItemDisplayPreferences\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server.Implementations/Item/BaseItemRepository.cs(146,9): error CS0246: The type or namespace name \u0027ItemDisplayPreferences\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server.Implementations/Item/BaseItemRepository.cs(146,17): error CS0246: The type or namespace name \u0027ItemDisplayPreferences\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server.Implementations/Users/DisplayPreferencesManager.cs(14,49): error CS0535: \u0027DisplayPreferencesManager\u0027 does not implement interface member \u0027IDisplayPreferencesManager.UpdateItemDisplayPreferences(ItemDisplayPreferences)\u0027",
+        "Jellyfin.Server.Implementations/Users/DisplayPreferencesManager.cs(14,49): error CS0738: \u0027DisplayPreferencesManager\u0027 does not implement interface member \u0027IDisplayPreferencesManager.ListItemDisplayPreferences(Guid, string)\u0027. \u0027DisplayPreferencesManager.ListItemDisplayPreferences(Guid, string)\u0027 cannot implement \u0027IDisplayPreferencesManager.ListItemDisplayPreferences(Guid, string)\u0027 because it does not have the matching return type of \u0027IList\u003CItemDisplayPreferences\u003E\u0027.",
+        "Jellyfin.Server.Implementations/Users/DisplayPreferencesManager.cs(14,49): error CS0738: \u0027DisplayPreferencesManager\u0027 does not implement interface member \u0027IDisplayPreferencesManager.GetItemDisplayPreferences(Guid, Guid, string)\u0027. \u0027DisplayPreferencesManager.GetItemDisplayPreferences(Guid, Guid, string)\u0027 cannot implement \u0027IDisplayPreferencesManager.GetItemDisplayPreferences(Guid, Guid, string)\u0027 because it does not have the matching return type of \u0027ItemDisplayPreferences\u0027.",
+        "Jellyfin.Server.Implementations/Users/DisplayPreferencesManager.cs(46,9): error SA1648: inheritdoc should be used with inheriting class",
+        "Jellyfin.Server.Implementations/Users/DisplayPreferencesManager.cs(47,12): error CS0246: The type or namespace name \u0027ItemDisplayPreferences\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server.Implementations/Users/DisplayPreferencesManager.cs(50,21): error CS0246: The type or namespace name \u0027ItemDisplayPreferences\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server.Implementations/Users/DisplayPreferencesManager.cs(50,31): error CS0246: The type or namespace name \u0027ItemDisplayPreferences\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server.Implementations/Users/DisplayPreferencesManager.cs(55,25): error CS0246: The type or namespace name \u0027ItemDisplayPreferences\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server.Implementations/Users/DisplayPreferencesManager.cs(56,13): error CS0246: The type or namespace name \u0027ItemDisplayPreferences\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server.Implementations/Users/DisplayPreferencesManager.cs(56,23): error CS0246: The type or namespace name \u0027ItemDisplayPreferences\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server.Implementations/Users/DisplayPreferencesManager.cs(56,46): error CS0246: The type or namespace name \u0027ItemDisplayPreferences\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server.Implementations/Users/DisplayPreferencesManager.cs(63,9): error SA1648: inheritdoc should be used with inheriting class",
+        "Jellyfin.Server.Implementations/Users/DisplayPreferencesManager.cs(64,18): error CS0246: The type or namespace name \u0027ItemDisplayPreferences\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server.Implementations/Users/DisplayPreferencesManager.cs(67,16): error CS0246: The type or namespace name \u0027ItemDisplayPreferences\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server.Implementations/Users/DisplayPreferencesManager.cs(67,26): error CS0246: The type or namespace name \u0027ItemDisplayPreferences\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuseCount": 38,
+      "fuseExit": 1,
+      "fuseMilliseconds": 11926.0705,
+      "buildSeconds": 1.0405371,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "Jellyfin.Api/Controllers/DisplayPreferencesController.cs(63,31): error CS0246: The type or namespace name \u0027ItemDisplayPreferences\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Api/Controllers/DisplayPreferencesController.cs(201,25): error CS0246: The type or namespace name \u0027ItemDisplayPreferences\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Api/Controllers/DisplayPreferencesController.cs(210,9): error CS0246: The type or namespace name \u0027ItemDisplayPreferences\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server.Implementations/Item/BaseItemRepository.cs(146,9): error CS0246: The type or namespace name \u0027ItemDisplayPreferences\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server.Implementations/Item/BaseItemRepository.cs(146,17): error CS0246: The type or namespace name \u0027ItemDisplayPreferences\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server.Implementations/Users/DisplayPreferencesManager.cs(14,49): error CS0535: \u0027DisplayPreferencesManager\u0027 does not implement interface member \u0027IDisplayPreferencesManager.UpdateItemDisplayPreferences(ItemDisplayPreferences)\u0027",
+        "Jellyfin.Server.Implementations/Users/DisplayPreferencesManager.cs(14,49): error CS0738: \u0027DisplayPreferencesManager\u0027 does not implement interface member \u0027IDisplayPreferencesManager.ListItemDisplayPreferences(Guid, string)\u0027. \u0027DisplayPreferencesManager.ListItemDisplayPreferences(Guid, string)\u0027 cannot implement \u0027IDisplayPreferencesManager.ListItemDisplayPreferences(Guid, string)\u0027 because it does not have the matching return type of \u0027IList\u003CItemDisplayPreferences\u003E\u0027.",
+        "Jellyfin.Server.Implementations/Users/DisplayPreferencesManager.cs(14,49): error CS0738: \u0027DisplayPreferencesManager\u0027 does not implement interface member \u0027IDisplayPreferencesManager.GetItemDisplayPreferences(Guid, Guid, string)\u0027. \u0027DisplayPreferencesManager.GetItemDisplayPreferences(Guid, Guid, string)\u0027 cannot implement \u0027IDisplayPreferencesManager.GetItemDisplayPreferences(Guid, Guid, string)\u0027 because it does not have the matching return type of \u0027ItemDisplayPreferences\u0027.",
+        "Jellyfin.Server.Implementations/Users/DisplayPreferencesManager.cs(46,9): error SA1648: inheritdoc should be used with inheriting class",
+        "Jellyfin.Server.Implementations/Users/DisplayPreferencesManager.cs(47,12): error CS0246: The type or namespace name \u0027ItemDisplayPreferences\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server.Implementations/Users/DisplayPreferencesManager.cs(50,21): error CS0246: The type or namespace name \u0027ItemDisplayPreferences\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server.Implementations/Users/DisplayPreferencesManager.cs(50,31): error CS0246: The type or namespace name \u0027ItemDisplayPreferences\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server.Implementations/Users/DisplayPreferencesManager.cs(55,25): error CS0246: The type or namespace name \u0027ItemDisplayPreferences\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server.Implementations/Users/DisplayPreferencesManager.cs(56,13): error CS0246: The type or namespace name \u0027ItemDisplayPreferences\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server.Implementations/Users/DisplayPreferencesManager.cs(56,23): error CS0246: The type or namespace name \u0027ItemDisplayPreferences\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server.Implementations/Users/DisplayPreferencesManager.cs(56,46): error CS0246: The type or namespace name \u0027ItemDisplayPreferences\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server.Implementations/Users/DisplayPreferencesManager.cs(63,9): error SA1648: inheritdoc should be used with inheriting class",
+        "Jellyfin.Server.Implementations/Users/DisplayPreferencesManager.cs(64,18): error CS0246: The type or namespace name \u0027ItemDisplayPreferences\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server.Implementations/Users/DisplayPreferencesManager.cs(67,16): error CS0246: The type or namespace name \u0027ItemDisplayPreferences\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "Jellyfin.Server.Implementations/Users/DisplayPreferencesManager.cs(67,26): error CS0246: The type or namespace name \u0027ItemDisplayPreferences\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 10,
+      "outputBytes": 5465,
+      "causeBytes": 384
+    },
+    {
+      "index": 25,
+      "edits": [
+        {
+          "path": "MediaBrowser.Providers/Plugins/Tmdb/Movies/TmdbMovieProvider.cs",
+          "kind": "delete-file",
+          "description": "deleted the file",
+          "newText": null
+        }
+      ],
+      "truth": [],
+      "fuse": [],
+      "fuseCount": 0,
+      "fuseExit": 0,
+      "fuseMilliseconds": 825.9433,
+      "buildSeconds": 23.9676102,
+      "verdict": "agree-clean",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 0,
+      "outputBytes": 125,
+      "causeBytes": 0
+    },
+    {
+      "index": 26,
+      "edits": [
+        {
+          "path": "Jellyfin.Server/Filters/SecurityRequirementsOperationFilter.cs",
+          "kind": "make-private",
+          "description": "made SecurityRequirementsOperationFilter.Apply private",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "Jellyfin.Server/Filters/SecurityRequirementsOperationFilter.cs(16,52): error CS0737: \u0027SecurityRequirementsOperationFilter\u0027 does not implement interface member \u0027IOperationFilter.Apply(OpenApiOperation, OperationFilterContext)\u0027. \u0027SecurityRequirementsOperationFilter.Apply(OpenApiOperation, OperationFilterContext)\u0027 cannot implement an interface member because it is not public."
+      ],
+      "fuse": [
+        "Jellyfin.Server/Filters/SecurityRequirementsOperationFilter.cs(16,52): error CS0737: \u0027SecurityRequirementsOperationFilter\u0027 does not implement interface member \u0027IOperationFilter.Apply(OpenApiOperation, OperationFilterContext)\u0027. \u0027SecurityRequirementsOperationFilter.Apply(OpenApiOperation, OperationFilterContext)\u0027 cannot implement an interface member because it is not public.",
+        "Jellyfin.Server/Filters/SecurityRequirementsOperationFilter.cs(32,9): error SA1648: inheritdoc should be used with inheriting class"
+      ],
+      "fuseCount": 2,
+      "fuseExit": 1,
+      "fuseMilliseconds": 378.3315,
+      "buildSeconds": 7.1521403,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [
+        "Jellyfin.Server/Filters/SecurityRequirementsOperationFilter.cs(32,9): error SA1648: inheritdoc should be used with inheriting class"
+      ],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 0,
+      "outputBytes": 637,
+      "causeBytes": 0
+    },
+    {
+      "index": 27,
+      "edits": [
+        {
+          "path": "MediaBrowser.Common/Plugins/BasePluginOfT.cs",
+          "kind": "change-parameters",
+          "description": "added an int parameter to BasePlugin.SaveConfiguration",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "MediaBrowser.Common/Plugins/BasePluginOfT.cs(157,51): error SA1611: The documentation for parameter \u0027fuseExtra\u0027 is missing (https://github.com/DotNetAnalyzers/StyleCopAnalyzers/blob/master/documentation/SA1611.md)"
+      ],
+      "fuse": [
+        "MediaBrowser.Common/Plugins/BasePluginOfT.cs(157,51): error SA1611: The documentation for parameter \u0027fuseExtra\u0027 is missing"
+      ],
+      "fuseCount": 1,
+      "fuseExit": 1,
+      "fuseMilliseconds": 443.8034,
+      "buildSeconds": 1.7384215,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [
+        "MediaBrowser.Common/Plugins/BasePluginOfT.cs(157,51): error SA1611: The documentation for parameter \u0027fuseExtra\u0027 is missing"
+      ],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 0,
+      "outputBytes": 261,
+      "causeBytes": 0
+    },
+    {
+      "index": 28,
+      "edits": [
+        {
+          "path": "Emby.Server.Implementations/Sorting/StartDateComparer.cs",
+          "kind": "change-parameters",
+          "description": "added an int parameter to StartDateComparer.Compare",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "Emby.Server.Implementations/Sorting/StartDateComparer.cs(11,38): error CS0535: \u0027StartDateComparer\u0027 does not implement interface member \u0027IComparer\u003CBaseItem?\u003E.Compare(BaseItem?, BaseItem?)\u0027"
+      ],
+      "fuse": [
+        "Emby.Server.Implementations/Sorting/StartDateComparer.cs(11,38): error CS0535: \u0027StartDateComparer\u0027 does not implement interface member \u0027IComparer\u003CBaseItem?\u003E.Compare(BaseItem?, BaseItem?)\u0027",
+        "Emby.Server.Implementations/Sorting/StartDateComparer.cs(25,52): error SA1001: Commas should be followed by whitespace",
+        "Emby.Server.Implementations/Sorting/StartDateComparer.cs(25,57): error SA1611: The documentation for parameter \u0027fuseExtra\u0027 is missing",
+        "Emby.Server.Implementations/Sorting/StartDateComparer.cs(25,57): error CS1573: Parameter \u0027fuseExtra\u0027 has no matching param tag in the XML comment for \u0027StartDateComparer.Compare(BaseItem?, BaseItem?, int)\u0027 (but other parameters do)"
+      ],
+      "fuseCount": 4,
+      "fuseExit": 1,
+      "fuseMilliseconds": 592.6434,
+      "buildSeconds": 3.476283,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [
+        "Emby.Server.Implementations/Sorting/StartDateComparer.cs(25,52): error SA1001: Commas should be followed by whitespace",
+        "Emby.Server.Implementations/Sorting/StartDateComparer.cs(25,57): error SA1611: The documentation for parameter \u0027fuseExtra\u0027 is missing",
+        "Emby.Server.Implementations/Sorting/StartDateComparer.cs(25,57): error CS1573: Parameter \u0027fuseExtra\u0027 has no matching param tag in the XML comment for \u0027StartDateComparer.Compare(BaseItem?, BaseItem?, int)\u0027 (but other parameters do)"
+      ],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 0,
+      "outputBytes": 825,
+      "causeBytes": 0
+    },
+    {
+      "index": 29,
+      "edits": [
+        {
+          "path": "MediaBrowser.Controller/Playlists/Playlist.cs",
+          "kind": "change-return-type",
+          "description": "changed the return type of Playlist.GetPlaylistItems from IReadOnlyList\u003CBaseItem\u003E to object",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "Emby.Server.Implementations/Playlists/PlaylistManager.cs(198,20): error CS0266: Cannot implicitly convert type \u0027object\u0027 to \u0027System.Collections.Generic.IReadOnlyList\u003CMediaBrowser.Controller.Entities.BaseItem\u003E\u0027. An explicit conversion exists (are you missing a cast?)"
+      ],
+      "fuse": [
+        "Emby.Server.Implementations/Playlists/PlaylistManager.cs(198,20): error CS0266: Cannot implicitly convert type \u0027object\u0027 to \u0027System.Collections.Generic.IReadOnlyList\u003CMediaBrowser.Controller.Entities.BaseItem\u003E\u0027. An explicit conversion exists (are you missing a cast?)"
+      ],
+      "fuseCount": 1,
+      "fuseExit": 1,
+      "fuseMilliseconds": 485.296,
+      "buildSeconds": 23.7418496,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 1,
+      "outputBytes": 530,
+      "causeBytes": 113
+    }
+  ]
+}

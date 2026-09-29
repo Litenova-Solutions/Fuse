@@ -34,9 +34,9 @@ internal sealed class WorkspaceSync
     }
 
     /// <summary>Folds disk changes into both views.</summary>
-    /// <param name="knownPaths">Paths just written by the agent, checked even before their watcher event arrives.</param>
+    /// <param name="knownPaths">Files just written by the agent, checked even before their watcher event arrives.</param>
     /// <param name="cancellationToken">Cancels re-evaluation.</param>
-    public async Task SyncAsync(IEnumerable<string> knownPaths, CancellationToken cancellationToken)
+    public async Task SyncAsync(IEnumerable<RepoPath> knownPaths, CancellationToken cancellationToken)
     {
         var result = await _tracker.SyncAsync(knownPaths, cancellationToken).ConfigureAwait(false);
         switch (result)
@@ -93,7 +93,7 @@ internal sealed class WorkspaceSync
             await _views.RebuildAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        var paths = new HashSet<string>(patch.Paths, PathRules.PathComparer);
+        var paths = new HashSet<RepoPath>(patch.Paths);
         foreach (var directory in patch.VanishedDirectories)
             paths.UnionWith(_views.FilesUnder(directory));
         await _views.PatchAsync(paths, cancellationToken).ConfigureAwait(false);

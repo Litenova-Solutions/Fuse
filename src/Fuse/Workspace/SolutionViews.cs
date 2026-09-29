@@ -18,13 +18,15 @@ namespace Fuse.Workspace;
 /// </remarks>
 internal sealed class SolutionViews
 {
+    private readonly RepoRoot _root;
     private readonly ChangeTracker _tracker;
     private readonly ProjectLoader _projects;
     private readonly AnalyzerShadow _analyzers;
-    private readonly HashSet<string> _touched = new(PathRules.PathComparer);
+    private readonly HashSet<RepoPath> _touched = [];
 
     public SolutionViews(RepoRoot root, ChangeTracker tracker, ProjectLoader projects)
     {
+        _root = root;
         _tracker = tracker;
         _projects = projects;
         _analyzers = new AnalyzerShadow(root);
@@ -52,7 +54,7 @@ internal sealed class SolutionViews
     ///     applies them again. A path stays remembered after it matches HEAD again, because the loader may still hold its
     ///     older content.
     /// </summary>
-    public void Touch(IEnumerable<string> paths) => _touched.UnionWith(paths);
+    public void Touch(IEnumerable<RepoPath> paths) => _touched.UnionWith(paths);
 
     /// <summary>Derives both views from the loader's solution again, re-applying every touched and every changed file.</summary>
     /// <remarks>
@@ -69,7 +71,7 @@ internal sealed class SolutionViews
         // The repository's own analyzers load from a copy, so a real build can still overwrite them.
         var current = _analyzers.Apply(loaded);
         var baseline = current;
-        foreach (var path in _touched.Concat(_tracker.Changed).Distinct(PathRules.PathComparer))
+        foreach (var path in _touched.Concat(_tracker.Changed).Distinct())
         {
             current = await WithDiskContentAsync(current, path, cancellationToken).ConfigureAwait(false);
             baseline = await WithHeadContentAsync(baseline, path, cancellationToken).ConfigureAwait(false);
@@ -84,9 +86,9 @@ internal sealed class SolutionViews
     ///     increments <see cref="BaselineGeneration"/> when the baseline changed. Nothing is applied while no project is
     ///     open, because the loader reads every file from disk when it opens its project.
     /// </summary>
-    /// <param name="paths">Absolute paths of the files to apply; each is also touched.</param>
+    /// <param name="paths">The files to apply; each is also touched.</param>
     /// <param name="cancellationToken">Cancels reading file contents.</param>
-    public async Task PatchAsync(IReadOnlyCollection<string> paths, CancellationToken cancellationToken)
+    public async Task PatchAsync(IReadOnlyCollection<RepoPath> paths, CancellationToken cancellationToken)
     {
         if (paths.Count == 0 || _projects.Solution is null)
             return;
@@ -107,18 +109,16 @@ internal sealed class SolutionViews
         }
     }
 
-    /// <summary>The paths of the documents and additional documents <see cref="Current"/> holds under <paramref name="directory"/>.</summary>
-    public IEnumerable<string> FilesUnder(string directory)
-    {
-        var prefix = directory.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
-        return Current.Projects.SelectMany(p => p.Documents.Concat<TextDocument>(p.AdditionalDocuments))
+    /// <summary>The files of the documents and additional documents <see cref="Current"/> holds under <paramref name="directory"/>.</summary>
+    public IEnumerable<RepoPath> FilesUnder(RepoPath directory) =>
+        Current.Projects.SelectMany(p => p.Documents.Concat<TextDocument>(p.AdditionalDocuments))
             .Select(d => d.FilePath)
             .OfType<string>()
-            .Where(f => f.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
-    }
+            .Select(_root.PathOf)
+            .Where(f => f.IsUnder(directory));
 
     /// <summary>Returns the file's HEAD content as source text, or null when the file is new.</summary>
-    public SourceText? HeadText(string path)
+    public SourceText? HeadText(RepoPath path)
     {
         var bytes = _tracker.ReadHead(path);
         return bytes is null ? null : Decode(bytes);
@@ -134,13 +134,13 @@ internal sealed class SolutionViews
         return SourceText.From(stream, Encoding.UTF8, SourceHashAlgorithm.Sha256, throwIfBinaryDetected: false);
     }
 
-    private Task<Solution> WithDiskContentAsync(Solution solution, string path, CancellationToken cancellationToken)
+    private Task<Solution> WithDiskContentAsync(Solution solution, RepoPath path, CancellationToken cancellationToken)
     {
         SourceText? text = null;
         try
         {
-            if (File.Exists(path))
-                text = Decode(File.ReadAllBytes(path));
+            if (File.Exists(path.Absolute))
+                text = Decode(File.ReadAllBytes(path.Absolute));
         }
         catch (IOException)
         {
@@ -150,15 +150,15 @@ internal sealed class SolutionViews
         return WithContentAsync(solution, path, text, cancellationToken);
     }
 
-    private Task<Solution> WithHeadContentAsync(Solution solution, string path, CancellationToken cancellationToken) =>
+    private Task<Solution> WithHeadContentAsync(Solution solution, RepoPath path, CancellationToken cancellationToken) =>
         WithContentAsync(solution, path, HeadText(path), cancellationToken);
 
     /// <summary>Makes every document for <paramref name="path"/> hold <paramref name="text"/>, adding or removing documents as needed.</summary>
     /// <remarks>A document that already holds the same content is left alone, so its compilation stays cached.</remarks>
-    private async Task<Solution> WithContentAsync(Solution solution, string path, SourceText? text, CancellationToken cancellationToken)
+    private async Task<Solution> WithContentAsync(Solution solution, RepoPath path, SourceText? text, CancellationToken cancellationToken)
     {
-        var ids = solution.GetDocumentIdsWithFilePath(path);
-        var isCSharp = path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase);
+        var ids = solution.GetDocumentIdsWithFilePath(path.Absolute);
+        var isCSharp = path.Absolute.EndsWith(".cs", StringComparison.OrdinalIgnoreCase);
         if (text is null)
         {
             foreach (var id in ids)
@@ -192,16 +192,16 @@ internal sealed class SolutionViews
 
         foreach (var owner in _projects.Graph.OwnersOf(path))
         {
-            foreach (var project in solution.Projects.Where(p => PathRules.PathComparer.Equals(p.FilePath, owner.Path)).ToList())
+            foreach (var project in RepoWorkspace.ProjectsFor(solution, owner).ToList())
             {
-                var id = DocumentId.CreateNewId(project.Id, path);
-                var folders = Path.GetRelativePath(owner.Directory, Path.GetDirectoryName(path)!)
+                var id = DocumentId.CreateNewId(project.Id, path.Absolute);
+                var folders = Path.GetRelativePath(owner.Directory.Absolute, Path.GetDirectoryName(path.Absolute)!)
                     .Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries)
                     .Where(f => f != ".")
                     .ToArray();
                 solution = isCSharp
-                    ? solution.AddDocument(id, Path.GetFileName(path), text, folders, path)
-                    : solution.AddAdditionalDocument(id, Path.GetFileName(path), text, folders, path);
+                    ? solution.AddDocument(id, path.FileName, text, folders, path.Absolute)
+                    : solution.AddAdditionalDocument(id, path.FileName, text, folders, path.Absolute);
             }
         }
 

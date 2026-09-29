@@ -1,17 +1,15 @@
 namespace Fuse.Paths;
 
 /// <summary>
-///     Which files are sources, project inputs or build output, and how two paths compare. The client applies these
-///     rules to the files a hook reports as edited before it asks the engine anything, and the engine applies the same
-///     rules to what its file watcher sees, so both sides agree on which files a check covers.
+///     Which files are sources, project inputs or build output. The client applies these rules to the files a hook
+///     reports as edited before it asks the engine anything, and the engine applies the same rules to what its file
+///     watcher sees, so both sides agree on which files a check covers. How two paths compare is
+///     <see cref="RepoPath"/>'s.
 /// </summary>
 internal static class PathRules
 {
     private static readonly string[] SourceExtensions = [".cs", ".razor", ".cshtml"];
     private static readonly string[] ProjectExtensions = [".csproj", ".props", ".targets", ".editorconfig", ".globalconfig"];
-
-    /// <summary>Compares paths the way the file system does.</summary>
-    public static StringComparer PathComparer => OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
 
     /// <summary>True for files the compiler reads as sources: C#, Razor components and Razor views.</summary>
     public static bool IsSource(string path) =>

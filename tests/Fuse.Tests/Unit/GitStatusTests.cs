@@ -44,6 +44,6 @@ public class GitStatusTests
 
         var changed = await GitStatus.ChangedPathsAsync(repo.Root, TestContext.Current.CancellationToken);
 
-        Assert.Equal([repo.Full("Lib/ blåbær.cs"), repo.Full("Lib/Calc.cs")], changed.Order(StringComparer.Ordinal));
+        Assert.Equal([repo.Full("Lib/ blåbær.cs"), repo.Full("Lib/Calc.cs")], changed.Select(p => p.Absolute).Order(StringComparer.Ordinal));
     }
 }

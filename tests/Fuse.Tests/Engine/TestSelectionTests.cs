@@ -12,9 +12,9 @@ public class TestSelectionTests
 
     private static async Task<Dictionary<string, TestSelection>> SelectAsync(EngineHarness engine, TestSelector selector, params string[] files)
     {
-        await engine.Workspace.SyncAsync(files.Select(engine.Repo.Full), TestContext.Current.CancellationToken);
-        var selection = await selector.SelectAsync(files.Select(engine.Repo.Full).ToList(), TestContext.Current.CancellationToken);
-        return selection.ToDictionary(kv => Path.GetFileNameWithoutExtension(kv.Key), kv => kv.Value);
+        await engine.Workspace.SyncAsync(files.Select(engine.Repo.PathOf), TestContext.Current.CancellationToken);
+        var selection = await selector.SelectAsync(files.Select(engine.Repo.PathOf).ToList(), TestContext.Current.CancellationToken);
+        return selection.ToDictionary(kv => Path.GetFileNameWithoutExtension(kv.Key.Absolute), kv => kv.Value);
     }
 
     [Fact]

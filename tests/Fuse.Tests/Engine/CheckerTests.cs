@@ -1,5 +1,6 @@
 using Fuse.Check.Model;
 using Fuse.Failures;
+using Fuse.Paths;
 using Fuse.Tests.Fixtures;
 
 namespace Fuse.Tests.Engine;
@@ -159,9 +160,9 @@ public class CheckerTests
         var fromApp = await CandidatesAsync(engine, "App/Report.cs");
         var fromLib = await CandidatesAsync(engine, "Lib/Calc.cs");
 
-        Assert.Equal([engine.Repo.Full("App.Tests/ReportTests.cs")], fromApp);
-        Assert.Equal([engine.Repo.Full("App/Program.cs"), engine.Repo.Full("Lib.Tests/CalcTests.cs")], fromLib);
-        Assert.Empty(fromApp.Intersect(fromLib, StringComparer.OrdinalIgnoreCase));
+        Assert.Equal([engine.Repo.Full("App.Tests/ReportTests.cs")], fromApp.Select(p => p.Absolute));
+        Assert.Equal([engine.Repo.Full("App/Program.cs"), engine.Repo.Full("Lib.Tests/CalcTests.cs")], fromLib.Select(p => p.Absolute));
+        Assert.Empty(fromApp.Intersect(fromLib));
     }
 
     [Fact]
@@ -178,8 +179,8 @@ public class CheckerTests
     }
 
     /// <summary>The files the change in <paramref name="relative"/> puts in scope, the way the checker computes them.</summary>
-    private static async Task<List<string>> CandidatesAsync(EngineHarness engine, string relative) =>
-        [.. Assert.IsType<Reach.Precise>(await engine.ReachAsync(relative)).Causes.Keys.Order(StringComparer.Ordinal)];
+    private static async Task<List<RepoPath>> CandidatesAsync(EngineHarness engine, string relative) =>
+        [.. Assert.IsType<Reach.Precise>(await engine.ReachAsync(relative)).Causes.Keys.OrderBy(k => k.Absolute, StringComparer.Ordinal)];
 
     [Fact]
     public async Task Errors_already_present_at_head_are_not_reported()

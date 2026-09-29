@@ -14,7 +14,8 @@ internal sealed class DiagnosticCollector
 {
     private readonly RepoRoot _root;
     private readonly AnalyzerSelector _analyzers;
-    private readonly ConcurrentDictionary<string, IReadOnlyList<CompilerError>> _baselineCache = new(PathRules.PathComparer);
+    private readonly ConcurrentDictionary<RepoPath, IReadOnlyList<CompilerError>> _baselineFiles = new();
+    private readonly ConcurrentDictionary<ProjectId, IReadOnlyList<CompilerError>> _baselineProjects = new();
     private int _cachedGeneration = -1;
 
     private long _compilerTicks;
@@ -37,10 +38,10 @@ internal sealed class DiagnosticCollector
     }
 
     /// <summary>Errors reported in <paramref name="path"/>, from the regular documents and from Razor-generated code mapped back to it.</summary>
-    public async Task<IReadOnlyList<CompilerError>> ForFileAsync(Solution solution, string path, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<CompilerError>> ForFileAsync(Solution solution, RepoPath path, CancellationToken cancellationToken)
     {
         var result = new List<CompilerError>();
-        foreach (var id in solution.GetDocumentIdsWithFilePath(path))
+        foreach (var id in solution.GetDocumentIdsWithFilePath(path.Absolute))
         {
             var document = solution.GetDocument(id);
             if (document is not null)
@@ -57,36 +58,35 @@ internal sealed class DiagnosticCollector
     }
 
     /// <summary>Same as <see cref="ForFileAsync"/> against the baseline, cached until the baseline changes.</summary>
-    public async Task<IReadOnlyList<CompilerError>> ForBaselineFileAsync(Solution baseline, int generation, string path, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<CompilerError>> ForBaselineFileAsync(Solution baseline, int generation, RepoPath path, CancellationToken cancellationToken)
     {
-        if (generation != _cachedGeneration)
-        {
-            _baselineCache.Clear();
-            _cachedGeneration = generation;
-        }
-
-        if (_baselineCache.TryGetValue(path, out var cached))
+        ForgetOlderBaseline(generation);
+        if (_baselineFiles.TryGetValue(path, out var cached))
             return cached;
         var computed = await ForFileAsync(baseline, path, cancellationToken).ConfigureAwait(false);
-        _baselineCache[path] = computed;
+        _baselineFiles[path] = computed;
         return computed;
     }
 
     /// <summary>Same as <see cref="ForProjectAsync"/> against the baseline, cached until the baseline changes.</summary>
     public async Task<IReadOnlyList<CompilerError>> ForBaselineProjectAsync(Project project, int generation, CancellationToken cancellationToken)
     {
-        if (generation != _cachedGeneration)
-        {
-            _baselineCache.Clear();
-            _cachedGeneration = generation;
-        }
-
-        var key = "project:" + project.Id.Id;
-        if (_baselineCache.TryGetValue(key, out var cached))
+        ForgetOlderBaseline(generation);
+        if (_baselineProjects.TryGetValue(project.Id, out var cached))
             return cached;
         var computed = await ForProjectAsync(project, cancellationToken).ConfigureAwait(false);
-        _baselineCache[key] = computed;
+        _baselineProjects[project.Id] = computed;
         return computed;
+    }
+
+    /// <summary>Empties both baseline caches when <paramref name="generation"/> is not the baseline they were filled from.</summary>
+    private void ForgetOlderBaseline(int generation)
+    {
+        if (generation == _cachedGeneration)
+            return;
+        _baselineFiles.Clear();
+        _baselineProjects.Clear();
+        _cachedGeneration = generation;
     }
 
     /// <summary>Every error in the project, bound whole. Used when the set of files a change can reach is too large to enumerate.</summary>
@@ -131,18 +131,20 @@ internal sealed class DiagnosticCollector
     }
 
     /// <summary>Errors in source-generated documents whose <c>#line</c> mappings point at <paramref name="path"/> (Razor components and views).</summary>
-    private async Task<IEnumerable<CompilerError>> ForGeneratedFromAsync(Project project, string path, CancellationToken cancellationToken)
+    private async Task<IEnumerable<CompilerError>> ForGeneratedFromAsync(Project project, RepoPath path, CancellationToken cancellationToken)
     {
-        var fileName = Path.GetFileName(path);
+        var fileName = path.FileName;
         var result = new List<CompilerError>();
         foreach (var generated in await project.GetSourceGeneratedDocumentsAsync(cancellationToken).ConfigureAwait(false))
         {
+            // A quick search of the generated text for the file's name, in any case, so a document that cannot map to
+            // the file is not bound; the errors it maps are compared as paths below.
             var text = await generated.GetTextAsync(cancellationToken).ConfigureAwait(false);
             if (!text.ToString().Contains(fileName, StringComparison.OrdinalIgnoreCase))
                 continue;
             foreach (var diagnostic in await ForDocumentAsync(generated, cancellationToken).ConfigureAwait(false))
             {
-                if (string.Equals(diagnostic.Path, _root.Relative(path), StringComparison.OrdinalIgnoreCase))
+                if (_root.PathOf(diagnostic.Path) == path)
                     result.Add(diagnostic);
             }
         }
@@ -161,7 +163,7 @@ internal sealed class DiagnosticCollector
         if (!span.IsValid || string.IsNullOrEmpty(span.Path))
             return null;
         return new CompilerError(
-            _root.Relative(span.Path),
+            _root.PathOf(span.Path).Relative,
             span.StartLinePosition.Line + 1,
             span.StartLinePosition.Character + 1,
             diagnostic.Id,

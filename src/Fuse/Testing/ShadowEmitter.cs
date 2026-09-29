@@ -54,10 +54,10 @@ internal sealed class ShadowEmitter
             }
 
             var built = File.GetLastWriteTimeUtc(project.OutputFilePath);
-            var node = project.FilePath is null ? null : _graph.Find(project.FilePath);
+            var node = project.FilePath is null ? null : _graph.Find(_root.PathOf(project.FilePath));
             if (node is null)
                 return new RunMode.Build();
-            if (node.EvaluationInputs.Any(i => File.Exists(i) && File.GetLastWriteTimeUtc(i) > built))
+            if (node.EvaluationInputs.Any(i => File.Exists(i.Absolute) && File.GetLastWriteTimeUtc(i.Absolute) > built))
             {
                 log($"{project.Name}: project file changed since the last build");
                 return new RunMode.Build();
@@ -66,7 +66,7 @@ internal sealed class ShadowEmitter
             var (sourcesNewer, otherNewer) = Freshness(node, built);
             if (otherNewer is not null)
             {
-                log($"{project.Name}: {_root.Relative(otherNewer)} changed since the last build");
+                log($"{project.Name}: {_root.PathOf(otherNewer).Relative} changed since the last build");
                 return new RunMode.Build();
             }
 
@@ -153,10 +153,14 @@ internal sealed class ShadowEmitter
     ///     in the project directory that did (a resource or content file the emitted assembly would not include). A
     ///     directory newer than the output means its file set changed, which also makes the sources stale.
     /// </summary>
+    /// <remarks>
+    ///     The entries stay the strings the directory listing returns, because each only goes back to a file system
+    ///     call; only the one entry named in the log becomes a <see cref="RepoPath"/>.
+    /// </remarks>
     private static (bool SourcesNewer, string? OtherNewer) Freshness(ProjectNode node, DateTime built)
     {
         var sourcesNewer = false;
-        foreach (var entry in EnumerateProjectEntries(node.Directory))
+        foreach (var entry in EnumerateProjectEntries(node.Directory.Absolute))
         {
             if (File.GetLastWriteTimeUtc(entry) <= built && Directory.GetLastWriteTimeUtc(entry) <= built)
                 continue;

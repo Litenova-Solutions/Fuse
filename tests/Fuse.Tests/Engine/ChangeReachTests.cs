@@ -21,9 +21,9 @@ public class ChangeReachTests
         engine.Repo.Replace("Lib/Greeting.cs", "string Greet(string name);", "string Greet(string name, bool loud);");
         await engine.CheckAsync("Lib/Calc.cs", "Lib/Formatter.cs", "Lib/Greeting.cs");
 
-        Assert.False(await reach.HasDeclarationChangeAsync(engine.Repo.Full("Lib/Calc.cs"), TestContext.Current.CancellationToken));
-        Assert.False(await reach.HasDeclarationChangeAsync(engine.Repo.Full("Lib/Formatter.cs"), TestContext.Current.CancellationToken));
-        Assert.True(await reach.HasDeclarationChangeAsync(engine.Repo.Full("Lib/Greeting.cs"), TestContext.Current.CancellationToken));
+        Assert.False(await reach.HasDeclarationChangeAsync(engine.Repo.PathOf("Lib/Calc.cs"), TestContext.Current.CancellationToken));
+        Assert.False(await reach.HasDeclarationChangeAsync(engine.Repo.PathOf("Lib/Formatter.cs"), TestContext.Current.CancellationToken));
+        Assert.True(await reach.HasDeclarationChangeAsync(engine.Repo.PathOf("Lib/Greeting.cs"), TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -35,7 +35,7 @@ public class ChangeReachTests
 
         var precise = Assert.IsType<Reach.Precise>(await engine.ReachAsync("Lib/Calc.cs"));
 
-        Assert.Equal([engine.Repo.Full("App/Program.cs"), engine.Repo.Full("Lib.Tests/CalcTests.cs")], precise.Causes.Keys.Order(StringComparer.Ordinal));
+        Assert.Equal([engine.Repo.Full("App/Program.cs"), engine.Repo.Full("Lib.Tests/CalcTests.cs")], precise.Causes.Keys.Select(k => k.Absolute).Order(StringComparer.Ordinal));
         Assert.All(precise.Causes.Values, c => Assert.Equal(new Cause.Removed("public int Add(int a, int b)"), c));
     }
 
@@ -49,7 +49,7 @@ public class ChangeReachTests
 
         var precise = Assert.IsType<Reach.Precise>(await engine.ReachAsync("Lib/Calc.cs"));
 
-        Assert.Equal([engine.Repo.Full("App/Program.cs"), engine.Repo.Full("Lib.Tests/CalcTests.cs")], precise.Causes.Keys.Order(StringComparer.Ordinal));
+        Assert.Equal([engine.Repo.Full("App/Program.cs"), engine.Repo.Full("Lib.Tests/CalcTests.cs")], precise.Causes.Keys.Select(k => k.Absolute).Order(StringComparer.Ordinal));
         Assert.All(precise.Causes.Values, c => Assert.Equal(new Cause.Changed("public long Add(long a, long b)"), c));
     }
 
@@ -63,10 +63,10 @@ public class ChangeReachTests
         var broad = Assert.IsType<Reach.Broad>(await engine.ReachAsync("Lib/Calc.cs"));
 
         // Report.cs and GreeterTests.cs never mention Calc; a broad change binds them anyway.
-        Assert.Contains(engine.Repo.Full("App/Report.cs"), broad.Files);
-        Assert.Contains(engine.Repo.Full("Lib.Tests/GreeterTests.cs"), broad.Files);
-        Assert.Contains(engine.Repo.Full("App.Tests/ReportTests.cs"), broad.Files);
+        Assert.Contains(engine.Repo.PathOf("App/Report.cs"), broad.Files);
+        Assert.Contains(engine.Repo.PathOf("Lib.Tests/GreeterTests.cs"), broad.Files);
+        Assert.Contains(engine.Repo.PathOf("App.Tests/ReportTests.cs"), broad.Files);
         // Only the projects with declaration changes and their dependents are reached.
-        Assert.DoesNotContain(engine.Repo.Full("Strict/Thing.cs"), broad.Files);
+        Assert.DoesNotContain(engine.Repo.PathOf("Strict/Thing.cs"), broad.Files);
     }
 }

@@ -22,13 +22,13 @@ public class WorkspaceSyncTests
         await workspace.InitializeAsync(TestContext.Current.CancellationToken);
         var checker = new Checker(workspace);
         Assert.Empty((await CheckAsync(checker, repo, "Lib/Calc.cs")).Errors);
-        var lib = workspace.Graph.Find(repo.Full("Lib/Lib.csproj"))!;
+        var lib = workspace.Graph.Find(repo.PathOf("Lib/Lib.csproj"))!;
         Assert.True(workspace.IsLoaded(lib));
         var generation = workspace.ConfigurationGeneration;
 
         // Files a hook reports are counted whether or not they exist, so no burst of watcher events is needed.
         repo.Replace("Lib/Calc.cs", "a * b;", "a * undefinedValue;");
-        var reported = Enumerable.Range(0, 301).Select(i => repo.Full($"Lib/Generated/G{i}.cs")).Append(repo.Full("Lib/Calc.cs")).ToList();
+        var reported = Enumerable.Range(0, 301).Select(i => repo.PathOf($"Lib/Generated/G{i}.cs")).Append(repo.PathOf("Lib/Calc.cs")).ToList();
         await workspace.SyncAsync(reported, TestContext.Current.CancellationToken);
 
         Assert.Contains("reloading: Reload trigger=302 changed files", log);
@@ -68,12 +68,12 @@ public class WorkspaceSyncTests
 
         // A body edit changes the working tree only; the baseline and the project configuration stay as they were.
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
-        await engine.Workspace.SyncAsync([engine.Repo.Full("Lib/Calc.cs")], TestContext.Current.CancellationToken);
+        await engine.Workspace.SyncAsync([engine.Repo.PathOf("Lib/Calc.cs")], TestContext.Current.CancellationToken);
 
         Assert.Equal(generation, engine.Workspace.ConfigurationGeneration);
         Assert.Equal(baseline, engine.Workspace.BaselineGeneration);
     }
 
     private static Task<CheckResult> CheckAsync(Checker checker, FixtureRepo repo, string relative) =>
-        checker.CheckAsync(new CheckScope.Files([repo.Full(relative)]), PhaseTimes.None, TestContext.Current.CancellationToken);
+        checker.CheckAsync(new CheckScope.Files([repo.PathOf(relative)]), PhaseTimes.None, TestContext.Current.CancellationToken);
 }

@@ -16,20 +16,20 @@ internal sealed class TargetResolver
     public TargetResolver(RepoWorkspace workspace) => _workspace = workspace;
 
     /// <summary>
-    ///     Absolute paths of the files <paramref name="scope"/> names, which the sync reads from disk before the file
-    ///     watcher reports them. Every change names none: the change tracker already has them.
+    ///     The files <paramref name="scope"/> names, which the sync reads from disk before the file watcher reports them.
+    ///     Every change names none: the change tracker already has them.
     /// </summary>
-    public IReadOnlyList<string> NamedPaths(CheckScope scope) =>
-        scope is CheckScope.Files files ? [.. files.Paths.Select(_workspace.Root.Absolute)] : [];
+    public static IReadOnlyList<RepoPath> NamedPaths(CheckScope scope) =>
+        scope is CheckScope.Files files ? files.Paths : [];
 
     /// <summary>The targets of <paramref name="scope"/>, read after the sync so every change includes the latest edits.</summary>
-    public IReadOnlyList<string> Resolve(CheckScope scope)
+    public IReadOnlyList<RepoPath> Resolve(CheckScope scope)
     {
         var graph = _workspace.Graph;
         var paths = scope is CheckScope.Files ? NamedPaths(scope) : _workspace.Tracker.Changed;
         return paths
-            .Where(PathRules.IsSource)
-            .Distinct(PathRules.PathComparer)
+            .Where(p => PathRules.IsSource(p.Absolute))
+            .Distinct()
             .Where(p => graph.OwnersOf(p).Count > 0)
             .ToList();
     }

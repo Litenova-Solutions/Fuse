@@ -21,7 +21,7 @@ internal sealed class AnalyzerShadow
 {
     private readonly RepoRoot _root;
     private readonly string _directory;
-    private readonly Dictionary<string, (string Stamp, AnalyzerFileReference Reference)> _references = new(PathRules.PathComparer);
+    private readonly Dictionary<RepoPath, (string Stamp, AnalyzerFileReference Reference)> _references = [];
     private Solution? _lastInput;
     private Solution? _lastOutput;
 
@@ -69,14 +69,16 @@ internal sealed class AnalyzerShadow
 
     private AnalyzerReference Shadow(AnalyzerReference reference)
     {
-        if (reference is not AnalyzerFileReference file || !IsInRepository(file.FullPath) || !File.Exists(file.FullPath))
+        // Package and SDK analyzers are spelled outside the root, so the spelling decides without a file system call.
+        if (reference is not AnalyzerFileReference file || !_root.Contains(file.FullPath) || !File.Exists(file.FullPath))
             return reference;
 
         try
         {
+            var original = _root.PathOf(file.FullPath);
             var source = Path.GetDirectoryName(file.FullPath)!;
             var stamp = Stamp(source);
-            if (_references.TryGetValue(file.FullPath, out var known) && known.Stamp == stamp)
+            if (_references.TryGetValue(original, out var known) && known.Stamp == stamp)
                 return known.Reference;
 
             var target = Path.Combine(_directory, Hash(source + "|" + stamp));
@@ -92,7 +94,7 @@ internal sealed class AnalyzerShadow
             var copy = Path.Combine(target, Path.GetFileName(file.FullPath));
             file.AssemblyLoader.AddDependencyLocation(copy);
             var shadow = new AnalyzerFileReference(copy, file.AssemblyLoader);
-            _references[file.FullPath] = (stamp, shadow);
+            _references[original] = (stamp, shadow);
             return shadow;
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
@@ -100,12 +102,6 @@ internal sealed class AnalyzerShadow
             // Without a copy the analyzer still runs from where it is; only the lock on its file comes back.
             return reference;
         }
-    }
-
-    private bool IsInRepository(string path)
-    {
-        var prefix = _root.Path.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
-        return path.StartsWith(prefix, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
     }
 
     /// <summary>Changes whenever any assembly in the directory is rebuilt, added or removed.</summary>

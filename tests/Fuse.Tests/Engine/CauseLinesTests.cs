@@ -14,6 +14,9 @@ namespace Fuse.Tests.Engine;
 /// </summary>
 public class CauseLinesTests
 {
+    // The cases that call CauseLines directly name files but read none, so any root will do.
+    private static readonly RepoRoot Root = FixtureRepo.CheckoutRoot;
+
     [Fact]
     public async Task A_renamed_method_names_the_declaration_the_callers_were_using()
     {
@@ -95,16 +98,16 @@ public class CauseLinesTests
     {
         // The fixture is too small for the cap to bite in a real check, so the cap is exercised on the function that
         // applies it: 25 candidate errors, each with a declaration to name.
-        var causes = new Dictionary<string, Cause>(PathRules.PathComparer);
+        var causes = new Dictionary<RepoPath, Cause>();
         var errors = new List<CompilerError>();
         for (var i = 0; i < 25; i++)
         {
             var path = $"src/Candidate{i}.cs";
-            causes[path] = new Cause.Changed($"public int Method{i}()");
+            causes[Root.PathOf(path)] = new Cause.Changed($"public int Method{i}()");
             errors.Add(new(path, 1, 1, "CS1061", "no definition"));
         }
 
-        var (attached, leftOut) = CauseLines.Attach(errors, new Reach.Precise(causes), path => path, []);
+        var (attached, leftOut) = CauseLines.Attach(errors, new Reach.Precise(causes), Root, []);
 
         Assert.Equal(errors, attached.Select(e => e.Error));
         Assert.Equal(CauseLines.MaxLines, attached.Count(e => e.Cause is not null));
@@ -118,10 +121,10 @@ public class CauseLinesTests
     public void A_target_an_analyzer_error_and_a_file_nothing_reached_get_no_cause_and_do_not_count_toward_the_cap()
     {
         // Every path here has a cause in the reach, so only the rules, not a missing entry, keep the first three bare.
-        var causes = new Dictionary<string, Cause>(PathRules.PathComparer)
+        var causes = new Dictionary<RepoPath, Cause>
         {
-            ["src/Target.cs"] = new Cause.Changed("public int Target()"),
-            ["src/Analyzed.cs"] = new Cause.Changed("public int Analyzed()"),
+            [Root.PathOf("src/Target.cs")] = new Cause.Changed("public int Target()"),
+            [Root.PathOf("src/Analyzed.cs")] = new Cause.Changed("public int Analyzed()"),
         };
         var errors = new List<CompilerError>
         {
@@ -132,11 +135,11 @@ public class CauseLinesTests
         for (var i = 0; i < CauseLines.MaxLines + 2; i++)
         {
             var path = $"src/Candidate{i}.cs";
-            causes[path] = new Cause.Removed($"public int Method{i}()");
+            causes[Root.PathOf(path)] = new Cause.Removed($"public int Method{i}()");
             errors.Add(new(path, 1, 1, "CS1061", "no definition"));
         }
 
-        var (attached, leftOut) = CauseLines.Attach(errors, new Reach.Precise(causes), path => path, ["src/Target.cs"]);
+        var (attached, leftOut) = CauseLines.Attach(errors, new Reach.Precise(causes), Root, [Root.PathOf("src/Target.cs")]);
 
         Assert.All(attached.Take(3), e => Assert.Null(e.Cause));
         Assert.Equal(CauseLines.MaxLines, attached.Count(e => e.Cause is not null));
@@ -148,11 +151,11 @@ public class CauseLinesTests
     public void A_reach_that_is_not_precise_gives_no_cause()
     {
         List<CompilerError> errors = [new("src/Candidate.cs", 1, 1, "CS1061", "no definition")];
-        var files = new HashSet<string>(PathRules.PathComparer) { "src/Candidate.cs" };
+        var files = new HashSet<RepoPath> { Root.PathOf("src/Candidate.cs") };
 
         foreach (var reach in new Reach[] { new Reach.None(), new Reach.Broad(files) })
         {
-            var (attached, leftOut) = CauseLines.Attach(errors, reach, path => path, []);
+            var (attached, leftOut) = CauseLines.Attach(errors, reach, Root, []);
             Assert.Null(Assert.Single(attached).Cause);
             Assert.Equal(0, leftOut);
         }

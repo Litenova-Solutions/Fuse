@@ -15,13 +15,14 @@ public class TargetResolverTests
     {
         await using var engine = await EngineHarness.StartAsync();
         var resolver = new TargetResolver(engine.Workspace);
+        var root = engine.Workspace.Root;
         // The same file relative and absolute, a file in build output, a source no project owns, and a file that is no source.
-        var scope = new CheckScope.Files(["Lib/Calc.cs", engine.Repo.Full("Lib/Calc.cs"), "Lib/obj/Generated.cs", "Loose.cs", "App/notes.txt"]);
+        var scope = new CheckScope.Files([root.PathOf("Lib/Calc.cs"), root.PathOf(engine.Repo.Full("Lib/Calc.cs")), root.PathOf("Lib/obj/Generated.cs"), root.PathOf("Loose.cs"), root.PathOf("App/notes.txt")]);
 
         Assert.Equal(
-            [engine.Repo.Full("Lib/Calc.cs"), engine.Repo.Full("Lib/Calc.cs"), engine.Repo.Full("Lib/obj/Generated.cs"), engine.Repo.Full("Loose.cs"), engine.Repo.Full("App/notes.txt")],
-            resolver.NamedPaths(scope));
-        Assert.Equal([engine.Repo.Full("Lib/Calc.cs")], resolver.Resolve(scope));
+            [engine.Repo.PathOf("Lib/Calc.cs"), engine.Repo.PathOf("Lib/Calc.cs"), engine.Repo.PathOf("Lib/obj/Generated.cs"), engine.Repo.PathOf("Loose.cs"), engine.Repo.PathOf("App/notes.txt")],
+            TargetResolver.NamedPaths(scope));
+        Assert.Equal([engine.Repo.PathOf("Lib/Calc.cs")], resolver.Resolve(scope));
     }
 
     [Fact]
@@ -36,12 +37,12 @@ public class TargetResolverTests
         var scope = new CheckScope.AllChanges();
 
         // The change tracker names every change, so the sync is given no paths of its own.
-        Assert.Empty(resolver.NamedPaths(scope));
+        Assert.Empty(TargetResolver.NamedPaths(scope));
         await Task.Delay(400, TestContext.Current.CancellationToken);
-        await engine.Workspace.SyncAsync(resolver.NamedPaths(scope), TestContext.Current.CancellationToken);
+        await engine.Workspace.SyncAsync(TargetResolver.NamedPaths(scope), TestContext.Current.CancellationToken);
 
         Assert.Equal(
             [engine.Repo.Full("App/Extra.cs"), engine.Repo.Full("Lib/Calc.cs")],
-            resolver.Resolve(scope).Order(StringComparer.Ordinal));
+            resolver.Resolve(scope).Select(p => p.Absolute).Order(StringComparer.Ordinal));
     }
 }

@@ -36,19 +36,19 @@ namespace Fuse.Check;
 internal sealed class ChangeReach
 {
     private readonly RepoWorkspace _workspace;
-    private readonly Dictionary<string, HashSet<string>> _cache = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, HashSet<RepoPath>> _cache = new(StringComparer.Ordinal);
     private int _cachedGeneration = -1;
 
     public ChangeReach(RepoWorkspace workspace) => _workspace = workspace;
 
     /// <summary>True when the file has a declaration change against HEAD. Syntax only; binds nothing.</summary>
-    public async Task<bool> HasDeclarationChangeAsync(string path, CancellationToken cancellationToken)
+    public async Task<bool> HasDeclarationChangeAsync(RepoPath path, CancellationToken cancellationToken)
     {
         var head = _workspace.HeadText(path);
         var now = await CurrentTextAsync(path, cancellationToken).ConfigureAwait(false);
         if (head is not null && now is not null && head.ContentEquals(now))
             return false;
-        if (!path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
+        if (!path.Absolute.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
             return true;
         var before = head is null ? FileDeclarations.Empty : FileDeclarations.Of(await ParseAsync(head, cancellationToken).ConfigureAwait(false));
         var after = now is null ? FileDeclarations.Empty : FileDeclarations.Of(await ParseAsync(now, cancellationToken).ConfigureAwait(false));
@@ -61,10 +61,10 @@ internal sealed class ChangeReach
     ///     is <see cref="Reach.Precise"/>, with the change that made each file a candidate so an error there can name its
     ///     cause, unless one change is broad, which makes it <see cref="Reach.Broad"/>.
     /// </summary>
-    /// <param name="paths">Absolute paths of the targets with a declaration change.</param>
+    /// <param name="paths">The targets with a declaration change.</param>
     /// <param name="reached">The projects that own those targets, and their dependents, all loaded.</param>
     /// <param name="cancellationToken">Cancels the search.</param>
-    public async Task<Reach> ReachAsync(IReadOnlyList<string> paths, IReadOnlyList<ProjectNode> reached, CancellationToken cancellationToken)
+    public async Task<Reach> ReachAsync(IReadOnlyList<RepoPath> paths, IReadOnlyList<ProjectNode> reached, CancellationToken cancellationToken)
     {
         var projects = reached.SelectMany(n => RepoWorkspace.ProjectsFor(_workspace.Current, n)).ToList();
         if (_cachedGeneration != _workspace.BaselineGeneration)
@@ -85,15 +85,15 @@ internal sealed class ChangeReach
         var names = new List<(string Name, Cause Cause)>();
         foreach (var path in paths)
         {
-            if (!path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
+            if (!path.Absolute.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
             {
                 // A Razor component or view is used by its file name.
-                var name = Path.GetFileNameWithoutExtension(path);
+                var name = Path.GetFileNameWithoutExtension(path.Absolute);
                 names.Add((name, new Cause.Changed(name)));
                 continue;
             }
 
-            var baselineDocument = baseline.GetDocumentIdsWithFilePath(path).Select(baseline.GetDocument).FirstOrDefault(d => d is not null);
+            var baselineDocument = baseline.GetDocumentIdsWithFilePath(path.Absolute).Select(baseline.GetDocument).FirstOrDefault(d => d is not null);
             var beforeRoot = baselineDocument is null ? null : await baselineDocument.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
             var model = baselineDocument is null ? null : await baselineDocument.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
             var now = await CurrentTextAsync(path, cancellationToken).ConfigureAwait(false);
@@ -153,11 +153,11 @@ internal sealed class ChangeReach
         }
 
         // A file several changes reach keeps the first change that reached it, in the order the changes were seen.
-        var causes = new Dictionary<string, Cause>(PathRules.PathComparer);
+        var causes = new Dictionary<RepoPath, Cause>();
         foreach (var change in changed.GroupBy(c => c.Symbol, SymbolEqualityComparer.Default).Select(g => g.First()))
         {
             // A copy: the reference set is cached, and the implementations and overrides below are added to this one.
-            var files = new HashSet<string>(await ReferencingFilesAsync(change.Symbol, reachKey, baseline, baselineDocuments, cancellationToken).ConfigureAwait(false), PathRules.PathComparer);
+            var files = new HashSet<RepoPath>(await ReferencingFilesAsync(change.Symbol, reachKey, baseline, baselineDocuments, cancellationToken).ConfigureAwait(false));
             if (change.Implemented)
             {
                 files.UnionWith(Declarations(await SymbolFinder.FindImplementationsAsync(change.Symbol, baseline, baselineProjects, cancellationToken).ConfigureAwait(false)));
@@ -186,7 +186,7 @@ internal sealed class ChangeReach
                 var text = (await document.GetTextAsync(cancellationToken).ConfigureAwait(false)).ToString();
                 var name = names.FirstOrDefault(n => text.Contains(n.Name, StringComparison.Ordinal));
                 if (name.Name is not null)
-                    causes.TryAdd(document.FilePath, name.Cause);
+                    causes.TryAdd(_workspace.Root.PathOf(document.FilePath), name.Cause);
             }
         }
 
@@ -206,42 +206,43 @@ internal sealed class ChangeReach
     };
 
     /// <summary>Every source file of <paramref name="projects"/>, for a change that a reference search cannot bound.</summary>
-    private static Reach.Broad Broad(IReadOnlyList<Project> projects) =>
-        new(projects.SelectMany(p => p.Documents).Select(d => d.FilePath).OfType<string>().ToHashSet(PathRules.PathComparer));
+    private Reach.Broad Broad(IReadOnlyList<Project> projects) =>
+        new(projects.SelectMany(p => p.Documents).Select(d => d.FilePath).OfType<string>().Select(_workspace.Root.PathOf).ToHashSet());
 
-    private async Task<IEnumerable<string>> ReferencingFilesAsync(ISymbol symbol, string reachKey, Solution baseline, IImmutableSet<Document> documents, CancellationToken cancellationToken)
+    private async Task<IEnumerable<RepoPath>> ReferencingFilesAsync(ISymbol symbol, string reachKey, Solution baseline, IImmutableSet<Document> documents, CancellationToken cancellationToken)
     {
         var key = (symbol.GetDocumentationCommentId() ?? symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)) + "|" + reachKey;
         if (_cache.TryGetValue(key, out var cached))
             return cached;
         var references = await SymbolFinder.FindReferencesAsync(symbol, baseline, documents, cancellationToken).ConfigureAwait(false);
-        var files = new HashSet<string>(PathRules.PathComparer);
-        foreach (var location in references.SelectMany(r => r.Locations))
+        var files = new HashSet<RepoPath>();
+        // A file holds many references; its path is made once.
+        foreach (var document in references.SelectMany(r => r.Locations).Select(l => l.Document).DistinctBy(d => d.Id))
         {
-            if (location.Document.FilePath is { } file)
-                files.Add(file);
+            if (document.FilePath is { } file)
+                files.Add(_workspace.Root.PathOf(file));
         }
 
         _cache[key] = files;
         return files;
     }
 
-    private static IEnumerable<string> Declarations(IEnumerable<ISymbol> symbols) =>
-        symbols.SelectMany(s => s.Locations).Where(l => l.IsInSource).Select(l => l.SourceTree!.FilePath).Where(p => !string.IsNullOrEmpty(p));
+    private IEnumerable<RepoPath> Declarations(IEnumerable<ISymbol> symbols) =>
+        symbols.SelectMany(s => s.Locations).Where(l => l.IsInSource).Select(l => l.SourceTree!.FilePath).Where(p => !string.IsNullOrEmpty(p)).Select(_workspace.Root.PathOf);
 
     private static ISymbol? Declared(SemanticModel? model, SyntaxNode? node, CancellationToken cancellationToken) =>
         model is null || node is null ? null : model.GetDeclaredSymbol(node, cancellationToken);
 
-    private async Task<SourceText?> CurrentTextAsync(string path, CancellationToken cancellationToken)
+    private async Task<SourceText?> CurrentTextAsync(RepoPath path, CancellationToken cancellationToken)
     {
-        if (!File.Exists(path))
+        if (!File.Exists(path.Absolute))
             return null;
         var current = _workspace.Current;
-        var id = current.GetDocumentIdsWithFilePath(path).FirstOrDefault();
+        var id = current.GetDocumentIdsWithFilePath(path.Absolute).FirstOrDefault();
         TextDocument? document = id is null ? null : current.GetDocument(id) ?? (TextDocument?)current.GetAdditionalDocument(id);
         return document is not null
             ? await document.GetTextAsync(cancellationToken).ConfigureAwait(false)
-            : RepoWorkspace.Decode(await File.ReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false));
+            : RepoWorkspace.Decode(await File.ReadAllBytesAsync(path.Absolute, cancellationToken).ConfigureAwait(false));
     }
 
     private static Task<SyntaxNode> ParseAsync(SourceText text, CancellationToken cancellationToken) =>

@@ -58,6 +58,24 @@ public class RequestRouterTests
     }
 
     [Fact]
+    public async Task A_check_that_names_an_empty_or_invalid_path_is_answered_as_invalid_path()
+    {
+        using var repo = FixtureRepo.CreateStandard();
+        await using var engine = await RequestRouterHarness.StartAsync(repo);
+
+        var empty = Assert.IsType<EngineResponse.Unanswered>(await engine.CheckAsync(repo.Full("Lib/Calc.cs"), " "));
+        var invalid = Assert.IsType<EngineResponse.Unanswered>(await engine.CheckAsync("Lib/Ca\0lc.cs"));
+
+        // The request is refused as a whole, with the name that is wrong, rather than checked without it.
+        Assert.Equal(ErrorCode.InvalidPath, empty.Code);
+        Assert.Contains("empty", empty.Message, StringComparison.Ordinal);
+        Assert.Equal(ErrorCode.InvalidPath, invalid.Code);
+        Assert.Contains("\"Lib/Ca\0lc.cs\"", invalid.Message, StringComparison.Ordinal);
+        // A relative name is a path like any other.
+        Assert.IsType<EngineResponse.CheckAnswered>(await engine.CheckAsync("Lib/Calc.cs"));
+    }
+
+    [Fact]
     public async Task A_check_log_names_its_request_and_its_wait_for_the_gate()
     {
         using var repo = FixtureRepo.CreateStandard();

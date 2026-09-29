@@ -20,8 +20,8 @@ internal sealed class ProjectLoader : IDisposable
 {
     private readonly RepoRoot _root;
     private readonly Action<string> _log;
-    private readonly ConcurrentDictionary<string, byte> _loaded = new(PathRules.PathComparer);
-    private readonly Dictionary<string, string> _loadFailures = new(PathRules.PathComparer);
+    private readonly ConcurrentDictionary<RepoPath, byte> _loaded = new();
+    private readonly Dictionary<RepoPath, string> _loadFailures = [];
     private readonly SemaphoreSlim _loadLock = new(1, 1);
     private MSBuildWorkspace? _loader;
     private volatile bool _preloaded;
@@ -50,8 +50,8 @@ internal sealed class ProjectLoader : IDisposable
     /// <summary>True when <paramref name="node"/> is open in the loader.</summary>
     public bool IsLoaded(ProjectNode node) => _loaded.ContainsKey(node.Path);
 
-    /// <summary>The paths of the projects open in the loader, which a reload opens again.</summary>
-    public List<string> LoadedPaths() => [.. _loaded.Keys];
+    /// <summary>The project files open in the loader, which a reload opens again.</summary>
+    public List<RepoPath> LoadedPaths() => [.. _loaded.Keys];
 
     /// <summary>Evaluates every project again and closes every project, so none stays open under the old evaluation. Compiles nothing.</summary>
     public async Task EvaluateAsync(CancellationToken cancellationToken)
@@ -130,7 +130,7 @@ internal sealed class ProjectLoader : IDisposable
 
     private async Task OpenAsync(IReadOnlyList<ProjectNode> missing, CancellationToken cancellationToken)
     {
-        var unrestored = missing.SelectMany(Graph.ClosureOf).Where(p => !File.Exists(p.AssetsFile)).Select(p => _root.Relative(p.Path)).Distinct().ToList();
+        var unrestored = missing.SelectMany(Graph.ClosureOf).Where(p => !File.Exists(p.AssetsFile.Absolute)).Select(p => p.Path.Relative).Distinct().ToList();
         // The command names a project, because a bare `dotnet restore` restores a solution, which may leave out the very
         // project that is missing its assets (a fuzzing or sample project outside the solution).
         if (unrestored.Count > 0)
@@ -147,7 +147,7 @@ internal sealed class ProjectLoader : IDisposable
                 var started = Environment.TickCount64;
                 try
                 {
-                    await loader.OpenProjectAsync(project.Path, cancellationToken: cancellationToken).ConfigureAwait(false);
+                    await loader.OpenProjectAsync(project.Path.Absolute, cancellationToken: cancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception e) when (e is InvalidOperationException or IOException or ArgumentException)
                 {
@@ -157,7 +157,7 @@ internal sealed class ProjectLoader : IDisposable
                 foreach (var loadedProject in loader.CurrentSolution.Projects)
                 {
                     if (loadedProject.FilePath is not null)
-                        _loaded[loadedProject.FilePath] = 0;
+                        _loaded[_root.PathOf(loadedProject.FilePath)] = 0;
                 }
 
                 _log($"loaded {project.Name} in {Environment.TickCount64 - started} ms ({loader.CurrentSolution.ProjectIds.Count} projects open)");
@@ -187,19 +187,21 @@ internal sealed class ProjectLoader : IDisposable
             if (e.Diagnostic.Kind != WorkspaceDiagnosticKind.Failure)
                 return;
             _log($"workspace: {e.Diagnostic.Message}");
-            var path = Graph.Projects.FirstOrDefault(p => e.Diagnostic.Message.Contains(p.Path, StringComparison.OrdinalIgnoreCase))?.Path;
+            // The message names the project somewhere in its text, in whatever case MSBuild wrote it, so this is a search
+            // of the text rather than a comparison of two paths.
+            var path = Graph.Projects.FirstOrDefault(p => e.Diagnostic.Message.Contains(p.Path.Absolute, StringComparison.OrdinalIgnoreCase))?.Path;
             // MSBuildWorkspace reports every message MSBuild logged while loading, warnings included, as a failure of
             // the project. A warning leaves the project loadable, and the real build reports the same text as a warning
             // too, so recording it would make fuse decline to answer in a repository that builds. Only a project the
             // load could not evaluate is a failure; see LoadFailure.
-            if (path is not null && !LoadFailure.IsWarning(e.Diagnostic.Message))
-                _loadFailures[path] = e.Diagnostic.Message;
+            if (path is { } failed && !LoadFailure.IsWarning(e.Diagnostic.Message))
+                _loadFailures[failed] = e.Diagnostic.Message;
         });
         return loader;
     }
 
-    private FuseException LoadFailed(ProjectNode project, string reason) =>
-        new(ErrorCode.LoadFailed, $"could not load {_root.Relative(project.Path)}: {reason}");
+    private static FuseException LoadFailed(ProjectNode project, string reason) =>
+        new(ErrorCode.LoadFailed, $"could not load {project.Path.Relative}: {reason}");
 
     public void Dispose() => _loader?.Dispose();
 }

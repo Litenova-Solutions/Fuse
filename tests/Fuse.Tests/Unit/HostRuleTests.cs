@@ -1,5 +1,7 @@
 using Fuse.Graph;
+using Fuse.Paths;
 using Fuse.Testing;
+using Fuse.Tests.Fixtures;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
@@ -109,15 +111,16 @@ public class HostRuleTests
         return compilation;
     }
 
+    /// <summary>An application or a library project; its paths are never read, so any root will do.</summary>
     private static ProjectNode Project(bool isExecutable) => new()
     {
-        Path = "/repo/App/App.csproj",
+        Path = FixtureRepo.CheckoutRoot.PathOf("App/App.csproj"),
         Name = "App",
-        Directory = "/repo/App",
+        Directory = FixtureRepo.CheckoutRoot.PathOf("App"),
         References = [],
-        Sources = new HashSet<string>(),
-        EvaluationInputs = new HashSet<string>(),
-        AssetsFile = "/repo/App/obj/project.assets.json",
+        Sources = new HashSet<RepoPath>(),
+        EvaluationInputs = new HashSet<RepoPath>(),
+        AssetsFile = FixtureRepo.CheckoutRoot.PathOf("App/obj/project.assets.json"),
         IsTest = false,
         IsExecutable = isExecutable,
         IsTestingPlatform = false,

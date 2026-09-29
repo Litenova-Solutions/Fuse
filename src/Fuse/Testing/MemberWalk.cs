@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Fuse.Changes;
 using Fuse.Graph;
+using Fuse.Paths;
 using Fuse.Testing.Model;
 using Fuse.Workspace;
 using Microsoft.CodeAnalysis;
@@ -59,19 +60,19 @@ internal sealed class MemberWalk
         _time = time;
     }
 
-    /// <summary>The selections found so far, keyed by test project path. It grows while the walk runs.</summary>
-    public IReadOnlyDictionary<string, TestSelection> Selections => _selections.Selections;
+    /// <summary>The selections found so far, keyed by test project file. It grows while the walk runs.</summary>
+    public IReadOnlyDictionary<RepoPath, TestSelection> Selections => _selections.Selections;
 
     /// <summary>
     ///     Seeds the walk with the declarations that changed in <paramref name="path"/> and returns them, for the type
     ///     walk. A changed declaration in a test project is selected at once; top-level statements select every test
     ///     project behind the application whole.
     /// </summary>
-    public async Task<List<(Document Document, SyntaxNode Node)>> SeedAsync(string path, CancellationToken cancellationToken)
+    public async Task<List<(Document Document, SyntaxNode Node)>> SeedAsync(RepoPath path, CancellationToken cancellationToken)
     {
         var seeds = new List<(Document, SyntaxNode)>();
         var headText = _workspace.HeadText(path);
-        foreach (var id in _solution.GetDocumentIdsWithFilePath(path))
+        foreach (var id in _solution.GetDocumentIdsWithFilePath(path.Absolute))
         {
             var document = _solution.GetDocument(id);
             if (document is null)
@@ -160,7 +161,7 @@ internal sealed class MemberWalk
             SelectWhole(test, reason);
     }
 
-    private ProjectNode? NodeOf(Project project) => project.FilePath is null ? null : _workspace.Graph.Find(project.FilePath);
+    private ProjectNode? NodeOf(Project project) => project.FilePath is null ? null : _workspace.Graph.Find(_workspace.Root.PathOf(project.FilePath));
 
     private ProjectId? FindProjectId(ISymbol symbol) =>
         symbol.ContainingAssembly is { } assembly ? _byAssembly.GetValueOrDefault(assembly.Name) : null;

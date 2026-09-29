@@ -10,13 +10,13 @@ namespace Fuse.Testing;
 /// </summary>
 internal sealed class SelectionBuilder
 {
-    private readonly Dictionary<string, TestSelection> _selections = new(PathRules.PathComparer);
+    private readonly Dictionary<RepoPath, TestSelection> _selections = [];
 
     /// <summary>
-    ///     The selections found so far, keyed by test project path, in the order the walk first selected something in
+    ///     The selections found so far, keyed by test project file, in the order the walk first selected something in
     ///     each project. It is a view: it grows while the walk goes on.
     /// </summary>
-    public IReadOnlyDictionary<string, TestSelection> Selections => _selections;
+    public IReadOnlyDictionary<RepoPath, TestSelection> Selections => _selections;
 
     /// <summary>True when <paramref name="project"/> is selected whole.</summary>
     public bool IsWhole(ProjectNode project) => _selections.GetValueOrDefault(project.Path) is TestSelection.Whole;

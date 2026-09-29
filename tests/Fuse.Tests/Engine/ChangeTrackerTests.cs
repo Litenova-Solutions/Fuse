@@ -1,3 +1,4 @@
+using Fuse.Paths;
 using Fuse.Repo;
 using Fuse.Tests.Fixtures;
 
@@ -18,11 +19,11 @@ public class ChangeTrackerTests
         using var tracker = await StartAsync(repo, new WatchedPaths(repo.Root));
         repo.Replace("Lib/Calc.cs", "public class Calc {}", "public class Calc { public int A => 1; }");
 
-        var patch = Assert.IsType<SyncResult.Patch>(await tracker.SyncAsync([repo.Full("Lib/Calc.cs")], TestContext.Current.CancellationToken));
+        var patch = Assert.IsType<SyncResult.Patch>(await tracker.SyncAsync([repo.PathOf("Lib/Calc.cs")], TestContext.Current.CancellationToken));
 
-        Assert.Equal([repo.Full("Lib/Calc.cs")], patch.Paths);
+        Assert.Equal([repo.PathOf("Lib/Calc.cs")], patch.Paths);
         Assert.Empty(patch.VanishedDirectories);
-        Assert.Equal([repo.Full("Lib/Calc.cs")], tracker.Changed);
+        Assert.Equal([repo.PathOf("Lib/Calc.cs")], tracker.Changed);
     }
 
     [Fact]
@@ -33,14 +34,14 @@ public class ChangeTrackerTests
         repo.Write("Lib/New/Extra.cs", "public class Extra {}\n");
         var watched = new WatchedPaths(repo.Root);
         using var tracker = await StartAsync(repo, watched);
-        Assert.Contains(repo.Full("Lib/New/Extra.cs"), tracker.Changed);
+        Assert.Contains(repo.PathOf("Lib/New/Extra.cs"), tracker.Changed);
 
         Directory.Delete(repo.Full("Lib/New"), recursive: true);
         watched.Record(repo.Full("Lib/New"), appearedOrVanished: true);
         var patch = Assert.IsType<SyncResult.Patch>(await tracker.SyncAsync([], TestContext.Current.CancellationToken));
 
-        Assert.Equal([repo.Full("Lib/New")], patch.VanishedDirectories);
-        Assert.Contains(repo.Full("Lib/New/Extra.cs"), patch.Paths);
+        Assert.Equal([repo.PathOf("Lib/New")], patch.VanishedDirectories);
+        Assert.Contains(repo.PathOf("Lib/New/Extra.cs"), patch.Paths);
         // The file is neither at HEAD nor on disk now, so it no longer differs from HEAD.
         Assert.Empty(tracker.Changed);
     }
@@ -54,11 +55,11 @@ public class ChangeTrackerTests
         repo.Replace("Lib/Calc.cs", "public class Calc {}", "public class Calc { public int A => 1; }");
         watched.Record(repo.Full("Lib/Lib.csproj"), appearedOrVanished: false);
 
-        var reevaluate = Assert.IsType<SyncResult.Reevaluate>(await tracker.SyncAsync([repo.Full("Lib/Calc.cs")], TestContext.Current.CancellationToken));
+        var reevaluate = Assert.IsType<SyncResult.Reevaluate>(await tracker.SyncAsync([repo.PathOf("Lib/Calc.cs")], TestContext.Current.CancellationToken));
 
         Assert.Equal(repo.Full("Lib/Lib.csproj"), reevaluate.Trigger);
-        Assert.Contains(repo.Full("Lib/Calc.cs"), reevaluate.Paths);
-        Assert.Equal([repo.Full("Lib/Calc.cs")], tracker.Changed);
+        Assert.Contains(repo.PathOf("Lib/Calc.cs"), reevaluate.Paths);
+        Assert.Equal([repo.PathOf("Lib/Calc.cs")], tracker.Changed);
     }
 
     [Fact]
@@ -93,8 +94,8 @@ public class ChangeTrackerTests
 
         Assert.Equal("watcher error: Too many changes at once in directory", reevaluate.Trigger);
         // git status finds the edit whether or not its event arrived.
-        Assert.Contains(repo.Full("Lib/Calc.cs"), reevaluate.Paths);
-        Assert.Equal([repo.Full("Lib/Calc.cs")], tracker.Changed);
+        Assert.Contains(repo.PathOf("Lib/Calc.cs"), reevaluate.Paths);
+        Assert.Equal([repo.PathOf("Lib/Calc.cs")], tracker.Changed);
     }
 
     [Fact]
@@ -137,9 +138,9 @@ public class ChangeTrackerTests
         Assert.Equal(repo.Full("Lib/Lib.csproj"), reevaluate.Trigger);
     }
 
-    /// <summary>Absolute paths of <paramref name="count"/> sources that no commit and no file on disk has.</summary>
-    private static List<string> Generated(FixtureRepo repo, int count) =>
-        [.. Enumerable.Range(0, count).Select(i => repo.Full($"Lib/Generated/G{i}.cs"))];
+    /// <summary><paramref name="count"/> sources that no commit and no file on disk has.</summary>
+    private static List<RepoPath> Generated(FixtureRepo repo, int count) =>
+        [.. Enumerable.Range(0, count).Select(i => repo.PathOf($"Lib/Generated/G{i}.cs"))];
 
     private static FixtureRepo Repo() => FixtureRepo.CreateEmpty(new Dictionary<string, string>
     {

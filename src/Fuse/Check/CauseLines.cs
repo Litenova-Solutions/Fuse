@@ -22,24 +22,24 @@ internal static class CauseLines
     /// </summary>
     /// <param name="errors">The errors in the check's answer, in report order.</param>
     /// <param name="reach">The files the declaration changes reached; only a precise reach names a cause for a file.</param>
-    /// <param name="absolute">Turns an error's repository-relative path into the absolute one the reach is keyed by.</param>
-    /// <param name="targets">Absolute paths of the targets, which never get a cause.</param>
+    /// <param name="root">The repository, which turns an error's repository-relative path into the path the reach is keyed by.</param>
+    /// <param name="targets">The targets, which never get a cause.</param>
     public static (IReadOnlyList<IntroducedError> Errors, int CausesLeftOut) Attach(
         IReadOnlyList<CompilerError> errors,
         Reach reach,
-        Func<string, string> absolute,
-        IReadOnlyCollection<string> targets)
+        RepoRoot root,
+        IReadOnlyCollection<RepoPath> targets)
     {
         if (reach is not Reach.Precise precise)
             return ([.. errors.Select(e => new IntroducedError(e))], 0);
 
-        var targetPaths = new HashSet<string>(targets, PathRules.PathComparer);
+        var targetPaths = new HashSet<RepoPath>(targets);
         var result = new List<IntroducedError>(errors.Count);
         var shown = 0;
         var leftOut = 0;
         foreach (var error in errors)
         {
-            var path = absolute(error.Path);
+            var path = root.PathOf(error.Path);
             if (error.FromAnalyzer || targetPaths.Contains(path) || !precise.Causes.TryGetValue(path, out var cause))
             {
                 result.Add(new IntroducedError(error));

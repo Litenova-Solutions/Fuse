@@ -114,7 +114,7 @@ internal sealed class RequestRouter : IDisposable
             return request switch
             {
                 EngineRequest.CheckChanges => ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.AllChanges(), phases, cancellationToken).ConfigureAwait(false)),
-                EngineRequest.CheckFiles check => ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.Files(check.Files), phases, cancellationToken).ConfigureAwait(false)),
+                EngineRequest.CheckFiles check => await CheckFilesAsync(check, phases, cancellationToken).ConfigureAwait(false),
                 EngineRequest.PlanAffectedTests => ResponseMapper.Answered(await _planner.PlanAsync(new TestScope.Affected(), phases, cancellationToken).ConfigureAwait(false)),
                 EngineRequest.PlanAllTests => ResponseMapper.Answered(await _planner.PlanAsync(new TestScope.All(), phases, cancellationToken).ConfigureAwait(false)),
                 _ => throw new UnreachableException($"{request.GetType().Name} is answered before the request lock"),
@@ -135,6 +135,31 @@ internal sealed class RequestRouter : IDisposable
             _gate.Release();
             _preloader.Schedule(_shutdown);
         }
+    }
+
+    /// <summary>
+    ///     Checks the files <paramref name="check"/> names. The wire carries them as strings, absolute or relative to the
+    ///     root; each becomes a <see cref="RepoPath"/> here, and one that is empty or not a valid path is answered with
+    ///     <see cref="ErrorCode.InvalidPath"/>, naming it, before anything is checked.
+    /// </summary>
+    private async Task<EngineResponse> CheckFilesAsync(EngineRequest.CheckFiles check, PhaseTimes phases, CancellationToken cancellationToken)
+    {
+        var paths = new List<RepoPath>(check.Files.Count);
+        foreach (var file in check.Files)
+        {
+            if (string.IsNullOrWhiteSpace(file))
+                return new EngineResponse.Unanswered(ErrorCode.InvalidPath, "a file named in the check is empty; name each file by its path");
+            try
+            {
+                paths.Add(_workspace.Root.PathOf(file));
+            }
+            catch (Exception e) when (e is ArgumentException or PathTooLongException)
+            {
+                return new EngineResponse.Unanswered(ErrorCode.InvalidPath, $"\"{file}\" named in the check is not a valid path");
+            }
+        }
+
+        return ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.Files(paths), phases, cancellationToken).ConfigureAwait(false));
     }
 
     /// <summary>

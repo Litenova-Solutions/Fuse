@@ -1,3 +1,5 @@
+using Fuse.Paths;
+
 namespace Fuse.Check.Model;
 
 /// <summary>
@@ -18,16 +20,12 @@ internal abstract record Reach
     ///     attribute. Every file in the reached projects is a candidate, and none gets a cause, because no single
     ///     declaration explains it.
     /// </summary>
-    /// <param name="Files">
-    ///     Absolute paths of every source file in the projects with declaration changes and in their dependents, compared
-    ///     the way the file system compares paths.
-    /// </param>
-    public sealed record Broad(IReadOnlySet<string> Files) : Reach;
+    /// <param name="Files">Every source file in the projects with declaration changes and in their dependents.</param>
+    public sealed record Broad(IReadOnlySet<RepoPath> Files) : Reach;
 
     /// <summary>The files that use a changed declaration, each with the change that made it a candidate.</summary>
     /// <param name="Causes">
-    ///     Keyed by absolute path, compared the way the file system compares paths. A file several changes reach keeps the
-    ///     first change that reached it, not the nearest one.
+    ///     Keyed by file. A file several changes reach keeps the first change that reached it, not the nearest one.
     /// </param>
-    public sealed record Precise(IReadOnlyDictionary<string, Cause> Causes) : Reach;
+    public sealed record Precise(IReadOnlyDictionary<RepoPath, Cause> Causes) : Reach;
 }

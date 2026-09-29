@@ -1,3 +1,5 @@
+using Fuse.Paths;
+
 namespace Fuse.Repo;
 
 /// <summary>
@@ -11,13 +13,13 @@ namespace Fuse.Repo;
 /// </remarks>
 internal abstract record SyncResult
 {
-    private SyncResult(IReadOnlyCollection<string> paths) => Paths = paths;
+    private SyncResult(IReadOnlyCollection<RepoPath> paths) => Paths = paths;
 
     /// <summary>
-    ///     Absolute paths of C# and Razor files whose content may differ from what the workspace last saw. After a
-    ///     reload the workspace applies them again, because the loader reads each file as it was when its project opened.
+    ///     The C# and Razor files whose content may differ from what the workspace last saw. After a reload the workspace
+    ///     applies them again, because the loader reads each file as it was when its project opened.
     /// </summary>
-    public IReadOnlyCollection<string> Paths { get; }
+    public IReadOnlyCollection<RepoPath> Paths { get; }
 
     /// <summary>
     ///     Project configuration may have changed: HEAD moved, a project, props, targets, editorconfig or global.json file
@@ -29,7 +31,7 @@ internal abstract record SyncResult
     ///     Why the projects are evaluated again, for the engine log: the commit HEAD moved to (or that HEAD has none), the
     ///     watcher's error, or the project file whose event arrived last.
     /// </param>
-    public sealed record Reevaluate(IReadOnlyCollection<string> Paths, string Trigger) : SyncResult(Paths);
+    public sealed record Reevaluate(IReadOnlyCollection<RepoPath> Paths, string Trigger) : SyncResult(Paths);
 
     /// <summary>
     ///     More source files changed at once than patching one at a time is worth, and project configuration did not
@@ -37,7 +39,7 @@ internal abstract record SyncResult
     /// </summary>
     /// <param name="Paths">The files to apply again after the reload.</param>
     /// <param name="Trigger">How many changed files the sync collected, for the engine log.</param>
-    public sealed record Reload(IReadOnlyCollection<string> Paths, string Trigger) : SyncResult(Paths);
+    public sealed record Reload(IReadOnlyCollection<RepoPath> Paths, string Trigger) : SyncResult(Paths);
 
     /// <summary>Only source files changed, and few enough to apply one at a time to both views.</summary>
     /// <param name="Paths">The files to apply to both views.</param>
@@ -45,5 +47,5 @@ internal abstract record SyncResult
     ///     Directories that are missing from disk (deleted or renamed away). Every source the workspace holds under one is
     ///     gone, although no event named those files.
     /// </param>
-    public sealed record Patch(IReadOnlyCollection<string> Paths, IReadOnlyCollection<string> VanishedDirectories) : SyncResult(Paths);
+    public sealed record Patch(IReadOnlyCollection<RepoPath> Paths, IReadOnlyCollection<RepoPath> VanishedDirectories) : SyncResult(Paths);
 }

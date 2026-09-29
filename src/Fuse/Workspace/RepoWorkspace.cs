@@ -64,7 +64,7 @@ internal sealed class RepoWorkspace : IDisposable
     }
 
     /// <inheritdoc cref="WorkspaceSync.SyncAsync"/>
-    public Task SyncAsync(IEnumerable<string> knownPaths, CancellationToken cancellationToken) =>
+    public Task SyncAsync(IEnumerable<RepoPath> knownPaths, CancellationToken cancellationToken) =>
         _sync.SyncAsync(knownPaths, cancellationToken);
 
     /// <summary>Loads <paramref name="projects"/> and everything they reference, and makes them part of both views.</summary>
@@ -84,11 +84,15 @@ internal sealed class RepoWorkspace : IDisposable
     public bool IsLoaded(ProjectNode node) => _projects.IsLoaded(node);
 
     /// <summary>The loaded Roslyn projects (one per target framework) built from <paramref name="node"/>.</summary>
+    /// <remarks>
+    ///     A Roslyn project keeps the path MSBuild evaluated, which is the node's own spelling, so the paths are compared
+    ///     as spelled; this runs once per project of the solution for each reached project, on every check.
+    /// </remarks>
     public static IEnumerable<Project> ProjectsFor(Solution solution, ProjectNode node) =>
-        solution.Projects.Where(p => PathRules.PathComparer.Equals(p.FilePath, node.Path));
+        solution.Projects.Where(p => node.Path.Matches(p.FilePath));
 
     /// <inheritdoc cref="SolutionViews.HeadText"/>
-    public SourceText? HeadText(string path) => _views.HeadText(path);
+    public SourceText? HeadText(RepoPath path) => _views.HeadText(path);
 
     /// <inheritdoc cref="SolutionViews.Decode"/>
     internal static SourceText Decode(byte[] bytes) => SolutionViews.Decode(bytes);

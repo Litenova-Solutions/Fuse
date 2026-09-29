@@ -17,7 +17,7 @@ public class WatchedPathsTests
         watched.Record(repo.Full("Lib/Calc.cs"), appearedOrVanished: false);
         watched.Record(repo.Full("Lib/Calc.cs"), appearedOrVanished: false);
 
-        Assert.Equal([repo.Full("Lib/Calc.cs")], watched.Drain().Sources);
+        Assert.Equal([repo.PathOf("Lib/Calc.cs")], watched.Drain().Sources);
         Assert.Empty(watched.Drain().Sources);
     }
 
@@ -30,9 +30,9 @@ public class WatchedPathsTests
         Assert.Single(watched.Drain().Sources);
 
         // A file that is still being written is read again at the next sync.
-        watched.MarkDirty(repo.Full("Lib/Calc.cs"));
+        watched.MarkDirty(repo.PathOf("Lib/Calc.cs"));
 
-        Assert.Equal([repo.Full("Lib/Calc.cs")], watched.Drain().Sources);
+        Assert.Equal([repo.PathOf("Lib/Calc.cs")], watched.Drain().Sources);
     }
 
     [Fact]
@@ -46,7 +46,7 @@ public class WatchedPathsTests
 
         var changes = watched.Drain();
 
-        Assert.Equal([repo.Full("Lib/Lib.csproj"), repo.Full("Directory.Build.props"), repo.Full("Lib/Lib.csproj")], changes.ProjectFiles);
+        Assert.Equal([repo.PathOf("Lib/Lib.csproj"), repo.PathOf("Directory.Build.props"), repo.PathOf("Lib/Lib.csproj")], changes.ProjectFiles);
         Assert.Empty(changes.Sources);
         Assert.Empty(watched.Drain().ProjectFiles);
     }
@@ -65,8 +65,21 @@ public class WatchedPathsTests
         Assert.Empty(changes.Sources);
         Assert.Empty(changes.ProjectFiles);
         Assert.Empty(changes.VanishedDirectories);
-        Assert.All(ignored, path => Assert.True(watched.IsIgnored(repo.Full(path)), path));
-        Assert.False(watched.IsIgnored(repo.Full("Lib/Calc.cs")));
+        Assert.All(ignored, path => Assert.True(watched.IsIgnored(repo.PathOf(path)), path));
+        Assert.False(watched.IsIgnored(repo.PathOf("Lib/Calc.cs")));
+    }
+
+    [Fact]
+    public void A_folder_whose_name_starts_with_the_git_directory_name_is_followed()
+    {
+        using var repo = Repo();
+        using var watched = new WatchedPaths(repo.Root);
+
+        // Only git's own directory is ignored, not a sibling that shares the start of its name.
+        watched.Record(repo.Full(".github/Tool.cs"), appearedOrVanished: false);
+
+        Assert.Equal([repo.PathOf(".github/Tool.cs")], watched.Drain().Sources);
+        Assert.False(watched.IsIgnored(repo.PathOf(".github/Tool.cs")));
     }
 
     [Fact]
@@ -81,7 +94,7 @@ public class WatchedPathsTests
         watched.Record(repo.Full("Lib/Sub"), appearedOrVanished: true);
         var changes = watched.Drain();
 
-        Assert.Equal([repo.Full("Lib/Sub/Deep/New.cs")], changes.Sources);
+        Assert.Equal([repo.PathOf("Lib/Sub/Deep/New.cs")], changes.Sources);
         Assert.Empty(changes.VanishedDirectories);
     }
 
@@ -94,7 +107,7 @@ public class WatchedPathsTests
         watched.Record(repo.Full("Lib/Gone"), appearedOrVanished: true);
         var changes = watched.Drain();
 
-        Assert.Equal([repo.Full("Lib/Gone")], changes.VanishedDirectories);
+        Assert.Equal([repo.PathOf("Lib/Gone")], changes.VanishedDirectories);
         Assert.Empty(watched.Drain().VanishedDirectories);
     }
 

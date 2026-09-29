@@ -10,17 +10,17 @@ namespace Fuse.Repo;
 internal sealed class WatchedPaths : IDisposable
 {
     private readonly RepoRoot _root;
-    private readonly string _gitDirectory;
-    private readonly ConcurrentDictionary<string, byte> _sources = new(PathRules.PathComparer);
-    private readonly ConcurrentDictionary<string, byte> _possibleDirectories = new(PathRules.PathComparer);
-    private readonly ConcurrentQueue<string> _projectFiles = new();
+    private readonly RepoPath _gitDirectory;
+    private readonly ConcurrentDictionary<RepoPath, byte> _sources = new();
+    private readonly ConcurrentDictionary<RepoPath, byte> _possibleDirectories = new();
+    private readonly ConcurrentQueue<RepoPath> _projectFiles = new();
     private readonly ConcurrentQueue<string> _errors = new();
     private FileSystemWatcher? _watcher;
 
     public WatchedPaths(RepoRoot root)
     {
         _root = root;
-        _gitDirectory = new GitHead(root.Path).GitDirectory;
+        _gitDirectory = root.PathOf(new GitHead(root.Path).GitDirectory);
     }
 
     /// <summary>Starts the file watcher. A change made before this call is not reported, so the tracker seeds from git first.</summary>
@@ -52,14 +52,15 @@ internal sealed class WatchedPaths : IDisposable
     /// </param>
     public void Record(string path, bool appearedOrVanished)
     {
-        if (IsIgnored(path))
+        var entry = _root.PathOf(path);
+        if (IsIgnored(entry))
             return;
         if (PathRules.IsSource(path))
-            _sources[path] = 0;
+            _sources[entry] = 0;
         else if (PathRules.IsProjectFile(path))
-            _projectFiles.Enqueue(path);
+            _projectFiles.Enqueue(entry);
         else if (appearedOrVanished && !Path.HasExtension(path))
-            _possibleDirectories[path] = 0; // Resolved at the next sync, when the file system says what it is.
+            _possibleDirectories[entry] = 0; // Resolved at the next sync, when the file system says what it is.
     }
 
     /// <summary>Records that the watcher lost events, for example because its buffer overflowed.</summary>
@@ -67,7 +68,7 @@ internal sealed class WatchedPaths : IDisposable
     public void RecordError(string message) => _errors.Enqueue(message);
 
     /// <summary>Reports <paramref name="path"/> again at the next sync, because it could not be read at this one.</summary>
-    public void MarkDirty(string path) => _sources[path] = 0;
+    public void MarkDirty(RepoPath path) => _sources[path] = 0;
 
     /// <summary>Takes everything recorded since the previous call.</summary>
     /// <remarks>
@@ -79,21 +80,21 @@ internal sealed class WatchedPaths : IDisposable
     {
         var errors = Take(_errors);
         var projectFiles = Take(_projectFiles);
-        var sources = new HashSet<string>(PathRules.PathComparer);
+        var sources = new HashSet<RepoPath>();
         foreach (var key in _sources.Keys)
         {
             if (_sources.TryRemove(key, out _))
                 sources.Add(key);
         }
 
-        var vanished = new List<string>();
+        var vanished = new List<RepoPath>();
         foreach (var key in _possibleDirectories.Keys)
         {
             if (!_possibleDirectories.TryRemove(key, out _))
                 continue;
-            if (Directory.Exists(key))
+            if (Directory.Exists(key.Absolute))
                 sources.UnionWith(SourcesUnder(key));
-            else if (!File.Exists(key))
+            else if (!File.Exists(key.Absolute))
                 vanished.Add(key);
         }
 
@@ -101,14 +102,14 @@ internal sealed class WatchedPaths : IDisposable
     }
 
     /// <summary>
-    ///     True for a path the tracker does not follow: inside git's own directory, or under a <c>bin</c>, <c>obj</c>,
-    ///     <c>.git</c> or <c>node_modules</c> folder of the repository.
+    ///     True for a path the tracker does not follow: git's own directory and what it holds, or a path under a
+    ///     <c>bin</c>, <c>obj</c>, <c>.git</c> or <c>node_modules</c> folder of the repository.
     /// </summary>
-    public bool IsIgnored(string path)
+    public bool IsIgnored(RepoPath path)
     {
-        if (path.StartsWith(_gitDirectory, StringComparison.OrdinalIgnoreCase))
+        if (path == _gitDirectory || path.IsUnder(_gitDirectory))
             return true;
-        var relative = Path.GetRelativePath(_root.Path, path);
+        var relative = Path.GetRelativePath(_root.Path, path.Absolute);
         foreach (var segment in relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
         {
             if (segment.Equals("bin", StringComparison.OrdinalIgnoreCase)
@@ -121,12 +122,14 @@ internal sealed class WatchedPaths : IDisposable
         return false;
     }
 
-    private List<string> SourcesUnder(string directory)
+    private List<RepoPath> SourcesUnder(RepoPath directory)
     {
         try
         {
-            return Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories)
-                .Where(f => PathRules.IsSource(f) && !IsIgnored(f))
+            return Directory.EnumerateFiles(directory.Absolute, "*", SearchOption.AllDirectories)
+                .Where(PathRules.IsSource)
+                .Select(_root.PathOf)
+                .Where(f => !IsIgnored(f))
                 .ToList();
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
@@ -135,9 +138,9 @@ internal sealed class WatchedPaths : IDisposable
         }
     }
 
-    private static List<string> Take(ConcurrentQueue<string> queue)
+    private static List<T> Take<T>(ConcurrentQueue<T> queue)
     {
-        var taken = new List<string>();
+        var taken = new List<T>();
         while (queue.TryDequeue(out var item))
             taken.Add(item);
         return taken;

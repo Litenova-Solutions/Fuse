@@ -54,8 +54,8 @@ internal sealed class EngineHarness : IAsyncDisposable
         return await Checker.CheckAsync(new CheckScope.AllChanges(), PhaseTimes.None, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>The scope of the given repository-relative files, as absolute paths, the way a hook names them.</summary>
-    public CheckScope.Files Files(params string[] files) => new([.. files.Select(Repo.Full)]);
+    /// <summary>The scope of the given repository-relative files, as the engine has it once it has read a hook's request.</summary>
+    public CheckScope.Files Files(params string[] files) => new([.. files.Select(Repo.PathOf)]);
 
     /// <summary>
     ///     The reach of the declaration changes in one repository-relative file, over the projects the checker reaches
@@ -64,11 +64,11 @@ internal sealed class EngineHarness : IAsyncDisposable
     public async Task<Reach> ReachAsync(string relative)
     {
         var graph = Workspace.Graph;
-        var path = Repo.Full(relative);
+        var path = Repo.PathOf(relative);
         var owners = graph.OwnersOf(path).ToList();
         await Workspace.EnsureLoadedAsync(owners, TestContext.Current.CancellationToken);
         var dependents = owners.SelectMany(graph.DependentsOf).DistinctBy(p => p.Path)
-            .Where(p => !owners.Any(o => string.Equals(o.Path, p.Path, StringComparison.OrdinalIgnoreCase))).ToList();
+            .Where(p => !owners.Any(o => o.Path == p.Path)).ToList();
         await Workspace.EnsureLoadedAsync(dependents, TestContext.Current.CancellationToken);
         return await new ChangeReach(Workspace).ReachAsync([path], [.. owners, .. dependents], TestContext.Current.CancellationToken);
     }

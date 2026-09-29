@@ -1,8 +1,10 @@
 using Fuse.Check.Model;
 using Fuse.Engine;
 using Fuse.Failures;
+using Fuse.Paths;
 using Fuse.Protocol;
 using Fuse.Testing.Model;
+using Fuse.Tests.Fixtures;
 
 namespace Fuse.Tests.Unit;
 
@@ -30,11 +32,14 @@ public class ResponseMapperTests
         CheckedWholeProjects: true,
         CausesLeftOut: 4);
 
+    // The project files are never read, so any root will do; the wire carries each as its absolute path.
+    private static readonly RepoRoot Root = FixtureRepo.CheckoutRoot;
+
     private static readonly TestPlanResult Plan = new(
         [
-            new PlannedRun("C:/repo/Lib.Tests/Lib.Tests.csproj", "Lib.Tests(net8.0)", new RunMode.Shadow("C:/state/shadow/Lib.Tests-net8.0/Lib.Tests.dll"), "FullyQualifiedName~Lib.Tests.CalcTests.", false),
-            new PlannedRun("C:/repo/App.Tests/App.Tests.csproj", "App.Tests", new RunMode.Build(), null, false),
-            new PlannedRun("C:/repo/Mtp.Tests/Mtp.Tests.csproj", "Mtp.Tests", new RunMode.Build(), null, true),
+            new PlannedRun(Root.PathOf("Lib.Tests/Lib.Tests.csproj"), "Lib.Tests(net8.0)", new RunMode.Shadow("C:/state/shadow/Lib.Tests-net8.0/Lib.Tests.dll"), "FullyQualifiedName~Lib.Tests.CalcTests.", false),
+            new PlannedRun(Root.PathOf("App.Tests/App.Tests.csproj"), "App.Tests", new RunMode.Build(), null, false),
+            new PlannedRun(Root.PathOf("Mtp.Tests/Mtp.Tests.csproj"), "Mtp.Tests", new RunMode.Build(), null, true),
         ],
         SelectedTests: 12,
         TotalTests: 40,
@@ -89,9 +94,9 @@ public class ResponseMapperTests
 
         Assert.Equal(
             [
-                new TestRun("C:/repo/Lib.Tests/Lib.Tests.csproj", "Lib.Tests(net8.0)", new TestRunMode.Shadow("C:/state/shadow/Lib.Tests-net8.0/Lib.Tests.dll"), "FullyQualifiedName~Lib.Tests.CalcTests.", false),
-                new TestRun("C:/repo/App.Tests/App.Tests.csproj", "App.Tests", new TestRunMode.Build(), null, false),
-                new TestRun("C:/repo/Mtp.Tests/Mtp.Tests.csproj", "Mtp.Tests", new TestRunMode.Build(), null, true),
+                new TestRun(Path.Combine(Root.Path, "Lib.Tests", "Lib.Tests.csproj"), "Lib.Tests(net8.0)", new TestRunMode.Shadow("C:/state/shadow/Lib.Tests-net8.0/Lib.Tests.dll"), "FullyQualifiedName~Lib.Tests.CalcTests.", false),
+                new TestRun(Path.Combine(Root.Path, "App.Tests", "App.Tests.csproj"), "App.Tests", new TestRunMode.Build(), null, false),
+                new TestRun(Path.Combine(Root.Path, "Mtp.Tests", "Mtp.Tests.csproj"), "Mtp.Tests", new TestRunMode.Build(), null, true),
             ],
             plan.Runs);
         Assert.Equal((12, 40), (plan.SelectedTests, plan.TotalTests));

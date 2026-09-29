@@ -1,3 +1,4 @@
+using Fuse.Paths;
 using Fuse.Testing.Model;
 using Fuse.Workspace;
 using Microsoft.CodeAnalysis;
@@ -23,17 +24,17 @@ internal sealed class TypeWalk
 
     public TypeWalk(RepoWorkspace workspace) => _workspace = workspace;
 
-    /// <summary>Selects the tests the types of <paramref name="seeds"/> reach, keyed by test project path.</summary>
+    /// <summary>Selects the tests the types of <paramref name="seeds"/> reach, keyed by test project file.</summary>
     /// <param name="cone">The Roslyn projects of the changed projects and their dependents; the graph covers only these.</param>
     /// <param name="seeds">The changed declarations, each with its document, as <see cref="MemberWalk.SeedAsync"/> found them.</param>
     /// <param name="cancellationToken">Cancels building the graph.</param>
-    public async Task<IReadOnlyDictionary<string, TestSelection>> SelectAsync(
+    public async Task<IReadOnlyDictionary<RepoPath, TestSelection>> SelectAsync(
         IReadOnlyList<Project> cone,
         IReadOnlyList<(Document Document, SyntaxNode Node)> seeds,
         CancellationToken cancellationToken)
     {
         var graph = _workspace.Graph;
-        var typeGraph = await TypeGraph.BuildAsync(cone, p => p.FilePath is null ? null : graph.Find(p.FilePath), _facts, cancellationToken).ConfigureAwait(false);
+        var typeGraph = await TypeGraph.BuildAsync(cone, p => p.FilePath is null ? null : graph.Find(_workspace.Root.PathOf(p.FilePath)), _facts, cancellationToken).ConfigureAwait(false);
         var start = seeds
             .Select(s => new TypeGraph.TypeKey(s.Document.Project.Id, TypeGraph.DeclaringName(s.Node, s.Document.FilePath ?? s.Document.Name)))
             .Where(typeGraph.Types.ContainsKey)

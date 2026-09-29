@@ -32,16 +32,16 @@ internal sealed class TestSelector
         _types = new TypeWalk(workspace);
     }
 
-    /// <summary>Selects tests for <paramref name="changedFiles"/>; the result maps each test project path to its selection.</summary>
-    /// <param name="changedFiles">Absolute paths of changed files that an evaluated project owns.</param>
+    /// <summary>Selects tests for <paramref name="changedFiles"/>; the result maps each test project file to its selection.</summary>
+    /// <param name="changedFiles">Changed files that an evaluated project owns.</param>
     /// <param name="cancellationToken">Cancels loading and both walks.</param>
-    public async Task<IReadOnlyDictionary<string, TestSelection>> SelectAsync(IReadOnlyList<string> changedFiles, CancellationToken cancellationToken)
+    public async Task<IReadOnlyDictionary<RepoPath, TestSelection>> SelectAsync(IReadOnlyList<RepoPath> changedFiles, CancellationToken cancellationToken)
     {
         var graph = _workspace.Graph;
         var changedProjects = changedFiles.SelectMany(graph.OwnersOf).DistinctBy(p => p.Path).ToList();
         var cone = changedProjects.Concat(changedProjects.SelectMany(graph.DependentsOf)).DistinctBy(p => p.Path).ToList();
         if (!cone.Any(p => p.IsTest))
-            return new Dictionary<string, TestSelection>(PathRules.PathComparer);
+            return new Dictionary<RepoPath, TestSelection>();
         await _workspace.EnsureLoadedAsync(cone, cancellationToken).ConfigureAwait(false);
 
         var solution = _workspace.Current;
@@ -50,12 +50,12 @@ internal sealed class TestSelector
         var seeds = new List<(Document Document, SyntaxNode Node)>();
         foreach (var path in changedFiles)
         {
-            if (!path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
+            if (!path.Absolute.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
             {
                 // A Razor file (.razor, .cshtml) has no declaration either walk can start from, so every test project
                 // that depends on its project runs whole.
                 foreach (var owner in graph.OwnersOf(path))
-                    walk.SelectDependentsWhole(owner, $"{Path.GetFileName(path)} changed");
+                    walk.SelectDependentsWhole(owner, $"{path.FileName} changed");
                 continue;
             }
 
@@ -65,7 +65,7 @@ internal sealed class TestSelector
         // The projects the seeds selected whole start the class-level answer, and a whole selection from the type walk
         // replaces theirs. The type walk's methods add nothing to a whole project.
         var seededWhole = walk.Selections.Where(s => s.Value is TestSelection.Whole).ToList();
-        var classLevel = new Dictionary<string, TestSelection>(seededWhole, PathRules.PathComparer);
+        var classLevel = new Dictionary<RepoPath, TestSelection>(seededWhole);
         foreach (var (path, selection) in await _types.SelectAsync(coneProjects, seeds, cancellationToken).ConfigureAwait(false))
         {
             if (selection is TestSelection.Whole || !classLevel.ContainsKey(path))
@@ -89,7 +89,7 @@ internal sealed class TestSelector
 
         // A project the seeds selected whole reports the class-level answer's reason, so the summary gives the same
         // reason for it whichever answer is returned.
-        var memberLevel = new Dictionary<string, TestSelection>(walk.Selections, PathRules.PathComparer);
+        var memberLevel = new Dictionary<RepoPath, TestSelection>(walk.Selections);
         foreach (var (path, _) in seededWhole)
             memberLevel[path] = classLevel[path];
         return memberLevel;

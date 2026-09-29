@@ -19,7 +19,7 @@ internal sealed class ChangeTracker : IDisposable
     private readonly HeadResolver _head;
     private readonly WatchedPaths _watched;
     private readonly GitBlobReader _blobs;
-    private readonly HashSet<string> _changed = new(PathRules.PathComparer);
+    private readonly HashSet<RepoPath> _changed = [];
 
     public ChangeTracker(RepoRoot root)
         : this(root, new WatchedPaths(root))
@@ -38,8 +38,8 @@ internal sealed class ChangeTracker : IDisposable
     /// <summary>The commit the baseline is taken from, or null in a repository without commits.</summary>
     public string? Head { get; private set; }
 
-    /// <summary>Absolute paths of C# and Razor files that differ from HEAD, including deleted ones.</summary>
-    public IReadOnlyCollection<string> Changed => _changed;
+    /// <summary>The C# and Razor files that differ from HEAD, including deleted ones.</summary>
+    public IReadOnlyCollection<RepoPath> Changed => _changed;
 
     /// <summary>Reads git state and starts watching. Call once before <see cref="SyncAsync"/>.</summary>
     public async Task InitializeAsync(CancellationToken cancellationToken)
@@ -50,18 +50,18 @@ internal sealed class ChangeTracker : IDisposable
     }
 
     /// <summary>Folds every change seen since the last call into <see cref="Changed"/> and says how the workspace follows it.</summary>
-    /// <param name="knownPaths">Paths a hook reports as written, checked even if their watcher event has not arrived.</param>
+    /// <param name="knownPaths">Files a hook reports as written, checked even if their watcher event has not arrived.</param>
     /// <param name="cancellationToken">Cancels a reseed from git.</param>
-    public async Task<SyncResult> SyncAsync(IEnumerable<string> knownPaths, CancellationToken cancellationToken)
+    public async Task<SyncResult> SyncAsync(IEnumerable<RepoPath> knownPaths, CancellationToken cancellationToken)
     {
         var head = await _head.ResolveAsync(Head, cancellationToken).ConfigureAwait(false);
         var headMoved = !string.Equals(head, Head, StringComparison.Ordinal);
         var watched = _watched.Drain();
-        var paths = new HashSet<string>(watched.Sources, PathRules.PathComparer);
+        var paths = new HashSet<RepoPath>(watched.Sources);
         foreach (var path in knownPaths)
         {
-            if (PathRules.IsSource(path))
-                paths.Add(Path.GetFullPath(path));
+            if (PathRules.IsSource(path.Absolute))
+                paths.Add(path);
         }
 
         // After HEAD moves or the watcher loses events, the reported paths are not the whole change, and past the limit
@@ -79,37 +79,34 @@ internal sealed class ChangeTracker : IDisposable
             if (watched.WatcherErrors.Count > 0)
                 return new SyncResult.Reevaluate(paths, "watcher error: " + watched.WatcherErrors[^1]);
             if (watched.ProjectFiles.Count > 0)
-                return new SyncResult.Reevaluate(paths, watched.ProjectFiles[^1]);
+                return new SyncResult.Reevaluate(paths, watched.ProjectFiles[^1].Absolute);
             return new SyncResult.Reload(paths, $"{reported} changed files");
         }
 
         foreach (var directory in watched.VanishedDirectories)
-        {
-            var prefix = directory.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
-            paths.UnionWith(_changed.Where(c => c.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)));
-        }
+            paths.UnionWith(_changed.Where(c => c.IsUnder(directory)));
 
         foreach (var path in paths)
             Refresh(path);
         return watched.ProjectFiles.Count > 0
-            ? new SyncResult.Reevaluate(paths, watched.ProjectFiles[^1])
+            ? new SyncResult.Reevaluate(paths, watched.ProjectFiles[^1].Absolute)
             : new SyncResult.Patch(paths, watched.VanishedDirectories);
     }
 
     /// <summary>Reads a file as it is at HEAD, or null when it does not exist there.</summary>
-    public byte[]? ReadHead(string absolutePath) => Head is null ? null : _blobs.Read(Head, _root.Relative(absolutePath));
+    public byte[]? ReadHead(RepoPath path) => Head is null ? null : _blobs.Read(Head, path.Relative);
 
     private async Task ReseedAsync(CancellationToken cancellationToken)
     {
         _changed.Clear();
         foreach (var path in await GitStatus.ChangedPathsAsync(_root, cancellationToken).ConfigureAwait(false))
         {
-            if (PathRules.IsSource(path) && !_watched.IsIgnored(path))
+            if (PathRules.IsSource(path.Absolute) && !_watched.IsIgnored(path))
                 _changed.Add(path);
         }
     }
 
-    private void Refresh(string path)
+    private void Refresh(RepoPath path)
     {
         if (_watched.IsIgnored(path))
             return;
@@ -119,14 +116,14 @@ internal sealed class ChangeTracker : IDisposable
             _changed.Remove(path);
     }
 
-    private bool DiffersFromHead(string path)
+    private bool DiffersFromHead(RepoPath path)
     {
         var atHead = ReadHead(path);
         byte[]? onDisk = null;
         try
         {
-            if (File.Exists(path))
-                onDisk = File.ReadAllBytes(path);
+            if (File.Exists(path.Absolute))
+                onDisk = File.ReadAllBytes(path.Absolute);
         }
         catch (IOException)
         {

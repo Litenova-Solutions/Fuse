@@ -57,7 +57,7 @@ internal sealed class Checker
     public async Task<CheckResult> CheckAsync(CheckScope scope, PhaseTimes phases, CancellationToken cancellationToken)
     {
         var syncing = phases.Start();
-        await _workspace.SyncAsync(_targets.NamedPaths(scope), cancellationToken).ConfigureAwait(false);
+        await _workspace.SyncAsync(TargetResolver.NamedPaths(scope), cancellationToken).ConfigureAwait(false);
         phases.Add(Phase.Sync, syncing);
 
         var targets = _targets.Resolve(scope);
@@ -76,7 +76,7 @@ internal sealed class Checker
 
         // Which targets have declaration changes (syntax only), then what those changes can reach.
         var diffing = phases.Start();
-        var changedTargets = new List<string>();
+        var changedTargets = new List<RepoPath>();
         foreach (var path in targets)
         {
             if (await _reach.HasDeclarationChangeAsync(path, cancellationToken).ConfigureAwait(false))
@@ -92,7 +92,7 @@ internal sealed class Checker
         if (changedIn.Count > 0)
         {
             dependents = changedIn.SelectMany(graph.DependentsOf).DistinctBy(p => p.Path)
-                .Where(p => !changedIn.Any(s => PathRules.PathComparer.Equals(s.Path, p.Path)))
+                .Where(p => !changedIn.Any(s => s.Path == p.Path))
                 .ToList();
             var loadingDependents = phases.Start();
             await _workspace.EnsureLoadedAsync(dependents, cancellationToken).ConfigureAwait(false);
@@ -116,13 +116,13 @@ internal sealed class Checker
             .OrderBy(d => d.Path, StringComparer.Ordinal).ThenBy(d => d.Line).ThenBy(d => d.Column)
             .ToList();
         var projects = ordered
-            .Select(d => graph.OwnersOf(root.Absolute(d.Path)) is [var owner, ..] ? owner.Name : null)
+            .Select(d => graph.OwnersOf(root.PathOf(d.Path)) is [var owner, ..] ? owner.Name : null)
             .OfType<string>()
             .Distinct()
             .ToArray();
         var (compilerMs, analyzerMs) = _introduced.TakeTimings();
         _workspace.Log($"check: binding {compilerMs} ms, analyzers {analyzerMs} ms (summed over files); {targets.Count} target(s) in {targetsMs} ms, {changedTargets.Count} with declaration changes, {filesChecked} file(s) bound, {timer.ElapsedMilliseconds} ms total{(wholeProjects ? ", whole projects" : "")}");
-        var (reported, causesLeftOut) = CauseLines.Attach([.. ordered.Take(MaxReported)], reach, root.Absolute, targets);
+        var (reported, causesLeftOut) = CauseLines.Attach([.. ordered.Take(MaxReported)], reach, root, targets);
         return new CheckResult(
             reported,
             filesChecked,
@@ -133,6 +133,6 @@ internal sealed class Checker
             causesLeftOut);
     }
 
-    private static List<ProjectNode> OwnersOf(RepoGraph graph, IEnumerable<string> paths) =>
+    private static List<ProjectNode> OwnersOf(RepoGraph graph, IEnumerable<RepoPath> paths) =>
         paths.SelectMany(graph.OwnersOf).DistinctBy(p => p.Path).ToList();
 }

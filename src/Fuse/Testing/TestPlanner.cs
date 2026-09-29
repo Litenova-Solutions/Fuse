@@ -52,13 +52,13 @@ internal sealed class TestPlanner
         var timer = Stopwatch.StartNew();
         var selections = await _selector.SelectAsync(changed, cancellationToken).ConfigureAwait(false);
         phases.Add(Phase.Selection, timer);
-        _workspace.Log($"test plan: selection in {timer.ElapsedMilliseconds} ms: {string.Join("; ", selections.Select(s => $"{Path.GetFileNameWithoutExtension(s.Key)} {Describe(s.Value)}"))}");
+        _workspace.Log($"test plan: selection in {timer.ElapsedMilliseconds} ms: {string.Join("; ", selections.Select(s => $"{Path.GetFileNameWithoutExtension(s.Key.Absolute)} {Describe(s.Value)}"))}");
         var runs = new List<PlannedRun>();
         var selected = 0;
         var reasons = new HashSet<string>(StringComparer.Ordinal);
         var emitter = new ShadowEmitter(_workspace.Root, graph);
         var mirroring = phases.Start();
-        foreach (var (path, selection) in selections.OrderBy(s => s.Key, StringComparer.Ordinal))
+        foreach (var (path, selection) in selections.OrderBy(s => s.Key.Absolute, StringComparer.Ordinal))
         {
             var node = graph.Find(path);
             if (node is null)

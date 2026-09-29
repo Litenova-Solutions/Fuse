@@ -24,6 +24,9 @@ internal enum ErrorCode
     /// <summary>The engine did not answer in time.</summary>
     Timeout,
 
+    /// <summary>A request names a file by an empty string or by one that is not a valid path.</summary>
+    InvalidPath,
+
     /// <summary>An unexpected failure inside Fuse.</summary>
     Internal,
 }

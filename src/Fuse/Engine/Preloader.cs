@@ -1,5 +1,6 @@
 using Fuse.Failures;
 using Fuse.Graph;
+using Fuse.Paths;
 using Fuse.Telemetry;
 using Fuse.Workspace;
 
@@ -16,7 +17,7 @@ internal sealed class Preloader
     private readonly RepoWorkspace _workspace;
     private readonly SemaphoreSlim _gate;
     private readonly EngineLog _log;
-    private readonly HashSet<string> _failed = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<RepoPath> _failed = [];
     private Task _running = Task.CompletedTask;
 
     /// <param name="workspace">The workspace the projects load into.</param>

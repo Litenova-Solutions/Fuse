@@ -10,20 +10,20 @@ namespace Fuse.Testing;
 /// <summary>Counts test methods by parsing test project sources, so the summary can say "38 of 2,914" without discovery.</summary>
 internal sealed class TestCounter
 {
-    private readonly Dictionary<string, (DateTime Stamp, List<string> Tests)> _cache = new(PathRules.PathComparer);
+    private readonly Dictionary<RepoPath, (DateTime Stamp, List<string> Tests)> _cache = [];
 
     /// <summary>Fully qualified names (<c>Ns.Outer+Inner.Method</c>) of the test methods in <paramref name="project"/>.</summary>
     public IReadOnlyList<string> TestsIn(ProjectNode project)
     {
         var result = new List<string>();
-        foreach (var file in project.Sources.Where(s => s.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)))
+        foreach (var file in project.Sources.Where(s => s.Absolute.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)))
         {
-            if (!File.Exists(file))
+            if (!File.Exists(file.Absolute))
                 continue;
-            var stamp = File.GetLastWriteTimeUtc(file);
+            var stamp = File.GetLastWriteTimeUtc(file.Absolute);
             if (!_cache.TryGetValue(file, out var entry) || entry.Stamp != stamp)
             {
-                entry = (stamp, Parse(file));
+                entry = (stamp, Parse(file.Absolute));
                 _cache[file] = entry;
             }
 

@@ -10,9 +10,9 @@ namespace Fuse.Repo;
 /// </summary>
 internal static class GitStatus
 {
-    /// <summary>Absolute paths of every file git reports as modified, added, deleted or untracked. Ignored files are left out.</summary>
+    /// <summary>Every file git reports as modified, added, deleted or untracked. Ignored files are left out.</summary>
     /// <exception cref="FuseException">git status fails.</exception>
-    public static async Task<IReadOnlyList<string>> ChangedPathsAsync(RepoRoot root, CancellationToken cancellationToken)
+    public static async Task<IReadOnlyList<RepoPath>> ChangedPathsAsync(RepoRoot root, CancellationToken cancellationToken)
     {
         // -z gives one NUL-separated record per change with the path exactly as it is on disk. Without it git C-quotes a
         // path that holds a quote, a backslash or a control character, and the two are not the same string: the path is
@@ -24,7 +24,7 @@ internal static class GitStatus
             cancellationToken).ConfigureAwait(false);
         if (result.ExitCode != 0)
             throw HeadResolver.GitFailure(root, "git status", result);
-        return [.. Paths(result.Output).Select(p => Path.GetFullPath(Path.Combine(root.Path, p)))];
+        return [.. Paths(result.Output).Select(root.PathOf)];
     }
 
     /// <summary>The repository-relative path in each record of <c>git status --porcelain=v1 -z</c> output.</summary>

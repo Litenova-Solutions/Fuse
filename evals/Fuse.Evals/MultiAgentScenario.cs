@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 using Fuse.Dotnet;
+using Fuse.Telemetry;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -149,7 +150,7 @@ internal static partial class MultiAgentScenario
             var ms = watch.Elapsed.TotalMilliseconds;
             var phases = RequestPhases.TakeNewest(repo.EngineLogLines(), taken);
             // A request with no gate phase did not wait for the gate at all; it is not a zero-length wait.
-            double? gate = phases is not null && phases.Phases.TryGetValue("gate", out var waited) ? waited : null;
+            double? gate = phases is not null && phases.Phases.TryGetValue(Phase.Gate, out var waited) ? waited : null;
             report(ms, gate, phases?.Total, run.ExitCode is 0 or 1, run.ExitCode == 2);
         }
     }

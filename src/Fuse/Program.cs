@@ -3,7 +3,7 @@ using Fuse.Cli;
 using Fuse.Engine;
 using Fuse.Hooks;
 using Fuse.Mcp;
-using Fuse.Repo;
+using Fuse.Paths;
 
 namespace Fuse;
 

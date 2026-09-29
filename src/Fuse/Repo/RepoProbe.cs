@@ -1,4 +1,5 @@
 using Fuse.Dotnet;
+using Fuse.Paths;
 
 namespace Fuse.Repo;
 

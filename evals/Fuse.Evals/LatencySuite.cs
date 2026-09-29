@@ -1,3 +1,4 @@
+using Fuse.Telemetry;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -89,7 +90,7 @@ internal static class LatencySuite
         var cleanPhases = PhaseReport.Build(cleanCalls);
         var testPhases = PhaseReport.Build(testCalls);
         // The writers scenario compares the queue against one client on its own, which is the body-edit total above.
-        var multiAgent = await MultiAgentScenario.RunAsync(repo, solution, bodyPhases.Phases.GetValueOrDefault("total")?.P50 ?? 0);
+        var multiAgent = await MultiAgentScenario.RunAsync(repo, solution, bodyPhases.Phases.GetValueOrDefault(Phase.Total)?.P50 ?? 0);
         var summary = new
         {
             suite = "latency",

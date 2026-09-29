@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using Fuse.Paths;
 using Fuse.Workspace;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -154,7 +155,7 @@ internal sealed class ChangeReach
         foreach (var change in changed.GroupBy(c => c.Symbol, SymbolEqualityComparer.Default).Select(g => g.First()))
         {
             // A copy: the reference set is cached, and the implementations and overrides below are added to this one.
-            var files = new HashSet<string>(await ReferencingFilesAsync(change.Symbol, reachKey, baseline, baselineDocuments, cancellationToken).ConfigureAwait(false), Fuse.Repo.ChangeTracker.PathComparer);
+            var files = new HashSet<string>(await ReferencingFilesAsync(change.Symbol, reachKey, baseline, baselineDocuments, cancellationToken).ConfigureAwait(false), PathRules.PathComparer);
             if (change.Implemented)
             {
                 files.UnionWith(Declarations(await SymbolFinder.FindImplementationsAsync(change.Symbol, baseline, baselineProjects, cancellationToken).ConfigureAwait(false)));
@@ -194,7 +195,7 @@ internal sealed class ChangeReach
         if (_cache.TryGetValue(key, out var cached))
             return cached;
         var references = await SymbolFinder.FindReferencesAsync(symbol, baseline, documents, cancellationToken).ConfigureAwait(false);
-        var files = new HashSet<string>(Fuse.Repo.ChangeTracker.PathComparer);
+        var files = new HashSet<string>(PathRules.PathComparer);
         foreach (var location in references.SelectMany(r => r.Locations))
         {
             if (location.Document.FilePath is { } file)

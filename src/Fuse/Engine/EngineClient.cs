@@ -1,8 +1,9 @@
 using System.IO.Pipes;
 using System.Text;
+using Fuse.Failures;
+using Fuse.Paths;
 using Fuse.Protocol;
 using Fuse.Repo;
-using Fuse.Workspace;
 
 namespace Fuse.Engine;
 

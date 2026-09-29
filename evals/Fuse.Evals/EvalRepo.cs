@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 using Fuse.Dotnet;
-using Fuse.Repo;
+using Fuse.Paths;
 
 namespace Fuse.Evals;
 
@@ -68,7 +68,7 @@ internal sealed partial class EvalRepo
 
     /// <summary>
     ///     The engine log this repository's engine writes, read as lines with the leading timestamp stripped, so a caller
-    ///     can match them against the formats in <see cref="Fuse.Engine.PhaseLine"/>. The engine is the only writer and
+    ///     can match them against the formats in <see cref="Fuse.Telemetry.PhaseLine"/>. The engine is the only writer and
     ///     it is idle between requests, so a read cannot catch a line half-written.
     /// </summary>
     public IReadOnlyList<string> EngineLogLines()

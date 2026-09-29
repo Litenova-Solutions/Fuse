@@ -1,5 +1,5 @@
 using System.Collections.Concurrent;
-using Fuse.Repo;
+using Fuse.Paths;
 using Microsoft.CodeAnalysis;
 using RoslynDiagnostic = Microsoft.CodeAnalysis.Diagnostic;
 using FuseDiagnostic = Fuse.Protocol.Diagnostic;
@@ -15,7 +15,7 @@ internal sealed class DiagnosticCollector
 {
     private readonly RepoRoot _root;
     private readonly AnalyzerSelector _analyzers;
-    private readonly ConcurrentDictionary<string, IReadOnlyList<FuseDiagnostic>> _baselineCache = new(ChangeTracker.PathComparer);
+    private readonly ConcurrentDictionary<string, IReadOnlyList<FuseDiagnostic>> _baselineCache = new(PathRules.PathComparer);
     private int _cachedGeneration = -1;
 
     private long _compilerTicks;

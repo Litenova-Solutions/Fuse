@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Fuse.Repo;
+namespace Fuse.Paths;
 
 /// <summary>
 ///     The canonical root of a git repository: the nearest ancestor holding <c>.git</c>, resolved through

@@ -1,5 +1,5 @@
 using Fuse.Graph;
-using Fuse.Repo;
+using Fuse.Paths;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -8,7 +8,7 @@ namespace Fuse.Testing;
 /// <summary>Counts test methods by parsing test project sources, so the scope line can say "38 of 2,914" without discovery.</summary>
 internal sealed class TestCounter
 {
-    private readonly Dictionary<string, (DateTime Stamp, List<string> Tests)> _cache = new(ChangeTracker.PathComparer);
+    private readonly Dictionary<string, (DateTime Stamp, List<string> Tests)> _cache = new(PathRules.PathComparer);
 
     /// <summary>Fully qualified names (<c>Ns.Outer+Inner.Method</c>) of the test methods in <paramref name="project"/>.</summary>
     public IReadOnlyList<string> TestsIn(ProjectNode project)

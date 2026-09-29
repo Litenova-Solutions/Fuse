@@ -1,4 +1,4 @@
-using Fuse.Engine;
+using Fuse.Telemetry;
 
 namespace Fuse.Evals;
 
@@ -9,7 +9,7 @@ namespace Fuse.Evals;
 internal sealed record RequestPhases(string RequestId, string Kind, Dictionary<string, double> Phases)
 {
     /// <summary>The engine's own total for the request, or null when the line carries none.</summary>
-    public double? Total => Phases.GetValueOrDefault("total");
+    public double? Total => Phases.GetValueOrDefault(Phase.Total);
 
     /// <summary>
     ///     The line for the newest phase line whose id is not in <paramref name="seen"/>, or null when the engine wrote

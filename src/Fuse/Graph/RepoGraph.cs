@@ -1,7 +1,6 @@
 using Fuse.Dotnet;
-using Fuse.Protocol;
-using Fuse.Repo;
-using Fuse.Workspace;
+using Fuse.Failures;
+using Fuse.Paths;
 using Microsoft.Build.Evaluation;
 using Microsoft.Build.Exceptions;
 
@@ -24,9 +23,9 @@ internal sealed class RepoGraph
     {
         Projects = projects;
         Failures = failures;
-        _byPath = projects.ToDictionary(p => p.Path, ChangeTracker.PathComparer);
-        _owners = new Dictionary<string, List<ProjectNode>>(ChangeTracker.PathComparer);
-        _directDependents = projects.ToDictionary(p => p.Path, _ => new List<ProjectNode>(), ChangeTracker.PathComparer);
+        _byPath = projects.ToDictionary(p => p.Path, PathRules.PathComparer);
+        _owners = new Dictionary<string, List<ProjectNode>>(PathRules.PathComparer);
+        _directDependents = projects.ToDictionary(p => p.Path, _ => new List<ProjectNode>(), PathRules.PathComparer);
         foreach (var project in projects)
         {
             foreach (var source in project.Sources)
@@ -56,7 +55,7 @@ internal sealed class RepoGraph
     {
         if (_owners.TryGetValue(path, out var owners))
             return owners;
-        if (!ChangeTracker.IsSource(path))
+        if (!PathRules.IsSource(path))
             return [];
         ProjectNode? best = null;
         foreach (var project in Projects)
@@ -68,14 +67,14 @@ internal sealed class RepoGraph
         }
 
         // A new file belongs to the deepest project directory holding it, unless it sits in build output.
-        return best is null || ChangeTracker.IsBuildOutput(best.Directory, path) ? [] : [best];
+        return best is null || PathRules.IsBuildOutput(best.Directory, path) ? [] : [best];
     }
 
     /// <summary>Every project that references <paramref name="project"/>, directly or transitively.</summary>
     public IReadOnlyList<ProjectNode> DependentsOf(ProjectNode project)
     {
         var result = new List<ProjectNode>();
-        var seen = new HashSet<string>(ChangeTracker.PathComparer) { project.Path };
+        var seen = new HashSet<string>(PathRules.PathComparer) { project.Path };
         var queue = new Queue<ProjectNode>([project]);
         while (queue.Count > 0)
         {
@@ -96,7 +95,7 @@ internal sealed class RepoGraph
     public IReadOnlyList<ProjectNode> ClosureOf(ProjectNode project)
     {
         var result = new List<ProjectNode>();
-        var seen = new HashSet<string>(ChangeTracker.PathComparer);
+        var seen = new HashSet<string>(PathRules.PathComparer);
         var stack = new Stack<ProjectNode>([project]);
         while (stack.Count > 0)
         {
@@ -129,7 +128,7 @@ internal sealed class RepoGraph
         var paths = listing.Output.Split('\0', StringSplitOptions.RemoveEmptyEntries)
             .Select(p => System.IO.Path.GetFullPath(System.IO.Path.Combine(root.Path, p)))
             .Where(File.Exists)
-            .Distinct(ChangeTracker.PathComparer)
+            .Distinct(PathRules.PathComparer)
             .ToList();
 
         MsBuildSetup.EnsureRegistered();
@@ -201,10 +200,10 @@ internal sealed class RepoGraph
         var dir = project.DirectoryPath;
         string Full(string include) => System.IO.Path.GetFullPath(System.IO.Path.Combine(dir, include));
 
-        var sources = new HashSet<string>(ChangeTracker.PathComparer);
-        var references = new HashSet<string>(ChangeTracker.PathComparer);
+        var sources = new HashSet<string>(PathRules.PathComparer);
+        var references = new HashSet<string>(PathRules.PathComparer);
         var packages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var inputs = new HashSet<string>(ChangeTracker.PathComparer) { project.FullPath };
+        var inputs = new HashSet<string>(PathRules.PathComparer) { project.FullPath };
         var isTestProperty = false;
         var isTestingPlatformApplication = false;
         foreach (var evaluation in evaluations)
@@ -215,7 +214,7 @@ internal sealed class RepoGraph
             {
                 foreach (var item in evaluation.GetItems(itemType))
                 {
-                    if (ChangeTracker.IsSource(item.EvaluatedInclude))
+                    if (PathRules.IsSource(item.EvaluatedInclude))
                         sources.Add(Full(item.EvaluatedInclude));
                 }
             }

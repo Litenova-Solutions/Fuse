@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using Fuse.Dotnet;
-using Fuse.Protocol;
-using Fuse.Workspace;
+using Fuse.Failures;
+using Fuse.Paths;
 
 namespace Fuse.Repo;
 
@@ -28,15 +28,12 @@ internal sealed class ChangeTracker : IDisposable
 {
     private const int StormThreshold = 300;
 
-    private static readonly string[] SourceExtensions = [".cs", ".razor", ".cshtml"];
-    private static readonly string[] ProjectExtensions = [".csproj", ".props", ".targets", ".editorconfig", ".globalconfig"];
-
     private readonly RepoRoot _root;
     private readonly GitHead _gitHead;
     private readonly GitBlobReader _blobs;
-    private readonly ConcurrentDictionary<string, byte> _dirty = new(PathComparer);
-    private readonly ConcurrentDictionary<string, byte> _structural = new(PathComparer);
-    private readonly HashSet<string> _changed = new(PathComparer);
+    private readonly ConcurrentDictionary<string, byte> _dirty = new(PathRules.PathComparer);
+    private readonly ConcurrentDictionary<string, byte> _structural = new(PathRules.PathComparer);
+    private readonly HashSet<string> _changed = new(PathRules.PathComparer);
     private FileSystemWatcher? _watcher;
     private volatile bool _overflow;
     private volatile bool _projectFilesDirty;
@@ -48,9 +45,6 @@ internal sealed class ChangeTracker : IDisposable
         _gitHead = new GitHead(root.Path);
         _blobs = new GitBlobReader(root.Path);
     }
-
-    /// <summary>Compares paths the way the file system does.</summary>
-    public static StringComparer PathComparer => OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
 
     /// <summary>The commit the baseline is taken from, or null in a repository without commits.</summary>
     public string? Head { get; private set; }
@@ -97,7 +91,7 @@ internal sealed class ChangeTracker : IDisposable
         var projectFiles = _projectFilesDirty;
         _projectFilesDirty = false;
 
-        var paths = new HashSet<string>(PathComparer);
+        var paths = new HashSet<string>(PathRules.PathComparer);
         foreach (var key in _dirty.Keys)
         {
             if (_dirty.TryRemove(key, out _))
@@ -106,7 +100,7 @@ internal sealed class ChangeTracker : IDisposable
 
         foreach (var path in knownPaths)
         {
-            if (IsSource(path))
+            if (PathRules.IsSource(path))
                 paths.Add(Path.GetFullPath(path));
         }
 
@@ -127,7 +121,7 @@ internal sealed class ChangeTracker : IDisposable
         if (headMoved || overflow || paths.Count > StormThreshold)
         {
             Head = head;
-            var before = new HashSet<string>(_changed, PathComparer);
+            var before = new HashSet<string>(_changed, PathRules.PathComparer);
             await ReseedAsync(cancellationToken).ConfigureAwait(false);
             before.UnionWith(_changed);
             before.UnionWith(paths);
@@ -205,7 +199,7 @@ internal sealed class ChangeTracker : IDisposable
             if (record.Length < 4)
                 continue;
             var absolute = Path.GetFullPath(Path.Combine(_root.Path, record[3..]));
-            if (IsSource(absolute) && !IsIgnoredDirectory(absolute))
+            if (PathRules.IsSource(absolute) && !IsIgnoredDirectory(absolute))
                 _changed.Add(absolute);
         }
     }
@@ -215,7 +209,7 @@ internal sealed class ChangeTracker : IDisposable
         try
         {
             return Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories)
-                .Where(f => IsSource(f) && !IsIgnoredDirectory(f))
+                .Where(f => PathRules.IsSource(f) && !IsIgnoredDirectory(f))
                 .ToList();
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
@@ -289,9 +283,9 @@ internal sealed class ChangeTracker : IDisposable
     {
         if (IsIgnoredDirectory(fullPath))
             return;
-        if (IsSource(fullPath))
+        if (PathRules.IsSource(fullPath))
             _dirty[fullPath] = 0;
-        else if (IsProjectFile(fullPath))
+        else if (PathRules.IsProjectFile(fullPath))
         {
             _trigger = fullPath;
             _projectFilesDirty = true;
@@ -302,27 +296,6 @@ internal sealed class ChangeTracker : IDisposable
             // listing changed; the files in it report themselves.)
             _structural[fullPath] = 0;
         }
-    }
-
-    /// <summary>True for files the compiler reads as sources: C#, Razor components and Razor views.</summary>
-    public static bool IsSource(string path) =>
-        SourceExtensions.Any(e => path.EndsWith(e, StringComparison.OrdinalIgnoreCase));
-
-    /// <summary>True for files that change how projects evaluate.</summary>
-    public static bool IsProjectFile(string path)
-    {
-        var name = Path.GetFileName(path);
-        return ProjectExtensions.Any(e => name.EndsWith(e, StringComparison.OrdinalIgnoreCase))
-               || name.Equals("global.json", StringComparison.OrdinalIgnoreCase)
-               || name.Equals("packages.lock.json", StringComparison.OrdinalIgnoreCase);
-    }
-
-    /// <summary>True when <paramref name="path"/> lies in a <c>bin</c> or <c>obj</c> folder under <paramref name="directory"/>.</summary>
-    public static bool IsBuildOutput(string directory, string path)
-    {
-        var relative = Path.GetRelativePath(directory, path);
-        return relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-            .Any(s => s.Equals("bin", StringComparison.OrdinalIgnoreCase) || s.Equals("obj", StringComparison.OrdinalIgnoreCase));
     }
 
     private bool IsIgnoredDirectory(string path)

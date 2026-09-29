@@ -1,7 +1,7 @@
-using Fuse.Engine;
 using Fuse.Graph;
+using Fuse.Paths;
 using Fuse.Protocol;
-using Fuse.Repo;
+using Fuse.Telemetry;
 using Fuse.Workspace;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -48,39 +48,39 @@ internal sealed class Checker
 
     /// <summary>Runs a check.</summary>
     /// <param name="files">Files to scope to (the ones just edited), or null for every change since HEAD.</param>
-    /// <param name="phases">Collects how long each phase of this check took; null collects nothing.</param>
+    /// <param name="phases">Collects how long each phase of this check took; <see cref="PhaseTimes.None"/> collects nothing.</param>
     /// <param name="cancellationToken">Cancels the check.</param>
-    public async Task<CheckReport> CheckAsync(IReadOnlyCollection<string>? files, PhaseTimes? phases, CancellationToken cancellationToken)
+    public async Task<CheckReport> CheckAsync(IReadOnlyCollection<string>? files, PhaseTimes phases, CancellationToken cancellationToken)
     {
         var root = _workspace.Root;
         var known = files?.Select(root.Absolute).ToList() ?? [];
-        var syncing = PhaseTimes.Start(phases);
+        var syncing = phases.Start();
         await _workspace.SyncAsync(known, cancellationToken).ConfigureAwait(false);
-        PhaseTimes.Add(phases, "sync", syncing);
+        phases.Add(Phase.Sync, syncing);
 
         var graph = _workspace.Graph;
         var targets = (files is null ? _workspace.Tracker.Changed : known)
-            .Where(ChangeTracker.IsSource)
-            .Distinct(ChangeTracker.PathComparer)
+            .Where(PathRules.IsSource)
+            .Distinct(PathRules.PathComparer)
             .Where(p => graph.OwnersOf(p).Count > 0)
             .ToList();
         if (targets.Count == 0)
             return new CheckReport([], 0, [], [], 0, false);
 
         var owners = targets.SelectMany(graph.OwnersOf).DistinctBy(p => p.Path).ToList();
-        var loading = PhaseTimes.Start(phases);
+        var loading = phases.Start();
         await _workspace.EnsureLoadedAsync(owners, cancellationToken).ConfigureAwait(false);
-        PhaseTimes.Add(phases, "load", loading);
+        phases.Add(Phase.Load, loading);
 
         var introduced = new List<Diagnostic>();
         var timer = System.Diagnostics.Stopwatch.StartNew();
         introduced.AddRange(await IntroducedInFilesAsync(targets, cancellationToken).ConfigureAwait(false));
         var targetsMs = timer.ElapsedMilliseconds;
-        PhaseTimes.Add(phases, "bindTargets", timer);
+        phases.Add(Phase.BindTargets, timer);
         var filesChecked = targets.Count;
 
         // Which owning projects have declaration changes (syntax only), then what those changes can reach.
-        var diffing = PhaseTimes.Start(phases);
+        var diffing = phases.Start();
         var surfaceTargets = new List<string>();
         foreach (var path in targets)
         {
@@ -88,7 +88,7 @@ internal sealed class Checker
                 surfaceTargets.Add(path);
         }
 
-        PhaseTimes.Add(phases, "surfaceDiff", diffing);
+        phases.Add(Phase.SurfaceDiff, diffing);
         var surfaceProjects = surfaceTargets.SelectMany(graph.OwnersOf).DistinctBy(p => p.Path).ToList();
         var dependents = new List<ProjectNode>();
         var wholeProjects = false;
@@ -96,24 +96,24 @@ internal sealed class Checker
         if (surfaceProjects.Count > 0)
         {
             dependents = surfaceProjects.SelectMany(graph.DependentsOf).DistinctBy(p => p.Path)
-                .Where(p => !surfaceProjects.Any(s => ChangeTracker.PathComparer.Equals(s.Path, p.Path)))
+                .Where(p => !surfaceProjects.Any(s => PathRules.PathComparer.Equals(s.Path, p.Path)))
                 .ToList();
-            var loadingDependents = PhaseTimes.Start(phases);
+            var loadingDependents = phases.Start();
             await _workspace.EnsureLoadedAsync(dependents, cancellationToken).ConfigureAwait(false);
-            PhaseTimes.Add(phases, "load", loadingDependents);
+            phases.Add(Phase.Load, loadingDependents);
 
             var reachNodes = surfaceProjects.Concat(dependents).ToList();
             var reach = reachNodes.SelectMany(n => RepoWorkspace.ProjectsFor(_workspace.Current, n)).ToList();
-            var targetSet = new HashSet<string>(targets, ChangeTracker.PathComparer);
-            var searching = PhaseTimes.Start(phases);
+            var targetSet = new HashSet<string>(targets, PathRules.PathComparer);
+            var searching = phases.Start();
             provenance = await _reach.ProvenanceAsync(surfaceTargets, reach, cancellationToken).ConfigureAwait(false);
-            PhaseTimes.Add(phases, "referenceSearch", searching);
+            phases.Add(Phase.ReferenceSearch, searching);
             var candidates = provenance is null
-                ? reach.SelectMany(p => p.Documents).Select(d => d.FilePath).OfType<string>().Distinct(ChangeTracker.PathComparer).ToList()
+                ? reach.SelectMany(p => p.Documents).Select(d => d.FilePath).OfType<string>().Distinct(PathRules.PathComparer).ToList()
                 : [.. provenance.Files];
             candidates.RemoveAll(targetSet.Contains);
 
-            var binding = PhaseTimes.Start(phases);
+            var binding = phases.Start();
             if (candidates.Count > WholeProjectThreshold)
             {
                 wholeProjects = true;
@@ -127,7 +127,7 @@ internal sealed class Checker
                 filesChecked += candidates.Count;
             }
 
-            PhaseTimes.Add(phases, "bindCandidates", binding);
+            phases.Add(Phase.BindCandidates, binding);
         }
 
         var ordered = introduced.Distinct()

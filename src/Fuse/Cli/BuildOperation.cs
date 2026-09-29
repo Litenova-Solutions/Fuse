@@ -1,6 +1,6 @@
 using System.Text;
 using Fuse.Dotnet;
-using Fuse.Repo;
+using Fuse.Paths;
 
 namespace Fuse.Cli;
 

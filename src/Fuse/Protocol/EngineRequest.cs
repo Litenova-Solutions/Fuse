@@ -1,3 +1,5 @@
+using Fuse.Failures;
+
 namespace Fuse.Protocol;
 
 /// <summary>One request from a client to the engine. Each pipe connection carries exactly one.</summary>

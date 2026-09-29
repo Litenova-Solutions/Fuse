@@ -1,3 +1,4 @@
+using Fuse.Telemetry;
 using Fuse.Testing;
 using Fuse.Tests.Fixtures;
 
@@ -81,7 +82,7 @@ public class TestSelectionTests
         await using var engine = await EngineHarness.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
         await Task.Delay(400, TestContext.Current.CancellationToken);
-        var plan = await engine.Planner.PlanAsync(all: false, null, TestContext.Current.CancellationToken);
+        var plan = await engine.Planner.PlanAsync(all: false, PhaseTimes.None, TestContext.Current.CancellationToken);
         var run = Assert.Single(plan.Runs);
         Assert.Equal("Lib.Tests", run.Name);
         Assert.NotNull(run.ShadowAssembly);
@@ -98,7 +99,7 @@ public class TestSelectionTests
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
         engine.Repo.Write("Lib/data.json", "{}");
         await Task.Delay(400, TestContext.Current.CancellationToken);
-        var plan = await engine.Planner.PlanAsync(all: false, null, TestContext.Current.CancellationToken);
+        var plan = await engine.Planner.PlanAsync(all: false, PhaseTimes.None, TestContext.Current.CancellationToken);
         Assert.Null(Assert.Single(plan.Runs).ShadowAssembly);
     }
 
@@ -106,10 +107,10 @@ public class TestSelectionTests
     public async Task Plan_with_no_changes_runs_nothing()
     {
         await using var engine = await EngineHarness.StartAsync();
-        var plan = await engine.Planner.PlanAsync(all: false, null, TestContext.Current.CancellationToken);
+        var plan = await engine.Planner.PlanAsync(all: false, PhaseTimes.None, TestContext.Current.CancellationToken);
         Assert.Empty(plan.Runs);
         Assert.Contains("no C# changes", plan.Scope, StringComparison.Ordinal);
-        var all = await engine.Planner.PlanAsync(all: true, null, TestContext.Current.CancellationToken);
+        var all = await engine.Planner.PlanAsync(all: true, PhaseTimes.None, TestContext.Current.CancellationToken);
         Assert.Equal(2, all.Runs.Length);
         Assert.All(all.Runs, r => Assert.Null(r.Filter));
     }

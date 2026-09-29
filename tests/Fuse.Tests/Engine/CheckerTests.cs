@@ -1,5 +1,5 @@
 using Fuse.Check;
-using Fuse.Protocol;
+using Fuse.Failures;
 using Fuse.Tests.Fixtures;
 using Fuse.Workspace;
 
@@ -297,7 +297,7 @@ public class CheckerTests
         await using var engine = await EngineHarness.StartAsync();
         File.Delete(engine.Repo.Full("Lib/obj/project.assets.json"));
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
-        var error = await Assert.ThrowsAsync<Fuse.Workspace.FuseException>(() => engine.CheckAsync("Lib/Calc.cs"));
+        var error = await Assert.ThrowsAsync<FuseException>(() => engine.CheckAsync("Lib/Calc.cs"));
         Assert.Equal(ErrorCode.RestoreNeeded, error.Code);
         Assert.Contains("dotnet restore Lib/Lib.csproj", error.Message, StringComparison.Ordinal);
     }

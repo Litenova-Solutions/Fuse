@@ -2,8 +2,8 @@ using System.Diagnostics;
 using System.IO.Pipes;
 using System.Text;
 using Fuse.Engine;
+using Fuse.Paths;
 using Fuse.Protocol;
-using Fuse.Repo;
 
 namespace Fuse.Tests.EndToEnd;
 

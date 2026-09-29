@@ -1,7 +1,8 @@
 using System.Text;
 using Fuse.Engine;
+using Fuse.Failures;
+using Fuse.Paths;
 using Fuse.Protocol;
-using Fuse.Repo;
 
 namespace Fuse.Cli;
 

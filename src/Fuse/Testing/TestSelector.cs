@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 using Fuse.Graph;
-using Fuse.Repo;
+using Fuse.Paths;
 using Fuse.Workspace;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -48,7 +48,7 @@ internal sealed class TestSelector
     public async Task<Dictionary<string, ProjectSelection>> SelectAsync(IReadOnlyList<string> changedFiles, CancellationToken cancellationToken)
     {
         var graph = _workspace.Graph;
-        var result = new Dictionary<string, ProjectSelection>(ChangeTracker.PathComparer);
+        var result = new Dictionary<string, ProjectSelection>(PathRules.PathComparer);
         var changedProjects = changedFiles.SelectMany(graph.OwnersOf).DistinctBy(p => p.Path).ToList();
         var cone = changedProjects.Concat(changedProjects.SelectMany(graph.DependentsOf)).DistinctBy(p => p.Path).ToList();
         if (!cone.Any(p => p.IsTest))
@@ -77,7 +77,7 @@ internal sealed class TestSelector
         // The class-level answer from the type graph costs milliseconds. The member-level walk only refines it, and
         // it costs a reference search per symbol, so it runs only when the class-level answer is small enough for
         // the refinement to matter and the walk to finish.
-        var classLevel = new Dictionary<string, ProjectSelection>(ChangeTracker.PathComparer);
+        var classLevel = new Dictionary<string, ProjectSelection>(PathRules.PathComparer);
         foreach (var (path, selection) in result.Where(r => r.Value.All))
             classLevel[path] = selection;
         await SelectByTypeGraphAsync(coneProjects, seeds, classLevel, cancellationToken).ConfigureAwait(false);

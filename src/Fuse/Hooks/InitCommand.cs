@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Fuse.Paths;
 using Fuse.Repo;
 
 namespace Fuse.Hooks;

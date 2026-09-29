@@ -1,4 +1,5 @@
 using Fuse.Engine;
+using Fuse.Telemetry;
 
 namespace Fuse.Tests.Unit;
 
@@ -75,10 +76,10 @@ public class PhaseLineTests
     public void A_check_records_its_phases_in_the_order_they_ran()
     {
         var phases = new PhaseTimes();
-        var first = PhaseTimes.Start(phases);
-        var second = PhaseTimes.Start(phases);
-        PhaseTimes.Add(phases, "sync", first);
-        PhaseTimes.Add(phases, "surfaceDiff", second);
+        var first = phases.Start();
+        var second = phases.Start();
+        phases.Add("sync", first);
+        phases.Add("surfaceDiff", second);
         phases.Add("total", 12.5);
 
         Assert.Equal(["sync", "surfaceDiff", "total"], phases.All.Select(p => p.Phase));
@@ -86,11 +87,13 @@ public class PhaseLineTests
     }
 
     [Fact]
-    public void A_null_collector_measures_nothing_and_does_not_throw()
+    public void The_none_collector_measures_nothing_and_does_not_throw()
     {
         // The engine always measures; the test harness does not, and the same code has to serve both.
-        Assert.Null(PhaseTimes.Start(null));
-        PhaseTimes.Add(null, "sync", PhaseTimes.Start(null));
-        PhaseTimes.Add(null, "sync", System.Diagnostics.Stopwatch.StartNew());
+        Assert.Null(PhaseTimes.None.Start());
+        PhaseTimes.None.Add("sync", PhaseTimes.None.Start());
+        PhaseTimes.None.Add("sync", System.Diagnostics.Stopwatch.StartNew());
+        PhaseTimes.None.Add("total", 12.5);
+        Assert.Empty(PhaseTimes.None.All);
     }
 }

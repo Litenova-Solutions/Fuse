@@ -3,8 +3,9 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Fuse.Cli;
+using Fuse.Failures;
+using Fuse.Paths;
 using Fuse.Protocol;
-using Fuse.Repo;
 
 namespace Fuse.Hooks;
 
@@ -109,7 +110,7 @@ internal static class HookCommand
 
     private static async Task<int> PostEditAsync(string harness, HookPayload payload, CancellationToken cancellationToken)
     {
-        var files = payload.EditedFiles().Where(ChangeTracker.IsSource).ToList();
+        var files = payload.EditedFiles().Where(PathRules.IsSource).ToList();
         if (files.Count == 0)
             return 0;
         var root = RepoRoot.Find(Path.GetDirectoryName(files[0])!);

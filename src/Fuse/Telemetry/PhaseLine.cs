@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text;
 
-namespace Fuse.Engine;
+namespace Fuse.Telemetry;
 
 /// <summary>
 ///     One line the engine writes per request, naming the request and how long each phase of it took:

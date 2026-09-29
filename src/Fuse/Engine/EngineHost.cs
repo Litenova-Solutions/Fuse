@@ -1,7 +1,9 @@
+using Fuse.Failures;
 using Fuse.Graph;
 using Fuse.Check;
+using Fuse.Paths;
 using Fuse.Protocol;
-using Fuse.Repo;
+using Fuse.Telemetry;
 using Fuse.Testing;
 using Fuse.Workspace;
 
@@ -92,7 +94,7 @@ internal sealed class EngineHost : IDisposable
         var phases = new PhaseTimes();
         var queued = System.Diagnostics.Stopwatch.StartNew();
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
-        PhaseTimes.Add(phases, "gate", queued);
+        phases.Add(Phase.Gate, queued);
         var started = Environment.TickCount64;
         try
         {
@@ -118,7 +120,7 @@ internal sealed class EngineHost : IDisposable
             _log.Write($"{request.Kind} {(request.Files is null ? "all" : string.Join(",", request.Files.Select(Path.GetFileName)))} took {took} ms");
             // One line per request, naming it and timing each phase, so a measurement can be matched to its own call.
             if (request.RequestId.Length > 0)
-                _log.Write(PhaseLine.Format(request.RequestId, request.Kind.ToString(), [.. phases.All, ("total", took)]));
+                _log.Write(PhaseLine.Format(request.RequestId, request.Kind.ToString(), [.. phases.All, (Phase.Total, took)]));
             _gate.Release();
             SchedulePreload();
         }

@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using Fuse.Repo;
+using Fuse.Paths;
 
 namespace Fuse.Tests.Fixtures;
 

@@ -1,7 +1,8 @@
 using System.Collections.Concurrent;
 using System.Text;
+using Fuse.Failures;
 using Fuse.Graph;
-using Fuse.Protocol;
+using Fuse.Paths;
 using Fuse.Repo;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.MSBuild;
@@ -24,11 +25,11 @@ internal sealed class RepoWorkspace : IDisposable
 {
     private readonly RepoRoot _root;
     private readonly Action<string> _log;
-    private readonly ConcurrentDictionary<string, byte> _loaded = new(ChangeTracker.PathComparer);
+    private readonly ConcurrentDictionary<string, byte> _loaded = new(PathRules.PathComparer);
     private readonly SemaphoreSlim _loadLock = new(1, 1);
     private volatile bool _rebuildPending;
-    private readonly HashSet<string> _touched = new(ChangeTracker.PathComparer);
-    private readonly Dictionary<string, string> _loadFailures = new(ChangeTracker.PathComparer);
+    private readonly HashSet<string> _touched = new(PathRules.PathComparer);
+    private readonly Dictionary<string, string> _loadFailures = new(PathRules.PathComparer);
     private readonly AnalyzerShadow _analyzers;
     private MSBuildWorkspace? _loader;
 
@@ -100,7 +101,7 @@ internal sealed class RepoWorkspace : IDisposable
                 return;
         }
 
-        var sourcePaths = new HashSet<string>(batch.SourcePaths, ChangeTracker.PathComparer);
+        var sourcePaths = new HashSet<string>(batch.SourcePaths, PathRules.PathComparer);
         foreach (var directory in batch.VanishedDirectories)
         {
             var prefix = directory.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
@@ -217,7 +218,7 @@ internal sealed class RepoWorkspace : IDisposable
 
     /// <summary>The loaded Roslyn projects (one per target framework) built from <paramref name="node"/>.</summary>
     public static IEnumerable<Project> ProjectsFor(Solution solution, ProjectNode node) =>
-        solution.Projects.Where(p => ChangeTracker.PathComparer.Equals(p.FilePath, node.Path));
+        solution.Projects.Where(p => PathRules.PathComparer.Equals(p.FilePath, node.Path));
 
     /// <summary>Returns the file's HEAD content as source text, or null when the file is new.</summary>
     public SourceText? HeadText(string path)
@@ -293,7 +294,7 @@ internal sealed class RepoWorkspace : IDisposable
         // The repository's own analyzers load from a copy, so a real build can still overwrite them.
         var current = _analyzers.Apply(_loader.CurrentSolution);
         var baseline = current;
-        foreach (var path in _touched.Concat(Tracker.Changed).Distinct(ChangeTracker.PathComparer))
+        foreach (var path in _touched.Concat(Tracker.Changed).Distinct(PathRules.PathComparer))
         {
             current = await WithDiskContentAsync(current, path, cancellationToken).ConfigureAwait(false);
             baseline = await WithHeadContentAsync(baseline, path, cancellationToken).ConfigureAwait(false);
@@ -363,7 +364,7 @@ internal sealed class RepoWorkspace : IDisposable
 
         foreach (var owner in Graph.OwnersOf(path))
         {
-            foreach (var project in solution.Projects.Where(p => ChangeTracker.PathComparer.Equals(p.FilePath, owner.Path)).ToList())
+            foreach (var project in solution.Projects.Where(p => PathRules.PathComparer.Equals(p.FilePath, owner.Path)).ToList())
             {
                 var id = DocumentId.CreateNewId(project.Id, path);
                 var folders = Path.GetRelativePath(owner.Directory, Path.GetDirectoryName(path)!)

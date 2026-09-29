@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
-using Fuse.Repo;
+using Fuse.Paths;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 
@@ -21,7 +21,7 @@ internal sealed class AnalyzerShadow
 {
     private readonly RepoRoot _root;
     private readonly string _directory;
-    private readonly Dictionary<string, (string Stamp, AnalyzerFileReference Reference)> _references = new(ChangeTracker.PathComparer);
+    private readonly Dictionary<string, (string Stamp, AnalyzerFileReference Reference)> _references = new(PathRules.PathComparer);
     private Solution? _lastInput;
     private Solution? _lastOutput;
 

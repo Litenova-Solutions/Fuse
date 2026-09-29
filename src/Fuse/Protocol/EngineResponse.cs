@@ -1,3 +1,5 @@
+using Fuse.Failures;
+
 namespace Fuse.Protocol;
 
 /// <summary>The engine's answer to one <see cref="EngineRequest"/>.</summary>

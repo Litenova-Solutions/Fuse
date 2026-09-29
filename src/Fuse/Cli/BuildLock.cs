@@ -1,4 +1,5 @@
-using Fuse.Repo;
+using Fuse.Paths;
+
 
 namespace Fuse.Cli;
 

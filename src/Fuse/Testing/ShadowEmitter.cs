@@ -1,5 +1,5 @@
 using Fuse.Graph;
-using Fuse.Repo;
+using Fuse.Paths;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Emit;
 
@@ -158,9 +158,9 @@ internal sealed class ShadowEmitter
         {
             if (File.GetLastWriteTimeUtc(entry) <= built && Directory.GetLastWriteTimeUtc(entry) <= built)
                 continue;
-            if (Directory.Exists(entry) || ChangeTracker.IsSource(entry))
+            if (Directory.Exists(entry) || PathRules.IsSource(entry))
                 sourcesNewer = true;
-            else if (!ChangeTracker.IsProjectFile(entry))
+            else if (!PathRules.IsProjectFile(entry))
                 return (sourcesNewer, entry);
         }
 

@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Fuse.Cli;
 using Fuse.Engine;
-using Fuse.Repo;
+using Fuse.Paths;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 

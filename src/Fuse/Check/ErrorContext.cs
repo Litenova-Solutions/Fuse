@@ -1,5 +1,5 @@
+using Fuse.Paths;
 using Fuse.Protocol;
-using Fuse.Repo;
 
 namespace Fuse.Check;
 
@@ -32,7 +32,7 @@ internal static class ErrorContext
         if (provenance is null)
             return (context, 0);
 
-        var targetPaths = new HashSet<string>(targets, ChangeTracker.PathComparer);
+        var targetPaths = new HashSet<string>(targets, PathRules.PathComparer);
         var shown = 0;
         var leftOut = 0;
         foreach (var (diagnostic, index) in diagnostics.Select((d, i) => (d, i)))

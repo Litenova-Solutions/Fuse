@@ -1,4 +1,5 @@
-using Fuse.Repo;
+using Fuse.Paths;
+
 
 namespace Fuse.Check;
 
@@ -9,10 +10,10 @@ namespace Fuse.Check;
 /// </summary>
 internal sealed class ReachProvenance
 {
-    private readonly Dictionary<string, List<(string Declaration, bool Removed)>> _byFile = new(ChangeTracker.PathComparer);
+    private readonly Dictionary<string, List<(string Declaration, bool Removed)>> _byFile = new(PathRules.PathComparer);
 
     /// <summary>Every candidate file, the union over all changed declarations.</summary>
-    public HashSet<string> Files { get; } = new(ChangeTracker.PathComparer);
+    public HashSet<string> Files { get; } = new(PathRules.PathComparer);
 
     /// <summary>Records that <paramref name="declaration"/> is why <paramref name="file"/> is a candidate.</summary>
     public void Add(string file, string declaration, bool removed)

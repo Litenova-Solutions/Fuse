@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Text;
-using Fuse.Protocol;
-using Fuse.Workspace;
+using Fuse.Failures;
 
 namespace Fuse.Repo;
 

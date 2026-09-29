@@ -13,9 +13,9 @@ internal static class RepoProbe
     public static async Task<bool> HasCSharpProjectsAsync(RepoRoot root, CancellationToken cancellationToken)
     {
         // The index answers for tracked projects without touching the working tree; untracked ones need a scan.
-        foreach (var scope in new[] { new[] { "--cached" }, ["--others", "--exclude-standard"] })
+        foreach (var listing in new[] { new[] { "--cached" }, ["--others", "--exclude-standard"] })
         {
-            var result = await ProcessRunner.RunAsync("git", ["ls-files", .. scope, "--", "*.csproj"], root.Path, cancellationToken).ConfigureAwait(false);
+            var result = await ProcessRunner.RunAsync("git", ["ls-files", .. listing, "--", "*.csproj"], root.Path, cancellationToken).ConfigureAwait(false);
             if (result.ExitCode != 0)
                 return true; // git could not answer; let the engine report the problem.
             if (result.Output.AsSpan().Trim().Length > 0)

@@ -57,7 +57,7 @@ internal sealed class Preloader
         while (!shutdown.IsCancellationRequested)
         {
             ProjectNode? next;
-            // The request lock only protects choosing the next project; the load itself runs outside it, so requests are served while a project loads.
+            // The requestLock only protects choosing the next project; the load itself runs outside it, so requests are served while a project loads.
             await _requestLock.WaitAsync(shutdown).ConfigureAwait(false);
             try
             {

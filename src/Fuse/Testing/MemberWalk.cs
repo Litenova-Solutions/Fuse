@@ -38,8 +38,8 @@ internal sealed class MemberWalk
 
     private readonly RepoWorkspace _workspace;
     private readonly Solution _solution;
-    private readonly ImmutableHashSet<Project> _cone;
-    private readonly ImmutableHashSet<Document> _coneDocuments;
+    private readonly ImmutableHashSet<Project> _reachedProjects;
+    private readonly ImmutableHashSet<Document> _reachedDocuments;
     private readonly Dictionary<string, ProjectId> _byAssembly;
     private readonly TimeProvider _time;
     private readonly HashSet<ISymbol> _visited = new(SymbolEqualityComparer.Default);
@@ -47,16 +47,16 @@ internal sealed class MemberWalk
     private readonly SelectionBuilder _selections = new();
 
     /// <param name="workspace">Gives the HEAD text of a changed file and the project graph.</param>
-    /// <param name="solution">The current solution, with the cone loaded.</param>
-    /// <param name="cone">The Roslyn projects of the changed projects and their dependents; references outside it are not searched.</param>
+    /// <param name="solution">The current solution, with the reached projects loaded.</param>
+    /// <param name="reachedProjects">The Roslyn projects of the changed projects and their dependents; references outside it are not searched.</param>
     /// <param name="time">Measures the walk against its 8 second budget.</param>
-    public MemberWalk(RepoWorkspace workspace, Solution solution, IReadOnlyList<Project> cone, TimeProvider time)
+    public MemberWalk(RepoWorkspace workspace, Solution solution, IReadOnlyList<Project> reachedProjects, TimeProvider time)
     {
         _workspace = workspace;
         _solution = solution;
-        _cone = [.. cone];
-        _coneDocuments = [.. cone.SelectMany(p => p.Documents)];
-        _byAssembly = cone.GroupBy(p => p.AssemblyName).ToDictionary(g => g.Key, g => g.First().Id, StringComparer.Ordinal);
+        _reachedProjects = [.. reachedProjects];
+        _reachedDocuments = [.. reachedProjects.SelectMany(p => p.Documents)];
+        _byAssembly = reachedProjects.GroupBy(p => p.AssemblyName).ToDictionary(g => g.Key, g => g.First().Id, StringComparer.Ordinal);
         _time = time;
     }
 
@@ -90,7 +90,7 @@ internal sealed class MemberWalk
                 seeds.Add((document, changed));
                 if (changed is CompilationUnitSyntax)
                 {
-                    // Top-level statements are the host's entry point.
+                    // Top-level statements are the application's entry point.
                     if (node is not null)
                         SelectDependentsWhole(node, "top-level statements changed");
                     continue;
@@ -122,7 +122,7 @@ internal sealed class MemberWalk
             var referenced = false;
             foreach (var related in Related(symbol))
             {
-                var references = await SymbolFinder.FindReferencesAsync(related, _solution, _coneDocuments, cancellationToken).ConfigureAwait(false);
+                var references = await SymbolFinder.FindReferencesAsync(related, _solution, _reachedDocuments, cancellationToken).ConfigureAwait(false);
                 foreach (var location in references.SelectMany(r => r.Locations))
                 {
                     if (location.IsImplicit)
@@ -139,7 +139,7 @@ internal sealed class MemberWalk
             if (node is null)
                 continue;
             if (HostRule.IsCalledByHost(symbol, node))
-                SelectDependentsWhole(node, $"{symbol.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat)} is invoked by a framework");
+                SelectDependentsWhole(node, $"{symbol.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat)} is called by an application host or a framework");
             else if (HostRule.IsFrameworkInvoked(symbol) && symbol.ContainingType is { } containing)
             {
                 // A library member called through an external interface or base class (Equals, CompareTo,
@@ -186,7 +186,7 @@ internal sealed class MemberWalk
 
         if (enclosing is IMethodSymbol method && HostRule.IsEntryPoint(method))
         {
-            SelectDependentsWhole(node, "the change reaches the application's entry point");
+            SelectDependentsWhole(node, $"{node.Name}'s entry point calls the changed code");
             return;
         }
 
@@ -221,7 +221,7 @@ internal sealed class MemberWalk
             return;
         if (type.TypeKind != TypeKind.Class)
             return;
-        foreach (var derived in await SymbolFinder.FindDerivedClassesAsync(type, _solution, transitive: true, _cone, cancellationToken).ConfigureAwait(false))
+        foreach (var derived in await SymbolFinder.FindDerivedClassesAsync(type, _solution, transitive: true, _reachedProjects, cancellationToken).ConfigureAwait(false))
         {
             var project = _solution.GetProject(FindProjectId(derived));
             if (project is not null && NodeOf(project) is { IsTest: true } testNode)

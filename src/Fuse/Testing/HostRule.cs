@@ -7,7 +7,7 @@ namespace Fuse.Testing;
 ///     Recognizes code that an application host or a framework calls, rather than code in the repository. Such code has
 ///     no caller in source, so neither walk can follow it to a test by name. When a change reaches it in an application,
 ///     every test project that depends on the application is selected whole, because an integration test reaches it
-///     through HTTP, a mediator or the host.
+///     through HTTP, a mediator or the application host.
 /// </summary>
 internal static class HostRule
 {

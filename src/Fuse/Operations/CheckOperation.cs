@@ -11,9 +11,7 @@ internal static class CheckOperation
 {
     private const int MaxShown = 20;
 
-    /// <summary>Runs a check.</summary>
-    /// <param name="root">The repository.</param>
-    /// <param name="files">Absolute paths to scope to, or null for every change.</param>
+    /// <param name="files">Absolute paths of the files to check, or null for every change.</param>
     /// <param name="waitForLoad">Wait for the engine to finish loading, or return immediately with <see cref="ErrorCode.Loading"/>.</param>
     /// <param name="timeout">How long to wait for the answer.</param>
     /// <param name="cancellationToken">Cancels the check.</param>
@@ -23,7 +21,7 @@ internal static class CheckOperation
         EngineRequest request = files is null ? new EngineRequest.CheckChanges(waitForLoad) : new EngineRequest.CheckFiles(files, waitForLoad);
         var response = await EngineClient.SendAsync(root, request, timeout, cancellationToken).ConfigureAwait(false);
         if (response is not EngineResponse.CheckAnswered answered)
-            return (new OperationResult(Outcome.Unanswered, $"fuse: {(response as EngineResponse.Unanswered)?.Message ?? "the engine gave no answer"}"), response);
+            return (new OperationResult(Outcome.Unanswered, $"fuse: {(response as EngineResponse.Unanswered)?.Message ?? $"the Fuse engine sent no check result ({response.GetType().Name}); run the command again"}"), response);
         return (Render(answered.Report), response);
     }
 
@@ -60,31 +58,31 @@ internal static class CheckOperation
         foreach (var reported in report.Errors.Take(MaxShown))
         {
             text.Append(reported.Error).Append('\n');
-            // The line under an error in a file the agent did not edit says which of its edits put the file in scope.
+            // The line under an error in a file the agent did not edit names the declaration change that made the file a candidate.
             if (reported.Cause is { } cause)
                 text.Append("  ").Append(cause.Kind == CauseKind.Removed ? "removed" : "changed").Append(": ").Append(cause.Declaration).Append('\n');
         }
 
-        var scope = new List<string>();
+        var summaryParts = new List<string>();
         if (report.DeclarationsChangedIn.Length > 0)
-            scope.Add($"{string.Join(", ", report.DeclarationsChangedIn)} declarations changed, {report.DependentProjectsChecked} dependent project(s) checked");
+            summaryParts.Add($"{string.Join(", ", report.DeclarationsChangedIn)} declarations changed, {report.DependentProjectsChecked} dependent project(s) checked");
         if (report.CheckedWholeProjects)
-            scope.Add("checked whole projects");
+            summaryParts.Add("checked whole projects");
         // Counted among the printed errors only, since a cause left out of an error that is not printed is no loss.
         var causesLeftOut = report.Errors.Take(MaxShown).Count(e => e.IsCauseLeftOut);
         if (causesLeftOut > 0)
-            scope.Add($"{causesLeftOut} cause(s) left out");
-        var scopeText = scope.Count > 0 ? "; " + string.Join("; ", scope) : "";
+            summaryParts.Add($"{causesLeftOut} cause(s) left out");
+        var summaryTail = summaryParts.Count > 0 ? "; " + string.Join("; ", summaryParts) : "";
 
         if (report.Errors.Length == 0)
         {
-            text.Append($"fuse: no errors introduced ({report.FilesChecked} file(s) checked{scopeText})");
+            text.Append($"fuse: no errors introduced ({report.FilesChecked} file(s) checked{summaryTail})");
             return new OperationResult(Outcome.Clean, text.ToString());
         }
 
         var files = report.Errors.Select(e => e.Error.Path).Distinct().Count();
         var more = report.Errors.Length > MaxShown ? $", first {MaxShown} shown" : "";
-        text.Append($"fuse: {report.Errors.Length} error(s) introduced in {files} file(s){more} ({string.Join(", ", report.Projects)}){scopeText}");
+        text.Append($"fuse: {report.Errors.Length} error(s) introduced in {files} file(s){more} ({string.Join(", ", report.Projects)}){summaryTail}");
         return new OperationResult(Outcome.ProblemsFound, text.ToString());
     }
 }

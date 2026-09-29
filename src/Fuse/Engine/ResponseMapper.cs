@@ -12,7 +12,7 @@ namespace Fuse.Engine;
 /// </summary>
 internal static class ResponseMapper
 {
-    /// <summary>The answer to a check: the errors it introduced and how far it reached.</summary>
+    /// <summary>The answer to a check: the errors the changes introduced and what the check covered.</summary>
     public static EngineResponse Answered(CheckResult result) => new EngineResponse.CheckAnswered(Report(result));
 
     /// <summary>The answer to a test plan request: the runs to execute and the summary to print.</summary>

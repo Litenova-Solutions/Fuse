@@ -3,7 +3,7 @@ namespace Fuse.Harnesses;
 /// <summary>
 ///     The events <c>fuse hook</c> answers, as the command line names them. <see cref="Harness.RegisterHooks"/> writes
 ///     these names into users' settings and <c>opencode-plugin.js</c> passes them, so renaming one leaves every existing
-///     registration calling a name <c>fuse hook</c> no longer accepts until the user reruns <c>fuse init</c>.
+///     registration calling a name <c>fuse hook</c> does not accept until the user reruns <c>fuse init</c>.
 /// </summary>
 internal static class HookEvent
 {

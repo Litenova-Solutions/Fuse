@@ -24,7 +24,6 @@ internal sealed class TestPlanner
         _selector = new TestSelector(workspace, TimeProvider.System);
     }
 
-    /// <summary>Plans a test run.</summary>
     /// <param name="scope">The affected tests, or every test.</param>
     /// <param name="phases">Collects how long each phase of this plan took; <see cref="PhaseTimes.None"/> collects nothing.</param>
     /// <param name="cancellationToken">Cancels the plan.</param>
@@ -41,7 +40,7 @@ internal sealed class TestPlanner
 
         if (scope is TestScope.All)
         {
-            var everything = testProjects.Select(p => new PlannedRun(p.Path, p.Name, new RunMode.Build(), null, p.IsTestingPlatform)).ToArray();
+            var everything = testProjects.Select(p => new PlannedRun(p.Path, p.Name, new RunMode.Build(), null, p.UsesTestingPlatform)).ToArray();
             return new TestPlanResult(everything, total, total, $"ran every test in {testProjects.Count} test project(s)");
         }
 
@@ -73,7 +72,7 @@ internal sealed class TestPlanner
                 reasons.Add(whole.Reason);
 
             var filter = TestFilter.For(selection);
-            if (node.IsTestingPlatform)
+            if (node.UsesTestingPlatform)
             {
                 // Microsoft.Testing.Platform filters differ per framework; run the project whole.
                 runs.Add(new PlannedRun(node.Path, node.Name, new RunMode.Build(), null, true));

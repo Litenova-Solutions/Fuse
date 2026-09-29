@@ -9,7 +9,7 @@ using Fuse.Protocol;
 namespace Fuse.Hooks;
 
 /// <summary>
-///     <c>fuse hook &lt;harness&gt; &lt;event&gt;</c>: the one entry point every installed hook calls. It reads the harness's
+///     <c>fuse hook &lt;harness&gt; &lt;event&gt;</c>: the one command every registered hook runs. It reads the harness's
 ///     JSON from stdin, does the work the event asks for, which is the same for every harness, and writes the
 ///     <see cref="Harness"/>'s answer in that harness's format.
 /// </summary>
@@ -107,7 +107,7 @@ internal static class HookCommand
         var (result, response) = await CheckOperation.RunAsync(root, null, waitForLoad: true, TimeSpan.FromMinutes(5), cancellationToken).ConfigureAwait(false);
         if (!ShouldReport(result, response))
             return harness.AllowStop();
-        return harness.BlockStop(result.Text + "\nFix these errors before finishing; they are not in the last commit.");
+        return harness.BlockStop(result.Text + "\nFix these errors before finishing; HEAD does not have them, so your changes introduced them.");
     }
 
     /// <summary>
@@ -145,7 +145,8 @@ internal static class HookCommand
         return await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    // throwOnInvalidBytes: a payload that is not UTF-8 at all is a harness bug, and the message says so.
+    // throwOnInvalidBytes is false: a byte that is not UTF-8 becomes U+FFFD, because an exception from the decoder would
+    // escape the JsonException handler in RunAsync and break the session.
     private static readonly UTF8Encoding Utf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: false);
 
     private static void Log(string cwd, string message)

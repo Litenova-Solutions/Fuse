@@ -4,7 +4,7 @@ using Fuse.Dotnet;
 namespace Fuse.Evals;
 
 /// <summary>
-///     The eval suites. Every fuse measurement goes through the fuse executable; the truth side is a real dotnet build
+///     The eval suites. Every measurement of Fuse goes through the fuse executable; the truth side is a real dotnet build
 ///     or dotnet test. The chart command renders site/benefits.svg from the recorded results.
 /// </summary>
 internal static class Program

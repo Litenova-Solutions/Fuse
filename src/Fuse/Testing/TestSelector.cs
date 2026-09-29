@@ -39,14 +39,14 @@ internal sealed class TestSelector
     {
         var graph = _workspace.Graph;
         var changedProjects = changedFiles.SelectMany(graph.OwnersOf).DistinctBy(p => p.Path).ToList();
-        var cone = changedProjects.Concat(changedProjects.SelectMany(graph.DependentsOf)).DistinctBy(p => p.Path).ToList();
-        if (!cone.Any(p => p.IsTest))
+        var reachedProjects = changedProjects.Concat(changedProjects.SelectMany(graph.DependentsOf)).DistinctBy(p => p.Path).ToList();
+        if (!reachedProjects.Any(p => p.IsTest))
             return new Dictionary<RepoPath, TestSelection>();
-        await _workspace.EnsureLoadedAsync(cone, cancellationToken).ConfigureAwait(false);
+        await _workspace.EnsureLoadedAsync(reachedProjects, cancellationToken).ConfigureAwait(false);
 
         var solution = _workspace.Current;
-        var coneProjects = cone.SelectMany(n => RepoWorkspace.ProjectsFor(solution, n)).ToList();
-        var walk = new MemberWalk(_workspace, solution, coneProjects, _time);
+        var reachedRoslynProjects = reachedProjects.SelectMany(n => RepoWorkspace.ProjectsFor(solution, n)).ToList();
+        var walk = new MemberWalk(_workspace, solution, reachedRoslynProjects, _time);
         var seeds = new List<(Document Document, SyntaxNode Node)>();
         foreach (var path in changedFiles)
         {
@@ -66,7 +66,7 @@ internal sealed class TestSelector
         // replaces theirs. The type walk's methods add nothing to a whole project.
         var seededWhole = walk.Selections.Where(s => s.Value is TestSelection.Whole).ToList();
         var classLevel = new Dictionary<RepoPath, TestSelection>(seededWhole);
-        foreach (var (path, selection) in await _types.SelectAsync(coneProjects, seeds, cancellationToken).ConfigureAwait(false))
+        foreach (var (path, selection) in await _types.SelectAsync(reachedRoslynProjects, seeds, cancellationToken).ConfigureAwait(false))
         {
             if (selection is TestSelection.Whole || !classLevel.ContainsKey(path))
                 classLevel[path] = selection;
@@ -83,7 +83,7 @@ internal sealed class TestSelector
 
         if (!await walk.RunAsync(cancellationToken).ConfigureAwait(false))
         {
-            _workspace.Log("test selection: reference walk over budget; selecting at class level");
+            _workspace.Log("test selection: member walk over budget; selecting at class level");
             return classLevel;
         }
 

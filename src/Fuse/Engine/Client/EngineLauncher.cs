@@ -9,7 +9,7 @@ namespace Fuse.Engine.Client;
 /// <summary>
 ///     Starts <c>fuse engine</c> fully detached from the caller. The engine outlives the hook or command that
 ///     started it, so it must not hold any of the caller's handles (an inherited stdout keeps a hook's pipe open and
-///     hangs the harness) and must survive the caller's process group or job being torn down.
+///     hangs the harness) and must survive the harness killing the caller's process group or job.
 /// </summary>
 internal static class EngineLauncher
 {
@@ -67,8 +67,8 @@ internal static class EngineLauncher
     }
 
     /// <summary>
-    ///     A private copy of this build's binaries that the engine runs from. The engine lives for up to half an hour;
-    ///     running it from the installed tool directory would lock those files and make <c>dotnet tool update</c> (and
+    ///     A private copy of this build's binaries that the engine runs from. An engine runs until it has had no request
+    ///     for 30 minutes, which can be hours after it started; running it from the installed tool directory would lock those files and make <c>dotnet tool update</c> (and
     ///     rebuilding Fuse) fail while any repository has an engine running.
     /// </summary>
     internal static string EngineHome()
@@ -167,7 +167,7 @@ internal static class EngineLauncher
         var flags = detachedProcess | createNewProcessGroup | createUnicodeEnvironment;
         if (!TryCreate(commandLine.ToString(), flags | createBreakawayFromJob, root)
             && !TryCreate(commandLine.ToString(), flags, root))
-            throw new Win32Exception(Marshal.GetLastWin32Error(), "could not start the fuse engine");
+            throw new Win32Exception(Marshal.GetLastWin32Error());
     }
 
     private static bool TryCreate(string commandLine, uint flags, string directory)

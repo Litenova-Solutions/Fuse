@@ -11,8 +11,8 @@ internal abstract record TestSelection
 
     /// <summary>Every test in the project, because no narrower selection is known to include every affected test.</summary>
     /// <param name="Reason">
-    ///     Why the project runs whole, written to follow "whole projects where" in the summary, for example "the change
-    ///     reaches App, which runs behind a host".
+    ///     Why the project runs whole, written to follow "whole projects where" in the summary, for example "App uses the
+    ///     changed code and runs behind an application host".
     /// </param>
     public sealed record Whole(string Reason) : TestSelection;
 

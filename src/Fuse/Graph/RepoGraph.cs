@@ -251,7 +251,7 @@ internal sealed class RepoGraph
             EvaluationInputs = inputs,
             AssetsFile = Full(string.IsNullOrEmpty(assets) ? System.IO.Path.Combine("obj", "project.assets.json") : assets),
             IsTest = isTest,
-            IsTestingPlatform = isTestingPlatform,
+            UsesTestingPlatform = isTestingPlatform,
             IsExecutable = !isTest && (outputType.Equals("Exe", StringComparison.OrdinalIgnoreCase) || outputType.Equals("WinExe", StringComparison.OrdinalIgnoreCase) || isWeb),
         };
     }

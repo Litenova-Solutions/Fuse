@@ -5,7 +5,7 @@ internal sealed class EngineLog
 {
     private const long MaxBytes = 4 * 1024 * 1024;
     private readonly string _path;
-    private readonly Lock _gate = new();
+    private readonly Lock _writeLock = new();
 
     /// <summary>Opens <c>engine.log</c> in <paramref name="directory"/>, moving a log past 4 MB aside to <c>engine.log.1</c> first.</summary>
     public EngineLog(string directory)
@@ -22,7 +22,7 @@ internal sealed class EngineLog
     /// <summary>Appends one timestamped line. A write that fails is dropped rather than thrown.</summary>
     public void Write(string message)
     {
-        lock (_gate)
+        lock (_writeLock)
         {
             try
             {

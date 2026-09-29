@@ -3,7 +3,7 @@ using Fuse.Operations;
 namespace Fuse.Tests.Unit;
 
 /// <summary>
-///     Harnesses and scripts read fuse's exit code, and it derives from the outcome alone, so each outcome is pinned to
+///     Harnesses and scripts read the exit code of `fuse`, and it derives from the outcome alone, so each outcome is pinned to
 ///     its number here.
 /// </summary>
 public class OperationResultTests

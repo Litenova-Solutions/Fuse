@@ -87,7 +87,7 @@ public class CheckerTests
     }
 
     [Fact]
-    public async Task New_file_with_an_error_is_reported()
+    public async Task Added_file_with_an_error_is_reported()
     {
         await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Write("Lib/Extra.cs", "namespace Lib;\n\npublic static class Extra\n{\n    public static int Value() => missing;\n}\n");
@@ -98,7 +98,7 @@ public class CheckerTests
     }
 
     [Fact]
-    public async Task New_file_used_by_another_edit_is_visible()
+    public async Task Added_file_used_by_another_edit_is_visible()
     {
         await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Write("Lib/Extra.cs", "namespace Lib;\n\npublic static class Extra\n{\n    public static int Value() => 42;\n}\n");
@@ -155,7 +155,7 @@ public class CheckerTests
         engine.Repo.Replace("App/Report.cs", "Line(int value)", "Line2(int value)");
         engine.Repo.Replace("Lib/Calc.cs", "Add(int a, int b)", "Add2(int a, int b)");
 
-        // The reach queries run after a real check, so the HEAD view is loaded the way the check loads it.
+        // The reach queries run after a real check, so the baseline is loaded the way the check loads it.
         await engine.CheckAsync("App/Report.cs");
         var fromApp = await CandidatesAsync(engine, "App/Report.cs");
         var fromLib = await CandidatesAsync(engine, "Lib/Calc.cs");

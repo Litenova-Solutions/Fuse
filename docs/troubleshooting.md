@@ -23,7 +23,7 @@ A hook prints something only when the edit introduced errors or a project needs 
 
 Fuse 5.1.0 names the shell event `pre-shell`. Settings written by 5.0.0 call `fuse hook <harness> pre-bash`, which 5.1.0 answers with a usage line on standard error and exit code 0, so the harness runs the command unchanged. Run `fuse init` again in each repository after updating; it replaces Fuse's hook entries and the OpenCode plugin and keeps everything else ([Harnesses](harnesses.md#running-fuse-init-again)).
 
-The engine needs no action after an update. The first request from the updated client reaches the running engine of the earlier build, which answers `Restart` and exits; the client then starts an engine of its own build and sends the request again. `engine.log` records it as `client version <build> differs; exiting so the client can start a matching engine`, with the client's build id in place of `<build>`. A 5.0.0 engine cannot read the build id of a 5.1.0 request and leaves the place empty; a 5.1.0 engine writes `(none)` there for a request that carries no build id, such as one from a 5.0.0 client.
+The engine needs no action after an update. The first request from the updated client reaches the running engine of the earlier build, which answers `Restart` and exits; the client then starts an engine of its own build and sends the request again. `engine.log` records it as `client build <build> differs; exiting so the client can start a matching engine`, with the client's build id in place of `<build>`. A 5.0.0 engine cannot read the build id of a 5.1.0 request and leaves the place empty; a 5.1.0 engine writes `(none)` there for a request that carries no build id, such as one from a 5.0.0 client.
 
 ## Restore needed
 
@@ -46,7 +46,7 @@ Harnesses other than Claude Code run the post-edit hook inline, so that hook doe
 ## A command times out
 
 ```text
-fuse: the fuse engine did not answer within 600 s
+fuse: the Fuse engine did not answer within 600 s
 ```
 
 The request waited longer than the command allows: 600 s for `fuse check`, `fuse test` and the MCP tools, 300 s for the Claude Code post-edit hook and every stop hook, 50 s for the other post-edit hooks. Read the end of `engine.log`: `loaded <project>` lines mean the engine is still loading, and the `phases` line of the request, when it finishes, shows where the time went. Run the command again; the engine keeps its progress between requests.
@@ -57,7 +57,7 @@ The request waited longer than the command allows: 600 s for `fuse check`, `fuse
 fuse: internal error: <message> (details in <state directory>/engine.log)
 ```
 
-Something failed inside Fuse. `engine.log` holds the exception with its stack trace, on a line with `failed:`. `could not talk to the fuse engine` and `could not start the fuse engine` mean the client could not reach or start the engine process; `engine.log` then shows whether an engine started at all. Run the command again; if it keeps failing, [open an issue](https://github.com/Litenova-Solutions/Fuse/issues) with the command, the message, the `engine.log` lines around the failure, and the output of `fuse --version`.
+Something failed inside Fuse. `engine.log` holds the exception with its stack trace, on a line with `failed:`. `could not connect to the Fuse engine` and `could not start the Fuse engine` mean the client could not reach or start the engine process; `engine.log` then shows whether an engine started at all. Run the command again; if it keeps failing, [open an issue](https://github.com/Litenova-Solutions/Fuse/issues) with the command, the message, the `engine.log` lines around the failure, and the output of `fuse --version`.
 
 ## A build waits
 

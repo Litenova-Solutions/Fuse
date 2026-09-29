@@ -10,7 +10,7 @@ namespace Fuse.Engine;
 
 /// <summary>
 ///     The engine process: one per repository root, guarded by a named mutex, serving one request per pipe
-///     connection. It exits after <see cref="IdleTimeout"/> without requests, when a client of a different version
+///     connection. It exits after <see cref="IdleTimeout"/> without requests, when a client of another build
 ///     connects, or when the repository disappears.
 /// </summary>
 internal static class EngineServer
@@ -102,7 +102,7 @@ internal static class EngineServer
                 if (buildId != EngineVersion.Build)
                 {
                     // A request of 5.0.0 names its build id otherwise, so none is read from it.
-                    log.Write($"client version {buildId ?? "(none)"} differs; exiting so the client can start a matching engine");
+                    log.Write($"client build {buildId ?? "(none)"} differs; exiting so the client can start a matching engine");
                     await WriteAsync(pipe, new EngineResponse.Restart(), CancellationToken.None).ConfigureAwait(false);
                     await shutdown.CancelAsync().ConfigureAwait(false);
                     return;
@@ -115,28 +115,28 @@ internal static class EngineServer
                 Interlocked.Increment(ref state.Active);
                 try
                 {
-                    using var request_ = CancellationTokenSource.CreateLinkedTokenSource(shutdown.Token);
+                    using var requestCancellation = CancellationTokenSource.CreateLinkedTokenSource(shutdown.Token);
                     // The client sends nothing after its request, so a completed read means it disconnected: stop the work.
-                    var disconnect = WatchDisconnectAsync(pipe, request_);
+                    var disconnect = WatchDisconnectAsync(pipe, requestCancellation);
                     EngineResponse response;
                     try
                     {
-                        response = await router.HandleAsync(request, request_.Token).ConfigureAwait(false);
+                        response = await router.HandleAsync(request, requestCancellation.Token).ConfigureAwait(false);
                     }
                     catch (OperationCanceledException)
                     {
                         response = new EngineResponse.Unanswered(ErrorCode.Timeout, "the request is cancelled");
                     }
 
-                    if (!request_.IsCancellationRequested)
-                        await WriteAsync(pipe, response, request_.Token).ConfigureAwait(false);
+                    if (!requestCancellation.IsCancellationRequested)
+                        await WriteAsync(pipe, response, requestCancellation.Token).ConfigureAwait(false);
 
                     // Let the client read the answer and close its end first: on Unix, where the pipe is a socket,
                     // cancelling the pending read can reset the connection before the client has read the answer.
                     await Task.WhenAny(disconnect, Task.Delay(TimeSpan.FromSeconds(5), CancellationToken.None)).ConfigureAwait(false);
                     if (request is EngineRequest.ShutDown)
                         await shutdown.CancelAsync().ConfigureAwait(false);
-                    await request_.CancelAsync().ConfigureAwait(false);
+                    await requestCancellation.CancelAsync().ConfigureAwait(false);
                     await disconnect.ConfigureAwait(false);
                 }
                 finally

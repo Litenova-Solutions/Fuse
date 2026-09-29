@@ -25,7 +25,7 @@ internal sealed partial class HookPayload
 
     /// <summary>The working directory the harness reports, or the process's own.</summary>
     /// <remarks>An empty or blank value counts as absent, so a harness that sends <c>"cwd": ""</c> falls back too.</remarks>
-    public string Cwd => NonBlank(String("cwd")) ?? NonBlank(String("workspace_roots", 0)) ?? Environment.CurrentDirectory;
+    public string Cwd => NonBlank(StringProperty("cwd")) ?? NonBlank(StringProperty("workspace_roots", 0)) ?? Environment.CurrentDirectory;
 
     private static string? NonBlank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
 
@@ -67,7 +67,7 @@ internal sealed partial class HookPayload
     }
 
     /// <summary>The shell command of a Bash-like tool call.</summary>
-    public string? Command => ToolInput is { } input && input.TryGetProperty("command", out var c) && c.ValueKind == JsonValueKind.String ? c.GetString() : String("command");
+    public string? Command => ToolInput is { } input && input.TryGetProperty("command", out var c) && c.ValueKind == JsonValueKind.String ? c.GetString() : StringProperty("command");
 
     /// <summary>
     ///     Absolute paths of the files an edit tool wrote, including files named in a Codex or OpenCode <c>apply_patch</c>
@@ -92,7 +92,7 @@ internal sealed partial class HookPayload
             }
         }
 
-        if (String("file_path") is { } topLevel)
+        if (StringProperty("file_path") is { } topLevel)
             paths.Add(topLevel);
         var cwd = Cwd;
         return paths.Select(p => Path.GetFullPath(Path.IsPathRooted(p) ? p : Path.Combine(cwd, p))).Distinct().ToList();
@@ -102,7 +102,7 @@ internal sealed partial class HookPayload
     internal static IEnumerable<string> PatchFiles(string patch) =>
         PatchHeader().Matches(patch).Select(m => m.Groups["path"].Value.Trim());
 
-    private string? String(string name, int index = -1)
+    private string? StringProperty(string name, int index = -1)
     {
         if (!_root.TryGetProperty(name, out var value))
             return null;

@@ -123,6 +123,6 @@ public class HostRuleTests
         AssetsFile = FixtureRepo.CheckoutRoot.PathOf("App/obj/project.assets.json"),
         IsTest = false,
         IsExecutable = isExecutable,
-        IsTestingPlatform = false,
+        UsesTestingPlatform = false,
     };
 }

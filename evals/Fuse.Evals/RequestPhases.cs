@@ -18,7 +18,7 @@ internal sealed record RequestPhases(string RequestId, string Kind, Dictionary<s
     public double? Total => Phases.GetValueOrDefault(Phase.Total);
 
     /// <summary>
-    ///     The line for the newest phase line whose id is not in <paramref name="seen"/>, or null when the engine wrote
+    ///     The phases of the newest phase line whose id is not in <paramref name="seen"/>, or null when the engine wrote
     ///     none. Each id is added to <paramref name="seen"/>, so a caller walking the log in order takes one line per
     ///     request and cannot take the same one twice.
     /// </summary>

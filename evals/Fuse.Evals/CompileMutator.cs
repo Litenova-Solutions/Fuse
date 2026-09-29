@@ -8,7 +8,7 @@ namespace Fuse.Evals;
 internal sealed record FileEdit(string Path, string Kind, string Description, string? NewText);
 
 /// <summary>
-///     Generates API-shape mutations (the edits that break other code) with Roslyn syntax rewriting: removing,
+///     Generates mutations that change a declaration other files use with Roslyn syntax rewriting: removing,
 ///     renaming, re-parameterizing or hiding a member, duplicating a signature, changing a return type, removing a
 ///     using directive, or deleting a file.
 /// </summary>

@@ -49,7 +49,7 @@ public class EngineProcessTests
     }
 
     [Fact]
-    public async Task Client_of_another_version_gets_restart_and_the_engine_exits()
+    public async Task Client_of_another_build_gets_restart_and_the_engine_exits()
     {
         using var repo = FixtureRepo.CreateStandard();
         try
@@ -81,7 +81,7 @@ public class EngineProcessTests
             Assert.True(await FuseProcess.WaitForExitAsync(repo.Root, TimeSpan.FromSeconds(15)));
             // The line carries no build id under this build's name, and the log says so rather than leaving a gap.
             var log = File.ReadAllLines(Path.Combine(repo.Root.StateDirectory, "engine.log"));
-            Assert.Contains(log, l => l.EndsWith(" client version (none) differs; exiting so the client can start a matching engine", StringComparison.Ordinal));
+            Assert.Contains(log, l => l.EndsWith(" client build (none) differs; exiting so the client can start a matching engine", StringComparison.Ordinal));
         }
         finally
         {
@@ -90,7 +90,7 @@ public class EngineProcessTests
     }
 
     [Fact]
-    public async Task Claude_post_edit_hook_wakes_the_agent_only_on_new_errors()
+    public async Task Claude_post_edit_hook_wakes_the_agent_only_on_introduced_errors()
     {
         using var repo = FixtureRepo.CreateStandard();
         try
@@ -178,9 +178,9 @@ public class EngineProcessTests
     }
 
     [Fact]
-    public async Task Pre_bash_is_no_longer_an_event_and_only_prints_usage()
+    public async Task Pre_bash_is_not_an_event_and_only_prints_usage()
     {
-        // A registration written before the event was pre-shell still calls pre-bash. It rewrites nothing and exits 0,
+        // A registration from an earlier release calls pre-bash, which is not an event. It rewrites nothing and exits 0,
         // so the agent's command runs as it was, until the user reruns fuse init.
         using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });
         var result = await FuseProcess.RunAsync(repo.Path, """{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"dotnet test --no-build"}}""", "hook", "claude", "pre-bash");

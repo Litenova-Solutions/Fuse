@@ -57,7 +57,7 @@ internal sealed class HeadResolver
     ///     HEAD and <see cref="GitStatus"/> report it in the same words.
     /// </summary>
     /// <param name="root">The repository git was asked about.</param>
-    /// <param name="action">What git was doing, as the message names it, such as "resolving HEAD" or "git status".</param>
+    /// <param name="action">What git was doing, as the message names it, such as "resolving HEAD" or "listing changed files".</param>
     /// <param name="result">The failed command's exit code and output.</param>
     public static FuseException GitFailure(RepoRoot root, string action, ProcessResult result)
     {

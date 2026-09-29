@@ -98,7 +98,7 @@ fuse init
 
 ```text
 wrote .claude/settings.json
-fuse: hooks installed; your agent gets compiler errors after each edit, affected tests for `dotnet test`, and compact `dotnet build` output
+fuse: hooks registered; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors
 ```
 
 The sample has no harness folder, so `fuse init` set up Claude Code, which it does by default. In a repository with `.cursor/`, `.gemini/`, `.codex/` or another harness's folder, it writes that harness's settings too; [Harnesses](harnesses.md) lists them and shows the file it wrote here.
@@ -173,7 +173,7 @@ echo '{}' | fuse hook claude stop
 ```
 
 ```json
-{"decision":"block","reason":"App/Program.cs(3,30): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)\n  removed: public int Add(int a, int b)\nLib.Tests/CalcTests.cs(6,54): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)\n  removed: public int Add(int a, int b)\nfuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations changed, 2 dependent project(s) checked\nFix these errors before finishing; they are not in the last commit."}
+{"decision":"block","reason":"App/Program.cs(3,30): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)\n  removed: public int Add(int a, int b)\nLib.Tests/CalcTests.cs(6,54): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)\n  removed: public int Add(int a, int b)\nfuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations changed, 2 dependent project(s) checked\nFix these errors before finishing; HEAD does not have them, so your changes introduced them."}
 ```
 
 Before the agent runs a shell command, the pre-shell hook rewrites `dotnet build` and `dotnet test` to their Fuse equivalents:

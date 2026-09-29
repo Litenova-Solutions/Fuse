@@ -13,7 +13,7 @@ internal static class InitCommand
 {
     public static int Run() => Run(Environment.CurrentDirectory, Console.Out, Console.Error);
 
-    /// <summary>Installs hooks for the repository containing <paramref name="startDirectory"/>.</summary>
+    /// <summary>Registers hooks for the repository containing <paramref name="startDirectory"/>.</summary>
     internal static int Run(string startDirectory, TextWriter output, TextWriter error)
     {
         var root = RepoRoot.Find(startDirectory);
@@ -25,7 +25,7 @@ internal static class InitCommand
 
         if (!RepoProbe.HasCSharpProjectsAsync(root, CancellationToken.None).GetAwaiter().GetResult())
         {
-            error.WriteLine("fuse: no C# projects (.csproj) in this repository; Fuse installs hooks only where there is C# to check");
+            error.WriteLine($"fuse: {ErrorMessages.NoProjects}");
             return 2;
         }
 
@@ -53,7 +53,9 @@ internal static class InitCommand
             }
         }
 
-        output.WriteLine("fuse: hooks installed; your agent gets compiler errors after each edit, affected tests for `dotnet test`, and compact `dotnet build` output");
+        output.WriteLine(harnesses.Count > 0
+            ? "fuse: hooks registered; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors"
+            : "fuse: MCP server registered in .vscode/mcp.json; VS Code's agent can call fuse_check, fuse_test and fuse_build");
         return 0;
     }
 

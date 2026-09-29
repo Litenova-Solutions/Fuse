@@ -113,7 +113,7 @@ public class RepositoryEdgeCaseTests
     }
 
     [Fact]
-    public async Task Without_commits_every_error_is_new()
+    public async Task Without_commits_every_error_is_introduced()
     {
         using var repo = FixtureRepo.CreateStandard();
         // Deleting the branch HEAD points at leaves an unborn HEAD: the repository has no commit to compare with.

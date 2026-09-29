@@ -9,7 +9,7 @@ using ModelContextProtocol.Server;
 namespace Fuse.Mcp;
 
 /// <summary>
-///     <c>fuse mcp</c>: a stdio MCP server with three tools for hosts that cannot run hooks or shell commands. Each
+///     <c>fuse mcp</c>: a stdio MCP server with three tools for MCP hosts that cannot run hooks or shell commands. Each
 ///     tool returns the same text the CLI prints; an answer Fuse could not give is marked with <c>isError</c>.
 /// </summary>
 internal static class McpCommand
@@ -20,8 +20,8 @@ internal static class McpCommand
         {
             Name = "fuse_check",
             Title = "Check C# changes",
-            Description = "Compiler and analyzer errors that the working-tree changes introduced since the last commit, in the edited files and in the files of dependent projects that use changed declarations. Run after editing C# files. Much faster than dotnet build on a warm repository.",
-            InputSchema = Schema("""{"type":"object","properties":{"files":{"type":"array","items":{"type":"string"},"description":"Files to scope the check to. Omit to check every change since the last commit."}}}"""),
+            Description = "Compiler and analyzer errors the working tree has and HEAD does not: in the named files, or in every changed file when none are named, and in the files of dependent projects that use a changed declaration. Run after editing C# files. Once Fuse has loaded the repository it answers much faster than dotnet build.",
+            InputSchema = Schema("""{"type":"object","properties":{"files":{"type":"array","items":{"type":"string"},"description":"Files to check, absolute or relative to the repository root. Omit to check every file that differs from HEAD."}}}"""),
             Annotations = new ToolAnnotations { ReadOnlyHint = true, IdempotentHint = true, OpenWorldHint = false },
         },
         new()

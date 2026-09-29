@@ -7,7 +7,7 @@ namespace Fuse.Tests.Unit;
 public class CheckRenderTests
 {
     [Fact]
-    public void Clean_report_says_so_with_scope()
+    public void Clean_report_says_so_with_its_summary()
     {
         var result = CheckOperation.Render(new CheckReport([], 3, [], ["Lib"], 2, false));
         Assert.Equal(0, result.ExitCode);

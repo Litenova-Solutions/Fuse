@@ -15,7 +15,7 @@ wrote .codex/hooks.json
 wrote .github/hooks/fuse.json
 wrote .opencode/plugins/fuse.js
 wrote .vscode/mcp.json
-fuse: hooks installed; your agent gets compiler errors after each edit, affected tests for `dotnet test`, and compact `dotnet build` output
+fuse: hooks registered; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors
 ```
 
 The configuration blocks on this page are the files that run wrote. Current builds write them as shown.

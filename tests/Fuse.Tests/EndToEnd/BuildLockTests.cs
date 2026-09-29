@@ -30,7 +30,7 @@ public class BuildLockTests
             foreach (var (_, stdout, stderr) in results)
                 AssertNoCollisions(stdout + stderr);
             Assert.All(results, r => Assert.Equal(0, r.ExitCode));
-            Assert.True(results.Any(r => r.Stderr.Contains(BuildLock.Waited, StringComparison.Ordinal)), "no client waited, so the builds did not overlap and the case proves nothing");
+            Assert.True(results.Any(r => r.Stderr.Contains(BuildLock.WaitingLine, StringComparison.Ordinal)), "no client waited, so the builds did not overlap and the case proves nothing");
         }
         finally
         {
@@ -114,14 +114,14 @@ public class BuildLockTests
         {
             var alone = await FuseProcess.RunAsync(repo.Path, null, "build");
             Assert.Equal(0, alone.ExitCode);
-            Assert.DoesNotContain(BuildLock.Waited, alone.Stderr, StringComparison.Ordinal);
+            Assert.DoesNotContain(BuildLock.WaitingLine, alone.Stderr, StringComparison.Ordinal);
 
             // The lock the test takes is the same lock a `fuse test` takes, so the build below waits for the same reason.
             using var held = BuildLock.Acquire(repo.Root);
-            Assert.True(held.Held, "the test could not take the lock, so the case would pass for the wrong reason");
+            Assert.True(held.IsHeld, "the test could not take the lock, so the case would pass for the wrong reason");
 
             await using var waiting = FuseProcess.Start(repo.Path, "build");
-            var announced = await WaitForAsync(() => waiting.StderrSoFar.Contains(BuildLock.Waited, StringComparison.Ordinal), TimeSpan.FromMinutes(2));
+            var announced = await WaitForAsync(() => waiting.StderrSoFar.Contains(BuildLock.WaitingLine, StringComparison.Ordinal), TimeSpan.FromMinutes(2));
             Assert.True(announced, $"a client that waited said nothing; its stderr was: {waiting.StderrSoFar}");
 
             // Saying it waits is not enough: while the lock is held the client must not build. A retry that gives up and
@@ -132,7 +132,7 @@ public class BuildLockTests
             held.Dispose();
             var result = await waiting.WaitAsync(TimeSpan.FromMinutes(5));
             Assert.Equal(0, result.ExitCode);
-            Assert.Equal(1, result.Stderr.Split('\n').Count(l => l.Contains(BuildLock.Waited, StringComparison.Ordinal)));
+            Assert.Equal(1, result.Stderr.Split('\n').Count(l => l.Contains(BuildLock.WaitingLine, StringComparison.Ordinal)));
         }
         finally
         {
@@ -150,7 +150,7 @@ public class BuildLockTests
             // file, which is the shape of an unwritable state directory, and the client still builds.
             Directory.CreateDirectory(Path.Combine(repo.Root.StateDirectory, "build.lock"));
             using var blocked = BuildLock.Acquire(repo.Root);
-            Assert.False(blocked.Held);
+            Assert.False(blocked.IsHeld);
             Assert.NotNull(blocked.Reason);
 
             var result = await FuseProcess.RunAsync(repo.Path, null, "build");

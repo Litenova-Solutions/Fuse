@@ -55,7 +55,7 @@ internal sealed class IntroducedErrors
             var baseline = baselineProject is null
                 ? []
                 : await _collector.ForBaselineProjectAsync(baselineProject, _workspace.BaselineGeneration, cancellationToken).ConfigureAwait(false);
-            result.AddRange(DiagnosticDelta.Introduced(current, baseline));
+            result.AddRange(ErrorDelta.Introduced(current, baseline));
         }
 
         return result;
@@ -69,6 +69,6 @@ internal sealed class IntroducedErrors
         if (current.Count == 0)
             return [];
         var baseline = await _collector.ForBaselineFileAsync(_workspace.Baseline, _workspace.BaselineGeneration, path, cancellationToken).ConfigureAwait(false);
-        return DiagnosticDelta.Introduced(current, baseline).ToList();
+        return ErrorDelta.Introduced(current, baseline).ToList();
     }
 }

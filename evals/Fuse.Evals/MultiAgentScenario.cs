@@ -14,8 +14,8 @@ internal sealed record MultiAgentWriters(
     int EditsPerClient,
     double WallMs,
     int Checks,
-    int Failed,
-    int TimedOut,
+    int Unanswered,
+    int NotRun,
     LatencyStats Gate,
     LatencyStats EngineTotal,
     double SingleClientTotalP50);
@@ -30,7 +30,7 @@ internal sealed record MultiAgentRound(int Index, string Project, string Edit, d
 internal sealed record MultiAgentResult(MultiAgentWriters Writers, MultiAgentBuilds Builds, List<MultiAgentRound> Rounds);
 
 /// <summary>
-///     The three multi-agent scenarios the plan measures: several agents checking at once, several builds at once, and
+///     The three multi-agent scenarios: several agents checking at once, several builds at once, and
 ///     three verify rounds over two projects. They answer whether a check queue is worth coalescing and whether a test
 ///     project is rerun for an edit that cannot reach it.
 /// </summary>
@@ -92,8 +92,8 @@ internal static partial class MultiAgentScenario
         var originals = targets.ToDictionary(f => f, File.ReadAllBytes, StringComparer.OrdinalIgnoreCase);
         var texts = originals.ToDictionary(p => p.Key, p => File.ReadAllText(p.Key), StringComparer.OrdinalIgnoreCase);
         var walls = new List<double>();
-        var failed = 0;
-        var timedOut = 0;
+        var unanswered = 0;
+        var notRun = 0;
         var gates = new List<double>();
         var totals = new List<double>();
         var checks = 0;
@@ -102,13 +102,13 @@ internal static partial class MultiAgentScenario
         try
         {
             var watch = Stopwatch.StartNew();
-            var clients = targets.Select(target => WriterAsync(repo, target, texts[target], taken, (ms, gate, total, ok, hung) =>
+            var clients = targets.Select(target => WriterAsync(repo, target, texts[target], taken, (ms, gate, total, exitCode) =>
             {
                 lock (walls)
                 {
                     walls.Add(ms);
-                    failed += ok ? 0 : 1;
-                    timedOut += hung ? 1 : 0;
+                    unanswered += exitCode == 2 ? 1 : 0;
+                    notRun += exitCode is 0 or 1 or 2 ? 0 : 1;
                     checks++;
                     if (gate is { } g)
                         gates.Add(g);
@@ -120,14 +120,14 @@ internal static partial class MultiAgentScenario
             await Task.WhenAll(clients);
             var wall = watch.Elapsed.TotalMilliseconds;
 
-            Console.WriteLine($"[multiAgent] writers: {targets.Count} client(s) x {EditsPerWriter} edits in {wall:0} ms, {checks} check(s), {failed} failed, {timedOut} timed out");
+            Console.WriteLine($"[multiAgent] writers: {targets.Count} client(s) x {EditsPerWriter} edits in {wall:0} ms, {checks} check(s), {unanswered} unanswered, {notRun} did not run");
             return new MultiAgentWriters(
                 targets.Count,
                 EditsPerWriter,
                 wall,
                 checks,
-                failed,
-                timedOut,
+                unanswered,
+                notRun,
                 Stats(gates),
                 Stats(totals),
                 singleClientTotalP50);
@@ -139,7 +139,7 @@ internal static partial class MultiAgentScenario
         }
     }
 
-    private static async Task WriterAsync(EvalRepo repo, string file, string original, HashSet<string> taken, Action<double, double?, double?, bool, bool> report)
+    private static async Task WriterAsync(EvalRepo repo, string file, string original, HashSet<string> taken, Action<double, double?, double?, int> report)
     {
         for (var i = 1; i <= EditsPerWriter; i++)
         {
@@ -151,7 +151,7 @@ internal static partial class MultiAgentScenario
             var phases = RequestPhases.TakeNewest(repo.EngineLogLines(), taken);
             // A request with no gate phase did not wait for the gate at all; it is not a zero-length wait.
             double? gate = phases is not null && phases.Phases.TryGetValue(Phase.Gate, out var waited) ? waited : null;
-            report(ms, gate, phases?.Total, run.ExitCode is 0 or 1, run.ExitCode == 2);
+            report(ms, gate, phases?.Total, run.ExitCode);
         }
     }
 
@@ -280,7 +280,7 @@ internal static partial class MultiAgentScenario
     private static IEnumerable<string> CollisionLines(string output) =>
         output.Split('\n').Select(l => l.TrimEnd('\r')).Where(l => CollisionIds.Any(id => l.Contains(id, StringComparison.Ordinal)));
 
-    /// <summary>A body edit that leaves the declaration alone, so the check stays scoped to the one file.</summary>
+    /// <summary>A body edit that leaves the declaration alone, so the check binds only that file.</summary>
     private static string BodyEdit(string original, int i) => TextEdit(original, i.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
     /// <summary>Adds a statement to the first method body in the file, or returns it unchanged when there is none.</summary>

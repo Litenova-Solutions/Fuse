@@ -96,7 +96,7 @@ public class CodeDiffTests
     }
 
     [Fact]
-    public void New_file_marks_everything()
+    public void Added_file_marks_everything()
     {
         Assert.Equal(["type C", "method A"], Changed(null, "class C { int A() => 1; }"));
     }

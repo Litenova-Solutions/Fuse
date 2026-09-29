@@ -51,7 +51,7 @@ internal sealed class SolutionViews
     /// <summary>The loaded projects with every changed file at its HEAD content.</summary>
     public Solution Baseline { get; private set; } = null!;
 
-    /// <summary>Increments whenever the HEAD view's content changes (HEAD moved, projects reloaded), which invalidates everything cached against it.</summary>
+    /// <summary>Increments whenever the baseline's content changes (HEAD moved, projects reloaded), which invalidates everything cached against it.</summary>
     public int BaselineGeneration { get; private set; }
 
     /// <summary>

@@ -6,13 +6,13 @@ namespace Fuse.Dotnet;
 internal sealed record TestFailure(string Name, string Message, IReadOnlyList<string> Frames);
 
 /// <summary>Counts and failures from one or more VSTest TRX files.</summary>
-internal sealed record TestOutcome(int Passed, int Failed, int Skipped, IReadOnlyList<TestFailure> Failures)
+internal sealed record TrxResults(int Passed, int Failed, int Skipped, IReadOnlyList<TestFailure> Failures)
 {
-    public static TestOutcome Empty { get; } = new(0, 0, 0, []);
+    public static TrxResults Empty { get; } = new(0, 0, 0, []);
 
     public int Total => Passed + Failed + Skipped;
 
-    public TestOutcome Add(TestOutcome other) =>
+    public TrxResults Add(TrxResults other) =>
         new(Passed + other.Passed, Failed + other.Failed, Skipped + other.Skipped, [.. Failures, .. other.Failures]);
 }
 
@@ -22,17 +22,17 @@ internal static class TrxReader
     private static readonly XNamespace Ns = "http://microsoft.com/schemas/VisualStudio/TeamTest/2010";
 
     /// <summary>Reads every <c>.trx</c> file in <paramref name="directory"/>, or returns null when there is none.</summary>
-    public static TestOutcome? ReadDirectory(string directory, string root)
+    public static TrxResults? ReadDirectory(string directory, string root)
     {
         if (!Directory.Exists(directory))
             return null;
         var files = Directory.GetFiles(directory, "*.trx", SearchOption.AllDirectories);
         if (files.Length == 0)
             return null;
-        return files.Select(f => Read(f, root)).Aggregate(TestOutcome.Empty, (a, b) => a.Add(b));
+        return files.Select(f => Read(f, root)).Aggregate(TrxResults.Empty, (a, b) => a.Add(b));
     }
 
-    private static TestOutcome Read(string file, string root)
+    private static TrxResults Read(string file, string root)
     {
         var document = XDocument.Load(file);
         int passed = 0, failed = 0, skipped = 0;
@@ -58,7 +58,7 @@ internal static class TrxReader
             }
         }
 
-        return new TestOutcome(passed, failed, skipped, failures);
+        return new TrxResults(passed, failed, skipped, failures);
     }
 
     private static string Trim(string message, int maxLines)

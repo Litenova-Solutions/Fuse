@@ -45,7 +45,7 @@ public class ResponseMapperTests
         ],
         SelectedTests: 12,
         TotalTests: 40,
-        Summary: "ran 12 test(s) affected by your changes out of 40 (whole projects where the change reaches App, which runs behind a host); fuse test --all runs everything");
+        Summary: "ran 12 test(s) affected by your changes out of 40 (whole projects where App uses the changed code and runs behind an application host); fuse test --all runs everything");
 
     [Fact]
     public void A_check_result_maps_to_its_report_field_by_field()
@@ -84,7 +84,7 @@ public class ResponseMapperTests
         Assert.Equal([false, false, false, true], report.Errors.Select(e => e.IsCauseLeftOut));
         Assert.Equal((7, 3, true), (report.FilesChecked, report.DependentProjectsChecked, report.CheckedWholeProjects));
         Assert.Equal(["Lib"], report.DeclarationsChangedIn);
-        // The field names are the ones the Renames table in docs/architecture.md gives the wire.
+        // The field names are the wire contract; a change here changes what this build's engine sends.
         Assert.StartsWith("{\"status\":\"CheckAnswered\",\"report\":{", line, StringComparison.Ordinal);
         foreach (var name in new[] { "\"errors\"", "\"cause\"", "\"kind\":\"Removed\"", "\"fromAnalyzer\":true", "\"declarationsChangedIn\"", "\"checkedWholeProjects\"", "\"isCauseLeftOut\":true" })
             Assert.Contains(name, line, StringComparison.Ordinal);
@@ -117,7 +117,7 @@ public class ResponseMapperTests
         Assert.Equal("C:/state/shadow/Lib.Tests-net8.0/Lib.Tests.dll", Assert.IsType<TestRunMode.Shadow>(plan.Runs[0].Mode).Assembly);
         Assert.IsType<TestRunMode.Build>(plan.Runs[1].Mode);
         Assert.Equal((12, 40, Plan.Summary), (plan.SelectedTests, plan.TotalTests, plan.Summary));
-        // The field names are the ones the Renames table in docs/architecture.md gives the wire.
+        // The field names are the wire contract; a change here changes what this build's engine sends.
         Assert.StartsWith("{\"status\":\"PlanAnswered\",\"plan\":{", line, StringComparison.Ordinal);
         foreach (var name in new[] { "\"summary\"", "\"mode\":{\"kind\":\"Shadow\",\"assembly\":", "\"mode\":{\"kind\":\"Build\"}", "\"usesTestingPlatform\":true" })
             Assert.Contains(name, line, StringComparison.Ordinal);

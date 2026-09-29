@@ -14,7 +14,7 @@ public class TestCounterTests
     [Fact]
     public void A_whole_selection_counts_every_test()
     {
-        Assert.Equal(4, TestCounter.Count(Tests, new TestSelection.Whole("the change reaches App, which runs behind a host")));
+        Assert.Equal(4, TestCounter.Count(Tests, new TestSelection.Whole("App uses the changed code and runs behind an application host")));
     }
 
     [Fact]

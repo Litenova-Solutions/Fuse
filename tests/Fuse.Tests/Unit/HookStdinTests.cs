@@ -46,7 +46,7 @@ public class HookStdinTests
     [Fact]
     public async Task The_bytes_are_read_as_utf8_even_when_the_console_says_otherwise()
     {
-        // The console's decoding is the thing that was wrong. Reading a known UTF-8 byte sequence must not depend on it.
+        // The console's decoding is what this case rules out. Reading a known UTF-8 byte sequence must not depend on it.
         using var latin = new MemoryStream([0x7B, 0x22, 0x61, 0x22, 0x3A, 0x22, 0xC3, 0xB8, 0x22, 0x7D]);
         var read = await HookCommand.ReadUtf8Async(latin, TestContext.Current.CancellationToken);
         Assert.Equal("""{"a":"ø"}""", read);

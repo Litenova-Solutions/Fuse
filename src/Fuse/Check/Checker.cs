@@ -50,7 +50,6 @@ internal sealed class Checker
         _candidates = new CandidateBinding(workspace, _introduced);
     }
 
-    /// <summary>Runs a check.</summary>
     /// <param name="scope">The files to check, or every change since HEAD.</param>
     /// <param name="phases">Collects how long each phase of this check took; <see cref="PhaseTimes.None"/> collects nothing.</param>
     /// <param name="cancellationToken">Cancels the check.</param>

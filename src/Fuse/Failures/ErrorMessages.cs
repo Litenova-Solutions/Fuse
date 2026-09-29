@@ -13,6 +13,12 @@ internal static class ErrorMessages
     public const string NotARepository = "not inside a git repository; Fuse compares your changes with HEAD, so it needs one";
 
     /// <summary>
+    ///     The message for <see cref="ErrorCode.NoProjects"/>, without the <c>fuse:</c> prefix: the client, the engine and
+    ///     <c>fuse init</c> print it when git knows no <c>.csproj</c> in the repository.
+    /// </summary>
+    public const string NoProjects = "no C# projects (.csproj) in this repository, so Fuse has nothing to check";
+
+    /// <summary>
     ///     The message for <see cref="ErrorCode.InvalidPath"/> when a check names a file by an empty or blank string. The
     ///     command line and the MCP server refuse such an argument before they send anything, and the engine refuses such
     ///     a request line.

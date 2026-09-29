@@ -53,7 +53,6 @@ internal sealed class RepoWorkspace : IDisposable
 
     public RepoRoot Root { get; }
 
-    /// <summary>Writes a line to the engine log.</summary>
     public void Log(string message) => _log(message);
 
     /// <summary>Evaluates the project graph and starts tracking changes. Compiles nothing.</summary>
@@ -80,7 +79,6 @@ internal sealed class RepoWorkspace : IDisposable
     public Task PreloadAsync(ProjectNode project, CancellationToken cancellationToken) =>
         _projects.PreloadAsync(project, cancellationToken);
 
-    /// <summary>True when <paramref name="node"/> is loaded.</summary>
     public bool IsLoaded(ProjectNode node) => _projects.IsLoaded(node);
 
     /// <summary>The loaded Roslyn projects (one per target framework) built from <paramref name="node"/>.</summary>

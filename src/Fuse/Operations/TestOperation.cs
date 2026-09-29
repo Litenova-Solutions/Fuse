@@ -18,7 +18,7 @@ internal static class TestOperation
     public static async Task<OperationResult> RunAsync(RepoRoot root, string workingDirectory, IReadOnlyList<string> arguments, bool all, CancellationToken cancellationToken)
     {
         // Held from before the plan request until the last child has exited: the plan makes the engine mirror and emit into
-        // the shadow folder, and the runs below write build output, so all of it has to be one window in this repository.
+        // the shadow folder, and the runs below write build output, so no other build or test in this repository may run in between.
         using var buildLock = BuildLock.AcquireForClient(root);
         return await RunLockedAsync(root, workingDirectory, arguments, all, cancellationToken).ConfigureAwait(false);
     }
@@ -38,7 +38,7 @@ internal static class TestOperation
         EngineRequest request = all ? new EngineRequest.PlanAllTests() : new EngineRequest.PlanAffectedTests();
         var response = await EngineClient.SendAsync(root, request, TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
         if (response is not EngineResponse.PlanAnswered answered)
-            return new OperationResult(Outcome.Unanswered, $"fuse: {(response as EngineResponse.Unanswered)?.Message ?? "the engine gave no answer"}");
+            return new OperationResult(Outcome.Unanswered, $"fuse: {(response as EngineResponse.Unanswered)?.Message ?? $"the Fuse engine sent no test plan ({response.GetType().Name}); run the command again"}");
         var plan = answered.Plan;
         if (plan.Runs.Length == 0)
             return new OperationResult(Outcome.Clean, $"fuse: {plan.Summary}");
@@ -56,7 +56,7 @@ internal static class TestOperation
         // projects, so they run one after another.
         var groups = plan.Runs.GroupBy(r => root.PathOf(r.Project)).ToList();
         var shadowGroups = groups.Where(g => g.All(r => r.Mode is TestRunMode.Shadow && !r.UsesTestingPlatform)).ToList();
-        var outcomes = new System.Collections.Concurrent.ConcurrentDictionary<RepoPath, TestOutcome>();
+        var outcomes = new System.Collections.Concurrent.ConcurrentDictionary<RepoPath, TrxResults>();
         await Parallel.ForEachAsync(
             shadowGroups,
             new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2), CancellationToken = cancellationToken },
@@ -65,13 +65,13 @@ internal static class TestOperation
                 // One process per target framework, in parallel. Every run in a shadow group is a shadow run.
                 var results = await Task.WhenAll(group.Select(run => RunDotnetTestAsync(
                     root, root.Path, [((TestRunMode.Shadow)run.Mode).Assembly, .. (run.Filter is null ? Array.Empty<string>() : ["--filter", run.Filter])], ct, assembly: true))).ConfigureAwait(false);
-                // A shadow that could not run (a host or adapter problem) sends the whole project through MSBuild below.
+                // A shadow run that could not start (a test host or adapter problem) sends the whole project through MSBuild below.
                 if (results.Any(r => r.Outcome is null))
                     return;
-                outcomes[group.Key] = results.Aggregate(TestOutcome.Empty, (sum, r) => sum.Add(r.Outcome!));
+                outcomes[group.Key] = results.Aggregate(TrxResults.Empty, (sum, r) => sum.Add(r.Outcome!));
             }).ConfigureAwait(false);
 
-        var aggregate = TestOutcome.Empty;
+        var aggregate = TrxResults.Empty;
         // A project that did not build, or whose run ended without results, is part of the answer whatever the other
         // projects did. A Microsoft.Testing.Platform run that passed is kept apart: it has no counts to add.
         var problems = new List<OperationResult>();
@@ -128,7 +128,7 @@ internal static class TestOperation
     ///     which is null for a Microsoft.Testing.Platform run that exited with 0.
     /// </summary>
     /// <param name="assembly">True when <paramref name="arguments"/> name a test assembly: <c>dotnet test</c> then hands them to VSTest, which rejects MSBuild switches.</param>
-    private static async Task<(TestOutcome? Outcome, ProcessResult? Process)> RunDotnetTestAsync(
+    private static async Task<(TrxResults? Outcome, ProcessResult? Process)> RunDotnetTestAsync(
         RepoRoot root, string workingDirectory, string[] arguments, CancellationToken cancellationToken, bool testingPlatform = false, bool assembly = false)
     {
         var results = Path.Combine(root.StateDirectory, "results", Guid.NewGuid().ToString("N")[..8]);
@@ -188,7 +188,7 @@ internal static class TestOperation
     }
 
     /// <summary>The answer for runs that wrote TRX results: the failures, then the counts and <paramref name="summary"/>.</summary>
-    private static OperationResult Render(TestOutcome outcome, string summary, double seconds)
+    private static OperationResult Render(TrxResults outcome, string summary, double seconds)
     {
         var text = new StringBuilder();
         foreach (var failure in outcome.Failures.Take(MaxFailuresShown))

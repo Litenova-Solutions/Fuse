@@ -3,7 +3,7 @@ using Fuse.Check.Model;
 namespace Fuse.Check;
 
 /// <summary>Finds working-tree errors that have no match in the baseline.</summary>
-internal static class DiagnosticDelta
+internal static class ErrorDelta
 {
     /// <summary>
     ///     Returns the errors in <paramref name="current"/> without a match in <paramref name="baseline"/>. A match is the

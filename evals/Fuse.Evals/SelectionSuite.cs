@@ -12,7 +12,7 @@ internal sealed record SelectionCase(
     List<string> FuseFailing,
     int FuseFailed,
     int FusePassed,
-    string FuseScope,
+    string FuseSummary,
     List<string> Missed,
     double FuseSeconds,
     double DotnetSeconds,
@@ -79,13 +79,13 @@ internal static partial class SelectionSuite
             var counts = Counts().Match(fuse.Result.Output);
             var fuseFailed = counts.Success ? int.Parse(counts.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture) : 0;
             var fusePassed = counts.Success ? int.Parse(counts.Groups[2].Value, System.Globalization.CultureInfo.InvariantCulture) : 0;
-            var scope = fuse.Result.Output.Trim().Split('\n').Last().Trim();
-            // Every failing test fuse ran is named in its output (details for ten, names for the rest). A truth
-            // failure with no matching name is missed; if fuse truncated its name list, the case cannot be verified.
+            var lastLine = fuse.Result.Output.Trim().Split('\n').Last().Trim();
+            // Every failing test `fuse test` ran is named in its output (details for ten, names for the rest). A truth
+            // failure with no matching name is missed; if `fuse test` truncated its name list, the case cannot be verified.
             var missed = truthFailing.Where(t => !fuseFailing.Contains(t)).ToList();
             var truncated = fuse.Result.Output.Contains("... and ", StringComparison.Ordinal);
             var verdict = missed.Count > 0 ? (truncated ? "unverified" : "missed") : truthFailing.Count == 0 ? "no-failure" : "caught";
-            cases.Add(new SelectionCase(cases.Count, edit with { NewText = null }, truthFailing, fuseFailing, fuseFailed, fusePassed, scope, missed, fuseSeconds, truth.Seconds, verdict));
+            cases.Add(new SelectionCase(cases.Count, edit with { NewText = null }, truthFailing, fuseFailing, fuseFailed, fusePassed, lastLine, missed, fuseSeconds, truth.Seconds, verdict));
             Console.WriteLine($"[selection] {cases.Count}/{count} {verdict,-10} truth-failing={truthFailing.Count} fuse ran={fuseFailed + fusePassed} fuse={fuseSeconds:0.0}s dotnet={truth.Seconds:0.0}s  {edit.Kind} {edit.Path}");
             await repo.ResetAsync();
         }
@@ -126,13 +126,13 @@ internal static partial class SelectionSuite
     ///     added to <paramref name="withoutResults"/> with the reason it is expected to, because a silent gap in the truth
     ///     side would flatter every selection number.
     /// </summary>
-    private static async Task<(TestOutcome Outcome, double Seconds, bool BuildFailed)> FullTestAsync(
+    private static async Task<(TrxResults Outcome, double Seconds, bool BuildFailed)> FullTestAsync(
         EvalRepo repo,
         SolutionInfo solution,
         SortedSet<string> withoutResults)
     {
         var watch = Stopwatch.StartNew();
-        var total = TestOutcome.Empty;
+        var total = TrxResults.Empty;
         var buildFailed = false;
         foreach (var project in solution.TestProjects)
         {
@@ -170,7 +170,7 @@ internal static partial class SelectionSuite
     ///     Runs one test project with <c>dotnet test</c> and reads its results. A build that cannot replace a file another
     ///     process holds open stops the suite (see <see cref="EvalRepo.ThrowIfLocked"/>): it is a defect, not a test result.
     /// </summary>
-    private static async Task<(ProcessResult Run, TestOutcome? Outcome)> RunProjectAsync(EvalRepo repo, string project, string results)
+    private static async Task<(ProcessResult Run, TrxResults? Outcome)> RunProjectAsync(EvalRepo repo, string project, string results)
     {
         var (run, outcome) = await RunProjectOnceAsync(repo, project, results);
         if (outcome is null)
@@ -178,7 +178,7 @@ internal static partial class SelectionSuite
         return (run, outcome);
     }
 
-    private static async Task<(ProcessResult Run, TestOutcome? Outcome)> RunProjectOnceAsync(EvalRepo repo, string project, string results)
+    private static async Task<(ProcessResult Run, TrxResults? Outcome)> RunProjectOnceAsync(EvalRepo repo, string project, string results)
     {
         var run = await ProcessRunner.RunAsync("dotnet", ["test", project, "--no-restore", "--logger", "trx;LogFilePrefix=truth", "--results-directory", results, "-nologo", "-tl:off"], repo.Root, CancellationToken.None);
         return (run, TrxReader.ReadDirectory(results, repo.Root));

@@ -23,7 +23,7 @@ internal static class GitStatus
             root.Path,
             cancellationToken).ConfigureAwait(false);
         if (result.ExitCode != 0)
-            throw HeadResolver.GitFailure(root, "git status", result);
+            throw HeadResolver.GitFailure(root, "listing changed files", result);
         return [.. Paths(result.Output).Select(root.PathOf)];
     }
 

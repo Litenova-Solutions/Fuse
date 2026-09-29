@@ -25,17 +25,17 @@ internal sealed record CorrectnessCase(
     string? Note)
 {
     /// <summary>How many cause lines fuse printed, one under an error in a file the case did not edit.</summary>
-    public int ContextLines { get; init; }
+    public int CauseLines { get; init; }
 
     /// <summary>How many bytes fuse printed, so the cause lines' share of a response is visible.</summary>
     public int OutputBytes { get; init; }
 
     /// <summary>How many bytes the cause lines account for.</summary>
-    public int ContextBytes { get; init; }
+    public int CauseBytes { get; init; }
 }
 
 /// <summary>
-///     Applies API-shape mutations (single edits and 2-3 edit sequences across projects), then compares the
+///     Applies mutations that change a declaration other files use (single edits and 2-3 edit sequences across projects), then compares the
 ///     errors <c>fuse check</c> reports with the errors a real <c>dotnet build</c> reports beyond the HEAD build.
 /// </summary>
 internal static partial class CorrectnessSuite
@@ -69,7 +69,7 @@ internal static partial class CorrectnessSuite
             }
 
             var fuse = await repo.FuseAsync(["check", .. edits.Select(e => Path.Combine(repo.Root, e.Path))]);
-            // The cause lines fuse prints under an error in a file this case did not edit.
+            // The cause lines `fuse check` prints under an error in a file this case did not edit.
             List<Match> Context() => [.. fuse.Result.Output.Split('\n').Select(l => CauseLine().Match(l.TrimEnd('\r'))).Where(m => m.Success)];
             var build = await repo.BuildAsync();
             var truth = Subtract(build.Errors, head.Errors);
@@ -78,9 +78,9 @@ internal static partial class CorrectnessSuite
             var result = Classify(solution, i, edits, truth, fuseErrors, fuseCount, fuse.Result.ExitCode, fuse.Milliseconds, build.Seconds,
                 fuse.Result.ExitCode is 0 or 1 ? null : fuse.Result.Output.Trim()) with
             {
-                ContextLines = Context().Count(m => m.Success),
+                CauseLines = Context().Count(m => m.Success),
                 OutputBytes = System.Text.Encoding.UTF8.GetByteCount(fuse.Result.Output),
-                ContextBytes = System.Text.Encoding.UTF8.GetByteCount(string.Join("\n", Context().Select(m => m.Value))),
+                CauseBytes = System.Text.Encoding.UTF8.GetByteCount(string.Join("\n", Context().Select(m => m.Value))),
             };
             cases.Add(result);
             Console.WriteLine($"[correctness] {i + 1}/{count} {result.Verdict,-12} truth={truth.Count,3} fuse={fuseCount,3} {fuse.Milliseconds,6:0} ms  {string.Join(" + ", edits.Select(e => $"{e.Kind} {e.Path}"))}");
@@ -103,24 +103,24 @@ internal static partial class CorrectnessSuite
             neutral = cases.Count - breaking,
             falseGreen = cases.Count(c => c.Verdict == "false-green"),
             falseRedCases = cases.Count(c => c.FalseRed.Count > 0),
-            falseRedDiagnostics = cases.Sum(c => c.FalseRed.Count),
-            unverifiableDiagnostics = cases.Sum(c => c.Unverifiable.Count),
-            deferredByCompilerDiagnostics = cases.Sum(c => c.DeferredByCompiler.Count),
-            messageMismatchDiagnostics = cases.Sum(c => c.MessageMismatch.Count),
-            contextLines = cases.Sum(c => c.ContextLines),
-            contextBytes = cases.Sum(c => c.ContextBytes),
+            falseRedErrors = cases.Sum(c => c.FalseRed.Count),
+            unverifiableErrors = cases.Sum(c => c.Unverifiable.Count),
+            deferredByCompilerErrors = cases.Sum(c => c.DeferredByCompiler.Count),
+            messageMismatchErrors = cases.Sum(c => c.MessageMismatch.Count),
+            causeLines = cases.Sum(c => c.CauseLines),
+            causeBytes = cases.Sum(c => c.CauseBytes),
             outputBytes = cases.Sum(c => c.OutputBytes),
             partialMisses = cases.Count(c => c.Verdict == "partial"),
             exactAgreement = cases.Count(c => c.Verdict is "agree" or "agree-clean"),
             fileAgreement = cases.Count(c => c.FileAgreement),
-            fuseFailures = cases.Count(c => c.FuseExit is not (0 or 1)),
+            fuseUnanswered = cases.Count(c => c.FuseExit is not (0 or 1)),
             fuseMedianMs = Median(cases.Select(c => c.FuseMilliseconds)),
             buildMedianSeconds = Median(cases.Select(c => c.BuildSeconds)),
             headBuildErrors = head.Errors.Count,
             treeCleanAfter = clean,
             details = cases,
         };
-        Console.WriteLine($"[correctness] {repo.Name}: {cases.Count} cases, {breaking} breaking, false green {summary.falseGreen}, false-red cases {summary.falseRedCases}, unverifiable diagnostics {summary.unverifiableDiagnostics}, deferred by csc {summary.deferredByCompilerDiagnostics}, message mismatches {summary.messageMismatchDiagnostics}, partial {summary.partialMisses}, exact {summary.exactAgreement}, file agreement {summary.fileAgreement}, tree clean {clean}");
+        Console.WriteLine($"[correctness] {repo.Name}: {cases.Count} cases, {breaking} breaking, false green {summary.falseGreen}, false-red cases {summary.falseRedCases}, unverifiable errors {summary.unverifiableErrors}, deferred by csc {summary.deferredByCompilerErrors}, message mismatches {summary.messageMismatchErrors}, partial {summary.partialMisses}, exact {summary.exactAgreement}, file agreement {summary.fileAgreement}, tree clean {clean}");
         return summary;
     }
 
@@ -147,9 +147,9 @@ internal static partial class CorrectnessSuite
     }
 
     /// <summary>
-    ///     Compares fuse's errors with the build's. Errors are matched by position (file, line, column); a match whose id
+    ///     Compares Fuse's errors with the build's. Errors are matched by position (file, line, column); a match whose id
     ///     or message differs is counted as a message mismatch, not a disagreement (the build compiles against reference
-    ///     assemblies, which omit private members, so it says "no definition" where fuse says "inaccessible"). A fuse
+    ///     assemblies, which omit private members, so it says "no definition" where Fuse says "inaccessible"). A Fuse
     ///     error in a project the build never compiled, because a project it references failed, is unverifiable: MSBuild
     ///     skips such projects, so the build has no answer there.
     /// </summary>
@@ -184,7 +184,7 @@ internal static partial class CorrectnessSuite
         }
 
         var missed = truth.Where((_, i) => !fusePositions.Contains(truthPositions[i])).ToList();
-        // fuse prints at most 20 diagnostics; misses beyond what it printed are only real when its total is lower.
+        // `fuse check` prints at most 20 errors; misses beyond what it printed are only real when its total is lower.
         var capped = fuseCount > fuse.Count;
         if (capped && fuseCount >= truth.Count)
             missed.Clear();
@@ -192,9 +192,9 @@ internal static partial class CorrectnessSuite
         var fuseFiles = fuse.Where(f => !unverifiable.Contains(f) && !deferred.Contains(f)).Select(FileOf).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var fileAgreement = capped ? truthFiles.IsSupersetOf(fuseFiles) : truthFiles.SetEquals(fuseFiles);
         string verdict;
-        // Exit 2 is fuse declining to answer; anything else outside 0/1 means the process did not run (-1: failed to start).
+        // Exit 2 is Fuse not answering (Unanswered); anything else outside 0/1 means the process did not run (-1: failed to start).
         if (fuseExit is not (0 or 1))
-            verdict = "fuse-failed";
+            verdict = "fuse-unanswered";
         else if (truth.Count > 0 && fuseCount == 0)
             verdict = "false-green";
         else if (falseRed.Count > 0)
@@ -340,7 +340,7 @@ internal static partial class CorrectnessSuite
     [GeneratedRegex(@"^(?<file>[^\r\n]+?)(?:\((?<line>\d+),(?<col>\d+)\))?: error (?<id>[A-Za-z]+\d+): (?<msg>.*)$")]
     private static partial Regex Canonical();
 
-    // The cause line fuse prints under an error in a file the case did not edit, indented by two spaces.
+    // The cause line `fuse check` prints under an error in a file the case did not edit, indented by two spaces.
     [GeneratedRegex(@"^ {2}(?<state>changed|removed): (?<declaration>.+)$")]
     private static partial Regex CauseLine();
 }

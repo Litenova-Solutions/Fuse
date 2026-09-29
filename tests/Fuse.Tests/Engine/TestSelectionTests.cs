@@ -38,9 +38,9 @@ public class TestSelectionTests
         var lib = Assert.IsType<TestSelection.Methods>(selection["Lib.Tests"]);
         Assert.Contains("Lib.Tests.GreeterTests.Greets", lib.Patterns);
         Assert.DoesNotContain(lib.Patterns, p => p.Contains("CalcTests", StringComparison.Ordinal));
-        // The app's top-level statements call Greet, and the host is invoked by the runtime, so App.Tests runs whole.
+        // The app's top-level statements call Greet, and the runtime calls the entry point, so App.Tests runs whole.
         var app = Assert.IsType<TestSelection.Whole>(selection["App.Tests"]);
-        Assert.Equal("the change reaches the application's entry point", app.Reason);
+        Assert.Equal("App's entry point calls the changed code", app.Reason);
     }
 
     [Fact]
@@ -70,7 +70,7 @@ public class TestSelectionTests
         var app = Assert.IsType<TestSelection.Whole>(selection["App.Tests"]);
         // The seeds select App.Tests whole for the top-level statements, and the type walk reaches the application too;
         // the member-level answer gives the reason the class-level answer gives.
-        Assert.Equal("the change reaches App, which runs behind a host", app.Reason);
+        Assert.Equal("App uses the changed code and runs behind an application host", app.Reason);
         Assert.False(selection.ContainsKey("Lib.Tests"));
     }
 
@@ -93,7 +93,7 @@ public class TestSelectionTests
 
         // The type walk selects the whole class, not only Multiplies, and reaches the application through Program.cs.
         Assert.Equal(["Lib.Tests.CalcTests."], Assert.IsType<TestSelection.Methods>(selection["Lib.Tests"]).Patterns);
-        Assert.Equal("the change reaches App, which runs behind a host", Assert.IsType<TestSelection.Whole>(selection["App.Tests"]).Reason);
+        Assert.Equal("App uses the changed code and runs behind an application host", Assert.IsType<TestSelection.Whole>(selection["App.Tests"]).Reason);
     }
 
     [Fact]
@@ -208,7 +208,7 @@ public class TestSelectionTests
         FixtureRepo.Run(repo.Root.Path, "dotnet", "build", project, "--no-restore", "-nologo", "-v:q");
 
     /// <summary>Runs a shadow run's test assembly with <c>dotnet test</c>, the way <c>fuse test</c> does, and reads its results.</summary>
-    private static async Task<TestOutcome> RunAsync(FixtureRepo repo, RunMode.Shadow shadow, string? filter)
+    private static async Task<TrxResults> RunAsync(FixtureRepo repo, RunMode.Shadow shadow, string? filter)
     {
         var results = FixtureRepo.NewDirectory();
         try

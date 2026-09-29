@@ -18,7 +18,6 @@ internal sealed class SelectionBuilder
     /// </summary>
     public IReadOnlyDictionary<RepoPath, TestSelection> Selections => _selections;
 
-    /// <summary>True when <paramref name="project"/> is selected whole.</summary>
     public bool IsWhole(ProjectNode project) => _selections.GetValueOrDefault(project.Path) is TestSelection.Whole;
 
     /// <summary>Selects every test in <paramref name="project"/>. A reason given later replaces an earlier one.</summary>

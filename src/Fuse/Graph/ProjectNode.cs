@@ -31,7 +31,7 @@ internal sealed class ProjectNode
     public required bool IsExecutable { get; init; }
 
     /// <summary>True when the tests run on Microsoft.Testing.Platform rather than VSTest.</summary>
-    public required bool IsTestingPlatform { get; init; }
+    public required bool UsesTestingPlatform { get; init; }
 
     public override string ToString() => Name;
 }

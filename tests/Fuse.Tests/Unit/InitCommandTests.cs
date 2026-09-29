@@ -66,7 +66,7 @@ public class InitCommandTests
     [Fact]
     public void Rerunning_init_replaces_a_pre_bash_registration_with_pre_shell()
     {
-        // A registration an earlier build wrote calls an event fuse hook no longer accepts; rerunning init replaces it.
+        // A registration an earlier build wrote calls an event `fuse hook` does not accept; rerunning init replaces it.
         using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string>
         {
             ["App/App.csproj"] = "<Project />",
@@ -138,7 +138,7 @@ public class InitCommandTests
         var opencode = repo.Read(".opencode/plugins/fuse.js");
         Assert.Contains("\"hook\", \"opencode\", event", opencode, StringComparison.Ordinal);
         Assert.Contains("\"tool.execute.after\"", opencode, StringComparison.Ordinal);
-        Assert.Contains("fuse(\"pre-shell\"", opencode, StringComparison.Ordinal);
+        Assert.Contains("runHook(\"pre-shell\"", opencode, StringComparison.Ordinal);
         Assert.DoesNotContain("pre-bash", opencode, StringComparison.Ordinal);
 
         var vscode = Json(repo, ".vscode/mcp.json")["servers"]!["fuse"]!;
@@ -160,7 +160,7 @@ public class InitCommandTests
         Assert.Equal(0, InitCommand.Run(repo.Root.Path, output, error));
         Assert.Equal("fuse", Json(repo, ".vscode/mcp.json")["servers"]!["fuse"]!["command"]!.GetValue<string>());
         Assert.False(Directory.Exists(repo.Full(".claude")));
-        Assert.StartsWith("wrote .vscode/mcp.json" + Environment.NewLine + "fuse: hooks installed", output.ToString(), StringComparison.Ordinal);
+        Assert.StartsWith("wrote .vscode/mcp.json" + Environment.NewLine + "fuse: MCP server registered in .vscode/mcp.json", output.ToString(), StringComparison.Ordinal);
     }
 
     [Theory]

@@ -72,7 +72,7 @@ public class CauseLinesTests
         engine.Repo.Replace("Lib/Greeting.cs", "string Greet(string name);", "string Greet(string name, bool loud);");
         var result = await engine.CheckAsync("Lib/Greeting.cs");
 
-        // The interface member changed, so every call to Greet and every implementation of the interface is in scope. The
+        // The interface member changed, so every call to Greet and every implementation of the interface is a candidate. The
         // parameter list is part of the key, so the change is the removal of the old member, which the callers used. A
         // changed type header is broad and gets no cause at all.
         var lines = PrintedCauses(result);
@@ -127,10 +127,10 @@ public class CauseLinesTests
         var attached = CauseLines.Attach(errors, new Reach.Precise(causes), Root, []);
 
         Assert.Equal(errors, attached.Select(e => e.Error));
-        Assert.Equal(CauseLines.MaxLines, attached.Count(e => e.Cause is not null));
-        Assert.All(attached.Take(CauseLines.MaxLines), e => Assert.NotNull(e.Cause));
-        Assert.All(attached.Skip(CauseLines.MaxLines), e => Assert.Null(e.Cause));
-        Assert.All(attached.Skip(CauseLines.MaxLines), e => Assert.True(e.IsCauseLeftOut));
+        Assert.Equal(CauseLines.MaxCauses, attached.Count(e => e.Cause is not null));
+        Assert.All(attached.Take(CauseLines.MaxCauses), e => Assert.NotNull(e.Cause));
+        Assert.All(attached.Skip(CauseLines.MaxCauses), e => Assert.Null(e.Cause));
+        Assert.All(attached.Skip(CauseLines.MaxCauses), e => Assert.True(e.IsCauseLeftOut));
         Assert.Equal(15, attached.Count(e => e.IsCauseLeftOut));
         Assert.Equal(new Cause.Changed("public int Method0()"), attached[0].Cause);
     }
@@ -150,7 +150,7 @@ public class CauseLinesTests
             new("src/Analyzed.cs", 1, 1, "CA1825", "from an analyzer", FromAnalyzer: true),
             new("src/Unreached.cs", 1, 1, "CS0103", "in a file no change reached"),
         };
-        for (var i = 0; i < CauseLines.MaxLines + 2; i++)
+        for (var i = 0; i < CauseLines.MaxCauses + 2; i++)
         {
             var path = $"src/Candidate{i}.cs";
             causes[Root.PathOf(path)] = new Cause.Removed($"public int Method{i}()");
@@ -160,7 +160,7 @@ public class CauseLinesTests
         var attached = CauseLines.Attach(errors, new Reach.Precise(causes), Root, [Root.PathOf("src/Target.cs")]);
 
         Assert.All(attached.Take(3), e => Assert.Null(e.Cause));
-        Assert.Equal(CauseLines.MaxLines, attached.Count(e => e.Cause is not null));
+        Assert.Equal(CauseLines.MaxCauses, attached.Count(e => e.Cause is not null));
         Assert.Equal(new Cause.Removed("public int Method0()"), attached[3].Cause);
         Assert.All(attached.Take(3), e => Assert.False(e.IsCauseLeftOut));
         Assert.Equal(2, attached.Count(e => e.IsCauseLeftOut));

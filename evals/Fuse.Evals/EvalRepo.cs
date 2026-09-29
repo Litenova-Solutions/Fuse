@@ -44,7 +44,6 @@ internal sealed partial class EvalRepo
         return result.ExitCode == 0 ? result.Output.Trim() : "";
     }
 
-    /// <summary>The product version the fuse executable under test reports for itself.</summary>
     /// <summary>
     ///     The build under test, in the form the engine compares (<c>version/module id</c>), so two result files from two
     ///     builds of one version can be told apart. Falls back to the printed version when the assembly cannot be read.
@@ -122,14 +121,14 @@ internal sealed partial class EvalRepo
         return (result, watch.Elapsed.TotalMilliseconds);
     }
 
-    /// <summary>One timed call: its output, its wall time, and the engine request it made.</summary>
+    /// <summary>Runs fuse with arguments and returns its output and wall time.</summary>
     public async Task<FuseRun> FuseTimedAsync(params string[] args)
     {
         var (result, milliseconds) = await FuseAsync(args);
         return new FuseRun(result, milliseconds);
     }
 
-    /// <summary>Stops every fuse engine serving this repository so the next call starts cold.</summary>
+    /// <summary>Stops every Fuse engine serving this repository so the next call starts cold.</summary>
     public async Task KillEngineAsync()
     {
         foreach (var process in await EngineProcessesAsync())
@@ -146,7 +145,7 @@ internal sealed partial class EvalRepo
         await Task.Delay(500);
     }
 
-    /// <summary>The fuse engine processes whose command line names this repository, with their working set in bytes.</summary>
+    /// <summary>The Fuse engine processes whose command line names this repository, with their working set in bytes.</summary>
     public async Task<List<(int Pid, long WorkingSet)>> EngineProcessesAsync()
     {
         var result = new List<(int, long)>();

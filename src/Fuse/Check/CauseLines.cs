@@ -11,8 +11,8 @@ namespace Fuse.Check;
 /// </summary>
 internal static class CauseLines
 {
-    /// <summary>At most this many causes per answer, so a wide change cannot bury the errors it explains.</summary>
-    public const int MaxLines = 10;
+    /// <summary>At most this many causes per answer, so the cause lines of a change that reaches many files do not outnumber the errors.</summary>
+    public const int MaxCauses = 10;
 
     /// <summary>
     ///     Each error with its cause, in the same order. An error gets no cause when it is in a target, when an analyzer
@@ -44,7 +44,7 @@ internal static class CauseLines
                 continue;
             }
 
-            if (shown >= MaxLines)
+            if (shown >= MaxCauses)
             {
                 result.Add(new IntroducedError(error, IsCauseLeftOut: true));
                 continue;

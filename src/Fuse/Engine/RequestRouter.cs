@@ -21,7 +21,7 @@ internal sealed class RequestRouter : IDisposable
     private readonly RepoWorkspace _workspace;
     private readonly Checker _checker;
     private readonly TestPlanner _planner;
-    private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly SemaphoreSlim _requestLock = new(1, 1);
     private readonly Preloader _preloader;
     private readonly RequestLog _requestLog;
     private Task? _initialization;
@@ -33,7 +33,7 @@ internal sealed class RequestRouter : IDisposable
         _workspace = new RepoWorkspace(root, log.Write);
         _checker = new Checker(_workspace);
         _planner = new TestPlanner(_workspace);
-        _preloader = new Preloader(_workspace, _gate, log);
+        _preloader = new Preloader(_workspace, _requestLock, log);
         _requestLog = new RequestLog(log);
     }
 
@@ -47,7 +47,7 @@ internal sealed class RequestRouter : IDisposable
 
     private async Task InitializeCoreAsync(CancellationToken cancellationToken)
     {
-        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await _requestLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             await _workspace.InitializeAsync(cancellationToken).ConfigureAwait(false);
@@ -66,7 +66,7 @@ internal sealed class RequestRouter : IDisposable
         }
         finally
         {
-            _gate.Release();
+            _requestLock.Release();
         }
 
         _preloader.Schedule(_shutdown);
@@ -83,7 +83,7 @@ internal sealed class RequestRouter : IDisposable
 
         var initialization = _initialization ?? Task.CompletedTask;
         if (!initialization.IsCompleted && request is EngineRequest.CheckChanges { WaitForLoad: false } or EngineRequest.CheckFiles { WaitForLoad: false })
-            return new EngineResponse.Unanswered(ErrorCode.Loading, "fuse is still loading this repository; the next check will include these changes");
+            return new EngineResponse.Unanswered(ErrorCode.Loading, "Fuse is still loading this repository; the next check will include these changes");
         try
         {
             await initialization.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -95,17 +95,17 @@ internal sealed class RequestRouter : IDisposable
         catch (Exception e) when (e is not OperationCanceledException)
         {
             _log.Write($"initialization failed: {e}");
-            return new EngineResponse.Unanswered(ErrorCode.LoadFailed, $"fuse could not evaluate the repository's projects: {e.Message}");
+            return new EngineResponse.Unanswered(ErrorCode.LoadFailed, $"Fuse could not evaluate the repository's projects: {e.Message}");
         }
 
         if (_workspace.Graph.Projects.Count == 0)
             return new EngineResponse.Unanswered(ErrorCode.NoProjects, _workspace.Graph.Failures.Count > 0
                 ? $"no C# project could be evaluated: {_workspace.Graph.Failures[0]}"
-                : "no C# projects (.csproj) found in this repository");
+                : ErrorMessages.NoProjects);
 
         var phases = new PhaseTimes();
         var queued = Stopwatch.StartNew();
-        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await _requestLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         phases.Add(Phase.Gate, queued);
         var started = Environment.TickCount64;
         try
@@ -138,7 +138,7 @@ internal sealed class RequestRouter : IDisposable
             }
             finally
             {
-                _gate.Release();
+                _requestLock.Release();
                 _preloader.Schedule(_shutdown);
             }
         }

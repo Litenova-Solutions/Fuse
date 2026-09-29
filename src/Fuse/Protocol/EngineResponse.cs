@@ -27,7 +27,7 @@ internal abstract record EngineResponse
     /// <summary>The answer to <see cref="EngineRequest.Ping"/> and <see cref="EngineRequest.ShutDown"/>.</summary>
     public sealed record Acknowledged : EngineResponse;
 
-    /// <summary>The answer to a check: the errors it introduced and how far it reached.</summary>
+    /// <summary>The answer to a check: the errors the changes introduced and what the check covered.</summary>
     public sealed record CheckAnswered(CheckReport Report) : EngineResponse;
 
     /// <summary>The answer to a plan request: the runs to start and the summary to print.</summary>

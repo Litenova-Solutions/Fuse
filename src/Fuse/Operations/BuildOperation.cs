@@ -14,7 +14,7 @@ internal static class BuildOperation
     public static async Task<OperationResult> RunAsync(RepoRoot? root, string workingDirectory, IReadOnlyList<string> arguments, CancellationToken cancellationToken)
     {
         // The arguments are the user's, unchanged, so an implicit restore still happens: an agent that has just added a
-        // package reference and then builds needs it. The lock is what changes, not the command.
+        // package reference and then builds needs it. Fuse adds the lock and leaves the command as it is.
         if (root is null)
             return await BuildAsync(workingDirectory, workingDirectory, arguments, cancellationToken).ConfigureAwait(false);
 
@@ -30,7 +30,7 @@ internal static class BuildOperation
         return Render(result, root, seconds, "build");
     }
 
-    internal static OperationResult Render(ProcessResult result, string root, double seconds, string verb)
+    internal static OperationResult Render(ProcessResult result, string root, double seconds, string operation)
     {
         var errors = BuildOutputParser.Errors(result.Output, root);
         var text = new StringBuilder();
@@ -38,7 +38,7 @@ internal static class BuildOperation
             text.Append(error).Append('\n');
         if (result.ExitCode == 0)
         {
-            text.Append($"fuse: {verb} succeeded in {seconds:0.0} s");
+            text.Append($"fuse: {operation} succeeded in {seconds:0.0} s");
             return new OperationResult(Outcome.Clean, text.ToString());
         }
 
@@ -46,12 +46,12 @@ internal static class BuildOperation
         {
             // Nothing matched the diagnostic format: show the tail, which is where MSBuild puts the failure.
             text.Append(Tail(result.Output)).Append('\n');
-            text.Append($"fuse: {verb} failed (exit code {result.ExitCode}) in {seconds:0.0} s");
+            text.Append($"fuse: {operation} failed (exit code {result.ExitCode}) in {seconds:0.0} s");
             return new OperationResult(Outcome.ProblemsFound, text.ToString());
         }
 
         var more = errors.Count > MaxShown ? $", first {MaxShown} shown" : "";
-        text.Append($"fuse: {verb} failed with {errors.Count} error(s){more} in {seconds:0.0} s");
+        text.Append($"fuse: {operation} failed with {errors.Count} error(s){more} in {seconds:0.0} s");
         return new OperationResult(Outcome.ProblemsFound, text.ToString());
     }
 

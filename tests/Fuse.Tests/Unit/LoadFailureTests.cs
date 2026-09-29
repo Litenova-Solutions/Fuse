@@ -4,7 +4,7 @@ namespace Fuse.Tests.Unit;
 
 /// <summary>
 ///     MSBuildWorkspace reports every message MSBuild logged while loading a project, warnings included, as a failure
-///     of that project. These cases pin which of those messages may stop fuse from answering.
+///     of that project. These cases pin which of those messages may leave Fuse unable to answer.
 /// </summary>
 public class LoadFailureTests
 {

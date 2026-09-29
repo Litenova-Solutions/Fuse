@@ -5,7 +5,7 @@ import { spawn } from "node:child_process";
 const EDIT_TOOLS = new Set(["edit", "write", "multiedit", "patch", "apply_patch"]);
 const SHELL_TOOLS = new Set(["shell", "bash"]);
 
-function fuse(event, payload, timeoutMs) {
+function runHook(event, payload, timeoutMs) {
   return new Promise((resolve) => {
     let out = "";
     let child;
@@ -28,12 +28,12 @@ function fuse(event, payload, timeoutMs) {
 
 const rewrite = async (cwd, input) => {
   if (typeof input?.command !== "string") return;
-  const answer = await fuse("pre-shell", { cwd, tool_input: input }, 10000);
+  const answer = await runHook("pre-shell", { cwd, tool_input: input }, 10000);
   if (typeof answer?.command === "string") input.command = answer.command;
 };
 
 const check = async (cwd, input) => {
-  const answer = await fuse("post-edit", { cwd, tool_input: input }, 60000);
+  const answer = await runHook("post-edit", { cwd, tool_input: input }, 60000);
   return typeof answer?.additionalContext === "string" ? answer.additionalContext : null;
 };
 
@@ -47,7 +47,7 @@ function stopGuard(cwd, prompt) {
     checking.add(sessionID);
     try {
       const active = continued.delete(sessionID);
-      const answer = await fuse("stop", { cwd, stop_hook_active: active }, 300000);
+      const answer = await runHook("stop", { cwd, stop_hook_active: active }, 300000);
       if (answer?.decision !== "block" || typeof answer.reason !== "string") return;
       continued.add(sessionID);
       await prompt(sessionID, answer.reason);

@@ -16,12 +16,12 @@ internal static class Program
         fuse - instant C# compiler feedback and affected-test runs for coding agents
 
           fuse init                 register Fuse's hooks with the agent harnesses this repository uses
-          fuse check [files...]     errors the working tree has that HEAD did not, across dependent projects
-          fuse test [args...]       run the tests affected by your changes (with args: the scope dotnet test would run)
+          fuse check [files...]     errors the working tree has that HEAD does not, across dependent projects
+          fuse test [args...]       run the tests affected by your changes (with args: the tests those dotnet test arguments name)
           fuse test --all           run every test
           fuse build [args...]      dotnet build, printing its errors
-          fuse mcp                  stdio MCP server (fuse_check, fuse_test, fuse_build) for hosts without hooks
-          fuse hook <harness> <event>   entry point for installed hooks
+          fuse mcp                  stdio MCP server (fuse_check, fuse_test, fuse_build) for MCP hosts that run no hooks
+          fuse hook <harness> <event>   the command registered hooks run
         """;
 
     public static async Task<int> Main(string[] args)

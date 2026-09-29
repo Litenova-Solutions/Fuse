@@ -14,6 +14,6 @@ namespace Fuse.Check.Model;
 /// </param>
 internal sealed record CompilerError(string Path, int Line, int Column, string Id, string Message, bool FromAnalyzer = false)
 {
-    /// <summary>The MSBuild canonical form, which models already parse.</summary>
+    /// <summary>The MSBuild canonical form, which coding agents and editors already parse.</summary>
     public override string ToString() => $"{Path}({Line},{Column}): error {Id}: {Message}";
 }

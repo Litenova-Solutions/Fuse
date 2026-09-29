@@ -53,12 +53,12 @@ internal static class EngineClient
 
                 EngineResponse? response = null;
                 if (line is not null && Read(line, out response) is { } reason)
-                    return new EngineResponse.Unanswered(ErrorCode.Internal, $"the fuse engine sent an answer this client cannot read ({reason}; see {Path.Combine(root.StateDirectory, "engine.log")})");
+                    return new EngineResponse.Unanswered(ErrorCode.Internal, $"the Fuse engine sent an answer this client cannot read ({reason}; see {Path.Combine(root.StateDirectory, "engine.log")})");
                 if (response is null)
                 {
                     if (attempt < 1)
                         continue;
-                    return new EngineResponse.Unanswered(ErrorCode.Internal, $"the fuse engine closed the connection (see {Path.Combine(root.StateDirectory, "engine.log")})");
+                    return new EngineResponse.Unanswered(ErrorCode.Internal, $"the Fuse engine closed the connection (see {Path.Combine(root.StateDirectory, "engine.log")})");
                 }
 
                 if (response is EngineResponse.Restart && attempt < 2)
@@ -73,7 +73,7 @@ internal static class EngineClient
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            return new EngineResponse.Unanswered(ErrorCode.Timeout, $"the fuse engine did not answer within {timeout.TotalSeconds:0} s");
+            return new EngineResponse.Unanswered(ErrorCode.Timeout, $"the Fuse engine did not answer within {timeout.TotalSeconds:0} s");
         }
         catch (FuseException e)
         {
@@ -81,11 +81,11 @@ internal static class EngineClient
         }
         catch (IOException e)
         {
-            return new EngineResponse.Unanswered(ErrorCode.Internal, $"could not talk to the fuse engine: {e.Message}");
+            return new EngineResponse.Unanswered(ErrorCode.Internal, $"could not connect to the Fuse engine: {e.Message}");
         }
         catch (Exception e) when (e is System.ComponentModel.Win32Exception or InvalidOperationException or UnauthorizedAccessException)
         {
-            return new EngineResponse.Unanswered(ErrorCode.Internal, $"could not start the fuse engine: {e.Message}");
+            return new EngineResponse.Unanswered(ErrorCode.Internal, $"could not start the Fuse engine: {e.Message}");
         }
     }
 
@@ -144,7 +144,7 @@ internal static class EngineClient
         {
             // No engine yet. Start one only where there is C# to compile, so hooks cost almost nothing elsewhere.
             if (!await RepoProbe.HasCSharpProjectsAsync(root, cancellationToken).ConfigureAwait(false))
-                throw new FuseException(ErrorCode.NoProjects, "no C# projects (.csproj) in this repository, so there is nothing to check");
+                throw new FuseException(ErrorCode.NoProjects, ErrorMessages.NoProjects);
             EngineLauncher.Start(root.Path);
             lastStart = Environment.TickCount64;
         }
@@ -173,7 +173,7 @@ internal static class EngineClient
             }
 
             if (Environment.TickCount64 - begin > StartTimeout.TotalMilliseconds)
-                throw new IOException($"the fuse engine did not start within {StartTimeout.TotalSeconds:0} s (see {Path.Combine(root.StateDirectory, "engine.log")})");
+                throw new IOException($"it did not start within {StartTimeout.TotalSeconds:0} s (see {Path.Combine(root.StateDirectory, "engine.log")})");
             await Task.Delay(40, cancellationToken).ConfigureAwait(false);
         }
     }

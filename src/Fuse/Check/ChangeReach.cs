@@ -197,10 +197,10 @@ internal sealed class ChangeReach
     private async Task<Dictionary<RepoPath, Cause>> CausesAsync(IReadOnlyList<Route> routes, IReadOnlyList<Project> projects, CancellationToken cancellationToken)
     {
         var baseline = _workspace.Baseline;
-        var reachIds = projects.Select(p => p.Id).ToHashSet();
-        // Reference sets depend on which projects were searched; a background load widens the reach.
-        var reachKey = string.Join(",", reachIds.Select(id => id.Id.ToString("N")).Order(StringComparer.Ordinal));
-        var baselineProjects = baseline.Projects.Where(p => reachIds.Contains(p.Id)).ToImmutableHashSet();
+        var searchedIds = projects.Select(p => p.Id).ToHashSet();
+        // Reference sets depend on which projects were searched; a background load adds projects to the search.
+        var searchKey = string.Join(",", searchedIds.Select(id => id.Id.ToString("N")).Order(StringComparer.Ordinal));
+        var baselineProjects = baseline.Projects.Where(p => searchedIds.Contains(p.Id)).ToImmutableHashSet();
         var baselineDocuments = baselineProjects.SelectMany(p => p.Documents).ToImmutableHashSet();
 
         // The index in routes of the first route that reaches each file.
@@ -215,7 +215,7 @@ internal sealed class ChangeReach
             if (routes[index] is Route.BySymbol symbol && (symbol.IncludesImplementations ? searchedWithImplementations : searched).Add(symbol.Symbol))
             {
                 searched.Add(symbol.Symbol);
-                files.AddRange(await ReferencingFilesAsync(symbol.Symbol, reachKey, baseline, baselineDocuments, cancellationToken).ConfigureAwait(false));
+                files.AddRange(await ReferencingFilesAsync(symbol.Symbol, searchKey, baseline, baselineDocuments, cancellationToken).ConfigureAwait(false));
                 if (symbol.IncludesImplementations)
                 {
                     files.AddRange(Declarations(await SymbolFinder.FindImplementationsAsync(symbol.Symbol, baseline, baselineProjects, cancellationToken).ConfigureAwait(false)));
@@ -270,9 +270,9 @@ internal sealed class ChangeReach
     private Reach.Broad Broad(IReadOnlyList<Project> projects) =>
         new(projects.SelectMany(p => p.Documents).Select(d => d.FilePath).OfType<string>().Select(_workspace.Root.PathOf).ToHashSet());
 
-    private async Task<IEnumerable<RepoPath>> ReferencingFilesAsync(ISymbol symbol, string reachKey, Solution baseline, IImmutableSet<Document> documents, CancellationToken cancellationToken)
+    private async Task<IEnumerable<RepoPath>> ReferencingFilesAsync(ISymbol symbol, string searchKey, Solution baseline, IImmutableSet<Document> documents, CancellationToken cancellationToken)
     {
-        var key = (symbol.GetDocumentationCommentId() ?? symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)) + "|" + reachKey;
+        var key = (symbol.GetDocumentationCommentId() ?? symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)) + "|" + searchKey;
         if (_cache.TryGetValue(key, out var cached))
             return cached;
         var references = await SymbolFinder.FindReferencesAsync(symbol, baseline, documents, cancellationToken).ConfigureAwait(false);

@@ -9,12 +9,12 @@ $ fuse help
 fuse - instant C# compiler feedback and affected-test runs for coding agents
 
   fuse init                 register Fuse's hooks with the agent harnesses this repository uses
-  fuse check [files...]     errors the working tree has that HEAD did not, across dependent projects
-  fuse test [args...]       run the tests affected by your changes (with args: the scope dotnet test would run)
+  fuse check [files...]     errors the working tree has that HEAD does not, across dependent projects
+  fuse test [args...]       run the tests affected by your changes (with args: the tests those dotnet test arguments name)
   fuse test --all           run every test
   fuse build [args...]      dotnet build, printing its errors
-  fuse mcp                  stdio MCP server (fuse_check, fuse_test, fuse_build) for hosts without hooks
-  fuse hook <harness> <event>   entry point for installed hooks
+  fuse mcp                  stdio MCP server (fuse_check, fuse_test, fuse_build) for MCP hosts that run no hooks
+  fuse hook <harness> <event>   the command registered hooks run
 ```
 
 ## Exit codes
@@ -35,7 +35,7 @@ Registers Fuse's hooks with every harness the repository uses, and the MCP serve
 ```text
 $ fuse init
 wrote .claude/settings.json
-fuse: hooks installed; your agent gets compiler errors after each edit, affected tests for `dotnet test`, and compact `dotnet build` output
+fuse: hooks registered; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors
 ```
 
 It exits with 2 outside a git repository and in a repository where git knows no `.csproj` file. It also exits with 2, after the `wrote` lines of the files it wrote before, when a settings file it has to change is not valid JSON (`fuse: <file> is not valid JSON (<reason>); fix or remove it`, leaving the file as it was) or cannot be written (`fuse: could not write <file> (<reason>)`, leaving no temporary file). An empty settings file, or one that holds only comments, counts as an empty object.
@@ -116,7 +116,7 @@ The summary line is `fuse: F failed, P passed in X.X s` (with `, S skipped` when
 | `ran every test in N test project(s)` | `fuse test --all` |
 | `ran the tests your dotnet test arguments name` | `fuse test` with arguments |
 
-N and T count test methods from source, by test attribute, without running test discovery; the failed and passed counts come from the test run. When a test project runs whole, the first form adds the reason in parentheses, for example `(whole projects where the change reaches App, which runs behind a host)`. The reasons are `the change reaches <application>, which runs behind a host`, `the change reaches the application's entry point`, `<member> is invoked by a framework`, `top-level statements changed`, `<file> changed` for a Razor file, `a test file without classes changed` and `a test project changed outside any class`.
+N and T count test methods from source, by test attribute, without running test discovery; the failed and passed counts come from the test run. When a test project runs whole, the first form adds the reason in parentheses, for example `(whole projects where App uses the changed code and runs behind an application host)`. The reasons are `<application> uses the changed code and runs behind an application host`, `<application>'s entry point calls the changed code`, `<member> is called by an application host or a framework`, `top-level statements changed`, `<file> changed` for a Razor file, `a test file without classes changed` and `a test project changed outside any class`.
 
 How it ran is `without MSBuild`, `without MSBuild for N of M project(s)` or `built with MSBuild`; the form with arguments leaves it out.
 
@@ -181,7 +181,7 @@ This transcript sends an `initialize` request, the `initialized` notification, `
 
 ```json
 {"result":{"protocolVersion":"2025-06-18","capabilities":{"logging":{},"tools":{}},"serverInfo":{"name":"fuse","version":"5.1.0"}},"id":1,"jsonrpc":"2.0"}
-{"result":{"tools":[{"name":"fuse_check","title":"Check C# changes","description":"Compiler and analyzer errors that the working-tree changes introduced since the last commit, in the edited files and in the files of dependent projects that use changed declarations. Run after editing C# files. Much faster than dotnet build on a warm repository.","inputSchema":{"type":"object","properties":{"files":{"type":"array","items":{"type":"string"},"description":"Files to scope the check to. Omit to check every change since the last commit."}}},"annotations":{"idempotentHint":true,"openWorldHint":false,"readOnlyHint":true}},{"name":"fuse_test","title":"Run affected tests","description":"Runs the tests affected by the working-tree changes and reports only failures. Set all=true to run every test.","inputSchema":{"type":"object","properties":{"all":{"type":"boolean","description":"Run every test instead of the affected ones."}}},"annotations":{"destructiveHint":false,"openWorldHint":false,"readOnlyHint":false}},{"name":"fuse_build","title":"Build","description":"Runs dotnet build and reports its errors.","inputSchema":{"type":"object","properties":{"target":{"type":"string","description":"Project or solution to build. Omit to build what dotnet build picks in the repository root."}}},"annotations":{"destructiveHint":false,"openWorldHint":false,"readOnlyHint":false}}]},"id":2,"jsonrpc":"2.0"}
+{"result":{"tools":[{"name":"fuse_check","title":"Check C# changes","description":"Compiler and analyzer errors the working tree has and HEAD does not: in the named files, or in every changed file when none are named, and in the files of dependent projects that use a changed declaration. Run after editing C# files. Once Fuse has loaded the repository it answers much faster than dotnet build.","inputSchema":{"type":"object","properties":{"files":{"type":"array","items":{"type":"string"},"description":"Files to check, absolute or relative to the repository root. Omit to check every file that differs from HEAD."}}},"annotations":{"idempotentHint":true,"openWorldHint":false,"readOnlyHint":true}},{"name":"fuse_test","title":"Run affected tests","description":"Runs the tests affected by the working-tree changes and reports only failures. Set all=true to run every test.","inputSchema":{"type":"object","properties":{"all":{"type":"boolean","description":"Run every test instead of the affected ones."}}},"annotations":{"destructiveHint":false,"openWorldHint":false,"readOnlyHint":false}},{"name":"fuse_build","title":"Build","description":"Runs dotnet build and reports its errors.","inputSchema":{"type":"object","properties":{"target":{"type":"string","description":"Project or solution to build. Omit to build what dotnet build picks in the repository root."}}},"annotations":{"destructiveHint":false,"openWorldHint":false,"readOnlyHint":false}}]},"id":2,"jsonrpc":"2.0"}
 {"result":{"content":[{"type":"text","text":"App/Program.cs(3,30): error CS1061: \u0027Calc\u0027 does not contain a definition for \u0027Add\u0027 and no accessible extension method \u0027Add\u0027 accepting a first argument of type \u0027Calc\u0027 could be found (are you missing a using directive or an assembly reference?)\n  removed: public int Add(int a, int b)\nLib.Tests/CalcTests.cs(6,54): error CS1061: \u0027Calc\u0027 does not contain a definition for \u0027Add\u0027 and no accessible extension method \u0027Add\u0027 accepting a first argument of type \u0027Calc\u0027 could be found (are you missing a using directive or an assembly reference?)\n  removed: public int Add(int a, int b)\nfuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations changed, 2 dependent project(s) checked"}],"isError":false},"id":3,"jsonrpc":"2.0"}
 {"result":{"content":[{"type":"text","text":"fuse: unknown tool fuse_lint; the tools are fuse_check, fuse_test and fuse_build"}],"isError":true},"id":4,"jsonrpc":"2.0"}
 ```
@@ -206,7 +206,7 @@ The command every installed hook runs. It reads the harness's JSON payload from 
 
 **`pre-shell`** reads the command from the tool input's `command`, and rewrites `dotnet build` and `dotnet test` (also `dotnet.exe`) where a command segment starts: at the beginning, or after `&&`, `||`, `;`, `|` or a line break. `cd Lib && dotnet build -c Release` becomes `cd Lib && fuse build -c Release`, and a command without either verb is left alone. Claude Code, Gemini CLI and OpenCode get the rewritten command. Codex gets it only when the whole command is one `dotnet build` or `dotnet test` with plain arguments, because its answer also approves the command ([Harnesses](harnesses.md#codex)). Cursor and GitHub Copilot CLI have no pre-shell hook.
 
-**`stop`** checks every change, waiting for the engine for up to 5 minutes. It sends the agent back with the check's output and `Fix these errors before finishing; they are not in the last commit.` When the payload says the agent is already continuing because of an earlier stop hook (`stop_hook_active` is `true`, or `loop_count` is above 0), it lets the agent finish, so it sends an agent back at most once in a row.
+**`stop`** checks every change, waiting for the engine for up to 5 minutes. It sends the agent back with the check's output and `Fix these errors before finishing; HEAD does not have them, so your changes introduced them.` When the payload says the agent is already continuing because of an earlier stop hook (`stop_hook_active` is `true`, or `loop_count` is above 0), it lets the agent finish, so it sends an agent back at most once in a row.
 
 A hook reports only introduced errors and a missing restore. Every other outcome, including a loading engine, a timeout and an internal failure, exits with 0 and prints nothing (or `{}` where the harness expects JSON), so a hook never breaks the agent's session. A payload that is not valid JSON or not a JSON object, and an exception, are written to `hook.log` in the [state directory](troubleshooting.md#where-the-logs-are). Claude Code hooks whose payload comes from Cursor, which also runs Claude Code's settings, do nothing, so the Cursor hook answers there.
 
@@ -244,9 +244,7 @@ fuse: not inside a git repository; Fuse compares your changes with HEAD, so it n
 ### `NoProjects`
 
 ```text
-fuse: no C# projects (.csproj) in this repository, so there is nothing to check
-fuse: no C# projects (.csproj) in this repository; Fuse installs hooks only where there is C# to check
-fuse: no C# projects (.csproj) found in this repository
+fuse: no C# projects (.csproj) in this repository, so Fuse has nothing to check
 fuse: no C# project could be evaluated: <path>: <MSBuild message>
 ```
 
@@ -255,7 +253,7 @@ Git knows no `.csproj` file in the repository (the second line is `fuse init`'s)
 ### `Loading`
 
 ```text
-fuse: fuse is still loading this repository; the next check will include these changes
+fuse: Fuse is still loading this repository; the next check will include these changes
 ```
 
 The engine answers a check with this while it is still evaluating the repository, when the check asked not to wait. Only the post-edit hook of a harness other than Claude Code asks that, and it stays silent on this answer. Fix: none; the stop hook and the next check cover the changes.
@@ -272,7 +270,7 @@ A project the request needs, or a project it references, has no `project.assets.
 
 ```text
 fuse: could not load <project>: <message>
-fuse: fuse could not evaluate the repository's projects: <message>
+fuse: Fuse could not evaluate the repository's projects: <message>
 fuse: git failed <action> in <root> (<git's message>); the repository may be damaged, see `git status` and `git fsck`
 fuse: git cannot read <path> at HEAD; the repository may be damaged (run `git fsck`)
 fuse: git cannot list the repository's files (<git's message>); see `git status`
@@ -283,7 +281,7 @@ A project could not be loaded (a missing project reference or an SDK that does n
 ### `Timeout`
 
 ```text
-fuse: the fuse engine did not answer within <seconds> s
+fuse: the Fuse engine did not answer within <seconds> s
 fuse: the request is cancelled
 ```
 
@@ -302,14 +300,15 @@ fuse: "<file>" named in the check is not a valid path
 
 ```text
 fuse: internal error: <message> (details in <state directory>/engine.log)
-fuse: the fuse engine closed the connection (see <state directory>/engine.log)
-fuse: the fuse engine sent an answer this client cannot read (<reason>; see <state directory>/engine.log)
-fuse: could not talk to the fuse engine: <message>
-fuse: could not start the fuse engine: <message>
-fuse: the engine gave no answer
+fuse: the Fuse engine closed the connection (see <state directory>/engine.log)
+fuse: the Fuse engine sent an answer this client cannot read (<reason>; see <state directory>/engine.log)
+fuse: could not connect to the Fuse engine: <message>
+fuse: could not start the Fuse engine: <message>
+fuse: the Fuse engine sent no check result (<response>); run the command again
+fuse: the Fuse engine sent no test plan (<response>); run the command again
 ```
 
-Something failed inside Fuse. `could not talk to the fuse engine: the fuse engine did not start within 15 s` means the engine process did not open its pipe. Fix: read the lines of `engine.log` the message names, then run the command again; [Troubleshooting](troubleshooting.md#internal-errors) has the details to collect for a bug report.
+Something failed inside Fuse. `could not connect to the Fuse engine: it did not start within 15 s` means the engine process did not open its pipe. Fix: read the lines of `engine.log` the message names, then run the command again; [Troubleshooting](troubleshooting.md#internal-errors) has the details to collect for a bug report.
 
 ### Other lines on standard error
 

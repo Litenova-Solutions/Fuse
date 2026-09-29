@@ -108,7 +108,7 @@ internal abstract class Harness
 
     /// <summary>
     ///     Whether a handler in a harness's settings runs <c>fuse hook</c>, so <see cref="RegisterHooks"/> replaces it. This
-    ///     includes a handler for an event name <c>fuse hook</c> no longer accepts, so rerunning <c>fuse init</c> removes it.
+    ///     matches every <c>fuse hook</c> command, including one whose event <c>fuse hook</c> does not accept, so rerunning <c>fuse init</c> removes it.
     /// </summary>
     protected static bool IsFuse(JsonObject handler) =>
         handler["command"]?.GetValueKind() == JsonValueKind.String && handler["command"]!.GetValue<string>().StartsWith("fuse hook", StringComparison.Ordinal);

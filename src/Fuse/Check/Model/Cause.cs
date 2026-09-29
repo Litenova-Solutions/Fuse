@@ -21,7 +21,7 @@ internal abstract record Cause
     }
 
     /// <summary>
-    ///     A declaration the working tree no longer has, quoted as it was at HEAD. A rename is a removal of the old name,
+    ///     A declaration HEAD has and the working tree does not, quoted as HEAD has it. A rename is a removal of the old name,
     ///     and the errors it causes name the old one, so its cause is this case.
     /// </summary>
     public sealed record Removed : Cause

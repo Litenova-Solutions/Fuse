@@ -7,7 +7,7 @@ namespace Fuse.Check;
 
 /// <summary>
 ///     Computes the errors of one file (in every target framework it compiles for) or of whole projects, including
-///     errors from analyzers that can report errors. Baseline results are cached until the HEAD view's content changes,
+///     errors from analyzers that can report errors. Baseline results are cached until the baseline's content changes,
 ///     because it does not change between edits.
 /// </summary>
 internal sealed class DiagnosticCollector

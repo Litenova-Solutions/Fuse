@@ -76,7 +76,7 @@ public class RequestRouterTests
     }
 
     [Fact]
-    public async Task A_check_log_names_its_request_and_its_wait_for_the_gate()
+    public async Task A_check_log_names_its_request_and_its_wait_for_the_request_lock()
     {
         using var repo = FixtureRepo.CreateStandard();
         await using var engine = await InProcessRequestRouter.StartAsync(repo);

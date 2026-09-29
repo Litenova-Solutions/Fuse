@@ -72,9 +72,11 @@ internal sealed class ChangeTracker : IDisposable
         var headMoved = !string.Equals(head, Head, StringComparison.Ordinal);
         var watched = Drain();
         var paths = new HashSet<RepoPath>(watched.Sources);
+        // A hook names what the agent wrote, which can be a file the build generated or one outside the repository. The
+        // watcher ignores the first, and git has no HEAD for the second, so neither is patched.
         foreach (var path in knownPaths)
         {
-            if (PathRules.IsSource(path.Absolute))
+            if (PathRules.IsSource(path.Absolute) && _root.Contains(path.Absolute) && !_watched.IsIgnored(path))
                 paths.Add(path);
         }
 
@@ -121,8 +123,11 @@ internal sealed class ChangeTracker : IDisposable
             : new SyncResult.Patch(paths, watched.VanishedDirectories);
     }
 
-    /// <summary>Reads a file as it is at HEAD, or null when it does not exist there.</summary>
-    public byte[]? ReadHead(RepoPath path) => Head is null ? null : _blobs.Read(Head, path.Relative);
+    /// <summary>
+    ///     Reads a file as it is at HEAD, or null when it does not exist there. A file outside the repository, such as a
+    ///     source a project links from a sibling folder, has no HEAD, and asking git for one makes it exit.
+    /// </summary>
+    public byte[]? ReadHead(RepoPath path) => Head is null || !_root.Contains(path.Absolute) ? null : _blobs.Read(Head, path.Relative);
 
     /// <summary>
     ///     The sources git reports as changed, which replace <see cref="Changed"/> once the caller has them. It changes no

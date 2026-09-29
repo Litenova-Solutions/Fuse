@@ -146,7 +146,8 @@ internal sealed class RequestRouter : IDisposable
 
     /// <summary>
     ///     Checks the files <paramref name="check"/> names. The wire carries them as strings, absolute or relative to the
-    ///     root; each becomes a <see cref="RepoPath"/> here, and one that is empty or not a valid path is answered with
+    ///     root, in whatever letter case the client wrote; each becomes a <see cref="RepoPath"/> in the spelling the file
+    ///     system holds it under, and one that is empty or not a valid path is answered with
     ///     <see cref="ErrorCode.InvalidPath"/>, naming it, before anything is checked.
     /// </summary>
     private async Task<EngineResponse> CheckFilesAsync(EngineRequest.CheckFiles check, PhaseTimes phases, CancellationToken cancellationToken)
@@ -158,7 +159,7 @@ internal sealed class RequestRouter : IDisposable
                 return new EngineResponse.Unanswered(ErrorCode.InvalidPath, ErrorMessages.EmptyPath);
             try
             {
-                paths.Add(_workspace.Root.PathOf(file));
+                paths.Add(_workspace.Root.PathOfNamed(file));
             }
             catch (Exception e) when (e is ArgumentException or PathTooLongException)
             {

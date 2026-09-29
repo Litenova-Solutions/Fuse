@@ -149,9 +149,8 @@ internal sealed class SolutionViews
     public IEnumerable<RepoPath> FilesUnder(RepoPath directory) =>
         Current.Projects.SelectMany(p => p.Documents.Concat<TextDocument>(p.AdditionalDocuments))
             .Select(d => d.FilePath)
-            .OfType<string>()
-            .Select(_root.PathOf)
-            .Where(f => f.IsUnder(directory));
+            .Where(directory.Encloses)
+            .Select(f => _root.PathOf(f!));
 
     /// <summary>Returns the file's HEAD content as source text, or null when the file is new.</summary>
     public SourceText? HeadText(RepoPath path)

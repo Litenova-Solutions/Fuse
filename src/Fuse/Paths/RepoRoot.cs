@@ -57,7 +57,26 @@ internal sealed class RepoRoot
     public RepoPath PathOf(string path)
     {
         var full = System.IO.Path.GetFullPath(System.IO.Path.IsPathRooted(path) ? path : System.IO.Path.Combine(Path, path));
-        return new RepoPath(this, Contains(full) ? full : Canonicalize(full));
+        if (Contains(full))
+            return new RepoPath(this, full);
+        // Only a spelling of the root is replaced. A path that stays outside the root keeps the spelling it was given,
+        // because Roslyn and MSBuild name a linked file by that spelling, and the check looks the file up by it.
+        var canonical = Canonicalize(full);
+        return new RepoPath(this, Contains(canonical) ? canonical : full);
+    }
+
+    /// <summary>
+    ///     The value for a path someone named, such as a file in a request, in the spelling the file system holds it
+    ///     under. On a file system that ignores case, <c>lib/calc.cs</c> becomes <c>Lib/Calc.cs</c>, the spelling git
+    ///     knows the file by, so it is read at HEAD and not taken for a file HEAD does not have. It costs a file system
+    ///     call, so it is for the few paths a request names, not for every path the engine handles.
+    /// </summary>
+    /// <exception cref="ArgumentException"><paramref name="path"/> is null or not a valid path.</exception>
+    public RepoPath PathOfNamed(string path)
+    {
+        var full = System.IO.Path.GetFullPath(System.IO.Path.IsPathRooted(path) ? path : System.IO.Path.Combine(Path, path));
+        var canonical = Canonicalize(full);
+        return new RepoPath(this, Contains(canonical) ? canonical : full);
     }
 
     /// <summary>
@@ -75,19 +94,36 @@ internal sealed class RepoRoot
         return Convert.ToHexStringLower(bytes)[..16];
     }
 
-    /// <summary>Resolves a path to its final form. Returns the input when the path does not exist.</summary>
+    /// <summary>
+    ///     Resolves a path to its final form. A path that does not exist, such as a deleted file, resolves through its
+    ///     deepest folder that does, with the rest appended as given; a path none of whose folders resolves is returned
+    ///     unchanged.
+    /// </summary>
     internal static string Canonicalize(string path)
+    {
+        var rest = "";
+        for (var current = path; !string.IsNullOrEmpty(current); current = System.IO.Path.GetDirectoryName(current))
+        {
+            if (FinalPath(current) is { } resolved)
+                return rest.Length == 0 ? resolved : System.IO.Path.Join(resolved, rest);
+            var name = System.IO.Path.GetFileName(current);
+            if (name.Length == 0)
+                break;
+            rest = rest.Length == 0 ? name : System.IO.Path.Join(name, rest);
+        }
+
+        return path;
+    }
+
+    private static string? FinalPath(string path)
     {
         try
         {
-            if (OperatingSystem.IsWindows())
-                return WindowsFinalPath(path) ?? path;
-            var resolved = UnixRealPath(path);
-            return resolved ?? path;
+            return OperatingSystem.IsWindows() ? WindowsFinalPath(path) : UnixRealPath(path);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or DllNotFoundException or EntryPointNotFoundException)
         {
-            return path;
+            return null;
         }
     }
 

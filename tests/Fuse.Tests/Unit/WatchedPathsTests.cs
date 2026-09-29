@@ -131,6 +131,54 @@ public class WatchedPathsTests
     }
 
     [Fact]
+    public async Task A_renamed_directory_whose_name_has_a_dot_is_followed()
+    {
+        using var repo = Repo();
+        repo.Write("Lib/Company.Feature/Widget.cs", "public class Widget {}\n");
+        repo.Write("Lib/Company.Feature/Company.Feature.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\" />\n");
+        using var watched = new WatchedPaths(repo.Root);
+        watched.Start();
+        await Task.Delay(200, TestContext.Current.CancellationToken);
+
+        // .NET folder names usually hold a dot; a rename raises one event for the folder and none for its files.
+        Directory.Move(repo.Full("Lib/Company.Feature"), repo.Full("Lib/Company.Features"));
+
+        var sources = new HashSet<Fuse.Paths.RepoPath>();
+        var vanished = new List<Fuse.Paths.RepoPath>();
+        var projects = new List<Fuse.Paths.RepoPath>();
+        for (var i = 0; i < 100 && (vanished.Count == 0 || !sources.Contains(repo.PathOf("Lib/Company.Features/Widget.cs"))); i++)
+        {
+            await Task.Delay(100, TestContext.Current.CancellationToken);
+            var changes = watched.Drain();
+            sources.UnionWith(changes.Sources);
+            vanished.AddRange(changes.VanishedDirectories);
+            projects.AddRange(changes.ProjectFiles);
+        }
+
+        Assert.Contains(repo.PathOf("Lib/Company.Features/Widget.cs"), sources);
+        Assert.Contains(repo.PathOf("Lib/Company.Feature"), vanished);
+        // A project that moved with its folder changes the project graph.
+        Assert.Contains(repo.PathOf("Lib/Company.Features/Company.Feature.csproj"), projects);
+    }
+
+    [Fact]
+    public void A_git_directory_inside_the_root_under_another_name_is_ignored()
+    {
+        using var repo = Repo();
+        // The repository's git directory moves to meta/, and .git becomes a file that points at it.
+        FixtureRepo.Run(repo.Root.Path, "git", "init", "-q", "--separate-git-dir=meta");
+        using var watched = new WatchedPaths(repo.Root);
+
+        watched.Record(repo.Full("meta/HEAD"), appearedOrVanished: false);
+        watched.Record(repo.Full("meta/hooks/check.cs"), appearedOrVanished: true);
+
+        Assert.True(File.Exists(repo.Full(".git")));
+        Assert.True(watched.IsIgnored(repo.PathOf("meta/hooks/check.cs")));
+        Assert.Empty(watched.Drain().Sources);
+        Assert.False(watched.IsIgnored(repo.PathOf("metadata/Tool.cs")));
+    }
+
+    [Fact]
     public void Watcher_errors_are_taken_once_in_order()
     {
         using var repo = Repo();

@@ -182,6 +182,46 @@ public class ChangeTrackerTests
         Assert.Equal([repo.PathOf("Lib/Calc.cs")], tracker.Changed);
     }
 
+    [Fact]
+    public async Task A_named_file_under_build_output_is_not_patched()
+    {
+        using var repo = Repo();
+        using var tracker = await StartAsync(repo, new WatchedPaths(repo.Root));
+        repo.Write("Lib/obj/Debug/Lib.GlobalUsings.g.cs", "global using System;\n");
+        repo.Replace("Lib/Calc.cs", "public class Calc {}", "public class Calc { public int A => 1; }");
+
+        // A hook names what the agent edited, generated files included; the watcher would have ignored them.
+        var patch = Assert.IsType<SyncResult.Patch>(await tracker.SyncAsync([repo.PathOf("Lib/obj/Debug/Lib.GlobalUsings.g.cs"), repo.PathOf("Lib/Calc.cs")], TestContext.Current.CancellationToken));
+
+        Assert.Equal([repo.PathOf("Lib/Calc.cs")], patch.Paths);
+        Assert.Equal([repo.PathOf("Lib/Calc.cs")], tracker.Changed);
+    }
+
+    [Fact]
+    public async Task A_named_file_outside_the_repository_is_not_read_at_head_and_the_rest_of_the_sync_is_kept()
+    {
+        using var repo = Repo();
+        var outside = Path.Combine(repo.Root.Path + "-outside", "Linked.cs");
+        Directory.CreateDirectory(Path.GetDirectoryName(outside)!);
+        File.WriteAllText(outside, "public class Linked {}\n");
+        try
+        {
+            using var tracker = await StartAsync(repo, new WatchedPaths(repo.Root));
+            repo.Replace("Lib/Calc.cs", "public class Calc {}", "public class Calc { public int A => 1; }");
+
+            var patch = Assert.IsType<SyncResult.Patch>(await tracker.SyncAsync([repo.Root.PathOf(outside), repo.PathOf("Lib/Calc.cs")], TestContext.Current.CancellationToken));
+
+            // git has no HEAD for a file outside its repository, and asking it makes git exit.
+            Assert.Equal([repo.PathOf("Lib/Calc.cs")], patch.Paths);
+            Assert.Equal([repo.PathOf("Lib/Calc.cs")], tracker.Changed);
+            Assert.Null(tracker.ReadHead(repo.Root.PathOf(outside)));
+        }
+        finally
+        {
+            Directory.Delete(Path.GetDirectoryName(outside)!, recursive: true);
+        }
+    }
+
     /// <summary>
     ///     Makes <c>git status</c> fail until disposed, by overwriting the index with bytes git cannot read. Resolving HEAD
     ///     reads the refs and the commit, not the index, so only the reseed fails.

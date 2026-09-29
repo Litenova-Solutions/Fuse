@@ -11,6 +11,7 @@ Fuse answers from a Roslyn compilation of what MSBuild's evaluation describes, a
 - **Only changes against HEAD.** An error that is already committed is part of HEAD and is never reported, and neither is an error that exists at HEAD and in the working tree alike. Run `fuse build` to see every error the solution has.
 - **A repository needs a commit.** With no commit, every file counts as added, so every error counts as introduced. Commit once before relying on a check.
 - **Platforms.** CI builds and tests Fuse on Windows, Linux and macOS (`.github/workflows/ci.yml`); the [measurements](results.md) come from one Windows machine.
+- **Letter case in paths on macOS.** Fuse compares paths ignoring case on Windows and exactly on Linux and macOS. The default macOS volume ignores case, so a file named to `fuse check` in another letter case than it has on disk is not matched to the file git knows. Name files as they are spelled on disk; hooks already do.
 
 ## What a check does not see
 

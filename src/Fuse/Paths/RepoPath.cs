@@ -50,15 +50,23 @@ internal readonly struct RepoPath : IEquatable<RepoPath>
     public static bool operator !=(RepoPath left, RepoPath right) => !left.Equals(right);
 
     /// <summary>True when this path lies inside <paramref name="directory"/>, at any depth. A directory is not inside itself.</summary>
-    public bool IsUnder(RepoPath directory)
+    public bool IsUnder(RepoPath directory) => directory.Encloses(Absolute);
+
+    /// <summary>
+    ///     True when <paramref name="absolute"/> lies inside this directory in the same spelling, at any depth, compared the
+    ///     way the file system does. Like <see cref="Matches"/> it canonicalizes nothing and allocates nothing, so a scan
+    ///     over every document Roslyn holds can test each path before turning the few that match into values.
+    /// </summary>
+    public bool Encloses(string? absolute)
     {
-        var parent = directory.Absolute;
-        var length = parent.Length;
-        while (length > 0 && IsSeparator(parent[length - 1]))
+        if (absolute is null)
+            return false;
+        var length = Absolute.Length;
+        while (length > 0 && IsSeparator(Absolute[length - 1]))
             length--;
-        return Absolute.Length > length
-               && IsSeparator(Absolute[length])
-               && Absolute.AsSpan(0, length).Equals(parent.AsSpan(0, length), Comparison);
+        return absolute.Length > length
+               && IsSeparator(absolute[length])
+               && absolute.AsSpan(0, length).Equals(Absolute.AsSpan(0, length), Comparison);
     }
 
     /// <summary>

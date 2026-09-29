@@ -59,8 +59,8 @@ internal sealed class WatchedPaths : IDisposable
             _sources[entry] = 0;
         else if (PathRules.IsProjectFile(path))
             _projectFiles.Enqueue(entry);
-        else if (appearedOrVanished && !Path.HasExtension(path))
-            _possibleDirectories[entry] = 0; // Resolved at the next sync, when the file system says what it is.
+        else if (appearedOrVanished)
+            _possibleDirectories[entry] = 0; // A folder name can hold a dot, so only the next sync can say what it is.
     }
 
     /// <summary>Records that the watcher lost events, for example because its buffer overflowed.</summary>
@@ -72,9 +72,10 @@ internal sealed class WatchedPaths : IDisposable
 
     /// <summary>Takes everything recorded since the previous call.</summary>
     /// <remarks>
-    ///     A path that appeared or vanished is resolved here: an existing directory contributes its sources, whose files
-    ///     arrive without events of their own, and a path that is neither a file nor a directory any more is reported as
-    ///     vanished, so the workspace can drop what it holds under it.
+    ///     A path that appeared or vanished is resolved here: an existing directory contributes its sources and project
+    ///     files, which arrive without events of their own when the directory is moved or renamed, and a path that is
+    ///     neither a file nor a directory any more is reported as vanished, so the workspace can drop what it holds under
+    ///     it. An existing file that is neither a source nor a project file contributes nothing.
     /// </remarks>
     public WatchedChanges Drain()
     {
@@ -93,7 +94,15 @@ internal sealed class WatchedPaths : IDisposable
             if (!_possibleDirectories.TryRemove(key, out _))
                 continue;
             if (Directory.Exists(key.Absolute))
-                sources.UnionWith(SourcesUnder(key));
+            {
+                foreach (var file in FilesUnder(key))
+                {
+                    if (PathRules.IsSource(file.Absolute))
+                        sources.Add(file);
+                    else
+                        projectFiles.Add(file);
+                }
+            }
             else if (!File.Exists(key.Absolute))
                 vanished.Add(key);
         }
@@ -122,12 +131,13 @@ internal sealed class WatchedPaths : IDisposable
         return false;
     }
 
-    private List<RepoPath> SourcesUnder(RepoPath directory)
+    /// <summary>The sources and project files under <paramref name="directory"/>, at any depth, that the tracker follows.</summary>
+    private List<RepoPath> FilesUnder(RepoPath directory)
     {
         try
         {
             return Directory.EnumerateFiles(directory.Absolute, "*", SearchOption.AllDirectories)
-                .Where(PathRules.IsSource)
+                .Where(f => PathRules.IsSource(f) || PathRules.IsProjectFile(f))
                 .Select(_root.PathOf)
                 .Where(f => !IsIgnored(f))
                 .ToList();

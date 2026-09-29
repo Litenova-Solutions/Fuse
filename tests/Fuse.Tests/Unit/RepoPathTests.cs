@@ -93,10 +93,13 @@ public class RepoPathTests
         try
         {
             var through = repo.Root.PathOf(Path.Combine(link, "Lib", "Calc.cs"));
+            // A deleted file named through the link resolves through its deepest folder that still exists.
+            var deleted = repo.Root.PathOf(Path.Combine(link, "Lib", "Gone", "Deleted.cs"));
 
             Assert.Equal(repo.PathOf("Lib/Calc.cs"), through);
             Assert.Equal(repo.Full("Lib/Calc.cs"), through.Absolute);
             Assert.Equal("Lib/Calc.cs", through.Relative);
+            Assert.Equal("Lib/Gone/Deleted.cs", deleted.Relative);
         }
         finally
         {

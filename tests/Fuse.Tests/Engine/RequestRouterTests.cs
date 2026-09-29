@@ -136,6 +136,48 @@ public class RequestRouterTests
     }
 
     [Fact]
+    public async Task A_file_named_in_another_letter_case_is_the_file_and_its_errors_at_head_are_not_introduced()
+    {
+        // Only a file system that ignores case finds the file under the other spelling.
+        if (!OperatingSystem.IsWindows())
+            return;
+        using var repo = FixtureRepo.CreateStandard();
+        repo.Replace("Lib/Calc.cs", "a * b;", "a * existingError;");
+        repo.Commit("an error at HEAD");
+        await using var engine = await InProcessRequestRouter.StartAsync(repo);
+
+        var named = Assert.IsType<EngineResponse.CheckAnswered>(await engine.CheckAsync("lib/calc.cs")).Report;
+        var every = Assert.IsType<EngineResponse.CheckAnswered>(await engine.CheckAsync()).Report;
+
+        Assert.Empty(named.Errors);
+        Assert.Equal(1, named.FilesChecked);
+        Assert.Empty(every.Errors);
+    }
+
+    [Fact]
+    public async Task A_check_that_also_names_a_file_outside_the_repository_still_reports_the_edit_inside_it()
+    {
+        using var repo = FixtureRepo.CreateStandard();
+        var outside = Path.Combine(repo.Root.Path + "-outside", "Linked.cs");
+        Directory.CreateDirectory(Path.GetDirectoryName(outside)!);
+        File.WriteAllText(outside, "public class Linked {}\n");
+        try
+        {
+            await using var engine = await InProcessRequestRouter.StartAsync(repo);
+            repo.Replace("Lib/Calc.cs", "a * b;", "a * undefinedValue;");
+
+            var answer = await engine.CheckAsync(outside, "Lib/Calc.cs");
+
+            var report = Assert.IsType<EngineResponse.CheckAnswered>(answer).Report;
+            Assert.Equal("CS0103", Assert.Single(report.Errors).Error.Id);
+        }
+        finally
+        {
+            Directory.Delete(Path.GetDirectoryName(outside)!, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task A_ping_and_a_shutdown_are_acknowledged()
     {
         await using var engine = await InProcessRequestRouter.StartAsync();

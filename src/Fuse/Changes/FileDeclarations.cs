@@ -30,6 +30,11 @@ internal sealed class FileDeclarations
     private readonly List<DeclarationNode> _all = [];
     private readonly Dictionary<DeclarationKey, int> _indexOf = [];
 
+    // Collected by the one walk of the file's declarations, because a using directive carries the names of every type the
+    // file declares and so is added after the walk. A second walk of the whole tree for them cost as much as the rest.
+    private readonly List<string> _typeNames = [];
+    private readonly List<UsingDirectiveSyntax> _usings = [];
+
     private FileDeclarations()
     {
     }
@@ -64,12 +69,8 @@ internal sealed class FileDeclarations
         // An ordinary using changes what the type names in this file's declarations resolve to, so removing one can change
         // every signature here without changing their text. Each carries the file's own type names, which is how the files
         // that use those declarations are found.
-        var types = root.DescendantNodes().OfType<BaseTypeDeclarationSyntax>().Select(t => t.Identifier.Text)
-            .Concat(root.DescendantNodes().OfType<DelegateDeclarationSyntax>().Select(d => d.Identifier.Text))
-            .Distinct(StringComparer.Ordinal)
-            .ToArray();
-        foreach (var directive in root.DescendantNodes(n => n is CompilationUnitSyntax or BaseNamespaceDeclarationSyntax).OfType<UsingDirectiveSyntax>()
-                     .Where(u => !u.GlobalKeyword.IsKind(SyntaxKind.GlobalKeyword)))
+        string[] types = [.. declarations._typeNames.Distinct(StringComparer.Ordinal)];
+        foreach (var directive in declarations._usings)
             declarations.Add(new DeclarationKey.Using(Flat(directive)), directive, Flat(directive), types, null);
         return declarations;
     }
@@ -95,16 +96,24 @@ internal sealed class FileDeclarations
         _all.Add(new DeclarationNode(key, [node], surface, names, container));
     }
 
+    /// <summary>
+    ///     Adds the namespaces, types and delegates under <paramref name="node"/>, the compilation unit or a namespace, and
+    ///     keeps its ordinary using directives for <see cref="Of"/> to add last.
+    /// </summary>
     private void Walk(SyntaxNode node, string container)
     {
         foreach (var child in node.ChildNodes())
         {
             switch (child)
             {
+                case UsingDirectiveSyntax directive when !directive.GlobalKeyword.IsKind(SyntaxKind.GlobalKeyword):
+                    _usings.Add(directive);
+                    break;
                 case BaseNamespaceDeclarationSyntax ns:
                     Walk(ns, Qualify(container, Dotted(ns.Name)));
                     break;
                 case DelegateDeclarationSyntax del:
+                    _typeNames.Add(del.Identifier.Text);
                     Add(new DeclarationKey.NamedType($"{Qualify(container, del.Identifier.Text)}`{Arity(del.TypeParameterList)}"), del, Flat(del), [del.Identifier.Text], null);
                     break;
                 case BaseTypeDeclarationSyntax type:
@@ -130,6 +139,7 @@ internal sealed class FileDeclarations
         {
             name = type.Identifier.Text;
             key = new DeclarationKey.NamedType($"{Qualify(container, name)}`{Arity(typeParams)}");
+            _typeNames.Add(name);
         }
 
         var header = new StringBuilder();
@@ -171,6 +181,7 @@ internal sealed class FileDeclarations
                 AddType(nested, type.Name, type);
                 break;
             case DelegateDeclarationSyntax del:
+                _typeNames.Add(del.Identifier.Text);
                 Add(new DeclarationKey.NamedType($"{type.Name}.{del.Identifier.Text}`{Arity(del.TypeParameterList)}"), del, Flat(del), [del.Identifier.Text, typeName], type);
                 break;
             case MethodDeclarationSyntax method:

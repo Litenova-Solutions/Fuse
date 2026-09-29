@@ -62,10 +62,37 @@ public class CodeDiffTests
         Assert.Equal(["type A", "type B"], Changed("using System;\nclass A {}\nclass B {}", "using System.Text;\nclass A {}\nclass B {}"));
     }
 
+    [Theory]
+    [InlineData("namespace N;\nusing Foo.V1;\nclass A {}\nclass B {}", "namespace N;\nusing Foo.V2;\nclass A {}\nclass B {}")]
+    [InlineData("namespace N { using Foo.V1; class A {} class B {} }", "namespace N { using Foo.V2; class A {} class B {} }")]
+    [InlineData("using Foo;\nnamespace N { class A {} class B {} }", "namespace N { using Foo; class A {} class B {} }")]
+    public void Using_change_inside_a_namespace_marks_every_type_in_the_file(string before, string after)
+    {
+        Assert.Equal(["type A", "type B"], Changed(before, after));
+    }
+
+    [Fact]
+    public void Reordered_usings_mark_nothing()
+    {
+        Assert.Empty(Changed("using System;\nusing System.Text;\nclass A {}", "using System.Text;\nusing System;\nclass A {}"));
+    }
+
     [Fact]
     public void Top_level_statement_change_is_marked()
     {
         Assert.Equal(["top-level"], Changed("System.Console.WriteLine(1);", "System.Console.WriteLine(2);"));
+    }
+
+    [Fact]
+    public void A_member_added_after_top_level_statements_marks_the_member_alone()
+    {
+        Assert.Equal(["method B"], Changed("System.Console.WriteLine(1);\nclass C { void A() {} }", "System.Console.WriteLine(1);\nclass C { void A() {} void B() {} }"));
+    }
+
+    [Fact]
+    public void Using_change_in_a_file_with_top_level_statements_marks_the_statements_and_every_type()
+    {
+        Assert.Equal(["top-level", "type C"], Changed("using System;\nConsole.WriteLine(1);\nclass C {}", "using System.IO;\nConsole.WriteLine(1);\nclass C {}"));
     }
 
     [Fact]

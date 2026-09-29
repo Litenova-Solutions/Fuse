@@ -107,7 +107,7 @@ A key is read from syntax alone. A member's signature holds its kind, name, expl
 1. `FileDeclarations`: reads one version of a file into its declarations, each a `DeclarationNode` with its key, its syntax node, its surface (what other files can observe, with bodies and trivia removed; none for a finalizer or top-level statements), the names other code reaches it by, and its containing type. It is the one walk of namespaces, types and members that both functions use.
 2. `DeclarationHeader`: a declaration's header as written, on one line. `DeclarationChange` carries it and a cause quotes it.
 3. `SurfaceDiff`: Check's question. It compares the surfaces of two `FileDeclarations` and returns `FileChanges`, which is broad when a type header, a delegate, a global using or a file-level attribute list changed.
-4. `CodeDiff`: Testing's question. It compares the code of the same declarations, a type by its header (its surface) and anything else by its whole syntax, and returns the nodes the test walks start from: each added or changed declaration, the type of each removed member, the compilation unit when top-level statements change, and every type when the file's usings or file-level attributes change.
+4. `CodeDiff`: Testing's question. It compares the code of the same declarations, a type by its header (its surface) and anything else by its whole syntax, and returns the nodes the test walks start from: each added or changed declaration, the type of each removed member, the compilation unit when top-level statements change, and every type, and the compilation unit of a file with top-level statements, when the file's usings (at file level or inside a namespace) or file-level attributes change.
 
 ## Check
 

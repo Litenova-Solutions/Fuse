@@ -117,4 +117,12 @@ public class FileDeclarationsTests
         var directive = Assert.Single(Of("using System; namespace N { class A { } delegate void D(); }").All, d => d.Key is DeclarationKey.Using);
         Assert.Equal(["A", "D"], directive.Names);
     }
+
+    [Fact]
+    public void A_using_s_names_include_nested_types_and_delegates_once_and_no_extension_block()
+    {
+        var declarations = Of("using System; namespace N { static class A { class B { delegate void D(); } enum E { X } extension(int i) { } } partial class P { } partial class P { } }");
+        var directive = Assert.Single(declarations.All, d => d.Key is DeclarationKey.Using);
+        Assert.Equal(["A", "B", "D", "E", "P"], directive.Names);
+    }
 }

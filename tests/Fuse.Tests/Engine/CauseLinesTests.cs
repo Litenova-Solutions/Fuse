@@ -66,16 +66,33 @@ public class CauseLinesTests
     }
 
     [Fact]
-    public async Task A_changed_type_header_names_the_type()
+    public async Task A_changed_interface_member_names_the_member()
     {
         await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Greeting.cs", "string Greet(string name);", "string Greet(string name, bool loud);");
         var result = await engine.CheckAsync("Lib/Greeting.cs");
 
-        // The interface member changed, so every call to Greet and every implementation of the interface is in scope.
+        // The interface member changed, so every call to Greet and every implementation of the interface is in scope. The
+        // parameter list is part of the key, so the change is the removal of the old member, which the callers used. A
+        // changed type header is broad and gets no cause at all.
         var lines = PrintedCauses(result);
         Assert.NotEmpty(lines);
-        Assert.Contains(lines, l => l.Contains("Greet", StringComparison.Ordinal));
+        Assert.All(lines, l => Assert.Equal("removed: string Greet(string name)", l));
+    }
+
+    [Fact]
+    public async Task A_changed_field_type_names_the_field_s_declaration_without_its_initializer()
+    {
+        var repo = FixtureRepo.CreateStandard();
+        repo.Write("Lib/Config.cs", "namespace Lib;\n\npublic class Config\n{\n    public int Limit = Compute();\n\n    private static int Compute() => 5;\n}\n");
+        repo.Write("App/UseConfig.cs", "namespace App;\n\npublic static class UseConfig\n{\n    public static int Run()\n    {\n        int limit = new Lib.Config().Limit;\n        return limit;\n    }\n}\n");
+        repo.Commit("config");
+        await using var engine = await InProcessEngine.StartAsync(repo);
+        engine.Repo.Replace("Lib/Config.cs", "public int Limit = Compute();\n\n    private static int Compute()", "public long Limit = Compute();\n\n    private static long Compute()");
+        var result = await engine.CheckAsync("Lib/Config.cs");
+
+        // The line shows what changed, the field's type, where quoting the declarator gave "Limit = Compute()" both times.
+        Assert.Equal("changed: public long Limit", Assert.Single(PrintedCauses(result)));
     }
 
     [Fact]

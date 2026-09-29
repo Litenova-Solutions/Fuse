@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.IO.Pipes;
 using System.Text;
-using Fuse.Engine;
 using Fuse.Paths;
 using Fuse.Protocol;
 
@@ -54,7 +53,7 @@ internal static class FuseProcess
                 await pipe.WriteAsync(bytes);
                 await pipe.FlushAsync();
                 using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-                var line = await EngineServer.ReadLineAsync(pipe, timeout.Token);
+                var line = await PipeFraming.ReadLineAsync(pipe, timeout.Token);
                 return line is null ? null : ProtocolJson.ReadResponse(line);
             }
             catch (IOException) when (attempt < 4)

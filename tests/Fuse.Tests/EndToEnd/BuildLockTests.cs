@@ -1,4 +1,4 @@
-using Fuse.Cli;
+using Fuse.Operations;
 using Fuse.Tests.Fixtures;
 
 namespace Fuse.Tests.EndToEnd;

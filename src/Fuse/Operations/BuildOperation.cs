@@ -2,7 +2,7 @@ using System.Text;
 using Fuse.Dotnet;
 using Fuse.Paths;
 
-namespace Fuse.Cli;
+namespace Fuse.Operations;
 
 /// <summary>Runs the real <c>dotnet build</c> and prints its errors, or the end of its output when no error line parses.</summary>
 internal static class BuildOperation
@@ -39,7 +39,7 @@ internal static class BuildOperation
         if (result.ExitCode == 0)
         {
             text.Append($"fuse: {verb} succeeded in {seconds:0.0} s");
-            return new OperationResult(0, text.ToString());
+            return new OperationResult(Outcome.Clean, text.ToString());
         }
 
         if (errors.Count == 0)
@@ -48,11 +48,11 @@ internal static class BuildOperation
             var tail = result.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries).TakeLast(30);
             text.Append(string.Join('\n', tail)).Append('\n');
             text.Append($"fuse: {verb} failed (exit code {result.ExitCode}) in {seconds:0.0} s");
-            return new OperationResult(1, text.ToString());
+            return new OperationResult(Outcome.ProblemsFound, text.ToString());
         }
 
         var more = errors.Count > MaxShown ? $", first {MaxShown} shown" : "";
         text.Append($"fuse: {verb} failed with {errors.Count} error(s){more} in {seconds:0.0} s");
-        return new OperationResult(1, text.ToString());
+        return new OperationResult(Outcome.ProblemsFound, text.ToString());
     }
 }

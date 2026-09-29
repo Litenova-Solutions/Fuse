@@ -1,6 +1,5 @@
-using Fuse.Failures;
-using Fuse.Graph;
 using Fuse.Check;
+using Fuse.Failures;
 using Fuse.Paths;
 using Fuse.Protocol;
 using Fuse.Telemetry;
@@ -9,28 +8,34 @@ using Fuse.Workspace;
 
 namespace Fuse.Engine;
 
-/// <summary>Owns the warm workspace and answers requests one at a time.</summary>
-internal sealed class EngineHost : IDisposable
+/// <summary>
+///     Owns the warm workspace and answers requests: it initializes the workspace, admits one request at a time through
+///     the request lock, and routes each to the feature that answers it.
+/// </summary>
+internal sealed class RequestRouter : IDisposable
 {
     private readonly EngineLog _log;
     private readonly RepoWorkspace _workspace;
     private readonly Checker _checker;
     private readonly TestPlanner _planner;
     private readonly SemaphoreSlim _gate = new(1, 1);
-    private readonly HashSet<string> _preloadFailed = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Preloader _preloader;
+    private readonly RequestLog _requestLog;
     private Task? _initialization;
-    private Task _preload = Task.CompletedTask;
     private CancellationToken _shutdown;
 
-    public EngineHost(RepoRoot root, EngineLog log)
+    public RequestRouter(RepoRoot root, EngineLog log)
     {
         _log = log;
         _workspace = new RepoWorkspace(root, log.Write);
         _checker = new Checker(_workspace);
         _planner = new TestPlanner(_workspace);
+        _preloader = new Preloader(_workspace, _gate, log);
+        _requestLog = new RequestLog(log);
     }
 
     /// <summary>Evaluates projects, then preloads the projects that already have uncommitted changes.</summary>
+    /// <param name="cancellationToken">The engine's shutdown token, which also stops the background load of dependents.</param>
     public Task InitializeAsync(CancellationToken cancellationToken)
     {
         _shutdown = cancellationToken;
@@ -61,9 +66,13 @@ internal sealed class EngineHost : IDisposable
             _gate.Release();
         }
 
-        SchedulePreload();
+        _preloader.Schedule(_shutdown);
     }
 
+    /// <summary>
+    ///     Answers one request. A ping or a shutdown is answered at once; a check or a test plan waits for initialization
+    ///     (or is refused while loading when the client does not wait), then for the request lock, then runs.
+    /// </summary>
     public async Task<EngineResponse> HandleAsync(EngineRequest request, CancellationToken cancellationToken)
     {
         if (request.Kind is RequestKind.Ping or RequestKind.Shutdown)
@@ -78,7 +87,7 @@ internal sealed class EngineHost : IDisposable
         }
         catch (FuseException e)
         {
-            return EngineResponse.Fail(e.Code, e.Message);
+            return ResponseMapper.Unanswered(e);
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
@@ -100,14 +109,14 @@ internal sealed class EngineHost : IDisposable
         {
             return request.Kind switch
             {
-                RequestKind.Check => new EngineResponse(ResponseStatus.Ok, Check: await _checker.CheckAsync(request.Files, phases, cancellationToken).ConfigureAwait(false)),
-                RequestKind.TestPlan => new EngineResponse(ResponseStatus.Ok, Tests: await _planner.PlanAsync(request.AllTests, phases, cancellationToken).ConfigureAwait(false)),
+                RequestKind.Check => ResponseMapper.Answered(await _checker.CheckAsync(request.Files, phases, cancellationToken).ConfigureAwait(false)),
+                RequestKind.TestPlan => ResponseMapper.Answered(await _planner.PlanAsync(request.AllTests, phases, cancellationToken).ConfigureAwait(false)),
                 _ => EngineResponse.Fail(ErrorCode.Internal, $"unknown request {request.Kind}"),
             };
         }
         catch (FuseException e)
         {
-            return EngineResponse.Fail(e.Code, e.Message);
+            return ResponseMapper.Unanswered(e);
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
@@ -116,69 +125,9 @@ internal sealed class EngineHost : IDisposable
         }
         finally
         {
-            var took = Environment.TickCount64 - started;
-            _log.Write($"{request.Kind} {(request.Files is null ? "all" : string.Join(",", request.Files.Select(Path.GetFileName)))} took {took} ms");
-            // One line per request, naming it and timing each phase, so a measurement can be matched to its own call.
-            if (request.RequestId.Length > 0)
-                _log.Write(PhaseLine.Format(request.RequestId, request.Kind.ToString(), [.. phases.All, (Phase.Total, took)]));
+            _requestLog.Write(request, phases, Environment.TickCount64 - started);
             _gate.Release();
-            SchedulePreload();
-        }
-    }
-
-    /// <summary>
-    ///     Loads, in the background and one at a time, the projects that depend on projects with uncommitted changes.
-    ///     A declaration change has to bind those dependents, and loading them is the slow part of a first check
-    ///     (seconds per project); doing it while the agent is busy elsewhere keeps later checks fast. Requests take
-    ///     precedence: the gate admits them between project loads.
-    /// </summary>
-    private void SchedulePreload()
-    {
-        if (!_preload.IsCompleted || _shutdown.IsCancellationRequested)
-            return;
-        _preload = Task.Run(PreloadAsync);
-    }
-
-    private async Task PreloadAsync()
-    {
-        while (!_shutdown.IsCancellationRequested)
-        {
-            ProjectNode? next;
-            // The gate only protects choosing the next project; the load itself runs outside it, so requests keep flowing.
-            await _gate.WaitAsync(_shutdown).ConfigureAwait(false);
-            try
-            {
-                var graph = _workspace.Graph;
-                next = _workspace.Tracker.Changed
-                    .SelectMany(graph.OwnersOf)
-                    .SelectMany(graph.DependentsOf)
-                    .FirstOrDefault(p => !_workspace.IsLoaded(p) && !_preloadFailed.Contains(p.Path));
-            }
-            finally
-            {
-                _gate.Release();
-            }
-
-            if (next is null)
-                return;
-            try
-            {
-                await _workspace.PreloadAsync(next, _shutdown).ConfigureAwait(false);
-            }
-            catch (FuseException e)
-            {
-                _preloadFailed.Add(next.Path);
-                _log.Write($"preload of {next.Name} skipped: {e.Message}");
-            }
-            catch (OperationCanceledException)
-            {
-                return;
-            }
-            catch (Exception e)
-            {
-                _log.Write($"preload failed: {e}");
-                return;
-            }
+            _preloader.Schedule(_shutdown);
         }
     }
 
@@ -186,16 +135,7 @@ internal sealed class EngineHost : IDisposable
     ///     Waits for a background load to stop, after the shutdown token has been cancelled, so the workspace is never
     ///     disposed under a project that is still loading.
     /// </summary>
-    public async Task WaitForPreloadAsync()
-    {
-        try
-        {
-            await _preload.WaitAsync(TimeSpan.FromSeconds(30)).ConfigureAwait(false);
-        }
-        catch (Exception e) when (e is OperationCanceledException or TimeoutException)
-        {
-        }
-    }
+    public Task WaitForPreloadAsync() => _preloader.WaitAsync();
 
     public void Dispose() => _workspace.Dispose();
 }

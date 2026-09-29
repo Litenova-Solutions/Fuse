@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Fuse.Failures;
 using Fuse.Paths;
 using Fuse.Repo;
 
@@ -21,7 +22,7 @@ internal static class InitCommand
         var root = RepoRoot.Find(startDirectory);
         if (root is null)
         {
-            error.WriteLine("fuse: not inside a git repository; run fuse init from your repository");
+            error.WriteLine($"fuse: {ErrorMessages.NotARepository}");
             return 2;
         }
 

@@ -1,4 +1,3 @@
-using Fuse.Engine;
 using Fuse.Protocol;
 using Fuse.Tests.Fixtures;
 

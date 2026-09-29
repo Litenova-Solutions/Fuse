@@ -58,25 +58,13 @@ public class NamespaceDependencyTests
     /// <summary>The namespaces rule 2 names as using Roslyn or MSBuild, whether or not a file in them names it directly.</summary>
     private static readonly string[] EngineSide = ["Fuse.Graph", "Fuse.Workspace", "Fuse.Changes", "Fuse.Check", "Fuse.Testing", "Fuse.Engine"];
 
-    // Transitional entries: the code as it is today, before later steps of the migration order in docs/architecture.md.
-    // Each names the step that deletes it, and Every_transitional_entry_is_still_needed fails once one is unused.
-
-    /// <summary>Namespaces that a later step renames, checked until then under the row of their new name.</summary>
-    private static readonly Dictionary<string, (string RenamedTo, string Step)> TransitionalRenames = new(StringComparer.Ordinal)
-    {
-        // Step 2 renames Fuse.Cli to Fuse.Operations.
-        ["Fuse.Cli"] = ("Fuse.Operations", "step 2"),
-    };
-
     /// <summary>
-    ///     Uses that a row does not allow yet. Rule 2 does not follow them: the client's two uses of Fuse.Engine are of
-    ///     EngineClient, EngineLauncher and EngineVersion, the client's own types, which step 2 moves out of it.
+    ///     Uses that a row does not allow yet: the code as it is today, before later steps of the migration order in
+    ///     docs/architecture.md. Each names the step that deletes it, and Every_transitional_entry_is_still_needed fails
+    ///     once one is unused.
     /// </summary>
     private static readonly (string From, string To, string Step)[] TransitionalUses =
     [
-        // Step 2 moves EngineClient and EngineLauncher to Fuse.Engine.Client and EngineVersion to Fuse.Protocol.
-        ("Fuse.Operations", "Fuse.Engine", "step 2"),
-        ("Fuse.Mcp", "Fuse.Engine", "step 2"),
         // Checker returns Protocol.CheckReport until step 3 gives Check its own result model.
         ("Fuse.Check", "Fuse.Protocol", "step 3"),
         // TestPlanner returns Protocol.TestPlan until step 4 gives Testing its own result model.
@@ -91,7 +79,7 @@ public class NamespaceDependencyTests
         Assert.NotEmpty(Code.Value.Files);
         var missing = Code.Value.Files
             .Where(f => !MayUse.ContainsKey(f.Namespace))
-            .Select(f => $"{f.Path}: {f.Declared} has no row in the dependency table of docs/architecture.md; decide its layer and add the row there and in this test")
+            .Select(f => $"{f.Path}: {f.Namespace} has no row in the dependency table of docs/architecture.md; decide its layer and add the row there and in this test")
             .ToList();
         Assert.True(missing.Count == 0, string.Join('\n', missing));
     }
@@ -107,7 +95,7 @@ public class NamespaceDependencyTests
             foreach (var used in file.Uses.Where(u => u.StartsWith("Fuse", StringComparison.Ordinal) && u != file.Namespace))
             {
                 if (!allowed.Contains(used) && !IsTransitional(file.Namespace, used))
-                    broken.Add($"{file.Path}: {file.Declared} uses {used}, which its row in docs/architecture.md does not allow; {file.Namespace} may use {Describe(allowed)}");
+                    broken.Add($"{file.Path}: {file.Namespace} uses {used}, which its row in docs/architecture.md does not allow; {file.Namespace} may use {Describe(allowed)}");
             }
         }
 
@@ -141,9 +129,8 @@ public class NamespaceDependencyTests
 
                 foreach (var ((from, to), _) in code.Edges.Where(e => e.Key.From == current && e.Key.To.StartsWith("Fuse", StringComparison.Ordinal)))
                 {
-                    if (IsTransitional(from, to) || !cameFrom.TryAdd(to, from))
-                        continue;
-                    queue.Enqueue(to);
+                    if (cameFrom.TryAdd(to, from))
+                        queue.Enqueue(to);
                 }
             }
         }
@@ -180,12 +167,6 @@ public class NamespaceDependencyTests
     {
         var code = Code.Value;
         var slack = new List<string>();
-        foreach (var (name, (renamedTo, step)) in TransitionalRenames)
-        {
-            if (!code.Files.Any(f => f.Declared == name))
-                slack.Add($"no file declares {name} any more; delete its rename to {renamedTo} ({step})");
-        }
-
         foreach (var (from, to, step) in TransitionalUses)
         {
             if (!code.Edges.ContainsKey((from, to)))
@@ -233,10 +214,9 @@ public class NamespaceDependencyTests
     }
 
     /// <summary>One source file: its repository-relative path, the namespace it declares, and what it uses.</summary>
-    /// <param name="Declared">The namespace on the file's <c>namespace</c> line.</param>
-    /// <param name="Namespace">The namespace whose row applies: <paramref name="Declared"/>, or its new name when a later step renames it.</param>
-    /// <param name="Uses">Fuse namespaces under their new names, plus <c>Microsoft.CodeAnalysis</c> and <c>Microsoft.Build</c>.</param>
-    private sealed record SourceFile(string Path, string Declared, string Namespace, IReadOnlySet<string> Uses);
+    /// <param name="Namespace">The namespace on the file's <c>namespace</c> line.</param>
+    /// <param name="Uses">The Fuse namespaces it uses, plus <c>Microsoft.CodeAnalysis</c> and <c>Microsoft.Build</c>.</param>
+    private sealed record SourceFile(string Path, string Namespace, IReadOnlySet<string> Uses);
 
     /// <summary>Every source file under <c>src/Fuse</c>, and every use between namespaces with the first file that makes it.</summary>
     private sealed class Scan
@@ -272,7 +252,7 @@ public class NamespaceDependencyTests
                 .ToList();
             var declared = parsed.GroupBy(p => NamespaceOf(p.Path, p.Root), StringComparer.Ordinal)
                 .ToDictionary(g => g.Key, g => g.SelectMany(p => TopLevelTypes(p.Root)).ToHashSet(StringComparer.Ordinal), StringComparer.Ordinal);
-            var known = declared.Keys.Concat(MayUse.Keys).Concat(TransitionalRenames.Keys).ToHashSet(StringComparer.Ordinal);
+            var known = declared.Keys.Concat(MayUse.Keys).ToHashSet(StringComparer.Ordinal);
 
             var files = new List<SourceFile>();
             foreach (var (path, root) in parsed)
@@ -280,9 +260,8 @@ public class NamespaceDependencyTests
                 var name = NamespaceOf(path, root);
                 var uses = QualifiedNames(root).Select(n => Owner(n, known)).OfType<string>()
                     .Concat(EnclosingNamespaceUses(root, name, declared))
-                    .Select(Renamed)
                     .ToHashSet(StringComparer.Ordinal);
-                files.Add(new SourceFile(path, name, Renamed(name), uses));
+                files.Add(new SourceFile(path, name, uses));
             }
 
             return new Scan(files);
@@ -298,8 +277,6 @@ public class NamespaceDependencyTests
 
             throw new InvalidOperationException($"no Fuse.slnx above {AppContext.BaseDirectory}");
         }
-
-        private static string Renamed(string name) => TransitionalRenames.TryGetValue(name, out var rename) ? rename.RenamedTo : name;
 
         private static string NamespaceOf(string path, CompilationUnitSyntax root) =>
             root.Members.OfType<BaseNamespaceDeclarationSyntax>().FirstOrDefault()?.Name.ToString()

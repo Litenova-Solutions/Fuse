@@ -1,10 +1,10 @@
 using System.Text;
 using Fuse.Dotnet;
-using Fuse.Engine;
+using Fuse.Engine.Client;
 using Fuse.Paths;
 using Fuse.Protocol;
 
-namespace Fuse.Cli;
+namespace Fuse.Operations;
 
 /// <summary>
 ///     Runs tests and prints failures. With no arguments it runs the tests affected by the working-tree changes
@@ -34,10 +34,10 @@ internal static class TestOperation
 
         var response = await EngineClient.SendAsync(root, new EngineRequest("", RequestKind.TestPlan, AllTests: all), TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
         if (response.Status != ResponseStatus.Ok || response.Tests is null)
-            return new OperationResult(2, $"fuse: {response.Message ?? "the engine gave no answer"}");
+            return new OperationResult(Outcome.Unanswered, $"fuse: {response.Message ?? "the engine gave no answer"}");
         var plan = response.Tests;
         if (plan.Runs.Length == 0)
-            return new OperationResult(0, $"fuse: {plan.Scope}");
+            return new OperationResult(Outcome.Clean, $"fuse: {plan.Scope}");
 
         // Shadow runs touch no build output, so they run in parallel. MSBuild runs share obj and bin folders across
         // projects, so they run one after another.
@@ -131,11 +131,11 @@ internal static class TestOperation
             if (buildFailure is not null)
             {
                 var build = BuildOperation.Render(buildFailure, root.Path, seconds, "test build");
-                return build with { ExitCode = buildFailure.ExitCode == 0 ? 0 : 1 };
+                return build with { Outcome = buildFailure.ExitCode == 0 ? Outcome.Clean : Outcome.ProblemsFound };
             }
 
             // Microsoft.Testing.Platform run that passed: its console output is the only report.
-            return new OperationResult(0, $"fuse: tests passed in {seconds:0.0} s; {scope}");
+            return new OperationResult(Outcome.Clean, $"fuse: tests passed in {seconds:0.0} s; {scope}");
         }
 
         var text = new StringBuilder();
@@ -160,6 +160,6 @@ internal static class TestOperation
         }
         var skipped = outcome.Skipped > 0 ? $", {outcome.Skipped} skipped" : "";
         text.Append($"fuse: {outcome.Failed} failed, {outcome.Passed} passed{skipped} in {seconds:0.0} s; {scope}");
-        return new OperationResult(outcome.Failed > 0 ? 1 : 0, text.ToString());
+        return new OperationResult(outcome.Failed > 0 ? Outcome.ProblemsFound : Outcome.Clean, text.ToString());
     }
 }

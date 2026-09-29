@@ -2,8 +2,8 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Fuse.Cli;
 using Fuse.Failures;
+using Fuse.Operations;
 using Fuse.Paths;
 using Fuse.Protocol;
 
@@ -149,9 +149,12 @@ internal static class HookCommand
         return 0;
     }
 
-    /// <summary>New errors are reported, and so is a missing restore; loading, timeouts and internal failures stay silent.</summary>
+    /// <summary>
+    ///     A check that found problems is reported, and so is a missing restore; loading, timeouts and internal failures
+    ///     stay silent.
+    /// </summary>
     private static bool ShouldReport(OperationResult result, EngineResponse response) =>
-        result.Found || response.Error is ErrorCode.RestoreNeeded;
+        result.Outcome == Outcome.ProblemsFound || response.Error is ErrorCode.RestoreNeeded;
 
     private static int Report(string harness, string claudeEvent, string text)
     {

@@ -1,10 +1,10 @@
 using System.Text;
-using Fuse.Engine;
+using Fuse.Engine.Client;
 using Fuse.Failures;
 using Fuse.Paths;
 using Fuse.Protocol;
 
-namespace Fuse.Cli;
+namespace Fuse.Operations;
 
 /// <summary>Asks the engine for the errors introduced since HEAD and renders them.</summary>
 internal static class CheckOperation
@@ -22,7 +22,7 @@ internal static class CheckOperation
     {
         var response = await EngineClient.SendAsync(root, new EngineRequest("", RequestKind.Check, Files: files?.ToArray(), Wait: wait), timeout, cancellationToken).ConfigureAwait(false);
         if (response.Status != ResponseStatus.Ok || response.Check is null)
-            return (new OperationResult(2, $"fuse: {response.Message ?? "the engine gave no answer"}"), response);
+            return (new OperationResult(Outcome.Unanswered, $"fuse: {response.Message ?? "the engine gave no answer"}"), response);
         return (Render(response.Check), response);
     }
 
@@ -50,12 +50,12 @@ internal static class CheckOperation
         if (report.Introduced.Length == 0)
         {
             text.Append($"fuse: no new errors ({report.FilesChecked} file(s) checked{scopeText})");
-            return new OperationResult(0, text.ToString());
+            return new OperationResult(Outcome.Clean, text.ToString());
         }
 
         var files = report.Introduced.Select(d => d.Path).Distinct().Count();
         var more = report.Introduced.Length > MaxShown ? $", first {MaxShown} shown" : "";
         text.Append($"fuse: {report.Introduced.Length} new error(s) in {files} file(s){more} ({string.Join(", ", report.Projects)}){scopeText}");
-        return new OperationResult(1, text.ToString());
+        return new OperationResult(Outcome.ProblemsFound, text.ToString());
     }
 }

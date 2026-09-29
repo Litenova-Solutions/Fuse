@@ -10,13 +10,13 @@ namespace Fuse.Tests.Engine;
 ///     requests each get their own answer, an engine error comes back as that error rather than a dropped connection,
 ///     and every check is named and timed in the log.
 /// </summary>
-public class EngineHostHarnessTests
+public class RequestRouterTests
 {
     [Fact]
     public async Task Two_concurrent_checks_both_answer()
     {
         using var repo = FixtureRepo.CreateStandard();
-        await using var engine = await EngineHostHarness.StartAsync(repo);
+        await using var engine = await RequestRouterHarness.StartAsync(repo);
 
         var answers = await Task.WhenAll(engine.CheckAsync(repo.Full("Lib/Calc.cs")), engine.CheckAsync(repo.Full("Lib/Greeting.cs")));
 
@@ -29,7 +29,7 @@ public class EngineHostHarnessTests
     public async Task Two_concurrent_checks_with_a_break_each_both_see_their_own()
     {
         using var repo = FixtureRepo.CreateStandard();
-        await using var engine = await EngineHostHarness.StartAsync(repo);
+        await using var engine = await RequestRouterHarness.StartAsync(repo);
         repo.Replace("Lib/Calc.cs", "public int Add(", "public int Plus(");
         repo.Replace("Lib/Formatter.cs", "Format(", "Format2(");
 
@@ -45,7 +45,7 @@ public class EngineHostHarnessTests
     public async Task An_unrestored_project_is_answered_as_restore_needed()
     {
         using var repo = FixtureRepo.CreateStandard();
-        await using var engine = await EngineHostHarness.StartAsync(repo);
+        await using var engine = await RequestRouterHarness.StartAsync(repo);
         File.Delete(repo.Full("Lib/obj/project.assets.json"));
         repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
 
@@ -61,7 +61,7 @@ public class EngineHostHarnessTests
     public async Task A_check_log_names_its_request_and_its_wait_for_the_gate()
     {
         using var repo = FixtureRepo.CreateStandard();
-        await using var engine = await EngineHostHarness.StartAsync(repo);
+        await using var engine = await RequestRouterHarness.StartAsync(repo);
         repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
 
         await engine.SendAsync(new EngineRequest("", RequestKind.Check, RequestId: "t-1", Files: [repo.Full("Lib/Calc.cs")]));
@@ -77,7 +77,7 @@ public class EngineHostHarnessTests
     public async Task A_check_starts_the_background_load_of_dependents()
     {
         using var repo = FixtureRepo.CreateStandard();
-        await using var engine = await EngineHostHarness.StartAsync(repo);
+        await using var engine = await RequestRouterHarness.StartAsync(repo);
         repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
 
         await engine.CheckAsync(repo.Full("Lib/Calc.cs"));

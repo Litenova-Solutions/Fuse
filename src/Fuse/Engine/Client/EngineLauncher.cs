@@ -2,8 +2,9 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
+using Fuse.Protocol;
 
-namespace Fuse.Engine;
+namespace Fuse.Engine.Client;
 
 /// <summary>
 ///     Starts <c>fuse engine</c> fully detached from the caller. The engine outlives the hook or command that

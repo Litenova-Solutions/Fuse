@@ -1,5 +1,5 @@
 using Fuse.Check;
-using Fuse.Cli;
+using Fuse.Operations;
 using Fuse.Protocol;
 using Fuse.Tests.Fixtures;
 

@@ -1,7 +1,7 @@
 using Fuse.Paths;
 
 
-namespace Fuse.Cli;
+namespace Fuse.Operations;
 
 /// <summary>
 ///     One real build or test run at a time in a repository. MSBuild reads and writes the same <c>obj</c> and <c>bin</c>

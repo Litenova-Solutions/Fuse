@@ -1,8 +1,8 @@
 using Fuse.Check;
-using Fuse.Cli;
 using Fuse.Dotnet;
 using Fuse.Engine;
 using Fuse.Hooks;
+using Fuse.Operations;
 using Fuse.Protocol;
 using Fuse.Testing;
 

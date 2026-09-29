@@ -1,7 +1,8 @@
 using System.Text.Json;
-using Fuse.Cli;
-using Fuse.Engine;
+using Fuse.Failures;
+using Fuse.Operations;
 using Fuse.Paths;
+using Fuse.Protocol;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
@@ -9,7 +10,7 @@ namespace Fuse.Mcp;
 
 /// <summary>
 ///     <c>fuse mcp</c>: a stdio MCP server with three tools for hosts that cannot run hooks or shell commands. Each
-///     tool returns the same text the CLI prints; failures inside Fuse are marked with <c>isError</c>.
+///     tool returns the same text the CLI prints; an answer Fuse could not give is marked with <c>isError</c>.
 /// </summary>
 internal static class McpCommand
 {
@@ -65,7 +66,7 @@ internal static class McpCommand
     {
         var root = RepoRoot.Find(Environment.CurrentDirectory);
         if (root is null)
-            return Text("fuse: the MCP server's working directory is not inside a git repository; start it from your repository", isError: true);
+            return Text($"fuse: {ErrorMessages.NotARepository}", isError: true);
         var arguments = request?.Arguments ?? new Dictionary<string, JsonElement>();
         OperationResult result;
         switch (request?.Name)
@@ -88,7 +89,7 @@ internal static class McpCommand
                 return Text($"fuse: unknown tool {request?.Name}; the tools are fuse_check, fuse_test and fuse_build", isError: true);
         }
 
-        return Text(result.Text, result.Failed);
+        return Text(result.Text, isError: result.Outcome == Outcome.Unanswered);
     }
 
     private static CallToolResult Text(string text, bool isError) =>

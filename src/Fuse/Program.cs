@@ -1,9 +1,11 @@
 using System.Text;
-using Fuse.Cli;
 using Fuse.Engine;
+using Fuse.Failures;
 using Fuse.Hooks;
 using Fuse.Mcp;
+using Fuse.Operations;
 using Fuse.Paths;
+using Fuse.Protocol;
 
 namespace Fuse;
 
@@ -87,7 +89,7 @@ internal static class Program
     {
         var root = RepoRoot.Find(Environment.CurrentDirectory);
         if (root is null)
-            Console.Error.WriteLine("fuse: not inside a git repository; Fuse compares your changes with HEAD, so it needs one");
+            Console.Error.WriteLine($"fuse: {ErrorMessages.NotARepository}");
         return root;
     }
 

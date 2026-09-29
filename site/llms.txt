@@ -6,21 +6,21 @@ Fuse needs the .NET 10 SDK. Install it with `dotnet tool install -g Fuse`, then 
 
 ## Docs
 
-- [Overview](https://fuse.codes/docs): what Fuse is, the words the documentation uses, and which page answers which question
-- [Getting started](https://fuse.codes/getting-started): install Fuse and see what it reports on a sample repository
-- [Connect your agent](https://fuse.codes/harnesses): what fuse init writes for each harness, and how an MCP host runs fuse mcp
-- [How it works](https://fuse.codes/how-it-works): how Fuse checks an edit, selects tests and runs them, and common questions
-- [Limits](https://fuse.codes/limits): what Fuse cannot check, and what to do about it
-- [Results](https://fuse.codes/results): measurements on four repositories, with the result file behind each number
-- [Commands](https://fuse.codes/commands): every fuse command, its arguments, its output and its exit codes
-- [Messages and fixes](https://fuse.codes/messages): every message Fuse prints when it cannot answer, and the fix
-- [Troubleshooting](https://fuse.codes/troubleshooting): silent hooks, slow checks, log locations and how to stop the engine
+- [Overview](https://fuse.codes/docs/): what Fuse is, the words the documentation uses, and which page answers which question
+- [Getting started](https://fuse.codes/docs/getting-started): install Fuse and see what it reports on a sample repository
+- [Connect your agent](https://fuse.codes/docs/harnesses): what fuse init writes for each harness, and how an MCP host runs fuse mcp
+- [How it works](https://fuse.codes/docs/how-it-works): how Fuse checks an edit, selects tests and runs them, and common questions
+- [Limits](https://fuse.codes/docs/limits): what Fuse cannot check, and what to do about it
+- [Results](https://fuse.codes/docs/results): measurements on four repositories, with the result file behind each number
+- [Commands](https://fuse.codes/docs/commands): every fuse command, its arguments, its output and its exit codes
+- [Messages and fixes](https://fuse.codes/docs/messages): every message Fuse prints when it cannot answer, and the fix
+- [Troubleshooting](https://fuse.codes/docs/troubleshooting): silent hooks, slow checks, log locations and how to stop the engine
 
 ## Optional
 
-- [Architecture](https://fuse.codes/architecture): how the code is organized, for contributors and coding agents
-- [Evals](https://fuse.codes/evals): how the evals work and how to run them
-- [AI policy](https://fuse.codes/ai-policy): how AI tools may be used to contribute
+- [Architecture](https://fuse.codes/docs/architecture): how the code is organized, for contributors and coding agents
+- [Evals](https://fuse.codes/docs/evals): how the evals work and how to run them
+- [AI policy](https://fuse.codes/docs/ai-policy): how AI tools may be used to contribute
 - [Contributing](https://raw.githubusercontent.com/Litenova-Solutions/Fuse/main/CONTRIBUTING.md): how to build, test and submit a change
 - [Security](https://raw.githubusercontent.com/Litenova-Solutions/Fuse/main/SECURITY.md): supported versions and how to report a vulnerability
 - [Changelog](https://raw.githubusercontent.com/Litenova-Solutions/Fuse/main/CHANGELOG.md): what changed in each release

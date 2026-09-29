@@ -5,22 +5,7 @@
   Content-Security-Policy: frame-ancestors 'none'; base-uri 'none'; object-src 'none'; form-action 'none'
   Permissions-Policy: camera=(), microphone=(), geolocation=()
 
-/style.css
-  Cache-Control: public, max-age=3600, stale-while-revalidate=86400
-
-/benefits.svg
-  Cache-Control: public, max-age=3600, stale-while-revalidate=86400
-
-/fuse-icon.svg
-  Cache-Control: public, max-age=3600, stale-while-revalidate=86400
-
-/og.png
-  Cache-Control: public, max-age=3600, stale-while-revalidate=86400
-
-/apple-touch-icon.png
-  Cache-Control: public, max-age=3600, stale-while-revalidate=86400
-
-/favicon.png
+/assets/*
   Cache-Control: public, max-age=3600, stale-while-revalidate=86400
 
 /llms.txt

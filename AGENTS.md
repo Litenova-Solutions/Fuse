@@ -1,10 +1,10 @@
 # Fuse: contributor and agent guide
 
-Fuse is one .NET tool (`fuse`) that keeps a warm Roslyn compilation of a repository and gives coding agents the errors their edits introduced, affected-test runs, and compact build output, through agent hooks and a three-tool MCP server. [README.md](README.md) describes the product, [site/docs.html](site/docs.html) indexes the documentation, and [site/how-it-works.html](site/how-it-works.html) describes how it works.
+Fuse is one .NET tool (`fuse`) that keeps a warm Roslyn compilation of a repository and gives coding agents the errors their edits introduced, affected-test runs, and compact build output, through agent hooks and a three-tool MCP server. [README.md](README.md) describes the product, [site/docs/index.html](site/docs/index.html) indexes the documentation, and [site/docs/how-it-works.html](site/docs/how-it-works.html) describes how it works.
 
 ## Layout
 
-- `src/Fuse`: the only product project, packed as the `Fuse` dotnet tool. Its namespaces are layers; [site/architecture.html](site/architecture.html) says which may use which, in what order to read them, and what its words mean. From the top:
+- `src/Fuse`: the only product project, packed as the `Fuse` dotnet tool. Its namespaces are layers; [site/docs/architecture.html](site/docs/architecture.html) says which may use which, in what order to read them, and what its words mean. From the top:
   - `Program.cs`: parses the command line and picks a surface or the engine.
   - `Hooks/`, `Mcp/`, `Harnesses/`: `fuse hook`, `fuse mcp`, and `fuse init` with one class per harness.
   - `Operations/`: the check, test and build operations shared by every surface, and their output.
@@ -18,7 +18,13 @@ Fuse is one .NET tool (`fuse`) that keeps a warm Roslyn compilation of a reposit
   - `Paths/`, `Failures/`, `Telemetry/`: `RepoRoot` and `RepoPath`, `FuseException` and `ErrorCode`, `PhaseTimes` and `EngineLog`.
 - `tests/Fuse.Tests`: unit, engine and process tests over generated fixture repositories, and `Architecture/NamespaceDependencyTests`, which fails the build when a namespace uses one it may not.
 - `evals/Fuse.Evals`: the correctness, selection and latency evals, and the chart renderer; results in `evals/results`.
-- `site/`: the website at fuse.codes and all documentation, static pages sharing `style.css`, with `robots.txt`, `sitemap.xml` and `llms.txt` for crawlers and agents, and `benefits.svg`, which `dotnet run --project evals/Fuse.Evals -c Release -- chart` renders from `evals/results`. Cloudflare Workers serves it as static assets, configured by `wrangler.jsonc` at the repository root with response headers in `site/_headers`, deployed from `main` with no build step. The only other documents are the files GitHub and the release workflow read: the README, `CONTRIBUTING.md`, `SECURITY.md` and `CHANGELOG.md` in the root, and `CODE_OF_CONDUCT.md` and `SUPPORT.md` in `.github/`.
+- `site/`: the website at fuse.codes, static HTML deployed from `main` with no build step. Cloudflare Workers serves it as static assets, configured by `wrangler.jsonc` at the repository root.
+  - `index.html` and `404.html`: the home page and the not-found page.
+  - `docs/`: all documentation, one page per file, with `index.html` as the overview.
+  - `assets/`: `style.css`, the icons, `og.png`, and `benefits.svg`, which `dotnet run --project evals/Fuse.Evals -c Release -- chart` renders from `evals/results`.
+  - `_headers` and `_redirects`: response headers, and redirects from addresses that moved.
+  - `robots.txt`, `sitemap.xml` and `llms.txt`: for crawlers and agents.
+- Documents outside `site/docs/`: only the files GitHub and the release workflow read, the README, `CONTRIBUTING.md`, `SECURITY.md` and `CHANGELOG.md` in the root, and `CODE_OF_CONDUCT.md` and `SUPPORT.md` in `.github/`.
 
 ## Build, test, format
 
@@ -40,11 +46,11 @@ Tests generate real git repositories and restore them, so the first run needs Nu
 - Child processes take argument lists, never shell strings. Variable-length lists (paths, filters) are bounded or chunked.
 - Numbers quoted in docs come from files in `evals/results`. Counts are quoted exactly. Times, sizes and percentages are rounded half up for display: seconds to two decimals below 10 s and one decimal from 10 s, milliseconds and megabytes to whole numbers, percentages to at most one decimal. Each results table names the result files it comes from.
 - A file holds one type plus its private helpers.
-- Layers follow [site/architecture.html](site/architecture.html). A new namespace gets a row in its dependency table and in `NamespaceDependencyTests` in the same change.
-- One word per concept, in code, output, comments and docs: the vocabulary in [site/architecture.html](site/architecture.html) decides. Text says what is true now, in plain sentences, with keyboard punctuation only.
+- Layers follow [site/docs/architecture.html](site/docs/architecture.html). A new namespace gets a row in its dependency table and in `NamespaceDependencyTests` in the same change.
+- One word per concept, in code, output, comments and docs: the vocabulary in [site/docs/architecture.html](site/docs/architecture.html) decides. Text says what is true now, in plain sentences, with keyboard punctuation only.
 - New tests must run: confirm the test count went up.
-- A commit an agent helped write carries an `Assisted-by:` trailer, and its `Signed-off-by:` line is the person's, as [site/ai-policy.html](site/ai-policy.html) says.
-- Every documentation page carries the same header, sidebar and footer. A new page adds its link to the sidebar of every page, its URL to `sitemap.xml` and `llms.txt`, and its pager links to its neighbors. A page opens with who it is for and what they do after it, and explains each term where it first appears.
+- A commit an agent helped write carries an `Assisted-by:` trailer, and its `Signed-off-by:` line is the person's, as [site/docs/ai-policy.html](site/docs/ai-policy.html) says.
+- Every documentation page carries the same header, sidebar and footer. A new page adds its link to the sidebar of every page, its URL to `site/sitemap.xml` and `site/llms.txt`, and its pager links to its neighbors. A page opens with who it is for and what they do after it, and explains each term where it first appears.
 
 ## Releases
 

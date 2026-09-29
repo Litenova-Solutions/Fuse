@@ -6,7 +6,7 @@ using System.Text.Json;
 namespace Fuse.Evals;
 
 /// <summary>
-///     Renders <c>site/benefits.svg</c>, the chart the README and the results page show, from the newest correctness and
+///     Renders <c>site/assets/benefits.svg</c>, the chart the README and the results page show, from the newest correctness and
 ///     selection result of every pinned repository. It has two panels: <c>fuse check</c> against <c>dotnet build</c>, and
 ///     <c>fuse test</c> against <c>dotnet test</c>. Each panel has one cell per repository, drawn like the landing page's
 ///     lanes: the dotnet command at full length, Fuse at its median time as a share of that, each with its time, and under

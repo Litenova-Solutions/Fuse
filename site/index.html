@@ -16,21 +16,21 @@
 <meta property="og:title" content="Fuse: compiler feedback for AI coding agents on .NET">
 <meta property="og:description" content="Fuse keeps your .NET solution compiled in memory with Roslyn and reports the errors each edit introduced, up to 7.4x faster than dotnet build.">
 <meta property="og:url" content="https://fuse.codes/">
-<meta property="og:image" content="https://fuse.codes/og.png">
+<meta property="og:image" content="https://fuse.codes/assets/og.png">
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="The Fuse icon and name above the text: Compiler feedback for AI coding agents on .NET. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster compiler feedback for AI coding agents on .NET. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Fuse: compiler feedback for AI coding agents on .NET">
 <meta name="twitter:description" content="Fuse keeps your .NET solution compiled in memory with Roslyn and reports the errors each edit introduced, up to 7.4x faster than dotnet build.">
-<meta name="twitter:image" content="https://fuse.codes/og.png">
-<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Compiler feedback for AI coding agents on .NET. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
-<link rel="icon" href="favicon.png" type="image/png" sizes="48x48">
-<link rel="icon" href="fuse-icon.svg" type="image/svg+xml" sizes="any">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="twitter:image" content="https://fuse.codes/assets/og.png">
+<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster compiler feedback for AI coding agents on .NET. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<link rel="icon" href="assets/favicon.png" type="image/png" sizes="48x48">
+<link rel="icon" href="assets/fuse-icon.svg" type="image/svg+xml" sizes="any">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <link rel="sitemap" type="application/xml" href="sitemap.xml">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="assets/style.css">
 <noscript><style>.cmd button { display: none; }</style></noscript>
 <script type="application/ld+json">
 {
@@ -61,7 +61,7 @@
       "about": { "@id": "https://fuse.codes/#software" },
       "primaryImageOfPage": {
         "@type": "ImageObject",
-        "url": "https://fuse.codes/og.png",
+        "url": "https://fuse.codes/assets/og.png",
         "width": 1200,
         "height": 630
       },
@@ -79,7 +79,7 @@
       "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
       "license": "https://www.apache.org/licenses/LICENSE-2.0",
       "downloadUrl": "https://www.nuget.org/packages/Fuse",
-      "image": "https://fuse.codes/og.png",
+      "image": "https://fuse.codes/assets/og.png",
       "sameAs": [
         "https://github.com/Litenova-Solutions/Fuse",
         "https://www.nuget.org/packages/Fuse"
@@ -112,10 +112,10 @@
 <a class="skip-link" href="#main">Skip to main content</a>
 <div class="wrap">
   <header class="site-header">
-    <a class="brand" href="index.html" aria-current="page"><img src="fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
+    <a class="brand" href="index.html" aria-current="page"><img src="assets/fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
     <nav aria-label="Main">
-      <a href="docs.html">Docs</a>
-      <a href="results.html">Results</a>
+      <a href="docs/index.html">Docs</a>
+      <a href="docs/results.html">Results</a>
       <a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a>
     </nav>
   </header>
@@ -132,7 +132,7 @@
         <div class="cmd"><span><span class="dim">$ </span>dotnet tool install -g Fuse</span><button type="button" data-copy="dotnet tool install -g Fuse" aria-label="Copy dotnet tool install -g Fuse">Copy</button></div>
         <p class="label">In your repository:</p>
         <div class="cmd"><span><span class="dim">$ </span>fuse init</span><button type="button" data-copy="fuse init" aria-label="Copy fuse init">Copy</button></div>
-        <p class="label">New to Fuse? The <a href="getting-started.html">getting started tutorial</a> shows what it reports, on a sample repository.</p>
+        <p class="label">New to Fuse? The <a href="docs/getting-started.html">getting started tutorial</a> shows what it reports, on a sample repository.</p>
       </div>
     </section>
 
@@ -203,13 +203,13 @@
           <p class="x"><b>5.7x</b> faster</p>
         </div>
       </div>
-      <p class="proof">Every test that failed in a full <code>dotnet test</code> run also ran under <code>fuse test</code>, across 40 generated changes, 26 of which made tests fail. <a href="results.html">How it was measured</a></p>
+      <p class="proof">Every test that failed in a full <code>dotnet test</code> run also ran under <code>fuse test</code>, across 40 generated changes, 26 of which made tests fail. <a href="docs/results.html">How it was measured</a></p>
     </section>
   </main>
 
   <footer class="site-footer">
     <span>Fuse, Apache-2.0. Measured medians, one Windows machine.</span>
-    <nav aria-label="Footer"><a href="docs.html">Docs</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
+    <nav aria-label="Footer"><a href="docs/index.html">Docs</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
   </footer>
 </div>
 <script>

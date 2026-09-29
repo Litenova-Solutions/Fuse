@@ -1,4 +1,4 @@
-# ![Fuse logo](site/fuse-icon.svg) Fuse
+# ![Fuse logo](site/assets/fuse-icon.svg) Fuse
 
 [![NuGet](https://img.shields.io/nuget/v/Fuse)](https://www.nuget.org/packages/Fuse)
 [![NuGet downloads](https://img.shields.io/nuget/dt/Fuse)](https://www.nuget.org/packages/Fuse)
@@ -12,9 +12,9 @@ Fuse keeps your solution compiled in memory with Roslyn and checks each edit aga
 
 Fuse is built for AI coding agents. After `fuse init`, the agent's harness runs Fuse after every edit and before the agent finishes, and in most harnesses on every `dotnet build` and `dotnet test`, so you do not run it yourself. Its commands also run from a terminal, to try Fuse out, see what the agent receives, or find out why a hook is silent.
 
-[Website](https://fuse.codes) | [Documentation](https://fuse.codes/docs) | [Getting started](https://fuse.codes/getting-started) | [Results](https://fuse.codes/results) | [Changelog](https://github.com/Litenova-Solutions/Fuse/blob/main/CHANGELOG.md)
+[Website](https://fuse.codes) | [Documentation](https://fuse.codes/docs/) | [Getting started](https://fuse.codes/docs/getting-started) | [Results](https://fuse.codes/docs/results) | [Changelog](https://github.com/Litenova-Solutions/Fuse/blob/main/CHANGELOG.md)
 
-![Fuse's time as a share of the dotnet command it replaces](site/benefits.svg)
+![Fuse's time as a share of the dotnet command it replaces](site/assets/benefits.svg)
 
 ## Features
 
@@ -38,7 +38,7 @@ Fuse is built for AI coding agents. After `fuse init`, the agent's harness runs 
 | OpenCode | Plugin |
 | VS Code agent mode | MCP server, since VS Code runs no hooks |
 
-`fuse init` detects each one by its folder or file in the repository root and sets up Claude Code when it finds none. [Connect your agent](https://fuse.codes/harnesses) lists what it writes for each one.
+`fuse init` detects each one by its folder or file in the repository root and sets up Claude Code when it finds none. [Connect your agent](https://fuse.codes/docs/harnesses) lists what it writes for each one.
 
 ## Getting started
 
@@ -93,23 +93,23 @@ fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations chan
 | `fuse build [args...]` | Runs `dotnet build` and prints its errors |
 | `fuse mcp` | Serves `fuse_check`, `fuse_test` and `fuse_build` over stdio to an MCP host |
 
-The [getting started tutorial](https://fuse.codes/getting-started) walks through these on a sample repository, including what the hooks send the agent.
+The [getting started tutorial](https://fuse.codes/docs/getting-started) walks through these on a sample repository, including what the hooks send the agent.
 
 ## Documentation
 
-- [Getting started](https://fuse.codes/getting-started): set Fuse up in a sample repository and see what it reports.
-- [Commands](https://fuse.codes/commands): every command, its output and its exit codes.
-- [Messages and fixes](https://fuse.codes/messages): what each message means when Fuse cannot answer, and the fix.
-- [Connect your agent](https://fuse.codes/harnesses): what `fuse init` sets up for each harness, and how an MCP host runs Fuse.
-- [How it works](https://fuse.codes/how-it-works): how Fuse checks an edit, selects tests and runs them.
-- [Limits](https://fuse.codes/limits): what a check cannot see, and what to do about it.
-- [Troubleshooting](https://fuse.codes/troubleshooting): why Fuse is silent, slow or failing, and where its logs are.
-- [Results](https://fuse.codes/results): measured speed and accuracy on four repositories.
-- [All documentation](https://fuse.codes/docs)
+- [Getting started](https://fuse.codes/docs/getting-started): set Fuse up in a sample repository and see what it reports.
+- [Commands](https://fuse.codes/docs/commands): every command, its output and its exit codes.
+- [Messages and fixes](https://fuse.codes/docs/messages): what each message means when Fuse cannot answer, and the fix.
+- [Connect your agent](https://fuse.codes/docs/harnesses): what `fuse init` sets up for each harness, and how an MCP host runs Fuse.
+- [How it works](https://fuse.codes/docs/how-it-works): how Fuse checks an edit, selects tests and runs them.
+- [Limits](https://fuse.codes/docs/limits): what a check cannot see, and what to do about it.
+- [Troubleshooting](https://fuse.codes/docs/troubleshooting): why Fuse is silent, slow or failing, and where its logs are.
+- [Results](https://fuse.codes/docs/results): measured speed and accuracy on four repositories.
+- [All documentation](https://fuse.codes/docs/)
 
 ## Contributing
 
-Bug reports, feature requests and pull requests are welcome on [GitHub](https://github.com/Litenova-Solutions/Fuse/issues), and questions in [Discussions](https://github.com/Litenova-Solutions/Fuse/discussions). [Contributing](https://github.com/Litenova-Solutions/Fuse/blob/main/CONTRIBUTING.md) describes how to build, test and submit a change, and every commit needs a Developer Certificate of Origin sign-off. AI-assisted contributions are welcome under the [AI policy](https://fuse.codes/ai-policy), and everyone follows the [code of conduct](https://github.com/Litenova-Solutions/Fuse/blob/main/.github/CODE_OF_CONDUCT.md).
+Bug reports, feature requests and pull requests are welcome on [GitHub](https://github.com/Litenova-Solutions/Fuse/issues), and questions in [Discussions](https://github.com/Litenova-Solutions/Fuse/discussions). [Contributing](https://github.com/Litenova-Solutions/Fuse/blob/main/CONTRIBUTING.md) describes how to build, test and submit a change, and every commit needs a Developer Certificate of Origin sign-off. AI-assisted contributions are welcome under the [AI policy](https://fuse.codes/docs/ai-policy), and everyone follows the [code of conduct](https://github.com/Litenova-Solutions/Fuse/blob/main/.github/CODE_OF_CONDUCT.md).
 
 To report a vulnerability, follow [Security](https://github.com/Litenova-Solutions/Fuse/blob/main/SECURITY.md) instead of opening a public issue.
 

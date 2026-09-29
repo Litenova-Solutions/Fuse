@@ -5,7 +5,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace Fuse.Tests.Architecture;
 
 /// <summary>
-///     Enforces the dependency rules in <c>site/architecture.html</c>: every namespace under <c>src/Fuse</c> has a row,
+///     Enforces the dependency rules in <c>site/docs/architecture.html</c>: every namespace under <c>src/Fuse</c> has a row,
 ///     uses only the namespaces its row allows, no namespace that runs in the client reaches Roslyn or MSBuild, and no
 ///     two namespaces depend on each other. The table here and the one on that page change together.
 /// </summary>
@@ -20,7 +20,7 @@ public class NamespaceDependencyTests
 {
     private const string Roslyn = "Microsoft.CodeAnalysis";
     private const string MsBuild = "Microsoft.Build";
-    private const string Rule2 = "rule 2 of site/architecture.html: no client namespace uses Microsoft.CodeAnalysis, Microsoft.Build, or a Fuse namespace that does";
+    private const string Rule2 = "rule 2 of site/docs/architecture.html: no client namespace uses Microsoft.CodeAnalysis, Microsoft.Build, or a Fuse namespace that does";
 
     private static readonly string[] Foundation = ["Fuse.Paths", "Fuse.Failures", "Fuse.Telemetry"];
     private static readonly string[] Sources = ["Fuse.Repo", "Fuse.Graph", "Fuse.Dotnet"];
@@ -72,7 +72,7 @@ public class NamespaceDependencyTests
         Assert.NotEmpty(Code.Value.Files);
         var missing = Code.Value.Files
             .Where(f => !MayUse.ContainsKey(f.Namespace))
-            .Select(f => $"{f.Path}: {f.Namespace} has no row in the dependency table of site/architecture.html; decide its layer and add the row there and in this test")
+            .Select(f => $"{f.Path}: {f.Namespace} has no row in the dependency table of site/docs/architecture.html; decide its layer and add the row there and in this test")
             .ToList();
         Assert.True(missing.Count == 0, string.Join('\n', missing));
     }
@@ -88,7 +88,7 @@ public class NamespaceDependencyTests
             foreach (var used in file.Uses.Where(u => u.StartsWith("Fuse", StringComparison.Ordinal) && u != file.Namespace))
             {
                 if (!allowed.Contains(used))
-                    broken.Add($"{file.Path}: {file.Namespace} uses {used}, which its row in site/architecture.html does not allow; {file.Namespace} may use {Describe(allowed)}");
+                    broken.Add($"{file.Path}: {file.Namespace} uses {used}, which its row in site/docs/architecture.html does not allow; {file.Namespace} may use {Describe(allowed)}");
             }
         }
 

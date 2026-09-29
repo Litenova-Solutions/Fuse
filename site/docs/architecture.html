@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Architecture | Fuse</title>
 <meta name="description" content="How Fuse's code is organized: its layers, which namespace may use which, the order to read it in, and the words its types are named with.">
-<link rel="canonical" href="https://fuse.codes/architecture">
+<link rel="canonical" href="https://fuse.codes/docs/architecture">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 <meta name="author" content="Litenova Solutions">
 <meta name="color-scheme" content="light">
@@ -15,36 +15,36 @@
 <meta property="og:locale" content="en_US">
 <meta property="og:title" content="Architecture">
 <meta property="og:description" content="How Fuse's code is organized: its layers, which namespace may use which, the order to read it in, and the words its types are named with.">
-<meta property="og:url" content="https://fuse.codes/architecture">
-<meta property="og:image" content="https://fuse.codes/og.png">
+<meta property="og:url" content="https://fuse.codes/docs/architecture">
+<meta property="og:image" content="https://fuse.codes/assets/og.png">
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="The Fuse icon and name above the text: Compiler feedback for AI coding agents on .NET. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster compiler feedback for AI coding agents on .NET. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Architecture">
 <meta name="twitter:description" content="How Fuse's code is organized: its layers, which namespace may use which, the order to read it in, and the words its types are named with.">
-<meta name="twitter:image" content="https://fuse.codes/og.png">
-<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Compiler feedback for AI coding agents on .NET. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
-<link rel="icon" href="favicon.png" type="image/png" sizes="48x48">
-<link rel="icon" href="fuse-icon.svg" type="image/svg+xml" sizes="any">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="sitemap" type="application/xml" href="sitemap.xml">
-<link rel="stylesheet" href="style.css">
+<meta name="twitter:image" content="https://fuse.codes/assets/og.png">
+<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster compiler feedback for AI coding agents on .NET. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
+<link rel="icon" href="../assets/fuse-icon.svg" type="image/svg+xml" sizes="any">
+<link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<link rel="sitemap" type="application/xml" href="../sitemap.xml">
+<link rel="stylesheet" href="../assets/style.css">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@graph": [
     {
       "@type": "TechArticle",
-      "@id": "https://fuse.codes/architecture#article",
+      "@id": "https://fuse.codes/docs/architecture#article",
       "headline": "Architecture",
       "description": "How Fuse's code is organized: its layers, which namespace may use which, the order to read it in, and the words its types are named with.",
-      "url": "https://fuse.codes/architecture",
-      "mainEntityOfPage": "https://fuse.codes/architecture",
+      "url": "https://fuse.codes/docs/architecture",
+      "mainEntityOfPage": "https://fuse.codes/docs/architecture",
       "inLanguage": "en",
       "dateModified": "2026-09-29",
-      "image": "https://fuse.codes/og.png",
+      "image": "https://fuse.codes/assets/og.png",
       "isPartOf": {
         "@type": "WebSite",
         "name": "Fuse",
@@ -79,13 +79,13 @@
           "@type": "ListItem",
           "position": 2,
           "name": "Documentation",
-          "item": "https://fuse.codes/docs"
+          "item": "https://fuse.codes/docs/"
         },
         {
           "@type": "ListItem",
           "position": 3,
           "name": "Architecture",
-          "item": "https://fuse.codes/architecture"
+          "item": "https://fuse.codes/docs/architecture"
         }
       ]
     }
@@ -97,9 +97,9 @@
 <a class="skip-link" href="#main">Skip to main content</a>
 <div class="wrap wide">
   <header class="site-header">
-    <a class="brand" href="index.html"><img src="fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
+    <a class="brand" href="../index.html"><img src="../assets/fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
     <nav aria-label="Main">
-      <a href="docs.html" aria-current="page">Docs</a>
+      <a href="index.html" aria-current="page">Docs</a>
       <a href="results.html">Results</a>
       <a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a>
     </nav>
@@ -107,7 +107,7 @@
 
   <div class="docs">
     <main id="main" class="page" tabindex="-1">
-    <p class="crumbs"><a href="docs.html">Docs</a> / Contribute</p>
+    <p class="crumbs"><a href="index.html">Docs</a> / Contribute</p>
     <h1>Architecture</h1>
     <p class="jump"><a href="#docs-nav">All documentation pages</a></p>
     <p class="intro">How Fuse's code is organized: its layers, which namespace may use which, the order to read it in, the types each feature is built from, and the words those types are named with.</p>
@@ -451,7 +451,7 @@
           <tr><th scope="row">D10</th><td>An operation's outcome is an enum, <code>Clean</code>, <code>ProblemsFound</code>, <code>Unanswered</code>, and the exit code derives from it.</td><td>"Failed" is the word for a test, so Fuse not answering needs another.</td></tr>
           <tr><th scope="row">D11</th><td><code>CompilerError</code> lives in <code>Fuse.Check.Model</code>, and <code>Fuse.Protocol</code> may use that one type.</td><td>The wire carries it unchanged, and features may not use <code>Fuse.Protocol</code>, so it cannot live there. A second record with the same fields would only add a copy step. <code>Fuse.Check.Model</code> has no Roslyn or MSBuild reference, so a client that uses <code>Fuse.Protocol</code> still loads neither.</td></tr>
           <tr><th scope="row">D12</th><td><code>fuse hook</code> accepts only <code>pre-shell</code>. This replaces D5's accepted <code>pre-bash</code> alias.</td><td>Fuse carries no compatibility code for earlier builds, and one alias is one more thing to remove later. A user who does not rerun <code>fuse init</code> after updating loses the <code>dotnet</code> rewrite until they do, and the changelog says so.</td></tr>
-          <tr><th scope="row">D13</th><td>The documentation lives in <code>site/</code> as static HTML pages that share <code>style.css</code>. Only the files GitHub and the release workflow read stay Markdown: the README, <code>CONTRIBUTING.md</code>, <code>SECURITY.md</code> and <code>CHANGELOG.md</code> in the root, and <code>CODE_OF_CONDUCT.md</code> and <code>SUPPORT.md</code> in <code>.github/</code>.</td><td>One copy of each page, on the site where readers find it, with diagrams, callouts and navigation that Markdown on GitHub cannot show. The pages need no build step, so the site deploys from <code>main</code> as it is.</td></tr>
+          <tr><th scope="row">D13</th><td>The documentation lives in <code>site/docs/</code> as static HTML pages that share <code>site/assets/style.css</code> with the home page. Only the files GitHub and the release workflow read stay Markdown: the README, <code>CONTRIBUTING.md</code>, <code>SECURITY.md</code> and <code>CHANGELOG.md</code> in the root, and <code>CODE_OF_CONDUCT.md</code> and <code>SUPPORT.md</code> in <code>.github/</code>.</td><td>One copy of each page, on the site where readers find it, with diagrams, callouts and navigation that Markdown on GitHub cannot show. The pages need no build step, so the site deploys from <code>main</code> as it is.</td></tr>
         </tbody>
       </table>
     </div>
@@ -480,7 +480,7 @@
     <nav class="sidebar" id="docs-nav" aria-label="Documentation">
       <h2>Start here</h2>
       <ul>
-        <li><a href="docs.html">Overview</a></li>
+        <li><a href="index.html">Overview</a></li>
         <li><a href="getting-started.html">Getting started</a></li>
         <li><a href="harnesses.html">Connect your agent</a></li>
       </ul>
@@ -510,7 +510,7 @@
 
   <footer class="site-footer">
     <span>Fuse, Apache-2.0. Measured medians, one Windows machine.</span>
-    <nav aria-label="Footer"><a href="docs.html">Docs</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
+    <nav aria-label="Footer"><a href="index.html">Docs</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
   </footer>
 </div>
 </body>

@@ -5,7 +5,7 @@ namespace Fuse.Evals;
 
 /// <summary>
 ///     The eval suites. Every measurement of Fuse goes through the fuse executable; the truth side is a real dotnet build
-///     or dotnet test. The chart command renders site/benefits.svg from the recorded results.
+///     or dotnet test. The chart command renders site/assets/benefits.svg from the recorded results.
 /// </summary>
 internal static class Program
 {
@@ -29,7 +29,7 @@ internal static class Program
         if (args is ["chart"])
         {
             var root = FindFuseRoot();
-            var target = Path.Combine(root, "site", "benefits.svg");
+            var target = Path.Combine(root, "site", "assets", "benefits.svg");
             await File.WriteAllTextAsync(target, ChartRenderer.Render(root));
             Console.WriteLine($"wrote {Path.GetRelativePath(root, target)}");
             return 0;

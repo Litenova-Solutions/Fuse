@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Limits | Fuse</title>
 <meta name="description" content="What Fuse cannot check, where it differs from dotnet build and dotnet test, and what to do about each case.">
-<link rel="canonical" href="https://fuse.codes/limits">
+<link rel="canonical" href="https://fuse.codes/docs/limits">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 <meta name="author" content="Litenova Solutions">
 <meta name="color-scheme" content="light">
@@ -15,36 +15,36 @@
 <meta property="og:locale" content="en_US">
 <meta property="og:title" content="Limits">
 <meta property="og:description" content="What Fuse cannot check, where it differs from dotnet build and dotnet test, and what to do about each case.">
-<meta property="og:url" content="https://fuse.codes/limits">
-<meta property="og:image" content="https://fuse.codes/og.png">
+<meta property="og:url" content="https://fuse.codes/docs/limits">
+<meta property="og:image" content="https://fuse.codes/assets/og.png">
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="The Fuse icon and name above the text: Compiler feedback for AI coding agents on .NET. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster compiler feedback for AI coding agents on .NET. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Limits">
 <meta name="twitter:description" content="What Fuse cannot check, where it differs from dotnet build and dotnet test, and what to do about each case.">
-<meta name="twitter:image" content="https://fuse.codes/og.png">
-<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Compiler feedback for AI coding agents on .NET. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
-<link rel="icon" href="favicon.png" type="image/png" sizes="48x48">
-<link rel="icon" href="fuse-icon.svg" type="image/svg+xml" sizes="any">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="sitemap" type="application/xml" href="sitemap.xml">
-<link rel="stylesheet" href="style.css">
+<meta name="twitter:image" content="https://fuse.codes/assets/og.png">
+<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster compiler feedback for AI coding agents on .NET. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
+<link rel="icon" href="../assets/fuse-icon.svg" type="image/svg+xml" sizes="any">
+<link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<link rel="sitemap" type="application/xml" href="../sitemap.xml">
+<link rel="stylesheet" href="../assets/style.css">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@graph": [
     {
       "@type": "TechArticle",
-      "@id": "https://fuse.codes/limits#article",
+      "@id": "https://fuse.codes/docs/limits#article",
       "headline": "Limits",
       "description": "What Fuse cannot check, where it differs from dotnet build and dotnet test, and what to do about each case.",
-      "url": "https://fuse.codes/limits",
-      "mainEntityOfPage": "https://fuse.codes/limits",
+      "url": "https://fuse.codes/docs/limits",
+      "mainEntityOfPage": "https://fuse.codes/docs/limits",
       "inLanguage": "en",
       "dateModified": "2026-09-29",
-      "image": "https://fuse.codes/og.png",
+      "image": "https://fuse.codes/assets/og.png",
       "isPartOf": {
         "@type": "WebSite",
         "name": "Fuse",
@@ -79,13 +79,13 @@
           "@type": "ListItem",
           "position": 2,
           "name": "Documentation",
-          "item": "https://fuse.codes/docs"
+          "item": "https://fuse.codes/docs/"
         },
         {
           "@type": "ListItem",
           "position": 3,
           "name": "Limits",
-          "item": "https://fuse.codes/limits"
+          "item": "https://fuse.codes/docs/limits"
         }
       ]
     }
@@ -97,9 +97,9 @@
 <a class="skip-link" href="#main">Skip to main content</a>
 <div class="wrap wide">
   <header class="site-header">
-    <a class="brand" href="index.html"><img src="fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
+    <a class="brand" href="../index.html"><img src="../assets/fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
     <nav aria-label="Main">
-      <a href="docs.html" aria-current="page">Docs</a>
+      <a href="index.html" aria-current="page">Docs</a>
       <a href="results.html">Results</a>
       <a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a>
     </nav>
@@ -107,7 +107,7 @@
 
   <div class="docs">
     <main id="main" class="page" tabindex="-1">
-    <p class="crumbs"><a href="docs.html">Docs</a> / Understand</p>
+    <p class="crumbs"><a href="index.html">Docs</a> / Understand</p>
     <h1>Limits</h1>
     <p class="jump"><a href="#docs-nav">All documentation pages</a></p>
     <p class="intro">Fuse is faster than a build because it does less than a build. This page lists what it therefore cannot see, and where its answer differs from <code>dotnet build</code> and <code>dotnet test</code>, each with what to do about it.</p>
@@ -184,7 +184,7 @@
     <nav class="sidebar" id="docs-nav" aria-label="Documentation">
       <h2>Start here</h2>
       <ul>
-        <li><a href="docs.html">Overview</a></li>
+        <li><a href="index.html">Overview</a></li>
         <li><a href="getting-started.html">Getting started</a></li>
         <li><a href="harnesses.html">Connect your agent</a></li>
       </ul>
@@ -214,7 +214,7 @@
 
   <footer class="site-footer">
     <span>Fuse, Apache-2.0. Measured medians, one Windows machine.</span>
-    <nav aria-label="Footer"><a href="docs.html">Docs</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
+    <nav aria-label="Footer"><a href="index.html">Docs</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
   </footer>
 </div>
 </body>

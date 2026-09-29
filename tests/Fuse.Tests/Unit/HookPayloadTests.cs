@@ -64,6 +64,13 @@ public class HookPayloadTests
     }
 
     [Fact]
+    public void A_file_named_twice_in_one_spelling_is_listed_once()
+    {
+        var payload = Parse(new { cwd = Repo, file_path = At("src", "A.cs"), tool_input = new { file_path = "src/A.cs", path = At("src", "A.cs") } });
+        Assert.Equal([At("src", "A.cs")], payload.EditedFiles());
+    }
+
+    [Fact]
     public void Stop_payload_flags()
     {
         Assert.True(HookPayload.Parse("""{"stop_hook_active":true}""").StopHookActive);

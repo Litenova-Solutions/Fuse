@@ -45,12 +45,6 @@ internal sealed class RepoRoot
         return null;
     }
 
-    /// <summary>Returns the repository-relative form of an absolute path, with forward slashes.</summary>
-    public string Relative(string absolute) => PathOf(absolute).Relative;
-
-    /// <summary>Returns the absolute form of a path given relative to the root or absolute; a path outside the root's spelling is canonicalized.</summary>
-    public string Absolute(string path) => PathOf(path).Absolute;
-
     /// <summary>The repository path <paramref name="path"/> names, given absolute or relative to the root.</summary>
     /// <remarks>
     ///     A path spelled under the root is only made absolute and normalized (separators, <c>.</c> and <c>..</c>

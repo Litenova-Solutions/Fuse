@@ -55,7 +55,7 @@ internal static class SettingsFile
         var temp = path + ".fuse-tmp";
         File.WriteAllText(temp, content);
         MoveWithRetry(() => File.Move(temp, path, overwrite: true), Thread.Sleep);
-        return root.Relative(path);
+        return root.PathOf(path).Relative;
     }
 
     /// <summary>

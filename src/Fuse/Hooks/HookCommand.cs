@@ -75,12 +75,14 @@ internal static class HookCommand
 
     private static async Task<HookAnswer> PostEditAsync(Harness harness, HookPayload payload, CancellationToken cancellationToken)
     {
-        var files = payload.EditedFiles().Where(PathRules.IsSource).ToList();
-        if (files.Count == 0)
+        var edited = payload.EditedFiles().Where(PathRules.IsSource).ToList();
+        if (edited.Count == 0)
             return HookAnswer.None;
-        var root = RepoRoot.Find(Path.GetDirectoryName(files[0])!);
+        var root = RepoRoot.Find(Path.GetDirectoryName(edited[0])!);
         if (root is null)
             return HookAnswer.None;
+        // Each file once, however the harness spelled it; the request carries each as an absolute string.
+        var files = edited.Select(root.PathOf).Distinct().Select(p => p.Absolute).ToList();
 
         // A hook the harness runs in the background can wait for a cold load. One it runs inline answers only once the
         // engine is warm and leaves the rest to the stop hook.

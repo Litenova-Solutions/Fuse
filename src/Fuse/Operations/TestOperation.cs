@@ -42,9 +42,9 @@ internal static class TestOperation
 
         // Shadow runs touch no build output, so they run in parallel. MSBuild runs share obj and bin folders across
         // projects, so they run one after another.
-        var groups = plan.Runs.GroupBy(r => r.Project, StringComparer.OrdinalIgnoreCase).ToList();
+        var groups = plan.Runs.GroupBy(r => root.PathOf(r.Project)).ToList();
         var shadowGroups = groups.Where(g => g.All(r => r.Mode is TestRunMode.Shadow && !r.UsesTestingPlatform)).ToList();
-        var outcomes = new System.Collections.Concurrent.ConcurrentDictionary<string, TestOutcome>(StringComparer.OrdinalIgnoreCase);
+        var outcomes = new System.Collections.Concurrent.ConcurrentDictionary<RepoPath, TestOutcome>();
         await Parallel.ForEachAsync(
             shadowGroups,
             new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2), CancellationToken = cancellationToken },

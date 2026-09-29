@@ -73,7 +73,7 @@ internal static class McpCommand
         {
             case "fuse_check":
                 var files = arguments.TryGetValue("files", out var list) && list.ValueKind == JsonValueKind.Array
-                    ? list.EnumerateArray().Select(f => root.Absolute(f.GetString() ?? "")).ToList()
+                    ? list.EnumerateArray().Select(f => root.PathOf(f.GetString() ?? "").Absolute).ToList()
                     : null;
                 (result, _) = await CheckOperation.RunAsync(root, files, waitForLoad: true, TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
                 break;

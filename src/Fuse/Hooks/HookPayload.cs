@@ -62,7 +62,11 @@ internal sealed partial class HookPayload
     /// <summary>The shell command of a Bash-like tool call.</summary>
     public string? Command => ToolInput is { } input && input.TryGetProperty("command", out var c) && c.ValueKind == JsonValueKind.String ? c.GetString() : String("command");
 
-    /// <summary>Absolute paths of the files an edit tool wrote, including files named in a Codex or OpenCode <c>apply_patch</c> patch.</summary>
+    /// <summary>
+    ///     Absolute paths of the files an edit tool wrote, including files named in a Codex or OpenCode <c>apply_patch</c>
+    ///     patch. A path named twice in the same spelling is listed once; the hook finds the repository before it can
+    ///     tell two spellings of one file apart.
+    /// </summary>
     public IReadOnlyList<string> EditedFiles()
     {
         var paths = new List<string>();
@@ -84,7 +88,7 @@ internal sealed partial class HookPayload
         if (String("file_path") is { } topLevel)
             paths.Add(topLevel);
         var cwd = Cwd;
-        return paths.Select(p => Path.GetFullPath(Path.IsPathRooted(p) ? p : Path.Combine(cwd, p))).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        return paths.Select(p => Path.GetFullPath(Path.IsPathRooted(p) ? p : Path.Combine(cwd, p))).Distinct().ToList();
     }
 
     /// <summary>Files an apply_patch patch adds, updates, deletes or moves to.</summary>

@@ -82,7 +82,7 @@ Model types sit in a `Model` folder and namespace inside their feature (`src/Fus
 | Type | Namespace | What it is |
 | --- | --- | --- |
 | `RepoRoot` | `Fuse.Paths` | The canonical repository root, its pipe name and its state directory. Moves from `Fuse.Repo`. |
-| `RepoPath` | `Fuse.Paths` | A path inside the repository. It holds the absolute path, gives the repository-relative one with forward slashes, and compares the way the file system does. It replaces the bare strings and the `ChangeTracker.PathComparer` passed to every set and dictionary. |
+| `RepoPath` | `Fuse.Paths` | A file or directory of the repository, by its absolute path. A `readonly struct` that holds the root, the absolute path and its hash, computed once; it compares the way the file system does (ignoring case on Windows, ordinally elsewhere), so every set and dictionary of paths takes no comparer. `Relative` gives the repository-relative path with forward slashes, `FileName` the last segment, `IsUnder` whether it lies in a directory, and `Matches` whether a path Roslyn or MSBuild reports is the same spelling, which needs no canonicalization. `RepoRoot.PathOf` is the only way to make one: it takes a path absolute or relative to the root, and canonicalizes any spelling not under the root's own (a junction, a symlink, a `subst` drive), so each file has one value. A path outside the root, such as a project in a sibling folder, is a value too, and its relative form starts with `../`. The wire, command-line arguments and the Roslyn and MSBuild APIs keep strings: `RequestRouter` turns the files a request names into values and answers an empty or invalid one with `ErrorCode.InvalidPath`, and `ResponseMapper` writes them back as absolute strings. `tests/Fuse.Tests/Architecture/PathComparisonTests.cs` fails when a string comparison chosen by the operating system appears outside `RepoPath`, when code outside `Fuse.Paths` uses `RepoPath.Comparison`, or when `Fuse.Protocol` names `RepoPath`. |
 | `PathRules` | `Fuse.Paths` | Which files are sources, project inputs or build output. Moves from the static members of `ChangeTracker`, which the client and the engine both use. |
 | `FuseException`, `ErrorCode` | `Fuse.Failures` | A failure that ends a request, with the message that names the fix. Moves from `Fuse.Workspace` and `Fuse.Protocol`. `ErrorCode` gains `NotARepository`, so every failure a client or the engine reports has a code ([D8](#decisions)). |
 | `PhaseTimes`, `Phase`, `PhaseLine` | `Fuse.Telemetry` | The timed phases of one request, the phase names as constants, and the one log line that carries them. The engine writes the line and `evals/Fuse.Evals` reads it, so the names and the format are a contract and live in one place. `PhaseTimes.None` records nothing, so no caller passes or checks a null collector. |
@@ -336,8 +336,6 @@ There are four cycles (Repo and Workspace, Graph and Workspace, Check and Engine
 
 **Large classes.** `Checker.CheckManyAsync` is about 150 lines covering every step in [Check](#check). `TestSelector` is 437 lines, of which the nested `Walk` class is about 285. `RepoWorkspace`, `ChangeTracker`, `EngineHost` and the per-harness code are described in their sections above.
 
-**Paths.** Paths are strings, relative or absolute by convention, and `ChangeTracker.PathComparer` appears 36 times in `src/Fuse`, once per set, dictionary or comparison that holds paths.
-
 **Names.** Every entry in [Renames](#renames) is a name the code has today.
 
 ## Renames
@@ -413,7 +411,9 @@ Every name that changes, with the migration step that changes it. Reach says who
 | `HookCommand.PreBash`; the harness branches in it, `Report`, `Clean` and `StopAsync`; `harness == "claude"` in `PostEditAsync` and before the event | `HookCommand.PreShell`; `ReplaceShellCommand`, `ReportAfterEdit`, `AllowStop` and `BlockStop` on each harness, returning a `HookAnswer`; `RunsPostEditInBackground` and `IsAlsoRunByCursor` | internal | 8 |
 | `Hooks/opencode-plugin.js`, resource `Fuse.Hooks.opencode-plugin.js` | `Harnesses/opencode-plugin.js`, resource `Fuse.Harnesses.opencode-plugin.js` | internal | 8 |
 | `fuse hook <harness> pre-bash`, in `fuse init`'s commands, the OpenCode plugin and the usage line | `fuse hook <harness> pre-shell`, and `pre-bash` is no longer accepted ([D12](#decisions)) | configuration | 8 |
-| strings for paths | `RepoPath` | internal | 9 |
+| strings for paths in the engine and the features, and `PathRules.PathComparer` passed to each set, dictionary and comparison of them | `RepoPath`, from `RepoRoot.PathOf`; `PathRules.PathComparer` is deleted | internal | 9 |
+| `RepoRoot.Absolute(path)`, `RepoRoot.Relative(path)` | `RepoRoot.PathOf(path).Absolute`, `.Relative` | internal | 9 |
+| a `CheckFiles` request naming an empty path (dropped from the check) or an invalid one (`Internal`) | `Unanswered` with `ErrorCode.InvalidPath`, naming the path | wire | 9 |
 | "the last commit" in the README, MCP descriptions and `site/how-it-works.html` | HEAD | output | 10 |
 | "fuse" for the product in messages | "Fuse" | output | 10 |
 

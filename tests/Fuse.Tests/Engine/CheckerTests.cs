@@ -400,6 +400,29 @@ public class CheckerTests
         Assert.Equal(addRemoved, precise.Causes[engine.Repo.PathOf("App/Program.cs")]);
     }
 
+    [Fact]
+    public async Task A_constructor_added_to_a_class_with_only_the_implicit_one_breaks_every_construction()
+    {
+        await using var engine = await InProcessEngine.StartAsync();
+        // App/Program.cs calls new Lib.Calc() and CalcTests.cs the target-typed new(); both bound the implicit constructor.
+        engine.Repo.Replace("Lib/Calc.cs", "public class Calc\n{\n", "public class Calc\n{\n    public Calc(int seed)\n    {\n    }\n\n");
+        var report = await engine.CheckAsync("Lib/Calc.cs");
+        Assert.Equal(["App/Program.cs", "Lib.Tests/CalcTests.cs"], report.Errors.Select(e => e.Error.Path).Order(StringComparer.Ordinal));
+        Assert.All(report.Errors, e => Assert.Equal("CS7036", e.Error.Id));
+        Assert.All(report.Errors, e => Assert.Equal(new Cause.Changed("public Calc(int seed)"), e.Cause));
+    }
+
+    [Fact]
+    public async Task A_constructor_added_to_a_base_class_breaks_the_derived_class()
+    {
+        await using var engine = await StartWithAsync(
+            ("Lib/Shape.cs", "namespace Lib;\n\npublic class Shape\n{\n}\n"),
+            ("App/Square.cs", "namespace App;\n\npublic sealed class Square : Lib.Shape\n{\n}\n"));
+        engine.Repo.Replace("Lib/Shape.cs", "public class Shape\n{\n", "public class Shape\n{\n    public Shape(int sides)\n    {\n    }\n");
+        var report = await engine.CheckAsync("Lib/Shape.cs");
+        Assert.Equal("CS7036", Assert.Single(report.Errors, e => e.Error.Path == "App/Square.cs").Error.Id);
+    }
+
     /// <summary>The standard fixture with <paramref name="files"/> written and committed, so they are part of HEAD.</summary>
     private static async Task<InProcessEngine> StartWithAsync(params (string Path, string Content)[] files)
     {

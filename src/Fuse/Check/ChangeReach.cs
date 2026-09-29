@@ -29,6 +29,10 @@ namespace Fuse.Check;
 ///         <item>A changed or removed member: files referencing it, plus implementations and overrides of it.</item>
 ///         <item>A changed or removed constructor: additionally every type deriving from its type (implicit base calls).</item>
 ///         <item>
+///             An added instance constructor: files using any constructor of its type, the implicit one included, which it
+///             can remove or make ambiguous, and every type deriving from its type.
+///         </item>
+///         <item>
 ///             An added member: files referencing same-named members of the type and its bases (a new overload can
 ///             make a call ambiguous), and, for an interface or abstract type, every implementation.
 ///         </item>
@@ -168,6 +172,15 @@ internal sealed class ChangeReach
         if (change.Key is not DeclarationKey.Member { Container: var containerKey } || version.Before.Find(containerKey) is not { } container
             || await version.DeclaredAsync(container.Node, cancellationToken).ConfigureAwait(false) is not INamedTypeSymbol containingType)
             return true;
+        if (version.After.Find(change.Key)?.Node is ConstructorDeclarationSyntax ctor && !ctor.Modifiers.Any(SyntaxKind.StaticKeyword))
+        {
+            // An added constructor can remove the implicit parameterless one or make a construction ambiguous, and every
+            // derived constructor calls one of them without naming it.
+            routes.AddRange(containingType.InstanceConstructors.Select(c => new Route.BySymbol(c, IncludesImplementations: false, cause)));
+            routes.Add(new Route.ByDerivedTypes(containingType, cause));
+            return true;
+        }
+
         var name = change.Names[0];
         for (var type = containingType; type is not null; type = type.BaseType)
             routes.AddRange(type.GetMembers(name).Where(m => !m.IsImplicitlyDeclared).Select(m => new Route.BySymbol(m, IncludesImplementations: false, cause)));

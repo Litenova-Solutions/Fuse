@@ -62,7 +62,7 @@ main:focus { outline: none; }
 .tags li { font-size: 0.72rem; line-height: 1.6; color: var(--tag-text); background: var(--tag-bg); border: 1px solid var(--tag-line); border-radius: 999px; padding: 0.1rem 0.6rem; }
 
 /* Install */
-.install { max-width: 30rem; margin: 2.4rem auto 0; display: grid; gap: 0.6rem; }
+.install { max-width: 30rem; margin: 2.4rem auto 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.6rem; }
 .install .label { font-size: 0.85rem; color: var(--muted); margin: 0.6rem 0 -0.2rem; text-align: left; }
 .install .label:first-child { margin-top: 0; }
 .cmd { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; background: var(--code-bg); color: var(--code-text); border-radius: 0.7rem; padding: 0.55rem 0.55rem 0.55rem 1.1rem; font: 0.9rem ui-monospace, SFMono-Regular, Consolas, monospace; }
@@ -111,6 +111,7 @@ main:focus { outline: none; }
 .page figcaption { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
 .table-scroll { overflow-x: auto; margin: 0 0 1rem; }
 .page .sources { font-size: 0.85rem; color: var(--muted); margin: -0.4rem 0 0; }
+.page .sources code { white-space: normal; overflow-wrap: anywhere; }
 table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
 th, td { text-align: left; padding: 0.6rem 0.5rem; border-bottom: 1px solid var(--line); vertical-align: top; }
 th { font-weight: 600; color: var(--muted); }

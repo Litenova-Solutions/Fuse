@@ -10,8 +10,7 @@ namespace Fuse.Check.Model;
 /// <param name="Id">The diagnostic id, for example <c>CS1061</c>.</param>
 /// <param name="Message">The message, in the invariant culture.</param>
 /// <param name="FromAnalyzer">
-///     True when an analyzer reported it while its file was bound on its own. Binding a whole project collects compiler
-///     and analyzer errors in one pass and marks none of them, so every error from it has false here.
+///     True when an analyzer reported it, whether its file was bound on its own or with its whole project.
 /// </param>
 internal sealed record CompilerError(string Path, int Line, int Column, string Id, string Message, bool FromAnalyzer = false)
 {

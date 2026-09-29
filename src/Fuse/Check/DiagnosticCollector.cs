@@ -95,12 +95,15 @@ internal sealed class DiagnosticCollector
         var compilation = await project.GetCompilationAsync(cancellationToken).ConfigureAwait(false);
         if (compilation is null)
             return [];
-        // With analyzers, one pass produces compiler and analyzer diagnostics together.
+        // With analyzers, one pass produces compiler and analyzer diagnostics together. An analyzer's error is marked as
+        // one by its id, so it equals the same error found when its file is bound alone, which a check of the targets
+        // also reports.
         var withAnalyzers = _analyzers.For(project, compilation);
-        var diagnostics = withAnalyzers is null
-            ? compilation.GetDiagnostics(cancellationToken)
-            : await withAnalyzers.GetAllDiagnosticsAsync(cancellationToken).ConfigureAwait(false);
-        return Distinct(diagnostics.Where(IsError).Select(d => ToCompilerError(d, fromAnalyzer: false)).OfType<CompilerError>());
+        if (withAnalyzers is null)
+            return Distinct(compilation.GetDiagnostics(cancellationToken).Where(IsError).Select(d => ToCompilerError(d, fromAnalyzer: false)).OfType<CompilerError>());
+        var analyzerIds = withAnalyzers.Analyzers.SelectMany(a => a.SupportedDiagnostics).Select(d => d.Id).ToHashSet(StringComparer.Ordinal);
+        var diagnostics = await withAnalyzers.GetAllDiagnosticsAsync(cancellationToken).ConfigureAwait(false);
+        return Distinct(diagnostics.Where(IsError).Select(d => ToCompilerError(d, fromAnalyzer: analyzerIds.Contains(d.Id))).OfType<CompilerError>());
     }
 
     private async Task<IEnumerable<CompilerError>> ForDocumentAsync(Document document, CancellationToken cancellationToken)

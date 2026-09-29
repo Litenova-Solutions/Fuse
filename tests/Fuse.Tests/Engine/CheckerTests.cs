@@ -423,6 +423,26 @@ public class CheckerTests
         Assert.Equal("CS7036", Assert.Single(report.Errors, e => e.Error.Path == "App/Square.cs").Error.Id);
     }
 
+    [Fact]
+    public async Task Past_500_candidates_whole_projects_are_checked_and_each_error_and_file_counts_once()
+    {
+        // Strict holds Thing.cs and 510 more files, so a broad change in it reaches more than 500 candidates.
+        await using var engine = await StartWithAsync(
+            [.. Enumerable.Range(0, 510).Select(i => ($"Strict/Generated/Part{i}.cs", $"namespace Strict;\n\ninternal static class Part{i}\n{{\n}}\n"))]);
+        // A changed type header is broad, and CA1825 is an analyzer error in this project.
+        engine.Repo.Replace("Strict/Thing.cs", "public static class Thing", "public static partial class Thing");
+        engine.Repo.Replace("Strict/Thing.cs", "public static int Value() => 1;", "public static int Value() => new int[0].Length + 1;");
+        var report = await engine.CheckAsync("Strict/Thing.cs");
+
+        Assert.True(report.CheckedWholeProjects);
+        var error = Assert.Single(report.Errors);
+        Assert.Equal("CA1825", error.Error.Id);
+        Assert.True(error.Error.FromAnalyzer);
+        Assert.Null(error.Cause);
+        // Each source file once; the files the build generates under obj are compiled but not counted.
+        Assert.Equal(511, report.FilesChecked);
+    }
+
     /// <summary>The standard fixture with <paramref name="files"/> written and committed, so they are part of HEAD.</summary>
     private static async Task<InProcessEngine> StartWithAsync(params (string Path, string Content)[] files)
     {

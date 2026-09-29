@@ -211,6 +211,18 @@ public class EngineProcessTests
         Assert.Equal("fuse: --all runs every test and cannot be combined with other arguments; pass the arguments without --all to choose the scope", result.Stderr);
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("  ")]
+    public async Task Check_of_an_empty_file_argument_is_refused_with_exit_code_2(string file)
+    {
+        using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["Lib/Lib.csproj"] = "<Project />" });
+        var result = await FuseProcess.RunAsync(repo.Path, null, "check", "Lib/Calc.cs", file);
+        Assert.Equal(2, result.ExitCode);
+        Assert.Equal("fuse: a file named in the check is empty; name each file by its path", result.Stdout);
+        Assert.Equal("", result.Stderr);
+    }
+
     [Fact]
     public async Task Hook_outside_a_repository_is_silent()
     {

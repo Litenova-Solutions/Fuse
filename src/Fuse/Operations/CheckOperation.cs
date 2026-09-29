@@ -27,6 +27,33 @@ internal static class CheckOperation
         return (Render(answered.Report), response);
     }
 
+    /// <summary>
+    ///     The absolute paths of the files a command line or an MCP call names, or the refusal to print when one is empty
+    ///     or is not a path. The refusal is <see cref="ErrorCode.InvalidPath"/>'s message with <see cref="Outcome.Unanswered"/>,
+    ///     which the engine gives a request line naming such a file, so every surface answers the same way.
+    /// </summary>
+    /// <param name="files">The files as the caller named them; null stands for an entry that is not a string.</param>
+    /// <param name="absolute">Resolves one name: against the current directory for the command line, against the root for MCP.</param>
+    public static (IReadOnlyList<string> Files, OperationResult? Refusal) ResolveFiles(IEnumerable<string?> files, Func<string, string> absolute)
+    {
+        var resolved = new List<string>();
+        foreach (var file in files)
+        {
+            if (string.IsNullOrWhiteSpace(file))
+                return ([], new OperationResult(Outcome.Unanswered, $"fuse: {ErrorMessages.EmptyPath}"));
+            try
+            {
+                resolved.Add(absolute(file));
+            }
+            catch (Exception e) when (e is ArgumentException or PathTooLongException or NotSupportedException)
+            {
+                return ([], new OperationResult(Outcome.Unanswered, $"fuse: {ErrorMessages.InvalidPath(file)}"));
+            }
+        }
+
+        return (resolved, null);
+    }
+
     internal static OperationResult Render(CheckReport report)
     {
         var text = new StringBuilder();

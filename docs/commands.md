@@ -289,6 +289,15 @@ fuse: the request is cancelled
 
 The engine did not answer within the command's limit: 600 s for `fuse check`, `fuse test` and the MCP tools, 300 s for the Claude Code post-edit hook and every stop hook, 50 s for the other post-edit hooks. A request that reaches projects the engine has not loaded waits for them to load; in the [measurements](results.md) that took up to 25,166 ms for Jellyfin's dependent projects. The second line is the engine's answer when a request is cancelled while it runs. Fix: run the command again; the engine keeps loading in between. [Troubleshooting](troubleshooting.md#a-command-times-out) shows how to see what it is doing.
 
+### `InvalidPath`
+
+```text
+fuse: a file named in the check is empty; name each file by its path
+fuse: "<file>" named in the check is not a valid path
+```
+
+`fuse check` and the `fuse_check` tool print it when a file argument is empty or blank, is not a string, or is not a path (for example because it holds a NUL character), and check nothing. Fix: name each file by its path, relative or absolute.
+
 ### `Internal`
 
 ```text

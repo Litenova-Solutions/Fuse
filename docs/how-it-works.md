@@ -85,6 +85,6 @@ The engine takes no lock: it writes nothing into the working tree, a check does 
 
 ## Failure handling
 
-When Fuse cannot answer, the answer carries one of seven codes and a message that names the fix: not a repository, no projects, loading, restore needed, load failed, timeout, internal. Commands print the message and exit with code 2, and the MCP server marks the result as an error. [Commands](commands.md#messages-and-fixes) lists every message.
+When Fuse cannot answer, the answer carries one of eight codes and a message that names the fix: not a repository, no projects, loading, restore needed, load failed, timeout, invalid path, internal. Commands print the message and exit with code 2, and the MCP server marks the result as an error. [Commands](commands.md#messages-and-fixes) lists every message.
 
 A hook must never break the agent's session. It reports introduced errors and a missing restore, and nothing else: every other outcome exits 0 with no output, and an exception or a payload that is not valid JSON is written to `hook.log` in the state directory. A post-edit hook that a harness runs inline, which is every harness except Claude Code, does not wait for an engine that is still loading, so the stop hook reports the first edits after the engine starts.

@@ -155,14 +155,14 @@ internal sealed class RequestRouter : IDisposable
         foreach (var file in check.Files)
         {
             if (string.IsNullOrWhiteSpace(file))
-                return new EngineResponse.Unanswered(ErrorCode.InvalidPath, "a file named in the check is empty; name each file by its path");
+                return new EngineResponse.Unanswered(ErrorCode.InvalidPath, ErrorMessages.EmptyPath);
             try
             {
                 paths.Add(_workspace.Root.PathOf(file));
             }
             catch (Exception e) when (e is ArgumentException or PathTooLongException)
             {
-                return new EngineResponse.Unanswered(ErrorCode.InvalidPath, $"\"{file}\" named in the check is not a valid path");
+                return new EngineResponse.Unanswered(ErrorCode.InvalidPath, ErrorMessages.InvalidPath(file));
             }
         }
 

@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Limits | Fuse</title>
+<meta name="description" content="What Fuse cannot check, where it differs from dotnet build and dotnet test, and what to do about each case.">
+<link rel="canonical" href="https://fuse.codes/limits">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+<meta name="author" content="Litenova Solutions">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#fcfcfb">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Fuse">
+<meta property="og:locale" content="en_US">
+<meta property="og:title" content="Limits">
+<meta property="og:description" content="What Fuse cannot check, where it differs from dotnet build and dotnet test, and what to do about each case.">
+<meta property="og:url" content="https://fuse.codes/limits">
+<meta property="og:image" content="https://fuse.codes/og.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="The Fuse icon and name above the text: Compiler feedback for AI coding agents on .NET. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Limits">
+<meta name="twitter:description" content="What Fuse cannot check, where it differs from dotnet build and dotnet test, and what to do about each case.">
+<meta name="twitter:image" content="https://fuse.codes/og.png">
+<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Compiler feedback for AI coding agents on .NET. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<link rel="icon" href="favicon.png" type="image/png" sizes="48x48">
+<link rel="icon" href="fuse-icon.svg" type="image/svg+xml" sizes="any">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="sitemap" type="application/xml" href="sitemap.xml">
+<link rel="stylesheet" href="style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "@id": "https://fuse.codes/limits#article",
+      "headline": "Limits",
+      "description": "What Fuse cannot check, where it differs from dotnet build and dotnet test, and what to do about each case.",
+      "url": "https://fuse.codes/limits",
+      "mainEntityOfPage": "https://fuse.codes/limits",
+      "inLanguage": "en",
+      "dateModified": "2026-09-29",
+      "image": "https://fuse.codes/og.png",
+      "isPartOf": {
+        "@type": "WebSite",
+        "name": "Fuse",
+        "url": "https://fuse.codes/"
+      },
+      "about": {
+        "@type": "SoftwareApplication",
+        "name": "Fuse",
+        "url": "https://fuse.codes/"
+      },
+      "author": {
+        "@type": "Organization",
+        "name": "Litenova Solutions",
+        "url": "https://github.com/Litenova-Solutions"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "Litenova Solutions",
+        "url": "https://github.com/Litenova-Solutions"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Fuse",
+          "item": "https://fuse.codes/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Documentation",
+          "item": "https://fuse.codes/docs"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Limits",
+          "item": "https://fuse.codes/limits"
+        }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to main content</a>
+<div class="wrap wide">
+  <header class="site-header">
+    <a class="brand" href="index.html"><img src="fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
+    <nav aria-label="Main">
+      <a href="docs.html" aria-current="page">Docs</a>
+      <a href="results.html">Results</a>
+      <a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a>
+    </nav>
+  </header>
+
+  <div class="docs">
+    <main id="main" class="page" tabindex="-1">
+    <p class="crumbs"><a href="docs.html">Docs</a> / Understand</p>
+    <h1>Limits</h1>
+    <p class="jump"><a href="#docs-nav">All documentation pages</a></p>
+    <p class="intro">Fuse is faster than a build because it does less than a build. This page lists what it therefore cannot see, and where its answer differs from <code>dotnet build</code> and <code>dotnet test</code>, each with what to do about it.</p>
+    <div class="audience">
+      <p><b>This page is for</b> anyone about to rely on a clean answer from Fuse, especially in a repository with custom build logic, code generation, or tests that load code at run time.</p>
+      <p><b>After reading it</b> you know when to run the real build (<code>fuse build</code>) or every test (<code>fuse test --all</code>) before you finish a change.</p>
+    </div>
+    <p>Fuse answers from a Roslyn compilation of what MSBuild's evaluation describes, and compares the working tree (the files on disk) with HEAD (the commit you have checked out). It does not see what lies outside that model. Two commands always give the complete answer: <code>fuse build</code> runs the real build, and <code>fuse test --all</code> runs every test.</p>
+
+    <nav class="toc" aria-label="On this page">
+      <p>On this page</p>
+      <ol>
+        <li><a href="#scope-and-requirements">Scope and requirements</a></li>
+        <li><a href="#what-a-check-does-not-see">What a check does not see</a></li>
+        <li><a href="#test-selection">Test selection</a></li>
+        <li><a href="#test-runs-without-msbuild">Test runs without MSBuild</a></li>
+        <li><a href="#builds-and-the-build-lock">Builds and the build lock</a></li>
+        <li><a href="#the-engine">The engine</a></li>
+      </ol>
+    </nav>
+
+    <h2 id="scope-and-requirements">Scope and requirements <a class="anchor" href="#scope-and-requirements" aria-label="Link to this section">#</a></h2>
+    <ul>
+      <li><strong>C# only.</strong> Fuse evaluates <code>.csproj</code> projects and checks <code>.cs</code>, <code>.razor</code> and <code>.cshtml</code> files. Visual Basic and F# projects are not evaluated. Build those with <code>dotnet build</code>.</li>
+      <li><strong>The .NET 10 SDK, git and restored projects.</strong> Fuse runs <code>git</code> from the <code>PATH</code> and never runs <code>dotnet restore</code>. When a project is not restored, it answers with the command to run (<a href="messages.html#restoreneeded">RestoreNeeded</a>).</li>
+      <li><strong>Only changes against HEAD.</strong> An error that is already committed is part of HEAD and is never reported, and neither is an error that exists at HEAD and in the working tree alike. Run <code>fuse build</code> to see every error the solution has.</li>
+      <li><strong>A repository needs a commit.</strong> With no commit, every file counts as added, so every error counts as introduced. Commit once before relying on a check.</li>
+      <li><strong>Platforms.</strong> CI builds and tests Fuse on Windows, Linux and macOS (<code>.github/workflows/ci.yml</code>); the <a href="results.html">measurements</a> come from one Windows machine.</li>
+      <li><strong>Letter case in paths on macOS.</strong> Fuse compares paths ignoring case on Windows and exactly on Linux and macOS. The default macOS volume ignores case, so a file named to <code>fuse check</code> in another letter case than it has on disk is not matched to the file git knows. Name files as they are spelled on disk; hooks already do.</li>
+    </ul>
+
+    <h2 id="what-a-check-does-not-see">What a check does not see <a class="anchor" href="#what-a-check-does-not-see" aria-label="Link to this section">#</a></h2>
+    <ul>
+      <li><strong>Compile inputs outside evaluation.</strong> A check compiles the sources, references, analyzers and options that MSBuild's evaluation lists, without running targets. Custom targets that change what the compiler receives, source generators that read files outside the project's additional files, and IL weaving (rewriting assemblies after the compiler runs) are invisible to it. What to do: in such a repository, run <code>fuse build</code> before finishing a change.</li>
+      <li><strong>Changes to build configuration.</strong> Both of Fuse's views, the working tree and HEAD, use the project files as they are on disk. A change to a <code>.csproj</code>, <code>.props</code>, <code>.targets</code>, <code>.editorconfig</code>, <code>.globalconfig</code> or <code>global.json</code> file on its own is not compared with HEAD, and the files it affects are checked only when they changed too. What to do: run <code>fuse build</code> after changing build configuration.</li>
+      <li><strong>Compilation-end analyzers.</strong> Analyzers that report only after seeing the whole project run only when a check compiles whole projects, which happens past 500 files in reach. Otherwise <code>fuse build</code> reports them.</li>
+      <li><strong>Warnings.</strong> A check reports errors only: compiler errors, warnings the project treats as errors, and analyzer diagnostics configured as errors.</li>
+      <li><strong>Matching.</strong> An error counts as introduced when HEAD has fewer errors in the same file with the same id and message. An edit that removes one error and causes an identical one in the same file reports nothing.</li>
+      <li><strong>Differences from the build's wording.</strong> The build compiles a dependent project against reference assemblies, which leave out private members, while Fuse compiles against the source. After a member is made private, the build says "does not contain a definition" and Fuse says "is inaccessible due to its protection level", at the same position. This difference is behind the one error Fuse missed in the <a href="results.html#reading-the-numbers">measurements</a>.</li>
+      <li><strong>Output limits.</strong> An answer holds at most 200 errors, of which the command prints 20, and at most ten cause lines. What to do: fix what is printed and check again, or run <code>fuse build</code> for the full list.</li>
+    </ul>
+
+    <h2 id="test-selection">Test selection <a class="anchor" href="#test-selection" aria-label="Link to this section">#</a></h2>
+    <ul>
+      <li><strong>Static selection.</strong> Fuse selects tests from the code as written, without running it. A test that reaches the changed code only through reflection, a type name in a string or configuration, or an assembly loaded at run time is selected only when the change reaches an application host, which selects every test project that depends on the application. What to do: run <code>fuse test --all</code> before finishing a change that such tests cover.</li>
+      <li><strong>Counts from source.</strong> The summary counts test methods from source, so a theory with several cases counts once, while the failed and passed counts come from the test run.</li>
+      <li><strong>Microsoft.Testing.Platform.</strong> A test project on Microsoft.Testing.Platform (opted in through <code>global.json</code>) runs whole and builds with MSBuild. It writes no TRX file, so Fuse cannot list its failures: a failing run is reported as a test run that exited with its exit code and produced no results, after the last 30 lines of the run's output. What to do: read those lines, or run that project with <code>dotnet test</code> for its full report.</li>
+    </ul>
+
+    <h2 id="test-runs-without-msbuild">Test runs without MSBuild <a class="anchor" href="#test-runs-without-msbuild" aria-label="Link to this section">#</a></h2>
+    <ul>
+      <li><strong>Resources and content files.</strong> A run without MSBuild takes resources and content files from the last real build. When any file other than a source file changed in a project directory since that build, Fuse builds with MSBuild instead, which is slower but complete.</li>
+      <li><strong>Timestamps.</strong> Freshness is judged by timestamps, not content, so saving a resource file unchanged also sends the run through MSBuild.</li>
+    </ul>
+
+    <h2 id="builds-and-the-build-lock">Builds and the build lock <a class="anchor" href="#builds-and-the-build-lock" aria-label="Link to this section">#</a></h2>
+    <ul>
+      <li><strong>Only builds through Fuse take the lock.</strong> A <code>dotnet build</code> run directly, by a person, a script, an IDE, or an agent in a harness without a pre-shell hook (Cursor and GitHub Copilot CLI), can still collide with a build Fuse runs. What to do: in a repository that several agents work in, run builds and tests through <code>fuse build</code> and <code>fuse test</code>.</li>
+      <li><strong>What the pre-shell hook rewrites.</strong> The hook rewrites <code>dotnet build</code> and <code>dotnet test</code> where a command segment starts. <code>dotnet msbuild</code>, <code>dotnet run</code>, <code>dotnet publish</code> and scripts that call <code>dotnet</code> themselves run as they are. In Codex it rewrites only a command that is one <code>dotnet build</code> or <code>dotnet test</code> with plain arguments, so <code>cd Lib &amp;&amp; dotnet build</code> runs there as it is (<a href="harnesses.html#codex">Codex</a>).</li>
+    </ul>
+
+    <h2 id="the-engine">The engine <a class="anchor" href="#the-engine" aria-label="Link to this section">#</a></h2>
+    <ul>
+      <li><strong>Analyzers the repository builds.</strong> The engine loads an analyzer the repository builds itself as it was when its project loaded. A rebuilt analyzer takes effect when projects next reload: after a project file change, a commit or branch switch, more than 300 changed files at once, or an engine restart. What to do: after changing an analyzer, <a href="troubleshooting.html#stopping-or-restarting-the-engine">restart the engine</a>.</li>
+      <li><strong>Loading.</strong> The first request that reaches a project loads it, and the engine keeps every loaded project in memory; <a href="results.html">Results</a> gives measured load times and memory. A post-edit hook in a harness other than Claude Code does not wait for loading, so the stop hook reports the first edits after the engine starts.</li>
+    </ul>
+
+    <nav class="pager" aria-label="Previous and next page">
+      <a href="how-it-works.html"><span>Previous</span>How it works</a>
+      <a class="next-page" href="results.html"><span>Next</span>Results</a>
+    </nav>
+    </main>
+
+    <nav class="sidebar" id="docs-nav" aria-label="Documentation">
+      <h2>Start here</h2>
+      <ul>
+        <li><a href="docs.html">Overview</a></li>
+        <li><a href="getting-started.html">Getting started</a></li>
+        <li><a href="harnesses.html">Connect your agent</a></li>
+      </ul>
+      <h2>Understand</h2>
+      <ul>
+        <li><a href="how-it-works.html">How it works</a></li>
+        <li><a href="limits.html" aria-current="page">Limits</a></li>
+        <li><a href="results.html">Results</a></li>
+      </ul>
+      <h2>Reference</h2>
+      <ul>
+        <li><a href="commands.html">Commands</a></li>
+        <li><a href="messages.html">Messages and fixes</a></li>
+        <li><a href="troubleshooting.html">Troubleshooting</a></li>
+      </ul>
+      <h2>Contribute</h2>
+      <ul>
+        <li><a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/main/CONTRIBUTING.md">Contributing</a></li>
+        <li><a href="architecture.html">Architecture</a></li>
+        <li><a href="evals.html">Evals</a></li>
+        <li><a href="ai-policy.html">AI policy</a></li>
+        <li><a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/main/CHANGELOG.md">Changelog</a></li>
+        <li><a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/main/SECURITY.md">Security</a></li>
+      </ul>
+    </nav>
+  </div>
+
+  <footer class="site-footer">
+    <span>Fuse, Apache-2.0. Measured medians, one Windows machine.</span>
+    <nav aria-label="Footer"><a href="docs.html">Docs</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
+  </footer>
+</div>
+</body>
+</html>

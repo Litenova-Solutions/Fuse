@@ -72,7 +72,7 @@
 
   <main id="main" class="page" tabindex="-1">
     <h1>Results</h1>
-    <p class="intro">On four repositories, Fuse checked an edit 2.3x to 10.0x faster than <code>dotnet build</code> and ran the affected tests 1.4x to 6.6x faster than <code>dotnet test</code>. It missed 1 compiler error in 120 generated edits.</p>
+    <p class="intro">On four repositories, Fuse checked an edit 2.3x to 10.0x faster than <code>dotnet build</code> and ran the affected tests 1.4x to 6.6x faster than <code>dotnet test</code>. It missed 1 compiler error in 120 generated cases (168 edits).</p>
     <p>The four repositories are a small generated fixture solution and three open-source repositories: <a href="https://github.com/nodatime/nodatime">NodaTime</a>, a date and time library; <a href="https://github.com/jellyfin/jellyfin">Jellyfin</a>, a media server; and the <a href="https://github.com/CommunityToolkit/dotnet">.NET Community Toolkit</a>, a set of libraries with one source generator for each supported compiler version. Each was measured against the real <code>dotnet build</code> and <code>dotnet test</code>.</p>
 
     <figure>
@@ -81,7 +81,7 @@
     </figure>
 
     <h2>Speed and accuracy</h2>
-    <p>A warm check runs on an engine that is already running and has loaded the project. A body edit changes the inside of a method. A signature edit changes a declaration, so Fuse also checks the dependent projects. P50 is the median, and P95 is the time that 95 percent of the checks stayed under.</p>
+    <p>A warm check runs on an engine that is already running and has loaded the project. A body edit changes the inside of a method. A signature edit changes a declaration, so Fuse also checks the dependent projects. P50 and P95 are nearest-rank percentiles. P50 is the 8th fastest of the 15 body-edit checks, which is their median, and the 5th fastest of the 10 signature-edit checks. P95 is the slowest check of each kind.</p>
     <div class="table-scroll" role="region" aria-label="Results table" tabindex="0">
       <table>
         <caption class="sr-only">Fuse measurements on the fixture, NodaTime, Jellyfin and the Community Toolkit</caption>
@@ -94,7 +94,9 @@
           <tr><th scope="row">Run the affected tests: <code>fuse test</code> vs <code>dotnet test</code>, median</th><td class="num">1.27 s vs 4.17 s</td><td class="num">32.0 s vs 44.4 s</td><td class="num">165.3 s vs 226.6 s</td><td class="num">65.1 s vs 428.5 s</td></tr>
           <tr><th scope="row">Share of tests run by <code>fuse test</code></th><td class="num">15 percent</td><td class="num">80 percent</td><td class="num">22.3 percent</td><td class="num">13.7 percent</td></tr>
           <tr><th scope="row">Compiler errors missed</th><td class="num">0 in 30 cases</td><td class="num">1 in 30 cases</td><td class="num">0 in 30 cases</td><td class="num">0 in 30 cases</td></tr>
-          <tr><th scope="row">Errors reported that the build does not have</th><td class="num">0 in 30 cases</td><td class="num">0 in 30 cases</td><td class="num">0 in 30 cases</td><td class="num">0 in 30 cases</td></tr>
+          <tr><th scope="row">Errors contradicted by the build</th><td class="num">0 in 30 cases</td><td class="num">0 in 30 cases</td><td class="num">0 in 30 cases</td><td class="num">0 in 30 cases</td></tr>
+          <tr><th scope="row">Errors Fuse reported that the build could not confirm: deferred / unverifiable</th><td class="num">4 / 37</td><td class="num">7 / 127</td><td class="num">40 / 140</td><td class="num">18 / 33</td></tr>
+          <tr><th scope="row">Test selection cases whose change made a test fail</th><td class="num">9 of 10</td><td class="num">7 of 10</td><td class="num">2 of 10</td><td class="num">8 of 10</td></tr>
           <tr><th scope="row">Failing tests missed</th><td class="num">0 in 10 cases</td><td class="num">0 in 10 cases</td><td class="num">0 in 10 cases</td><td class="num">0 in 10 cases</td></tr>
           <tr><th scope="row">Cases too large to match name by name</th><td class="num">0</td><td class="num">2</td><td class="num">0</td><td class="num">0</td></tr>
           <tr><th scope="row">Three <code>fuse build</code> runs at once, five rounds: lock collisions</th><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num">0</td></tr>
@@ -107,21 +109,20 @@
 
     <h2>Reading the numbers</h2>
     <ul>
-      <li>On NodaTime the generated changes reach core types, so most tests still run (80 percent on average). The saving there comes from skipping MSBuild, not from selecting fewer tests.</li>
+      <li>In 8 of the 10 NodaTime cases the change reached <code>NodaTime.TzdbCompiler</code>, an application. Fuse cannot follow code that runs behind an application host to a test by name, so every test project that depends on the application ran whole: 42,689 tests ran and the other 11 of the 42,700 were skipped. That makes the share 80 percent on average, and the time saved there comes from running without MSBuild.</li>
       <li>On the Community Toolkit each generated change reaches one area of the code, so only a small share of the 12,449 tests runs (13.7 percent on average). Fuse selects tests for each change, so the share depends on the change.</li>
-      <li>The signature-edit P95 includes the first such edit after the engine starts, which loads every dependent project. On Jellyfin and the Community Toolkit that first edit loads dozens of projects, which is why their P95 is in seconds.</li>
+      <li>The signature-edit P95 is the slowest signature edit, the one that loads the dependent projects and searches them for the first time; at least half of the signature edits load nothing. The slowest <code>load</code> phase of a signature edit took 25,166 ms on Jellyfin, which checked 27 dependent projects, and 6,833 ms on the Community Toolkit, which checked 12, and the slowest <code>referenceSearch</code> phase took 26,915 ms and 26,823 ms.</li>
       <li>NodaTime builds with warnings treated as errors, so each check there also runs the analyzers that can report a warning. That is why its body-edit check is slower than the small solution's.</li>
-      <li>The compiler reports fewer errors than exist in two cases. When a project has a declaration error, it stops before it checks method bodies or runs analyzers. After any compiler error, it skips its documentation checks. Fuse reports all of these errors at once, and the build reports the rest only after the first errors are fixed, so the evals count them as deferred.</li>
-      <li>NodaTime's one missed error comes from a difference in how the build and Fuse compile dependent projects. The build compiles against reference assemblies, which leave out private members, so it reports "no definition" and one follow-on error. Fuse compiles against the source, so it reports "inaccessible" instead.</li>
-      <li>In two NodaTime cases hundreds of tests fail, and <code>fuse test</code> lists at most 100 failing names, so those cases cannot be matched name by name. In both, <code>fuse test</code> ran 42,689 of the 42,700 tests.</li>
-      <li>Timings on this machine vary by about 150 ms between runs of the same build.</li>
+      <li>The build reports fewer errors than exist in two situations, and the evals count the extra errors Fuse reports there as deferred or unverifiable, not as contradicted. When a project has a declaration error, the compiler stops before it checks method bodies or runs analyzers, and after any compiler error it skips its documentation checks (CS1570 to CS1592). Fuse reports those errors at once, and the build reports them only after the first errors are fixed, so they count as deferred. When a project fails to build, MSBuild skips every project that references it; an error Fuse reports in such a project counts as unverifiable, because the build has no answer there.</li>
+      <li>NodaTime's one missed error comes from a difference in how the build and Fuse compile dependent projects. One edit made <code>DateAdjusters.AddPeriod</code> private. The build compiles dependent projects against reference assemblies, which leave out private members, so it reported CS0117 "'DateAdjusters' does not contain a definition for 'AddPeriod'" at five places and the follow-on CS1503 "Argument 1: cannot convert from 'T'" at a sixth. Fuse compiles against the source and reported CS0122 "'DateAdjusters.AddPeriod(Period)' is inaccessible due to its protection level" at the same five places. The CS1503 error is the one it missed.</li>
+      <li>In two NodaTime cases 126 and 252 tests failed by name in a full run. <code>fuse test</code> prints the first 10 failures in detail and the next 100 by name, then counts the rest, so those two cases could not be matched name by name. In both, the whole suite ran: 42,689 tests ran and the other 11 were skipped.</li>
     </ul>
 
     <h2>How it was measured</h2>
     <ul>
-      <li><strong>Correctness:</strong> the suite makes generated edits, some that break the build and some that do not, and compares Fuse's errors with a real <code>dotnet build</code>. An error the build reports and Fuse does not is "missed". An error Fuse reports and the build does not is "contradicted".</li>
-      <li><strong>Test selection:</strong> the suite makes generated changes to behavior that make tests fail. It compares the failing test names exactly with a full <code>dotnet test</code> run.</li>
-      <li><strong>Latency:</strong> the suite runs the installed <code>fuse</code> command repeatedly after generated body edits and signature edits, and times each warm check. It also times a warm <code>fuse test</code> round and a scenario where three clients run <code>fuse build</code> at once.</li>
+      <li><strong>Correctness:</strong> the suite makes generated edits, some that break the build and some that do not, and compares Fuse's errors with the errors a real <code>dotnet build</code> reports beyond the ones HEAD already has. Each case makes one edit, or two or three in different projects: 168 edits in the 120 cases. An error the build reports and Fuse does not is "missed". An error Fuse reports that the build does not have, and that the suite cannot account for as deferred or unverifiable, is "contradicted".</li>
+      <li><strong>Test selection:</strong> the suite makes generated changes to behavior, some of which make tests fail. It compares the failing test names exactly with a full <code>dotnet test</code> run.</li>
+      <li><strong>Latency:</strong> the suite runs the <code>fuse</code> executable built from this repository after 15 generated body edits and 10 signature edits, and times each warm check. It also times 10 checks of the unchanged tree, five <code>fuse test</code> rounds, and three scenarios for several agents in one repository: up to four clients editing and checking at once, three <code>fuse build</code> runs at once five times, and three <code>fuse test</code> rounds over two projects.</li>
       <li>Every result file records the commit of the repository it measured and the Fuse build that measured it, so each number can be traced to the source and to the executable behind it.</li>
     </ul>
     <p>The evals are in <a href="https://github.com/Litenova-Solutions/Fuse/tree/main/evals/Fuse.Evals">evals/Fuse.Evals</a>, and every result file is in <a href="https://github.com/Litenova-Solutions/Fuse/tree/main/evals/results">evals/results</a>.</p>

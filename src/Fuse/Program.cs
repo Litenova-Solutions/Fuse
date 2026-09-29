@@ -68,13 +68,23 @@ internal static class Program
         return Print(result);
     }
 
+    /// <summary>
+    ///     <c>fuse test</c>. <c>--all</c> and <c>dotnet test</c> arguments each choose the scope, so the two together are a
+    ///     usage failure rather than one of them quietly winning.
+    /// </summary>
     private static async Task<int> TestAsync(string[] args, CancellationToken cancellationToken)
     {
+        var all = args.Contains("--all");
+        var passthrough = args.Where(a => a != "--all").ToList();
+        if (all && passthrough.Count > 0)
+        {
+            Console.Error.WriteLine("fuse: --all runs every test and cannot be combined with other arguments; pass the arguments without --all to choose the scope");
+            return 2;
+        }
+
         var root = RequireRoot();
         if (root is null)
             return 2;
-        var all = args.Contains("--all");
-        var passthrough = args.Where(a => a != "--all").ToList();
         var result = await TestOperation.RunAsync(root, Environment.CurrentDirectory, passthrough, all, cancellationToken).ConfigureAwait(false);
         return Print(result);
     }

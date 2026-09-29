@@ -23,7 +23,7 @@ fuse - instant C# compiler feedback and affected-test runs for coding agents
 | --- | --- |
 | 0 | Fuse answered and found nothing to fix: no errors introduced, the tests passed, or the build succeeded. |
 | 1 | Fuse answered and found something to fix: errors introduced, a test failed, or a build failed. |
-| 2 | Fuse could not answer. The output says why and what to run, as [Messages and fixes](#messages-and-fixes) lists. An unknown command also exits with 2 and prints the usage on standard error. |
+| 2 | Fuse could not answer. The output says why and what to run, as [Messages and fixes](#messages-and-fixes) lists. An unknown command also exits with 2 and prints the usage on standard error, and `fuse test --all` with other arguments exits with 2 and says why there ([fuse test](#fuse-test)). |
 | 130 | Ctrl+C stopped the command. |
 
 `fuse hook` exits with 0 in every case except one: the Claude Code post-edit hook exits with 2 to wake the agent, as [fuse hook](#fuse-hook) describes.
@@ -92,7 +92,7 @@ Runs tests and prints only failures, in one of three forms.
 
 - **`fuse test`** runs the tests affected by the working-tree changes: the tests the changed code can reach, as [How it works](how-it-works.md#test-selection) describes. When a test project has build output and only C# sources changed since, it runs without MSBuild.
 - **`fuse test --all`** runs every test project whole, each built with MSBuild.
-- **`fuse test` with `dotnet test` arguments** runs `dotnet test` with those arguments in the current directory and adds result reporting. With other arguments, `--all` is dropped and the arguments decide what runs.
+- **`fuse test` with `dotnet test` arguments** runs `dotnet test` with those arguments in the current directory and adds result reporting. `--all` cannot be combined with them: `fuse test --all --filter Name=A` prints `fuse: --all runs every test and cannot be combined with other arguments; pass the arguments without --all to choose the scope` on standard error, runs nothing and exits with 2.
 
 Every form takes the [build lock](how-it-works.md#builds-and-the-build-lock) until its last `dotnet test` process exits. The first form waits for the engine's plan for up to 10 minutes.
 

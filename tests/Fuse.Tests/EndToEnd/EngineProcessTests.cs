@@ -196,6 +196,18 @@ public class EngineProcessTests
         Assert.Equal("usage: fuse hook <claude|cursor|gemini|codex|copilot|opencode> <post-edit|pre-shell|stop>", result.Stderr.TrimEnd());
     }
 
+    [Theory]
+    [InlineData("--all", "--filter", "Name=A")]
+    [InlineData("Lib.Tests", "--all")]
+    public async Task Test_all_with_other_arguments_is_a_usage_failure(params string[] arguments)
+    {
+        using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });
+        var result = await FuseProcess.RunAsync(repo.Path, null, ["test", .. arguments]);
+        Assert.Equal(2, result.ExitCode);
+        Assert.Equal("", result.Stdout);
+        Assert.Equal("fuse: --all runs every test and cannot be combined with other arguments; pass the arguments without --all to choose the scope", result.Stderr);
+    }
+
     [Fact]
     public async Task Hook_outside_a_repository_is_silent()
     {

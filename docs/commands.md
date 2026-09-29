@@ -294,6 +294,7 @@ The engine did not answer within the command's limit: 600 s for `fuse check`, `f
 ```text
 fuse: internal error: <message> (details in <state directory>/engine.log)
 fuse: the fuse engine closed the connection (see <state directory>/engine.log)
+fuse: the fuse engine sent an answer this client cannot read (<reason>; see <state directory>/engine.log)
 fuse: could not talk to the fuse engine: <message>
 fuse: could not start the fuse engine: <message>
 fuse: the engine gave no answer

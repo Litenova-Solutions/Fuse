@@ -51,7 +51,9 @@ internal static class EngineClient
                     continue;
                 }
 
-                var response = line is null ? null : ProtocolJson.ReadResponse(line);
+                EngineResponse? response = null;
+                if (line is not null && Read(line, out response) is { } reason)
+                    return new EngineResponse.Unanswered(ErrorCode.Internal, $"the fuse engine sent an answer this client cannot read ({reason}; see {Path.Combine(root.StateDirectory, "engine.log")})");
                 if (response is null)
                 {
                     if (attempt < 1)
@@ -85,6 +87,37 @@ internal static class EngineClient
         {
             return new EngineResponse.Unanswered(ErrorCode.Internal, $"could not start the fuse engine: {e.Message}");
         }
+    }
+
+    /// <summary>
+    ///     Reads <paramref name="line"/> into <paramref name="response"/> and returns why it is not a complete answer, or
+    ///     null when it is one. A line that is not JSON, that was cut off, that names no case this build knows, or whose
+    ///     answer leaves out what the client prints would otherwise end the command with an exception instead of exit
+    ///     code 2.
+    /// </summary>
+    private static string? Read(string line, out EngineResponse? response)
+    {
+        response = null;
+        try
+        {
+            response = ProtocolJson.ReadResponse(line);
+        }
+        catch (Exception e) when (e is System.Text.Json.JsonException or NotSupportedException)
+        {
+            return e is NotSupportedException ? "the answer names no case" : "the answer is not complete JSON";
+        }
+
+        var complete = response switch
+        {
+            null => true,
+            EngineResponse.CheckAnswered { Report: var report } => report is { Errors: not null, Projects: not null, DeclarationsChangedIn: not null }
+                                                                    && report.Errors.All(e => e?.Error is not null),
+            EngineResponse.PlanAnswered { Plan: var plan } => plan is { Runs: not null, Summary: not null }
+                                                              && plan.Runs.All(r => r is { Project: not null, Name: not null, Mode: not null }),
+            EngineResponse.Unanswered unanswered => unanswered.Message is not null,
+            _ => true,
+        };
+        return complete ? null : "the answer leaves out part of the result";
     }
 
     /// <summary>True when an engine's pipe exists, checked without connecting (a connection attempt waits for a timeout).</summary>

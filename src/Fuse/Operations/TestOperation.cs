@@ -32,10 +32,11 @@ internal static class TestOperation
             return Render(outcome, buildFailure, root, "ran the tests your dotnet test arguments name", Seconds(started));
         }
 
-        var response = await EngineClient.SendAsync(root, new EngineRequest("", RequestKind.TestPlan, AllTests: all), TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
-        if (response.Status != ResponseStatus.Ok || response.Tests is null)
-            return new OperationResult(Outcome.Unanswered, $"fuse: {response.Message ?? "the engine gave no answer"}");
-        var plan = response.Tests;
+        EngineRequest request = all ? new EngineRequest.PlanAllTests() : new EngineRequest.PlanAffectedTests();
+        var response = await EngineClient.SendAsync(root, request, TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
+        if (response is not EngineResponse.PlanAnswered answered)
+            return new OperationResult(Outcome.Unanswered, $"fuse: {(response as EngineResponse.Unanswered)?.Message ?? "the engine gave no answer"}");
+        var plan = answered.Plan;
         if (plan.Runs.Length == 0)
             return new OperationResult(Outcome.Clean, $"fuse: {plan.Summary}");
 

@@ -93,17 +93,23 @@ internal static class EngineServer
             try
             {
                 var line = await PipeFraming.ReadLineAsync(pipe, shutdown.Token).ConfigureAwait(false);
-                var request = line is null ? null : ProtocolJson.ReadRequest(line);
-                if (request is null)
+                if (line is null)
                     return;
                 state.Touch();
-                if (request.BuildId != EngineVersion.Build)
+                // The build id is read before the request's case, which a client of another build may name differently or
+                // not at all, so every such client gets Restart.
+                var buildId = ProtocolJson.ReadBuildId(line);
+                if (buildId != EngineVersion.Build)
                 {
-                    log.Write($"client version {request.BuildId} differs; exiting so the client can start a matching engine");
-                    await WriteAsync(pipe, new EngineResponse(ResponseStatus.Restart), CancellationToken.None).ConfigureAwait(false);
+                    log.Write($"client version {buildId} differs; exiting so the client can start a matching engine");
+                    await WriteAsync(pipe, new EngineResponse.Restart(), CancellationToken.None).ConfigureAwait(false);
                     await shutdown.CancelAsync().ConfigureAwait(false);
                     return;
                 }
+
+                var request = ProtocolJson.ReadRequest(line);
+                if (request is null)
+                    return;
 
                 Interlocked.Increment(ref state.Active);
                 try
@@ -118,7 +124,7 @@ internal static class EngineServer
                     }
                     catch (OperationCanceledException)
                     {
-                        response = EngineResponse.Fail(ErrorCode.Timeout, "the request is cancelled");
+                        response = new EngineResponse.Unanswered(ErrorCode.Timeout, "the request is cancelled");
                     }
 
                     if (!request_.IsCancellationRequested)
@@ -127,7 +133,7 @@ internal static class EngineServer
                     // Let the client read the answer and close its end first: on Unix, where the pipe is a socket,
                     // cancelling the pending read can reset the connection before the client has read the answer.
                     await Task.WhenAny(disconnect, Task.Delay(TimeSpan.FromSeconds(5), CancellationToken.None)).ConfigureAwait(false);
-                    if (request.Kind == RequestKind.Shutdown)
+                    if (request is EngineRequest.ShutDown)
                         await shutdown.CancelAsync().ConfigureAwait(false);
                     await request_.CancelAsync().ConfigureAwait(false);
                     await disconnect.ConfigureAwait(false);

@@ -47,7 +47,7 @@ internal sealed class RequestRouterHarness : IAsyncDisposable
 
     /// <summary>Sends a check for the given repository-relative files, or for every change when none are given.</summary>
     public Task<EngineResponse> CheckAsync(params string[] files) =>
-        SendAsync(new EngineRequest("", RequestKind.Check, Files: files.Length == 0 ? null : files));
+        SendAsync(files.Length == 0 ? new EngineRequest.CheckChanges(WaitForLoad: true) : new EngineRequest.CheckFiles(files, WaitForLoad: true));
 
     /// <summary>What the router wrote to its log, for a test that needs to see the request lifecycle.</summary>
     public string Log => File.Exists(_log.FilePath) ? File.ReadAllText(_log.FilePath) : "";

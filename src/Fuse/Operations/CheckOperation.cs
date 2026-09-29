@@ -14,16 +14,17 @@ internal static class CheckOperation
     /// <summary>Runs a check.</summary>
     /// <param name="root">The repository.</param>
     /// <param name="files">Absolute paths to scope to, or null for every change.</param>
-    /// <param name="wait">Wait for the engine to finish loading, or return immediately with <see cref="ErrorCode.Loading"/>.</param>
+    /// <param name="waitForLoad">Wait for the engine to finish loading, or return immediately with <see cref="ErrorCode.Loading"/>.</param>
     /// <param name="timeout">How long to wait for the answer.</param>
     /// <param name="cancellationToken">Cancels the check.</param>
     public static async Task<(OperationResult Result, EngineResponse Response)> RunAsync(
-        RepoRoot root, IReadOnlyList<string>? files, bool wait, TimeSpan timeout, CancellationToken cancellationToken)
+        RepoRoot root, IReadOnlyList<string>? files, bool waitForLoad, TimeSpan timeout, CancellationToken cancellationToken)
     {
-        var response = await EngineClient.SendAsync(root, new EngineRequest("", RequestKind.Check, Files: files?.ToArray(), Wait: wait), timeout, cancellationToken).ConfigureAwait(false);
-        if (response.Status != ResponseStatus.Ok || response.Check is null)
-            return (new OperationResult(Outcome.Unanswered, $"fuse: {response.Message ?? "the engine gave no answer"}"), response);
-        return (Render(response.Check), response);
+        EngineRequest request = files is null ? new EngineRequest.CheckChanges(waitForLoad) : new EngineRequest.CheckFiles(files, waitForLoad);
+        var response = await EngineClient.SendAsync(root, request, timeout, cancellationToken).ConfigureAwait(false);
+        if (response is not EngineResponse.CheckAnswered answered)
+            return (new OperationResult(Outcome.Unanswered, $"fuse: {(response as EngineResponse.Unanswered)?.Message ?? "the engine gave no answer"}"), response);
+        return (Render(answered.Report), response);
     }
 
     internal static OperationResult Render(CheckReport report)

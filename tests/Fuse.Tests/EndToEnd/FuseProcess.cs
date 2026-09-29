@@ -41,7 +41,10 @@ internal static class FuseProcess
     }
 
     /// <summary>Sends one raw request, bypassing the client's version stamping and engine start.</summary>
-    public static async Task<EngineResponse?> SendRawAsync(RepoRoot root, EngineRequest request)
+    public static Task<EngineResponse?> SendRawAsync(RepoRoot root, EngineRequest request) => SendLineAsync(root, ProtocolJson.Serialize(request));
+
+    /// <summary>Sends one request line as it is, for a request this build would not write, such as one from another build.</summary>
+    public static async Task<EngineResponse?> SendLineAsync(RepoRoot root, string requestLine)
     {
         for (var attempt = 0; ; attempt++)
         {
@@ -49,7 +52,7 @@ internal static class FuseProcess
             {
                 await using var pipe = new NamedPipeClientStream(".", root.PipeName, PipeDirection.InOut, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
                 await pipe.ConnectAsync(2000);
-                var bytes = Encoding.UTF8.GetBytes(ProtocolJson.Serialize(request) + "\n");
+                var bytes = Encoding.UTF8.GetBytes(requestLine + "\n");
                 await pipe.WriteAsync(bytes);
                 await pipe.FlushAsync();
                 using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
@@ -97,7 +100,7 @@ internal static class FuseProcess
         try
         {
             if (EngineRunning(root))
-                await SendRawAsync(root, new EngineRequest(EngineVersion.Build, RequestKind.Shutdown));
+                await SendRawAsync(root, new EngineRequest.ShutDown { BuildId = EngineVersion.Build });
         }
         catch (Exception e) when (e is IOException or TimeoutException or OperationCanceledException)
         {

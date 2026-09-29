@@ -13,15 +13,23 @@ internal sealed class RequestLog
 
     public RequestLog(EngineLog log) => _log = log;
 
+    /// <summary>
+    ///     The request's case, which both lines name it by and the phase line writes as its <c>kind</c>:
+    ///     <c>CheckChanges</c>, <c>CheckFiles</c>, <c>PlanAffectedTests</c> or <c>PlanAllTests</c>.
+    /// </summary>
+    public static string KindOf(EngineRequest request) => request.GetType().Name;
+
     /// <summary>Writes both lines for <paramref name="request"/>; a request that carries no id gets no phase line.</summary>
-    /// <param name="request">The request, which names the files it was scoped to.</param>
+    /// <param name="request">The request, which names the files a check was scoped to.</param>
     /// <param name="phases">The phases the request went through, in order.</param>
     /// <param name="tookMs">The whole request from the moment it held the request lock, written as <see cref="Phase.Total"/>.</param>
     public void Write(EngineRequest request, PhaseTimes phases, long tookMs)
     {
-        _log.Write($"{request.Kind} {(request.Files is null ? "all" : string.Join(",", request.Files.Select(Path.GetFileName)))} took {tookMs} ms");
+        var kind = KindOf(request);
+        var files = request is EngineRequest.CheckFiles check ? " " + string.Join(",", check.Files.Select(Path.GetFileName)) : "";
+        _log.Write($"{kind}{files} took {tookMs} ms");
         // One line per request, naming it and timing each phase, so a measurement can be matched to its own call.
         if (request.RequestId.Length > 0)
-            _log.Write(PhaseLine.Format(request.RequestId, request.Kind.ToString(), [.. phases.All, (Phase.Total, tookMs)]));
+            _log.Write(PhaseLine.Format(request.RequestId, kind, [.. phases.All, (Phase.Total, tookMs)]));
     }
 }

@@ -12,12 +12,12 @@ public class PhaseLineTests
     [Fact]
     public void Round_trips_a_line()
     {
-        var line = PhaseLine.Format("1234-7", "Check", [("gate", 1.5), ("sync", 12.5), ("total", 400.0)]);
-        Assert.Equal("phases id=1234-7 kind=Check gate=1.5 sync=12.5 total=400.0", line);
+        var line = PhaseLine.Format("1234-7", "CheckFiles", [("gate", 1.5), ("sync", 12.5), ("total", 400.0)]);
+        Assert.Equal("phases id=1234-7 kind=CheckFiles gate=1.5 sync=12.5 total=400.0", line);
 
         Assert.True(PhaseLine.TryParse(line, out var id, out var kind, out var phases));
         Assert.Equal("1234-7", id);
-        Assert.Equal("Check", kind);
+        Assert.Equal("CheckFiles", kind);
         Assert.Equal(3, phases.Count);
         Assert.Equal(1.5, phases["gate"]);
         Assert.Equal(12.5, phases["sync"]);
@@ -28,9 +28,9 @@ public class PhaseLineTests
     public void Keeps_a_phase_the_reader_does_not_know()
     {
         // An engine from a later build may time a phase this reader has never heard of; the known ones still come through.
-        var line = PhaseLine.Format("9-1", "TestPlan", [("gate", 0.5), ("mirror", 3.0), ("emit", 7.5)]);
+        var line = PhaseLine.Format("9-1", "PlanAffectedTests", [("gate", 0.5), ("mirror", 3.0), ("emit", 7.5)]);
         Assert.True(PhaseLine.TryParse(line, out _, out var kind, out var phases));
-        Assert.Equal("TestPlan", kind);
+        Assert.Equal("PlanAffectedTests", kind);
         Assert.Equal(0.5, phases["gate"]);
         Assert.Equal(7.5, phases["emit"]);
     }
@@ -39,7 +39,7 @@ public class PhaseLineTests
     public void Refuses_a_line_that_is_not_one()
     {
         // A line with no id cannot be matched to a call, so it is not usable; see the next case.
-        foreach (var line in new[] { null, "", "check: 3 file(s) checked", "phases kind=Check total=1.0", "phases id= kind=Check total=1.0" })
+        foreach (var line in new[] { null, "", "check: 3 file(s) checked", "phases kind=CheckFiles total=1.0", "phases id= kind=CheckFiles total=1.0" })
             Assert.False(PhaseLine.TryParse(line, out _, out _, out _));
     }
 
@@ -57,9 +57,9 @@ public class PhaseLineTests
     public void Refuses_a_line_whose_id_is_missing_but_reads_the_rest()
     {
         // Without an id the line cannot be matched to a call, so it is not usable; the phases are still parsed.
-        Assert.False(PhaseLine.TryParse("phases kind=Check total=1.0", out var id, out var kind, out var phases));
+        Assert.False(PhaseLine.TryParse("phases kind=CheckFiles total=1.0", out var id, out var kind, out var phases));
         Assert.Equal("", id);
-        Assert.Equal("Check", kind);
+        Assert.Equal("CheckFiles", kind);
         Assert.Equal(1.0, phases["total"]);
     }
 

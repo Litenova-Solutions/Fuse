@@ -38,8 +38,8 @@ public class EngineProcessTests
         {
             Assert.Equal(0, (await FuseProcess.RunAsync(repo.Path, null, "check")).ExitCode);
             Assert.True(FuseProcess.EngineRunning(repo.Root));
-            var response = await FuseProcess.SendRawAsync(repo.Root, new EngineRequest(EngineVersion.Build, RequestKind.Shutdown));
-            Assert.Equal(ResponseStatus.Ok, response?.Status);
+            var response = await FuseProcess.SendRawAsync(repo.Root, new EngineRequest.ShutDown { BuildId = EngineVersion.Build });
+            Assert.IsType<EngineResponse.Acknowledged>(response);
             Assert.True(await FuseProcess.WaitForExitAsync(repo.Root, TimeSpan.FromSeconds(15)));
         }
         finally
@@ -55,12 +55,30 @@ public class EngineProcessTests
         try
         {
             Assert.Equal(0, (await FuseProcess.RunAsync(repo.Path, null, "check")).ExitCode);
-            var response = await FuseProcess.SendRawAsync(repo.Root, new EngineRequest("0.0.0/other", RequestKind.Ping));
-            Assert.Equal(ResponseStatus.Restart, response?.Status);
+            var response = await FuseProcess.SendRawAsync(repo.Root, new EngineRequest.Ping { BuildId = "0.0.0/other" });
+            Assert.IsType<EngineResponse.Restart>(response);
             Assert.True(await FuseProcess.WaitForExitAsync(repo.Root, TimeSpan.FromSeconds(15)));
 
             // The next client starts a matching engine.
             Assert.Equal(0, (await FuseProcess.RunAsync(repo.Path, null, "check")).ExitCode);
+        }
+        finally
+        {
+            await FuseProcess.StopEngineAsync(repo.Root);
+        }
+    }
+
+    [Fact]
+    public async Task A_request_in_the_shape_of_an_earlier_build_gets_restart()
+    {
+        using var repo = FixtureRepo.CreateStandard();
+        try
+        {
+            Assert.Equal(0, (await FuseProcess.RunAsync(repo.Path, null, "check")).ExitCode);
+            // How a 5.0.0 client writes a check: no request case for this build to read, and the build id under another name.
+            var response = await FuseProcess.SendLineAsync(repo.Root, """{"version":"5.0.0/0","kind":"Check","wait":true}""");
+            Assert.IsType<EngineResponse.Restart>(response);
+            Assert.True(await FuseProcess.WaitForExitAsync(repo.Root, TimeSpan.FromSeconds(15)));
         }
         finally
         {

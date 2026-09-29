@@ -121,7 +121,7 @@ internal static class HookCommand
         // run it inline; there it answers only once the engine is warm and leaves the rest to the Stop hook.
         var background = harness == "claude";
         var (result, response) = await CheckOperation.RunAsync(
-            root, files, wait: background, background ? TimeSpan.FromMinutes(5) : TimeSpan.FromSeconds(50), cancellationToken).ConfigureAwait(false);
+            root, files, waitForLoad: background, background ? TimeSpan.FromMinutes(5) : TimeSpan.FromSeconds(50), cancellationToken).ConfigureAwait(false);
         if (!ShouldReport(result, response))
             return 0;
         return Report(harness, "PostToolUse", result.Text);
@@ -134,7 +134,7 @@ internal static class HookCommand
         var root = RepoRoot.Find(payload.Cwd);
         if (root is null)
             return Clean(harness);
-        var (result, response) = await CheckOperation.RunAsync(root, null, wait: true, TimeSpan.FromMinutes(5), cancellationToken).ConfigureAwait(false);
+        var (result, response) = await CheckOperation.RunAsync(root, null, waitForLoad: true, TimeSpan.FromMinutes(5), cancellationToken).ConfigureAwait(false);
         if (!ShouldReport(result, response))
             return Clean(harness);
 
@@ -154,7 +154,7 @@ internal static class HookCommand
     ///     stay silent.
     /// </summary>
     private static bool ShouldReport(OperationResult result, EngineResponse response) =>
-        result.Outcome == Outcome.ProblemsFound || response.Error is ErrorCode.RestoreNeeded;
+        result.Outcome == Outcome.ProblemsFound || response is EngineResponse.Unanswered { Code: ErrorCode.RestoreNeeded };
 
     private static int Report(string harness, string claudeEvent, string text)
     {

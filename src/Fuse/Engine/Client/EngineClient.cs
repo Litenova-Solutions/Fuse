@@ -56,10 +56,10 @@ internal static class EngineClient
                 {
                     if (attempt < 1)
                         continue;
-                    return EngineResponse.Fail(ErrorCode.Internal, $"the fuse engine closed the connection (see {Path.Combine(root.StateDirectory, "engine.log")})");
+                    return new EngineResponse.Unanswered(ErrorCode.Internal, $"the fuse engine closed the connection (see {Path.Combine(root.StateDirectory, "engine.log")})");
                 }
 
-                if (response.Status == ResponseStatus.Restart && attempt < 2)
+                if (response is EngineResponse.Restart && attempt < 2)
                 {
                     // An engine from another build is exiting; give it a moment to release the pipe and mutex.
                     await Task.Delay(300, deadline.Token).ConfigureAwait(false);
@@ -71,19 +71,19 @@ internal static class EngineClient
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            return EngineResponse.Fail(ErrorCode.Timeout, $"the fuse engine did not answer within {timeout.TotalSeconds:0} s");
+            return new EngineResponse.Unanswered(ErrorCode.Timeout, $"the fuse engine did not answer within {timeout.TotalSeconds:0} s");
         }
         catch (FuseException e)
         {
-            return EngineResponse.Fail(e.Code, e.Message);
+            return new EngineResponse.Unanswered(e.Code, e.Message);
         }
         catch (IOException e)
         {
-            return EngineResponse.Fail(ErrorCode.Internal, $"could not talk to the fuse engine: {e.Message}");
+            return new EngineResponse.Unanswered(ErrorCode.Internal, $"could not talk to the fuse engine: {e.Message}");
         }
         catch (Exception e) when (e is System.ComponentModel.Win32Exception or InvalidOperationException or UnauthorizedAccessException)
         {
-            return EngineResponse.Fail(ErrorCode.Internal, $"could not start the fuse engine: {e.Message}");
+            return new EngineResponse.Unanswered(ErrorCode.Internal, $"could not start the fuse engine: {e.Message}");
         }
     }
 

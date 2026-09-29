@@ -188,10 +188,19 @@ A harness is an agent host that runs Fuse's hooks: Claude Code, Cursor, Gemini C
 
 - `RequestRouter`: initialization and routing a request to its feature.
 - `Preloader`: the background load of dependents and the set of projects that failed to preload.
-- `RequestLog`: the log line and the phase line per request. Today they are written in two places in `HandleAsync`, once for checks and once for everything else.
+- `RequestLog`: the log line and the phase line per request, both naming the request by its case (`CheckChanges`, `CheckFiles`, `PlanAffectedTests`, `PlanAllTests`), which the phase line writes as its `kind`.
 - `ResponseMapper`: `CheckResult` and `TestPlanResult` to `Protocol` records, and `FuseException` to an unanswered response.
 
-`EngineRequest` and `EngineResponse` become variants. A request is `Ping`, `Check(CheckScope, WaitForLoad)`, `PlanTests(TestScope)` or `ShutDown`; a response is `Answered` with its report, `Unanswered(Code, Message)` or `Restart`. System.Text.Json source generation supports this with `[JsonPolymorphic]` and `[JsonDerivedType]`. Because every request carries `EngineVersion.Build` and a mismatched engine restarts, changing these records needs no compatibility code.
+`EngineRequest` and `EngineResponse` are variants, which System.Text.Json source generation writes through `[JsonPolymorphic]` and `[JsonDerivedType]` with the case in a property written first. Every request carries `BuildId` and `RequestId` on the base record.
+
+| Record | Cases | Replaces |
+| --- | --- | --- |
+| `EngineRequest`, its case in a `request` property | `Ping`, `ShutDown`, `CheckChanges(WaitForLoad)`, `CheckFiles(Files, WaitForLoad)`, `PlanAffectedTests`, `PlanAllTests` | `RequestKind` with `Files`, where null meant every change, `Wait` and `AllTests` |
+| `EngineResponse`, its case in a `status` property | `Acknowledged` (to `Ping` and `ShutDown`), `CheckAnswered(Report)`, `PlanAnswered(Plan)`, `Unanswered(Code, Message)`, `Restart` | `ResponseStatus` (`Ok`, `Error`, `Restart`) with nullable `Error`, `Message`, `Check` and `Tests` |
+
+The scope is part of the request's case, so the wire has no null that means every change and no `AllTests` flag, and `Fuse.Protocol` still uses no feature type beyond `CompilerError` ([D11](#decisions)). `RequestRouter` turns each case into a `CheckScope` or a `TestScope`. A plan request always waits for the engine to finish loading, because `fuse test` runs nothing until it has the plan; only a check can ask not to wait. The engine's failure word is the operation's: an `Unanswered` response becomes the `Unanswered` outcome.
+
+The engine reads `BuildId` from the request line before the case (`ProtocolJson.ReadBuildId`), so a client of any other build gets `Restart`, whatever shape that build gives its requests. The case properties are named so that an engine of an earlier build can answer too: it reads `kind` into its own enum and drops a request whose value it does not know, so no request has a `kind` property, and it writes `Restart` as `{"status":"Restart"}`, which this build reads as `EngineResponse.Restart`. Because a mismatched engine restarts, changing these records needs no compatibility code.
 
 `OperationResult` carries an `Outcome` (`Clean`, `ProblemsFound`, `Unanswered`) and derives the exit code from it (0, 1, 2). MCP marks `isError` on `Unanswered`, and the hooks treat `ProblemsFound` as a reason to wake the agent.
 
@@ -244,7 +253,7 @@ These decide a name the vocabulary does not list yet. Each came from a pattern t
 4. **No Fuse type shares a simple name with a BCL, Roslyn or MSBuild type.** An alias to resolve a clash is the signal. Before this rule, `Diagnostic` needed `FuseDiagnostic` and `RoslynDiagnostic`.
 5. **A domain type and the wire record it maps to never share a name.** Features return `*Result` types (`CheckResult`, `TestPlanResult`); `Protocol` records are named for what the client receives (`CheckReport`, `TestPlan`).
 6. **A boolean reads as a yes-or-no question**: `Is`, `Has`, `Uses`, or a verb phrase such as `WaitForLoad` or `FromAnalyzer`.
-7. **A request is a verb; a result is a noun; a variant case names the state.** `Check`, `PlanTests`; `CheckResult`; `AllChanges`, `Whole`, `Unanswered`.
+7. **A request is a verb; a result is a noun; a variant case names the state.** `CheckFiles`, `PlanAffectedTests`; `CheckResult`; `AllChanges`, `Whole`, `Unanswered`.
 8. **A namespace is named for what it owns**, which is also its layer on this page, not for one of its callers.
 9. **A class is named for its one responsibility.** A nested or private helper type gets a real name too (`MemberWalk`), never a placeholder such as `Walk`. `Native`, the .NET convention for P/Invoke declarations, is the exception.
 10. **A number with a unit carries the unit** in its name (`TotalMs`) or is a `TimeSpan`.
@@ -357,9 +366,12 @@ Every name that changes, with the migration step that changes it. Reach says who
 | `SurfaceMap.Changes`, returning `SurfaceChange` | `SurfaceDiff.Compare`, returning `FileChanges` with each `DeclarationChange` (`Added`, `Removed`, `Changed`) | internal | 5 |
 | `SurfaceMap.Declaration` | `DeclarationHeader.Of` | internal | 5 |
 | `Fuse.Testing.ChangedDeclarations.Find` | `Fuse.Changes.CodeDiff.Find` | internal | 5 |
-| `RequestKind` (`Ping`, `Check`, `TestPlan`, `Shutdown`) | request variants `Ping`, `Check`, `PlanTests`, `ShutDown` | wire | 6 |
-| `EngineRequest.Files`, `Wait`, `AllTests` | `Check(CheckScope, WaitForLoad)`, `PlanTests(TestScope)` | wire | 6 |
-| `ResponseStatus.Error`, `EngineResponse.Error`, `EngineResponse.Fail` | `Unanswered(Code, Message)`, so the engine and the operation use one word | wire | 6 |
+| `RequestKind` (`Ping`, `Check`, `TestPlan`, `Shutdown`) in a `kind` property | request variants `Ping`, `ShutDown`, `CheckChanges`, `CheckFiles`, `PlanAffectedTests`, `PlanAllTests` in a `request` property | wire | 6 |
+| `EngineRequest.Files`, `Wait`, `AllTests` | `CheckFiles(Files, WaitForLoad)`, `CheckChanges(WaitForLoad)`, `PlanAllTests` | wire | 6 |
+| `ResponseStatus` (`Ok`, `Error`, `Restart`), `EngineResponse.Ok`, `Fail`, `Error`, `Check`, `Tests` | response variants `Acknowledged`, `CheckAnswered(Report)`, `PlanAnswered(Plan)`, `Unanswered(Code, Message)`, `Restart` in a `status` property, so the engine and the operation use one word | wire | 6 |
+| `kind=Check` and `kind=TestPlan` in the phase line; `Check all`, `Check <files>` and `TestPlan all` in the engine log | the case: `CheckChanges`, `CheckFiles <files>`, `PlanAffectedTests`, `PlanAllTests` | internal | 6 |
+| `RequestRouter.CheckScopeOf` and `TestScopeOf` | one case per scope in `RequestRouter.HandleAsync` | internal | 6 |
+| `CheckOperation.RunAsync(wait)` | `waitForLoad` | internal | 6 |
 | `ChangeBatch` (`HeadMoved`, `ProjectFilesChanged`, `Storm`) | `SyncResult` (`Reevaluate`, `Reload`, `Patch`) | internal | 7 |
 | `storm=` in the engine log | the `SyncResult` case name | internal | 7 |
 | `LoaderGeneration`, `configurationGeneration` | `ConfigurationGeneration` | internal | 7 |

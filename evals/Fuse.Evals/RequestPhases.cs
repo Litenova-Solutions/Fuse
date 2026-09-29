@@ -6,6 +6,12 @@ namespace Fuse.Evals;
 ///     Reads the engine's own account of one request back out of <c>engine.log</c>, so a measured call can be attributed
 ///     to the phases it went through rather than to the whole process.
 /// </summary>
+/// <param name="RequestId">The id the client sent, which is how a line is matched to its call.</param>
+/// <param name="Kind">
+///     The request's case as the engine names it: <c>CheckChanges</c>, <c>CheckFiles</c>, <c>PlanAffectedTests</c> or
+///     <c>PlanAllTests</c>. The line is found by its id, so no reader depends on the kind.
+/// </param>
+/// <param name="Phases">Each timed phase in milliseconds, by the names in <see cref="Phase"/>.</param>
 internal sealed record RequestPhases(string RequestId, string Kind, Dictionary<string, double> Phases)
 {
     /// <summary>The engine's own total for the request, or null when the line carries none.</summary>

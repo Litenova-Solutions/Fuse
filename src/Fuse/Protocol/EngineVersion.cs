@@ -5,7 +5,7 @@ namespace Fuse.Protocol;
 /// <summary>
 ///     Identifies a build of Fuse. Client and engine must match exactly; the module id changes with every code change.
 ///     It belongs to the protocol because every request carries <see cref="Build"/>, and an engine from another build
-///     answers <see cref="ResponseStatus.Restart"/> instead of reading the rest of the request.
+///     answers <see cref="EngineResponse.Restart"/> instead of reading the rest of the request.
 /// </summary>
 internal static class EngineVersion
 {

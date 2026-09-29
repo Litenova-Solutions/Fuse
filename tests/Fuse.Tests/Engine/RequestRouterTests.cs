@@ -21,8 +21,7 @@ public class RequestRouterTests
         var answers = await Task.WhenAll(engine.CheckAsync(repo.Full("Lib/Calc.cs")), engine.CheckAsync(repo.Full("Lib/Greeting.cs")));
 
         Assert.Equal(2, answers.Length);
-        Assert.All(answers, a => Assert.Equal(ResponseStatus.Ok, a.Status));
-        Assert.All(answers, a => Assert.NotNull(a.Check));
+        Assert.All(answers, a => Assert.IsType<EngineResponse.CheckAnswered>(a));
     }
 
     [Fact]
@@ -37,8 +36,9 @@ public class RequestRouterTests
         var formatter = repo.Full("Lib/Formatter.cs").Replace('\\', '/');
         var answers = await Task.WhenAll(engine.CheckAsync(calc), engine.CheckAsync(formatter));
 
-        Assert.Contains(answers, a => a.Check!.Errors.Any(e => e.Error.Message.Contains("'Add'", StringComparison.Ordinal)));
-        Assert.Contains(answers, a => a.Check!.Errors.Any(e => e.Error.Message.Contains("'Format'", StringComparison.Ordinal)));
+        var reports = answers.Select(a => Assert.IsType<EngineResponse.CheckAnswered>(a).Report).ToList();
+        Assert.Contains(reports, r => r.Errors.Any(e => e.Error.Message.Contains("'Add'", StringComparison.Ordinal)));
+        Assert.Contains(reports, r => r.Errors.Any(e => e.Error.Message.Contains("'Format'", StringComparison.Ordinal)));
     }
 
     [Fact]
@@ -52,9 +52,9 @@ public class RequestRouterTests
         var answer = await engine.CheckAsync(repo.Full("Lib/Calc.cs"));
 
         // The hook reports this code, and only this code, as something the agent has to act on.
-        Assert.Equal(ResponseStatus.Error, answer.Status);
-        Assert.Equal(ErrorCode.RestoreNeeded, answer.Error);
-        Assert.Contains("dotnet restore", answer.Message, StringComparison.Ordinal);
+        var unanswered = Assert.IsType<EngineResponse.Unanswered>(answer);
+        Assert.Equal(ErrorCode.RestoreNeeded, unanswered.Code);
+        Assert.Contains("dotnet restore", unanswered.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -64,13 +64,56 @@ public class RequestRouterTests
         await using var engine = await RequestRouterHarness.StartAsync(repo);
         repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
 
-        await engine.SendAsync(new EngineRequest("", RequestKind.Check, RequestId: "t-1", Files: [repo.Full("Lib/Calc.cs")]));
+        await engine.SendAsync(new EngineRequest.CheckFiles([repo.Full("Lib/Calc.cs")], WaitForLoad: true) { RequestId = "t-1" });
 
-        var line = engine.Log.Split('\n').Select(l => l[(l.IndexOf("phases ", StringComparison.Ordinal) is var i and >= 0 ? i : 0)..]).Single(l => l.StartsWith("phases id=t-1 ", StringComparison.Ordinal));
-        Assert.True(PhaseLine.TryParse(line.TrimEnd(), out _, out var kind, out var phases));
-        Assert.Equal("Check", kind);
+        var (kind, phases) = PhaseLineOf(engine, "t-1");
+        Assert.Equal("CheckFiles", kind);
         Assert.Contains("gate", phases.Keys);
         Assert.Contains("total", phases.Keys);
+        Assert.Contains(engine.Log.Split('\n'), l => l.Contains("CheckFiles Calc.cs took ", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task A_check_of_every_change_is_logged_by_its_case()
+    {
+        using var repo = FixtureRepo.CreateStandard();
+        await using var engine = await RequestRouterHarness.StartAsync(repo);
+
+        Assert.IsType<EngineResponse.CheckAnswered>(await engine.SendAsync(new EngineRequest.CheckChanges(WaitForLoad: true) { RequestId = "t-2" }));
+
+        Assert.Equal("CheckChanges", PhaseLineOf(engine, "t-2").Kind);
+        Assert.Contains(engine.Log.Split('\n'), l => l.Contains("CheckChanges took ", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task A_plan_of_every_test_is_answered_with_its_plan_and_logged_by_its_case()
+    {
+        using var repo = FixtureRepo.CreateStandard();
+        await using var engine = await RequestRouterHarness.StartAsync(repo);
+
+        var answer = await engine.SendAsync(new EngineRequest.PlanAllTests { RequestId = "t-3" });
+
+        var plan = Assert.IsType<EngineResponse.PlanAnswered>(answer).Plan;
+        Assert.NotEmpty(plan.Runs);
+        Assert.All(plan.Runs, r => Assert.IsType<TestRunMode.Build>(r.Mode));
+        Assert.Equal("PlanAllTests", PhaseLineOf(engine, "t-3").Kind);
+    }
+
+    [Fact]
+    public async Task A_ping_and_a_shutdown_are_acknowledged()
+    {
+        await using var engine = await RequestRouterHarness.StartAsync();
+
+        Assert.IsType<EngineResponse.Acknowledged>(await engine.SendAsync(new EngineRequest.Ping()));
+        Assert.IsType<EngineResponse.Acknowledged>(await engine.SendAsync(new EngineRequest.ShutDown()));
+    }
+
+    /// <summary>The kind and the phases of the phase line the router wrote for <paramref name="requestId"/>.</summary>
+    private static (string Kind, Dictionary<string, double> Phases) PhaseLineOf(RequestRouterHarness engine, string requestId)
+    {
+        var line = engine.Log.Split('\n').Select(l => l[(l.IndexOf("phases ", StringComparison.Ordinal) is var i and >= 0 ? i : 0)..]).Single(l => l.StartsWith($"phases id={requestId} ", StringComparison.Ordinal));
+        Assert.True(PhaseLine.TryParse(line.TrimEnd(), out _, out var kind, out var phases));
+        return (kind, phases);
     }
 
     [Fact]

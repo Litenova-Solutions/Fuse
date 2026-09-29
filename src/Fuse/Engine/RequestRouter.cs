@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Fuse.Check;
 using Fuse.Check.Model;
 using Fuse.Failures;
@@ -73,16 +74,16 @@ internal sealed class RequestRouter : IDisposable
 
     /// <summary>
     ///     Answers one request. A ping or a shutdown is answered at once; a check or a test plan waits for initialization
-    ///     (or is refused while loading when the client does not wait), then for the request lock, then runs.
+    ///     (a check that does not wait for the load is refused while loading), then for the request lock, then runs.
     /// </summary>
     public async Task<EngineResponse> HandleAsync(EngineRequest request, CancellationToken cancellationToken)
     {
-        if (request.Kind is RequestKind.Ping or RequestKind.Shutdown)
-            return EngineResponse.Ok();
+        if (request is EngineRequest.Ping or EngineRequest.ShutDown)
+            return new EngineResponse.Acknowledged();
 
         var initialization = _initialization ?? Task.CompletedTask;
-        if (!initialization.IsCompleted && !request.Wait)
-            return EngineResponse.Fail(ErrorCode.Loading, "fuse is still loading this repository; the next check will include these changes");
+        if (!initialization.IsCompleted && request is EngineRequest.CheckChanges { WaitForLoad: false } or EngineRequest.CheckFiles { WaitForLoad: false })
+            return new EngineResponse.Unanswered(ErrorCode.Loading, "fuse is still loading this repository; the next check will include these changes");
         try
         {
             await initialization.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -94,26 +95,29 @@ internal sealed class RequestRouter : IDisposable
         catch (Exception e) when (e is not OperationCanceledException)
         {
             _log.Write($"initialization failed: {e}");
-            return EngineResponse.Fail(ErrorCode.LoadFailed, $"fuse could not evaluate the repository's projects: {e.Message}");
+            return new EngineResponse.Unanswered(ErrorCode.LoadFailed, $"fuse could not evaluate the repository's projects: {e.Message}");
         }
 
         if (_workspace.Graph.Projects.Count == 0)
-            return EngineResponse.Fail(ErrorCode.NoProjects, _workspace.Graph.Failures.Count > 0
+            return new EngineResponse.Unanswered(ErrorCode.NoProjects, _workspace.Graph.Failures.Count > 0
                 ? $"no C# project could be evaluated: {_workspace.Graph.Failures[0]}"
                 : "no C# projects (.csproj) found in this repository");
 
         var phases = new PhaseTimes();
-        var queued = System.Diagnostics.Stopwatch.StartNew();
+        var queued = Stopwatch.StartNew();
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         phases.Add(Phase.Gate, queued);
         var started = Environment.TickCount64;
         try
         {
-            return request.Kind switch
+            // Each case carries its scope, which becomes the feature's own.
+            return request switch
             {
-                RequestKind.Check => ResponseMapper.Answered(await _checker.CheckAsync(CheckScopeOf(request), phases, cancellationToken).ConfigureAwait(false)),
-                RequestKind.TestPlan => ResponseMapper.Answered(await _planner.PlanAsync(TestScopeOf(request), phases, cancellationToken).ConfigureAwait(false)),
-                _ => EngineResponse.Fail(ErrorCode.Internal, $"unknown request {request.Kind}"),
+                EngineRequest.CheckChanges => ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.AllChanges(), phases, cancellationToken).ConfigureAwait(false)),
+                EngineRequest.CheckFiles check => ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.Files(check.Files), phases, cancellationToken).ConfigureAwait(false)),
+                EngineRequest.PlanAffectedTests => ResponseMapper.Answered(await _planner.PlanAsync(new TestScope.Affected(), phases, cancellationToken).ConfigureAwait(false)),
+                EngineRequest.PlanAllTests => ResponseMapper.Answered(await _planner.PlanAsync(new TestScope.All(), phases, cancellationToken).ConfigureAwait(false)),
+                _ => throw new UnreachableException($"{request.GetType().Name} is answered before the request lock"),
             };
         }
         catch (FuseException e)
@@ -122,8 +126,8 @@ internal sealed class RequestRouter : IDisposable
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
-            _log.Write($"{request.Kind} failed: {e}");
-            return EngineResponse.Fail(ErrorCode.Internal, $"internal error: {e.Message} (details in {_log.FilePath})");
+            _log.Write($"{RequestLog.KindOf(request)} failed: {e}");
+            return new EngineResponse.Unanswered(ErrorCode.Internal, $"internal error: {e.Message} (details in {_log.FilePath})");
         }
         finally
         {
@@ -132,14 +136,6 @@ internal sealed class RequestRouter : IDisposable
             _preloader.Schedule(_shutdown);
         }
     }
-
-    /// <summary>What a check request covers: the files it names, or every change when it names none.</summary>
-    private static CheckScope CheckScopeOf(EngineRequest request) =>
-        request.Files is null ? new CheckScope.AllChanges() : new CheckScope.Files(request.Files);
-
-    /// <summary>What a test plan request covers: every test when it asks for all, or the affected ones.</summary>
-    private static TestScope TestScopeOf(EngineRequest request) =>
-        request.AllTests ? new TestScope.All() : new TestScope.Affected();
 
     /// <summary>
     ///     Waits for a background load to stop, after the shutdown token has been cancelled, so the workspace is never

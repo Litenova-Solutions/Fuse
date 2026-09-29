@@ -1,5 +1,6 @@
 using Fuse.Check.Model;
 using Fuse.Engine;
+using Fuse.Failures;
 using Fuse.Protocol;
 using Fuse.Testing.Model;
 
@@ -70,13 +71,13 @@ public class ResponseMapperTests
         var line = ProtocolJson.Serialize(ResponseMapper.Answered(Result));
         var read = ProtocolJson.ReadResponse(line);
 
-        Assert.Equal(ResponseStatus.Ok, read?.Status);
-        var report = Assert.IsType<CheckReport>(read?.Check);
+        var report = Assert.IsType<EngineResponse.CheckAnswered>(read).Report;
         Assert.Equal([Removed, Changed, Analyzed], report.Errors.Select(e => e.Error));
         Assert.Equal([new ReportedCause(CauseKind.Removed, "public int Add(int a, int b)"), new ReportedCause(CauseKind.Changed, "public static string Format(long value)"), null], report.Errors.Select(e => e.Cause));
         Assert.Equal((7, 3, true, 4), (report.FilesChecked, report.DependentProjectsChecked, report.CheckedWholeProjects, report.CausesLeftOut));
         Assert.Equal(["Lib"], report.DeclarationsChangedIn);
         // The field names are the ones the Renames table in docs/architecture.md gives the wire.
+        Assert.StartsWith("{\"status\":\"CheckAnswered\",\"report\":{", line, StringComparison.Ordinal);
         foreach (var name in new[] { "\"errors\"", "\"cause\"", "\"kind\":\"Removed\"", "\"fromAnalyzer\":true", "\"declarationsChangedIn\"", "\"checkedWholeProjects\"", "\"causesLeftOut\"" })
             Assert.Contains(name, line, StringComparison.Ordinal);
     }
@@ -103,14 +104,23 @@ public class ResponseMapperTests
         var line = ProtocolJson.Serialize(ResponseMapper.Answered(Plan));
         var read = ProtocolJson.ReadResponse(line);
 
-        Assert.Equal(ResponseStatus.Ok, read?.Status);
-        var plan = Assert.IsType<TestPlan>(read?.Tests);
+        var plan = Assert.IsType<EngineResponse.PlanAnswered>(read).Plan;
         Assert.Equal(ResponseMapper.Plan(Plan).Runs, plan.Runs);
         Assert.Equal("C:/state/shadow/Lib.Tests-net8.0/Lib.Tests.dll", Assert.IsType<TestRunMode.Shadow>(plan.Runs[0].Mode).Assembly);
         Assert.IsType<TestRunMode.Build>(plan.Runs[1].Mode);
         Assert.Equal((12, 40, Plan.Summary), (plan.SelectedTests, plan.TotalTests, plan.Summary));
         // The field names are the ones the Renames table in docs/architecture.md gives the wire.
+        Assert.StartsWith("{\"status\":\"PlanAnswered\",\"plan\":{", line, StringComparison.Ordinal);
         foreach (var name in new[] { "\"summary\"", "\"mode\":{\"kind\":\"Shadow\",\"assembly\":", "\"mode\":{\"kind\":\"Build\"}", "\"usesTestingPlatform\":true" })
             Assert.Contains(name, line, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_failure_that_ended_a_request_is_unanswered_with_its_code_and_message()
+    {
+        var line = ProtocolJson.Serialize(ResponseMapper.Unanswered(new FuseException(ErrorCode.RestoreNeeded, "run dotnet restore")));
+
+        Assert.Equal("{\"status\":\"Unanswered\",\"code\":\"RestoreNeeded\",\"message\":\"run dotnet restore\"}", line);
+        Assert.Equal(new EngineResponse.Unanswered(ErrorCode.RestoreNeeded, "run dotnet restore"), ProtocolJson.ReadResponse(line));
     }
 }

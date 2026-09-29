@@ -63,7 +63,7 @@ internal static class Program
         if (root is null)
             return 2;
         var absolute = files.Length == 0 ? null : files.Select(Path.GetFullPath).ToList();
-        var (result, _) = await CheckOperation.RunAsync(root, absolute, wait: true, TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
+        var (result, _) = await CheckOperation.RunAsync(root, absolute, waitForLoad: true, TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
         return Print(result);
     }
 

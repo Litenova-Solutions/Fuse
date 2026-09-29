@@ -128,7 +128,9 @@ fuse: no test is affected by the changes (out of T); fuse test --all runs everyt
 fuse: no test projects in this repository
 ```
 
-When a test project does not build, the command prints the build's errors and `fuse: test build failed with N error(s) in T s` in the format of [fuse build](#fuse-build), and exits with 1. A test project on Microsoft.Testing.Platform writes no TRX file; a passing run prints `fuse: tests passed in T s;` and the summary, and a failing one is reported the way a failed build is.
+When a test project does not build, the command prints the build's errors and `fuse: test build failed with N error(s) in T s` in the format of [fuse build](#fuse-build), and exits with 1. When other test projects ran, their results come first and each failed build follows them, so the last line is the failed build even when every test that ran passed.
+
+A test project on Microsoft.Testing.Platform writes no TRX file. A passing run prints `fuse: tests passed in T s;` and the summary. A failing run prints the last 30 lines of its output and `fuse: the test run of <project> exited with code E and produced no results in T s`, and exits with 1. Any test run that exits with a code other than 0, writes no results and prints no error line ends the same way; for `fuse test` with arguments the line names the run `dotnet test`.
 
 The exit code is 1 when a test failed or a test project did not build, and 0 otherwise.
 

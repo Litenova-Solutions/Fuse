@@ -45,8 +45,7 @@ internal static class BuildOperation
         if (errors.Count == 0)
         {
             // Nothing matched the diagnostic format: show the tail, which is where MSBuild puts the failure.
-            var tail = result.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries).TakeLast(30);
-            text.Append(string.Join('\n', tail)).Append('\n');
+            text.Append(Tail(result.Output)).Append('\n');
             text.Append($"fuse: {verb} failed (exit code {result.ExitCode}) in {seconds:0.0} s");
             return new OperationResult(Outcome.ProblemsFound, text.ToString());
         }
@@ -55,4 +54,8 @@ internal static class BuildOperation
         text.Append($"fuse: {verb} failed with {errors.Count} error(s){more} in {seconds:0.0} s");
         return new OperationResult(Outcome.ProblemsFound, text.ToString());
     }
+
+    /// <summary>The last 30 non-empty lines of a process's output, which is where a failure without an error line is described.</summary>
+    internal static string Tail(string output) =>
+        string.Join('\n', output.Split('\n', StringSplitOptions.RemoveEmptyEntries).TakeLast(30));
 }

@@ -26,7 +26,7 @@ Fuse answers from a Roslyn compilation of what MSBuild's evaluation describes, a
 
 - **Static selection.** Fuse selects tests from the code as written. A test that reaches the changed code only through reflection, a type name in a string or configuration, or an assembly loaded at run time is selected only when the change reaches an application host, which selects every test project that depends on the application. Run `fuse test --all` before finishing a change that such tests cover.
 - **Counts from source.** The summary counts test methods from source, so a theory with several cases counts once, while the failed and passed counts come from the test run.
-- **Microsoft.Testing.Platform.** A test project on Microsoft.Testing.Platform (opted in through `global.json`) runs whole and builds with MSBuild. It writes no TRX file, so Fuse cannot list its failures: a failing run is reported as a failed test build, with the last 30 lines of the run's output. Read those lines, or run that project with `dotnet test` for its full report.
+- **Microsoft.Testing.Platform.** A test project on Microsoft.Testing.Platform (opted in through `global.json`) runs whole and builds with MSBuild. It writes no TRX file, so Fuse cannot list its failures: a failing run is reported as a test run that exited with its exit code and produced no results, after the last 30 lines of the run's output. Read those lines, or run that project with `dotnet test` for its full report.
 
 ## Test runs without MSBuild
 

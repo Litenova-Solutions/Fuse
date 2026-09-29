@@ -28,7 +28,7 @@ function fuse(event, payload, timeoutMs) {
 
 const rewrite = async (cwd, input) => {
   if (typeof input?.command !== "string") return;
-  const answer = await fuse("pre-bash", { cwd, tool_input: input }, 10000);
+  const answer = await fuse("pre-shell", { cwd, tool_input: input }, 10000);
   if (typeof answer?.command === "string") input.command = answer.command;
 };
 

@@ -1,8 +1,7 @@
 using System.Text;
-using System.Text.Encodings.Web;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using Fuse.Failures;
+using Fuse.Harnesses;
 using Fuse.Operations;
 using Fuse.Paths;
 using Fuse.Protocol;
@@ -11,29 +10,27 @@ namespace Fuse.Hooks;
 
 /// <summary>
 ///     <c>fuse hook &lt;harness&gt; &lt;event&gt;</c>: the one entry point every installed hook calls. It reads the harness's
-///     JSON from stdin and answers in that harness's format.
+///     JSON from stdin, does the work the event asks for, which is the same for every harness, and writes the
+///     <see cref="Harness"/>'s answer in that harness's format.
 /// </summary>
 /// <remarks>
 ///     A hook must never break the agent's session, so a failure inside Fuse ends with exit code 0 and no output
-///     (logged to <c>hook.log</c> in <see cref="RepoRoot.StateDirectory"/>). Only new errors and a missing restore produce
-///     output; in Claude Code they come with exit code 2, which wakes the agent.
+///     (logged to <c>hook.log</c> in <see cref="RepoRoot.StateDirectory"/>). Only errors introduced and a missing restore
+///     are reported; in Claude Code they come with exit code 2, which wakes the agent.
 /// </remarks>
 internal static class HookCommand
 {
-    private static readonly string[] Harnesses = ["claude", "cursor", "gemini", "codex", "copilot", "opencode"];
-
-    // Diagnostics are full of quotes and angle brackets; relaxed escaping keeps the JSON readable in harness logs.
-    private static readonly JsonSerializerOptions Relaxed = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+    private static readonly string Usage =
+        $"usage: fuse hook <{string.Join('|', SupportedHarnesses.All.Select(h => h.Name))}> <{HookEvent.PostEdit}|{HookEvent.PreShell}|{HookEvent.Stop}>";
 
     public static async Task<int> RunAsync(string[] args, CancellationToken cancellationToken)
     {
-        if (args.Length < 2 || !Harnesses.Contains(args[0]) || args[1] is not ("post-edit" or "pre-bash" or "stop"))
+        if (args.Length < 2 || SupportedHarnesses.Find(args[0]) is not { } harness || args[1] is not (HookEvent.PostEdit or HookEvent.PreShell or HookEvent.Stop))
         {
-            await Console.Error.WriteLineAsync("usage: fuse hook <claude|cursor|gemini|codex|copilot|opencode> <post-edit|pre-bash|stop>").ConfigureAwait(false);
+            await Console.Error.WriteLineAsync(Usage).ConfigureAwait(false);
             return 0;
         }
 
-        var harness = args[0];
         var hookEvent = args[1];
         HookPayload payload;
         try
@@ -44,109 +41,66 @@ internal static class HookCommand
         {
             // A payload that will not parse is a harness problem, not the agent's, and the hook still must not break the
             // session; the reason goes to hook.log so this is not a silent no-op.
-            Log(Environment.CurrentDirectory, $"{harness} {hookEvent} payload was not valid JSON: {e.Message}");
+            Log(Environment.CurrentDirectory, $"{harness.Name} {hookEvent} payload was not valid JSON: {e.Message}");
             return 0;
         }
 
-        // Cursor also runs hooks from Claude Code's settings; the Cursor-native hook handles that session.
-        if (harness == "claude" && payload.FromCursor)
+        // In a Cursor session the hook Fuse registered with Cursor answers, not the one Cursor also runs from this
+        // harness's settings.
+        if (harness.IsAlsoRunByCursor && payload.FromCursor)
             return 0;
 
         try
         {
-            return hookEvent switch
+            var answer = hookEvent switch
             {
-                "pre-bash" => PreBash(harness, payload),
-                "post-edit" => await PostEditAsync(harness, payload, cancellationToken).ConfigureAwait(false),
+                HookEvent.PreShell => PreShell(harness, payload),
+                HookEvent.PostEdit => await PostEditAsync(harness, payload, cancellationToken).ConfigureAwait(false),
                 _ => await StopAsync(harness, payload, cancellationToken).ConfigureAwait(false),
             };
+            return Write(answer);
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
-            Log(payload.Cwd, $"{harness} {hookEvent} failed: {e}");
+            Log(payload.Cwd, $"{harness.Name} {hookEvent} failed: {e}");
             return 0;
         }
     }
 
-    private static int PreBash(string harness, HookPayload payload)
-    {
-        if (payload.Command is not { } command || CommandRewriter.Rewrite(command) is not { } rewritten)
-            return 0;
-        JsonObject? output = harness switch
-        {
-            // Claude Code: updatedInput replaces the whole input, so every original field is carried over. No
-            // permission decision: the rewritten command goes through the user's normal permission rules.
-            "claude" => new JsonObject
-            {
-                ["hookSpecificOutput"] = new JsonObject
-                {
-                    ["hookEventName"] = "PreToolUse",
-                    ["updatedInput"] = WithCommand(payload.ToolInput, rewritten),
-                },
-            },
-            // Codex honours updatedInput only together with an allow decision.
-            "codex" => new JsonObject
-            {
-                ["hookSpecificOutput"] = new JsonObject
-                {
-                    ["hookEventName"] = "PreToolUse",
-                    ["permissionDecision"] = "allow",
-                    ["updatedInput"] = new JsonObject { ["command"] = rewritten },
-                },
-            },
-            // Gemini merges tool_input over the model's arguments.
-            "gemini" => new JsonObject
-            {
-                ["hookSpecificOutput"] = new JsonObject { ["hookEventName"] = "BeforeTool", ["tool_input"] = new JsonObject { ["command"] = rewritten } },
-            },
-            // The OpenCode plugin sets the command on the tool's arguments itself.
-            "opencode" => new JsonObject { ["command"] = rewritten },
-            _ => null,
-        };
-        if (output is not null)
-            Console.Out.Write(output.ToJsonString(Relaxed));
-        return 0;
-    }
+    /// <summary>Rewrites <c>dotnet build</c> and <c>dotnet test</c> in the command the agent is about to run; any other command gets no answer.</summary>
+    private static HookAnswer PreShell(Harness harness, HookPayload payload) =>
+        payload.Command is { } command && CommandRewriter.Rewrite(command) is { } rewritten
+            ? harness.ReplaceShellCommand(payload.ToolInput, rewritten)
+            : HookAnswer.None;
 
-    private static async Task<int> PostEditAsync(string harness, HookPayload payload, CancellationToken cancellationToken)
+    private static async Task<HookAnswer> PostEditAsync(Harness harness, HookPayload payload, CancellationToken cancellationToken)
     {
         var files = payload.EditedFiles().Where(PathRules.IsSource).ToList();
         if (files.Count == 0)
-            return 0;
+            return HookAnswer.None;
         var root = RepoRoot.Find(Path.GetDirectoryName(files[0])!);
         if (root is null)
-            return 0;
+            return HookAnswer.None;
 
-        // Claude Code runs this hook in the background (asyncRewake), so it can wait for a cold load. Other harnesses
-        // run it inline; there it answers only once the engine is warm and leaves the rest to the Stop hook.
-        var background = harness == "claude";
+        // A hook the harness runs in the background can wait for a cold load. One it runs inline answers only once the
+        // engine is warm and leaves the rest to the stop hook.
+        var background = harness.RunsPostEditInBackground;
         var (result, response) = await CheckOperation.RunAsync(
             root, files, waitForLoad: background, background ? TimeSpan.FromMinutes(5) : TimeSpan.FromSeconds(50), cancellationToken).ConfigureAwait(false);
-        if (!ShouldReport(result, response))
-            return 0;
-        return Report(harness, "PostToolUse", result.Text);
+        return ShouldReport(result, response) ? harness.ReportAfterEdit(result.Text) : HookAnswer.None;
     }
 
-    private static async Task<int> StopAsync(string harness, HookPayload payload, CancellationToken cancellationToken)
+    private static async Task<HookAnswer> StopAsync(Harness harness, HookPayload payload, CancellationToken cancellationToken)
     {
         if (payload.StopHookActive)
-            return Clean(harness);
+            return harness.AllowStop();
         var root = RepoRoot.Find(payload.Cwd);
         if (root is null)
-            return Clean(harness);
+            return harness.AllowStop();
         var (result, response) = await CheckOperation.RunAsync(root, null, waitForLoad: true, TimeSpan.FromMinutes(5), cancellationToken).ConfigureAwait(false);
         if (!ShouldReport(result, response))
-            return Clean(harness);
-
-        var reason = result.Text + "\nFix these errors before finishing; they are not in the last commit.";
-        JsonObject output = harness switch
-        {
-            "cursor" => new JsonObject { ["followup_message"] = reason },
-            "gemini" => new JsonObject { ["decision"] = "deny", ["reason"] = reason },
-            _ => new JsonObject { ["decision"] = "block", ["reason"] = reason },
-        };
-        Console.Out.Write(output.ToJsonString(Relaxed));
-        return 0;
+            return harness.AllowStop();
+        return harness.BlockStop(result.Text + "\nFix these errors before finishing; they are not in the last commit.");
     }
 
     /// <summary>
@@ -156,40 +110,14 @@ internal static class HookCommand
     private static bool ShouldReport(OperationResult result, EngineResponse response) =>
         result.Outcome == Outcome.ProblemsFound || response is EngineResponse.Unanswered { Code: ErrorCode.RestoreNeeded };
 
-    private static int Report(string harness, string claudeEvent, string text)
+    /// <summary>Writes <paramref name="answer"/> where the harness reads it and returns its exit code.</summary>
+    private static int Write(HookAnswer answer)
     {
-        switch (harness)
-        {
-            case "claude":
-                // asyncRewake: exit code 2 wakes the agent and shows stderr as a system reminder.
-                Console.Error.Write(text);
-                return 2;
-            case "cursor":
-                Console.Out.Write(new JsonObject { ["additional_context"] = text }.ToJsonString(Relaxed));
-                return 0;
-            case "copilot":
-            case "opencode":
-                Console.Out.Write(new JsonObject { ["additionalContext"] = text }.ToJsonString(Relaxed));
-                return 0;
-            default:
-                var eventName = harness == "gemini" ? "AfterTool" : claudeEvent;
-                Console.Out.Write(new JsonObject { ["hookSpecificOutput"] = new JsonObject { ["hookEventName"] = eventName, ["additionalContext"] = text } }.ToJsonString(Relaxed));
-                return 0;
-        }
-    }
-
-    private static int Clean(string harness)
-    {
-        if (harness != "claude")
-            Console.Out.Write("{}");
-        return 0;
-    }
-
-    private static JsonObject WithCommand(JsonElement? input, string command)
-    {
-        var result = input is { } element ? JsonNode.Parse(element.GetRawText())!.AsObject() : [];
-        result["command"] = command;
-        return result;
+        if (answer.StandardOutput.Length > 0)
+            Console.Out.Write(answer.StandardOutput);
+        if (answer.StandardError.Length > 0)
+            Console.Error.Write(answer.StandardError);
+        return answer.ExitCode;
     }
 
     /// <summary>

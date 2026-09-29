@@ -170,15 +170,18 @@ A selection never reaches the wire: `TestFilter` turns it into the filter of a r
 
 ## Harnesses
 
-A harness is an agent host that runs Fuse's hooks: Claude Code, Cursor, Gemini CLI, Codex, GitHub Copilot and OpenCode. Today each harness is a string. `Hooks/InitCommand.cs` detects and registers them with one flag and one method each, and `Hooks/HookCommand.cs` branches on the name six times (lines 51, 74, 121, 141, 157 and 179) to choose an answer format. Adding a harness means editing both files.
+A harness is an agent host that runs Fuse's hooks: Claude Code, Cursor, Gemini CLI, Codex, GitHub Copilot CLI and OpenCode. `Fuse.Harnesses` holds a `Harness` base class with six implementations, `ClaudeCode`, `Cursor`, `GeminiCli`, `Codex`, `CopilotCli` and `OpenCode`, which meets the two-implementation rule. Adding a harness means adding one class and listing it in `SupportedHarnesses`. Each implementation owns everything about its harness:
 
-`Fuse.Harnesses` holds a `Harness` base class with six implementations, which meets the two-implementation rule. Each implementation owns everything about its harness:
+- its `Name` on the command line (`claude`, `cursor`, `gemini`, `codex`, `copilot`, `opencode`), which every registration already written into users' settings contains, so it never changes;
+- how to detect it in a repository (`IsUsedIn`, from its settings directory or instructions file), and where and how its hooks are registered (`RegisterHooks`), including the permission allowances Claude Code gets for `fuse build` and `fuse test` and the OpenCode plugin, `Harnesses/opencode-plugin.js`, which the tool embeds;
+- how it answers a pre-shell, post-edit and stop event: `ReplaceShellCommand`, `ReportAfterEdit`, and `AllowStop` or `BlockStop`, each returning a `HookAnswer` with the standard output, standard error and exit code the harness reads;
+- whether it runs the post-edit hook in the background (`RunsPostEditInBackground`), and whether Cursor also runs the hooks in its settings (`IsAlsoRunByCursor`). Both are true for Claude Code only.
 
-- how to detect it in a repository, and where and how its hooks are registered;
-- how it answers a pre-shell, post-edit and stop event;
-- whether it runs the post-edit hook in the background, which today is the `harness == "claude"` check in `HookCommand.PostEditAsync`.
+The base class holds only that contract and the helpers the six share: the hook command for an event, detection from paths in the repository, and replacing Fuse's handler in the nested hook format Claude Code, Gemini CLI and Codex use. Each harness's hook configuration keeps the harness's own event and tool names (Claude Code's `PreToolUse` with a `Bash` matcher, Gemini CLI's `BeforeTool`); only the command it runs names Fuse's event.
 
-`InitCommand` moves to `Fuse.Harnesses` and registers every harness it detects, plus the VS Code MCP server, which is not a harness because VS Code runs no hooks. `HookCommand` in `Fuse.Hooks` parses the event and dispatches to the harness.
+`HookEvent` names the three events once, for the commands `RegisterHooks` writes and the events `fuse hook` accepts. `SupportedHarnesses` lists the harnesses in the order `fuse init` registers them and finds one by its name on the command line, for `fuse hook` and its usage line. `SettingsFile` reads and writes the files `fuse init` writes: it replaces a file through a temporary file beside it, and retries that move up to five times, 50 ms apart, while it fails with `IOException` or `UnauthorizedAccessException`, which is how Windows reports a file a virus scanner or the search indexer is holding.
+
+`InitCommand` registers every harness it detects, or Claude Code when it detects neither a harness nor VS Code, plus the VS Code MCP server in `.vscode/mcp.json`, which is not a harness because VS Code runs no hooks. `HookCommand` in `Fuse.Hooks` reads the event and the payload (`HookPayload`), does the work that is the same for every harness (rewriting the command with `CommandRewriter`, running the check), and asks the harness for the answer. An unknown harness or event, `pre-bash` included ([D12](#decisions)), gets the usage line on standard error and exit code 0.
 
 ## Engine and client
 
@@ -376,8 +379,14 @@ Every name that changes, with the migration step that changes it. Reach says who
 | `storm=` in the engine log | the `SyncResult` case name | internal | 7 |
 | `LoaderGeneration`, `configurationGeneration` | `ConfigurationGeneration` | internal | 7 |
 | `Fuse.Hooks.InitCommand` | `Fuse.Harnesses.InitCommand` | internal | 8 |
-| harness name strings | `Harness` and its six implementations | internal | 8 |
-| `fuse hook <harness> pre-bash` | `fuse hook <harness> pre-shell`, and `pre-bash` is no longer accepted ([D12](#decisions)) | configuration | 8 |
+| harness name strings, and `HookCommand.Harnesses` | `Harness` and its six implementations (`ClaudeCode`, `Cursor`, `GeminiCli`, `Codex`, `CopilotCli`, `OpenCode`), listed and found by name in `SupportedHarnesses` | internal | 8 |
+| the per-harness flags and `InitCommand.WriteClaude`, `WriteCursor`, `WriteGemini`, `WriteCodex`, `WriteCopilot`, `WriteOpenCode` | `IsUsedIn` and `RegisterHooks` on each harness | internal | 8 |
+| `InitCommand.WriteVsCode` | `InitCommand.RegisterMcpServer` | internal | 8 |
+| `InitCommand.Load`, `Save`, `SaveText`, `Object` | `SettingsFile.Read`, `Write`, `WriteText`, `GetOrAddObject` | internal | 8 |
+| `InitCommand.SetHook`, `SetFlatHook`, `IsFuse` | `Harness.SetNestedHook` and `IsFuse`; `SetFlatHook` in `Cursor` | internal | 8 |
+| `HookCommand.PreBash`; the harness branches in it, `Report`, `Clean` and `StopAsync`; `harness == "claude"` in `PostEditAsync` and before the event | `HookCommand.PreShell`; `ReplaceShellCommand`, `ReportAfterEdit`, `AllowStop` and `BlockStop` on each harness, returning a `HookAnswer`; `RunsPostEditInBackground` and `IsAlsoRunByCursor` | internal | 8 |
+| `Hooks/opencode-plugin.js`, resource `Fuse.Hooks.opencode-plugin.js` | `Harnesses/opencode-plugin.js`, resource `Fuse.Harnesses.opencode-plugin.js` | internal | 8 |
+| `fuse hook <harness> pre-bash`, in `fuse init`'s commands, the OpenCode plugin and the usage line | `fuse hook <harness> pre-shell`, and `pre-bash` is no longer accepted ([D12](#decisions)) | configuration | 8 |
 | strings for paths | `RepoPath` | internal | 9 |
 | "the last commit" in the README, MCP descriptions and `site/how-it-works.html` | HEAD | output | 10 |
 | "fuse" for the product in messages | "Fuse" | output | 10 |

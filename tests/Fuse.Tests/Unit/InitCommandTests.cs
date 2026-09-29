@@ -1,5 +1,5 @@
 using System.Text.Json.Nodes;
-using Fuse.Hooks;
+using Fuse.Harnesses;
 using Fuse.Tests.Fixtures;
 
 namespace Fuse.Tests.Unit;
@@ -25,7 +25,8 @@ public class InitCommandTests
         Assert.Equal("Edit|Write|MultiEdit", post["matcher"]!.GetValue<string>());
         Assert.Equal("fuse hook claude post-edit", post["hooks"]![0]!["command"]!.GetValue<string>());
         Assert.True(post["hooks"]![0]!["asyncRewake"]!.GetValue<bool>());
-        Assert.Equal("fuse hook claude pre-bash", hooks["PreToolUse"]![0]!["hooks"]![0]!["command"]!.GetValue<string>());
+        Assert.Equal("Bash", hooks["PreToolUse"]![0]!["matcher"]!.GetValue<string>());
+        Assert.Equal("fuse hook claude pre-shell", hooks["PreToolUse"]![0]!["hooks"]![0]!["command"]!.GetValue<string>());
         Assert.Equal("fuse hook claude stop", hooks["Stop"]![0]!["hooks"]![0]!["command"]!.GetValue<string>());
         Assert.False(File.Exists(repo.Full(".cursor/hooks.json")));
     }
@@ -60,6 +61,30 @@ public class InitCommandTests
         Assert.Equal(["prettier --write", "fuse hook claude post-edit"], commands);
         var allow = settings["permissions"]!["allow"]!.AsArray().Select(r => r!.GetValue<string>()).ToList();
         Assert.Equal(["Bash(dotnet test:*)", "Read", "Bash(fuse test:*)"], allow);
+    }
+
+    [Fact]
+    public void Rerunning_init_replaces_a_pre_bash_registration_with_pre_shell()
+    {
+        // A registration an earlier build wrote calls an event fuse hook no longer accepts; rerunning init replaces it.
+        using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string>
+        {
+            ["App/App.csproj"] = "<Project />",
+            [".claude/settings.json"] = """
+                { "hooks": { "PreToolUse": [ { "matcher": "Bash", "hooks": [ { "type": "command", "command": "fuse hook claude pre-bash", "timeout": 10 } ] } ] } }
+                """,
+            [".codex/hooks.json"] = """
+                { "hooks": { "PreToolUse": [ { "matcher": "^Bash$", "hooks": [ { "type": "command", "command": "fuse hook codex pre-bash", "timeout": 10 } ] } ] } }
+                """,
+        });
+        Assert.Equal(0, Init(repo));
+
+        foreach (var (file, harness) in new[] { (".claude/settings.json", "claude"), (".codex/hooks.json", "codex") })
+        {
+            var groups = Json(repo, file)["hooks"]!["PreToolUse"]!.AsArray();
+            var commands = groups.SelectMany(g => g!["hooks"]!.AsArray()).Select(h => h!["command"]!.GetValue<string>());
+            Assert.Equal([$"fuse hook {harness} pre-shell"], commands);
+        }
     }
 
     [Fact]
@@ -99,9 +124,13 @@ public class InitCommandTests
         var gemini = Json(repo, ".gemini/settings.json")["hooks"]!;
         Assert.Equal("write_file|replace", gemini["AfterTool"]![0]!["matcher"]!.GetValue<string>());
         Assert.Equal(60000, gemini["AfterTool"]![0]!["hooks"]![0]!["timeout"]!.GetValue<int>());
+        Assert.Equal("run_shell_command", gemini["BeforeTool"]![0]!["matcher"]!.GetValue<string>());
+        Assert.Equal("fuse hook gemini pre-shell", gemini["BeforeTool"]![0]!["hooks"]![0]!["command"]!.GetValue<string>());
 
         var codex = Json(repo, ".codex/hooks.json")["hooks"]!;
         Assert.Equal("^apply_patch$", codex["PostToolUse"]![0]!["matcher"]!.GetValue<string>());
+        Assert.Equal("^Bash$", codex["PreToolUse"]![0]!["matcher"]!.GetValue<string>());
+        Assert.Equal("fuse hook codex pre-shell", codex["PreToolUse"]![0]!["hooks"]![0]!["command"]!.GetValue<string>());
 
         var copilot = Json(repo, ".github/hooks/fuse.json")["hooks"]!;
         Assert.Equal("fuse hook copilot post-edit", copilot["postToolUse"]![0]!["bash"]!.GetValue<string>());
@@ -109,10 +138,29 @@ public class InitCommandTests
         var opencode = repo.Read(".opencode/plugins/fuse.js");
         Assert.Contains("\"hook\", \"opencode\", event", opencode, StringComparison.Ordinal);
         Assert.Contains("\"tool.execute.after\"", opencode, StringComparison.Ordinal);
+        Assert.Contains("fuse(\"pre-shell\"", opencode, StringComparison.Ordinal);
+        Assert.DoesNotContain("pre-bash", opencode, StringComparison.Ordinal);
 
         var vscode = Json(repo, ".vscode/mcp.json")["servers"]!["fuse"]!;
         Assert.Equal("fuse", vscode["command"]!.GetValue<string>());
         Assert.Equal("mcp", vscode["args"]![0]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void A_repository_that_uses_only_vs_code_gets_the_mcp_server_and_no_hooks()
+    {
+        // VS Code is not a harness, but it counts as a sign of one: Claude Code is the default only without either.
+        using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string>
+        {
+            ["App/App.csproj"] = "<Project />",
+            [".vscode/settings.json"] = "{}",
+        });
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+        Assert.Equal(0, InitCommand.Run(repo.Root.Path, output, error));
+        Assert.Equal("fuse", Json(repo, ".vscode/mcp.json")["servers"]!["fuse"]!["command"]!.GetValue<string>());
+        Assert.False(Directory.Exists(repo.Full(".claude")));
+        Assert.StartsWith("wrote .vscode/mcp.json" + Environment.NewLine + "fuse: hooks installed", output.ToString(), StringComparison.Ordinal);
     }
 
     [Fact]

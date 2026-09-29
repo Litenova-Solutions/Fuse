@@ -1,5 +1,5 @@
 using Fuse.Failures;
-using Fuse.Hooks;
+using Fuse.Harnesses;
 using Fuse.Repo;
 using Fuse.Tests.Fixtures;
 using Fuse.Workspace;

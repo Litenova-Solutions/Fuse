@@ -157,21 +157,43 @@ public class EngineProcessTests
     }
 
     [Fact]
-    public async Task Pre_bash_hook_rewrites_dotnet_test()
+    public async Task Pre_shell_hook_rewrites_dotnet_test()
     {
         using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });
-        var result = await FuseProcess.RunAsync(repo.Path, """{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"dotnet test --no-build","description":"tests"}}""", "hook", "claude", "pre-bash");
+        var result = await FuseProcess.RunAsync(repo.Path, """{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"dotnet test --no-build","description":"tests"}}""", "hook", "claude", "pre-shell");
         Assert.Equal(0, result.ExitCode);
         Assert.Equal("""{"hookSpecificOutput":{"hookEventName":"PreToolUse","updatedInput":{"command":"fuse test --no-build","description":"tests"}}}""", result.Stdout);
     }
 
     [Fact]
-    public async Task OpenCode_pre_bash_hook_answers_with_the_command()
+    public async Task OpenCode_pre_shell_hook_answers_with_the_command()
     {
         using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });
-        var result = await FuseProcess.RunAsync(repo.Path, """{"tool_input":{"command":"dotnet build -c Release"}}""", "hook", "opencode", "pre-bash");
+        var result = await FuseProcess.RunAsync(repo.Path, """{"tool_input":{"command":"dotnet build -c Release"}}""", "hook", "opencode", "pre-shell");
         Assert.Equal(0, result.ExitCode);
         Assert.Equal("""{"command":"fuse build -c Release"}""", result.Stdout);
+    }
+
+    [Fact]
+    public async Task Pre_bash_is_no_longer_an_event_and_only_prints_usage()
+    {
+        // A registration written before the event was pre-shell still calls pre-bash. It rewrites nothing and exits 0,
+        // so the agent's command runs as it was, until the user reruns fuse init.
+        using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });
+        var result = await FuseProcess.RunAsync(repo.Path, """{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"dotnet test --no-build"}}""", "hook", "claude", "pre-bash");
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("", result.Stdout);
+        Assert.Equal("usage: fuse hook <claude|cursor|gemini|codex|copilot|opencode> <post-edit|pre-shell|stop>", result.Stderr.TrimEnd());
+    }
+
+    [Fact]
+    public async Task An_unknown_harness_only_prints_usage()
+    {
+        using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });
+        var result = await FuseProcess.RunAsync(repo.Path, """{"tool_input":{"command":"dotnet test"}}""", "hook", "vscode", "pre-shell");
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("", result.Stdout);
+        Assert.Equal("usage: fuse hook <claude|cursor|gemini|codex|copilot|opencode> <post-edit|pre-shell|stop>", result.Stderr.TrimEnd());
     }
 
     [Fact]

@@ -1,6 +1,7 @@
 using System.Text;
 using Fuse.Engine;
 using Fuse.Failures;
+using Fuse.Harnesses;
 using Fuse.Hooks;
 using Fuse.Mcp;
 using Fuse.Operations;

@@ -113,6 +113,15 @@ public class CodeDiffTests
         Assert.Equal(["method M", "type C"], Changed("class C { void M(int a) {} }", "class C { void M(ref int a) {} }"));
     }
 
+    [Fact]
+    public void A_body_edit_to_a_partial_method_s_implementation_in_the_same_file_marks_the_implementation()
+    {
+        const string Before = "partial class C { partial void M(); partial void M() { A(); } void A() {} }";
+        var after = Before.Replace("{ A(); }", "{ A(); A(); }", StringComparison.Ordinal);
+        var node = Assert.IsType<MethodDeclarationSyntax>(Assert.Single(CodeDiff.Find(Parse(Before), Parse(after))));
+        Assert.NotNull(node.Body);
+    }
+
     private static SyntaxNode Parse(string source) =>
         CSharpSyntaxTree.ParseText(source, cancellationToken: TestContext.Current.CancellationToken).GetRoot(TestContext.Current.CancellationToken);
 }

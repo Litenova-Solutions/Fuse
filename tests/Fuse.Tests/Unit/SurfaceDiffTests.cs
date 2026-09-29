@@ -116,6 +116,27 @@ public class SurfaceDiffTests
     }
 
     [Fact]
+    public void A_receiver_change_in_a_later_extension_block_is_a_change()
+    {
+        const string Before = "static class X { extension(string s) { public int Len => s.Length; } extension(int i) { public int Twice() => i * 2; } }";
+        var changes = Changes(Before, Before.Replace("extension(int i)", "extension(long i)", StringComparison.Ordinal));
+        // The block for int is gone with its member, and a block for long takes its place.
+        Assert.Contains(changes, c => c is DeclarationChange.Removed { Key: DeclarationKey.NamedType { Name: "X`0.extension`0( int)" } });
+        Assert.Contains(changes, c => c is DeclarationChange.Removed && Signature(c) == "M:Twice`0()");
+        Assert.Contains(changes, c => c is DeclarationChange.Added { Key: DeclarationKey.NamedType { Name: "X`0.extension`0( long)" } });
+    }
+
+    [Fact]
+    public void A_header_change_in_a_later_part_of_a_partial_type_is_a_broad_change()
+    {
+        const string Before = "public partial class P { } public partial class P : System.IDisposable { public void Dispose() { } }";
+        var compared = Compare(Before, Before.Replace(" : System.IDisposable", "", StringComparison.Ordinal));
+        var change = Assert.Single(compared.Changes);
+        Assert.IsType<DeclarationChange.Changed>(change);
+        Assert.True(compared.HasBroadChange);
+    }
+
+    [Fact]
     public void Top_level_statements_and_a_finalizer_are_not_part_of_the_surface() =>
         Assert.Empty(Changes("System.Console.WriteLine(1); class C { }", "System.Console.WriteLine(2); class C { ~C() {} }"));
 }

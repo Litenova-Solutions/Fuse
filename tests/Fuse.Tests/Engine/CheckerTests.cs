@@ -281,6 +281,51 @@ public class CheckerTests
     }
 
     [Fact]
+    public async Task A_receiver_change_in_a_later_extension_block_breaks_its_callers()
+    {
+        await using var engine = await StartWithAsync(
+            ("Lib/Ext.cs", "namespace Lib;\n\npublic static class Ext\n{\n    extension(string s)\n    {\n        public int Len() => s.Length;\n    }\n\n    extension(int i)\n    {\n        public int Twice() => i.GetHashCode() * 2;\n    }\n}\n"),
+            ("App/UseExt.cs", "using Lib;\n\nnamespace App;\n\npublic static class UseExt\n{\n    public static int Run() => \"ab\".Len() + 3.Twice();\n}\n"));
+        engine.Repo.Replace("Lib/Ext.cs", "extension(int i)", "extension(string i)");
+        var report = await engine.CheckAsync("Lib/Ext.cs");
+        Assert.Contains(report.Errors, e => e.Error.Path == "App/UseExt.cs");
+    }
+
+    [Fact]
+    public async Task A_changed_member_in_a_later_extension_block_breaks_its_callers()
+    {
+        await using var engine = await StartWithAsync(
+            ("Lib/Ext.cs", "namespace Lib;\n\npublic static class Ext\n{\n    extension(string s)\n    {\n        public int Size() => s.Length;\n    }\n\n    extension(int i)\n    {\n        public int Size() => i;\n    }\n}\n"),
+            ("App/UseExt.cs", "using Lib;\n\nnamespace App;\n\npublic static class UseExt\n{\n    public static int Run() => 3.Size();\n}\n"));
+        engine.Repo.Replace("Lib/Ext.cs", "public int Size() => i;", "public int Size(int scale) => i * scale;");
+        var report = await engine.CheckAsync("Lib/Ext.cs");
+        var error = Assert.Single(report.Errors);
+        Assert.Equal("App/UseExt.cs", error.Error.Path);
+        Assert.Equal(new Cause.Removed("public int Size()"), error.Cause);
+    }
+
+    [Fact]
+    public async Task A_base_type_removed_from_a_later_part_of_a_partial_class_breaks_its_users()
+    {
+        await using var engine = await StartWithAsync(
+            ("Lib/Part.cs", "namespace Lib;\n\npublic partial class Part\n{\n}\n\npublic partial class Part : System.IDisposable\n{\n    public void Dispose()\n    {\n    }\n}\n"),
+            ("App/UsePart.cs", "namespace App;\n\npublic static class UsePart\n{\n    public static void Run()\n    {\n        using var part = new Lib.Part();\n    }\n}\n"));
+        engine.Repo.Replace("Lib/Part.cs", "public partial class Part : System.IDisposable", "public partial class Part");
+        var report = await engine.CheckAsync("Lib/Part.cs");
+        Assert.Equal("CS1674", Assert.Single(report.Errors, e => e.Error.Path == "App/UsePart.cs").Error.Id);
+    }
+
+    /// <summary>The standard fixture with <paramref name="files"/> written and committed, so they are part of HEAD.</summary>
+    private static async Task<InProcessEngine> StartWithAsync(params (string Path, string Content)[] files)
+    {
+        var repo = FixtureRepo.CreateStandard();
+        foreach (var (path, content) in files)
+            repo.Write(path, content);
+        repo.Commit("fixture files");
+        return await InProcessEngine.StartAsync(repo);
+    }
+
+    [Fact]
     public async Task Restore_needed_is_reported_with_the_fix()
     {
         await using var engine = await InProcessEngine.StartAsync();

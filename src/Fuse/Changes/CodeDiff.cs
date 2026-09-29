@@ -42,8 +42,8 @@ internal static class CodeDiff
                 if (previous.Surface != declaration.Surface)
                     result.Add(declaration.Node);
             }
-            else if (!SyntaxFactory.AreEquivalent(CodeOf(previous), CodeOf(declaration), topLevel: false))
-                result.Add(CodeOf(declaration));
+            else
+                result.AddRange(ChangedParts(previous, declaration));
         }
 
         foreach (var declaration in WithCode(old))
@@ -78,7 +78,30 @@ internal static class CodeDiff
                 var node => node.Ancestors().OfType<BaseTypeDeclarationSyntax>().FirstOrDefault()?.SpanStart ?? node.SpanStart,
             });
 
+    /// <summary>
+    ///     The parts of <paramref name="current"/> whose code differs from the part in the same position at HEAD, such as
+    ///     the implementation of a partial method declared in the same file as its definition. When HEAD had more parts
+    ///     and the rest are unchanged, the first part stands for the one that is gone.
+    /// </summary>
+    private static IEnumerable<SyntaxNode> ChangedParts(DeclarationNode previous, DeclarationNode current)
+    {
+        var any = false;
+        for (var i = 0; i < current.Parts.Count; i++)
+        {
+            var code = CodeOf(current.Parts[i]);
+            if (i < previous.Parts.Count && SyntaxFactory.AreEquivalent(CodeOf(previous.Parts[i]), code, topLevel: false))
+                continue;
+            any = true;
+            yield return code;
+        }
+
+        if (!any && previous.Parts.Count > current.Parts.Count)
+            yield return CodeOf(current.Node);
+    }
+
     /// <summary>The syntax whose code is compared and returned: a field's whole declaration for one of its variables, and the declaring node otherwise.</summary>
-    private static SyntaxNode CodeOf(DeclarationNode declaration) =>
-        declaration.Node is VariableDeclaratorSyntax { Parent.Parent: BaseFieldDeclarationSyntax field } ? field : declaration.Node;
+    private static SyntaxNode CodeOf(DeclarationNode declaration) => CodeOf(declaration.Node);
+
+    private static SyntaxNode CodeOf(SyntaxNode node) =>
+        node is VariableDeclaratorSyntax { Parent.Parent: BaseFieldDeclarationSyntax field } ? field : node;
 }

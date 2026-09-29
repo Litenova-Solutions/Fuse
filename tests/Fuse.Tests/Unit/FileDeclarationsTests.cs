@@ -49,11 +49,30 @@ public class FileDeclarationsTests
     }
 
     [Fact]
-    public void The_first_part_of_a_partial_type_in_a_file_is_kept()
+    public void The_parts_of_a_partial_type_in_a_file_are_one_declaration_whose_surface_holds_every_header()
     {
-        var declarations = Of("partial class C : System.IDisposable { } partial class C { void M() { } }");
-        Assert.Contains("IDisposable", declarations.Find(new DeclarationKey.NamedType("C`0"))!.Surface, StringComparison.Ordinal);
+        var declarations = Of("partial class C { } partial class C : System.IDisposable { void M() { } }");
+        var type = declarations.Find(new DeclarationKey.NamedType("C`0"))!;
+        // The second part's base list is part of the surface, so removing it from that part is a change.
+        Assert.Contains("IDisposable", type.Surface, StringComparison.Ordinal);
+        Assert.Equal(2, type.Parts.Count);
+        Assert.Same(type.Parts[0], type.Node);
+        Assert.Single(declarations.All, d => d.Key is DeclarationKey.NamedType);
         Assert.Equal(["M:M`0()"], Signatures(declarations));
+    }
+
+    [Fact]
+    public void Each_extension_block_is_keyed_by_its_receiver_and_carries_its_class_s_name()
+    {
+        var declarations = Of("static class X { extension(string s) { public int Len => s.Length; } extension<T>(System.Collections.Generic.List<T> list) { public int Twice() => 2; } }");
+        var blocks = declarations.All.Where(d => d.Node is ExtensionBlockDeclarationSyntax).ToList();
+        Assert.Equal(
+            [new DeclarationKey.NamedType("X`0.extension`0( string)"), new DeclarationKey.NamedType("X`0.extension`1( System . Collections . Generic . List < T >)")],
+            blocks.Select(b => b.Key));
+        Assert.All(blocks, b => Assert.Equal(["X"], b.Names));
+        // A member is keyed under its block, so members of the same name in two blocks do not collide.
+        var member = Assert.IsType<DeclarationKey.Member>(declarations.All.Single(d => d.Names[0] == "Twice").Key);
+        Assert.Equal(blocks[1].Key, member.Container);
     }
 
     [Fact]

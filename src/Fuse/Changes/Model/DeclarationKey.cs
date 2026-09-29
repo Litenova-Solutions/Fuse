@@ -8,7 +8,8 @@ namespace Fuse.Changes.Model;
 /// </summary>
 /// <remarks>
 ///     A key is read from syntax alone and is compared ordinally, with formatting and comments left out of every part
-///     that holds code. Two parts of a partial type or member in one file share a key.
+///     that holds code. Two parts of a partial type or member in one file share a key, and so do two extension blocks of
+///     one class for the same receiver.
 /// </remarks>
 internal abstract record DeclarationKey
 {
@@ -31,10 +32,11 @@ internal abstract record DeclarationKey
     /// <summary>The top-level statements of the file, which the compiler turns into the application's entry point.</summary>
     public sealed record TopLevelStatements : DeclarationKey;
 
-    /// <summary>A class, struct, interface, enum, record or delegate.</summary>
+    /// <summary>A class, struct, interface, enum, record, delegate or extension block.</summary>
     /// <param name="Name">
     ///     The namespace-qualified name with each type's arity after a backtick, containing types first:
-    ///     <c>Shop.Order`0.Line`1</c>.
+    ///     <c>Shop.Order`0.Line`1</c>. An extension block, which has no name, is <c>extension</c> with its arity and its
+    ///     receiver's type: <c>Shop.Text`0.extension`0( string)</c>.
     /// </param>
     public sealed record NamedType(string Name) : DeclarationKey;
 

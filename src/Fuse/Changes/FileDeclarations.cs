@@ -14,18 +14,21 @@ namespace Fuse.Changes;
 /// </summary>
 /// <remarks>
 ///     <para>
-///         Read from syntax alone, so it costs a parse and no binding. When the file declares one key twice (two parts of
-///         a partial type, or the definition and the implementation of a partial member), the first is kept.
+///         Read from syntax alone, so it costs a parse and no binding. When the file declares one key more than once (the
+///         parts of a partial type, the definition and the implementation of a partial member, or two extension blocks
+///         for the same receiver), they are one declaration with every part in <see cref="DeclarationNode.Parts"/> and
+///         every part's surface in its <see cref="DeclarationNode.Surface"/>, so an edit to any part is seen.
 ///     </para>
 ///     <para>
 ///         The order is the file's: global usings and file-level attribute lists, then the namespaces, types and members
-///         as they are written, each type before its members, then the ordinary using directives.
+///         as they are written, each type before its members, then the ordinary using directives. A declaration with
+///         several parts stands where its first part does.
 ///     </para>
 /// </remarks>
 internal sealed class FileDeclarations
 {
     private readonly List<DeclarationNode> _all = [];
-    private readonly Dictionary<DeclarationKey, DeclarationNode> _byKey = [];
+    private readonly Dictionary<DeclarationKey, int> _indexOf = [];
 
     private FileDeclarations()
     {
@@ -38,7 +41,7 @@ internal sealed class FileDeclarations
     public IReadOnlyList<DeclarationNode> All => _all;
 
     /// <summary>The declaration under <paramref name="key"/>, or null when this version of the file does not declare it.</summary>
-    public DeclarationNode? Find(DeclarationKey key) => _byKey.GetValueOrDefault(key);
+    public DeclarationNode? Find(DeclarationKey key) => _indexOf.TryGetValue(key, out var index) ? _all[index] : null;
 
     /// <summary>Reads the declarations of the file whose syntax root is <paramref name="root"/>.</summary>
     public static FileDeclarations Of(SyntaxNode root)
@@ -71,11 +74,25 @@ internal sealed class FileDeclarations
         return declarations;
     }
 
+    /// <summary>
+    ///     Adds a declaration, or a further part of one the file already declared under <paramref name="key"/>. A further
+    ///     part keeps the first part's names and container, which are the same for every part.
+    /// </summary>
     private void Add(DeclarationKey key, SyntaxNode node, string? surface, IReadOnlyList<string> names, DeclarationKey.NamedType? container)
     {
-        var declaration = new DeclarationNode(key, node, surface, names, container);
-        if (_byKey.TryAdd(key, declaration))
-            _all.Add(declaration);
+        if (_indexOf.TryGetValue(key, out var index))
+        {
+            var first = _all[index];
+            _all[index] = first with
+            {
+                Parts = [.. first.Parts, node],
+                Surface = first.Surface is null ? surface : surface is null ? first.Surface : first.Surface + "\n" + surface,
+            };
+            return;
+        }
+
+        _indexOf[key] = _all.Count;
+        _all.Add(new DeclarationNode(key, [node], surface, names, container));
     }
 
     private void Walk(SyntaxNode node, string container)
@@ -99,10 +116,22 @@ internal sealed class FileDeclarations
 
     private void AddType(BaseTypeDeclarationSyntax type, string container, DeclarationKey.NamedType? outer)
     {
-        var name = type.Identifier.Text;
         var typeParams = type is TypeDeclarationSyntax t ? t.TypeParameterList : null;
-        var qualified = $"{Qualify(container, name)}`{Arity(typeParams)}";
-        var key = new DeclarationKey.NamedType(qualified);
+        string name;
+        DeclarationKey.NamedType key;
+        if (type is ExtensionBlockDeclarationSyntax block)
+        {
+            // An extension block has no name. Its receiver tells it apart from the other blocks of its class, and code
+            // that names anything of it names the class.
+            name = (type.Parent as BaseTypeDeclarationSyntax)?.Identifier.Text ?? "";
+            key = new DeclarationKey.NamedType($"{Qualify(container, "extension")}`{Arity(typeParams)}({ParameterTypes(block.ParameterList)})");
+        }
+        else
+        {
+            name = type.Identifier.Text;
+            key = new DeclarationKey.NamedType($"{Qualify(container, name)}`{Arity(typeParams)}");
+        }
+
         var header = new StringBuilder();
         header.Append(Flat(type.AttributeLists)).Append(' ').Append(type.Modifiers.ToString()).Append(' ');
         header.Append(type switch
@@ -112,7 +141,9 @@ internal sealed class FileDeclarations
             EnumDeclarationSyntax e => e.EnumKeyword.Text,
             _ => "",
         });
-        header.Append(' ').Append(name).Append(Flat(typeParams));
+        if (type is not ExtensionBlockDeclarationSyntax)
+            header.Append(' ').Append(name);
+        header.Append(Flat(typeParams));
         if (type is TypeDeclarationSyntax withParams)
             header.Append(Flat(withParams.ParameterList)).Append(Flat(withParams.ConstraintClauses));
         header.Append(Flat(type.BaseList));

@@ -6,7 +6,7 @@ This page is the reference for every `fuse` command: its arguments, what it prin
 
 ```text
 $ fuse help
-fuse - instant C# compiler feedback and affected-test runs for coding agents
+fuse - faster C# compiler feedback and affected-test runs for coding agents
 
   fuse init                 register Fuse's hooks with the agent harnesses this repository uses
   fuse check [files...]     errors the working tree has that HEAD does not, across dependent projects

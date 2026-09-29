@@ -2,6 +2,10 @@
 
 <!-- What the change does and why. -->
 
+## AI assistance
+
+<!-- Which AI tools you used and for what (code, tests, documentation, this description), or "none". See the AI policy: https://github.com/Litenova-Solutions/Fuse/blob/main/docs/ai-policy.md -->
+
 ## Verification
 
 - [ ] `dotnet build Fuse.slnx -c Release`
@@ -11,4 +15,5 @@
 
 ## Sign-off
 
+- [ ] I have reviewed every change in this pull request and can explain it, as the [AI policy](https://github.com/Litenova-Solutions/Fuse/blob/main/docs/ai-policy.md) asks.
 - [ ] Every commit is signed off with the Developer Certificate of Origin: `git commit -s` adds the `Signed-off-by:` line that [DCO.txt](https://github.com/Litenova-Solutions/Fuse/blob/main/DCO.txt) describes, and `git rebase --signoff` adds it to commits already made.

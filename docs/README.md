@@ -21,8 +21,10 @@ This index lists every page of Fuse's documentation by what you want to do, and 
 
 ## Contribute
 
-- [Contributing](contributing.md): how do I build, test and submit a change?
+- [Contributing](../CONTRIBUTING.md): how do I build, test and submit a change?
+- [AI policy](ai-policy.md): how may I use AI tools and coding agents to contribute?
+- [Code of conduct](../.github/CODE_OF_CONDUCT.md): how do we treat each other, and how do I report a violation?
 - [AGENTS.md](../AGENTS.md): what rules do the code and the documentation follow?
 - [Architecture](architecture.md): how is the code organized, and what are its words?
 - [Evals](evals.md): how are the results measured, and how do I run the evals?
-- [Security](security.md): how do I report a vulnerability?
+- [Security](../SECURITY.md): how do I report a vulnerability?

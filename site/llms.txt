@@ -25,8 +25,8 @@ Fuse needs the .NET 10 SDK. Install it with `dotnet tool install -g Fuse`, then 
 ## Optional
 
 - [Architecture](https://raw.githubusercontent.com/Litenova-Solutions/Fuse/main/docs/architecture.md): how the code is organized, for contributors and coding agents
-- [Contributing](https://raw.githubusercontent.com/Litenova-Solutions/Fuse/main/docs/contributing.md): how to build, test and submit a change
-- [Security](https://raw.githubusercontent.com/Litenova-Solutions/Fuse/main/docs/security.md): supported versions and how to report a vulnerability
+- [Contributing](https://raw.githubusercontent.com/Litenova-Solutions/Fuse/main/CONTRIBUTING.md): how to build, test and submit a change
+- [Security](https://raw.githubusercontent.com/Litenova-Solutions/Fuse/main/SECURITY.md): supported versions and how to report a vulnerability
 - [Changelog](https://raw.githubusercontent.com/Litenova-Solutions/Fuse/main/docs/changelog.md): what changed in each release
 - [GitHub repository](https://github.com/Litenova-Solutions/Fuse): source code, issues and releases
 - [NuGet package](https://www.nuget.org/packages/Fuse): the Fuse dotnet tool package

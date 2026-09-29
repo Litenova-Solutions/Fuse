@@ -8,7 +8,7 @@ Security fixes ship in patch releases of the latest 5.x minor version.
 
 ## Reporting a vulnerability
 
-Do not open a public GitHub issue for a security report. Email security@litenova.com with a description of the issue and its impact, the steps to reproduce it, the output of `fuse --version`, and your operating system. We acknowledge a report within 3 business days and agree the timing of disclosure with you.
+Do not open a public GitHub issue for a security report. Report it privately with **Report a vulnerability** on the repository's [Security tab](https://github.com/Litenova-Solutions/Fuse/security), or email info@fuse.codes, with a description of the issue and its impact, the steps to reproduce it, the output of `fuse --version`, and your operating system. We acknowledge a report within 3 business days and agree the timing of disclosure with you.
 
 ## Scope
 

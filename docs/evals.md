@@ -133,7 +133,7 @@ Medians are over the cases, and the average of the two middle values for an even
 | Test selection or test runs: `Fuse.Testing`, `TestOperation` | `selection` on the fixture and on at least one pinned repository |
 | The engine, the protocol, the client, the build lock, or anything on a request's path | `latency` |
 
-Attach the result to the pull request, as [Contributing](contributing.md) asks. The published set in [Results](results.md) is `all` on the fixture and on each pinned repository: twelve files.
+Attach the result to the pull request, as [Contributing](../CONTRIBUTING.md) asks. The published set in [Results](results.md) is `all` on the fixture and on each pinned repository: twelve files.
 
 ## Quoting the numbers
 

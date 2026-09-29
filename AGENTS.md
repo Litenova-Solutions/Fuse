@@ -18,8 +18,8 @@ Fuse is one .NET tool (`fuse`) that keeps a warm Roslyn compilation of a reposit
   - `Paths/`, `Failures/`, `Telemetry/`: `RepoRoot` and `RepoPath`, `FuseException` and `ErrorCode`, `PhaseTimes` and `EngineLog`.
 - `tests/Fuse.Tests`: unit, engine and process tests over generated fixture repositories, and `Architecture/NamespaceDependencyTests`, which fails the build when a namespace uses one it may not.
 - `evals/Fuse.Evals`: the correctness, selection and latency evals, and the chart renderer; results in `evals/results`.
-- `docs/`: all documentation except this file and the README.
-- `site/`: the website at fuse.codes, static pages sharing `style.css`, with `robots.txt`, `sitemap.xml` and `llms.txt` for crawlers and agents, and `benefits.svg`, which `dotnet run --project evals/Fuse.Evals -c Release -- chart` renders from `evals/results`. Vercel deploys it from `main` with `site` as the project root and no build step.
+- `docs/`: all documentation except this file, the README, `CONTRIBUTING.md` and `SECURITY.md` in the root, and `CODE_OF_CONDUCT.md` and `SUPPORT.md` in `.github/`, where GitHub reads them.
+- `site/`: the website at fuse.codes, static pages sharing `style.css`, with `robots.txt`, `sitemap.xml` and `llms.txt` for crawlers and agents, and `benefits.svg`, which `dotnet run --project evals/Fuse.Evals -c Release -- chart` renders from `evals/results`. Cloudflare Workers serves it as static assets, configured by `wrangler.jsonc` at the repository root with response headers in `site/_headers`, deployed from `main` with no build step.
 
 ## Build, test, format
 
@@ -44,6 +44,7 @@ Tests generate real git repositories and restore them, so the first run needs Nu
 - Layers follow [docs/architecture.md](docs/architecture.md). A new namespace gets a row in its dependency table and in `NamespaceDependencyTests` in the same change.
 - One word per concept, in code, output, comments and docs: the vocabulary in [docs/architecture.md](docs/architecture.md) decides. Text says what is true now, in plain sentences, with keyboard punctuation only.
 - New tests must run: confirm the test count went up.
+- A commit an agent helped write carries an `Assisted-by:` trailer, and its `Signed-off-by:` line is the person's, as [docs/ai-policy.md](docs/ai-policy.md) says.
 
 ## Releases
 

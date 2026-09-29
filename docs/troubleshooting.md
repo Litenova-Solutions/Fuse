@@ -107,10 +107,10 @@ These lines are from the engine of the [getting started](getting-started.md) sam
 2026-09-29 04:54:16.273 loaded Lib.Tests in 1657 ms (3 projects open)
 2026-09-29 04:54:17.605 check: binding 1120 ms, analyzers 526 ms (summed over files); 1 target(s) in 2901 ms, 1 with declaration changes, 3 file(s) bound, 7960 ms total
 2026-09-29 04:54:17.607 CheckChanges took 10157 ms
-2026-09-29 04:54:17.608 phases id=36420-1 kind=CheckChanges gate=0.0 sync=119.2 load=2067.6 bindTargets=2901.9 surfaceDiff=49.5 load=3684.6 referenceSearch=953.1 bindCandidates=369.0 total=10157.0
+2026-09-29 04:54:17.608 phases id=36420-1 kind=CheckChanges gate=0.0 sync=119.2 load=2067.6 bindTargets=2901.9 surfaceDiff=49.5 loadDependents=3684.6 referenceSearch=953.1 bindCandidates=369.0 total=10157.0
 2026-09-29 04:54:22.943 check: binding 0 ms, analyzers 0 ms (summed over files); 1 target(s) in 0 ms, 1 with declaration changes, 3 file(s) bound, 5 ms total
 2026-09-29 04:54:22.943 CheckFiles Calc.cs took 15 ms
-2026-09-29 04:54:22.944 phases id=45888-1 kind=CheckFiles gate=0.0 sync=3.3 load=0.0 bindTargets=0.7 surfaceDiff=2.6 load=0.0 referenceSearch=1.9 bindCandidates=0.6 total=15.0
+2026-09-29 04:54:22.944 phases id=45888-1 kind=CheckFiles gate=0.0 sync=3.3 load=0.0 bindTargets=0.7 surfaceDiff=2.6 loadDependents=0.0 referenceSearch=1.9 bindCandidates=0.6 total=15.0
 2026-09-29 04:54:37.837 test plan: selection in 71 ms: Lib.Tests 1 pattern(s)
 2026-09-29 04:54:38.277 test plan: Lib.Tests [Lib.Tests] runs from C:\...\shadow\Lib.Tests\Lib.Tests.dll after 512 ms
 2026-09-29 04:54:38.279 PlanAffectedTests took 516 ms
@@ -132,7 +132,8 @@ phases id=<client process id>-<n> kind=<request> <phase>=<ms> ... total=<ms>
 - The phases follow in the order they ran, in milliseconds:
     - `gate`: waiting for the requests ahead of it.
     - `sync`: folding the file changes since the previous request into both views.
-    - `load`: loading projects; a check can show it twice, once for the owners of the checked files and once for the dependents of a declaration change.
+    - `load`: loading the projects that own the checked files, or for a test plan the projects it needs.
+    - `loadDependents`: loading the dependents of the projects with a declaration change.
     - `bindTargets`, `surfaceDiff`, `referenceSearch`, `bindCandidates`: the steps of a check, as [How it works](how-it-works.md#check) describes them.
     - `selection` and `mirror`: selecting the tests, and preparing the copies for runs without MSBuild.
     - `total`: the whole request from the moment it held the request lock. It is counted in system clock ticks, so on Windows a request that took less than about 16 ms shows `total=0.0`.

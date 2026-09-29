@@ -107,7 +107,7 @@ public class CauseLinesTests
         Assert.Equal("Lib/Calc.cs", error.Error.Path);
         Assert.Null(error.Cause);
         Assert.Empty(PrintedCauses(result));
-        Assert.Equal(0, result.CausesLeftOut);
+        Assert.False(error.IsCauseLeftOut);
     }
 
     [Fact]
@@ -124,13 +124,14 @@ public class CauseLinesTests
             errors.Add(new(path, 1, 1, "CS1061", "no definition"));
         }
 
-        var (attached, leftOut) = CauseLines.Attach(errors, new Reach.Precise(causes), Root, []);
+        var attached = CauseLines.Attach(errors, new Reach.Precise(causes), Root, []);
 
         Assert.Equal(errors, attached.Select(e => e.Error));
         Assert.Equal(CauseLines.MaxLines, attached.Count(e => e.Cause is not null));
         Assert.All(attached.Take(CauseLines.MaxLines), e => Assert.NotNull(e.Cause));
         Assert.All(attached.Skip(CauseLines.MaxLines), e => Assert.Null(e.Cause));
-        Assert.Equal(15, leftOut);
+        Assert.All(attached.Skip(CauseLines.MaxLines), e => Assert.True(e.IsCauseLeftOut));
+        Assert.Equal(15, attached.Count(e => e.IsCauseLeftOut));
         Assert.Equal(new Cause.Changed("public int Method0()"), attached[0].Cause);
     }
 
@@ -156,12 +157,13 @@ public class CauseLinesTests
             errors.Add(new(path, 1, 1, "CS1061", "no definition"));
         }
 
-        var (attached, leftOut) = CauseLines.Attach(errors, new Reach.Precise(causes), Root, [Root.PathOf("src/Target.cs")]);
+        var attached = CauseLines.Attach(errors, new Reach.Precise(causes), Root, [Root.PathOf("src/Target.cs")]);
 
         Assert.All(attached.Take(3), e => Assert.Null(e.Cause));
         Assert.Equal(CauseLines.MaxLines, attached.Count(e => e.Cause is not null));
         Assert.Equal(new Cause.Removed("public int Method0()"), attached[3].Cause);
-        Assert.Equal(2, leftOut);
+        Assert.All(attached.Take(3), e => Assert.False(e.IsCauseLeftOut));
+        Assert.Equal(2, attached.Count(e => e.IsCauseLeftOut));
     }
 
     [Fact]
@@ -172,9 +174,9 @@ public class CauseLinesTests
 
         foreach (var reach in new Reach[] { new Reach.None(), new Reach.Broad(files) })
         {
-            var (attached, leftOut) = CauseLines.Attach(errors, reach, Root, []);
-            Assert.Null(Assert.Single(attached).Cause);
-            Assert.Equal(0, leftOut);
+            var attached = Assert.Single(CauseLines.Attach(errors, reach, Root, []));
+            Assert.Null(attached.Cause);
+            Assert.False(attached.IsCauseLeftOut);
         }
     }
 
@@ -186,7 +188,6 @@ public class CauseLinesTests
 
         Assert.Empty(result.Errors);
         Assert.Empty(PrintedCauses(result));
-        Assert.Equal(0, result.CausesLeftOut);
         Assert.Contains("no errors introduced", Render(result), StringComparison.Ordinal);
     }
 

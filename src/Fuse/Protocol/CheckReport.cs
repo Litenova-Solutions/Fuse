@@ -7,12 +7,10 @@ namespace Fuse.Protocol;
 /// <param name="DeclarationsChangedIn">Projects whose declarations changed, which is what triggers checking dependents.</param>
 /// <param name="DependentProjectsChecked">Number of dependent projects searched for breaks.</param>
 /// <param name="CheckedWholeProjects">True when the candidate count exceeded the threshold and whole projects were checked.</param>
-/// <param name="CausesLeftOut">How many errors had a cause that the cap on causes per answer left out.</param>
 internal sealed record CheckReport(
     ReportedError[] Errors,
     int FilesChecked,
     string[] Projects,
     string[] DeclarationsChangedIn,
     int DependentProjectsChecked,
-    bool CheckedWholeProjects,
-    int CausesLeftOut);
+    bool CheckedWholeProjects);

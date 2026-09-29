@@ -70,8 +70,10 @@ internal static class CheckOperation
             scope.Add($"{string.Join(", ", report.DeclarationsChangedIn)} declarations changed, {report.DependentProjectsChecked} dependent project(s) checked");
         if (report.CheckedWholeProjects)
             scope.Add("checked whole projects");
-        if (report.CausesLeftOut > 0)
-            scope.Add($"{report.CausesLeftOut} cause(s) left out");
+        // Counted among the printed errors only, since a cause left out of an error that is not printed is no loss.
+        var causesLeftOut = report.Errors.Take(MaxShown).Count(e => e.IsCauseLeftOut);
+        if (causesLeftOut > 0)
+            scope.Add($"{causesLeftOut} cause(s) left out");
         var scopeText = scope.Count > 0 ? "; " + string.Join("; ", scope) : "";
 
         if (report.Errors.Length == 0)

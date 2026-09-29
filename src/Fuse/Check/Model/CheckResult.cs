@@ -10,12 +10,10 @@ namespace Fuse.Check.Model;
 /// </param>
 /// <param name="DependentProjectsChecked">How many dependents of those projects the check searched and bound.</param>
 /// <param name="CheckedWholeProjects">True when there were too many candidates to bind one at a time, so whole projects were bound.</param>
-/// <param name="CausesLeftOut">How many errors had a cause that the cap on causes per answer left out.</param>
 internal sealed record CheckResult(
     IReadOnlyList<IntroducedError> Errors,
     int FilesChecked,
     IReadOnlyList<string> Projects,
     IReadOnlyList<string> DeclarationsChangedIn,
     int DependentProjectsChecked,
-    bool CheckedWholeProjects,
-    int CausesLeftOut);
+    bool CheckedWholeProjects);

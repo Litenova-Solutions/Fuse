@@ -33,7 +33,7 @@ public class PhaseTimingTests
 
         var (result, phases) = await engine.CheckWithPhasesAsync("Lib/Calc.cs");
 
-        Assert.Equal(["sync", "load", "bindTargets", "surfaceDiff", "load", "referenceSearch", "bindCandidates"], phases.Select(p => p.Phase));
+        Assert.Equal(["sync", "load", "bindTargets", "surfaceDiff", "loadDependents", "referenceSearch", "bindCandidates"], phases.Select(p => p.Phase));
         Assert.All(phases, p => Assert.True(p.Ms >= 0, $"{p.Phase} was {p.Ms}"));
         Assert.True(result.DependentProjectsChecked > 0, $"checked {result.DependentProjectsChecked} dependent project(s)");
     }

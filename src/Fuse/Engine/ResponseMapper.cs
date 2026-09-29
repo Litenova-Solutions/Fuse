@@ -23,13 +23,12 @@ internal static class ResponseMapper
 
     /// <summary>A check result as the client receives it, each error carrying the cause to print under it.</summary>
     public static CheckReport Report(CheckResult result) => new(
-        [.. result.Errors.Select(e => new ReportedError(e.Error, Reported(e.Cause)))],
+        [.. result.Errors.Select(e => new ReportedError(e.Error, Reported(e.Cause), e.IsCauseLeftOut))],
         result.FilesChecked,
         [.. result.Projects],
         [.. result.DeclarationsChangedIn],
         result.DependentProjectsChecked,
-        result.CheckedWholeProjects,
-        result.CausesLeftOut);
+        result.CheckedWholeProjects);
 
     /// <summary>A test plan as the client receives it, each run with the mode the client starts it in and its project file's absolute path.</summary>
     public static TestPlan Plan(TestPlanResult result) => new(

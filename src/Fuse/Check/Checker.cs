@@ -33,7 +33,7 @@ internal sealed class Checker
 {
     private const int MaxReported = 200;
 
-    private static readonly CheckResult NoTargets = new([], 0, [], [], 0, false, 0);
+    private static readonly CheckResult NoTargets = new([], 0, [], [], 0, false);
 
     private readonly RepoWorkspace _workspace;
     private readonly TargetResolver _targets;
@@ -96,7 +96,7 @@ internal sealed class Checker
                 .ToList();
             var loadingDependents = phases.Start();
             await _workspace.EnsureLoadedAsync(dependents, cancellationToken).ConfigureAwait(false);
-            phases.Add(Phase.Load, loadingDependents);
+            phases.Add(Phase.LoadDependents, loadingDependents);
 
             var reached = changedIn.Concat(dependents).ToList();
             var searching = phases.Start();
@@ -122,15 +122,14 @@ internal sealed class Checker
             .ToArray();
         var (compilerMs, analyzerMs) = _introduced.TakeTimings();
         _workspace.Log($"check: binding {compilerMs} ms, analyzers {analyzerMs} ms (summed over files); {targets.Count} target(s) in {targetsMs} ms, {changedTargets.Count} with declaration changes, {filesChecked} file(s) bound, {timer.ElapsedMilliseconds} ms total{(wholeProjects ? ", whole projects" : "")}");
-        var (reported, causesLeftOut) = CauseLines.Attach([.. ordered.Take(MaxReported)], reach, root, targets);
+        var reported = CauseLines.Attach([.. ordered.Take(MaxReported)], reach, root, targets);
         return new CheckResult(
             reported,
             filesChecked,
             projects,
             [.. changedIn.Select(p => p.Name)],
             dependents.Count,
-            wholeProjects,
-            causesLeftOut);
+            wholeProjects);
     }
 
     private static List<ProjectNode> OwnersOf(RepoGraph graph, IEnumerable<RepoPath> paths) =>

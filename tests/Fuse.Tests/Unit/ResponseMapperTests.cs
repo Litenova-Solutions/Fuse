@@ -19,18 +19,20 @@ public class ResponseMapperTests
     private static readonly CompilerError Changed = new("App/Report.cs", 5, 9, "CS1503", "cannot convert from 'int' to 'long'");
     private static readonly CompilerError Analyzed = new("Lib/Calc.cs", 7, 5, "CA1825", "Avoid zero-length array allocations", FromAnalyzer: true);
 
+    private static readonly CompilerError LeftOut = new("App/Other.cs", 9, 1, "CS1061", "no Add");
+
     private static readonly CheckResult Result = new(
         [
             new IntroducedError(Removed, new Cause.Removed("public int Add(int a, int b)")),
             new IntroducedError(Changed, new Cause.Changed("public static string Format(long value)")),
             new IntroducedError(Analyzed),
+            new IntroducedError(LeftOut, IsCauseLeftOut: true),
         ],
         FilesChecked: 7,
         Projects: ["App", "Lib"],
         DeclarationsChangedIn: ["Lib"],
         DependentProjectsChecked: 3,
-        CheckedWholeProjects: true,
-        CausesLeftOut: 4);
+        CheckedWholeProjects: true);
 
     // The project files are never read, so any root will do; the wire carries each as its absolute path.
     private static readonly RepoRoot Root = FixtureRepo.CheckoutRoot;
@@ -50,7 +52,7 @@ public class ResponseMapperTests
     {
         var report = ResponseMapper.Report(Result);
 
-        Assert.Equal([Removed, Changed, Analyzed], report.Errors.Select(e => e.Error));
+        Assert.Equal([Removed, Changed, Analyzed, LeftOut], report.Errors.Select(e => e.Error));
         Assert.Equal(new ReportedCause(CauseKind.Removed, "public int Add(int a, int b)"), report.Errors[0].Cause);
         Assert.Equal(new ReportedCause(CauseKind.Changed, "public static string Format(long value)"), report.Errors[1].Cause);
         Assert.Equal(7, report.FilesChecked);
@@ -58,7 +60,7 @@ public class ResponseMapperTests
         Assert.Equal(["Lib"], report.DeclarationsChangedIn);
         Assert.Equal(3, report.DependentProjectsChecked);
         Assert.True(report.CheckedWholeProjects);
-        Assert.Equal(4, report.CausesLeftOut);
+        Assert.Equal([false, false, false, true], report.Errors.Select(e => e.IsCauseLeftOut));
     }
 
     [Fact]
@@ -77,13 +79,14 @@ public class ResponseMapperTests
         var read = ProtocolJson.ReadResponse(line);
 
         var report = Assert.IsType<EngineResponse.CheckAnswered>(read).Report;
-        Assert.Equal([Removed, Changed, Analyzed], report.Errors.Select(e => e.Error));
-        Assert.Equal([new ReportedCause(CauseKind.Removed, "public int Add(int a, int b)"), new ReportedCause(CauseKind.Changed, "public static string Format(long value)"), null], report.Errors.Select(e => e.Cause));
-        Assert.Equal((7, 3, true, 4), (report.FilesChecked, report.DependentProjectsChecked, report.CheckedWholeProjects, report.CausesLeftOut));
+        Assert.Equal([Removed, Changed, Analyzed, LeftOut], report.Errors.Select(e => e.Error));
+        Assert.Equal([new ReportedCause(CauseKind.Removed, "public int Add(int a, int b)"), new ReportedCause(CauseKind.Changed, "public static string Format(long value)"), null, null], report.Errors.Select(e => e.Cause));
+        Assert.Equal([false, false, false, true], report.Errors.Select(e => e.IsCauseLeftOut));
+        Assert.Equal((7, 3, true), (report.FilesChecked, report.DependentProjectsChecked, report.CheckedWholeProjects));
         Assert.Equal(["Lib"], report.DeclarationsChangedIn);
         // The field names are the ones the Renames table in docs/architecture.md gives the wire.
         Assert.StartsWith("{\"status\":\"CheckAnswered\",\"report\":{", line, StringComparison.Ordinal);
-        foreach (var name in new[] { "\"errors\"", "\"cause\"", "\"kind\":\"Removed\"", "\"fromAnalyzer\":true", "\"declarationsChangedIn\"", "\"checkedWholeProjects\"", "\"causesLeftOut\"" })
+        foreach (var name in new[] { "\"errors\"", "\"cause\"", "\"kind\":\"Removed\"", "\"fromAnalyzer\":true", "\"declarationsChangedIn\"", "\"checkedWholeProjects\"", "\"isCauseLeftOut\":true" })
             Assert.Contains(name, line, StringComparison.Ordinal);
     }
 

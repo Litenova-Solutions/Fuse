@@ -7,4 +7,8 @@ namespace Fuse.Check.Model;
 ///     error in a target, an analyzer error, an error under a reach that is not precise, and an error past the cap on
 ///     causes per answer. Only rendering reads it, so a null here changes no control flow.
 /// </param>
-internal sealed record IntroducedError(CompilerError Error, Cause? Cause = null);
+/// <param name="IsCauseLeftOut">
+///     True when the error had a cause and the cap on causes per answer left it out. The client counts these among the
+///     errors it prints, so the summary's "cause(s) left out" counts only lines the reader could have seen.
+/// </param>
+internal sealed record IntroducedError(CompilerError Error, Cause? Cause = null, bool IsCauseLeftOut = false);

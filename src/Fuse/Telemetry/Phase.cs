@@ -13,8 +13,11 @@ internal static class Phase
     /// <summary>Folding the file changes seen since the last request into both solutions.</summary>
     public const string Sync = "sync";
 
-    /// <summary>Loading the projects a request needs, the owners of the targets and then their dependents.</summary>
+    /// <summary>Loading the projects a request needs: for a check, the owners of the targets.</summary>
     public const string Load = "load";
+
+    /// <summary>Loading the dependents of the projects with declaration changes, which a check binds candidates in.</summary>
+    public const string LoadDependents = "loadDependents";
 
     /// <summary>Binding the targets and keeping the errors HEAD does not have.</summary>
     public const string BindTargets = "bindTargets";

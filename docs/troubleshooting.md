@@ -23,7 +23,7 @@ A hook prints something only when the edit introduced errors or a project needs 
 
 Fuse 5.1.0 names the shell event `pre-shell`. Settings written by 5.0.0 call `fuse hook <harness> pre-bash`, which 5.1.0 answers with a usage line on standard error and exit code 0, so the harness runs the command unchanged. Run `fuse init` again in each repository after updating; it replaces Fuse's hook entries and the OpenCode plugin and keeps everything else ([Harnesses](harnesses.md#running-fuse-init-again)).
 
-The engine needs no action after an update. The first request from the updated client reaches the running engine of the earlier build, which answers `Restart` and exits; the client then starts an engine of its own build and sends the request again. `engine.log` records it as `client version <build> differs; exiting so the client can start a matching engine`.
+The engine needs no action after an update. The first request from the updated client reaches the running engine of the earlier build, which answers `Restart` and exits; the client then starts an engine of its own build and sends the request again. `engine.log` records it as `client version <build> differs; exiting so the client can start a matching engine`, with the client's build id in place of `<build>`. A 5.0.0 engine cannot read the build id of a 5.1.0 request and leaves the place empty; a 5.1.0 engine writes `(none)` there for a request that carries no build id, such as one from a 5.0.0 client.
 
 ## Restore needed
 

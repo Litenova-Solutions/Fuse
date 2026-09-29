@@ -101,7 +101,8 @@ internal static class EngineServer
                 var buildId = ProtocolJson.ReadBuildId(line);
                 if (buildId != EngineVersion.Build)
                 {
-                    log.Write($"client version {buildId} differs; exiting so the client can start a matching engine");
+                    // A request of 5.0.0 names its build id otherwise, so none is read from it.
+                    log.Write($"client version {buildId ?? "(none)"} differs; exiting so the client can start a matching engine");
                     await WriteAsync(pipe, new EngineResponse.Restart(), CancellationToken.None).ConfigureAwait(false);
                     await shutdown.CancelAsync().ConfigureAwait(false);
                     return;

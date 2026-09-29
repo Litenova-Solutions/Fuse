@@ -118,6 +118,24 @@ public class RequestRouterTests
     }
 
     [Fact]
+    public async Task A_check_read_from_a_line_without_its_optional_fields_is_answered_and_the_next_one_is_too()
+    {
+        using var repo = FixtureRepo.CreateStandard();
+        await using var engine = await InProcessRequestRouter.StartAsync(repo);
+        using var limit = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        limit.CancelAfter(TimeSpan.FromMinutes(2));
+
+        // No request id and no file list: the request log has nothing to name, and the request lock must still be released.
+        var bare = ProtocolJson.ReadRequest("""{"request":"CheckFiles","waitForLoad":true}""")!;
+        var first = await engine.SendAsync(bare, limit.Token);
+        var second = await engine.SendAsync(new EngineRequest.CheckFiles(["Lib/Calc.cs"], WaitForLoad: true), limit.Token);
+
+        Assert.Equal(0, Assert.IsType<EngineResponse.CheckAnswered>(first).Report.FilesChecked);
+        Assert.IsType<EngineResponse.CheckAnswered>(second);
+        Assert.Contains(engine.Log.Split('\n'), l => l.Contains(" CheckFiles took ", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task A_ping_and_a_shutdown_are_acknowledged()
     {
         await using var engine = await InProcessRequestRouter.StartAsync();

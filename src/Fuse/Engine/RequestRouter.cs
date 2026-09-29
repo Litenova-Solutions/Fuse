@@ -131,9 +131,16 @@ internal sealed class RequestRouter : IDisposable
         }
         finally
         {
-            _requestLog.Write(request, phases, Environment.TickCount64 - started);
-            _gate.Release();
-            _preloader.Schedule(_shutdown);
+            // Released whatever the log write does: a lock that stays held makes every later request wait for it.
+            try
+            {
+                _requestLog.Write(request, phases, Environment.TickCount64 - started);
+            }
+            finally
+            {
+                _gate.Release();
+                _preloader.Schedule(_shutdown);
+            }
         }
     }
 

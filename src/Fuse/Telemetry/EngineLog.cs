@@ -28,9 +28,9 @@ internal sealed class EngineLog
             {
                 File.AppendAllText(_path, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} {message}{Environment.NewLine}");
             }
-            catch (IOException)
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
-                // Logging must never fail a request.
+                // Logging must never fail a request; a log file another process holds, or one made read-only, is skipped.
             }
         }
     }

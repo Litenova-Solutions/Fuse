@@ -214,7 +214,7 @@ The base class holds only that contract and the helpers the six share: the hook 
 - `RequestLog`: the log line and the phase line per request, both naming the request by its case (`CheckChanges`, `CheckFiles`, `PlanAffectedTests`, `PlanAllTests`), which the phase line writes as its `kind`.
 - `ResponseMapper`: `CheckResult` and `TestPlanResult` to `Protocol` records, and `FuseException` to an unanswered response.
 
-`EngineRequest` and `EngineResponse` are variants, which System.Text.Json source generation writes through `[JsonPolymorphic]` and `[JsonDerivedType]` with the case in a property written first. Every request carries `BuildId` and `RequestId` on the base record.
+`EngineRequest` and `EngineResponse` are variants, which System.Text.Json source generation writes through `[JsonPolymorphic]` and `[JsonDerivedType]` with the case in a property written first. Every request carries `BuildId` and `RequestId` on the base record. A request line that leaves out an optional field reads it as its default (an empty build id or request id, an empty file list, not waiting for the load), because the source-generated reader would otherwise set it to null, and `RequestRouter` releases the request lock in a `finally` of its own around the request log.
 
 | Record | Cases | Replaces |
 | --- | --- | --- |

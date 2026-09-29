@@ -26,7 +26,7 @@ internal sealed class RequestLog
     public void Write(EngineRequest request, PhaseTimes phases, long tookMs)
     {
         var kind = KindOf(request);
-        var files = request is EngineRequest.CheckFiles check ? " " + string.Join(",", check.Files.Select(Path.GetFileName)) : "";
+        var files = request is EngineRequest.CheckFiles { Files.Count: > 0 } check ? " " + string.Join(",", check.Files.Select(Path.GetFileName)) : "";
         _log.Write($"{kind}{files} took {tookMs} ms");
         // One line per request, naming it and timing each phase, so a measurement can be matched to its own call.
         if (request.RequestId.Length > 0)

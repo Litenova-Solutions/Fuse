@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Fuse.Protocol;
 
 namespace Fuse.Tests.Unit;
@@ -7,7 +8,7 @@ namespace Fuse.Tests.Unit;
 ///     The request and response lines the pipe carries. A client and an engine of one build read each other's lines, and
 ///     an engine of another build still reads the build id, so a mismatch ends in a restart rather than a dropped request.
 /// </summary>
-public class ProtocolJsonTests
+public partial class ProtocolJsonTests
 {
     private static readonly EngineRequest[] EveryRequest =
     [
@@ -83,4 +84,53 @@ public class ProtocolJsonTests
     [Fact]
     public void An_acknowledgement_reads_back_as_one() =>
         Assert.IsType<EngineResponse.Acknowledged>(ProtocolJson.ReadResponse(ProtocolJson.Serialize(new EngineResponse.Acknowledged())));
+
+    [Fact]
+    public void A_request_without_its_optional_fields_reads_them_as_their_defaults()
+    {
+        // Every client of this build writes all of them; a line written by hand or by another tool may not.
+        var check = Assert.IsType<EngineRequest.CheckFiles>(ProtocolJson.ReadRequest("""{"request":"CheckFiles"}"""));
+        var ping = Assert.IsType<EngineRequest.Ping>(ProtocolJson.ReadRequest("""{"request":"Ping","buildId":null,"requestId":null}"""));
+
+        Assert.Equal(("", ""), (check.BuildId, check.RequestId));
+        Assert.Empty(check.Files);
+        Assert.False(check.WaitForLoad);
+        Assert.Equal(("", ""), (ping.BuildId, ping.RequestId));
+    }
+
+    [Fact]
+    public void An_engine_of_5_0_0_reads_every_request_of_this_build_and_finds_no_build_id()
+    {
+        // A 5.0.0 engine answers Restart when the request's version is not its own, which is how a client of this build
+        // gets an engine of its own build. It can only do that if it reads the line at all.
+        foreach (var request in EveryRequest.Select(r => r with { BuildId = "5.1.0/abc", RequestId = "12-3" }))
+        {
+            var read = JsonSerializer.Deserialize(ProtocolJson.Serialize(request), Engine500Json.Default.Engine500Request);
+
+            Assert.NotNull(read);
+            Assert.Null(read.Version);
+        }
+    }
+
+    /// <summary>The request record of Fuse 5.0.0, copied from its source, as its engine reads a request line.</summary>
+    /// <param name="Version">The client's build id, under the name 5.0.0 gave it.</param>
+    /// <param name="Kind">What the client asks for.</param>
+    /// <param name="Files">The files to check, or null for every change.</param>
+    /// <param name="Wait">Whether to wait for the engine to finish loading.</param>
+    /// <param name="AllTests">Whether to plan every test.</param>
+    internal sealed record Engine500Request(string Version, Engine500Kind Kind, string[]? Files = null, bool Wait = true, bool AllTests = false);
+
+    /// <summary>The request kinds of Fuse 5.0.0.</summary>
+    internal enum Engine500Kind
+    {
+        Ping,
+        Check,
+        TestPlan,
+        Shutdown,
+    }
+
+    /// <summary>The serializer options of Fuse 5.0.0's pipe protocol.</summary>
+    [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull, UseStringEnumConverter = true)]
+    [JsonSerializable(typeof(Engine500Request))]
+    internal sealed partial class Engine500Json : JsonSerializerContext;
 }

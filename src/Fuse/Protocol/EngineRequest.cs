@@ -22,6 +22,9 @@ namespace Fuse.Protocol;
 [JsonDerivedType(typeof(PlanAllTests), nameof(PlanAllTests))]
 internal abstract record EngineRequest
 {
+    private readonly string _buildId = "";
+    private readonly string _requestId = "";
+
     private EngineRequest()
     {
     }
@@ -30,13 +33,25 @@ internal abstract record EngineRequest
     ///     The client's <see cref="EngineVersion.Build"/>, which the client sets on every request it sends. An engine of
     ///     another build answers <see cref="EngineResponse.Restart"/> and exits.
     /// </summary>
-    public string BuildId { get; init; } = "";
+    /// <remarks>
+    ///     A line without it reads as empty rather than null: the source-generated reader assigns every init-only property,
+    ///     a missing one as null, which would override an initializer. The same holds for <see cref="RequestId"/>.
+    /// </remarks>
+    public string BuildId
+    {
+        get => _buildId;
+        init => _buildId = value ?? "";
+    }
 
     /// <summary>
     ///     Names this request in the engine's log, so a measurement can find the line that belongs to its own call. A
-    ///     request without one gets no phase line.
+    ///     request without one, or with an empty one, gets no phase line.
     /// </summary>
-    public string RequestId { get; init; } = "";
+    public string RequestId
+    {
+        get => _requestId;
+        init => _requestId = value ?? "";
+    }
 
     /// <summary>A liveness probe, answered with <see cref="EngineResponse.Acknowledged"/> once the pipe is up, even while the engine loads.</summary>
     public sealed record Ping : EngineRequest;
@@ -58,9 +73,13 @@ internal abstract record EngineRequest
     /// </param>
     /// <param name="WaitForLoad">
     ///     True to wait for the engine to finish loading the repository; false to be answered at once with
-    ///     <see cref="ErrorCode.Loading"/> while it loads.
+    ///     <see cref="ErrorCode.Loading"/> while it loads. A line without it reads as false.
     /// </param>
-    public sealed record CheckFiles(IReadOnlyList<string> Files, bool WaitForLoad) : EngineRequest;
+    public sealed record CheckFiles(IReadOnlyList<string> Files, bool WaitForLoad) : EngineRequest
+    {
+        /// <summary>The named files. A line without the list reads as one that names none, which checks nothing.</summary>
+        public IReadOnlyList<string> Files { get; init; } = Files ?? [];
+    }
 
     /// <summary>
     ///     The tests the changes since HEAD affect, and the fastest safe way to run each. A plan request always waits for

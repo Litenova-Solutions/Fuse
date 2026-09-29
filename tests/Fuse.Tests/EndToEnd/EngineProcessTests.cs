@@ -79,6 +79,9 @@ public class EngineProcessTests
             var response = await FuseProcess.SendLineAsync(repo.Root, """{"version":"5.0.0/0","kind":"Check","wait":true}""");
             Assert.IsType<EngineResponse.Restart>(response);
             Assert.True(await FuseProcess.WaitForExitAsync(repo.Root, TimeSpan.FromSeconds(15)));
+            // The line carries no build id under this build's name, and the log says so rather than leaving a gap.
+            var log = File.ReadAllLines(Path.Combine(repo.Root.StateDirectory, "engine.log"));
+            Assert.Contains(log, l => l.EndsWith(" client version (none) differs; exiting so the client can start a matching engine", StringComparison.Ordinal));
         }
         finally
         {

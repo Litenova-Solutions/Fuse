@@ -210,7 +210,7 @@ The base class holds only that contract and the helpers the six share: the hook 
 `EngineHost` (205 lines) splits into:
 
 - `RequestRouter`: initialization and routing a request to its feature.
-- `Preloader`: the background load of dependents and the set of projects that failed to preload.
+- `Preloader`: the background load of dependents, one load at a time, and the projects that failed to preload, each tried again once the projects reload or a restore writes a `project.assets.json` in its closure.
 - `RequestLog`: the log line and the phase line per request, both naming the request by its case (`CheckChanges`, `CheckFiles`, `PlanAffectedTests`, `PlanAllTests`), which the phase line writes as its `kind`.
 - `ResponseMapper`: `CheckResult` and `TestPlanResult` to `Protocol` records, and `FuseException` to an unanswered response.
 

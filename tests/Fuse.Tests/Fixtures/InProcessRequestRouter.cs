@@ -17,28 +17,33 @@ internal sealed class InProcessRequestRouter : IAsyncDisposable
     private readonly EngineLog _log;
     private readonly CancellationTokenSource _shutdown;
 
-    private InProcessRequestRouter(RepoRoot root, EngineLog log, RequestRouter router, CancellationTokenSource shutdown)
+    /// <summary>The fixture this router created because the test gave none, which it deletes when disposed.</summary>
+    private readonly FixtureRepo? _owned;
+
+    private InProcessRequestRouter(RepoRoot root, EngineLog log, RequestRouter router, CancellationTokenSource shutdown, FixtureRepo? owned)
     {
         Root = root;
         _log = log;
         _router = router;
         _shutdown = shutdown;
+        _owned = owned;
     }
 
     public RepoRoot Root { get; }
 
     /// <summary>Starts a router over <paramref name="repo"/>, initialized as the engine initializes it.</summary>
-    /// <param name="repo">The repository to serve; a standard fixture when null.</param>
+    /// <param name="repo">The repository to serve, which the test disposes; a standard fixture this router disposes when null.</param>
     public static async Task<InProcessRequestRouter> StartAsync(FixtureRepo? repo = null)
     {
-        var fixture = repo ?? FixtureRepo.CreateStandard();
+        var owned = repo is null ? FixtureRepo.CreateStandard() : null;
+        var fixture = repo ?? owned!;
         var log = new EngineLog(fixture.Root.StateDirectory);
         var router = new RequestRouter(fixture.Root, log);
         // The engine's shutdown token, which a real engine cancels before it disposes the router: the background preload
         // watches it, and would otherwise keep loading into a disposed workspace.
         var shutdown = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         await router.InitializeAsync(shutdown.Token);
-        return new InProcessRequestRouter(fixture.Root, log, router, shutdown);
+        return new InProcessRequestRouter(fixture.Root, log, router, shutdown, owned);
     }
 
     /// <summary>Sends one request, with the build id a client sends.</summary>
@@ -50,7 +55,21 @@ internal sealed class InProcessRequestRouter : IAsyncDisposable
         SendAsync(files.Length == 0 ? new EngineRequest.CheckChanges(WaitForLoad: true) : new EngineRequest.CheckFiles(files, WaitForLoad: true));
 
     /// <summary>What the router wrote to its log, for a test that needs to see the request lifecycle.</summary>
-    public string Log => File.Exists(_log.FilePath) ? File.ReadAllText(_log.FilePath) : "";
+    /// <remarks>
+    ///     Read with write sharing: the engine appends while a test polls, and an append that meets a reader that does not
+    ///     share writing fails, which the engine log drops, so the line the test waits for would never arrive.
+    /// </remarks>
+    public string Log
+    {
+        get
+        {
+            if (!File.Exists(_log.FilePath))
+                return "";
+            using var stream = new FileStream(_log.FilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            using var reader = new StreamReader(stream);
+            return reader.ReadToEnd();
+        }
+    }
 
     public async ValueTask DisposeAsync()
     {
@@ -58,5 +77,6 @@ internal sealed class InProcessRequestRouter : IAsyncDisposable
         await _router.WaitForPreloadAsync();
         _router.Dispose();
         _shutdown.Dispose();
+        _owned?.Dispose();
     }
 }

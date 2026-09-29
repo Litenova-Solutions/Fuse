@@ -154,4 +154,32 @@ public class RequestRouterTests
 
         Assert.True(loaded, $"no dependent was preloaded after the check; log:\n{engine.Log}");
     }
+
+    [Fact]
+    public async Task A_dependent_that_failed_to_preload_is_loaded_in_the_background_once_it_is_restored()
+    {
+        using var repo = FixtureRepo.CreateStandard();
+        var assets = repo.Full("App/obj/project.assets.json");
+        var restored = File.ReadAllBytes(assets);
+        File.Delete(assets);
+        await using var engine = await InProcessRequestRouter.StartAsync(repo);
+        repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
+
+        await engine.CheckAsync(repo.Full("Lib/Calc.cs"));
+        await WaitForLogAsync(engine, "preload of App skipped: restore needed");
+        Assert.DoesNotContain(" loaded App in ", engine.Log, StringComparison.Ordinal);
+
+        // What `dotnet restore App` writes; the next request starts the background load again.
+        File.WriteAllBytes(assets, restored);
+        await engine.CheckAsync(repo.Full("Lib/Calc.cs"));
+        await WaitForLogAsync(engine, " loaded App in ");
+    }
+
+    /// <summary>Waits up to a minute for the router's log to hold <paramref name="text"/>, which a background load writes when it gets there.</summary>
+    private static async Task WaitForLogAsync(InProcessRequestRouter engine, string text)
+    {
+        for (var i = 0; i < 600 && !engine.Log.Contains(text, StringComparison.Ordinal); i++)
+            await Task.Delay(100, TestContext.Current.CancellationToken);
+        Assert.True(engine.Log.Contains(text, StringComparison.Ordinal), $"the log never held \"{text}\":\n{engine.Log}");
+    }
 }

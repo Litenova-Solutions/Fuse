@@ -17,7 +17,16 @@ internal sealed class Preloader
     private readonly RepoWorkspace _workspace;
     private readonly SemaphoreSlim _gate;
     private readonly EngineLog _log;
-    private readonly HashSet<RepoPath> _failed = [];
+
+    /// <summary>Makes starting a load one step, so two requests that finish together cannot both start one.</summary>
+    private readonly Lock _scheduling = new();
+
+    /// <summary>
+    ///     The projects whose background load failed, each with the state it failed in. Only the one running load reads
+    ///     and writes it.
+    /// </summary>
+    private readonly Dictionary<RepoPath, Attempt> _failed = [];
+
     private Task _running = Task.CompletedTask;
 
     /// <param name="workspace">The workspace the projects load into.</param>
@@ -34,10 +43,13 @@ internal sealed class Preloader
     /// <param name="shutdown">The engine's shutdown token, which stops the load between two projects.</param>
     public void Schedule(CancellationToken shutdown)
     {
-        if (!_running.IsCompleted || shutdown.IsCancellationRequested)
-            return;
-        // RunAsync checks the token between projects, so Task.Run is not given it.
-        _running = Task.Run(() => RunAsync(shutdown), CancellationToken.None);
+        lock (_scheduling)
+        {
+            if (!_running.IsCompleted || shutdown.IsCancellationRequested)
+                return;
+            // RunAsync checks the token between projects, so Task.Run is not given it.
+            _running = Task.Run(() => RunAsync(shutdown), CancellationToken.None);
+        }
     }
 
     private async Task RunAsync(CancellationToken shutdown)
@@ -53,7 +65,7 @@ internal sealed class Preloader
                 next = _workspace.Tracker.Changed
                     .SelectMany(graph.OwnersOf)
                     .SelectMany(graph.DependentsOf)
-                    .FirstOrDefault(p => !_workspace.IsLoaded(p) && !_failed.Contains(p.Path));
+                    .FirstOrDefault(p => !_workspace.IsLoaded(p) && !(_failed.TryGetValue(p.Path, out var failed) && failed == AttemptOf(p, graph)));
             }
             finally
             {
@@ -62,14 +74,17 @@ internal sealed class Preloader
 
             if (next is null)
                 return;
+            var attempt = AttemptOf(next, _workspace.Graph);
             try
             {
                 await _workspace.PreloadAsync(next, shutdown).ConfigureAwait(false);
+                _failed.Remove(next.Path);
             }
             catch (FuseException e)
             {
-                // Not tried again in the background; a check that needs the project loads it itself and reports the failure.
-                _failed.Add(next.Path);
+                // Tried again once the projects reload or a restore rewrites its closure's assets; until then a check that
+                // needs the project loads it itself and reports the failure.
+                _failed[next.Path] = attempt;
                 _log.Write($"preload of {next.Name} skipped: {e.Message}");
             }
             catch (OperationCanceledException)
@@ -98,4 +113,22 @@ internal sealed class Preloader
         {
         }
     }
+
+    /// <summary>
+    ///     The state a load of <paramref name="project"/> starts from: the configuration generation, and the newest write
+    ///     time of the restore output (<c>project.assets.json</c>) in its closure. A missing file reads as the earliest
+    ///     time, so a restore that creates it changes the state.
+    /// </summary>
+    private Attempt AttemptOf(ProjectNode project, RepoGraph graph) => new(
+        _workspace.ConfigurationGeneration,
+        graph.ClosureOf(project).Max(p => File.GetLastWriteTimeUtc(p.AssetsFile.Absolute)));
+
+    /// <summary>
+    ///     What a failed load depended on. A project fails for the same reason while both stay the same, so it is tried
+    ///     again only when one changed: the projects were evaluated again or reloaded, or a restore wrote its closure's
+    ///     assets.
+    /// </summary>
+    /// <param name="ConfigurationGeneration">The workspace's <see cref="RepoWorkspace.ConfigurationGeneration"/>.</param>
+    /// <param name="AssetsWrittenUtc">The newest write time of a <c>project.assets.json</c> in the project's closure.</param>
+    private readonly record struct Attempt(int ConfigurationGeneration, DateTime AssetsWrittenUtc);
 }

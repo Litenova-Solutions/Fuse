@@ -40,7 +40,7 @@ Tests generate real git repositories and restore them, so the first run needs Nu
 - The pipe protocol needs no versioning by hand: every request carries `EngineVersion.Build`, and an engine from another build restarts.
 - Child processes take argument lists, never shell strings. Variable-length lists (paths, filters) are bounded or chunked.
 - Numbers quoted in docs come from files in `evals/results`. Counts are quoted exactly. Times, sizes and percentages are rounded half up for display: seconds to two decimals below 10 s and one decimal from 10 s, milliseconds and megabytes to whole numbers, percentages to at most one decimal. Each results table names the result files it comes from.
-- A file holds one type plus its private helpers. No interface without two implementations.
+- A file holds one type plus its private helpers.
 - Layers follow [docs/architecture.md](docs/architecture.md). A new namespace gets a row in its dependency table and in `NamespaceDependencyTests` in the same change.
 - One word per concept, in code, output, comments and docs: the vocabulary in [docs/architecture.md](docs/architecture.md) decides. Text says what is true now, in plain sentences, with keyboard punctuation only.
 - New tests must run: confirm the test count went up.

@@ -9,7 +9,7 @@ Two tests hold the code to this page: `tests/Fuse.Tests/Architecture/NamespaceDe
 1. **Abstractions come first in reading order.** Each feature declares its concepts as small model types (records and their variants) before any class that computes them. A reader learns what a check is from its model, and how it is computed from its steps.
 2. **Dependencies point down.** A namespace uses only the layers below it. No cycle exists between namespaces, and a test fails the build when one appears.
 3. **One responsibility per type.** A class holds one step, one rule or one piece of state. A class that needs several paragraphs to describe is several classes.
-4. **Abstractions are types, not interfaces.** The rule in [AGENTS.md](../AGENTS.md) stands: no interface without two implementations. A model record, a variant hierarchy or a class per step is an abstraction too. The one place Fuse has several implementations of one role is the harness ([Harnesses](#harnesses)).
+4. **Each abstraction takes the form that states it most directly.** A model record, a variant hierarchy, a class per step, an abstract class and an interface are all abstractions; an interface is worth adding for a seam or a contract even with one implementation. The one role Fuse implements several times is the harness ([Harnesses](#harnesses)).
 5. **Variants replace nulls that change control flow.** When code branches on whether a value is null, the value is two concepts, and each gets a named case. A null that is only printed, such as an optional message on a wire record, can stay.
 6. **Features do not know the wire.** Check and Testing return domain results. The engine maps them to `Protocol` records in one place.
 7. **One word per concept.** [Vocabulary](#vocabulary) is the authority for names, and [Naming rules](#naming-rules) decide the next one.
@@ -190,7 +190,7 @@ Each case is one response, so a combination that cannot happen cannot be written
 
 ## Harnesses
 
-A harness is an agent host that runs Fuse's hooks: Claude Code, Cursor, Gemini CLI, Codex, GitHub Copilot CLI and OpenCode. `Fuse.Harnesses` holds a `Harness` base class with six implementations, `ClaudeCode`, `Cursor`, `GeminiCli`, `Codex`, `CopilotCli` and `OpenCode`, which meets the two-implementation rule. Adding a harness means adding one class and listing it in `SupportedHarnesses`. Each implementation owns everything about its harness:
+A harness is an agent host that runs Fuse's hooks: Claude Code, Cursor, Gemini CLI, Codex, GitHub Copilot CLI and OpenCode. `Fuse.Harnesses` holds a `Harness` base class with six implementations, `ClaudeCode`, `Cursor`, `GeminiCli`, `Codex`, `CopilotCli` and `OpenCode`. Adding a harness means adding one class and listing it in `SupportedHarnesses`. Each implementation owns everything about its harness:
 
 - its `Name` on the command line (`claude`, `cursor`, `gemini`, `codex`, `copilot`, `opencode`), which every registration already written into users' settings contains, so it never changes;
 - how to detect it in a repository (`IsUsedIn`, from its settings directory or instructions file), and where and how its hooks are registered (`RegisterHooks`), including the permission allowances Claude Code gets for `fuse build` and `fuse test` and the OpenCode plugin, `Harnesses/opencode-plugin.js`, which the tool embeds;

@@ -105,6 +105,7 @@ main:focus { outline: none; }
 .page h3 + p { margin-top: 0; }
 .page ul, .page ol { padding-left: 1.4rem; margin: 0 0 1rem; }
 .page li { margin-bottom: 0.5rem; }
+.page .next { margin-top: 2.5rem; }
 .page figure { margin: 1.5rem 0; }
 .page figure img { width: 100%; height: auto; display: block; }
 .page figcaption { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }

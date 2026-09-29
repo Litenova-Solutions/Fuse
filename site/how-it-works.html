@@ -3,88 +3,206 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How Fuse Works | Fuse</title>
+<meta name="description" content="How Fuse checks an edit against the commit you have checked out, selects the affected tests, runs them without MSBuild, and what it cannot check.">
+<link rel="canonical" href="https://fuse.codes/how-it-works">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+<meta name="author" content="Litenova Solutions">
 <meta name="color-scheme" content="light">
-<title>How Fuse Works</title>
-<meta name="description" content="How Fuse checks an edit, selects tests, runs them without MSBuild, and where it stops.">
-<link rel="icon" href="fuse-icon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="style.css">
+<meta name="theme-color" content="#fcfcfb">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Fuse">
+<meta property="og:locale" content="en_US">
+<meta property="og:title" content="How Fuse Works">
+<meta property="og:description" content="How Fuse checks an edit against the commit you have checked out, selects the affected tests, runs them without MSBuild, and what it cannot check.">
+<meta property="og:url" content="https://fuse.codes/how-it-works">
+<meta property="og:image" content="https://fuse.codes/og.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="The Fuse icon and name above the text: Compiler feedback for AI coding agents on .NET. Checks each edit up to 10.0x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="How Fuse Works">
+<meta name="twitter:description" content="How Fuse checks an edit against the commit you have checked out, selects the affected tests, runs them without MSBuild, and what it cannot check.">
+<meta name="twitter:image" content="https://fuse.codes/og.png">
+<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Compiler feedback for AI coding agents on .NET. Checks each edit up to 10.0x faster than dotnet build. dotnet tool install -g Fuse.">
+<link rel="icon" href="/favicon.png" type="image/png" sizes="48x48">
+<link rel="icon" href="/fuse-icon.svg" type="image/svg+xml" sizes="any">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="sitemap" type="application/xml" href="/sitemap.xml">
+<link rel="stylesheet" href="/style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "@id": "https://fuse.codes/how-it-works#article",
+      "headline": "How Fuse Works",
+      "description": "How Fuse checks an edit against the commit you have checked out, selects the affected tests, runs them without MSBuild, and what it cannot check.",
+      "url": "https://fuse.codes/how-it-works",
+      "mainEntityOfPage": "https://fuse.codes/how-it-works",
+      "inLanguage": "en",
+      "dateModified": "2026-09-29",
+      "image": "https://fuse.codes/og.png",
+      "about": { "@type": "SoftwareApplication", "name": "Fuse", "url": "https://fuse.codes/" },
+      "author": { "@type": "Organization", "name": "Litenova Solutions", "url": "https://github.com/Litenova-Solutions" },
+      "publisher": { "@type": "Organization", "name": "Litenova Solutions", "url": "https://github.com/Litenova-Solutions" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Fuse", "item": "https://fuse.codes/" },
+        { "@type": "ListItem", "position": 2, "name": "How Fuse Works", "item": "https://fuse.codes/how-it-works" }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://fuse.codes/how-it-works#questions",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is Fuse?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Fuse is a .NET command-line tool that gives AI coding agents compiler feedback right after each edit. It keeps a repository's solution compiled in memory with Roslyn, reports the errors an edit introduced, runs the tests the edit can reach, and prints build output in a short form." }
+        },
+        {
+          "@type": "Question",
+          "name": "Which harnesses does Fuse support?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Fuse supports Claude Code, Cursor, Gemini CLI, Codex, GitHub Copilot CLI and OpenCode through hooks, and VS Code agent mode and any other MCP host through fuse mcp. Claude Code and OpenCode are tested end to end. The others follow each harness's documented hook format and are covered by payload tests." }
+        },
+        {
+          "@type": "Question",
+          "name": "Does Fuse need configuration?",
+          "acceptedAnswer": { "@type": "Answer", "text": "No. Run fuse init once in the repository and it writes the hook settings for each harness it finds. Fuse has no configuration file and reads no environment variables. It needs the .NET 10 SDK and restored projects; if a restore is missing, it says so and names the dotnet restore command to run." }
+        },
+        {
+          "@type": "Question",
+          "name": "Does Fuse send my code or data anywhere?",
+          "acceptedAnswer": { "@type": "Answer", "text": "No. Everything runs locally, and Fuse has no telemetry and makes no network calls of its own. It never edits your code; the only files it writes in your repository are the hook settings from fuse init. Commands Fuse runs for you, such as dotnet build, act as they normally would." }
+        },
+        {
+          "@type": "Question",
+          "name": "How is Fuse different from dotnet build?",
+          "acceptedAnswer": { "@type": "Answer", "text": "dotnet build starts MSBuild, builds the projects and lists every error, including errors that already exist. Fuse keeps the solution compiled in memory and reports only the errors an edit introduced, so it answers sooner: in the measurements the median check took between 0.18 and 0.70 seconds where the median dotnet build took between 1.14 and 4.48 seconds. It does not replace the build; fuse build runs the real dotnet build." }
+        },
+        {
+          "@type": "Question",
+          "name": "What can Fuse not check?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Fuse checks C# only. A check cannot see custom MSBuild targets that change compiler inputs or IL weaving, and it does not run compilation-end analyzers; fuse build runs the real build. Test selection is static, so a test that reaches code only through reflection may not be selected." }
+        },
+        {
+          "@type": "Question",
+          "name": "Which platforms does Fuse run on?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Fuse needs the .NET 10 SDK. It is used day to day on Windows, and its automated tests also pass on Linux and macOS." }
+        }
+      ]
+    }
+  ]
+}
+</script>
 </head>
 <body>
+<a class="skip-link" href="#main">Skip to main content</a>
 <div class="wrap">
   <header class="site-header">
-    <a class="brand" href="/"><img src="fuse-icon.svg" alt="">Fuse</a>
-    <nav>
-      <a href="how-it-works" aria-current="page">How It Works</a>
-      <a href="results">Results</a>
+    <a class="brand" href="/"><img src="/fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
+    <nav aria-label="Main">
+      <a href="/how-it-works" aria-current="page">How It Works</a>
+      <a href="/results">Results</a>
       <a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a>
     </nav>
   </header>
 
-  <main class="page">
+  <main id="main" class="page" tabindex="-1">
     <h1>How Fuse Works</h1>
-    <p class="intro">Fuse keeps your solution loaded in the background, the way an IDE does, and answers your agent's questions from it.</p>
+    <p class="intro">Fuse answers two questions for a coding agent working in a .NET repository: which compiler errors did its edits introduce, and which tests can those edits break. It answers from a background process that keeps your solution loaded, so the agent does not wait for a full build.</p>
+    <p>Two terms come up on this page. The <strong>working tree</strong> is your files as they are on disk. <strong>HEAD</strong> is the commit you have checked out. Fuse calls an error <strong>introduced</strong> when the working tree has it and HEAD does not.</p>
 
-    <h2>Hooks, Not Instructions</h2>
-    <p><code>fuse init</code> registers Fuse with the hooks each agent already has, so nothing depends on the agent remembering to call a tool.</p>
+    <h2>How the agent uses Fuse</h2>
+    <p>A <strong>harness</strong> is an agent host such as Claude Code, Cursor or OpenCode. Most harnesses can run a command when an event happens, for example after the agent edits a file. That command is called a hook. <code>fuse init</code> registers Fuse's hooks with each harness the repository uses, so the agent needs no instructions and no tool to remember.</p>
     <ul>
       <li><strong>After an edit</strong>, Fuse checks the edited files and reports only the errors that edit introduced.</li>
-      <li><strong>Before a shell command</strong>, <code>dotnet build</code> and <code>dotnet test</code> are rewritten to <code>fuse build</code> and <code>fuse test</code>.</li>
-      <li><strong>Before the agent finishes</strong>, Fuse checks every change once more and sends the agent back if the build is broken.</li>
+      <li><strong>Before a shell command runs</strong>, Fuse rewrites <code>dotnet build</code> and <code>dotnet test</code> to <code>fuse build</code> and <code>fuse test</code>.</li>
+      <li><strong>Before the agent finishes</strong>, Fuse checks every change once more. If the working tree has errors that HEAD does not, it sends the agent back once with the list.</li>
     </ul>
-    <p>Agents without hooks, such as VS Code agent mode, use <code>fuse mcp</code>, which serves the same three operations as tools.</p>
+    <p>A harness without hooks, such as VS Code agent mode, uses <code>fuse mcp</code> instead. It is an MCP server (MCP is the Model Context Protocol, a standard way for agents to call tools) that serves the same three operations as the tools <code>fuse_check</code>, <code>fuse_test</code> and <code>fuse_build</code>.</p>
 
-    <h2>Checking an Edit</h2>
+    <h2>What a check does</h2>
     <ol>
-      <li>Fuse holds two views of your solution: the files on disk, and the same files at your last commit.</li>
-      <li>Each changed file is compiled in both views, and only the difference is reported. A line shift never counts as a new error.</li>
-      <li>If only method bodies changed, the check ends there. If a declaration changed, Roslyn's symbol search finds every file that uses, implements or derives from it, in every dependent project, and those files are checked too.</li>
-      <li>Compiler errors, warnings treated as errors, and analyzer rules set to error are reported. Only the analyzers that can report an error run.</li>
-      <li>An error in a file the agent did not edit is followed by one line naming the changed declaration that broke it, so the agent does not have to trace it back.</li>
+      <li>Fuse keeps two views of your solution: the working tree and HEAD.</li>
+      <li>Fuse compiles each changed file in both views and reports only the difference. An error that HEAD already has is never reported as introduced, and a line that only moved is not a new error.</li>
+      <li>If only method bodies changed, the check ends there. If declarations changed (types, method signatures, properties and similar), Fuse uses Roslyn, the .NET compiler platform, to find every file that uses, implements or derives from them. It searches the owning project and every dependent project, which is a project that references the changed one, and checks those files too.</li>
+      <li>Fuse reports compiler errors, warnings that the project treats as errors, and analyzer diagnostics set to error. An analyzer is a code rule that runs during compilation. Only the analyzers that can report an error run.</li>
+      <li>An error in a file the agent did not edit is followed by one line that names the declaration that changed and broke it, so the agent does not have to trace the error back.</li>
     </ol>
 
-    <h2>Selecting Tests</h2>
+    <h2>How Fuse selects tests</h2>
+    <p>The affected tests are the tests a change can reach.</p>
     <ul>
-      <li>A graph of which types refer to which is walked back from the changed code to the test classes that can reach it. This takes milliseconds.</li>
+      <li>Fuse builds a graph of which types refer to which types. It walks the graph backwards from the changed code to the test classes that can reach it. This takes milliseconds.</li>
       <li>When only a few test classes are reachable, the selection narrows to individual test methods.</li>
-      <li>Code that runs behind a host (controllers, handlers, hosted services) selects every test project that depends on the application.</li>
+      <li>Controllers, handlers, hosted services and other code that runs behind a host are reached through the host, not by name. A change to that code selects every test project that depends on the application.</li>
     </ul>
 
-    <h2>Running Tests Without MSBuild</h2>
-    <p>When only C# files changed since the last build, Fuse copies the test output to a private folder, compiles the changed assemblies from memory, and runs the tests there. Anything else, such as a project file or resource change, falls back to a normal <code>dotnet test</code> of the affected projects.</p>
+    <h2>How Fuse runs tests without MSBuild</h2>
+    <p>MSBuild is the build system behind <code>dotnet build</code>. Fuse skips it when it can. If the test projects have build output from an earlier build and only C# files have changed since then, Fuse copies the test output to a private folder, compiles the changed assemblies from memory into that copy, and runs the tests there. If anything else changed, such as a project file or a resource, Fuse runs a normal <code>dotnet test</code> on the affected projects.</p>
 
-    <h2>The Background Engine</h2>
+    <h2>The background engine</h2>
     <ul>
-      <li>One engine runs per repository. The first hook starts it, and it exits after 30 idle minutes.</li>
-      <li>Projects are evaluated at start and compiled only when a change touches them.</li>
-      <li>A file watcher keeps it current; a commit or branch switch moves the baseline.</li>
+      <li>One engine process runs per repository. The first hook or command starts it, and it exits after 30 idle minutes.</li>
+      <li>At start the engine evaluates every project with MSBuild, without building. It compiles a project only when a change touches it.</li>
+      <li>A file watcher keeps the engine current. When you commit or switch branches, HEAD moves and the engine compares against the new HEAD.</li>
       <li>A newer Fuse replaces an engine from an older version automatically.</li>
-      <li>Builds and test runs through Fuse take turns within a repository, and the engine loads the repository's own analyzers from a copy, so it never holds a file a build writes.</li>
+      <li>Agents that build or test through Fuse in the same repository take turns, so they do not fail on each other's files. The engine loads the repository's own analyzers from a copy, so it never holds a file that a build needs to write.</li>
     </ul>
 
-    <h2>Privacy and Footprint</h2>
+    <h2>Privacy and footprint</h2>
     <ul>
       <li>Everything runs locally. Fuse has no telemetry and makes no network calls of its own.</li>
-      <li>It never edits your code and never runs <code>dotnet restore</code> on its own.</li>
-      <li>The only files it writes in your repository are the hook settings from <code>fuse init</code>.</li>
-      <li>In a repository without a <code>.csproj</code>, hooks return at once and no engine starts.</li>
-      <li>There are no settings and no environment variables.</li>
+      <li>Fuse never edits your code and never runs <code>dotnet restore</code> on its own.</li>
+      <li>The only files Fuse writes in your repository are the hook settings from <code>fuse init</code>. Its logs and other state are stored in your local application data folder.</li>
+      <li>In a repository without a <code>.csproj</code> file, hooks return at once and no engine starts.</li>
+      <li>Fuse has no configuration file and reads no environment variables.</li>
     </ul>
 
     <h2>Limits</h2>
     <ul>
-      <li>C# only. Fuse needs the .NET 10 SDK and restored projects.</li>
-      <li>Custom MSBuild targets that change compiler inputs, and IL weaving, are invisible to a check; <code>fuse build</code> runs the real build.</li>
-      <li>Compilation-end analyzers do not run in a check.</li>
-      <li>Test selection is static, so tests that reach code only through reflection may not be selected.</li>
-      <li>Used day to day on Windows. Linux and macOS pass the automated tests.</li>
+      <li>Fuse checks C# only. It needs the .NET 10 SDK and restored projects.</li>
+      <li>A check compiles what MSBuild's evaluation describes. Custom MSBuild targets that change what the compiler receives, and IL weaving (rewriting compiled assemblies after the compiler runs), are invisible to it. <code>fuse build</code> runs the real build.</li>
+      <li>Compilation-end analyzers, which report only after they have seen the whole project, do not run in a check.</li>
+      <li>Test selection reads the source code and does not run it. A test that reaches code only through reflection may not be selected.</li>
+      <li>Fuse is used day to day on Windows. The automated tests also pass on Linux and macOS.</li>
     </ul>
 
-    <p style="margin-top:40px">The <a href="https://github.com/Litenova-Solutions/Fuse/blob/main/docs/design.md">design notes</a> cover each part in full detail.</p>
+    <h2>Questions</h2>
+
+    <h3>What is Fuse?</h3>
+    <p>Fuse is a .NET command-line tool that gives AI coding agents compiler feedback right after each edit. It keeps a repository's solution compiled in memory with Roslyn, reports the errors an edit introduced, runs the tests the edit can reach, and prints build output in a short form.</p>
+
+    <h3>Which harnesses does Fuse support?</h3>
+    <p>Fuse supports Claude Code, Cursor, Gemini CLI, Codex, GitHub Copilot CLI and OpenCode through hooks, and VS Code agent mode and any other MCP host through <code>fuse mcp</code>. Claude Code and OpenCode are tested end to end. The others follow each harness's documented hook format and are covered by payload tests.</p>
+
+    <h3>Does Fuse need configuration?</h3>
+    <p>No. Run <code>fuse init</code> once in the repository and it writes the hook settings for each harness it finds. Fuse has no configuration file and reads no environment variables. It needs the .NET 10 SDK and restored projects; if a restore is missing, it says so and names the <code>dotnet restore</code> command to run.</p>
+
+    <h3>Does Fuse send my code or data anywhere?</h3>
+    <p>No. Everything runs locally, and Fuse has no telemetry and makes no network calls of its own. It never edits your code; the only files it writes in your repository are the hook settings from <code>fuse init</code>. Commands Fuse runs for you, such as <code>dotnet build</code>, act as they normally would.</p>
+
+    <h3>How is Fuse different from dotnet build?</h3>
+    <p><code>dotnet build</code> starts MSBuild, builds the projects and lists every error, including errors that already exist. Fuse keeps the solution compiled in memory and reports only the errors an edit introduced, so it answers sooner: in the measurements the median check took between 0.18 and 0.70 seconds where the median <code>dotnet build</code> took between 1.14 and 4.48 seconds. It does not replace the build; <code>fuse build</code> runs the real <code>dotnet build</code>.</p>
+
+    <h3>What can Fuse not check?</h3>
+    <p>Fuse checks C# only. A check cannot see custom MSBuild targets that change compiler inputs or IL weaving, and it does not run compilation-end analyzers; <code>fuse build</code> runs the real build. Test selection is static, so a test that reaches code only through reflection may not be selected.</p>
+
+    <h3>Which platforms does Fuse run on?</h3>
+    <p>Fuse needs the .NET 10 SDK. It is used day to day on Windows, and its automated tests also pass on Linux and macOS.</p>
+
+    <p class="next">The <a href="/results">Results</a> page has the measurements. The <a href="https://github.com/Litenova-Solutions/Fuse/tree/main/docs">docs folder</a> in the repository covers each part in more detail.</p>
   </main>
 
   <footer class="site-footer">
     <span>Fuse &middot; Apache-2.0 &middot; Measured medians, one Windows machine</span>
-    <nav><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
+    <nav aria-label="Footer"><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
   </footer>
 </div>
 </body>

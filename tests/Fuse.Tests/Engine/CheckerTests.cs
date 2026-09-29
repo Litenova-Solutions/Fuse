@@ -155,8 +155,9 @@ public class CheckerTests
         engine.Repo.Replace("App/Report.cs", "Line(int value)", "Line2(int value)");
         engine.Repo.Replace("Lib/Calc.cs", "Add(int a, int b)", "Add2(int a, int b)");
 
-        // The reach queries run after a real check, so the baseline is loaded the way the check loads it.
-        await engine.CheckAsync("App/Report.cs");
+        // The reach queries run after a real check, so the baseline is loaded the way the check loads it. The check names
+        // both edits, as a hook does, so neither waits for its watcher event to reach the current view.
+        await engine.CheckAsync("App/Report.cs", "Lib/Calc.cs");
         var fromApp = await CandidatesAsync(engine, "App/Report.cs");
         var fromLib = await CandidatesAsync(engine, "Lib/Calc.cs");
 

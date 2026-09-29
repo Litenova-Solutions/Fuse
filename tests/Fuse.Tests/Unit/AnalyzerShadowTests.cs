@@ -17,7 +17,7 @@ public class AnalyzerShadowTests
     public void An_in_repository_analyzer_points_at_a_copy_and_a_package_analyzer_stays_put()
     {
         using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });
-        var inRepo = Path.Combine(repo.Path, "Gen", "bin", "Gen.dll");
+        var inRepo = repo.Full("Gen/bin/Gen.dll");
         Directory.CreateDirectory(Path.GetDirectoryName(inRepo)!);
         File.Copy(typeof(AnalyzerShadowTests).Assembly.Location, inRepo);
         var outside = typeof(object).Assembly.Location;
@@ -36,7 +36,7 @@ public class AnalyzerShadowTests
     public void The_same_solution_is_shadowed_once()
     {
         using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });
-        var inRepo = Path.Combine(repo.Path, "Gen", "bin", "Gen.dll");
+        var inRepo = repo.Full("Gen/bin/Gen.dll");
         Directory.CreateDirectory(Path.GetDirectoryName(inRepo)!);
         File.Copy(typeof(AnalyzerShadowTests).Assembly.Location, inRepo);
         var solution = SolutionWith(inRepo);

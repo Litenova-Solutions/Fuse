@@ -57,6 +57,10 @@ internal static class FuseProcess
                 await pipe.FlushAsync();
                 using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
                 var line = await PipeFraming.ReadLineAsync(pipe, timeout.Token);
+                // On Unix a connection that arrives between two pipe server instances can also be closed unanswered; the
+                // client sends such a request once more, and so does this.
+                if (line is null && attempt < 1)
+                    continue;
                 return line is null ? null : ProtocolJson.ReadResponse(line);
             }
             catch (IOException) when (attempt < 4)

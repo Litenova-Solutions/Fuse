@@ -59,10 +59,6 @@ fuse: internal error: <message> (details in <state directory>/engine.log)
 
 Something failed inside Fuse. `engine.log` holds the exception with its stack trace, on a line with `failed:`. `could not talk to the fuse engine` and `could not start the fuse engine` mean the client could not reach or start the engine process; `engine.log` then shows whether an engine started at all. Run the command again; if it keeps failing, [open an issue](https://github.com/Litenova-Solutions/Fuse/issues) with the command, the message, the `engine.log` lines around the failure, and the output of `fuse --version`.
 
-## Test results do not match `dotnet test`
-
-When `fuse test` ran `without MSBuild` and its result differs from `dotnet test`, a dependency was probably built on its own after the test project, and the run used the test project's older copy of it. [Limits](limits.md#test-runs-without-msbuild) describes the case. Run `fuse build` on the test project, or `fuse test --all`, and compare again.
-
 ## A build waits
 
 ```text

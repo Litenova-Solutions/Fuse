@@ -32,7 +32,6 @@ Fuse answers from a Roslyn compilation of what MSBuild's evaluation describes, a
 
 - **Resources and content files.** A run without MSBuild takes resources and content files from the last real build. When any file other than a source file changed in a project directory since that build, Fuse builds with MSBuild instead, which is slower but complete.
 - **Timestamps.** Freshness is judged by timestamps, not content, so saving a resource file unchanged also sends the run through MSBuild.
-- **A dependency built on its own.** Fuse emits a project when its sources are newer than its own build output, and takes every other assembly from the test project's build output. After a build of a dependency alone, such as `dotnet build Lib` when `Lib.Tests` references `Lib`, the dependency's own output is newer than its sources, so Fuse emits nothing, while `Lib.Tests` still holds the copy of `Lib` from its own last build. The tests then run against that older copy and can pass while the working tree fails them. After building part of a solution, build the test project too (`fuse build Lib.Tests`), or run `fuse test --all`.
 
 ## Builds and the build lock
 

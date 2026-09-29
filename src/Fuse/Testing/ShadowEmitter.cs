@@ -8,7 +8,8 @@ namespace Fuse.Testing;
 
 /// <summary>
 ///     Prepares a shadow run of a test assembly: copies the test project's last build output into a shadow directory and
-///     overwrites the assemblies whose sources changed with ones emitted from the warm compilations.
+///     overwrites the assemblies whose sources changed, or whose copy there is not their project's last build, with ones
+///     emitted from the warm compilations.
 /// </summary>
 /// <remarks>
 ///     A shadow run is prepared only when no project file, import, resource or content file in the involved project
@@ -44,6 +45,7 @@ internal sealed class ShadowEmitter
 
         // Every project the test assembly loads, with the build output it would be copied from.
         var closure = Closure(testProject).ToList();
+        var testOutputDirectory = Path.GetDirectoryName(testOutput)!;
         var stale = new HashSet<ProjectId>();
         foreach (var project in closure)
         {
@@ -70,7 +72,9 @@ internal sealed class ShadowEmitter
                 return new RunMode.Build();
             }
 
-            if (sourcesNewer)
+            // The shadow starts as a copy of the test project's output, which can hold an older build of a project that
+            // was built on its own since; that copy is replaced with one emitted from the working tree.
+            if (sourcesNewer || (project.Id != testProject.Id && !HoldsBuildOf(testOutputDirectory, project.OutputFilePath)))
                 stale.Add(project.Id);
         }
 
@@ -89,7 +93,7 @@ internal sealed class ShadowEmitter
         while (grew);
 
         var shadow = Path.Combine(_root.StateDirectory, "shadow", $"{testProject.Name.Replace('(', '-').Replace(")", "")}");
-        Mirror(Path.GetDirectoryName(testOutput)!, shadow);
+        Mirror(testOutputDirectory, shadow);
         foreach (var id in emit)
         {
             var project = solution.GetProject(id)!;
@@ -171,6 +175,19 @@ internal sealed class ShadowEmitter
         }
 
         return (sourcesNewer, null);
+    }
+
+    /// <summary>
+    ///     Whether <paramref name="testOutputDirectory"/> holds the same build of the assembly at <paramref name="built"/>:
+    ///     a file of the same name, length and last write time. MSBuild keeps the write time when it copies a referenced
+    ///     assembly into a test project's output, so a copy that is missing or differs is not that build.
+    /// </summary>
+    /// <remarks>An assembly can keep its length across a small edit, so the length alone does not tell two builds apart.</remarks>
+    private static bool HoldsBuildOf(string testOutputDirectory, string built)
+    {
+        var copy = new FileInfo(Path.Combine(testOutputDirectory, Path.GetFileName(built)));
+        var original = new FileInfo(built);
+        return copy.Exists && copy.Length == original.Length && copy.LastWriteTimeUtc == original.LastWriteTimeUtc;
     }
 
     /// <summary>Every directory and file under the project directory, skipping build output, hidden folders and nested projects.</summary>

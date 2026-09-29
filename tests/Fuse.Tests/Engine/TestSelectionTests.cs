@@ -1,3 +1,4 @@
+using Fuse.Dotnet;
 using Fuse.Telemetry;
 using Fuse.Testing;
 using Fuse.Testing.Model;
@@ -139,6 +140,45 @@ public class TestSelectionTests
     }
 
     [Fact]
+    public async Task Plan_emits_a_dependency_that_was_built_on_its_own_after_the_test_project()
+    {
+        await using var engine = await InProcessEngine.StartAsync();
+        engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
+        // Lib's own build output is now newer than its sources, and Lib.Tests still holds the copy of Lib from its last build.
+        Build(engine.Repo, "Lib/Lib.csproj");
+        await Task.Delay(400, TestContext.Current.CancellationToken);
+
+        var plan = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
+        var run = Assert.Single(plan.Runs);
+        var shadow = Assert.IsType<RunMode.Shadow>(run.Mode);
+
+        // The shadow run loads Lib as the working tree has it, so Multiplies fails there as it does under dotnet test.
+        var outcome = await RunAsync(engine.Repo, shadow, run.Filter);
+        Assert.Equal((1, 0), (outcome.Failed, outcome.Passed));
+    }
+
+    [Fact]
+    public async Task Plan_after_a_build_of_the_test_project_emits_nothing()
+    {
+        await using var engine = await InProcessEngine.StartAsync();
+        engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
+        // Building the test project builds Lib and copies it, so every assembly the test loads is current.
+        Build(engine.Repo, "Lib.Tests/Lib.Tests.csproj");
+        await Task.Delay(400, TestContext.Current.CancellationToken);
+
+        var plan = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
+        var run = Assert.Single(plan.Runs);
+        var shadow = Assert.IsType<RunMode.Shadow>(run.Mode);
+
+        // A copied assembly keeps the write time of the build output it came from; an emitted one has the time it was written.
+        var directory = Path.GetDirectoryName(shadow.Assembly)!;
+        foreach (var built in new[] { "Lib/bin/Debug/net10.0/Lib.dll", "Lib.Tests/bin/Debug/net10.0/Lib.Tests.dll" })
+            Assert.Equal(File.GetLastWriteTimeUtc(engine.Repo.Full(built)), File.GetLastWriteTimeUtc(Path.Combine(directory, Path.GetFileName(built))));
+        var outcome = await RunAsync(engine.Repo, shadow, run.Filter);
+        Assert.Equal((1, 0), (outcome.Failed, outcome.Passed));
+    }
+
+    [Fact]
     public async Task Plan_with_no_changes_runs_nothing()
     {
         await using var engine = await InProcessEngine.StartAsync();
@@ -161,6 +201,26 @@ public class TestSelectionTests
         Assert.Empty(plan.Runs);
         Assert.Equal(0, plan.SelectedTests);
         Assert.Equal("no test is affected by the changes (out of 4); fuse test --all runs everything", plan.Summary);
+    }
+
+    /// <summary>Builds one project of the fixture with MSBuild, as an agent or a person would, without restoring.</summary>
+    private static void Build(FixtureRepo repo, string project) =>
+        FixtureRepo.Run(repo.Root.Path, "dotnet", "build", project, "--no-restore", "-nologo", "-v:q");
+
+    /// <summary>Runs a shadow run's test assembly with <c>dotnet test</c>, the way <c>fuse test</c> does, and reads its results.</summary>
+    private static async Task<TestOutcome> RunAsync(FixtureRepo repo, RunMode.Shadow shadow, string? filter)
+    {
+        var results = FixtureRepo.NewDirectory();
+        try
+        {
+            string[] arguments = ["test", shadow.Assembly, .. filter is null ? Array.Empty<string>() : ["--filter", filter], "--logger", "trx", "--results-directory", results];
+            var run = await ProcessRunner.RunAsync("dotnet", arguments, repo.Root.Path, TestContext.Current.CancellationToken);
+            return TrxReader.ReadDirectory(results, repo.Root.Path) ?? throw new InvalidOperationException($"dotnet test wrote no results (exit code {run.ExitCode}):\n{run.Output}");
+        }
+        finally
+        {
+            Directory.Delete(results, recursive: true);
+        }
     }
 
     /// <summary>A clock whose every reading is 9 seconds after the previous one.</summary>

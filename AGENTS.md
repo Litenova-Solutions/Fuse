@@ -54,4 +54,4 @@ Tests generate real git repositories and restore them, so the first run needs Nu
 
 ## Releases
 
-The version lives in `Directory.Build.props`. A release is a `vX.Y.Z` tag matching it; the publish workflow checks the match. A release description is scoped to one baseline, named in the text: a major and its first preview carry the full changelog for that major, and every later release compares against the immediately previous version only. [CHANGELOG.md](CHANGELOG.md) keeps the cumulative history.
+The version lives in `Directory.Build.props`. A release is a `vX.Y.Z` tag matching it; the publish workflow checks the match. A release description is scoped to one baseline, named in the text: a major and its first preview carry the full changelog for that major, and every later release compares against the immediately previous version only. [CHANGELOG.md](CHANGELOG.md) keeps the cumulative history, and the release workflow reads its section as the release notes. Each release also gets a section with its upgrade steps in [site/docs/changelog.html](site/docs/changelog.html), and its row in that page's supported versions table, in the same change.

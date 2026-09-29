@@ -1,5 +1,7 @@
 # Changelog
 
+The list of changes in each release, which the release workflow publishes as the release notes. The [changelog page](https://fuse.codes/docs/changelog) explains each release with its upgrade steps and says which versions are supported. Versions before 5.0.0 are deprecated.
+
 ## 5.1.0
 
 Compared with 5.0.0. After updating, run `fuse init` again in each repository: the shell hook event is `pre-shell`, and 5.1.0 does not accept the `pre-bash` event that 5.0.0 settings call, so until then `dotnet build` and `dotnet test` are not rewritten.
@@ -45,6 +47,8 @@ Compared with 5.0.0. After updating, run `fuse init` again in each repository: t
 - `fuse init` and `fuse mcp` outside a git repository say `fuse: not inside a git repository; Fuse compares your changes with HEAD, so it needs one`, the message `fuse check` gives.
 
 ## 5.0.0
+
+5.0.0 is a complete rewrite with no migration path from 4.x: nothing 4.x wrote, including the `.fuse` folder, is read, and all of it can be removed, as the [changelog page](https://fuse.codes/docs/changelog#moving-from-4-x) lists. Versions before 5.0.0 are deprecated.
 
 Fuse keeps a warm Roslyn compilation of a .NET repository and gives coding agents the compiler errors their edits introduced, affected-test runs, and compact build output, through agent hooks and a three-tool MCP server.
 

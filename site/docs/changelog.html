@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Changelog | Fuse</title>
+<meta name="description" content="What changed in each Fuse release, what to do when you upgrade to it, and which versions are supported.">
+<link rel="canonical" href="https://fuse.codes/docs/changelog">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+<meta name="author" content="Litenova Solutions">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#fcfcfb">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Fuse">
+<meta property="og:locale" content="en_US">
+<meta property="og:title" content="Changelog">
+<meta property="og:description" content="What changed in each Fuse release, what to do when you upgrade to it, and which versions are supported.">
+<meta property="og:url" content="https://fuse.codes/docs/changelog">
+<meta property="og:image" content="https://fuse.codes/assets/og.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster compiler feedback for AI coding agents on .NET. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Changelog">
+<meta name="twitter:description" content="What changed in each Fuse release, what to do when you upgrade to it, and which versions are supported.">
+<meta name="twitter:image" content="https://fuse.codes/assets/og.png">
+<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster compiler feedback for AI coding agents on .NET. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
+<link rel="icon" href="../assets/fuse-icon.svg" type="image/svg+xml" sizes="any">
+<link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<link rel="sitemap" type="application/xml" href="../sitemap.xml">
+<link rel="stylesheet" href="../assets/style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "@id": "https://fuse.codes/docs/changelog#article",
+      "headline": "Changelog",
+      "description": "What changed in each Fuse release, what to do when you upgrade to it, and which versions are supported.",
+      "url": "https://fuse.codes/docs/changelog",
+      "mainEntityOfPage": "https://fuse.codes/docs/changelog",
+      "inLanguage": "en",
+      "dateModified": "2026-09-29",
+      "image": "https://fuse.codes/assets/og.png",
+      "isPartOf": {
+        "@type": "WebSite",
+        "name": "Fuse",
+        "url": "https://fuse.codes/"
+      },
+      "about": {
+        "@type": "SoftwareApplication",
+        "name": "Fuse",
+        "url": "https://fuse.codes/"
+      },
+      "author": {
+        "@type": "Organization",
+        "name": "Litenova Solutions",
+        "url": "https://github.com/Litenova-Solutions"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "Litenova Solutions",
+        "url": "https://github.com/Litenova-Solutions"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Fuse",
+          "item": "https://fuse.codes/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Documentation",
+          "item": "https://fuse.codes/docs/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Changelog",
+          "item": "https://fuse.codes/docs/changelog"
+        }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to main content</a>
+<div class="wrap wide">
+  <header class="site-header">
+    <a class="brand" href="../index.html"><img src="../assets/fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
+    <nav aria-label="Main">
+      <a href="index.html" aria-current="page">Docs</a>
+      <a href="results.html">Results</a>
+      <a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a>
+    </nav>
+  </header>
+
+  <div class="docs">
+    <main id="main" class="page" tabindex="-1">
+    <p class="crumbs"><a href="index.html">Docs</a> / Reference</p>
+    <h1>Changelog</h1>
+    <p class="jump"><a href="#docs-nav">All documentation pages</a></p>
+    <p class="intro">This page lists what changed in each Fuse release, newest first, and what to do when you upgrade to it. Only Fuse 5 is supported; every version before 5.0.0 is deprecated.</p>
+    <div class="audience">
+      <p><b>This page is for</b> someone upgrading Fuse, or deciding whether to, who wants to know what will behave differently.</p>
+      <p><b>After reading it</b>, follow the upgrade steps of each release between the version you have and the latest one. <code>fuse --version</code> prints the version you have.</p>
+    </div>
+
+    <nav class="toc" aria-label="On this page">
+      <p>On this page</p>
+      <ol>
+        <li><a href="#supported-versions">Supported versions</a></li>
+        <li><a href="#v5-1-0">5.1.0</a></li>
+        <li><a href="#v5-0-0">5.0.0</a></li>
+        <li><a href="#before-5-0-0">Versions before 5.0.0</a></li>
+      </ol>
+    </nav>
+
+    <h2 id="supported-versions">Supported versions <a class="anchor" href="#supported-versions" aria-label="Link to this section">#</a></h2>
+    <p>Fixes, security fixes included, ship in patch releases of the latest 5.x minor version, as the <a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/main/SECURITY.md">security policy</a> says.</p>
+    <table>
+      <thead><tr><th scope="col">Version</th><th scope="col">Status</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">5.1.x</th><td>Supported. The latest release.</td></tr>
+        <tr><th scope="row">5.0.x</th><td>No longer fixed. Upgrade to 5.1.0 with the <a href="#upgrading-from-5-0-0">steps below</a>.</td></tr>
+        <tr><th scope="row">1.0.0 to 4.4.0</th><td>Deprecated and unsupported. These versions are a different program under the same name; <a href="#moving-from-4-x">Moving from 4.x</a> says what to remove.</td></tr>
+      </tbody>
+    </table>
+    <p>To upgrade the tool itself to the latest release:</p>
+    <pre data-label="Shell"><code>dotnet tool update -g Fuse</code></pre>
+
+    <h2 id="v5-1-0">5.1.0 <a class="anchor" href="#v5-1-0" aria-label="Link to this section">#</a></h2>
+    <p>Released 2026-09-29. Compared with 5.0.0.</p>
+    <p>5.1.0 renames the shell hook event, makes Codex approve only the commands Fuse rewrites whole, adds a cause line to errors in files the agent did not edit, lets two agents build in one repository without breaking each other's build, and fixes checks and test selection that missed or over-selected in 5.0.0.</p>
+
+    <h3 id="upgrading-from-5-0-0">Upgrading from 5.0.0 <a class="anchor" href="#upgrading-from-5-0-0" aria-label="Link to this section">#</a></h3>
+    <ol>
+      <li>Update the tool: <code>dotnet tool update -g Fuse</code>.</li>
+      <li>Run <code>fuse init</code> again in each repository where you use Fuse. The hook event that rewrites <code>dotnet build</code> and <code>dotnet test</code> is now <code>pre-shell</code>, and settings written by 5.0.0 call <code>fuse hook &lt;harness&gt; pre-bash</code>, which 5.1.0 answers with a usage line on standard error and exit code 0. Until you run <code>fuse init</code>, the harness runs <code>dotnet build</code> and <code>dotnet test</code> unchanged. <code>fuse init</code> replaces Fuse's own hook entries and keeps everything else (<a href="harnesses.html#running-fuse-init-again">Running fuse init again</a>).</li>
+      <li>Do nothing about the engine, the background process that answers every command. The first request from the 5.1.0 client reaches the running 5.0.0 engine, which answers with a restart and exits, and the client starts a 5.1.0 engine and sends the request again. No request fails (<a href="troubleshooting.html#after-updating-from-5-0-0">details</a>).</li>
+    </ol>
+    <p>Then check whether anything you run depends on these changes:</p>
+    <ul>
+      <li><strong>Codex approvals.</strong> For Codex, the pre-shell hook now rewrites and approves only a command that is one <code>dotnet build</code> or <code>dotnet test</code> with plain arguments, and gives any other command no answer, so Codex asks you about it as usual. 5.0.0 rewrote <code>dotnet build</code> and <code>dotnet test</code> after any separator and approved the whole command line, so a command such as <code>dotnet build &amp;&amp; curl x | sh</code> ran without your approval.</li>
+      <li><strong><code>fuse test --all</code> with other arguments</strong> now prints an error, runs nothing and exits with 2. 5.0.0 dropped <code>--all</code> and ran what the other arguments named. Pass the arguments without <code>--all</code> to choose the scope.</li>
+      <li><strong>Output text.</strong> A script or agent instruction that matches Fuse's output has to match the new wording:</li>
+    </ul>
+    <div class="table-scroll">
+    <table>
+      <thead><tr><th scope="col">Command</th><th scope="col">5.0.0 printed</th><th scope="col">5.1.0 prints</th></tr></thead>
+      <tbody>
+        <tr><th scope="row"><code>fuse check</code></th><td><code>new error(s)</code></td><td><code>fuse: N error(s) introduced in M file(s)</code></td></tr>
+        <tr><th scope="row"><code>fuse check</code></th><td><code>no new errors</code></td><td><code>fuse: no errors introduced</code></td></tr>
+        <tr><th scope="row"><code>fuse check</code></th><td><code>whole projects bound</code></td><td><code>checked whole projects</code></td></tr>
+        <tr><th scope="row"><code>fuse test</code></th><td><code>fast path</code></td><td><code>without MSBuild</code>, or <code>without MSBuild for N of M project(s)</code></td></tr>
+        <tr><th scope="row"><code>fuse test</code></th><td><code>no test reaches the changed code</code></td><td><code>no test is affected by the changes</code></td></tr>
+        <tr><th scope="row"><code>fuse test</code></th><td><code>ran the tests you selected</code></td><td><code>ran the tests your dotnet test arguments name</code></td></tr>
+        <tr><th scope="row"><code>fuse test</code></th><td><code>test build failed (exit code E)</code></td><td><code>fuse: the test run of &lt;project&gt; exited with code E and produced no results</code></td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h3 id="v5-1-0-hooks">Hooks and harnesses <a class="anchor" href="#v5-1-0-hooks" aria-label="Link to this section">#</a></h3>
+    <ul>
+      <li>The hook event that rewrites <code>dotnet build</code> and <code>dotnet test</code> is <code>pre-shell</code>, and <code>fuse init</code> writes it for Claude Code, Gemini CLI, Codex and the OpenCode plugin.</li>
+      <li>For Codex, whose answer to the pre-shell hook also approves the command, the hook rewrites only a command that is one <code>dotnet build</code> or <code>dotnet test</code> with plain arguments (<a href="harnesses.html#codex">Codex</a>).</li>
+      <li>A hook and the MCP server read their input as UTF-8, so a repository whose path or file names are not ASCII is checked from a harness whose console uses another code page. 5.0.0 failed to parse the payload and reported nothing.</li>
+      <li>A hook whose payload names an empty working directory runs in the harness's own working directory, where 5.0.0 crashed. A payload that is valid JSON but not an object exits 0 with no output and a line in <code>hook.log</code>, as every other internal failure does.</li>
+      <li><code>fuse init</code> and <code>fuse mcp</code> outside a git repository say <code>fuse: not inside a git repository; Fuse compares your changes with HEAD, so it needs one</code>, the message <code>fuse check</code> gives.</li>
+    </ul>
+
+    <h3 id="v5-1-0-checks">Checks <a class="anchor" href="#v5-1-0-checks" aria-label="Link to this section">#</a></h3>
+    <p>A check compiles the edited files and the files that use a declaration the edit changed, and reports the errors HEAD did not have (<a href="how-it-works.html#check">How it works</a>).</p>
+    <ul>
+      <li>An error in a file the agent did not edit is followed by a cause line: <code>changed:</code> or <code>removed:</code> and the header, on one line, of the declaration change that put the file in the check, as the working tree has it or as HEAD had it. An answer holds at most ten cause lines, and the summary ends with <code>N cause(s) left out</code> when a printed error lost its cause to that cap.</li>
+      <li>A check compares declarations with each project's own preprocessor symbols, once per target framework, so a declaration change inside <code>#if DEBUG</code> or <code>#if NET8_0_OR_GREATER</code> checks the files that use it. 5.0.0 read such a region as inactive and reported no errors in its callers.</li>
+      <li>Removing a <code>using</code> directive checks the files that use the edited file's types, because the declarations' text is unchanged while what their type names resolve to is not. An added <code>using</code> still checks only the edited file.</li>
+      <li>Adding a constructor with parameters to a class that had only the implicit one checks every file that constructs the class, so each broken <code>new C()</code> is reported. 5.0.0 checked no other file.</li>
+      <li>A check finds a change to a type's parameterless constructor, such as making <code>public C()</code> internal, when a static constructor follows it in the file, which 5.0.0 missed. A formatting-only edit inside an explicit interface name no longer counts as a declaration change.</li>
+      <li>When a whole project is checked because more than 500 files are in reach, an analyzer error in an edited file is reported once, where 5.0.0 reported it twice, and <code>file(s) checked</code> counts each source file once, without generated files or a second target framework.</li>
+      <li>A file named to <code>fuse check</code> in another letter case than it has on disk, on Windows, is checked as the file git knows. 5.0.0 read it at HEAD under the other spelling, found nothing, and reported the errors HEAD has as introduced.</li>
+      <li>A file a hook names outside the repository, or under <code>bin</code> or <code>obj</code>, is left out of the change set. In 5.0.0 the first made git fail and dropped the edits of that request, and the second removed the generated file from the HEAD side of the check.</li>
+      <li>A project with a NuGet restore warning, such as a package advisory, is no longer reported as a project Fuse could not load, so Fuse answers in a repository whose restore logs a warning.</li>
+      <li>A <code>restore needed</code> answer names the project to restore in its command, so it also works for a project the solution leaves out.</li>
+    </ul>
+
+    <h3 id="v5-1-0-tests">Test selection and test runs <a class="anchor" href="#v5-1-0-tests" aria-label="Link to this section">#</a></h3>
+    <p>Test selection picks the tests the changed code can reach (<a href="how-it-works.html#test-selection">How it works</a>).</p>
+    <ul>
+      <li>Test selection selects the tests that reach an edit it missed in 5.0.0: a body edit to an explicit interface implementation that shares its name and parameter types with another member; a changed parameter modifier (<code>ref</code>, <code>out</code>, <code>in</code>, <code>params</code> or <code>this</code>), which also selects the tests that reach the member's type; a change from <code>class</code> to <code>struct</code> or from <code>record</code> to <code>record struct</code>; and an edit to a delegate declared at namespace level.</li>
+      <li>A change to the usings inside a namespace, and not only at the top of the file, selects the tests that reach the file's types.</li>
+      <li>Test selection selects fewer extra tests. Splitting a field declaration into two, or adding a variable to one, selects the tests that reach those fields and no longer every test that reaches the type. A formatting-only or comment-only edit inside a type header, a parameter type or a conversion, and an edit above a nested delegate, no longer count as a change to that declaration.</li>
+      <li>A run without MSBuild emits a project the tests load when the test project's build output holds another build of it, as after <code>dotnet build Lib</code> when <code>Lib.Tests</code> references <code>Lib</code>. 5.0.0 ran the test project's older copy, so a test the working tree fails could pass.</li>
+      <li><code>fuse test</code> prints the errors of a test project that does not build, and exits with 1, when other test projects ran too; their results come first and the failed build is the last line. 5.0.0 printed only the other projects' results, so a passing project hid the failed build.</li>
+      <li><code>fuse test --all</code> with other arguments prints <code>fuse: --all runs every test and cannot be combined with other arguments; pass the arguments without --all to choose the scope</code> on standard error, runs nothing and exits with 2.</li>
+    </ul>
+
+    <h3 id="v5-1-0-builds">Builds <a class="anchor" href="#v5-1-0-builds" aria-label="Link to this section">#</a></h3>
+    <ul>
+      <li><code>fuse build</code> and <code>fuse test</code> take a per-repository lock for as long as they write build output, so two agents building or testing through Fuse run one after the other instead of making MSBuild fail with MSB3021, MSB3027 or CS2012 on a file the other holds. A client that has to wait says so once on standard error, and a client that cannot take the lock says why and runs anyway (<a href="how-it-works.html#builds-and-the-build-lock">The build lock</a>). The arguments <code>fuse build</code> passes to <code>dotnet build</code>, the implicit restore included, are unchanged.</li>
+      <li>An analyzer or source generator the repository builds itself is loaded from a copy in the state directory, so a running engine no longer holds its file open and a real build that rebuilds it no longer fails with MSB3021 or MSB3027.</li>
+    </ul>
+
+    <h3 id="v5-1-0-engine">Engine <a class="anchor" href="#v5-1-0-engine" aria-label="Link to this section">#</a></h3>
+    <ul>
+      <li>The engine's pipe requests and responses have a different shape. An engine of another build, a running 5.0.0 engine included, answers the first request with a restart and exits, and the client starts an engine of its own build.</li>
+      <li><code>engine.log</code> names every request by its kind, such as <code>CheckFiles Calc.cs took 15 ms</code>, and writes one line of per-phase times for it, so a slow check or test run can be traced to its phases (<a href="troubleshooting.html#reading-a-phase-line">Reading a phase line</a>).</li>
+      <li>A check that arrives just as the engine finishes loading a dependent project in the background checks that project too. In 5.0.0 such a check could find the project loaded but leave it out, and miss the errors in it.</li>
+      <li>A request that a hook gives up on while projects load no longer leaves those projects out of later checks. In 5.0.0 every later check of their files said <code>no errors introduced</code> until the next reload.</li>
+      <li>After a commit or branch switch, a re-evaluation that a cancelled or failed request left undone is finished by the next request, and the baseline is read at the new HEAD. In 5.0.0 later checks compared with the old HEAD and reported errors HEAD has as introduced.</li>
+      <li>When <code>git status</code> fails while the engine reads the changes again, after HEAD moved, a watcher error or more than 300 changed files, the engine keeps HEAD and the changed files it knew, and the next request asks git again. 5.0.0 had already taken the new HEAD and emptied its list of changed files, so later checks left out the files changed before the failure.</li>
+      <li>Git's file list and status are read NUL-separated, so a file whose name holds a quote, a backslash or a control character is found and checked under its own name.</li>
+      <li>Renaming, moving or deleting a folder whose name holds a dot, such as <code>Company.Feature</code>, is followed like any other folder, and a project file that moved with it re-evaluates the projects.</li>
+      <li>A project that fails to load in the background is tried again after the projects reload or a restore, and only one background load runs at a time.</li>
+    </ul>
+
+    <h2 id="v5-0-0">5.0.0 <a class="anchor" href="#v5-0-0" aria-label="Link to this section">#</a></h2>
+    <p>Released 2026-09-25.</p>
+    <div class="callout warn">
+      <p><strong>5.0.0 is a complete rewrite.</strong> It shares the name and the NuGet package with Fuse 4.x and nothing else. No command, file, setting or MCP tool of 4.x carries over, 5.x reads nothing 4.x wrote, and there is no migration path. Treat 5.0.0 as a new tool: remove what 4.x left in your repositories (<a href="#moving-from-4-x">Moving from 4.x</a>) and set Fuse up again with <code>fuse init</code>.</p>
+    </div>
+    <p>Fuse 5 keeps a warm Roslyn compilation of a .NET repository and gives coding agents the compiler errors their edits introduced, affected-test runs, and compact build output, through agent hooks and a three-tool MCP server.</p>
+    <ul>
+      <li><code>fuse init</code> registers hooks with Claude Code, Cursor, Gemini CLI, Codex and GitHub Copilot CLI, a plugin with OpenCode, and the MCP server with VS Code, for the harnesses the repository uses.</li>
+      <li><code>fuse hook &lt;harness&gt; &lt;event&gt;</code> runs a post-edit check that reports only introduced errors, rewrites <code>dotnet build</code> and <code>dotnet test</code> to their Fuse equivalents, and runs a stop check that sends the agent back once while its changes leave errors that were not at HEAD.</li>
+      <li><code>fuse check</code> reports the errors the working tree has that HEAD did not, including breaks in dependent projects, with analyzers that can report an error.</li>
+      <li><code>fuse test</code> runs the tests the changes can reach, from a shadow copy of the last build with changed assemblies emitted in memory when that is safe; <code>fuse test --all</code> runs everything; with <code>dotnet test</code> arguments it runs exactly that scope. Output lists failures only.</li>
+      <li><code>fuse build</code> runs <code>dotnet build</code> and prints only errors.</li>
+      <li><code>fuse mcp</code> serves <code>fuse_check</code>, <code>fuse_test</code> and <code>fuse_build</code>.</li>
+      <li>One engine runs per repository, starts on demand, runs from a private copy of its binaries, and exits after 30 idle minutes. Nothing is configured, and nothing is written inside the repository except the hook settings <code>fuse init</code> creates.</li>
+    </ul>
+
+    <h3 id="moving-from-4-x">Moving from 4.x <a class="anchor" href="#moving-from-4-x" aria-label="Link to this section">#</a></h3>
+    <p>Fuse 4.x was an indexer: it kept an index of the repository in a <code>.fuse</code> folder and served its own MCP tools. Fuse 5 uses none of what 4.x wrote. Most of it is only unused files, but two entries still act on your agent, so remove all of it:</p>
+    <ol>
+      <li>Update the tool: <code>dotnet tool update -g Fuse</code>.</li>
+      <li>In each repository, remove what 4.x wrote, as the table below lists.</li>
+      <li>Run <code>fuse init</code> in each repository to register the 5.x hooks (<a href="harnesses.html">Connect your agent</a>).</li>
+    </ol>
+    <div class="table-scroll">
+    <table>
+      <thead><tr><th scope="col">What 4.x wrote</th><th scope="col">Where</th><th scope="col">What to do</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">The <code>.fuse</code> folder, which held the 4.x index <code>fuse.db</code></th><td>The repository root</td><td>Delete the folder, and the <code>.fuse/</code> line 4.x added to <code>.gitignore</code>. Fuse 5 neither reads nor writes it; left in place, it is residue that takes disk space and does nothing.</td></tr>
+        <tr><th scope="row"><code>fuse.json</code></th><td>The repository root, usually committed</td><td>Delete it. Fuse 5 has no configuration file.</td></tr>
+        <tr><th scope="row">Claude Code hooks running <code>fuse check --delta --fast</code> and <code>fuse gate</code></th><td><code>.claude/settings.json</code></td><td>Delete both entries. <code>fuse init</code> does not, because it replaces only commands that start with <code>fuse hook</code>. Under Fuse 5, <code>fuse gate</code> prints the usage text and exits with 2, which Claude Code takes as a stop hook refusing to let the agent finish.</td></tr>
+        <tr><th scope="row">A guidance block that starts with <code>&lt;!-- fuse:begin</code> and a 4.x version, such as <code>&lt;!-- fuse:begin v4.4 --&gt;</code>, and ends with <code>&lt;!-- fuse:end --&gt;</code></th><td><code>CLAUDE.md</code>, <code>AGENTS.md</code> or <code>.github/copilot-instructions.md</code>, and for a user-scope install <code>~/.claude/CLAUDE.md</code> or the <code>AGENTS.md</code> in the Codex, OpenCode or Kilo Code configuration folder; for Cursor, the file <code>.cursor/rules/fuse.mdc</code></td><td>Delete the block, markers included, and delete <code>.cursor/rules/fuse.mdc</code> whole. It tells the agent to call 4.x tools, such as <code>fuse_workspace</code>, <code>fuse_find</code> and <code>fuse_impact</code>, that Fuse 5 does not have.</td></tr>
+        <tr><th scope="row">An MCP server named <code>fuse</code> that runs <code>fuse mcp serve</code></th><td><code>.mcp.json</code>, <code>.cursor/mcp.json</code> and <code>.vscode/mcp.json</code>, or the same clients' user-level files</td><td>Delete the entry, except in <code>.vscode/mcp.json</code>, where <code>fuse init</code> replaces it with the 5.x entry. Fuse 5 ignores <code>serve</code> and starts its own MCP server, so a leftover entry gives the agent <code>fuse_check</code>, <code>fuse_test</code> and <code>fuse_build</code> next to the hooks, which answer the same questions.</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>A script or CI step that runs a 4.x command has to be rewritten against <a href="commands.html">Commands</a>. Fuse 5 has no <code>fuse index</code>, <code>fuse find</code> or <code>fuse mcp install</code>, and its <code>fuse check</code> and <code>fuse test</code> take other arguments and print other output than the 4.x commands of the same names.</p>
+
+    <h2 id="before-5-0-0">Versions before 5.0.0 <a class="anchor" href="#before-5-0-0" aria-label="Link to this section">#</a></h2>
+    <p>Fuse 1.0.0 to 4.4.0, released from 2026-04-09 to 2026-07-30, are deprecated. They get no fixes, security fixes included, and no support, and this documentation does not describe them. Their release notes stay on the <a class="ext" href="https://github.com/Litenova-Solutions/Fuse/releases">GitHub releases page</a> and in <a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/v4.4.0/CHANGELOG.md">CHANGELOG.md at v4.4.0</a>. To leave one, follow <a href="#moving-from-4-x">Moving from 4.x</a>.</p>
+
+    <nav class="pager" aria-label="Previous and next page">
+      <a href="troubleshooting.html"><span>Previous</span>Troubleshooting</a>
+      <a class="next-page" href="architecture.html"><span>Next</span>Architecture</a>
+    </nav>
+    </main>
+
+    <nav class="sidebar" id="docs-nav" aria-label="Documentation">
+      <h2>Start here</h2>
+      <ul>
+        <li><a href="index.html">Overview</a></li>
+        <li><a href="getting-started.html">Getting started</a></li>
+        <li><a href="harnesses.html">Connect your agent</a></li>
+      </ul>
+      <h2>Understand</h2>
+      <ul>
+        <li><a href="how-it-works.html">How it works</a></li>
+        <li><a href="limits.html">Limits</a></li>
+        <li><a href="results.html">Results</a></li>
+      </ul>
+      <h2>Reference</h2>
+      <ul>
+        <li><a href="commands.html">Commands</a></li>
+        <li><a href="messages.html">Messages and fixes</a></li>
+        <li><a href="troubleshooting.html">Troubleshooting</a></li>
+        <li><a href="changelog.html" aria-current="page">Changelog</a></li>
+      </ul>
+      <h2>Contribute</h2>
+      <ul>
+        <li><a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/main/CONTRIBUTING.md">Contributing</a></li>
+        <li><a href="architecture.html">Architecture</a></li>
+        <li><a href="evals.html">Evals</a></li>
+        <li><a href="ai-policy.html">AI policy</a></li>
+        <li><a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/main/SECURITY.md">Security</a></li>
+      </ul>
+    </nav>
+  </div>
+
+  <footer class="site-footer">
+    <span>Fuse, Apache-2.0. Measured medians, one Windows machine.</span>
+    <nav aria-label="Footer"><a href="index.html">Docs</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
+  </footer>
+</div>
+</body>
+</html>

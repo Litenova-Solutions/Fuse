@@ -4,7 +4,7 @@ This page says which versions of Fuse get security fixes, what counts as a vulne
 
 ## Supported versions
 
-Security fixes ship in patch releases of the latest 5.x minor version.
+Security fixes ship in patch releases of the latest 5.x minor version. Versions before 5.0.0 are deprecated and get no fixes; the [changelog](https://fuse.codes/docs/changelog#supported-versions) lists the status of each version.
 
 ## Reporting a vulnerability
 

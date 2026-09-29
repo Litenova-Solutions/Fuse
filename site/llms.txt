@@ -15,6 +15,7 @@ Fuse needs the .NET 10 SDK. Install it with `dotnet tool install -g Fuse`, then 
 - [Commands](https://fuse.codes/docs/commands): every fuse command, its arguments, its output and its exit codes
 - [Messages and fixes](https://fuse.codes/docs/messages): every message Fuse prints when it cannot answer, and the fix
 - [Troubleshooting](https://fuse.codes/docs/troubleshooting): silent hooks, slow checks, log locations and how to stop the engine
+- [Changelog](https://fuse.codes/docs/changelog): what changed in each release, the upgrade steps, and which versions are supported
 
 ## Optional
 
@@ -23,7 +24,6 @@ Fuse needs the .NET 10 SDK. Install it with `dotnet tool install -g Fuse`, then 
 - [AI policy](https://fuse.codes/docs/ai-policy): how AI tools may be used to contribute
 - [Contributing](https://raw.githubusercontent.com/Litenova-Solutions/Fuse/main/CONTRIBUTING.md): how to build, test and submit a change
 - [Security](https://raw.githubusercontent.com/Litenova-Solutions/Fuse/main/SECURITY.md): supported versions and how to report a vulnerability
-- [Changelog](https://raw.githubusercontent.com/Litenova-Solutions/Fuse/main/CHANGELOG.md): what changed in each release
 - [GitHub repository](https://github.com/Litenova-Solutions/Fuse): source code, issues and releases
 - [NuGet package](https://www.nuget.org/packages/Fuse): the Fuse dotnet tool package
 - [Eval results](https://github.com/Litenova-Solutions/Fuse/tree/main/evals/results): the JSON result files behind every published number

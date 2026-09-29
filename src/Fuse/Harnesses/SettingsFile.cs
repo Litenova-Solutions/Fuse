@@ -18,17 +18,44 @@ internal static class SettingsFile
 
     private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
 
+    private static readonly JsonDocumentOptions Lenient = new() { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true };
+
     /// <summary>
-    ///     The JSON object in the file at <paramref name="path"/>, or an empty object when the file is missing or holds no
-    ///     object. Comments and trailing commas are accepted; the comments are not kept when the file is written back.
+    ///     The JSON object in the file at <paramref name="path"/>, or an empty object when the file is missing, empty,
+    ///     holds only comments, or holds a value that is not an object. Comments and trailing commas are accepted; the
+    ///     comments are not kept when the file is written back.
     /// </summary>
-    public static JsonObject Read(string path)
+    /// <param name="root">The repository, whose relative path of the file a failure names.</param>
+    /// <param name="path">The file's absolute path.</param>
+    /// <exception cref="JsonException">The file holds text that is not JSON. The message names the file and ends with the fix.</exception>
+    /// <exception cref="IOException">The file cannot be read. The message names the file.</exception>
+    public static JsonObject Read(RepoRoot root, string path)
     {
         if (!File.Exists(path))
             return [];
-        var text = File.ReadAllText(path);
-        var node = JsonNode.Parse(text, documentOptions: new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true });
-        return node as JsonObject ?? [];
+        byte[] bytes;
+        try
+        {
+            bytes = File.ReadAllBytes(path);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            throw new IOException($"could not read {root.PathOf(path).Relative} ({e.Message})", e);
+        }
+
+        try
+        {
+            // A file with no token at all, only whitespace and comments, is an object nothing has been written to yet.
+            // Read as a block that may continue, so a buffer without a token returns false rather than throwing.
+            var reader = new Utf8JsonReader(bytes, isFinalBlock: false, new JsonReaderState(new JsonReaderOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true }));
+            if (!reader.Read())
+                return [];
+            return JsonNode.Parse(bytes, documentOptions: Lenient) as JsonObject ?? [];
+        }
+        catch (JsonException e)
+        {
+            throw new JsonException($"{root.PathOf(path).Relative} is not valid JSON ({e.Message}); fix or remove it", e);
+        }
     }
 
     /// <summary>The object under <paramref name="name"/> in <paramref name="parent"/>, added when it is missing or is not an object.</summary>
@@ -49,13 +76,35 @@ internal static class SettingsFile
     ///     Writes <paramref name="content"/> to <paramref name="path"/> as it is, creating its directory, and returns its
     ///     repository-relative path.
     /// </summary>
+    /// <exception cref="IOException">
+    ///     The file could not be written or replaced. The message names the file; the file is as it was and no temporary
+    ///     file is left beside it.
+    /// </exception>
     public static string WriteText(RepoRoot root, string path, string content)
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        var relative = root.PathOf(path).Relative;
         var temp = path + ".fuse-tmp";
-        File.WriteAllText(temp, content);
-        MoveWithRetry(() => File.Move(temp, path, overwrite: true), Thread.Sleep);
-        return root.PathOf(path).Relative;
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllText(temp, content);
+            MoveWithRetry(() => File.Move(temp, path, overwrite: true), Thread.Sleep);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            try
+            {
+                File.Delete(temp);
+            }
+            catch (Exception cleanup) when (cleanup is IOException or UnauthorizedAccessException)
+            {
+                // The write itself failed; the message below is the one to show.
+            }
+
+            throw new IOException($"could not write {relative} ({e.Message})", e);
+        }
+
+        return relative;
     }
 
     /// <summary>

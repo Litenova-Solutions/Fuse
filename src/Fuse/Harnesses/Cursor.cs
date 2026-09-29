@@ -17,7 +17,7 @@ internal sealed class Cursor : Harness
     public override string RegisterHooks(RepoRoot root)
     {
         var path = Path.Combine(root.Path, ".cursor", "hooks.json");
-        var settings = SettingsFile.Read(path);
+        var settings = SettingsFile.Read(root, path);
         settings["version"] ??= 1;
         var hooks = SettingsFile.GetOrAddObject(settings, "hooks");
         SetFlatHook(hooks, "postToolUse", new JsonObject { ["command"] = Command(HookEvent.PostEdit), ["matcher"] = "Write", ["timeout"] = 60 });

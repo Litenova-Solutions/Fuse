@@ -38,7 +38,7 @@ wrote .claude/settings.json
 fuse: hooks installed; your agent gets compiler errors after each edit, affected tests for `dotnet test`, and compact `dotnet build` output
 ```
 
-It exits with 2 outside a git repository and in a repository where git knows no `.csproj` file.
+It exits with 2 outside a git repository and in a repository where git knows no `.csproj` file. It also exits with 2, after the `wrote` lines of the files it wrote before, when a settings file it has to change is not valid JSON (`fuse: <file> is not valid JSON (<reason>); fix or remove it`, leaving the file as it was) or cannot be written (`fuse: could not write <file> (<reason>)`, leaving no temporary file). An empty settings file, or one that holds only comments, counts as an empty object.
 
 ## `fuse check`
 

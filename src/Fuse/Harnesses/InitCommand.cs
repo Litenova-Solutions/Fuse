@@ -35,12 +35,24 @@ internal static class InitCommand
         if (harnesses.Count == 0 && !vsCode)
             harnesses.Add(new ClaudeCode());
 
-        var written = harnesses.Select(h => h.RegisterHooks(root)).ToList();
+        // Each file is named as it is written, so a failure part way leaves a list of what was written before it.
+        var registrations = harnesses.Select<Harness, Func<string>>(h => () => h.RegisterHooks(root)).ToList();
         if (vsCode)
-            written.Add(RegisterMcpServer(root));
+            registrations.Add(() => RegisterMcpServer(root));
+        foreach (var register in registrations)
+        {
+            try
+            {
+                output.WriteLine($"wrote {register()}");
+            }
+            catch (Exception e) when (e is System.Text.Json.JsonException or IOException)
+            {
+                // SettingsFile names the file and what to do in the message.
+                error.WriteLine($"fuse: {e.Message}");
+                return 2;
+            }
+        }
 
-        foreach (var file in written)
-            output.WriteLine($"wrote {file}");
         output.WriteLine("fuse: hooks installed; your agent gets compiler errors after each edit, affected tests for `dotnet test`, and compact `dotnet build` output");
         return 0;
     }
@@ -49,7 +61,7 @@ internal static class InitCommand
     private static string RegisterMcpServer(RepoRoot root)
     {
         var path = Path.Combine(root.Path, ".vscode", "mcp.json");
-        var settings = SettingsFile.Read(path);
+        var settings = SettingsFile.Read(root, path);
         var servers = SettingsFile.GetOrAddObject(settings, "servers");
         servers["fuse"] = new JsonObject { ["type"] = "stdio", ["command"] = "fuse", ["args"] = new JsonArray("mcp"), ["cwd"] = "${workspaceFolder}" };
         return SettingsFile.Write(root, path, settings);

@@ -14,7 +14,7 @@ internal sealed class GeminiCli : Harness
     public override string RegisterHooks(RepoRoot root)
     {
         var path = Path.Combine(root.Path, ".gemini", "settings.json");
-        var settings = SettingsFile.Read(path);
+        var settings = SettingsFile.Read(root, path);
         var hooks = SettingsFile.GetOrAddObject(settings, "hooks");
         // Gemini timeouts are in milliseconds.
         SetNestedHook(hooks, "AfterTool", "write_file|replace", new JsonObject { ["name"] = "fuse-check", ["type"] = "command", ["command"] = Command(HookEvent.PostEdit), ["timeout"] = 60000 });

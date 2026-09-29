@@ -17,7 +17,7 @@ internal sealed class Codex : Harness
     public override string RegisterHooks(RepoRoot root)
     {
         var path = Path.Combine(root.Path, ".codex", "hooks.json");
-        var settings = SettingsFile.Read(path);
+        var settings = SettingsFile.Read(root, path);
         var hooks = SettingsFile.GetOrAddObject(settings, "hooks");
         SetNestedHook(hooks, "PostToolUse", "^apply_patch$", new JsonObject { ["type"] = "command", ["command"] = Command(HookEvent.PostEdit), ["timeout"] = 60 });
         SetNestedHook(hooks, "PreToolUse", "^Bash$", new JsonObject { ["type"] = "command", ["command"] = Command(HookEvent.PreShell), ["timeout"] = 10 });

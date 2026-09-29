@@ -163,6 +163,73 @@ public class InitCommandTests
         Assert.StartsWith("wrote .vscode/mcp.json" + Environment.NewLine + "fuse: hooks installed", output.ToString(), StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("  \n")]
+    [InlineData("// only a comment\n/* and another */\n")]
+    public void An_empty_or_comment_only_settings_file_reads_as_an_empty_object(string content)
+    {
+        using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["App/App.csproj"] = "<Project />", [".claude/settings.json"] = content });
+        Assert.Equal(0, Init(repo));
+        Assert.Equal("fuse hook claude stop", Json(repo, ".claude/settings.json")["hooks"]!["Stop"]![0]!["hooks"]![0]!["command"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void A_settings_file_that_is_not_json_is_named_and_left_as_it_was()
+    {
+        const string broken = "{ \"hooks\": {\n";
+        using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["App/App.csproj"] = "<Project />", [".claude/settings.json"] = broken });
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+
+        Assert.Equal(2, InitCommand.Run(repo.Root.Path, output, error));
+
+        Assert.StartsWith("fuse: .claude/settings.json is not valid JSON (", error.ToString(), StringComparison.Ordinal);
+        Assert.EndsWith("); fix or remove it" + Environment.NewLine, error.ToString(), StringComparison.Ordinal);
+        Assert.Equal(broken, repo.Read(".claude/settings.json"));
+        Assert.Equal([repo.Full(".claude/settings.json")], Directory.GetFiles(repo.Full(".claude")));
+    }
+
+    [Fact]
+    public void A_permission_that_is_not_a_string_is_kept_and_skipped()
+    {
+        using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string>
+        {
+            ["App/App.csproj"] = "<Project />",
+            [".claude/settings.json"] = """{ "permissions": { "allow": [ 7, "Bash(dotnet build:*)" ] } }""",
+        });
+        Assert.Equal(0, Init(repo));
+        var allow = Json(repo, ".claude/settings.json")["permissions"]!["allow"]!.AsArray().Select(r => r!.ToJsonString()).ToList();
+        Assert.Equal(["7", "\"Bash(dotnet build:*)\"", "\"Bash(fuse build:*)\""], allow);
+    }
+
+    [Fact]
+    public void A_settings_file_that_cannot_be_replaced_is_named_and_no_temporary_file_is_left()
+    {
+        using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["App/App.csproj"] = "<Project />", [".claude/settings.json"] = "{}" });
+        var settings = repo.Full(".claude/settings.json");
+        File.SetAttributes(settings, FileAttributes.ReadOnly);
+        if (!OperatingSystem.IsWindows())
+            File.SetUnixFileMode(repo.Full(".claude"), UnixFileMode.UserRead | UnixFileMode.UserExecute);
+        try
+        {
+            using var output = new StringWriter();
+            using var error = new StringWriter();
+
+            Assert.Equal(2, InitCommand.Run(repo.Root.Path, output, error));
+
+            Assert.StartsWith("fuse: could not write .claude/settings.json (", error.ToString(), StringComparison.Ordinal);
+            Assert.Equal([settings], Directory.GetFiles(repo.Full(".claude")));
+            Assert.Equal("{}", repo.Read(".claude/settings.json"));
+        }
+        finally
+        {
+            if (!OperatingSystem.IsWindows())
+                File.SetUnixFileMode(repo.Full(".claude"), UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            File.SetAttributes(settings, FileAttributes.Normal);
+        }
+    }
+
     [Fact]
     public void Outside_a_repository_fails_cleanly()
     {

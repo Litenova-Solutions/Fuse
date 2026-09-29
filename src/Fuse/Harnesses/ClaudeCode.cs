@@ -24,7 +24,7 @@ internal sealed class ClaudeCode : Harness
     public override string RegisterHooks(RepoRoot root)
     {
         var path = Path.Combine(root.Path, ".claude", "settings.json");
-        var settings = SettingsFile.Read(path);
+        var settings = SettingsFile.Read(root, path);
         var hooks = SettingsFile.GetOrAddObject(settings, "hooks");
         SetNestedHook(hooks, "PostToolUse", "Edit|Write|MultiEdit", new JsonObject { ["type"] = "command", ["command"] = Command(HookEvent.PostEdit), ["asyncRewake"] = true, ["timeout"] = 300 });
         SetNestedHook(hooks, "PreToolUse", "Bash", new JsonObject { ["type"] = "command", ["command"] = Command(HookEvent.PreShell), ["timeout"] = 10 });
@@ -33,7 +33,8 @@ internal sealed class ClaudeCode : Harness
         // A user who already lets the agent run dotnet build/test without asking gets the same for the rewritten commands.
         if (settings["permissions"]?["allow"] is JsonArray allow)
         {
-            var rules = allow.Select(r => r?.GetValue<string>() ?? "").ToList();
+            // An entry that is not a string is the user's to keep; it matches no rule.
+            var rules = allow.Select(r => r is JsonValue value && value.TryGetValue<string>(out var rule) ? rule : "").ToList();
             foreach (var verb in new[] { "build", "test" })
             {
                 if (rules.Any(r => r is "Bash(dotnet:*)" or "Bash(dotnet *)" || r.StartsWith($"Bash(dotnet {verb}", StringComparison.Ordinal))

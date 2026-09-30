@@ -198,8 +198,9 @@
       <li><code>hook.log</code>: the failures of hooks run in this repository.</li>
       <li><code>build.lock</code>: the <a href="how-it-works.html#builds-and-the-build-lock">build lock</a>.</li>
       <li><code>results</code>, <code>shadow</code> and <code>analyzers</code>: test results while a run lasts, the copies used for test runs without MSBuild, and the copies of the repository's own analyzers.</li>
+      <li><code>root</code>: the repository's path. Once a day a starting engine deletes the state directories whose repository no longer exists and that nothing wrote to for a day.</li>
     </ul>
-    <p>The engine itself runs from a copy of the tool in <code>fuse/engine/&lt;version&gt;-&lt;module id&gt;</code> in the same local application data.</p>
+    <p>The engine itself runs from a copy of the tool in <code>fuse/engine/&lt;version&gt;-&lt;module id&gt;</code> in the same local application data. A starting engine deletes the copies of other builds that no running engine holds.</p>
 
     <h2 id="reading-engine-log">Reading engine.log <a class="anchor" href="#reading-engine-log" aria-label="Link to this section">#</a></h2>
     <p>These lines are from the engine of the <a href="getting-started.html">getting started</a> sample, from its start to the test run, with some lines left out and the repository path shortened:</p>

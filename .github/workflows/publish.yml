@@ -10,7 +10,12 @@ permissions:
   id-token: write # NuGet Trusted Publishing (OIDC)
 
 jobs:
+  package:
+    name: Package
+    uses: ./.github/workflows/package.yml
+
   publish:
+    needs: package
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -35,8 +40,18 @@ jobs:
           awk -v v="## $VERSION" '$0 == v {found=1; next} found && /^## / {exit} found {print}' CHANGELOG.md > release-notes.md
           if [ ! -s release-notes.md ]; then echo "CHANGELOG.md has no section for $VERSION"; exit 1; fi
 
-      - name: Pack
-        run: dotnet pack src/Fuse/Fuse.csproj -c Release -o artifacts
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: package-*
+          path: artifacts
+          merge-multiple: true
+
+      - name: Check every package is there
+        shell: bash
+        run: |
+          for id in Fuse Fuse.any Fuse.win-x64 Fuse.linux-x64 Fuse.linux-arm64 Fuse.osx-arm64 Fuse.linux-musl-x64 Fuse.linux-musl-arm64; do
+            [ -f "artifacts/$id.$VERSION.nupkg" ] || { echo "missing artifacts/$id.$VERSION.nupkg"; exit 1; }
+          done
 
       - name: NuGet login
         uses: NuGet/login@v1
@@ -44,8 +59,15 @@ jobs:
         with:
           user: ${{ secrets.NUGET_USER }}
 
+      # dotnet tool install resolves the RID packages the pointer package Fuse lists, so they go first.
       - name: Push to NuGet
-        run: dotnet nuget push artifacts/*.nupkg --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+        shell: bash
+        run: |
+          for package in artifacts/Fuse.*.nupkg; do
+            [ "$package" = "artifacts/Fuse.$VERSION.nupkg" ] && continue
+            dotnet nuget push "$package" --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+          done
+          dotnet nuget push "artifacts/Fuse.$VERSION.nupkg" --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
 
       - name: GitHub release
         env:

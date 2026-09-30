@@ -23,11 +23,7 @@ internal sealed class RepoRoot
     ///     Directory for Fuse's own files for this repository (engine log, hook log, shadow test output, test results).
     ///     It lives in the user's local application data, so Fuse never writes inside the repository.
     /// </summary>
-    public string StateDirectory => System.IO.Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.Create),
-        "fuse",
-        "repos",
-        PipeName["fuse-".Length..]);
+    public string StateDirectory => System.IO.Path.Combine(LocalState.Repositories, PipeName["fuse-".Length..]);
 
     /// <summary>Finds the repository containing <paramref name="start"/>, or null when there is none.</summary>
     public static RepoRoot? Find(string start)

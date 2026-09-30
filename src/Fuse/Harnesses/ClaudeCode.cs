@@ -39,7 +39,7 @@ internal sealed class ClaudeCode : Harness
             {
                 if (rules.Any(r => r is "Bash(dotnet:*)" or "Bash(dotnet *)" || r.StartsWith($"Bash(dotnet {verb}", StringComparison.Ordinal))
                     && !rules.Contains($"Bash(fuse {verb}:*)"))
-                    allow.Add($"Bash(fuse {verb}:*)");
+                    allow.Add((JsonNode)$"Bash(fuse {verb}:*)");
             }
         }
 

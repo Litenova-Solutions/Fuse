@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
+using Fuse.Paths;
 using Fuse.Protocol;
 
 namespace Fuse.Engine.Client;
@@ -28,18 +29,19 @@ internal static class EngineLauncher
         var processPath = Environment.ProcessPath ?? throw new InvalidOperationException("cannot locate the fuse executable");
         var home = EngineHome();
         var arguments = new List<string>();
-        // A dotnet tool package carries fuse.dll but no fuse.exe (its shim lives elsewhere), so the engine runs
-        // through the dotnet host unless this build has its own apphost next to fuse.dll.
+        // A dotnet tool package carries fuse.dll but no managed fuse.exe (its shim lives elsewhere), so the engine runs
+        // through the dotnet host unless this build has its own apphost next to fuse.dll. The native client's fuse.exe
+        // is the native client itself, which cannot run the engine.
         var appHost = Path.Combine(home, OperatingSystem.IsWindows() ? "fuse.exe" : "fuse");
         string fileName;
-        if (File.Exists(appHost) && !Path.GetFileNameWithoutExtension(processPath).Equals("dotnet", StringComparison.OrdinalIgnoreCase))
+        if (!EngineVersion.IsNativeClient && File.Exists(appHost) && !Path.GetFileNameWithoutExtension(processPath).Equals("dotnet", StringComparison.OrdinalIgnoreCase))
         {
             fileName = appHost;
         }
         else
         {
             fileName = DotnetHost(processPath);
-            arguments.Add(Path.Combine(home, Path.GetFileName(typeof(EngineLauncher).Assembly.Location)));
+            arguments.Add(Path.Combine(home, EngineVersion.ManagedAssembly));
         }
 
         arguments.Add("engine");
@@ -47,7 +49,10 @@ internal static class EngineLauncher
         return (fileName, arguments);
     }
 
-    /// <summary>The dotnet host executable: this process when it is the host, else the one next to the running runtime.</summary>
+    /// <summary>
+    ///     The dotnet host executable: this process when it is the host, else the one the environment names, else the one
+    ///     next to the running runtime, else the one on the PATH. The native client has no runtime directory to look in.
+    /// </summary>
     private static string DotnetHost(string processPath)
     {
         if (Path.GetFileNameWithoutExtension(processPath).Equals("dotnet", StringComparison.OrdinalIgnoreCase))
@@ -59,11 +64,16 @@ internal static class EngineLauncher
                 return candidate;
         }
 
-        // The runtime directory is <dotnet root>/shared/Microsoft.NETCore.App/<version>/.
-        var runtime = System.Runtime.InteropServices.RuntimeEnvironment.GetRuntimeDirectory();
-        var root = Path.GetFullPath(Path.Combine(runtime, "..", "..", ".."));
-        var host = Path.Combine(root, name);
-        return File.Exists(host) ? host : name;
+        if (!EngineVersion.IsNativeClient)
+        {
+            // The runtime directory is <dotnet root>/shared/Microsoft.NETCore.App/<version>/.
+            var runtime = System.Runtime.InteropServices.RuntimeEnvironment.GetRuntimeDirectory();
+            var host = Path.Combine(Path.GetFullPath(Path.Combine(runtime, "..", "..", "..")), name);
+            if (File.Exists(host))
+                return host;
+        }
+
+        return name;
     }
 
     /// <summary>
@@ -73,17 +83,15 @@ internal static class EngineLauncher
     /// </summary>
     internal static string EngineHome()
     {
-        var baseDirectory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.Create),
-            "fuse",
-            "engine");
-        var home = Path.Combine(baseDirectory, EngineVersion.Build.Replace('/', '-'));
+        var home = Path.Combine(LocalState.EngineCopies, EngineVersion.Build.Replace('/', '-'));
         var marker = Path.Combine(home, ".complete");
         if (File.Exists(marker))
             return home;
 
+        var source = EngineVersion.ManagedDirectory
+                     ?? throw new InvalidOperationException($"this build of Fuse has no {EngineVersion.ManagedAssembly} to run the engine from; reinstall Fuse with dotnet tool update -g Fuse");
         var staging = home + "." + Guid.NewGuid().ToString("N")[..8];
-        CopyDirectory(AppContext.BaseDirectory, staging);
+        CopyDirectory(source, staging);
         File.WriteAllText(Path.Combine(staging, ".complete"), EngineVersion.Build);
         try
         {
@@ -95,7 +103,6 @@ internal static class EngineLauncher
             Directory.Delete(staging, recursive: true);
         }
 
-        RemoveOldCopies(baseDirectory, home);
         return home;
     }
 
@@ -113,23 +120,6 @@ internal static class EngineLauncher
             var executable = Path.Combine(target, "fuse");
             if (File.Exists(executable))
                 File.SetUnixFileMode(executable, File.GetUnixFileMode(executable) | UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute);
-        }
-    }
-
-    /// <summary>Deletes copies of other builds unused for a week. A copy an engine still runs from is locked on Windows and survives.</summary>
-    private static void RemoveOldCopies(string baseDirectory, string keep)
-    {
-        foreach (var directory in Directory.EnumerateDirectories(baseDirectory))
-        {
-            if (string.Equals(directory, keep, StringComparison.OrdinalIgnoreCase) || Directory.GetLastWriteTimeUtc(directory) > DateTime.UtcNow.AddDays(-7))
-                continue;
-            try
-            {
-                Directory.Delete(directory, recursive: true);
-            }
-            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-            {
-            }
         }
     }
 

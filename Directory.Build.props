@@ -8,7 +8,7 @@
     <!-- The compiler checks that every doc comment is well formed and that each cref and param names something, and IDE0005 reports unused usings. A comment documents only the parameters it has something to say about (CS1573), and public test classes need none (CS1591). -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CS1573;CS1591</NoWarn>
-    <Version>5.2.0</Version>
+    <Version>5.2.1</Version>
     <Authors>Litenova Solutions</Authors>
     <Company>Litenova Solutions</Company>
     <Copyright>Copyright (c) Litenova Solutions 2026</Copyright>

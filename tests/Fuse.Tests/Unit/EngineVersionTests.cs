@@ -42,7 +42,7 @@ public class EngineVersionTests
     public void A_native_client_installed_as_a_tool_on_windows_runs_the_engine_from_its_package_in_the_store() =>
         InTempDirectory(directory =>
         {
-            var package = Path.Combine(directory, ".store", "fuse", "5.2.0", "fuse.win-x64", "5.2.0", "tools", "net10.0", "win-x64");
+            var package = Path.Combine(directory, ".store", "fuse", "5.2.0", "litenova.fuse.win-x64", "5.2.0", "tools", "net10.0", "win-x64");
             Directory.CreateDirectory(package);
             File.WriteAllText(Path.Combine(package, EngineVersion.ManagedAssembly), "");
 

@@ -73,7 +73,7 @@ jobs:
       - name: Check every package is there
         shell: bash
         run: |
-          for id in Fuse Fuse.any Fuse.win-x64 Fuse.linux-x64 Fuse.linux-arm64 Fuse.osx-arm64 Fuse.linux-musl-x64 Fuse.linux-musl-arm64; do
+          for id in Fuse Litenova.Fuse.any Litenova.Fuse.win-x64 Litenova.Fuse.linux-x64 Litenova.Fuse.linux-arm64 Litenova.Fuse.osx-arm64 Litenova.Fuse.linux-musl-x64 Litenova.Fuse.linux-musl-arm64; do
             [ -f "artifacts/$id.$VERSION.nupkg" ] || { echo "missing artifacts/$id.$VERSION.nupkg"; exit 1; }
           done
 
@@ -102,7 +102,7 @@ jobs:
             fi
             dotnet nuget push "$package" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json
           }
-          for package in artifacts/Fuse.*.nupkg; do
+          for package in artifacts/*.nupkg; do
             [ "$package" = "artifacts/Fuse.$VERSION.nupkg" ] && continue
             push "$package"
           done

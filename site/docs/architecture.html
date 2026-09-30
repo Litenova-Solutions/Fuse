@@ -277,7 +277,7 @@
     <h3 id="steps-fuse-check">Steps (<code>Fuse.Check</code>) <a class="anchor" href="#steps-fuse-check" aria-label="Link to this section">#</a></h3>
     <ol>
       <li><code>TargetResolver</code>: turns a <code>CheckScope</code> into the source files that have an owning project.</li>
-      <li><code>IntroducedErrors</code>: binds files or whole projects in both views and keeps the errors with no match at HEAD, using <code>DiagnosticCollector</code>, <code>AnalyzerSelector</code> and <code>DiagnosticDelta</code>.</li>
+      <li><code>IntroducedErrors</code>: binds files or whole projects in both views and keeps the errors with no match at HEAD, using <code>DiagnosticCollector</code>, <code>AnalyzerSelector</code> and <code>ErrorDelta</code>, and matches a file renamed since HEAD with its old name.</li>
       <li><code>ChangeReach</code>: turns the declaration changes of the targets, as <code>SurfaceDiff</code> finds them, into a <code>Reach</code>.</li>
       <li><code>CandidateBinding</code>: binds the reached files, or whole projects past 500 candidates.</li>
       <li><code>CauseLines</code>: attaches causes to errors in candidate files, at most ten per answer.</li>

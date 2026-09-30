@@ -179,9 +179,10 @@ fuse: the request is cancelled</code></pre>
 
     <h2 id="invalidpath">InvalidPath <a class="anchor" href="#invalidpath" aria-label="Link to this section">#</a></h2>
     <pre class="out" data-label="Message"><code>fuse: a file named in the check is empty; name each file by its path
-fuse: "&lt;file&gt;" named in the check is not a valid path</code></pre>
-    <p><strong>Cause.</strong> <code>fuse check</code> and the <code>fuse_check</code> tool print it when a file argument is empty or blank, is not a string, or is not a path (for example because it holds a NUL character), and check nothing.</p>
-    <p><strong>Fix.</strong> Name each file by its path, relative or absolute.</p>
+fuse: "&lt;file&gt;" named in the check is not a valid path
+fuse: none of the files named in the check is a C# source file of a project in this repository: &lt;files&gt;</code></pre>
+    <p><strong>Cause.</strong> <code>fuse check</code> and the <code>fuse_check</code> tool print it when a file argument is empty or blank, is not a string, or is not a path (for example because it holds a NUL character), and check nothing. The last form means every named file is something Fuse cannot check: a path that does not exist, a file of another language, or a C# file outside every project. It lists up to five of them. When at least one named file is a C# source of a project, the check runs on those, and its <code>file(s) checked</code> count leaves the others out.</p>
+    <p><strong>Fix.</strong> Name each file by its path, relative or absolute, and check that the path is spelled as it is on disk.</p>
 
     <h2 id="internal">Internal <a class="anchor" href="#internal" aria-label="Link to this section">#</a></h2>
     <pre class="out" data-label="Message"><code>fuse: internal error: &lt;message&gt; (details in &lt;state directory&gt;/engine.log)

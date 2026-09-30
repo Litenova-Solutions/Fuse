@@ -58,6 +58,20 @@ public class RequestRouterTests
     }
 
     [Fact]
+    public async Task A_check_that_names_only_files_it_cannot_check_is_answered_as_invalid_path_not_as_no_errors()
+    {
+        using var repo = FixtureRepo.CreateStandard();
+        await using var engine = await InProcessRequestRouter.StartAsync(repo);
+
+        var missing = Assert.IsType<EngineResponse.Unanswered>(await engine.CheckAsync("does/not/exist.cs", "README.md"));
+
+        Assert.Equal(ErrorCode.InvalidPath, missing.Code);
+        Assert.Contains("does/not/exist.cs, README.md", missing.Message, StringComparison.Ordinal);
+        // One C# source among them is enough to check it and answer.
+        Assert.IsType<EngineResponse.CheckAnswered>(await engine.CheckAsync("does/not/exist.cs", "Lib/Calc.cs"));
+    }
+
+    [Fact]
     public async Task A_check_that_names_an_empty_or_invalid_path_is_answered_as_invalid_path()
     {
         using var repo = FixtureRepo.CreateStandard();

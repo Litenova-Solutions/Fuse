@@ -38,9 +38,10 @@ public class RepositoryEdgeCaseTests
     {
         await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Write("Lib/obj/Generated.cs", "namespace Lib; public class Generated { public int V => \"text\"; }\n");
-        var report = await engine.CheckAsync("Lib/obj/Generated.cs");
-        Assert.Empty(report.Errors);
-        Assert.Equal(0, report.FilesChecked);
+        // Named alone, it is refused, so the check does not read as a pass either.
+        var refused = await Assert.ThrowsAsync<FuseException>(() => engine.CheckAsync("Lib/obj/Generated.cs"));
+        Assert.Equal(ErrorCode.InvalidPath, refused.Code);
+        Assert.Contains("Lib/obj/Generated.cs", refused.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -83,8 +84,9 @@ public class RepositoryEdgeCaseTests
         const string generated = "Lib/obj/Debug/net10.0/Lib.GlobalUsings.g.cs";
         Assert.NotEmpty(engine.Workspace.Baseline.GetDocumentIdsWithFilePath(engine.Repo.Full(generated)));
 
-        // It has no HEAD content, because build output is not committed; applying it would drop it from the baseline.
-        await engine.CheckAsync(generated);
+        // It has no HEAD content, because build output is not committed; applying it would drop it from the baseline. The
+        // check itself is refused, because build output is never a target.
+        await Assert.ThrowsAsync<FuseException>(() => engine.CheckAsync(generated));
 
         Assert.NotEmpty(engine.Workspace.Baseline.GetDocumentIdsWithFilePath(engine.Repo.Full(generated)));
     }

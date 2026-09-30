@@ -116,7 +116,7 @@ internal static class ChartRenderer
         }
 
         var noteY = y + NoteOffset;
-        body.Append(CultureInfo.InvariantCulture, $"""<text class="note" x="{PadX}" y="{noteY}">Each dotnet bar is 100 percent, and each Fuse bar is Fuse's time as a share of it. Medians over the eval cases, one Windows machine.</text>""").Append('\n');
+        body.Append(CultureInfo.InvariantCulture, $"""<text class="note" x="{PadX}" y="{noteY}">Each dotnet bar is 100 percent, and each Fuse bar is Fuse's time as a share of it. Medians over the eval cases, on GitHub Actions windows-latest runners.</text>""").Append('\n');
         var height = noteY + BottomMargin;
 
         return string.Create(CultureInfo.InvariantCulture, $"""
@@ -234,7 +234,7 @@ internal static class ChartRenderer
                 sentences.Add($"{panel.Title}, {panel.FuseCommand} against {panel.DotnetCommand}. {string.Join("; ", cells)}.");
         }
 
-        sentences.Add("Median times over the eval cases on one Windows machine.");
+        sentences.Add("Median times over the eval cases on GitHub Actions windows-latest runners.");
         return string.Join(' ', sentences);
     }
 

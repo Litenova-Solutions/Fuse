@@ -1,0 +1,320 @@
+{
+  "suite": "latency",
+  "repo": "Jellyfin",
+  "commit": "1d7c6af520da5c84ceac1c21a1d2da34837540ac",
+  "fuseBuild": "5.2.0/a0952db9078b4a51a41ebab6562c9969",
+  "target": "MediaBrowser.Controller/Entities/LinkedChildComparer.cs",
+  "method": "Equals",
+  "referencingFilesInOtherProjects": 210,
+  "coldCleanMs": 7263.05,
+  "coldBodyEditMs": 16355.13,
+  "bodyEdit": {
+    "p50": 379.3,
+    "p95": 615.8,
+    "max": 615.8,
+    "n": 15
+  },
+  "signatureEdit": {
+    "p50": 247.6,
+    "p95": 78195.8,
+    "max": 78195.8,
+    "n": 10
+  },
+  "signatureEditSample": "fuse: 1 error(s) introduced in 1 file(s) (MediaBrowser.Controller); MediaBrowser.Controller declarations changed, 27 dependent project(s) checked",
+  "warmUnchanged": {
+    "p50": 202.3,
+    "p95": 217.6,
+    "max": 217.6,
+    "n": 10
+  },
+  "testRound": {
+    "p50": 94661.4,
+    "p95": 100479.6,
+    "max": 100479.6,
+    "n": 5
+  },
+  "bodyEditPhases": {
+    "phases": {
+      "bindTargets": {
+        "p50": 149.3,
+        "p95": 6395.1,
+        "max": 6395.1,
+        "n": 15
+      },
+      "gate": {
+        "p50": 0,
+        "p95": 1.8,
+        "max": 1.8,
+        "n": 15
+      },
+      "load": {
+        "p50": 0,
+        "p95": 0.5,
+        "max": 0.5,
+        "n": 15
+      },
+      "surfaceDiff": {
+        "p50": 1,
+        "p95": 19.7,
+        "max": 19.7,
+        "n": 15
+      },
+      "sync": {
+        "p50": 1.3,
+        "p95": 11.5,
+        "max": 11.5,
+        "n": 15
+      },
+      "total": {
+        "p50": 156,
+        "p95": 6437,
+        "max": 6437,
+        "n": 15
+      }
+    },
+    "outsideEngine": {
+      "p50": 226.2,
+      "p95": 267.4,
+      "max": 267.4,
+      "n": 15
+    },
+    "n": 15
+  },
+  "signatureEditPhases": {
+    "phases": {
+      "bindCandidates": {
+        "p50": 0.1,
+        "p95": 0.3,
+        "max": 0.3,
+        "n": 9
+      },
+      "bindTargets": {
+        "p50": 41,
+        "p95": 120,
+        "max": 120,
+        "n": 9
+      },
+      "gate": {
+        "p50": 0,
+        "p95": 0.2,
+        "max": 0.2,
+        "n": 10
+      },
+      "load": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 9
+      },
+      "loadDependents": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 9
+      },
+      "referenceSearch": {
+        "p50": 1.1,
+        "p95": 1.4,
+        "max": 1.4,
+        "n": 9
+      },
+      "surfaceDiff": {
+        "p50": 0.6,
+        "p95": 0.7,
+        "max": 0.7,
+        "n": 9
+      },
+      "sync": {
+        "p50": 1.1,
+        "p95": 11.9,
+        "max": 11.9,
+        "n": 10
+      },
+      "total": {
+        "p50": 47,
+        "p95": 125,
+        "max": 125,
+        "n": 10
+      }
+    },
+    "outsideEngine": {
+      "p50": 199.6,
+      "p95": 78179.8,
+      "max": 78179.8,
+      "n": 10
+    },
+    "n": 10
+  },
+  "warmUnchangedPhases": {
+    "phases": {
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 10
+      },
+      "sync": {
+        "p50": 0.2,
+        "p95": 0.2,
+        "max": 0.2,
+        "n": 10
+      },
+      "total": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 10
+      }
+    },
+    "outsideEngine": {
+      "p50": 202.3,
+      "p95": 217.6,
+      "max": 217.6,
+      "n": 10
+    },
+    "n": 10
+  },
+  "testRoundPhases": {
+    "phases": {
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 5
+      },
+      "mirror": {
+        "p50": 3853.5,
+        "p95": 6799.2,
+        "max": 6799.2,
+        "n": 4
+      },
+      "selection": {
+        "p50": 37.2,
+        "p95": 378.7,
+        "max": 378.7,
+        "n": 4
+      },
+      "sync": {
+        "p50": 1.3,
+        "p95": 1.7,
+        "max": 1.7,
+        "n": 5
+      },
+      "total": {
+        "p50": 3891,
+        "p95": 7296,
+        "max": 7296,
+        "n": 5
+      }
+    },
+    "outsideEngine": {
+      "p50": 91909.2,
+      "p95": 93183.6,
+      "max": 93183.6,
+      "n": 5
+    },
+    "n": 5
+  },
+  "multiAgent": {
+    "writers": {
+      "clients": 4,
+      "editsPerClient": 10,
+      "wallMs": 209102.4169,
+      "checks": 40,
+      "unanswered": 0,
+      "notRun": 0,
+      "gate": {
+        "p50": 143.2,
+        "p95": 12613.9,
+        "max": 12662,
+        "n": 40
+      },
+      "engineTotal": {
+        "p50": 156,
+        "p95": 469,
+        "max": 12640,
+        "n": 40
+      },
+      "singleClientTotalP50": 156
+    },
+    "builds": {
+      "clients": 3,
+      "rounds": 5,
+      "wallMs": 222796.0861,
+      "each": {
+        "p50": 28066.6,
+        "p95": 58467.8,
+        "max": 58467.8,
+        "n": 15
+      },
+      "collisions": 0,
+      "collisionSamples": []
+    },
+    "rounds": [
+      {
+        "index": 1,
+        "project": "MediaBrowser.Model.csproj",
+        "edit": "MediaBrowser.Model\\Configuration\\LibraryOptions.cs",
+        "ms": 63120.6851,
+        "testProjects": [
+          "Jellyfin.Api.Tests",
+          "Jellyfin.Controller.Tests",
+          "Jellyfin.LiveTv.Tests",
+          "Jellyfin.MediaEncoding.Hls.Tests",
+          "Jellyfin.MediaEncoding.Tests",
+          "Jellyfin.Networking.Tests",
+          "Jellyfin.Providers.Tests",
+          "Jellyfin.Server.Implementations.Tests",
+          "Jellyfin.Server.Integration.Tests",
+          "Jellyfin.Server.Tests",
+          "Jellyfin.XbmcMetadata.Tests"
+        ],
+        "failingTests": 0
+      },
+      {
+        "index": 2,
+        "project": "Jellyfin.MediaEncoding.Keyframes.csproj",
+        "edit": "src\\Jellyfin.MediaEncoding.Keyframes\\FfProbe\\FfProbeKeyframeExtractor.cs",
+        "ms": 65406.1173,
+        "testProjects": [
+          "Jellyfin.Api.Tests",
+          "Jellyfin.Controller.Tests",
+          "Jellyfin.LiveTv.Tests",
+          "Jellyfin.MediaEncoding.Hls.Tests",
+          "Jellyfin.MediaEncoding.Keyframes.Tests",
+          "Jellyfin.MediaEncoding.Tests",
+          "Jellyfin.Networking.Tests",
+          "Jellyfin.Providers.Tests",
+          "Jellyfin.Server.Implementations.Tests",
+          "Jellyfin.Server.Integration.Tests",
+          "Jellyfin.Server.Tests",
+          "Jellyfin.XbmcMetadata.Tests"
+        ],
+        "failingTests": 0
+      },
+      {
+        "index": 3,
+        "project": "Jellyfin.MediaEncoding.Keyframes.csproj",
+        "edit": "src\\Jellyfin.MediaEncoding.Keyframes\\FfProbe\\FfProbeKeyframeExtractor.cs",
+        "ms": 63411.7879,
+        "testProjects": [
+          "Jellyfin.Api.Tests",
+          "Jellyfin.Controller.Tests",
+          "Jellyfin.LiveTv.Tests",
+          "Jellyfin.MediaEncoding.Hls.Tests",
+          "Jellyfin.MediaEncoding.Keyframes.Tests",
+          "Jellyfin.MediaEncoding.Tests",
+          "Jellyfin.Networking.Tests",
+          "Jellyfin.Providers.Tests",
+          "Jellyfin.Server.Implementations.Tests",
+          "Jellyfin.Server.Integration.Tests",
+          "Jellyfin.Server.Tests",
+          "Jellyfin.XbmcMetadata.Tests"
+        ],
+        "failingTests": 0
+      }
+    ]
+  },
+  "engineWorkingSetMb": 534.6,
+  "treeCleanAfter": true
+}

@@ -20,12 +20,12 @@
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 24.6x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Limits">
 <meta name="twitter:description" content="What Fuse cannot check, where it differs from dotnet build and dotnet test, and what to do about each case.">
 <meta name="twitter:image" content="https://fuse.codes/assets/og.png">
-<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 24.6x faster than dotnet build. dotnet tool install -g Fuse.">
 <link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
 <link rel="icon" href="../assets/fuse-icon.svg" type="image/svg+xml" sizes="any">
 <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -172,7 +172,7 @@
     <h2 id="the-engine">The engine <a class="anchor" href="#the-engine" aria-label="Link to this section">#</a></h2>
     <ul>
       <li><strong>Analyzers the repository builds.</strong> The engine loads an analyzer the repository builds itself as it was when its project loaded. A rebuilt analyzer takes effect when projects next reload: after a project file change, a commit or branch switch, more than 300 changed files at once, or an engine restart. What to do: after changing an analyzer, <a href="troubleshooting.html#stopping-or-restarting-the-engine">restart the engine</a>.</li>
-      <li><strong>Memory.</strong> The engine keeps every project it has loaded in memory until it exits after 30 idle minutes, and never unloads one while it runs. In the <a href="benchmarks.html">benchmarks</a> its working set was 271 MB on a 5-project solution and 2,429 MB on the 26-project Community Toolkit. Each git worktree runs its own engine. What to do: on a machine short of memory, stop the engines you no longer need, as <a href="troubleshooting.html#stopping-or-restarting-the-engine">Stopping or restarting the engine</a> describes.</li>
+      <li><strong>Memory.</strong> The engine keeps every project it has loaded in memory until it exits after 30 idle minutes, and never unloads one while it runs. In the <a href="benchmarks.html">benchmarks</a> its working set was 256 MB on a 5-project solution and 795 MB on the 40-project Jellyfin, on runners with 16 GB of memory; the engine uses more on a machine with more memory. Each git worktree runs its own engine. What to do: on a machine short of memory, stop the engines you no longer need, as <a href="troubleshooting.html#stopping-or-restarting-the-engine">Stopping or restarting the engine</a> describes.</li>
       <li><strong>Loading.</strong> The first request that reaches a project loads it; <a href="benchmarks.html">Benchmarks</a> gives the load times. A post-edit hook in a harness other than Claude Code does not wait for loading, so the stop hook reports the first edits after the engine starts.</li>
     </ul>
 
@@ -215,7 +215,7 @@
   </div>
 
   <footer class="site-footer">
-    <span>Fuse, Apache-2.0. Benchmark medians, one Windows machine.</span>
+    <span>Fuse, Apache-2.0. Benchmark medians, GitHub Actions windows-latest runners.</span>
     <nav aria-label="Footer"><a href="index.html">Docs</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
   </footer>
 </div>

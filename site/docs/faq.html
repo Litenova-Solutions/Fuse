@@ -20,12 +20,12 @@
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 24.6x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="FAQ">
 <meta name="twitter:description" content="Common questions about Fuse, and how it differs from language servers, Roslyn MCP servers, code search tools and test impact analysis tools.">
 <meta name="twitter:image" content="https://fuse.codes/assets/og.png">
-<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 24.6x faster than dotnet build. dotnet tool install -g Fuse.">
 <link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
 <link rel="icon" href="../assets/fuse-icon.svg" type="image/svg+xml" sizes="any">
 <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -106,7 +106,7 @@
           "name": "Why does Fuse exist?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Agents check their work by running dotnet build and dotnet test, often dozens of times in one task. Each run is slow, lists old errors next to new ones, and prints far more than the agent needs. With several subagents, the builds also use a lot of memory and fail on each other's locked files. Fuse removes that wait. On the benchmark repositories a check took 0.18 to 0.87 seconds where dotnet build took 1.14 to 6.45 seconds, and fuse test was 1.4x to 5.7x faster than dotnet test (Benchmarks). All agents in a repository share one Fuse process, and their builds take turns."
+            "text": "Agents check their work by running dotnet build and dotnet test, often dozens of times in one task. Each run is slow, lists old errors next to new ones, and prints far more than the agent needs. With several subagents, the builds also use a lot of memory and fail on each other's locked files. Fuse removes that wait. On the benchmark repositories a check took 0.07 to 1.04 seconds where dotnet build took 1.78 to 12.8 seconds, and fuse test was 1.4x to 4.4x faster than dotnet test (Benchmarks). All agents in a repository share one Fuse process, and their builds take turns."
           }
         },
         {
@@ -122,7 +122,7 @@
           "name": "What does Fuse cost?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Mainly memory. Fuse keeps the loaded projects in memory until it has been idle for 30 minutes: 271 MB to 2,429 MB in the benchmarks. Each git worktree runs its own copy. The first edit that affects other projects has to load them, which took up to 49.1 s on Jellyfin, and agents in one repository wait for each other's checks. What Fuse costs lists every cost."
+            "text": "Mainly memory. Fuse keeps the loaded projects in memory until it has been idle for 30 minutes: 256 MB to 795 MB in the benchmarks, and more on a machine with more memory. Each git worktree runs its own copy. The first edit that affects other projects has to load them, which took up to 92.2 s on Jellyfin, and agents in one repository wait for each other's checks. What Fuse costs lists every cost."
           }
         },
         {
@@ -154,7 +154,7 @@
           "name": "Which platforms does Fuse run on?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Windows, Linux and macOS, with the .NET 10 SDK. CI builds and tests Fuse on all three; the benchmarks come from one Windows machine."
+            "text": "Windows, Linux and macOS, with the .NET 10 SDK. CI builds and tests Fuse on all three; the benchmarks come from GitHub Actions windows-latest runners."
           }
         },
         {
@@ -186,7 +186,7 @@
           "name": "How is Fuse different from dotnet build?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "dotnet build starts MSBuild, builds the projects and lists every error, including errors that already exist. Fuse keeps the solution compiled in memory and reports only the errors an edit introduced, so it answers sooner: in the benchmarks the median check took between 0.18 and 0.87 seconds where the median dotnet build took between 1.14 and 6.45 seconds. It does not replace the build; fuse build runs the real dotnet build."
+            "text": "dotnet build starts MSBuild, builds the projects and lists every error, including errors that already exist. Fuse keeps the solution compiled in memory and reports only the errors an edit introduced, so it answers sooner: in the benchmarks the median check took between 0.07 and 1.04 seconds where the median dotnet build took between 1.78 and 12.8 seconds. It does not replace the build; fuse build runs the real dotnet build."
           }
         },
         {
@@ -287,13 +287,13 @@
 
     <h3 id="why-does-fuse-exist">Why does Fuse exist? <a class="anchor" href="#why-does-fuse-exist" aria-label="Link to this section">#</a></h3>
     <p>Agents check their work by running <code>dotnet build</code> and <code>dotnet test</code>, often dozens of times in one task. Each run is slow, lists old errors next to new ones, and prints far more than the agent needs. With several subagents, the builds also use a lot of memory and fail on each other's locked files.</p>
-    <p>Fuse removes that wait. On the benchmark repositories a check took 0.18 to 0.87 seconds where <code>dotnet build</code> took 1.14 to 6.45 seconds, and <code>fuse test</code> was 1.4x to 5.7x faster than <code>dotnet test</code> (<a href="benchmarks.html">Benchmarks</a>). All agents in a repository share one Fuse process, and their builds take turns.</p>
+    <p>Fuse removes that wait. On the benchmark repositories a check took 0.07 to 1.04 seconds where <code>dotnet build</code> took 1.78 to 12.8 seconds, and <code>fuse test</code> was 1.4x to 4.4x faster than <code>dotnet test</code> (<a href="benchmarks.html">Benchmarks</a>). All agents in a repository share one Fuse process, and their builds take turns.</p>
 
     <h3 id="is-fuse-for-people-or-for-agents">Is Fuse for people or for agents? <a class="anchor" href="#is-fuse-for-people-or-for-agents" aria-label="Link to this section">#</a></h3>
     <p>Agents. The hooks run Fuse without the agent asking, and the output is only what an agent needs to act on. You run <code>fuse init</code> once, and can use the commands to try Fuse or see what the agent gets. For your own editing, your IDE is the better tool.</p>
 
     <h3 id="what-does-fuse-cost">What does Fuse cost? <a class="anchor" href="#what-does-fuse-cost" aria-label="Link to this section">#</a></h3>
-    <p>Mainly memory. Fuse keeps the loaded projects in memory until it has been idle for 30 minutes: 271 MB to 2,429 MB in the <a href="benchmarks.html">benchmarks</a>. Each git worktree runs its own copy. The first edit that affects other projects has to load them, which took up to 49.1 s on Jellyfin, and agents in one repository wait for each other's checks. <a href="index.html#what-fuse-costs">What Fuse costs</a> lists every cost.</p>
+    <p>Mainly memory. Fuse keeps the loaded projects in memory until it has been idle for 30 minutes: 256 MB to 795 MB in the <a href="benchmarks.html">benchmarks</a>, and more on a machine with more memory. Each git worktree runs its own copy. The first edit that affects other projects has to load them, which took up to 92.2 s on Jellyfin, and agents in one repository wait for each other's checks. <a href="index.html#what-fuse-costs">What Fuse costs</a> lists every cost.</p>
 
     <h3 id="which-harnesses-does-fuse-support">Which harnesses does Fuse support? <a class="anchor" href="#which-harnesses-does-fuse-support" aria-label="Link to this section">#</a></h3>
     <p>Fuse supports Claude Code, Cursor, Gemini CLI, Codex, GitHub Copilot CLI and OpenCode through hooks, and VS Code agent mode and any other MCP host through <code>fuse mcp</code>. Claude Code and OpenCode are tested end to end. The others follow each harness's documented hook format and are covered by payload tests. <a href="harnesses.html">Connect your agent</a> lists what <code>fuse init</code> writes for each one.</p>
@@ -333,7 +333,7 @@
     </div>
 
     <h3 id="how-is-fuse-different-from-dotnet-build">How is Fuse different from dotnet build? <a class="anchor" href="#how-is-fuse-different-from-dotnet-build" aria-label="Link to this section">#</a></h3>
-    <p><code>dotnet build</code> starts MSBuild, builds the projects and lists every error, including errors that already exist. Fuse keeps the solution compiled in memory and reports only the errors an edit introduced, so it answers sooner: in the benchmarks the median check took between 0.18 and 0.87 seconds where the median <code>dotnet build</code> took between 1.14 and 6.45 seconds. It does not replace the build; <code>fuse build</code> runs the real <code>dotnet build</code>.</p>
+    <p><code>dotnet build</code> starts MSBuild, builds the projects and lists every error, including errors that already exist. Fuse keeps the solution compiled in memory and reports only the errors an edit introduced, so it answers sooner: in the benchmarks the median check took between 0.07 and 1.04 seconds where the median <code>dotnet build</code> took between 1.78 and 12.8 seconds. It does not replace the build; <code>fuse build</code> runs the real <code>dotnet build</code>.</p>
 
     <h3 id="how-is-fuse-different-from-a-language-server">How is Fuse different from a language server (LSP)? <a class="anchor" href="#how-is-fuse-different-from-a-language-server" aria-label="Link to this section">#</a></h3>
     <p>A language server gives an editor, or an agent's harness, the errors, warnings, completion and navigation for the files it has open, over the Language Server Protocol (LSP). For C# that is <a href="https://github.com/razzmatazz/csharp-language-server">csharp-ls</a>, which Claude Code's <a href="https://code.claude.com/docs/en/plugins/code-intelligence">csharp-lsp plugin</a> runs, or the Roslyn language server behind the C# extension for VS Code, which OpenCode runs. In a harness that runs one, the agent gets the diagnostics of the file it just edited. Fuse answers a narrower question, which errors did the changes introduce, and differs in four ways:</p>
@@ -403,7 +403,7 @@
   </div>
 
   <footer class="site-footer">
-    <span>Fuse, Apache-2.0. Benchmark medians, one Windows machine.</span>
+    <span>Fuse, Apache-2.0. Benchmark medians, GitHub Actions windows-latest runners.</span>
     <nav aria-label="Footer"><a href="index.html">Docs</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
   </footer>
 </div>

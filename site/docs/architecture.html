@@ -20,12 +20,12 @@
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 24.6x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Architecture">
 <meta name="twitter:description" content="How Fuse's code is organized: its layers, which namespace may use which, the order to read it in, and the words its types are named with.">
 <meta name="twitter:image" content="https://fuse.codes/assets/og.png">
-<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 24.6x faster than dotnet build. dotnet tool install -g Fuse.">
 <link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
 <link rel="icon" href="../assets/fuse-icon.svg" type="image/svg+xml" sizes="any">
 <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -454,7 +454,7 @@
           <tr><th scope="row">D11</th><td><code>CompilerError</code> lives in <code>Fuse.Check.Model</code>, and <code>Fuse.Protocol</code> may use that one type.</td><td>The wire carries it unchanged, and features may not use <code>Fuse.Protocol</code>, so it cannot live there. A second record with the same fields would only add a copy step. <code>Fuse.Check.Model</code> has no Roslyn or MSBuild reference, so a client that uses <code>Fuse.Protocol</code> still loads neither.</td></tr>
           <tr><th scope="row">D12</th><td><code>fuse hook</code> accepts only <code>pre-shell</code>. This replaces D5's accepted <code>pre-bash</code> alias.</td><td>Fuse carries no compatibility code for earlier builds, and one alias is one more thing to remove later. A user who does not rerun <code>fuse init</code> after updating loses the <code>dotnet</code> rewrite until they do, and the changelog says so.</td></tr>
           <tr><th scope="row">D13</th><td>The documentation lives in <code>site/docs/</code> as static HTML pages that share <code>site/assets/style.css</code> with the home page. Only the files GitHub and the release workflow read stay Markdown: the README, <code>CONTRIBUTING.md</code>, <code>SECURITY.md</code> and <code>CHANGELOG.md</code> in the root, and <code>CODE_OF_CONDUCT.md</code> and <code>SUPPORT.md</code> in <code>.github/</code>. <code>CHANGELOG.md</code> is the list of changes the release workflow publishes; the changelog page explains each release with its upgrade steps.</td><td>One copy of each page, on the site where readers find it, with diagrams, callouts and navigation that Markdown on GitHub cannot show. The pages need no build step, so the site deploys from <code>main</code> as it is.</td></tr>
-          <tr><th scope="row">D14</th><td>The client ships as native code for win-x64, linux-x64, linux-arm64 and osx-arm64, and the engine always runs <code>fuse.dll</code> on the .NET runtime. One project builds both: a native publish also publishes <code>fuse.dll</code> beside the native client, and the build id is the module id of that <code>fuse.dll</code> on both sides. The Linux and macOS packages are native tool packages; the win-x64 package is framework-dependent with the native client as its packaged shim, because the SDK puts a native tool behind a <code>.cmd</code> file on Windows, which Git Bash cannot run. The musl RIDs and every other platform install <code>fuse.dll</code>.</td><td>In <code>evals/results/latency-NodaTime-20260929-1254.json</code> a check of an unchanged tree spent 141 ms outside the engine and 0 ms in it, and that time is the managed client starting the .NET runtime and compiling its own code, which the native client does not do. The engine cannot be native, because it loads MSBuild and analyzers at run time. Keeping one project keeps D3.</td></tr>
+          <tr><th scope="row">D14</th><td>The client ships as native code for win-x64, linux-x64, linux-arm64 and osx-arm64, and the engine always runs <code>fuse.dll</code> on the .NET runtime. One project builds both: a native publish also publishes <code>fuse.dll</code> beside the native client, and the build id is the module id of that <code>fuse.dll</code> on both sides. The Linux and macOS packages are native tool packages; the win-x64 package is framework-dependent with the native client as its packaged shim, because the SDK puts a native tool behind a <code>.cmd</code> file on Windows, which Git Bash cannot run. The musl RIDs and every other platform install <code>fuse.dll</code>.</td><td>A check of an unchanged tree spends almost all its time in the client: on NodaTime it took 162 ms with the managed client and 23 ms with the native client on the same runner (<code>evals/results/managed/latency-NodaTime-20260930-1429.json</code> and <code>evals/results/latency-NodaTime-20260930-1422.json</code>), and every check gains about the same (<a href="benchmarks.html#native-client">Benchmarks</a>). The engine cannot be native, because it loads MSBuild and analyzers at run time. Keeping one project keeps D3.</td></tr>
         </tbody>
       </table>
     </div>
@@ -513,7 +513,7 @@
   </div>
 
   <footer class="site-footer">
-    <span>Fuse, Apache-2.0. Benchmark medians, one Windows machine.</span>
+    <span>Fuse, Apache-2.0. Benchmark medians, GitHub Actions windows-latest runners.</span>
     <nav aria-label="Footer"><a href="index.html">Docs</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
   </footer>
 </div>

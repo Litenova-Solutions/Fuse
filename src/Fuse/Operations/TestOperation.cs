@@ -28,7 +28,9 @@ internal static class TestOperation
         var started = Environment.TickCount64;
         if (arguments.Count > 0)
         {
-            var (outcome, process) = await RunDotnetTestAsync(root, workingDirectory, [.. arguments], cancellationToken).ConfigureAwait(false);
+            // On Microsoft.Testing.Platform the arguments go to the test application, which rejects VSTest's logger options.
+            var testingPlatform = GlobalJson.UsesTestingPlatform(workingDirectory, root.Path);
+            var (outcome, process) = await RunDotnetTestAsync(root, workingDirectory, [.. arguments], cancellationToken, testingPlatform).ConfigureAwait(false);
             const string summary = "ran the tests your dotnet test arguments name";
             return outcome is null
                 ? WithoutResults(process, root, "dotnet test", summary, Seconds(started))
@@ -73,7 +75,8 @@ internal static class TestOperation
 
         var aggregate = TrxResults.Empty;
         // A project that did not build, or whose run ended without results, is part of the answer whatever the other
-        // projects did. A Microsoft.Testing.Platform run that passed is kept apart: it has no counts to add.
+        // projects did. A Microsoft.Testing.Platform run that passed without printing a run summary is kept apart: it has
+        // no counts to add.
         var problems = new List<OperationResult>();
         OperationResult? passedWithoutResults = null;
         foreach (var group in groups)
@@ -124,8 +127,9 @@ internal static class TestOperation
     private static double Seconds(long started) => (Environment.TickCount64 - started) / 1000.0;
 
     /// <summary>
-    ///     Runs <c>dotnet test</c> and reads its TRX results: the results when it wrote some, and otherwise the process,
-    ///     which is null for a Microsoft.Testing.Platform run that exited with 0.
+    ///     Runs <c>dotnet test</c> and reads its results: from its TRX files, or for a Microsoft.Testing.Platform run from
+    ///     the summary and failures it prints. Without results it returns the process, which is null for a
+    ///     Microsoft.Testing.Platform run that exited with 0.
     /// </summary>
     /// <param name="assembly">True when <paramref name="arguments"/> name a test assembly: <c>dotnet test</c> then hands them to VSTest, which rejects MSBuild switches.</param>
     private static async Task<(TrxResults? Outcome, ProcessResult? Process)> RunDotnetTestAsync(
@@ -140,7 +144,10 @@ internal static class TestOperation
                     ? ["--logger", "trx;LogFilePrefix=fuse", "--results-directory", results]
                     : ["--logger", "trx;LogFilePrefix=fuse", "--results-directory", results, "-nologo", "-tl:off"];
             var result = await ProcessRunner.RunAsync("dotnet", ["test", .. arguments, .. reporting], workingDirectory, cancellationToken).ConfigureAwait(false);
-            var outcome = TrxReader.ReadDirectory(results, root.Path);
+            var outcome = TrxReader.ReadDirectory(results, root.Path) ?? (testingPlatform ? TestingPlatformOutput.Read(result.Output, root.Path) : null);
+            // Counts that say nothing failed from a run that exited with a code other than 0 do not explain its exit code.
+            if (testingPlatform && outcome is { Failed: 0 } && result.ExitCode != 0)
+                outcome = null;
             if (outcome is null && testingPlatform)
                 return (null, result.ExitCode == 0 ? null : result);
             if (outcome is null)
@@ -161,10 +168,10 @@ internal static class TestOperation
     }
 
     /// <summary>
-    ///     The answer for a run that wrote no TRX results. Error lines in its output mean the project did not build, and
-    ///     print as a failed test build. A run that exited with a code other than 0 and printed no error line ended
-    ///     without results Fuse can read, which the answer says after the end of its output; a Microsoft.Testing.Platform
-    ///     run that fails a test ends this way, since it writes no TRX file and reports only on its console.
+    ///     The answer for a run without results. Error lines in its output mean the project did not build, and print as a
+    ///     failed test build. A run that exited with a code other than 0 and printed no error line ended without results
+    ///     Fuse can read, which the answer says after the end of its output; a Microsoft.Testing.Platform run that crashed
+    ///     before its run summary ends this way.
     /// </summary>
     /// <param name="result">The <c>dotnet test</c> process, or null for a Microsoft.Testing.Platform run that exited with 0.</param>
     /// <param name="root">The repository, which error paths are printed relative to.</param>
@@ -173,7 +180,7 @@ internal static class TestOperation
     /// <param name="seconds">How long the operation has taken.</param>
     internal static OperationResult WithoutResults(ProcessResult? result, RepoRoot root, string run, string summary, double seconds)
     {
-        // A Microsoft.Testing.Platform run that passed: its console output is the only report.
+        // A Microsoft.Testing.Platform run that passed without printing a run summary, so there are no counts to show.
         if (result is null)
             return new OperationResult(Outcome.Clean, $"fuse: tests passed in {seconds:0.0} s; {summary}");
         if (result.ExitCode != 0 && BuildOutputParser.Errors(result.Output, root.Path).Count == 0)

@@ -61,14 +61,14 @@ internal static class TrxReader
         return new TrxResults(passed, failed, skipped, failures);
     }
 
-    private static string Trim(string message, int maxLines)
+    internal static string Trim(string message, int maxLines)
     {
         var lines = message.Replace("\r", "").Trim().Split('\n');
         return lines.Length <= maxLines ? string.Join('\n', lines) : string.Join('\n', lines.Take(maxLines)) + "\n...";
     }
 
     /// <summary>Stack frames that point into the repository, with paths made relative; framework frames are dropped.</summary>
-    private static List<string> Frames(string stack, string root)
+    internal static List<string> Frames(string stack, string root)
     {
         var frames = new List<string>();
         foreach (var raw in stack.Replace("\r", "").Split('\n'))

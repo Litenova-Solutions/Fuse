@@ -236,7 +236,7 @@ internal sealed class RepoGraph
         }
 
         var isTest = isTestProperty || packages.Any(p => TestFrameworkPackages.Contains(p, StringComparer.OrdinalIgnoreCase));
-        var isTestingPlatform = isTestingPlatformApplication && GlobalJsonUsesTestingPlatform(root);
+        var isTestingPlatform = isTestingPlatformApplication && GlobalJson.UsesTestingPlatform(root.Path, root.Path);
         var outputType = evaluations.Select(e => e.GetPropertyValue("OutputType")).FirstOrDefault(o => o.Length > 0) ?? "";
         var isWeb = evaluations.Any(e => e.GetPropertyValue("UsingMicrosoftNETSdkWeb").Equals("true", StringComparison.OrdinalIgnoreCase));
 
@@ -256,10 +256,4 @@ internal sealed class RepoGraph
         };
     }
 
-    private static bool GlobalJsonUsesTestingPlatform(RepoRoot root)
-    {
-        var globalJson = System.IO.Path.Combine(root.Path, "global.json");
-        return File.Exists(globalJson)
-               && File.ReadAllText(globalJson).Contains("Microsoft.Testing.Platform", StringComparison.OrdinalIgnoreCase);
-    }
 }

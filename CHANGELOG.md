@@ -2,6 +2,21 @@
 
 The list of changes in each release, which the release workflow publishes as the release notes. The [changelog page](https://fuse.codes/docs/changelog) explains each release with its upgrade steps and says which versions are supported. Versions before 5.0.0 are deprecated.
 
+## 5.2.0
+
+Compared with 5.1.0. Update with `dotnet tool update -g Fuse`; nothing else needs to change, and `fuse init` does not need to run again.
+
+- On Windows x64, Linux x64, Linux Arm64 and macOS Arm64, the `fuse` command is the native client: the client compiled ahead of time to native code, so a hook or command starts no .NET runtime and compiles no code before it sends its request to the engine. The engine still runs on the .NET runtime, from the `fuse.dll` installed with the native client. On every other platform, Windows Arm64, macOS x64 and Alpine included, `fuse` runs `fuse.dll` as in 5.1.0, and so do `dotnet tool run fuse` and tool manifests everywhere.
+- The `Fuse` package points to one package per platform, which `dotnet tool install` and `dotnet tool update` choose from: `Fuse.win-x64`, `Fuse.linux-x64`, `Fuse.linux-arm64`, `Fuse.osx-arm64`, `Fuse.linux-musl-x64`, `Fuse.linux-musl-arm64` and `Fuse.any`. The Linux native clients run on glibc 2.27 and later. On Windows, the native client is the `fuse.exe` in the tools directory, so Git Bash, PowerShell and cmd all run it.
+- The build id a request carries is the product version and the module id of `fuse.dll`, which the native client reads from the `fuse.dll` installed with it. A running 5.1.0 engine answers the first 5.2.0 request with a restart and exits, and the client starts a 5.2.0 engine, so no request fails.
+- `fuse engine <root>` in the native client prints that the engine runs from `fuse.dll` on the .NET runtime and exits with 2. Clients start the engine; nothing runs it by hand.
+- A client that starts the engine looks for the `dotnet` host on the `PATH` when neither `DOTNET_HOST_PATH` nor `DOTNET_ROOT` names one and it has no runtime directory of its own, as the native client has none.
+- For a test project on Microsoft.Testing.Platform, `fuse test` reads the counts from the run summary and each failed test's message and stack frames from the run's output, and answers as it does for VSTest: `FAILED` and the test for each failure, then `fuse: F failed, P passed in T s`. 5.1.0 printed `fuse: tests passed in T s` for a passing run and, for a failing one, the last 30 lines of the output and `exited with code E and produced no results`.
+- In a repository whose `global.json` selects Microsoft.Testing.Platform, `fuse test` with arguments, such as the `fuse test --filter-class Name` the pre-shell hook writes for `dotnet test --filter-class Name`, passes the arguments without VSTest's `--logger`, `--results-directory`, `-nologo` and `-tl:off`. 5.1.0 added them, so every such run failed with exit code 5 and ran no test.
+- Whether `dotnet test` runs on Microsoft.Testing.Platform is read from the `test.runner` value of the `global.json` nearest to the working directory, up to the repository root, as the dotnet CLI reads it. 5.1.0 read only the root `global.json` and took any mention of the platform's name in it.
+- A starting engine deletes the engine copies of other builds that no running engine holds and that are more than ten minutes old, which each engine marks with a lock file in its copy. 5.1.0 deleted only copies last written more than seven days earlier, so every build of the tool left a copy behind for a week.
+- Each state directory holds a `root` file with its repository's path. Once a day a starting engine deletes the state directories whose repository no longer exists and that nothing wrote to for a day, such as those of deleted temporary repositories, which 5.1.0 kept for good.
+
 ## 5.1.0
 
 Compared with 5.0.0. After updating, run `fuse init` again in each repository: the shell hook event is `pre-shell`, and 5.1.0 does not accept the `pre-bash` event that 5.0.0 settings call, so until then `dotnet build` and `dotnet test` are not rewritten.

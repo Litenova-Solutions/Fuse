@@ -120,6 +120,7 @@
       <p>On this page</p>
       <ol>
         <li><a href="#supported-versions">Supported versions</a></li>
+        <li><a href="#v5-2-0">5.2.0</a></li>
         <li><a href="#v5-1-0">5.1.0</a></li>
         <li><a href="#v5-0-0">5.0.0</a></li>
         <li><a href="#before-5-0-0">Versions before 5.0.0</a></li>
@@ -131,13 +132,51 @@
     <table>
       <thead><tr><th scope="col">Version</th><th scope="col">Status</th></tr></thead>
       <tbody>
-        <tr><th scope="row">5.1.x</th><td>Supported. The latest release.</td></tr>
-        <tr><th scope="row">5.0.x</th><td>No longer fixed. Upgrade to 5.1.0 with the <a href="#upgrading-from-5-0-0">steps below</a>.</td></tr>
+        <tr><th scope="row">5.2.x</th><td>Supported. The latest release.</td></tr>
+        <tr><th scope="row">5.1.x</th><td>No longer fixed. Upgrade to 5.2.0 with the <a href="#upgrading-from-5-1-0">steps below</a>.</td></tr>
+        <tr><th scope="row">5.0.x</th><td>No longer fixed. Upgrade to 5.1.0 with the <a href="#upgrading-from-5-0-0">steps below</a>, then to 5.2.0.</td></tr>
         <tr><th scope="row">1.0.0 to 4.4.0</th><td>Deprecated and unsupported. These versions are a different program under the same name; <a href="#moving-from-4-x">Moving from 4.x</a> says what to remove.</td></tr>
       </tbody>
     </table>
     <p>To upgrade the tool itself to the latest release:</p>
     <pre data-label="Shell"><code>dotnet tool update -g Fuse</code></pre>
+
+    <h2 id="v5-2-0">5.2.0 <a class="anchor" href="#v5-2-0" aria-label="Link to this section">#</a></h2>
+    <p>Released 2026-09-30. Compared with 5.1.0.</p>
+    <p>5.2.0 makes the <code>fuse</code> command native code on Windows x64, Linux x64, Linux Arm64 and macOS Arm64, so a hook no longer starts the .NET runtime. It also reads the results of test projects on Microsoft.Testing.Platform, fixes <code>fuse test</code> with arguments in repositories that use it, and removes the engine copies and state directories that nothing uses any more.</p>
+
+    <h3 id="upgrading-from-5-1-0">Upgrading from 5.1.0 <a class="anchor" href="#upgrading-from-5-1-0" aria-label="Link to this section">#</a></h3>
+    <ol>
+      <li>Update the tool: <code>dotnet tool update -g Fuse</code>. It installs the package for your platform, and on the four platforms above the <code>fuse</code> command becomes the native client.</li>
+      <li>Do nothing else. The hook commands <code>fuse init</code> wrote are unchanged, so it does not need to run again. The first request from the 5.2.0 client reaches the running 5.1.0 engine, which answers with a restart and exits, and the client starts a 5.2.0 engine and sends the request again. No request fails.</li>
+    </ol>
+    <p>Then check whether anything you run depends on these changes:</p>
+    <ul>
+      <li><strong>Microsoft.Testing.Platform output.</strong> A script or agent instruction that matched <code>fuse: tests passed in T s</code> for a test project on Microsoft.Testing.Platform now gets <code>fuse: 0 failed, P passed in T s</code>, as for VSTest, and a failing run gets its failures instead of <code>exited with code E and produced no results</code>.</li>
+      <li><strong>Your own packaging.</strong> A mirror or offline feed that copies the <code>Fuse</code> package needs the per-platform packages it points to as well: <code>Fuse.win-x64</code>, <code>Fuse.linux-x64</code>, <code>Fuse.linux-arm64</code>, <code>Fuse.osx-arm64</code>, <code>Fuse.linux-musl-x64</code>, <code>Fuse.linux-musl-arm64</code> and <code>Fuse.any</code>.</li>
+    </ul>
+
+    <h3 id="v5-2-0-native-client">The native client <a class="anchor" href="#v5-2-0-native-client" aria-label="Link to this section">#</a></h3>
+    <ul>
+      <li>On Windows x64, Linux x64, Linux Arm64 and macOS Arm64, the <code>fuse</code> command is the native client: the client compiled ahead of time to native code, so a hook or command starts no .NET runtime and compiles no code before it sends its request to the engine (<a href="how-it-works.html">How it works</a>). The engine still runs on the .NET runtime, from the <code>fuse.dll</code> installed with the native client, because it loads MSBuild and the repository's analyzers at run time. On every other platform, Windows Arm64, macOS x64 and Alpine included, <code>fuse</code> runs <code>fuse.dll</code> as in 5.1.0, and so do <code>dotnet tool run fuse</code> and tool manifests everywhere.</li>
+      <li>The Linux native clients run on glibc 2.27 and later. On Windows the native client is the <code>fuse.exe</code> in the tools directory, so Git Bash, PowerShell and cmd all run it.</li>
+      <li>The build id a request carries is the product version and the module id of <code>fuse.dll</code>, which the native client reads from the <code>fuse.dll</code> installed with it, so the native client and the engine it starts always agree.</li>
+      <li><code>fuse engine &lt;root&gt;</code> in the native client prints that the engine runs from <code>fuse.dll</code> on the .NET runtime and exits with 2.</li>
+      <li>A client that starts the engine looks for the <code>dotnet</code> host on the <code>PATH</code> when neither <code>DOTNET_HOST_PATH</code> nor <code>DOTNET_ROOT</code> names one and it has no runtime directory of its own.</li>
+    </ul>
+
+    <h3 id="v5-2-0-tests">Test runs <a class="anchor" href="#v5-2-0-tests" aria-label="Link to this section">#</a></h3>
+    <ul>
+      <li>For a test project on Microsoft.Testing.Platform, <code>fuse test</code> reads the counts from the run summary and each failed test's message and stack frames from the run's output, and answers as it does for VSTest (<a href="commands.html">Commands</a>). 5.1.0 printed <code>fuse: tests passed in T s</code> for a passing run and, for a failing one, the last 30 lines of the output and <code>exited with code E and produced no results</code>.</li>
+      <li>In a repository whose <code>global.json</code> selects Microsoft.Testing.Platform, <code>fuse test</code> with arguments, such as the <code>fuse test --filter-class Name</code> the pre-shell hook writes for <code>dotnet test --filter-class Name</code>, passes the arguments without VSTest's <code>--logger</code>, <code>--results-directory</code>, <code>-nologo</code> and <code>-tl:off</code>. 5.1.0 added them, so every such run failed with exit code 5 and ran no test.</li>
+      <li>Whether <code>dotnet test</code> runs on Microsoft.Testing.Platform is read from the <code>test.runner</code> value of the <code>global.json</code> nearest to the working directory, up to the repository root, as the dotnet CLI reads it. 5.1.0 read only the root <code>global.json</code> and took any mention of the platform's name in it.</li>
+    </ul>
+
+    <h3 id="v5-2-0-local-state">Local state <a class="anchor" href="#v5-2-0-local-state" aria-label="Link to this section">#</a></h3>
+    <ul>
+      <li>A starting engine deletes the engine copies of other builds that no running engine holds and that are more than ten minutes old; each engine marks its copy with a lock file while it runs. 5.1.0 deleted only copies last written more than seven days earlier, so every build of the tool left a copy behind for a week.</li>
+      <li>Each state directory holds a <code>root</code> file with its repository's path. Once a day a starting engine deletes the state directories whose repository no longer exists and that nothing wrote to for a day, such as those of deleted temporary repositories, which 5.1.0 kept for good (<a href="troubleshooting.html#where-the-logs-are">Where the logs are</a>).</li>
+    </ul>
 
     <h2 id="v5-1-0">5.1.0 <a class="anchor" href="#v5-1-0" aria-label="Link to this section">#</a></h2>
     <p>Released 2026-09-29. Compared with 5.0.0.</p>

@@ -79,7 +79,7 @@ jobs:
       - name: Run latency with the managed client
         if: github.event_name != 'workflow_dispatch' || (inputs.managed && (inputs.suite == 'all' || inputs.suite == 'latency'))
         run: |
-          dotnet run --project evals/Fuse.Evals -c Release --no-build -- latency "${{ matrix.repo }}"
+          dotnet run --project evals/Fuse.Evals -c Release --no-build -- latency "${{ matrix.repo }}" --fuse "$(cygpath -w "$PWD/src/Fuse/bin/Release/net10.0/fuse.exe")"
           mkdir -p out/managed
           git ls-files --others --exclude-standard evals/results | xargs -I{} mv {} out/managed/
 

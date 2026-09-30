@@ -51,12 +51,13 @@
   <!-- The native client cannot run the engine, so a native publish, and with it each RID-specific tool package, also
        carries the engine: this project published for the shared framework, without an apphost, into the same folder.
        EngineVersion reads the module id of that fuse.dll, so the native client and the engine it starts agree on the
-       build. -->
+       build. It builds into bin/engine and obj/engine, because building into the usual folders without an apphost would
+       make MSBuild's incremental clean delete the fuse.exe apphost of a normal build there. -->
   <Target Name="PublishEngineBesideNativeClient" AfterTargets="Publish" Condition="'$(PublishAot)' == 'true' and '$(RuntimeIdentifier)' != ''">
     <MSBuild Projects="$(MSBuildProjectFullPath)"
              Targets="Publish"
              RemoveProperties="RuntimeIdentifier;PublishAot;SelfContained;_IsPublishing;NoBuild"
-             Properties="UseAppHost=false;PublishDir=$([MSBuild]::NormalizeDirectory($(PublishDir)))" />
+             Properties="UseAppHost=false;PublishDir=$([MSBuild]::NormalizeDirectory($(PublishDir)));OutputPath=$([MSBuild]::NormalizeDirectory($(MSBuildProjectDirectory), 'bin', 'engine', $(Configuration)));IntermediateOutputPath=$([MSBuild]::NormalizeDirectory($(MSBuildProjectDirectory), 'obj', 'engine', $(Configuration)))" />
   </Target>
 
   <!-- On Windows the SDK installs a native tool behind a fuse.cmd batch file, which Git Bash, the shell Claude Code runs

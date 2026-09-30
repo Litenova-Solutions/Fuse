@@ -20,12 +20,12 @@
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster compiler feedback for AI coding agents on .NET. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Limits">
 <meta name="twitter:description" content="What Fuse cannot check, where it differs from dotnet build and dotnet test, and what to do about each case.">
 <meta name="twitter:image" content="https://fuse.codes/assets/og.png">
-<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster compiler feedback for AI coding agents on .NET. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
 <link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
 <link rel="icon" href="../assets/fuse-icon.svg" type="image/svg+xml" sizes="any">
 <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -100,7 +100,7 @@
     <a class="brand" href="../index.html"><img src="../assets/fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
     <nav aria-label="Main">
       <a href="index.html" aria-current="page">Docs</a>
-      <a href="results.html">Results</a>
+      <a href="benchmarks.html">Benchmarks</a>
       <a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a>
     </nav>
   </header>
@@ -135,7 +135,7 @@
       <li><strong>The .NET 10 SDK, git and restored projects.</strong> Fuse runs <code>git</code> from the <code>PATH</code> and never runs <code>dotnet restore</code>. When a project is not restored, it answers with the command to run (<a href="messages.html#restoreneeded">RestoreNeeded</a>).</li>
       <li><strong>Only changes against HEAD.</strong> An error that is already committed is part of HEAD and is never reported, and neither is an error that exists at HEAD and in the working tree alike. Run <code>fuse build</code> to see every error the solution has.</li>
       <li><strong>A repository needs a commit.</strong> With no commit, every file counts as added, so every error counts as introduced. Commit once before relying on a check.</li>
-      <li><strong>Platforms.</strong> CI builds and tests Fuse on Windows, Linux and macOS (<code>.github/workflows/ci.yml</code>); the <a href="results.html">measurements</a> come from one Windows machine.</li>
+      <li><strong>Platforms.</strong> CI builds and tests Fuse on Windows, Linux and macOS (<code>.github/workflows/ci.yml</code>); the <a href="benchmarks.html">benchmarks</a> come from one Windows machine.</li>
       <li><strong>Letter case in paths on macOS.</strong> Fuse compares paths ignoring case on Windows and exactly on Linux and macOS. The default macOS volume ignores case, so a file named to <code>fuse check</code> in another letter case than it has on disk is not matched to the file git knows. Name files as they are spelled on disk; hooks already do.</li>
     </ul>
 
@@ -146,7 +146,7 @@
       <li><strong>Compilation-end analyzers.</strong> Analyzers that report only after seeing the whole project run only when a check compiles whole projects, which happens past 500 files in reach. Otherwise <code>fuse build</code> reports them.</li>
       <li><strong>Warnings.</strong> A check reports errors only: compiler errors, warnings the project treats as errors, and analyzer diagnostics configured as errors.</li>
       <li><strong>Matching.</strong> An error counts as introduced when HEAD has fewer errors in the same file with the same id and message. An edit that removes one error and causes an identical one in the same file reports nothing.</li>
-      <li><strong>Differences from the build's wording.</strong> The build compiles a dependent project against reference assemblies, which leave out private members, while Fuse compiles against the source. After a member is made private, the build says "does not contain a definition" and Fuse says "is inaccessible due to its protection level", at the same position. This difference is behind the one error Fuse missed in the <a href="results.html#reading-the-numbers">measurements</a>.</li>
+      <li><strong>Differences from the build's wording.</strong> The build compiles a dependent project against reference assemblies, which leave out private members, while Fuse compiles against the source. After a member is made private, the build says "does not contain a definition" and Fuse says "is inaccessible due to its protection level", at the same position. This difference is behind the one error Fuse missed in the <a href="benchmarks.html#reading-the-numbers">benchmarks</a>.</li>
       <li><strong>Output limits.</strong> An answer holds at most 200 errors, of which the command prints 20, and at most ten cause lines. What to do: fix what is printed and check again, or run <code>fuse build</code> for the full list.</li>
     </ul>
 
@@ -172,12 +172,13 @@
     <h2 id="the-engine">The engine <a class="anchor" href="#the-engine" aria-label="Link to this section">#</a></h2>
     <ul>
       <li><strong>Analyzers the repository builds.</strong> The engine loads an analyzer the repository builds itself as it was when its project loaded. A rebuilt analyzer takes effect when projects next reload: after a project file change, a commit or branch switch, more than 300 changed files at once, or an engine restart. What to do: after changing an analyzer, <a href="troubleshooting.html#stopping-or-restarting-the-engine">restart the engine</a>.</li>
-      <li><strong>Loading.</strong> The first request that reaches a project loads it, and the engine keeps every loaded project in memory; <a href="results.html">Results</a> gives measured load times and memory. A post-edit hook in a harness other than Claude Code does not wait for loading, so the stop hook reports the first edits after the engine starts.</li>
+      <li><strong>Memory.</strong> The engine keeps every project it has loaded in memory until it exits after 30 idle minutes, and never unloads one while it runs. In the <a href="benchmarks.html">benchmarks</a> its working set was 271 MB on a 5-project solution and 2,429 MB on the 26-project Community Toolkit. Each git worktree runs its own engine. What to do: on a machine short of memory, stop the engines you no longer need, as <a href="troubleshooting.html#stopping-or-restarting-the-engine">Stopping or restarting the engine</a> describes.</li>
+      <li><strong>Loading.</strong> The first request that reaches a project loads it; <a href="benchmarks.html">Benchmarks</a> gives the load times. A post-edit hook in a harness other than Claude Code does not wait for loading, so the stop hook reports the first edits after the engine starts.</li>
     </ul>
 
     <nav class="pager" aria-label="Previous and next page">
       <a href="how-it-works.html"><span>Previous</span>How it works</a>
-      <a class="next-page" href="results.html"><span>Next</span>Results</a>
+      <a class="next-page" href="benchmarks.html"><span>Next</span>Benchmarks</a>
     </nav>
     </main>
 
@@ -192,7 +193,7 @@
       <ul>
         <li><a href="how-it-works.html">How it works</a></li>
         <li><a href="limits.html" aria-current="page">Limits</a></li>
-        <li><a href="results.html">Results</a></li>
+        <li><a href="benchmarks.html">Benchmarks</a></li>
         <li><a href="faq.html">FAQ</a></li>
       </ul>
       <h2>Reference</h2>
@@ -214,7 +215,7 @@
   </div>
 
   <footer class="site-footer">
-    <span>Fuse, Apache-2.0. Measured medians, one Windows machine.</span>
+    <span>Fuse, Apache-2.0. Benchmark medians, one Windows machine.</span>
     <nav aria-label="Footer"><a href="index.html">Docs</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
   </footer>
 </div>

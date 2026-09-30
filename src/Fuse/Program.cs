@@ -13,7 +13,7 @@ namespace Fuse;
 internal static class Program
 {
     private const string Usage = """
-        fuse - faster C# compiler feedback and affected-test runs for coding agents
+        fuse - faster .NET build and test loop for AI coding agents
 
           fuse init                 register Fuse's hooks with the agent harnesses this repository uses
           fuse check [files...]     errors the working tree has that HEAD does not, across dependent projects

@@ -44,7 +44,7 @@ Tests generate real git repositories and restore them, so the first run needs Nu
 - The engine never writes the working tree and never runs `dotnet restore` on its own. Its state (logs, shadow test output) lives in the user's local application data, never in the repository.
 - The pipe protocol needs no versioning by hand: every request carries `EngineVersion.Build`, and an engine from another build restarts.
 - Child processes take argument lists, never shell strings. Variable-length lists (paths, filters) are bounded or chunked.
-- Numbers quoted in docs come from files in `evals/results`. Counts are quoted exactly. Times, sizes and percentages are rounded half up for display: seconds to two decimals below 10 s and one decimal from 10 s, milliseconds and megabytes to whole numbers, percentages to at most one decimal. Each results table names the result files it comes from.
+- Numbers quoted in docs come from files in `evals/results`. Counts are quoted exactly. Times, sizes and percentages are rounded half up for display: seconds to two decimals below 10 s and one decimal from 10 s, milliseconds and megabytes to whole numbers, percentages to at most one decimal. Each benchmark table names the result files it comes from.
 - A file holds one type plus its private helpers.
 - Layers follow [site/docs/architecture.html](site/docs/architecture.html). A new namespace gets a row in its dependency table and in `NamespaceDependencyTests` in the same change.
 - One word per concept, in code, output, comments and docs: the vocabulary in [site/docs/architecture.html](site/docs/architecture.html) decides. Text says what is true now, in plain sentences, with keyboard punctuation only.

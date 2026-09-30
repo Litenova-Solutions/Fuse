@@ -6,25 +6,37 @@
 [![.NET 10](https://img.shields.io/badge/.NET-10-512BD4)](https://dotnet.microsoft.com/download/dotnet/10.0)
 [![License](https://img.shields.io/github/license/Litenova-Solutions/Fuse)](https://github.com/Litenova-Solutions/Fuse/blob/main/LICENSE)
 
-Faster compiler feedback for AI coding agents on .NET.
+Faster .NET build and test loop for AI coding agents.
 
-Fuse keeps your solution compiled in memory with Roslyn and checks each edit against it, up to 7.4x faster than `dotnet build`. The agent gets only the errors its edit introduced, including breaks in other projects, and when it runs `dotnet test`, only the tests the change can reach run and only failures are printed.
+AI agents check their work by running `dotnet build` and `dotnet test`, often dozens of times in one task. Each run is slow and prints far more than the agent needs. With several subagents, the builds also use a lot of memory and fail on each other's locked files.
 
-Fuse is built for AI coding agents. After `fuse init`, the agent's harness runs Fuse after every edit and before the agent finishes, and in most harnesses on every `dotnet build` and `dotnet test`, so you do not run it yourself. Its commands also run from a terminal, to try Fuse out, see what the agent receives, or find out why a hook is silent.
+Fuse fixes that. It keeps your solution loaded in the background, and after each edit it tells the agent:
 
-[Website](https://fuse.codes) | [Documentation](https://fuse.codes/docs/) | [Getting started](https://fuse.codes/docs/getting-started) | [Results](https://fuse.codes/docs/results) | [Changelog](https://github.com/Litenova-Solutions/Fuse/blob/main/CHANGELOG.md)
+- which compiler errors the edit caused, up to 7.4x faster than `dotnet build`
+- which affected tests fail, up to 5.7x faster than `dotnet test`
+
+Run `fuse init` once. After that, the agent's tool (Claude Code, Cursor, Codex and others) runs Fuse by itself.
+
+[Website](https://fuse.codes) | [Documentation](https://fuse.codes/docs/) | [Getting started](https://fuse.codes/docs/getting-started) | [Benchmarks](https://fuse.codes/docs/benchmarks) | [Changelog](https://github.com/Litenova-Solutions/Fuse/blob/main/CHANGELOG.md)
 
 ![Fuse's time as a share of the dotnet command it replaces](site/assets/benefits.svg)
 
-## Features
+## What you get
 
-- **Introduced errors only.** Fuse compares the working tree, your files as they are on disk, with HEAD, the commit you have checked out, and never reports an error HEAD already has.
-- **Breaks across projects.** When an edit changes a declaration, Fuse checks the dependent projects that use it and names the change that broke each file.
-- **Affected tests.** `fuse test` runs only the tests the change can reach, and prints only the failures.
-- **Compact builds.** `fuse build` runs `dotnet build` and prints only its errors.
-- **Hooks for your agent.** `fuse init` registers hooks with your agent's harness that check each edit, check every change before the agent finishes, and rewrite `dotnet build` and `dotnet test` to their Fuse equivalents.
-- **An MCP server.** `fuse mcp` serves the check, test and build operations to MCP hosts that run no hooks.
-- **Local, with nothing to configure.** Fuse runs on your machine, has no telemetry, makes no network calls of its own, and reads no configuration.
+- **Only new errors.** Errors that were already in the last commit are not reported, so the agent does not chase problems it did not cause.
+- **Breaks in other projects.** Rename a method and Fuse lists every broken caller, in every project, with the change that broke it.
+- **Only affected tests.** Tests the change cannot reach do not run. When only `.cs` files changed, the tests run without a rebuild.
+- **Short output.** At most 20 errors or 10 test failures, plus one summary line. Nothing at all when the edit is clean.
+- **Made for subagents.** All agents in a repository share one Fuse process, so the solution is loaded once. Builds through Fuse take turns, so parallel builds do not fail on locked files. Each git worktree gets its own process.
+- **Safe.** If Fuse fails, the hook stays silent and the agent carries on. Fuse never edits your code, runs locally and has no telemetry.
+- **No configuration.** `fuse init` is the only setup.
+
+## What it costs
+
+- **Memory.** Fuse keeps the loaded projects in memory until it has been idle for 30 minutes: 271 MB to 2,429 MB in the [benchmarks](https://fuse.codes/docs/benchmarks). Each git worktree uses its own.
+- **A slow first check across projects.** The first edit that affects other projects has to load them. On Jellyfin (40 projects) that took up to 49.1 s; the median signature edit took 186 ms.
+- **One check at a time.** Agents in the same repository wait for each other's checks.
+- **Not a full build.** Fuse checks C# only and picks tests by reading the code, so a few cases still need `fuse build` or `fuse test --all`. [Limits](https://fuse.codes/docs/limits) lists them.
 
 ## Supported harnesses
 
@@ -45,7 +57,7 @@ Fuse is built for AI coding agents. After `fuse init`, the agent's harness runs 
 ### Requirements
 
 - The .NET 10 SDK
-- git, and a repository with at least one commit
+- A git repository with at least one commit
 - Restored projects: Fuse never runs `dotnet restore` on its own
 
 ### Install
@@ -54,11 +66,11 @@ Fuse is built for AI coding agents. After `fuse init`, the agent's harness runs 
 dotnet tool install -g Fuse
 ```
 
-`dotnet tool install -g` puts `fuse` in `~/.dotnet/tools` (`%USERPROFILE%\.dotnet\tools` on Windows), which has to be on your `PATH`, for you and for your agent.
+This puts `fuse` in `~/.dotnet/tools` (`%USERPROFILE%\.dotnet\tools` on Windows). That folder must be on your `PATH` and your agent's.
 
 ### Set up a repository
 
-Run `fuse init` in the repository to register Fuse's hooks with your agent's harness:
+In the root of your repository:
 
 ```bash
 fuse init
@@ -70,11 +82,11 @@ wrote .gitignore
 fuse: hooks registered; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors
 ```
 
-That is the whole setup. From then on the agent hears from Fuse only when an edit introduced an error, and you do not need to run any other command.
+That is the whole setup. The agent now hears from Fuse only when an edit caused an error.
 
 ### Try it from the command line
 
-The hooks run the same operations that the commands below run, so a terminal shows what the agent receives. Use them to try Fuse out, to test it on your repository, or to investigate a hook that says nothing; in day-to-day work the agent runs them. After an edit that renames `Calc.Add` in a library, `fuse check` reports the callers it broke in the projects that depend on it:
+The commands print exactly what the agent receives, so you can try Fuse in a terminal. For example, after renaming `Calc.Add` in a library, `fuse check` lists the callers it broke in other projects:
 
 ```text
 $ fuse check
@@ -88,24 +100,24 @@ fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations chan
 | Command | What it does |
 | --- | --- |
 | `fuse init` | Registers Fuse's hooks with the harnesses this repository uses |
-| `fuse check [files...]` | Reports the errors the working tree has that HEAD does not, across dependent projects |
+| `fuse check [files...]` | Reports the errors your changes caused since the last commit, in every project |
 | `fuse test [args...]` | Runs the tests affected by your changes |
 | `fuse test --all` | Runs every test |
 | `fuse build [args...]` | Runs `dotnet build` and prints its errors |
 | `fuse mcp` | Serves `fuse_check`, `fuse_test` and `fuse_build` over stdio to an MCP host |
 
-The [getting started tutorial](https://fuse.codes/docs/getting-started) walks through these on a sample repository, including what the hooks send the agent.
+[Getting started](https://fuse.codes/docs/getting-started) shows each command's output and what the hooks send the agent.
 
 ## Documentation
 
-- [Getting started](https://fuse.codes/docs/getting-started): set Fuse up in a sample repository and see what it reports.
+- [Getting started](https://fuse.codes/docs/getting-started): set Fuse up in your repository and see what it reports.
 - [Commands](https://fuse.codes/docs/commands): every command, its output and its exit codes.
 - [Messages and fixes](https://fuse.codes/docs/messages): what each message means when Fuse cannot answer, and the fix.
 - [Connect your agent](https://fuse.codes/docs/harnesses): what `fuse init` sets up for each harness, and how an MCP host runs Fuse.
 - [How it works](https://fuse.codes/docs/how-it-works): how Fuse checks an edit, selects tests and runs them.
 - [Limits](https://fuse.codes/docs/limits): what a check cannot see, and what to do about it.
 - [Troubleshooting](https://fuse.codes/docs/troubleshooting): why Fuse is silent, slow or failing, and where its logs are.
-- [Results](https://fuse.codes/docs/results): measured speed and accuracy on four repositories.
+- [Benchmarks](https://fuse.codes/docs/benchmarks): benchmarked speed and accuracy on four repositories.
 - [All documentation](https://fuse.codes/docs/)
 
 ## Contributing

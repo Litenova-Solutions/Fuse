@@ -1,9 +1,12 @@
 # Pages and files that moved when the documentation moved into /docs/ and the static files into /assets/.
 /how-it-works /docs/how-it-works 301
-/results /docs/results 301
+/results /docs/benchmarks 301
 /og.png /assets/og.png 301
 /benefits.svg /assets/benefits.svg 301
 /fuse-icon.svg /assets/fuse-icon.svg 301
 /style.css /assets/style.css 301
 /favicon.png /assets/favicon.png 301
 /apple-touch-icon.png /assets/apple-touch-icon.png 301
+# The results page was renamed to benchmarks.
+/docs/results /docs/benchmarks 301
+/docs/results.html /docs/benchmarks 301

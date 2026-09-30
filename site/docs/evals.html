@@ -20,12 +20,12 @@
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster compiler feedback for AI coding agents on .NET. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Evals">
 <meta name="twitter:description" content="How the correctness, test selection and latency evals measure Fuse against real dotnet build and dotnet test runs, and how to run them.">
 <meta name="twitter:image" content="https://fuse.codes/assets/og.png">
-<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster compiler feedback for AI coding agents on .NET. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
 <link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
 <link rel="icon" href="../assets/fuse-icon.svg" type="image/svg+xml" sizes="any">
 <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -100,7 +100,7 @@
     <a class="brand" href="../index.html"><img src="../assets/fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
     <nav aria-label="Main">
       <a href="index.html" aria-current="page">Docs</a>
-      <a href="results.html">Results</a>
+      <a href="benchmarks.html">Benchmarks</a>
       <a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a>
     </nav>
   </header>
@@ -113,9 +113,9 @@
     <p class="intro">The evals in <code>evals/Fuse.Evals</code> measure whether Fuse is right and how fast it is, by comparing every answer with a real <code>dotnet build</code> or <code>dotnet test</code>. This page explains what each suite measures and how to run it.</p>
     <div class="audience">
       <p><b>This page is for</b> a contributor whose change touches checking, test selection or performance, and who has to show its effect, and for anyone who wants to know how the published numbers were produced.</p>
-      <p><b>After reading it</b> you can run the suite a change needs, read its result file, and update the pages that quote the numbers. <a href="results.html">Results</a> has the published numbers.</p>
+      <p><b>After reading it</b> you can run the suite a change needs, read its result file, and update the pages that quote the numbers. <a href="benchmarks.html">Benchmarks</a> has the published numbers.</p>
     </div>
-    <p><code>evals/Fuse.Evals</code> is a console project with three suites: correctness, test selection and latency. Every measurement goes through the <code>fuse</code> executable, the way an agent calls it, and every answer is compared with the truth from a real <code>dotnet build</code> or <code>dotnet test</code>. Each run of a suite writes one JSON file to <code>evals/results</code>, and the published numbers, the chart and the site quote the newest file of each suite and repository.</p>
+    <p><code>evals/Fuse.Evals</code> is a console project with three suites: correctness, test selection and latency. Every benchmark goes through the <code>fuse</code> executable, the way an agent calls it, and every answer is compared with the truth from a real <code>dotnet build</code> or <code>dotnet test</code>. Each run of a suite writes one JSON file to <code>evals/results</code>, and the published numbers, the chart and the site quote the newest file of each suite and repository.</p>
 
     <nav class="toc" aria-label="On this page">
       <p>On this page</p>
@@ -201,7 +201,7 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
       <li>It runs <code>fuse check</code> on the edited files, then <code>dotnet build</code> on the solution, and takes the build's errors beyond HEAD's as the truth.</li>
       <li>It matches Fuse's errors with the truth by position (file, line and column), then resets the tree.</li>
     </ol>
-    <p>A Fuse error at a truth position with a different id or message is a message mismatch. A Fuse error with no truth at its position is unverifiable when it is in a project MSBuild skipped because a project it references failed, deferred when the compiler skipped it (see <a href="results.html#reading-the-numbers">Results</a>), and contradicted otherwise. A truth error without a Fuse error at its position is missed. Each case gets a verdict:</p>
+    <p>A Fuse error at a truth position with a different id or message is a message mismatch. A Fuse error with no truth at its position is unverifiable when it is in a project MSBuild skipped because a project it references failed, deferred when the compiler skipped it (see <a href="benchmarks.html#reading-the-numbers">Benchmarks</a>), and contradicted otherwise. A truth error without a Fuse error at its position is missed. Each case gets a verdict:</p>
     <table>
       <thead><tr><th scope="col">Verdict</th><th scope="col">Meaning</th></tr></thead>
       <tbody>
@@ -262,14 +262,14 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
         <tr><td>The engine, the protocol, the client, the build lock, or anything on a request's path</td><td><code>latency</code></td></tr>
       </tbody>
     </table>
-    <p>Attach the result to the pull request, as <a href="https://github.com/Litenova-Solutions/Fuse/blob/main/CONTRIBUTING.md">Contributing</a> asks. The published set in <a href="results.html">Results</a> is <code>all</code> on the fixture and on each pinned repository: twelve files.</p>
+    <p>Attach the result to the pull request, as <a href="https://github.com/Litenova-Solutions/Fuse/blob/main/CONTRIBUTING.md">Contributing</a> asks. The published set in <a href="benchmarks.html">Benchmarks</a> is <code>all</code> on the fixture and on each pinned repository: twelve files.</p>
 
     <h2 id="quoting-the-numbers">Quoting the numbers <a class="anchor" href="#quoting-the-numbers" aria-label="Link to this section">#</a></h2>
-    <p>The rule in <a href="https://github.com/Litenova-Solutions/Fuse/blob/main/AGENTS.md">AGENTS.md</a> binds every page that quotes a measurement: numbers come from files in <code>evals/results</code>, and each results table names the files it comes from. Counts are quoted exactly. Times, sizes and percentages are rounded half up: seconds to two decimals below 10 s and one decimal from 10 s, milliseconds and megabytes to whole numbers, percentages to at most one decimal. A speedup is the <code>dotnet</code> median divided by the Fuse median, to one decimal.</p>
+    <p>The rule in <a href="https://github.com/Litenova-Solutions/Fuse/blob/main/AGENTS.md">AGENTS.md</a> binds every page that quotes a benchmark: numbers come from files in <code>evals/results</code>, and each results table names the files it comes from. Counts are quoted exactly. Times, sizes and percentages are rounded half up: seconds to two decimals below 10 s and one decimal from 10 s, milliseconds and megabytes to whole numbers, percentages to at most one decimal. A speedup is the <code>dotnet</code> median divided by the Fuse median, to one decimal.</p>
     <p>After committing the result files of a full run, delete the older file of the same suite and repository, run <code>chart</code>, and update every page that quotes the numbers:</p>
     <ul>
       <li>the root <code>README.md</code>;</li>
-      <li><code>site/index.html</code>, <code>site/docs/results.html</code> and <code>site/docs/index.html</code>;</li>
+      <li><code>site/index.html</code>, <code>site/docs/benchmarks.html</code> and <code>site/docs/index.html</code>;</li>
       <li>the questions in <code>site/docs/how-it-works.html</code>, and the load time in the Timeout section of <code>site/docs/messages.html</code>;</li>
       <li><code>site/assets/og.png</code>, whose text quotes the check speedup.</li>
     </ul>
@@ -291,7 +291,7 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
       <ul>
         <li><a href="how-it-works.html">How it works</a></li>
         <li><a href="limits.html">Limits</a></li>
-        <li><a href="results.html">Results</a></li>
+        <li><a href="benchmarks.html">Benchmarks</a></li>
         <li><a href="faq.html">FAQ</a></li>
       </ul>
       <h2>Reference</h2>
@@ -313,7 +313,7 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
   </div>
 
   <footer class="site-footer">
-    <span>Fuse, Apache-2.0. Measured medians, one Windows machine.</span>
+    <span>Fuse, Apache-2.0. Benchmark medians, one Windows machine.</span>
     <nav aria-label="Footer"><a href="index.html">Docs</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
   </footer>
 </div>

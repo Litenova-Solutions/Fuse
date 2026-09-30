@@ -1,18 +1,18 @@
 # Fuse
 
-> Fuse is a .NET tool that keeps a repository's C# solution compiled in memory with Roslyn and gives AI coding agents the compiler errors their edits introduced, the tests those edits can break, and compact build output. It runs through agent hooks and an MCP server, locally, with no telemetry.
+> Fuse is a .NET tool that makes dotnet build and dotnet test faster for AI coding agents. It keeps a repository's C# solution loaded in the background, reports only the compiler errors an edit caused (including breaks in other projects), runs only the affected tests, and prints only build errors. All agents and subagents in a repository share one Fuse process, and their builds take turns. It runs through agent hooks and an MCP server, locally, with no telemetry. Its main cost is memory: 271 MB to 2,429 MB on the benchmark repositories.
 
 Fuse needs the .NET 10 SDK. Install it with `dotnet tool install -g Fuse`, then run `fuse init` in a repository. `fuse init` registers Fuse's hooks with each harness the repository uses (Claude Code, Cursor, Gemini CLI, Codex, GitHub Copilot CLI and OpenCode), and the MCP server with VS Code agent mode. After each edit the agent gets only the errors that edit introduced, compared with HEAD, the commit you have checked out. When the agent runs `dotnet test`, only the affected tests run and only failures are printed. Fuse is open source under the Apache-2.0 license.
 
 ## Docs
 
-- [Overview](https://fuse.codes/docs/): what Fuse is, the words the documentation uses, and which page answers which question
-- [Getting started](https://fuse.codes/docs/getting-started): install Fuse and see what it reports on a sample repository
+- [Overview](https://fuse.codes/docs/): what Fuse is, what it gives an agent, what it costs, the words the documentation uses, and which page answers which question
+- [Getting started](https://fuse.codes/docs/getting-started): install Fuse, set it up in your repository, and see what it reports
 - [Connect your agent](https://fuse.codes/docs/harnesses): what fuse init writes for each harness, and how an MCP host runs fuse mcp
 - [How it works](https://fuse.codes/docs/how-it-works): how Fuse checks an edit, selects tests and runs them
 - [Limits](https://fuse.codes/docs/limits): what Fuse cannot check, and what to do about it
-- [Results](https://fuse.codes/docs/results): measurements on four repositories, with the result file behind each number
-- [FAQ](https://fuse.codes/docs/faq): common questions, and how Fuse differs from language servers, Roslyn MCP servers, code search tools and test impact analysis tools
+- [Benchmarks](https://fuse.codes/docs/benchmarks): benchmarks on four repositories, with the result file behind each number
+- [FAQ](https://fuse.codes/docs/faq): why Fuse exists, common questions, and how Fuse differs from language servers, Roslyn MCP servers, code search tools and test impact analysis tools
 - [Commands](https://fuse.codes/docs/commands): every fuse command, its arguments, its output and its exit codes
 - [Messages and fixes](https://fuse.codes/docs/messages): every message Fuse prints when it cannot answer, and the fix
 - [Troubleshooting](https://fuse.codes/docs/troubleshooting): silent hooks, slow checks, log locations and how to stop the engine

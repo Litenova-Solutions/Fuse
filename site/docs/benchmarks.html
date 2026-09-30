@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Results | Fuse</title>
-<meta name="description" content="Measured results for Fuse against dotnet build and dotnet test on a small fixture and on NodaTime, Jellyfin and the .NET Community Toolkit.">
-<link rel="canonical" href="https://fuse.codes/docs/results">
+<title>Benchmarks | Fuse</title>
+<meta name="description" content="Benchmarks of Fuse against dotnet build and dotnet test on a small fixture and on NodaTime, Jellyfin and the .NET Community Toolkit.">
+<link rel="canonical" href="https://fuse.codes/docs/benchmarks">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 <meta name="author" content="Litenova Solutions">
 <meta name="color-scheme" content="light">
@@ -13,19 +13,19 @@
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="Fuse">
 <meta property="og:locale" content="en_US">
-<meta property="og:title" content="Results">
-<meta property="og:description" content="Measured results for Fuse against dotnet build and dotnet test on a small fixture and on NodaTime, Jellyfin and the .NET Community Toolkit.">
-<meta property="og:url" content="https://fuse.codes/docs/results">
+<meta property="og:title" content="Benchmarks">
+<meta property="og:description" content="Benchmarks of Fuse against dotnet build and dotnet test on a small fixture and on NodaTime, Jellyfin and the .NET Community Toolkit.">
+<meta property="og:url" content="https://fuse.codes/docs/benchmarks">
 <meta property="og:image" content="https://fuse.codes/assets/og.png">
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster compiler feedback for AI coding agents on .NET. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Results">
-<meta name="twitter:description" content="Measured results for Fuse against dotnet build and dotnet test on a small fixture and on NodaTime, Jellyfin and the .NET Community Toolkit.">
+<meta name="twitter:title" content="Benchmarks">
+<meta name="twitter:description" content="Benchmarks of Fuse against dotnet build and dotnet test on a small fixture and on NodaTime, Jellyfin and the .NET Community Toolkit.">
 <meta name="twitter:image" content="https://fuse.codes/assets/og.png">
-<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster compiler feedback for AI coding agents on .NET. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
 <link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
 <link rel="icon" href="../assets/fuse-icon.svg" type="image/svg+xml" sizes="any">
 <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -37,11 +37,11 @@
   "@graph": [
     {
       "@type": "TechArticle",
-      "@id": "https://fuse.codes/docs/results#article",
-      "headline": "Results",
-      "description": "Measured results for Fuse against dotnet build and dotnet test on a small fixture and on NodaTime, Jellyfin and the .NET Community Toolkit.",
-      "url": "https://fuse.codes/docs/results",
-      "mainEntityOfPage": "https://fuse.codes/docs/results",
+      "@id": "https://fuse.codes/docs/benchmarks#article",
+      "headline": "Benchmarks",
+      "description": "Benchmarks of Fuse against dotnet build and dotnet test on a small fixture and on NodaTime, Jellyfin and the .NET Community Toolkit.",
+      "url": "https://fuse.codes/docs/benchmarks",
+      "mainEntityOfPage": "https://fuse.codes/docs/benchmarks",
       "inLanguage": "en",
       "dateModified": "2026-09-29",
       "image": "https://fuse.codes/assets/og.png",
@@ -84,8 +84,8 @@
         {
           "@type": "ListItem",
           "position": 3,
-          "name": "Results",
-          "item": "https://fuse.codes/docs/results"
+          "name": "Benchmarks",
+          "item": "https://fuse.codes/docs/benchmarks"
         }
       ]
     }
@@ -100,7 +100,7 @@
     <a class="brand" href="../index.html"><img src="../assets/fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
     <nav aria-label="Main">
       <a href="index.html">Docs</a>
-      <a href="results.html" aria-current="page">Results</a>
+      <a href="benchmarks.html" aria-current="page">Benchmarks</a>
       <a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a>
     </nav>
   </header>
@@ -108,7 +108,7 @@
   <div class="docs">
     <main id="main" class="page" tabindex="-1">
     <p class="crumbs"><a href="index.html">Docs</a> / Understand</p>
-    <h1>Results</h1>
+    <h1>Benchmarks</h1>
     <p class="jump"><a href="#docs-nav">All documentation pages</a></p>
     <p class="intro">On four repositories, Fuse checked an edit 2.9x to 7.4x faster than <code>dotnet build</code> and ran the affected tests 1.4x to 5.7x faster than <code>dotnet test</code>. It missed 1 compiler error in 120 generated cases (168 edits).</p>
     <div class="audience">
@@ -127,7 +127,7 @@
     <div class="table-scroll" role="region" aria-label="Results table" tabindex="0">
       <table>
         <caption class="sr-only">Fuse measurements on the fixture, NodaTime, Jellyfin and the Community Toolkit</caption>
-        <thead><tr><th scope="col"><span class="sr-only">Measurement</span></th><th scope="col">Small solution (fixture)</th><th scope="col"><a href="https://github.com/nodatime/nodatime">NodaTime</a></th><th scope="col"><a href="https://github.com/jellyfin/jellyfin">Jellyfin</a></th><th scope="col"><a href="https://github.com/CommunityToolkit/dotnet">Community Toolkit</a></th></tr></thead>
+        <thead><tr><th scope="col"><span class="sr-only">Benchmark</span></th><th scope="col">Small solution (fixture)</th><th scope="col"><a href="https://github.com/nodatime/nodatime">NodaTime</a></th><th scope="col"><a href="https://github.com/jellyfin/jellyfin">Jellyfin</a></th><th scope="col"><a href="https://github.com/CommunityToolkit/dotnet">Community Toolkit</a></th></tr></thead>
         <tbody>
           <tr><th scope="row">Size</th><td>5 projects, 22 tests</td><td>15 projects, 42,700 tests</td><td>40 projects, 2,535 tests</td><td>26 projects, 12,449 tests</td></tr>
           <tr><th scope="row">Check an edit: <code>fuse check</code> vs <code>dotnet build</code>, median</th><td class="num">0.18 s vs 1.14 s (6.2x)</td><td class="num">0.58 s vs 1.71 s (2.9x)</td><td class="num">0.60 s vs 4.20 s (7.0x)</td><td class="num">0.87 s vs 6.45 s (7.4x)</td></tr>
@@ -166,7 +166,7 @@
     <ul>
       <li><strong>Share of tests run.</strong> The share is the mean, over the 10 selection cases, of the tests <code>fuse test</code> ran divided by the tests in a full run. In 8 of the 10 NodaTime cases the change reached <code>NodaTime.TzdbCompiler</code>, an application. Fuse cannot follow code that runs behind an application host to a test by name, so every test project that depends on it ran whole: 42,689 tests ran and the other 11 were skipped, and the time saved there comes from running without MSBuild. On the Community Toolkit each change reaches one area of the code, and the cases ran between 148 and 4,497 of the 12,449 tests.</li>
       <li><strong>How the tests ran.</strong> Every fixture and Community Toolkit case, and 9 NodaTime cases, ran without MSBuild; the tenth NodaTime case had no affected test. On Jellyfin, 1 case ran without MSBuild, 1 ran 1 of its 4 test projects without MSBuild, and 8 built with MSBuild.</li>
-      <li><strong>NodaTime's two missed tests.</strong> Both come from one case, which negated <code>LocalDateTime</code>'s <code>&lt;</code> operator. <code>fuse test</code> ran every test there (42,689 run, 11 skipped), and its 26 failures named 14 of the 16 tests the full <code>dotnet test</code> run failed. The other two, <code>XmlSchemaTest.XmlSchema</code> and <code>XmlSchemaTest.XmlSchemaExporter</code>, compare generated XML with approved files, and they passed in Fuse's run. The same edit on the same NodaTime commit in the previous measurement of 5.1.0 failed 14 tests in the full run, without these two. Fuse selected and ran both tests, so the suite counts them as missed by its definition (a failing test the full run names and <code>fuse test</code> does not), not because they were left out.</li>
+      <li><strong>NodaTime's two missed tests.</strong> Both come from one case, which negated <code>LocalDateTime</code>'s <code>&lt;</code> operator. <code>fuse test</code> ran every test there (42,689 run, 11 skipped), and its 26 failures named 14 of the 16 tests the full <code>dotnet test</code> run failed. The other two, <code>XmlSchemaTest.XmlSchema</code> and <code>XmlSchemaTest.XmlSchemaExporter</code>, compare generated XML with approved files, and they passed in Fuse's run. The same edit on the same NodaTime commit in the previous benchmark of 5.1.0 failed 14 tests in the full run, without these two. Fuse selected and ran both tests, so the suite counts them as missed by its definition (a failing test the full run names and <code>fuse test</code> does not), not because they were left out.</li>
       <li><strong>Cases too large to match name by name.</strong> In two NodaTime cases 126 and 252 tests failed by name in a full run. <code>fuse test</code> prints details for the first 10 failures and the names of the next 100, then counts the rest, so the suite could not match those two cases name by name. In both, 42,689 tests ran and 11 were skipped.</li>
     </ul>
     <h3 id="the-other-rows">The other rows <a class="anchor" href="#the-other-rows" aria-label="Link to this section">#</a></h3>
@@ -201,7 +201,7 @@
       <ul>
         <li><a href="how-it-works.html">How it works</a></li>
         <li><a href="limits.html">Limits</a></li>
-        <li><a href="results.html" aria-current="page">Results</a></li>
+        <li><a href="benchmarks.html" aria-current="page">Benchmarks</a></li>
         <li><a href="faq.html">FAQ</a></li>
       </ul>
       <h2>Reference</h2>
@@ -223,7 +223,7 @@
   </div>
 
   <footer class="site-footer">
-    <span>Fuse, Apache-2.0. Measured medians, one Windows machine.</span>
+    <span>Fuse, Apache-2.0. Benchmark medians, one Windows machine.</span>
     <nav aria-label="Footer"><a href="index.html">Docs</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
   </footer>
 </div>

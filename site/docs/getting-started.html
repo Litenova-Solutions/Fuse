@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Getting Started | Fuse</title>
-<meta name="description" content="Install Fuse, set it up in a small sample repository, and see what it reports for a broken caller and a failing test, and what its hooks send the agent.">
+<meta name="description" content="Install Fuse, set it up in your .NET repository, and see what it reports for an edit and a failing test.">
 <link rel="canonical" href="https://fuse.codes/docs/getting-started">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 <meta name="author" content="Litenova Solutions">
@@ -14,18 +14,18 @@
 <meta property="og:site_name" content="Fuse">
 <meta property="og:locale" content="en_US">
 <meta property="og:title" content="Getting Started">
-<meta property="og:description" content="Install Fuse, set it up in a small sample repository, and see what it reports for a broken caller and a failing test, and what its hooks send the agent.">
+<meta property="og:description" content="Install Fuse, set it up in your .NET repository, and see what it reports for an edit and a failing test.">
 <meta property="og:url" content="https://fuse.codes/docs/getting-started">
 <meta property="og:image" content="https://fuse.codes/assets/og.png">
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster compiler feedback for AI coding agents on .NET. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Getting Started">
-<meta name="twitter:description" content="Install Fuse, set it up in a small sample repository, and see what it reports for a broken caller and a failing test, and what its hooks send the agent.">
+<meta name="twitter:description" content="Install Fuse, set it up in your .NET repository, and see what it reports for an edit and a failing test.">
 <meta name="twitter:image" content="https://fuse.codes/assets/og.png">
-<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster compiler feedback for AI coding agents on .NET. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
 <link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
 <link rel="icon" href="../assets/fuse-icon.svg" type="image/svg+xml" sizes="any">
 <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -39,7 +39,7 @@
       "@type": "TechArticle",
       "@id": "https://fuse.codes/docs/getting-started#article",
       "headline": "Getting Started",
-      "description": "Install Fuse, set it up in a small sample repository, and see what it reports for a broken caller and a failing test, and what its hooks send the agent.",
+      "description": "Install Fuse, set it up in your .NET repository, and see what it reports for an edit and a failing test.",
       "url": "https://fuse.codes/docs/getting-started",
       "mainEntityOfPage": "https://fuse.codes/docs/getting-started",
       "inLanguage": "en",
@@ -100,7 +100,7 @@
     <a class="brand" href="../index.html"><img src="../assets/fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
     <nav aria-label="Main">
       <a href="index.html" aria-current="page">Docs</a>
-      <a href="results.html">Results</a>
+      <a href="benchmarks.html">Benchmarks</a>
       <a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a>
     </nav>
   </header>
@@ -110,167 +110,89 @@
     <p class="crumbs"><a href="index.html">Docs</a> / Start here</p>
     <h1>Getting Started</h1>
     <p class="jump"><a href="#docs-nav">All documentation pages</a></p>
-    <p class="intro">This tutorial installs Fuse, sets it up in a small sample repository, and shows what it reports for an edit that breaks a caller and for an edit that fails a test, and what its hooks send the agent.</p>
+    <p class="intro">Set Fuse up in your .NET repository in two commands, then see what your agent will get from it.</p>
     <div class="audience">
-      <p><b>This page is for</b> a developer trying Fuse for the first time, who has used <code>dotnet</code> and git before.</p>
-      <p><b>After it</b> run <code>fuse init</code> in your own repository, and read <a href="harnesses.html">Connect your agent</a> for the harness you use.</p>
+      <p><b>This page is for</b> a developer with a .NET repository and an AI coding agent.</p>
+      <p><b>After it</b> your agent uses Fuse on its own. <a href="harnesses.html">Connect your agent</a> shows what was set up for your harness.</p>
     </div>
-    <p>You need the .NET 10 SDK, git, and access to NuGet to restore the sample's packages. The commands are for bash; on Windows, run them in Git Bash. The output on this page is from a run of Fuse 5.1.0 on Windows, and every path in it is relative to the repository.</p>
 
     <nav class="toc" aria-label="On this page">
       <p>On this page</p>
       <ol>
+        <li><a href="#requirements">Requirements</a></li>
         <li><a href="#install">1. Install Fuse</a></li>
-        <li><a href="#create-a-sample">2. Create a sample repository</a></li>
-        <li><a href="#commit-and-build">3. Commit and build</a></li>
-        <li><a href="#register-the-hooks">4. Register the hooks</a></li>
-        <li><a href="#break-a-caller">5. Break a caller</a></li>
-        <li><a href="#what-the-hooks-send">6. See what the hooks send the agent</a></li>
-        <li><a href="#run-the-affected-tests">7. Run the affected tests</a></li>
-        <li><a href="#clean-up">8. Clean up</a></li>
+        <li><a href="#set-up">2. Set up your repository</a></li>
+        <li><a href="#check-an-edit">3. Check an edit</a></li>
+        <li><a href="#run-the-affected-tests">4. Run the affected tests</a></li>
+        <li><a href="#what-the-agent-gets">5. What the agent gets</a></li>
         <li><a href="#next-steps">Next steps</a></li>
       </ol>
     </nav>
 
+    <h2 id="requirements">Requirements <a class="anchor" href="#requirements" aria-label="Link to this section">#</a></h2>
+    <ul>
+      <li>The .NET 10 SDK. Your projects can target older frameworks.</li>
+      <li>A git repository with at least one commit. Fuse reports only what changed since the last commit.</li>
+      <li>Restored projects. Fuse never runs <code>dotnet restore</code> itself; if a project is not restored, it tells you the command to run.</li>
+    </ul>
+
     <h2 id="install">1. Install Fuse <a class="anchor" href="#install" aria-label="Link to this section">#</a></h2>
-    <p>Fuse is a .NET tool, installed from NuGet like any other:</p>
-    <pre data-label="bash"><code>dotnet tool install -g Fuse
-fuse --version</code></pre>
-    <pre class="out" data-label="Output"><code>5.1.0</code></pre>
-    <p><code>dotnet tool install -g</code> puts <code>fuse</code> in <code>~/.dotnet/tools</code> (<code>%USERPROFILE%\.dotnet\tools</code> on Windows). That folder has to be on your <code>PATH</code>, and also on the <code>PATH</code> of the harness that runs the hooks, because every hook runs the command <code>fuse</code>.</p>
+    <pre data-label="bash"><code>dotnet tool install -g Fuse</code></pre>
+    <p>This puts <code>fuse</code> in <code>~/.dotnet/tools</code> (<code>%USERPROFILE%\.dotnet\tools</code> on Windows). That folder must be on your <code>PATH</code> and on your agent's, because the hooks run <code>fuse</code>.</p>
 
-    <h2 id="create-a-sample">2. Create a sample repository <a class="anchor" href="#create-a-sample" aria-label="Link to this section">#</a></h2>
-    <p>The sample is the smallest repository that shows what Fuse is for: a library <code>Lib</code> with a class <code>Calc</code>, a console app <code>App</code> that calls it, and an xUnit test project <code>Lib.Tests</code> that tests it. <code>App</code> and <code>Lib.Tests</code> are dependent projects of <code>Lib</code>, so an edit in <code>Lib</code> can break code in both.</p>
-    <pre data-label="bash"><code>mkdir fuse-sample
-cd fuse-sample
-git init
-dotnet new sln -n Sample
-dotnet new classlib -n Lib -o Lib
-dotnet new console -n App -o App
-dotnet new xunit -n Lib.Tests -o Lib.Tests
-dotnet sln add Lib App Lib.Tests
-dotnet add App reference Lib
-dotnet add Lib.Tests reference Lib
-rm Lib/Class1.cs Lib.Tests/UnitTest1.cs</code></pre>
-    <p>Create <code>Lib/Calc.cs</code>:</p>
-    <pre data-label="C#"><code>namespace Lib;
-
-public class Calc
-{
-    public int Add(int a, int b) =&gt; a + b;
-
-    public int Multiply(int a, int b) =&gt; a * b;
-}</code></pre>
-    <p>Replace the contents of <code>App/Program.cs</code> with:</p>
-    <pre data-label="C#"><code>using Lib;
-
-Console.WriteLine(new Calc().Add(2, 3));</code></pre>
-    <p>Create <code>Lib.Tests/CalcTests.cs</code>:</p>
-    <pre data-label="C#"><code>namespace Lib.Tests;
-
-public class CalcTests
-{
-    [Fact]
-    public void Adds() =&gt; Assert.Equal(5, new Calc().Add(2, 3));
-
-    [Fact]
-    public void Multiplies() =&gt; Assert.Equal(6, new Calc().Multiply(2, 3));
-}</code></pre>
-    <p>Create <code>.gitignore</code>, so that build output is not part of the working tree Fuse compares:</p>
-    <pre data-label=".gitignore"><code>bin/
-obj/</code></pre>
-
-    <h2 id="commit-and-build">3. Commit and build <a class="anchor" href="#commit-and-build" aria-label="Link to this section">#</a></h2>
-    <p>Fuse compares the working tree with HEAD, the commit you have checked out, so the repository needs a commit. Everything in that commit is the baseline: whatever errors it has are not the agent's, and Fuse will never report them.</p>
-    <p>Fuse also needs restored projects, and it never restores on its own. <code>dotnet build</code> restores the packages and builds once. The build also gives the test project build output, which later lets <code>fuse test</code> run the tests without starting MSBuild.</p>
-    <pre data-label="bash"><code>git add -A
-git commit -m "Add the sample"
-dotnet build</code></pre>
-
-    <h2 id="register-the-hooks">4. Register the hooks <a class="anchor" href="#register-the-hooks" aria-label="Link to this section">#</a></h2>
+    <h2 id="set-up">2. Set up your repository <a class="anchor" href="#set-up" aria-label="Link to this section">#</a></h2>
+    <p>In the root of your repository:</p>
     <pre data-label="bash"><code>fuse init</code></pre>
     <pre class="out" data-label="Output"><code>wrote .claude/settings.json
 wrote .gitignore
 fuse: hooks registered; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors</code></pre>
-    <p><code>fuse init</code> looks in the repository root for each harness's folder, such as <code>.cursor/</code> or <code>.gemini/</code>, and writes that harness's settings. The sample has none, so it set up Claude Code, which is the default. It also added <code>.fuse/</code> to <code>.gitignore</code>, a folder Fuse reserves for files it may keep in the repository. <a href="harnesses.html">Connect your agent</a> shows the file it wrote and what every other harness gets.</p>
-    <p>Run a first check:</p>
+    <p><code>fuse init</code> finds the agent tools your repository uses, such as <code>.cursor/</code> or <code>.gemini/</code>, and adds Fuse's hooks to each. With none found, it sets up Claude Code. Run it again at any time; it only replaces its own entries. That is the whole setup.</p>
+    <p>The first Fuse command in a repository starts a background process that loads your solution. It stays running until it has been idle for 30 minutes, and every later command and hook reuses it.</p>
+
+    <h2 id="check-an-edit">3. Check an edit <a class="anchor" href="#check-an-edit" aria-label="Link to this section">#</a></h2>
+    <p>Rename a public method that another project calls, then run:</p>
     <pre data-label="bash"><code>fuse check</code></pre>
-    <pre class="out" data-label="Output"><code>fuse: no errors introduced (0 file(s) checked)</code></pre>
-    <p>Nothing differs from HEAD yet, so there was nothing to check. This first call also started the engine, the background process that keeps the projects compiled for this repository. Every later command and hook in this repository reuses it, until it has been idle for 30 minutes.</p>
-
-    <h2 id="break-a-caller">5. Break a caller <a class="anchor" href="#break-a-caller" aria-label="Link to this section">#</a></h2>
-    <p>Now make the kind of edit an agent makes all the time: rename a method. Change <code>Add</code> to <code>Plus</code> in <code>Lib/Calc.cs</code>, so the file reads:</p>
-    <pre data-label="C#"><code>namespace Lib;
-
-public class Calc
-{
-    public int Plus(int a, int b) =&gt; a + b;
-
-    public int Multiply(int a, int b) =&gt; a * b;
-}</code></pre>
-    <p><code>Lib</code> itself still compiles. The code that breaks is in the other two projects, which still call <code>Add</code>. Check again, and print the exit code:</p>
-    <pre data-label="bash"><code>fuse check
-echo "exit code $?"</code></pre>
+    <p>Fuse reports every caller the rename broke, in every project. For example, renaming <code>Calc.Add</code> in a library called by <code>App</code> and <code>Lib.Tests</code> prints:</p>
     <pre class="out" data-label="Output"><code>App/Program.cs(3,30): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)
   removed: public int Add(int a, int b)
 Lib.Tests/CalcTests.cs(6,54): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)
   removed: public int Add(int a, int b)
-fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations changed, 2 dependent project(s) checked
-exit code 1</code></pre>
-    <p>Fuse found both broken callers, although neither file was edited. It works that out from the edit itself:</p>
-    <ol>
-      <li>The edit removed a declaration, <code>Add</code>, so it can break code in other files. (A change inside a method body cannot, and there the check would have stopped at <code>Lib/Calc.cs</code>.)</li>
-      <li>Fuse searched <code>Lib</code> and the projects that depend on it for code that uses <code>Add</code>, and found <code>App/Program.cs</code> and <code>Lib.Tests/CalcTests.cs</code>.</li>
-      <li>It compiled those files and kept only the errors HEAD does not have.</li>
-    </ol>
-    <p>The indented line under each error is the <strong>cause</strong>: the declaration change that broke that file, here <code>Add</code> as HEAD had it. An agent reading an error in a file it never touched sees at once which of its edits to look at. The last line counts the errors, names the projects they are in, and says how far the check reached. Exit code 1 means Fuse found errors to fix; <a href="commands.html#fuse-check">Commands</a> describes every part of the output.</p>
+fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations changed, 2 dependent project(s) checked</code></pre>
+    <ul>
+      <li>Only errors your change caused are listed. Errors that were already in the last commit are left out.</li>
+      <li>The indented line under each error names the change that caused it, here the removed <code>Add</code>.</li>
+      <li>The exit code is 0 when there is nothing to fix, 1 when there is, and 2 when Fuse could not answer.</li>
+    </ul>
+    <p>A change inside a method body cannot break other files, so Fuse checks only the edited file and answers faster.</p>
 
-    <h2 id="what-the-hooks-send">6. See what the hooks send the agent <a class="anchor" href="#what-the-hooks-send" aria-label="Link to this section">#</a></h2>
-    <p>You ran <code>fuse check</code> by hand. In a real session nobody runs it: the harness runs Fuse's hooks, and each hook sends the agent the same text. To see what the agent would receive, send a hook the JSON its harness sends. Claude Code runs the post-edit hook after every edit, with the edited file in the payload:</p>
-    <pre data-label="bash"><code>echo '{"tool_input":{"file_path":"Lib/Calc.cs"}}' | fuse hook claude post-edit; echo " [exit code $?]"</code></pre>
-    <pre class="out" data-label="Output"><code>App/Program.cs(3,30): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)
-  removed: public int Add(int a, int b)
-Lib.Tests/CalcTests.cs(6,54): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)
-  removed: public int Add(int a, int b)
-fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations changed, 2 dependent project(s) checked [exit code 2]</code></pre>
-    <p>Claude Code runs this hook in the background while the agent keeps working. Exit code 2 tells Claude Code to wake the agent and show it this text. An edit that introduces no error prints nothing and exits with 0, so the agent hears from Fuse only when there is something to fix.</p>
-    <p>When the agent tries to finish, the stop hook checks every change once more and, if errors remain, sends the agent back with them:</p>
-    <pre data-label="bash"><code>echo '{}' | fuse hook claude stop</code></pre>
-    <pre class="out" data-label="Output"><code>{"decision":"block","reason":"App/Program.cs(3,30): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)\n  removed: public int Add(int a, int b)\nLib.Tests/CalcTests.cs(6,54): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)\n  removed: public int Add(int a, int b)\nfuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations changed, 2 dependent project(s) checked\nFix these errors before finishing; HEAD does not have them, so your changes introduced them."}</code></pre>
-    <p>Before the agent runs a shell command, the pre-shell hook rewrites <code>dotnet build</code> and <code>dotnet test</code> to their Fuse equivalents, so the agent gets the short output and the affected tests without having to know Fuse exists:</p>
-    <pre data-label="bash"><code>echo '{"tool_input":{"command":"dotnet test"}}' | fuse hook claude pre-shell</code></pre>
-    <pre class="out" data-label="Output"><code>{"hookSpecificOutput":{"hookEventName":"PreToolUse","updatedInput":{"command":"fuse test"}}}</code></pre>
-
-    <h2 id="run-the-affected-tests">7. Run the affected tests <a class="anchor" href="#run-the-affected-tests" aria-label="Link to this section">#</a></h2>
-    <p>Undo the rename, then make an edit that compiles but is wrong. Restore the file:</p>
-    <pre data-label="bash"><code>git restore Lib/Calc.cs</code></pre>
-    <p>Then edit the <code>Multiply</code> line in <code>Lib/Calc.cs</code> to read:</p>
-    <pre data-label="C#"><code>    public int Multiply(int a, int b) =&gt; a * b + 1;</code></pre>
-    <p>This edit changes only a method body, so it cannot break a caller, and the check stops at the edited file:</p>
-    <pre data-label="bash"><code>fuse check</code></pre>
-    <pre class="out" data-label="Output"><code>fuse: no errors introduced (1 file(s) checked)</code></pre>
-    <p>It does break a test. Run the affected tests:</p>
-    <pre data-label="bash"><code>fuse test
-echo "exit code $?"</code></pre>
+    <h2 id="run-the-affected-tests">4. Run the affected tests <a class="anchor" href="#run-the-affected-tests" aria-label="Link to this section">#</a></h2>
+    <p>Undo the rename, change a method body so that one of its tests fails, and run:</p>
+    <pre data-label="bash"><code>fuse test</code></pre>
     <pre class="out" data-label="Output"><code>FAILED Lib.Tests.CalcTests.Multiplies
   Assert.Equal() Failure: Values differ
   Expected: 6
   Actual:   7
   at Lib.Tests.CalcTests.Multiplies() in Lib.Tests/CalcTests.cs:line 9
-fuse: 1 failed, 0 passed in 2.8 s; ran 1 test(s) affected by your changes out of 2; fuse test --all runs everything; without MSBuild
-exit code 1</code></pre>
-    <p>Fuse ran one of the two tests, <code>Multiplies</code>, because it is the only test that reaches <code>Multiply</code>. <code>Adds</code> cannot fail because of this edit, so it did not run. The output holds only the failure, with the assertion and the line in the test.</p>
-    <p><code>without MSBuild</code> at the end says how the tests ran: instead of rebuilding with MSBuild, Fuse compiled the changed <code>Lib</code> from memory into a copy of the test project's build output and ran the tests from that copy. When the agent runs <code>dotnet test</code>, the pre-shell hook turns it into this command.</p>
+fuse: 1 failed, 0 passed in 2.8 s; ran 1 test(s) affected by your changes out of 2; fuse test --all runs everything; without MSBuild</code></pre>
+    <p>Fuse ran only the tests that reach the changed code, and printed only the failure. <code>without MSBuild</code> means it skipped the rebuild: only <code>.cs</code> files had changed, so it used the code it already had compiled. <code>fuse test --all</code> runs every test.</p>
+    <p>Undo your test edit with <code>git restore</code> on the file when you are done.</p>
 
-    <h2 id="clean-up">8. Clean up <a class="anchor" href="#clean-up" aria-label="Link to this section">#</a></h2>
-    <pre data-label="bash"><code>git restore Lib/Calc.cs</code></pre>
-    <p>The engine exits on its own after 30 idle minutes. Delete the <code>fuse-sample</code> folder when you are done. Fuse's own files for it, such as its logs, are in your local application data, as <a href="troubleshooting.html#where-the-logs-are">Troubleshooting</a> describes.</p>
+    <h2 id="what-the-agent-gets">5. What the agent gets <a class="anchor" href="#what-the-agent-gets" aria-label="Link to this section">#</a></h2>
+    <p>You ran the commands by hand. Your agent does not need to: the hooks run them for it.</p>
+    <ul>
+      <li><strong>After each edit</strong> the agent gets the output of <code>fuse check</code> for that edit. A clean edit prints nothing.</li>
+      <li><strong>When the agent runs <code>dotnet build</code> or <code>dotnet test</code></strong>, the hook changes it to <code>fuse build</code> or <code>fuse test</code>. Cursor and GitHub Copilot CLI cannot do this; there the agent can call <code>fuse</code> directly.</li>
+      <li><strong>Before the agent finishes</strong>, Fuse checks all its changes and sends it back once if errors remain.</li>
+    </ul>
+    <p>To see exactly what Claude Code's agent would receive after an edit, pass the hook the JSON Claude Code sends (bash):</p>
+    <pre data-label="bash"><code>echo '{"tool_input":{"file_path":"Lib/Calc.cs"}}' | fuse hook claude post-edit</code></pre>
+    <p>It prints the same errors as <code>fuse check</code>, or nothing when the edit is clean.</p>
 
     <h2 id="next-steps">Next steps <a class="anchor" href="#next-steps" aria-label="Link to this section">#</a></h2>
     <ul>
-      <li>Run <code>fuse init</code> in your own repository, and read <a href="harnesses.html">Connect your agent</a> for what it writes for your harness.</li>
-      <li>Read <a href="limits.html">Limits</a> before you rely on a clean answer, especially in a repository with custom build logic.</li>
-      <li>Read <a href="how-it-works.html">How it works</a> for what happened behind each step of this tutorial.</li>
+      <li><a href="harnesses.html">Connect your agent</a>: what <code>fuse init</code> wrote for your harness.</li>
+      <li><a href="limits.html">Limits</a>: what a check cannot see, and when to run a full build.</li>
+      <li><a href="troubleshooting.html">Troubleshooting</a>: what to do when a hook stays silent or a check is slow.</li>
     </ul>
 
     <nav class="pager" aria-label="Previous and next page">
@@ -290,7 +212,7 @@ exit code 1</code></pre>
       <ul>
         <li><a href="how-it-works.html">How it works</a></li>
         <li><a href="limits.html">Limits</a></li>
-        <li><a href="results.html">Results</a></li>
+        <li><a href="benchmarks.html">Benchmarks</a></li>
         <li><a href="faq.html">FAQ</a></li>
       </ul>
       <h2>Reference</h2>
@@ -312,7 +234,7 @@ exit code 1</code></pre>
   </div>
 
   <footer class="site-footer">
-    <span>Fuse, Apache-2.0. Measured medians, one Windows machine.</span>
+    <span>Fuse, Apache-2.0. Benchmark medians, one Windows machine.</span>
     <nav aria-label="Footer"><a href="index.html">Docs</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
   </footer>
 </div>

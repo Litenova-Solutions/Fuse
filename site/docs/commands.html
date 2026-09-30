@@ -20,12 +20,12 @@
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster compiler feedback for AI coding agents on .NET. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Commands">
 <meta name="twitter:description" content="Every fuse command: its arguments, what it prints, and its exit codes.">
 <meta name="twitter:image" content="https://fuse.codes/assets/og.png">
-<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster compiler feedback for AI coding agents on .NET. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
 <link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
 <link rel="icon" href="../assets/fuse-icon.svg" type="image/svg+xml" sizes="any">
 <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -100,7 +100,7 @@
     <a class="brand" href="../index.html"><img src="../assets/fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
     <nav aria-label="Main">
       <a href="index.html" aria-current="page">Docs</a>
-      <a href="results.html">Results</a>
+      <a href="benchmarks.html">Benchmarks</a>
       <a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a>
     </nav>
   </header>
@@ -113,7 +113,7 @@
     <p class="intro">The reference for every <code>fuse</code> command: its arguments, what it prints, and its exit codes. When a command cannot answer, its message is listed in <a href="messages.html">Messages and fixes</a>.</p>
     <div class="audience">
       <p><b>This page is for</b> anyone reading Fuse's output, whether you ran a command yourself or are looking at what a hook sent the agent, and anyone scripting Fuse or connecting it to a tool.</p>
-      <p><b>Before it</b>, <a href="getting-started.html">Getting started</a> walks through the common commands on a sample repository, which is the quickest way to see the output in context.</p>
+      <p><b>Before it</b>, <a href="getting-started.html">Getting started</a> sets Fuse up in your repository and shows the common commands' output.</p>
     </div>
 
     <nav class="toc" aria-label="On this page">
@@ -136,7 +136,7 @@
     <p><code>fuse</code> is one executable. <code>check</code>, <code>test</code> and <code>build</code> are its three operations. <code>hook</code> runs them for a harness and <code>mcp</code> serves them to an MCP host; both give the same text the command line prints, so what you see in a terminal is what the agent reads.</p>
     <p>Every command works on the git repository that contains the current directory (a hook, on the repository of the files its payload names), compares the working tree (the files on disk) with HEAD (the commit you have checked out), and reads no configuration.</p>
     <pre data-label="Output"><code>$ fuse help
-fuse - faster C# compiler feedback and affected-test runs for coding agents
+fuse - faster .NET build and test loop for AI coding agents
 
   fuse init                 register Fuse's hooks with the agent harnesses this repository uses
   fuse check [files...]     errors the working tree has that HEAD does not, across dependent projects
@@ -295,7 +295,7 @@ fuse: build failed with 2 error(s) in 1.1 s</code></pre>
 
     <h2 id="fuse-hook">fuse hook <a class="anchor" href="#fuse-hook" aria-label="Link to this section">#</a></h2>
     <pre data-label="Usage"><code>fuse hook &lt;harness&gt; &lt;event&gt;</code></pre>
-    <p>The command every installed hook runs. You do not run it yourself, except to see what a hook would answer, as <a href="getting-started.html#what-the-hooks-send">Getting started</a> does. It reads the harness's JSON payload from standard input as UTF-8 and answers in that harness's format, which <a href="harnesses.html">Connect your agent</a> shows for each one. The harness is <code>claude</code>, <code>cursor</code>, <code>gemini</code>, <code>codex</code>, <code>copilot</code> or <code>opencode</code>. Any other harness or event prints a usage line on standard error and exits with 0.</p>
+    <p>The command every installed hook runs. You do not run it yourself, except to see what a hook would answer, as <a href="getting-started.html#what-the-agent-gets">Getting started</a> does. It reads the harness's JSON payload from standard input as UTF-8 and answers in that harness's format, which <a href="harnesses.html">Connect your agent</a> shows for each one. The harness is <code>claude</code>, <code>cursor</code>, <code>gemini</code>, <code>codex</code>, <code>copilot</code> or <code>opencode</code>. Any other harness or event prints a usage line on standard error and exits with 0.</p>
     <table>
       <thead><tr><th scope="col">Event</th><th scope="col">What it does</th></tr></thead>
       <tbody>
@@ -342,7 +342,7 @@ fuse: build failed with 2 error(s) in 1.1 s</code></pre>
       <ul>
         <li><a href="how-it-works.html">How it works</a></li>
         <li><a href="limits.html">Limits</a></li>
-        <li><a href="results.html">Results</a></li>
+        <li><a href="benchmarks.html">Benchmarks</a></li>
         <li><a href="faq.html">FAQ</a></li>
       </ul>
       <h2>Reference</h2>
@@ -364,7 +364,7 @@ fuse: build failed with 2 error(s) in 1.1 s</code></pre>
   </div>
 
   <footer class="site-footer">
-    <span>Fuse, Apache-2.0. Measured medians, one Windows machine.</span>
+    <span>Fuse, Apache-2.0. Benchmark medians, one Windows machine.</span>
     <nav aria-label="Footer"><a href="index.html">Docs</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
   </footer>
 </div>

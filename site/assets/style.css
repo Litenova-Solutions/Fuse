@@ -213,6 +213,11 @@ pre .dim { color: var(--code-muted); user-select: none; }
 .card b { display: block; margin-bottom: 0.25rem; }
 .card span { display: block; color: var(--muted); font-size: 0.88rem; line-height: 1.5; }
 
+/* Benefit cards on the home page, which do not link. */
+.cards.benefits { max-width: 48rem; margin: 0 auto; }
+.benefits .card:hover { border-color: var(--line); }
+.benefits .card code { font-size: 0.9em; }
+
 /* Glossary. */
 .page dl.terms { margin: 0 0 1.2rem; }
 .page dl.terms dt { font-weight: 600; margin-top: 0.9rem; }

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fuse Documentation | Fuse</title>
-<meta name="description" content="What Fuse is, the words the documentation uses, and which page answers which question.">
+<meta name="description" content="What Fuse is, what it gives an agent and its subagents, what it costs, the words the documentation uses, and which page answers which question.">
 <link rel="canonical" href="https://fuse.codes/docs/">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 <meta name="author" content="Litenova Solutions">
@@ -14,18 +14,18 @@
 <meta property="og:site_name" content="Fuse">
 <meta property="og:locale" content="en_US">
 <meta property="og:title" content="Fuse Documentation">
-<meta property="og:description" content="What Fuse is, the words the documentation uses, and which page answers which question.">
+<meta property="og:description" content="What Fuse is, what it gives an agent and its subagents, what it costs, the words the documentation uses, and which page answers which question.">
 <meta property="og:url" content="https://fuse.codes/docs/">
 <meta property="og:image" content="https://fuse.codes/assets/og.png">
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster compiler feedback for AI coding agents on .NET. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Fuse Documentation">
-<meta name="twitter:description" content="What Fuse is, the words the documentation uses, and which page answers which question.">
+<meta name="twitter:description" content="What Fuse is, what it gives an agent and its subagents, what it costs, the words the documentation uses, and which page answers which question.">
 <meta name="twitter:image" content="https://fuse.codes/assets/og.png">
-<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster compiler feedback for AI coding agents on .NET. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
 <link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
 <link rel="icon" href="../assets/fuse-icon.svg" type="image/svg+xml" sizes="any">
 <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -39,7 +39,7 @@
       "@type": "TechArticle",
       "@id": "https://fuse.codes/docs/#article",
       "headline": "Fuse Documentation",
-      "description": "What Fuse is, the words the documentation uses, and which page answers which question.",
+      "description": "What Fuse is, what it gives an agent and its subagents, what it costs, the words the documentation uses, and which page answers which question.",
       "url": "https://fuse.codes/docs/",
       "mainEntityOfPage": "https://fuse.codes/docs/",
       "inLanguage": "en",
@@ -94,7 +94,7 @@
     <a class="brand" href="../index.html"><img src="../assets/fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
     <nav aria-label="Main">
       <a href="index.html" aria-current="page">Docs</a>
-      <a href="results.html">Results</a>
+      <a href="benchmarks.html">Benchmarks</a>
       <a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a>
     </nav>
   </header>
@@ -103,47 +103,61 @@
     <main id="main" class="page" tabindex="-1">
     <h1>Fuse Documentation</h1>
     <p class="jump"><a href="#docs-nav">All documentation pages</a></p>
-    <p class="intro">Fuse is a command-line tool for .NET repositories that tells an AI coding agent, right after each edit, which compiler errors that edit introduced and which tests it can break.</p>
+    <p class="intro">Fuse makes <code>dotnet build</code> and <code>dotnet test</code> faster for AI coding agents. After each edit, the agent learns which compiler errors it caused and which tests it broke, in a fraction of the time and output.</p>
     <div class="audience">
       <p><b>This page is for</b> anyone new to Fuse: a developer setting it up for an agent, someone deciding whether to rely on it, or a contributor.</p>
-      <p><b>After reading it</b> you know what Fuse does, the few words the rest of the documentation uses, and which page answers your question. To try it, go on to <a href="getting-started.html">Getting started</a>.</p>
+      <p><b>After reading it</b> you know what Fuse does for an agent, what it costs, the few words the rest of the documentation uses, and which page answers your question. To try it, go on to <a href="getting-started.html">Getting started</a>.</p>
     </div>
 
     <nav class="toc" aria-label="On this page">
       <p>On this page</p>
       <ol>
-        <li><a href="#the-problem">The problem Fuse solves</a></li>
-        <li><a href="#what-fuse-does">What Fuse does</a></li>
+        <li><a href="#the-problem">Why Fuse exists</a></li>
+        <li><a href="#what-fuse-does">What your agent gets</a></li>
+        <li><a href="#what-fuse-costs">What Fuse costs</a></li>
         <li><a href="#words">Words these pages use</a></li>
         <li><a href="#find-your-page">Find the page for your question</a></li>
         <li><a href="#requirements">Requirements</a></li>
       </ol>
     </nav>
 
-    <h2 id="the-problem">The problem Fuse solves <a class="anchor" href="#the-problem" aria-label="Link to this section">#</a></h2>
-    <p>A coding agent changes a repository in many small edits. After each one it needs to know whether the code still compiles and whether the tests still pass. Without Fuse it finds out the way a person does, by running <code>dotnet build</code> and <code>dotnet test</code>, and both are slow and noisy for this job:</p>
+    <h2 id="the-problem">Why Fuse exists <a class="anchor" href="#the-problem" aria-label="Link to this section">#</a></h2>
+    <p>An AI agent checks its work by running <code>dotnet build</code> and <code>dotnet test</code>, often dozens of times in one task. That is slow and noisy:</p>
     <ul>
-      <li><strong>A build does the whole job every time.</strong> <code>dotnet build</code> starts MSBuild, evaluates every project and compiles what changed. On the four repositories Fuse is measured on, the median build took between 1.14 s and 6.45 s (<a href="results.html">Results</a>).</li>
-      <li><strong>A build reports every error, not the agent's.</strong> If the repository already had errors before the agent started, the build lists them too, and the agent has to work out which ones its edit caused.</li>
-      <li><strong>A test run runs everything.</strong> <code>dotnet test</code> runs every test in the solution and prints the passing ones as well as the failures, so the agent waits longer and reads more.</li>
+      <li><strong>Every build starts from scratch.</strong> The median build took 1.14 s to 6.45 s on the benchmark repositories, and the agent waits for it after every edit.</li>
+      <li><strong>A build lists every error.</strong> Errors that were there before the agent started show up too, and the agent has to guess which ones are its own.</li>
+      <li><strong>A test run runs every test</strong> and prints the passing ones too.</li>
+      <li><strong>Subagents make it worse.</strong> Several builds at once use a lot of memory and fail on each other's locked files in <code>obj</code> and <code>bin</code>.</li>
     </ul>
+    <p>Fuse is built for agents, not for people. Its output is only what an agent needs to act on, and the agent's tool runs it automatically.</p>
 
-    <h2 id="what-fuse-does">What Fuse does <a class="anchor" href="#what-fuse-does" aria-label="Link to this section">#</a></h2>
-    <p>Fuse keeps the repository's C# projects compiled in memory, in a background process called the engine, and answers from it. An answer compares your files as they are on disk with the commit you have checked out, so it contains only what the current changes did.</p>
-    <ul>
-      <li><strong>Only introduced errors.</strong> Fuse reports an error only when your files have it and the checked-out commit does not. An error that was already there is never reported.</li>
-      <li><strong>Breaks in other projects.</strong> When an edit changes a declaration, such as renaming a method, Fuse also checks the projects that depend on the edited one, and prints under each error the change that caused it.</li>
-      <li><strong>Only the affected tests.</strong> <code>fuse test</code> runs the tests the change can reach and prints only the failures.</li>
-      <li><strong>No commands to remember.</strong> <code>fuse init</code> registers hooks with the agent's harness, so Fuse runs after every edit and before the agent finishes, and in most harnesses replaces the agent's <code>dotnet build</code> and <code>dotnet test</code>.</li>
-    </ul>
-    <p>In the measurements the median Fuse check took between 0.18 s and 0.87 s, 2.9x to 7.4x faster than the matching <code>dotnet build</code>. This is what happens after an agent edits a file:</p>
+    <h2 id="what-fuse-does">What your agent gets <a class="anchor" href="#what-fuse-does" aria-label="Link to this section">#</a></h2>
+    <p>Fuse keeps your solution loaded in a background process, the <strong>engine</strong>, and compares your files with the last commit. After an edit:</p>
     <ol class="flow" aria-label="What happens after an edit">
       <li><b>The agent edits a file</b><span>for example, it renames <code>Calc.Add</code> to <code>Plus</code>.</span></li>
-      <li><b>The harness runs Fuse's hook</b><span>with the name of the edited file.</span></li>
-      <li><b>The engine checks the change</b><span>in the edited project and in every project that uses <code>Add</code>.</span></li>
+      <li><b>The hook runs Fuse</b><span>with the name of the edited file.</span></li>
+      <li><b>Fuse checks the change</b><span>in the edited project and in every project that uses <code>Add</code>.</span></li>
       <li><b>The agent reads the result</b><span>the two callers that broke, or nothing when the edit is clean.</span></li>
     </ol>
-    <p>Fuse never changes your code. It runs locally, has no telemetry, makes no network calls of its own, and reads no configuration.</p>
+    <ul>
+      <li><strong>Faster checks.</strong> 2.9x to 7.4x faster than <code>dotnet build</code> (<a href="benchmarks.html">Benchmarks</a>). A change inside a method body is checked in the edited file only.</li>
+      <li><strong>Only affected tests.</strong> 1.4x to 5.7x faster than <code>dotnet test</code>. When only <code>.cs</code> files changed, tests run without a rebuild.</li>
+      <li><strong>Only new errors.</strong> Errors that were already in the last commit are not reported.</li>
+      <li><strong>Breaks in other projects.</strong> Each broken caller is listed with the change that broke it.</li>
+      <li><strong>Short output.</strong> At most 20 errors or 10 test failures, plus one summary line. Nothing when the edit is clean.</li>
+      <li><strong>Made for subagents.</strong> All agents in a repository share one engine, so the solution is loaded once. Builds through Fuse take turns: parallel builds hit 0 locked-file errors in the benchmarks. Each git worktree gets its own engine, so agents in different worktrees never wait for each other.</li>
+      <li><strong>Safe.</strong> If Fuse fails, the hook stays silent and the agent carries on. The stop hook sends the agent back at most once. Fuse never edits your code, runs locally and has no telemetry.</li>
+      <li><strong>No configuration.</strong> <code>fuse init</code> is the only setup, and <code>dotnet tool update</code> works while Fuse runs.</li>
+    </ul>
+
+    <h2 id="what-fuse-costs">What Fuse costs <a class="anchor" href="#what-fuse-costs" aria-label="Link to this section">#</a></h2>
+    <ul>
+      <li><strong>Memory.</strong> The engine keeps loaded projects in memory until it has been idle for 30 minutes: 271 MB on a 5-project solution, 2,429 MB on the 26-project Community Toolkit (<a href="benchmarks.html">Benchmarks</a>). Each git worktree runs its own engine.</li>
+      <li><strong>A slow first check across projects.</strong> The first edit that affects other projects has to load them. On Jellyfin (40 projects) that took up to 49.1 s; the median signature edit took 186 ms.</li>
+      <li><strong>One check at a time.</strong> Agents in the same repository wait for each other's checks.</li>
+      <li><strong>Not a full build.</strong> Fuse checks C# only and picks tests by reading the code, so a few cases still need <code>fuse build</code> or <code>fuse test --all</code>. <a href="limits.html">Limits</a> lists them.</li>
+      <li><strong>Two harnesses without build rewriting.</strong> In Cursor and GitHub Copilot CLI, the agent's own <code>dotnet build</code> runs unchanged and does not take turns with Fuse's builds.</li>
+    </ul>
 
     <h2 id="words">Words these pages use <a class="anchor" href="#words" aria-label="Link to this section">#</a></h2>
     <p>The documentation uses each of these words for one thing only.</p>
@@ -174,7 +188,7 @@
 
     <h2 id="find-your-page">Find the page for your question <a class="anchor" href="#find-your-page" aria-label="Link to this section">#</a></h2>
     <div class="cards">
-      <a class="card" href="getting-started.html"><b>Try Fuse</b><span>Install it and watch it catch a broken caller and a failing test in a sample repository.</span></a>
+      <a class="card" href="getting-started.html"><b>Try Fuse</b><span>Install it, set it up in your repository, and see what it reports.</span></a>
       <a class="card" href="harnesses.html"><b>Connect your agent</b><span>What <code>fuse init</code> writes for your harness, and how an MCP host runs Fuse.</span></a>
       <a class="card" href="how-it-works.html"><b>Understand it</b><span>How a check, test selection and the engine work, and why they work that way.</span></a>
       <a class="card" href="faq.html"><b>Compare it</b><span>Common questions, and how Fuse differs from language servers and other tools.</span></a>
@@ -183,7 +197,7 @@
       <a class="card" href="messages.html"><b>Read a message</b><span>What each message means when Fuse cannot answer, and the fix.</span></a>
       <a class="card" href="troubleshooting.html"><b>Fix a problem</b><span>Why a hook is silent or a check is slow, and where the logs are.</span></a>
       <a class="card" href="changelog.html"><b>Upgrade</b><span>What changed in each release and what to do when you upgrade.</span></a>
-      <a class="card" href="results.html"><b>Check the numbers</b><span>Speed and accuracy on four repositories, with the file behind each number.</span></a>
+      <a class="card" href="benchmarks.html"><b>Check the numbers</b><span>Speed and accuracy on four repositories, with the file behind each number.</span></a>
       <a class="card" href="architecture.html"><b>Change Fuse</b><span>How the code is organized, and the rules a change follows.</span></a>
     </div>
 
@@ -193,7 +207,7 @@
       <li>A git repository with at least one commit, because Fuse compares with HEAD. With no commit, every file counts as new and every error as introduced.</li>
       <li>C# projects (<code>.csproj</code>). Visual Basic and F# projects are not checked.</li>
       <li>Restored projects. When one is not restored, Fuse names the <code>dotnet restore</code> command to run.</li>
-      <li>Windows, Linux or macOS. CI builds and tests Fuse on all three; the published measurements come from one Windows machine.</li>
+      <li>Windows, Linux or macOS. CI builds and tests Fuse on all three; the published benchmarks come from one Windows machine.</li>
     </ul>
 
     <nav class="pager" aria-label="Previous and next page">
@@ -212,7 +226,7 @@
       <ul>
         <li><a href="how-it-works.html">How it works</a></li>
         <li><a href="limits.html">Limits</a></li>
-        <li><a href="results.html">Results</a></li>
+        <li><a href="benchmarks.html">Benchmarks</a></li>
         <li><a href="faq.html">FAQ</a></li>
       </ul>
       <h2>Reference</h2>
@@ -234,7 +248,7 @@
   </div>
 
   <footer class="site-footer">
-    <span>Fuse, Apache-2.0. Measured medians, one Windows machine.</span>
+    <span>Fuse, Apache-2.0. Benchmark medians, one Windows machine.</span>
     <nav aria-label="Footer"><a href="index.html">Docs</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
   </footer>
 </div>

@@ -78,7 +78,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: package-${{ matrix.rid }}
-          path: artifacts/Fuse.${{ matrix.rid }}.*.nupkg
+          path: artifacts/Litenova.Fuse.${{ matrix.rid }}.*.nupkg
           if-no-files-found: error
 
   portable:
@@ -161,6 +161,6 @@ jobs:
 
       - name: Run the native client in Rocky Linux 8
         run: |
-          unzip -q feed/Fuse.linux-x64.*.nupkg -d package
+          unzip -q feed/Litenova.Fuse.linux-x64.*.nupkg -d package
           chmod +x package/tools/any/linux-x64/fuse
           docker run --rm -v "$PWD/package:/package:ro" rockylinux:8 /package/tools/any/linux-x64/fuse --version

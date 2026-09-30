@@ -2,6 +2,14 @@
 
 The list of changes in each release, which the release workflow publishes as the release notes. The [changelog page](https://fuse.codes/docs/changelog) explains each release with its upgrade steps and says which versions are supported. Versions before 5.0.0 are deprecated.
 
+## 5.2.1
+
+Compared with 5.2.0. 5.2.0 could not be installed from NuGet: nuget.org refused its per-platform packages, so `dotnet tool install` and `dotnet tool update` found the `Fuse` package but not the package for the platform. Update with `dotnet tool update -g Fuse`, from 5.1.0 or from a 5.2.0 installed another way; nothing else needs to change.
+
+- The per-platform packages are named `Litenova.Fuse.win-x64`, `Litenova.Fuse.linux-x64`, `Litenova.Fuse.linux-arm64`, `Litenova.Fuse.osx-arm64`, `Litenova.Fuse.linux-musl-x64`, `Litenova.Fuse.linux-musl-arm64` and `Litenova.Fuse.any`. The SDK names them after the tool, `Fuse.win-x64` and so on, and nuget.org reserves the `Fuse.` prefix without an owner, so it refused every one of them as "The package ID is reserved". The `Fuse` package points to the new names, and `dotnet tool install -g Fuse` stays the only command.
+- The `Fuse` package on nuget.org shows the Fuse icon.
+- The publish workflow fails when nuget.org refuses a package, with nuget.org's reason. It passed 5.2.0 although only the `Fuse` package was pushed, because `--skip-duplicate` reports every refusal with status 409 as a package that already exists.
+
 ## 5.2.0
 
 Compared with 5.1.0. Update with `dotnet tool update -g Fuse`; nothing else needs to change, and `fuse init` does not need to run again.

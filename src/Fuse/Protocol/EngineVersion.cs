@@ -54,7 +54,8 @@ internal static class EngineVersion
         if (!isNativeClient || File.Exists(Path.Combine(baseDirectory, ManagedAssembly)))
             return baseDirectory;
         var store = Path.Combine(baseDirectory, ".store", "fuse", product);
-        var packaged = Path.Combine(store, $"fuse.{runtimeIdentifier}", product, "tools", "net10.0", runtimeIdentifier);
+        // The RID-specific package is Litenova.Fuse.<RID> (RidPackageIdPrefix in Fuse.csproj), which the store names in lower case.
+        var packaged = Path.Combine(store, $"litenova.fuse.{runtimeIdentifier}", product, "tools", "net10.0", runtimeIdentifier);
         if (File.Exists(Path.Combine(packaged, ManagedAssembly)))
             return packaged;
         return Directory.Exists(store)

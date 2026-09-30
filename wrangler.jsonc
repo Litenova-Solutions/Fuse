@@ -8,6 +8,7 @@
     "not_found_handling": "404-page"
   },
   "routes": [
-    { "pattern": "fuse.codes", "custom_domain": true }
+    { "pattern": "fuse.codes", "custom_domain": true },
+    { "pattern": "www.fuse.codes", "custom_domain": true }
   ]
 }

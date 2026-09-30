@@ -179,6 +179,24 @@ public class CheckerTests
         Assert.Contains(causes, c => c.Declaration.Contains("Greet", StringComparison.Ordinal) && c is Cause.Removed);
     }
 
+    [Fact]
+    public async Task Errors_head_has_in_a_file_renamed_since_are_not_reported_under_the_new_name()
+    {
+        await using var engine = await InProcessEngine.StartAsync();
+        engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * existingError;");
+        engine.Repo.Commit("commit a broken file");
+
+        // A rename that git status reports as a deleted file and a new one, as a file manager or an agent's mv makes it.
+        engine.Repo.Write("Lib/Arithmetic.cs", engine.Repo.Read("Lib/Calc.cs"));
+        engine.Repo.Delete("Lib/Calc.cs");
+        Assert.Empty((await engine.CheckAsync("Lib/Arithmetic.cs")).Errors);
+        Assert.Empty((await engine.CheckAllAsync()).Errors);
+
+        engine.Repo.Replace("Lib/Arithmetic.cs", "a + b;", "a + anotherError;");
+        var error = Assert.Single((await engine.CheckAsync("Lib/Arithmetic.cs")).Errors).Error;
+        Assert.Contains("anotherError", error.Message, StringComparison.Ordinal);
+    }
+
     /// <summary>The files the change in <paramref name="relative"/> puts in scope, the way the checker computes them.</summary>
     private static async Task<List<RepoPath>> CandidatesAsync(InProcessEngine engine, string relative) =>
         [.. Assert.IsType<Reach.Precise>(await engine.ReachAsync(relative)).Causes.Keys.OrderBy(k => k.Absolute, StringComparer.Ordinal)];

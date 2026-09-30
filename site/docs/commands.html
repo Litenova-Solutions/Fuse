@@ -20,12 +20,12 @@
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 24.6x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Commands">
 <meta name="twitter:description" content="Every fuse command: its arguments, what it prints, and its exit codes.">
 <meta name="twitter:image" content="https://fuse.codes/assets/og.png">
-<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 24.6x faster than dotnet build. dotnet tool install -g Fuse.">
 <link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
 <link rel="icon" href="../assets/fuse-icon.svg" type="image/svg+xml" sizes="any">
 <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -202,7 +202,7 @@ fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations chan
         <tr><th scope="row"><code>C cause(s) left out</code></th><td>More than ten errors had a cause, and C of them are printed without one.</td></tr>
       </tbody>
     </table>
-    <p>An error counts as introduced when HEAD has fewer errors with the same file, id and message than the working tree. Line numbers are ignored, so an error that only moved is not reported. Errors are compiler errors, warnings the project treats as errors, and analyzer diagnostics at error severity. Warnings are not reported.</p>
+    <p>An error counts as introduced when HEAD has fewer errors with the same file, id and message than the working tree. Line numbers are ignored, so an error that only moved is not reported, and a file renamed since HEAD is compared with the errors HEAD had under its old name. Errors are compiler errors, warnings the project treats as errors, and analyzer diagnostics at error severity. Warnings are not reported.</p>
     <p>The exit code is 1 when an error was introduced and 0 when none was.</p>
 
     <h2 id="fuse-test">fuse test <a class="anchor" href="#fuse-test" aria-label="Link to this section">#</a></h2>
@@ -251,7 +251,7 @@ fuse: 1 failed, 0 passed in 2.8 s; ran 1 test(s) affected by your changes out of
 fuse: no test is affected by the changes (out of T); fuse test --all runs everything
 fuse: no test projects in this repository</code></pre>
     <p>When a test project does not build, the command prints the build's errors and <code>fuse: test build failed with N error(s) in T s</code> in the format of <a href="#fuse-build">fuse build</a>, and exits with 1. When other test projects ran, their results come first and each failed build follows them, so the last line is the failed build even when every test that ran passed.</p>
-    <p>A test project on Microsoft.Testing.Platform writes no TRX file. A passing run prints <code>fuse: tests passed in T s;</code> and the summary. A failing run prints the last 30 lines of its output and <code>fuse: the test run of &lt;project&gt; exited with code E and produced no results in T s</code>, and exits with 1. Any test run that exits with a code other than 0, writes no results and prints no error line ends the same way; for <code>fuse test</code> with arguments the line names the run <code>dotnet test</code>.</p>
+    <p>A test project on Microsoft.Testing.Platform writes no TRX file, so Fuse reads the counts from the run summary it prints and each failed test's message and stack frames from its output, and the answer has the same form as above. In a repository whose <code>global.json</code> selects Microsoft.Testing.Platform, <code>fuse test</code> with arguments passes them on without VSTest's logger options, which the test application would reject. A run whose summary counts an error, such as an argument the test application rejects, a run that printed no summary, and any test run that exits with a code other than 0 without results and without an error line print the last 30 lines of the output and <code>fuse: the test run of &lt;project&gt; exited with code E and produced no results in T s</code>, and exit with 1; for <code>fuse test</code> with arguments the line names the run <code>dotnet test</code>. A passing run without a summary prints <code>fuse: tests passed in T s;</code> and the summary.</p>
     <p>The exit code is 1 when a test failed or a test project did not build, and 0 otherwise.</p>
 
     <h2 id="fuse-build">fuse build <a class="anchor" href="#fuse-build" aria-label="Link to this section">#</a></h2>
@@ -287,7 +287,7 @@ fuse: build failed with 2 error(s) in 1.1 s</code></pre>
 {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"fuse_check","arguments":{"files":["Lib/Calc.cs"]}}}
 {"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"fuse_lint","arguments":{}}}</code></pre>
     <p>The server's responses:</p>
-    <pre class="out" data-label="Received"><code>{"result":{"protocolVersion":"2025-06-18","capabilities":{"logging":{},"tools":{}},"serverInfo":{"name":"fuse","version":"5.1.0"}},"id":1,"jsonrpc":"2.0"}
+    <pre class="out" data-label="Received"><code>{"result":{"protocolVersion":"2025-06-18","capabilities":{"logging":{},"tools":{}},"serverInfo":{"name":"fuse","version":"5.2.0"}},"id":1,"jsonrpc":"2.0"}
 {"result":{"tools":[{"name":"fuse_check","title":"Check C# changes","description":"Compiler and analyzer errors the working tree has and HEAD does not: in the named files, or in every changed file when none are named, and in the files of dependent projects that use a changed declaration. Run after editing C# files. Once Fuse has loaded the repository it answers much faster than dotnet build.","inputSchema":{"type":"object","properties":{"files":{"type":"array","items":{"type":"string"},"description":"Files to check, absolute or relative to the repository root. Omit to check every file that differs from HEAD."}}},"annotations":{"idempotentHint":true,"openWorldHint":false,"readOnlyHint":true}},{"name":"fuse_test","title":"Run affected tests","description":"Runs the tests affected by the working-tree changes and reports only failures. Set all=true to run every test.","inputSchema":{"type":"object","properties":{"all":{"type":"boolean","description":"Run every test instead of the affected ones."}}},"annotations":{"destructiveHint":false,"openWorldHint":false,"readOnlyHint":false}},{"name":"fuse_build","title":"Build","description":"Runs dotnet build and reports its errors.","inputSchema":{"type":"object","properties":{"target":{"type":"string","description":"Project or solution to build. Omit to build what dotnet build picks in the repository root."}}},"annotations":{"destructiveHint":false,"openWorldHint":false,"readOnlyHint":false}}]},"id":2,"jsonrpc":"2.0"}
 {"result":{"content":[{"type":"text","text":"App/Program.cs(3,30): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)\n  removed: public int Add(int a, int b)\nLib.Tests/CalcTests.cs(6,54): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)\n  removed: public int Add(int a, int b)\nfuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations changed, 2 dependent project(s) checked"}],"isError":false},"id":3,"jsonrpc":"2.0"}
 {"result":{"content":[{"type":"text","text":"fuse: unknown tool fuse_lint; the tools are fuse_check, fuse_test and fuse_build"}],"isError":true},"id":4,"jsonrpc":"2.0"}</code></pre>
@@ -317,12 +317,12 @@ fuse: build failed with 2 error(s) in 1.1 s</code></pre>
     <h2 id="version-and-help">fuse --version and fuse help <a class="anchor" href="#version-and-help" aria-label="Link to this section">#</a></h2>
     <p><code>fuse --version</code> (or <code>fuse version</code>) prints the product version:</p>
     <pre class="out" data-label="Output"><code>$ fuse --version
-5.1.0</code></pre>
+5.2.0</code></pre>
     <p><code>fuse help</code> (or <code>--help</code>, <code>-h</code>, or no arguments) prints the usage shown at the top of this page to standard output and exits with 0.</p>
-    <p><code>fuse engine &lt;root&gt;</code> is the engine process itself. Clients start it; there is no reason to run it by hand.</p>
+    <p><code>fuse engine &lt;root&gt;</code> is the engine process itself. Clients start it; there is no reason to run it by hand. The native client refuses it with exit code 2, because the engine runs only from <code>fuse.dll</code> on the .NET runtime.</p>
 
     <h2 id="environment">Environment <a class="anchor" href="#environment" aria-label="Link to this section">#</a></h2>
-    <p>Fuse has no configuration file and no environment variables of its own. When a client starts the engine, it looks for the <code>dotnet</code> host in <code>DOTNET_HOST_PATH</code> and <code>DOTNET_ROOT</code>, the variables the .NET SDK sets, before the runtime's own directory. Every child process Fuse starts gets <code>DOTNET_CLI_TELEMETRY_OPTOUT=1</code>, <code>DOTNET_NOLOGO=1</code> and <code>DOTNET_CLI_UI_LANGUAGE=en</code>, so its output is in English and Fuse can parse it.</p>
+    <p>Fuse has no configuration file and no environment variables of its own. When a client starts the engine, it looks for the <code>dotnet</code> host in <code>DOTNET_HOST_PATH</code> and <code>DOTNET_ROOT</code>, the variables the .NET SDK sets, then in the runtime's own directory, then on the <code>PATH</code>. The native client has no runtime directory, so it uses the variables or the <code>PATH</code>. Every child process Fuse starts gets <code>DOTNET_CLI_TELEMETRY_OPTOUT=1</code>, <code>DOTNET_NOLOGO=1</code> and <code>DOTNET_CLI_UI_LANGUAGE=en</code>, so its output is in English and Fuse can parse it.</p>
     <p>Fuse needs the .NET 10 SDK, git on the <code>PATH</code>, and restored projects. It writes the harness settings <code>fuse init</code> creates and the state directory in the user's local application data, and nothing else.</p>
 
     <nav class="pager" aria-label="Previous and next page">
@@ -364,7 +364,7 @@ fuse: build failed with 2 error(s) in 1.1 s</code></pre>
   </div>
 
   <footer class="site-footer">
-    <span>Fuse, Apache-2.0. Benchmark medians, one Windows machine.</span>
+    <span>Fuse, Apache-2.0. Benchmark medians, GitHub Actions windows-latest runners.</span>
     <nav aria-label="Footer"><a href="index.html">Docs</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
   </footer>
 </div>

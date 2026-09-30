@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Text;
 using Fuse.Engine;
 using Fuse.Failures;
@@ -46,7 +47,7 @@ internal static class Program
                 "build" => await BuildAsync(rest, cancel.Token).ConfigureAwait(false),
                 "hook" => await HookCommand.RunAsync(rest, cancel.Token).ConfigureAwait(false),
                 "mcp" => await McpCommand.RunAsync(cancel.Token).ConfigureAwait(false),
-                "engine" when rest.Length == 1 => await EngineServer.RunAsync(rest[0]).ConfigureAwait(false),
+                "engine" when rest.Length == 1 => await EngineAsync(rest[0]).ConfigureAwait(false),
                 "--version" or "version" => PrintVersion(),
                 "help" or "--help" or "-h" => PrintUsage(0),
                 _ => PrintUsage(2),
@@ -115,6 +116,23 @@ internal static class Program
     {
         Console.Out.WriteLine(result.Text);
         return result.ExitCode;
+    }
+
+    /// <summary>
+    ///     <c>fuse engine &lt;root&gt;</c>. The native client cannot load MSBuild or analyzers, so the engine runs only from
+    ///     <see cref="EngineVersion.ManagedAssembly"/>. The check reads <see cref="RuntimeFeature.IsDynamicCodeSupported"/>
+    ///     itself, not <see cref="EngineVersion.IsNativeClient"/>, because the native compiler treats that property as a
+    ///     constant only where it is read directly, and then leaves the engine, Roslyn and MSBuild out of the native client.
+    /// </summary>
+    private static async Task<int> EngineAsync(string root)
+    {
+        if (!RuntimeFeature.IsDynamicCodeSupported)
+        {
+            await Console.Error.WriteLineAsync($"fuse: the engine runs from {EngineVersion.ManagedAssembly} on the .NET runtime, not from the native client; the client starts it").ConfigureAwait(false);
+            return 2;
+        }
+
+        return await EngineServer.RunAsync(root).ConfigureAwait(false);
     }
 
     private static int PrintVersion()

@@ -1,44 +1,44 @@
 {
   "suite": "latency",
   "repo": "fixture",
-  "commit": "6c4e298f4c770038ea1d01cab2359f545e7c06fc",
-  "fuseBuild": "5.1.0/a4bde0171a0649da8dec851447e6299b",
+  "commit": "2f8a3cbb3d7756b7257a063fdee45e6cc5ba8110",
+  "fuseBuild": "5.2.0/a0952db9078b4a51a41ebab6562c9969",
   "target": "src/Core/Geometry.cs",
   "method": "IsSquare",
   "referencingFilesInOtherProjects": 2,
-  "coldCleanMs": 1067.1622,
-  "coldBodyEditMs": 3697.3672,
+  "coldCleanMs": 19979.0762,
+  "coldBodyEditMs": 6880.7126,
   "bodyEdit": {
-    "p50": 163.7,
-    "p95": 266.5,
-    "max": 266.5,
+    "p50": 255.9,
+    "p95": 324.6,
+    "max": 324.6,
     "n": 15
   },
   "signatureEdit": {
-    "p50": 184.7,
-    "p95": 2057.4,
-    "max": 2057.4,
+    "p50": 249,
+    "p95": 3634.4,
+    "max": 3634.4,
     "n": 10
   },
   "signatureEditSample": "fuse: 4 error(s) introduced in 2 file(s) (Services, Core.Tests); Core declarations changed, 4 dependent project(s) checked",
   "warmUnchanged": {
-    "p50": 139.8,
-    "p95": 166.2,
-    "max": 166.2,
+    "p50": 203.2,
+    "p95": 211.6,
+    "max": 211.6,
     "n": 10
   },
   "testRound": {
-    "p50": 1271.3,
-    "p95": 2109,
-    "max": 2109,
+    "p50": 2091.2,
+    "p95": 2944.1,
+    "max": 2944.1,
     "n": 5
   },
   "bodyEditPhases": {
     "phases": {
       "bindTargets": {
-        "p50": 14.6,
-        "p95": 102.4,
-        "max": 102.4,
+        "p50": 19.5,
+        "p95": 101.1,
+        "max": 101.1,
         "n": 15
       },
       "gate": {
@@ -49,33 +49,33 @@
       },
       "load": {
         "p50": 0,
-        "p95": 0,
-        "max": 0,
+        "p95": 0.1,
+        "max": 0.1,
         "n": 15
       },
       "surfaceDiff": {
-        "p50": 1.1,
-        "p95": 1.7,
-        "max": 1.7,
+        "p50": 1.3,
+        "p95": 1.6,
+        "max": 1.6,
         "n": 15
       },
       "sync": {
-        "p50": 2.8,
-        "p95": 7.3,
-        "max": 7.3,
+        "p50": 2.4,
+        "p95": 7.9,
+        "max": 7.9,
         "n": 15
       },
       "total": {
-        "p50": 16,
+        "p50": 31,
         "p95": 109,
         "max": 109,
         "n": 15
       }
     },
     "outsideEngine": {
-      "p50": 138,
-      "p95": 157.5,
-      "max": 157.5,
+      "p50": 234.4,
+      "p95": 266.9,
+      "max": 266.9,
       "n": 15
     },
     "n": 15
@@ -83,64 +83,64 @@
   "signatureEditPhases": {
     "phases": {
       "bindCandidates": {
-        "p50": 27.6,
-        "p95": 185.7,
-        "max": 185.7,
-        "n": 10
+        "p50": 39.7,
+        "p95": 279.9,
+        "max": 279.9,
+        "n": 9
       },
       "bindTargets": {
-        "p50": 10.7,
-        "p95": 24.4,
-        "max": 24.4,
+        "p50": 12.3,
+        "p95": 2826.5,
+        "max": 2826.5,
         "n": 10
       },
       "gate": {
         "p50": 0,
-        "p95": 0,
-        "max": 0,
+        "p95": 0.3,
+        "max": 0.3,
         "n": 10
       },
       "load": {
         "p50": 0,
-        "p95": 0.1,
-        "max": 0.1,
+        "p95": 0.6,
+        "max": 0.6,
         "n": 10
       },
       "loadDependents": {
         "p50": 0,
-        "p95": 1191.5,
-        "max": 1191.5,
-        "n": 10
+        "p95": 2383.4,
+        "max": 2383.4,
+        "n": 9
       },
       "referenceSearch": {
-        "p50": 0.3,
-        "p95": 513,
-        "max": 513,
-        "n": 10
+        "p50": 0.4,
+        "p95": 737.2,
+        "max": 737.2,
+        "n": 9
       },
       "surfaceDiff": {
-        "p50": 1,
-        "p95": 2.3,
-        "max": 2.3,
+        "p50": 0.9,
+        "p95": 32.7,
+        "max": 32.7,
         "n": 10
       },
       "sync": {
-        "p50": 1.7,
-        "p95": 3.6,
-        "max": 3.6,
+        "p50": 2,
+        "p95": 35.3,
+        "max": 35.3,
         "n": 10
       },
       "total": {
         "p50": 47,
-        "p95": 1922,
-        "max": 1922,
+        "p95": 3421,
+        "max": 3421,
         "n": 10
       }
     },
     "outsideEngine": {
-      "p50": 136.9,
-      "p95": 153.7,
-      "max": 153.7,
+      "p50": 198.9,
+      "p95": 218,
+      "max": 218,
       "n": 10
     },
     "n": 10
@@ -155,21 +155,21 @@
       },
       "sync": {
         "p50": 0.3,
-        "p95": 0.9,
-        "max": 0.9,
+        "p95": 2.1,
+        "max": 2.1,
         "n": 10
       },
       "total": {
         "p50": 0,
-        "p95": 0,
-        "max": 0,
+        "p95": 16,
+        "max": 16,
         "n": 10
       }
     },
     "outsideEngine": {
-      "p50": 139.8,
-      "p95": 166.2,
-      "max": 166.2,
+      "p50": 203.2,
+      "p95": 211.6,
+      "max": 211.6,
       "n": 10
     },
     "n": 10
@@ -183,34 +183,34 @@
         "n": 5
       },
       "mirror": {
-        "p50": 69,
-        "p95": 723.7,
-        "max": 723.7,
+        "p50": 66,
+        "p95": 806.9,
+        "max": 806.9,
         "n": 5
       },
       "selection": {
-        "p50": 30.3,
-        "p95": 193.5,
-        "max": 193.5,
+        "p50": 23.3,
+        "p95": 175.1,
+        "max": 175.1,
         "n": 5
       },
       "sync": {
-        "p50": 2.8,
-        "p95": 3,
-        "max": 3,
+        "p50": 2.2,
+        "p95": 2.3,
+        "max": 2.3,
         "n": 5
       },
       "total": {
         "p50": 94,
-        "p95": 938,
-        "max": 938,
+        "p95": 1000,
+        "max": 1000,
         "n": 5
       }
     },
     "outsideEngine": {
-      "p50": 1171,
-      "p95": 1181.9,
-      "max": 1181.9,
+      "p50": 1990.1,
+      "p95": 2086,
+      "max": 2086,
       "n": 5
     },
     "n": 5
@@ -219,32 +219,32 @@
     "writers": {
       "clients": 2,
       "editsPerClient": 10,
-      "wallMs": 6436.8928,
+      "wallMs": 8641.9289,
       "checks": 20,
       "unanswered": 0,
       "notRun": 0,
       "gate": {
         "p50": 0,
-        "p95": 10.1,
-        "max": 12.7,
+        "p95": 98.1,
+        "max": 125.9,
         "n": 20
       },
       "engineTotal": {
-        "p50": 16,
+        "p50": 15,
         "p95": 31,
-        "max": 141,
+        "max": 125,
         "n": 20
       },
-      "singleClientTotalP50": 16
+      "singleClientTotalP50": 31
     },
     "builds": {
       "clients": 3,
       "rounds": 5,
-      "wallMs": 24732.5715,
+      "wallMs": 40491.3093,
       "each": {
-        "p50": 3095.2,
-        "p95": 5481,
-        "max": 5481,
+        "p50": 5267.7,
+        "p95": 8905.5,
+        "max": 8905.5,
         "n": 15
       },
       "collisions": 0,
@@ -255,7 +255,7 @@
         "index": 1,
         "project": "Core.csproj",
         "edit": "src\\Core\\Geometry.cs",
-        "ms": 1296.633,
+        "ms": 1642.1042,
         "testProjects": [
           "Core.Tests"
         ],
@@ -265,7 +265,7 @@
         "index": 2,
         "project": "Services.csproj",
         "edit": "src\\Services\\OrderService.cs",
-        "ms": 1335.2012,
+        "ms": 1858.4333,
         "testProjects": [
           "Core.Tests",
           "Services.Tests"
@@ -276,7 +276,7 @@
         "index": 3,
         "project": "Services.csproj",
         "edit": "src\\Services\\OrderService.cs",
-        "ms": 1258.5144,
+        "ms": 1725.7335,
         "testProjects": [
           "Core.Tests",
           "Services.Tests"
@@ -285,6 +285,6 @@
       }
     ]
   },
-  "engineWorkingSetMb": 271.2,
+  "engineWorkingSetMb": 248.6,
   "treeCleanAfter": true
 }

@@ -39,6 +39,8 @@ internal static class EngineServer
 
         var log = new EngineLog(root.StateDirectory);
         log.Write($"engine {EngineVersion.Build} started for {root.Path} (pid {Environment.ProcessId})");
+        using var copy = HoldEngineCopy(log);
+        _ = Task.Run(() => CleanUpLocalState(root, log));
         using var shutdown = new CancellationTokenSource();
         using var router = new RequestRouter(root, log);
         _ = router.InitializeAsync(shutdown.Token);
@@ -84,6 +86,40 @@ internal static class EngineServer
         }
 
         return 0;
+    }
+
+    /// <summary>
+    ///     Holds the engine copy this engine runs from, so another engine's cleanup keeps it. Null when the lock file
+    ///     cannot be written, which only lets a cleanup remove the copy once it is old.
+    /// </summary>
+    private static IDisposable? HoldEngineCopy(EngineLog log)
+    {
+        try
+        {
+            return LocalState.HoldEngineCopy(AppContext.BaseDirectory);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            log.Write($"could not mark the engine copy in use: {e.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>Records this repository's root and removes the engine copies and state directories nothing uses.</summary>
+    private static void CleanUpLocalState(RepoRoot root, EngineLog log)
+    {
+        try
+        {
+            LocalState.RecordRoot(root);
+            LocalState.RemoveUnusedEngineCopies(LocalState.EngineCopies, AppContext.BaseDirectory, DateTime.UtcNow);
+            var removed = LocalState.RemoveStateOfMissingRepositories(LocalState.Repositories, DateTime.UtcNow);
+            if (removed > 0)
+                log.Write($"removed the state of {removed} repositories that no longer exist");
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            log.Write($"cleaning up local state failed: {e.Message}");
+        }
     }
 
     private static async Task ServeAsync(NamedPipeServerStream pipe, RequestRouter router, ServerState state, CancellationTokenSource shutdown, EngineLog log)

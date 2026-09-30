@@ -107,7 +107,7 @@ internal abstract class Harness
         var entry = new JsonObject { ["hooks"] = new JsonArray(handler) };
         if (matcher is not null)
             entry.Insert(0, "matcher", matcher);
-        groups.Add(entry);
+        groups.Add((JsonNode)entry);
     }
 
     /// <summary>

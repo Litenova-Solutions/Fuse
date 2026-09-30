@@ -41,6 +41,6 @@ internal sealed class Cursor : Harness
         hooks[harnessEvent] = handlers;
         foreach (var existing in handlers.OfType<JsonObject>().Where(IsFuse).ToList())
             handlers.Remove(existing);
-        handlers.Add(handler);
+        handlers.Add((JsonNode)handler);
     }
 }

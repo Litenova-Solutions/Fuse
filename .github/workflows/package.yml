@@ -1,0 +1,166 @@
+name: Package
+
+# Packs the Fuse tool and checks each package installed on its own platform. The native client ships for win-x64,
+# linux-x64, linux-arm64 and osx-arm64 (src/Fuse/Fuse.csproj says how each is packed); every other platform installs
+# a framework-dependent package. CI runs this on every push and pull request, and Publish runs it for a release, so a
+# release is packed and checked the way every change is.
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: '1'
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+
+jobs:
+  native:
+    name: Pack ${{ matrix.rid }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: win-x64
+            runner: windows-latest
+          # The Linux native clients link in Microsoft's cross-build images against a glibc 2.27 sysroot, so they run on
+          # every glibc distribution .NET 10 supports, not only on distributions as new as the runner.
+          - rid: linux-x64
+            runner: ubuntu-latest
+            image: mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net10.0-cross-amd64
+            sysroot: /crossrootfs/x64
+          - rid: linux-arm64
+            runner: ubuntu-latest
+            image: mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net10.0-cross-arm64
+            sysroot: /crossrootfs/arm64
+          - rid: osx-arm64
+            runner: macos-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Pack in the cross-build image
+        if: runner.os == 'Linux'
+        env:
+          RID: ${{ matrix.rid }}
+          IMAGE: ${{ matrix.image }}
+          SYSROOT: ${{ matrix.sysroot }}
+        run: |
+          dotnet_root=$(dirname "$(readlink -f "$(command -v dotnet)")")
+          nuget="$HOME/.nuget/packages"
+          mkdir -p "$nuget" artifacts
+          docker run --rm --user "$(id -u):$(id -g)" \
+            -v "$PWD:$PWD" -v "$dotnet_root:$dotnet_root:ro" -v "$nuget:$nuget" -w "$PWD" \
+            -e HOME=/tmp -e DOTNET_ROOT="$dotnet_root" -e NUGET_PACKAGES="$nuget" -e DOTNET_NOLOGO=1 -e DOTNET_CLI_TELEMETRY_OPTOUT=1 \
+            "$IMAGE" \
+            "$dotnet_root/dotnet" pack src/Fuse/Fuse.csproj -c Release -r "$RID" -p:SysRoot="$SYSROOT" -p:LinkerFlavor=lld -o artifacts
+
+      - name: Pack
+        if: runner.os == 'macOS'
+        run: dotnet pack src/Fuse/Fuse.csproj -c Release -r ${{ matrix.rid }} -o artifacts
+
+      # The win-x64 package is framework-dependent, with the native client as its packaged shim.
+      - name: Publish the native client and pack it as the shim
+        if: runner.os == 'Windows'
+        run: |
+          dotnet publish src/Fuse/Fuse.csproj -c Release -r win-x64 -o artifacts/native
+          dotnet pack src/Fuse/Fuse.csproj -c Release -r win-x64 -p:PublishAot=false -p:UseAppHost=false \
+            -p:PackAsToolShimRuntimeIdentifiers=win-x64 -p:NativeClientShim="$(cygpath -w "$PWD/artifacts/native/fuse.exe")" -o artifacts
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package-${{ matrix.rid }}
+          path: artifacts/Fuse.${{ matrix.rid }}.*.nupkg
+          if-no-files-found: error
+
+  portable:
+    name: Pack the pointer and framework-dependent packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Pack
+        run: |
+          dotnet pack src/Fuse/Fuse.csproj -c Release -p:PublishAot=true -o artifacts
+          dotnet pack src/Fuse/Fuse.csproj -c Release -r any -o artifacts
+          for rid in linux-musl-x64 linux-musl-arm64; do
+            dotnet pack src/Fuse/Fuse.csproj -c Release -r "$rid" -p:PublishAot=false -p:SelfContained=false -p:UseAppHost=false -o artifacts
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package-portable
+          path: artifacts/*.nupkg
+          if-no-files-found: error
+
+  check:
+    name: Install and check (${{ matrix.name }})
+    needs: [native, portable]
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: win-x64
+            runner: windows-latest
+            expect: native
+          - name: linux-x64
+            runner: ubuntu-latest
+            expect: native
+          - name: linux-arm64
+            runner: ubuntu-24.04-arm
+            expect: native
+          - name: osx-arm64
+            runner: macos-latest
+            expect: native
+          - name: osx-x64, framework-dependent
+            runner: macos-15-intel
+            expect: managed
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: package-*
+          path: feed
+          merge-multiple: true
+
+      - name: Install and check
+        run: |
+          version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props | head -1)
+          bash .github/scripts/check-installed-tool.sh feed "$version" ${{ matrix.expect }}
+
+  glibc:
+    name: Native client runs on glibc 2.28 (Rocky Linux 8)
+    needs: native
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: package-linux-x64
+          path: feed
+
+      - name: Run the native client in Rocky Linux 8
+        run: |
+          unzip -q feed/Fuse.linux-x64.*.nupkg -d package
+          chmod +x package/tools/any/linux-x64/fuse
+          docker run --rm -v "$PWD/package:/package:ro" rockylinux:8 /package/tools/any/linux-x64/fuse --version

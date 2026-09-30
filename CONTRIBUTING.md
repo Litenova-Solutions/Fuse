@@ -23,7 +23,9 @@ Read [AGENTS.md](AGENTS.md) first: it covers the repository layout, the build, t
 
 Everyone who takes part follows the [code of conduct](.github/CODE_OF_CONDUCT.md).
 
-CI also packs the tool, installs the package, and checks that `fuse check` finds an introduced error in a fresh repository.
+CI also packs the tool (`.github/workflows/package.yml`): the native client for win-x64, linux-x64, linux-arm64 and osx-arm64, each on its own operating system and the Linux ones against a glibc 2.27 sysroot, and the framework-dependent packages for every other platform. It then installs the packages on each platform and runs `.github/scripts/check-installed-tool.sh`, which checks that the command is the native client, that `fuse check` finds an introduced error in a fresh repository, that the hooks and the MCP server answer, and that one engine of the same build served every call.
+
+To build the native client locally, publish for your platform, for example `dotnet publish src/Fuse -c Release -r win-x64 -o artifacts/native`. The output holds the native `fuse` and, beside it, the `fuse.dll` it starts the engine from. The native compile needs the platform's C toolchain: on Windows the Visual Studio "Desktop development with C++" workload, with `vswhere.exe` reachable (it is in `C:\Program Files (x86)\Microsoft Visual Studio\Installer`, which a Developer PowerShell puts on the `PATH`); on Linux `clang` and `zlib1g-dev` or the distribution's equivalent; on macOS the Xcode command line tools. A plain `dotnet build` runs the trim and AOT analyzers, so code the native client cannot run fails the build without a native compile.
 
 ## Documentation
 
@@ -31,4 +33,4 @@ The documentation is part of the website in `site/`, static HTML with no build s
 
 ## Releases
 
-The version lives in `Directory.Build.props`. A release is a `vX.Y.Z` tag that matches it: the publish workflow checks the match, packs the tool, pushes it to NuGet, and creates a GitHub release whose notes are the version's section of [CHANGELOG.md](CHANGELOG.md).
+The version lives in `Directory.Build.props`. A release is a `vX.Y.Z` tag that matches it: the publish workflow checks the match, packs the tool with the package workflow, pushes the RID packages to NuGet and then the `Fuse` package that points to them, and creates a GitHub release whose notes are the version's section of [CHANGELOG.md](CHANGELOG.md).

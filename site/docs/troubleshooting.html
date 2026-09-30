@@ -20,12 +20,12 @@
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 24.6x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Troubleshooting">
 <meta name="twitter:description" content="Why Fuse is silent, slow or failing, where its logs are, how to read them, and how to stop the engine.">
 <meta name="twitter:image" content="https://fuse.codes/assets/og.png">
-<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 24.6x faster than dotnet build. dotnet tool install -g Fuse.">
 <link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
 <link rel="icon" href="../assets/fuse-icon.svg" type="image/svg+xml" sizes="any">
 <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -198,8 +198,9 @@
       <li><code>hook.log</code>: the failures of hooks run in this repository.</li>
       <li><code>build.lock</code>: the <a href="how-it-works.html#builds-and-the-build-lock">build lock</a>.</li>
       <li><code>results</code>, <code>shadow</code> and <code>analyzers</code>: test results while a run lasts, the copies used for test runs without MSBuild, and the copies of the repository's own analyzers.</li>
+      <li><code>root</code>: the repository's path. Once a day a starting engine deletes the state directories whose repository no longer exists and that nothing wrote to for a day.</li>
     </ul>
-    <p>The engine itself runs from a copy of the tool in <code>fuse/engine/&lt;version&gt;-&lt;module id&gt;</code> in the same local application data.</p>
+    <p>The engine itself runs from a copy of the tool in <code>fuse/engine/&lt;version&gt;-&lt;module id&gt;</code> in the same local application data. A starting engine deletes the copies of other builds that no running engine holds.</p>
 
     <h2 id="reading-engine-log">Reading engine.log <a class="anchor" href="#reading-engine-log" aria-label="Link to this section">#</a></h2>
     <p>These lines are from the engine of the <a href="getting-started.html">getting started</a> sample, from its start to the test run, with some lines left out and the repository path shortened:</p>
@@ -289,7 +290,7 @@
   </div>
 
   <footer class="site-footer">
-    <span>Fuse, Apache-2.0. Benchmark medians, one Windows machine.</span>
+    <span>Fuse, Apache-2.0. Benchmark medians, GitHub Actions windows-latest runners.</span>
     <nav aria-label="Footer"><a href="index.html">Docs</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
   </footer>
 </div>

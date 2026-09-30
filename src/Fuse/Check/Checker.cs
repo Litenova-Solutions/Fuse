@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Fuse.Check.Model;
+using Fuse.Failures;
 using Fuse.Graph;
 using Fuse.Paths;
 using Fuse.Telemetry;
@@ -60,6 +61,9 @@ internal sealed class Checker
         phases.Add(Phase.Sync, syncing);
 
         var targets = _targets.Resolve(scope);
+        // Named files that are all outside every project, or not C# sources, would check nothing and read as a pass.
+        if (targets.Count == 0 && scope is CheckScope.Files { Paths.Count: > 0 } named)
+            throw new FuseException(ErrorCode.InvalidPath, ErrorMessages.NothingToCheck([.. named.Paths.Select(p => p.Relative)]));
         if (targets.Count == 0)
             return NoTargets;
 

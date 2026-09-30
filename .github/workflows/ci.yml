@@ -37,28 +37,6 @@ jobs:
       - name: Format
         run: dotnet format Fuse.slnx --verify-no-changes
 
-      - name: Pack
-        run: dotnet pack src/Fuse/Fuse.csproj -c Release --no-build -o artifacts
-
-      - name: Install and run the packed tool
-        shell: bash
-        run: |
-          dotnet tool install --tool-path tools Fuse --add-source artifacts
-          ./tools/fuse --version
-
-      - name: Packed tool finds an introduced error in a fresh repository
-        shell: bash
-        run: |
-          fuse="$PWD/tools/fuse"
-          mkdir -p "$RUNNER_TEMP/smoke" && cd "$RUNNER_TEMP/smoke"
-          git init -q
-          dotnet new classlib -n Lib -o Lib
-          printf 'bin/\nobj/\n' > .gitignore
-          git add -A && git commit -qm init
-          dotnet restore Lib
-          echo 'namespace Lib; public class Broken { public int M() => missing; }' > Lib/Broken.cs
-          set +e
-          "$fuse" check
-          code=$?
-          set -e
-          if [ "$code" != "1" ]; then echo "expected exit code 1 (error introduced), got $code"; exit 1; fi
+  package:
+    name: Package
+    uses: ./.github/workflows/package.yml

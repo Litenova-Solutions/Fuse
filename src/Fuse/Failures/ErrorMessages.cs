@@ -27,4 +27,12 @@ internal static class ErrorMessages
 
     /// <summary>The message for <see cref="ErrorCode.InvalidPath"/> when a check names a file by a string that is not a path, such as one holding a NUL character.</summary>
     public static string InvalidPath(string file) => $"\"{file}\" named in the check is not a valid path";
+
+    /// <summary>
+    ///     The message for <see cref="ErrorCode.InvalidPath"/> when none of the files a check names is a C# source file of
+    ///     a project, such as a path with a typo or a file of another language. The engine answers with it instead of
+    ///     checking nothing, which would read as no errors introduced.
+    /// </summary>
+    public static string NothingToCheck(IReadOnlyList<string> files) =>
+        $"none of the files named in the check is a C# source file of a project in this repository: {string.Join(", ", files.Take(5))}{(files.Count > 5 ? $" and {files.Count - 5} more" : "")}";
 }

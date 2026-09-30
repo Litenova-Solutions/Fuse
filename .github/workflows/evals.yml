@@ -1,0 +1,102 @@
+name: Evals
+
+# Runs the eval suites on GitHub-hosted runners, started by hand from the Actions tab or by adding the evals label to a
+# pull request, which measures that pull request's code with the defaults below. Each repository gets a fresh
+# windows-latest VM that runs nothing else, so no other work on the machine skews the times. The suites measure the
+# native client, the fuse command a release installs on win-x64. The same job then runs the latency suite with the
+# managed client on the same VM, for a comparison measured under the same conditions.
+#
+# The result files are uploaded as artifacts: results/ holds the files to commit to evals/results, and managed/ holds
+# the managed client's latency file, which is for comparison and is not committed (the repository keeps one file per
+# suite and repository).
+
+on:
+  pull_request:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      repos:
+        description: Repositories to measure, as a JSON array (fixture, NodaTime, Jellyfin, CommunityToolkit).
+        default: '["fixture", "NodaTime", "Jellyfin", "CommunityToolkit"]'
+        required: true
+      suite:
+        description: Suite to run (correctness, selection, latency or all).
+        default: all
+        required: true
+      managed:
+        description: Also run the latency suite with the managed client, for comparison.
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: '1'
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+
+jobs:
+  evals:
+    name: ${{ inputs.suite || 'all' }} on ${{ matrix.repo }}
+    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'evals'
+    runs-on: windows-latest
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        repo: ${{ fromJSON(inputs.repos || '["fixture", "NodaTime", "Jellyfin", "CommunityToolkit"]') }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Git identity for the generated fixture
+        run: |
+          git config --global user.email "ci@fuse.invalid"
+          git config --global user.name "Fuse CI"
+
+      - name: Build
+        run: dotnet build Fuse.slnx -c Release
+
+      - name: Publish the native client
+        run: dotnet publish src/Fuse/Fuse.csproj -c Release -r win-x64 -o artifacts/native
+
+      - name: Clone the pinned repository
+        if: matrix.repo != 'fixture'
+        run: dotnet run --project evals/Fuse.Evals -c Release --no-build -- clone "${{ matrix.repo }}"
+
+      - name: Run ${{ inputs.suite || 'all' }} with the native client
+        run: |
+          dotnet run --project evals/Fuse.Evals -c Release --no-build -- "${{ inputs.suite || 'all' }}" "${{ matrix.repo }}" --fuse "$(cygpath -w "$PWD/artifacts/native/fuse.exe")"
+          mkdir -p out/results
+          git ls-files --others --exclude-standard evals/results | xargs -I{} mv {} out/results/
+
+      - name: Run latency with the managed client
+        if: github.event_name != 'workflow_dispatch' || (inputs.managed && (inputs.suite == 'all' || inputs.suite == 'latency'))
+        run: |
+          dotnet run --project evals/Fuse.Evals -c Release --no-build -- latency "${{ matrix.repo }}"
+          mkdir -p out/managed
+          git ls-files --others --exclude-standard evals/results | xargs -I{} mv {} out/managed/
+
+      - name: Describe the runner
+        if: always()
+        shell: pwsh
+        run: |
+          $cpu = (Get-CimInstance Win32_Processor | Select-Object -First 1).Name
+          $cores = (Get-CimInstance Win32_Processor | Measure-Object NumberOfLogicalProcessors -Sum).Sum
+          $memory = [math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB)
+          New-Item -ItemType Directory -Force out | Out-Null
+          "runner: $env:ImageOS $env:ImageVersion`ncpu: $cpu, $cores logical processors`nmemory: $memory GB`nsdk: $(dotnet --version)`ncommit: $env:GITHUB_SHA" | Set-Content out/runner.txt
+          Get-Content out/runner.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: evals-${{ matrix.repo }}
+          path: out/
+          if-no-files-found: error

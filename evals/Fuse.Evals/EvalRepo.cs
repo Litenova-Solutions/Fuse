@@ -153,13 +153,16 @@ internal sealed partial class EvalRepo
         {
             var query = await ProcessRunner.RunAsync(
                 "powershell",
-                ["-NoProfile", "-Command", "Get-CimInstance Win32_Process -Filter \"Name='fuse.exe'\" | ForEach-Object { \"$($_.ProcessId)`t$($_.WorkingSetSize)`t$($_.CommandLine)\" }"],
+                // The engine is fuse.exe when a managed client starts it through its apphost, and dotnet.exe running
+                // fuse.dll when the native client or the dotnet host starts it.
+                ["-NoProfile", "-Command", "Get-CimInstance Win32_Process -Filter \"Name='fuse.exe' OR Name='dotnet.exe'\" | ForEach-Object { \"$($_.ProcessId)`t$($_.WorkingSetSize)`t$($_.CommandLine)\" }"],
                 Root,
                 CancellationToken.None);
             foreach (var line in query.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries))
             {
                 var parts = line.Split('\t');
                 if (parts.Length == 3 && parts[2].Contains(" engine ", StringComparison.Ordinal) && parts[2].Contains(Root, StringComparison.OrdinalIgnoreCase)
+                    && parts[2].Contains("fuse", StringComparison.OrdinalIgnoreCase)
                     && int.TryParse(parts[0], out var pid) && long.TryParse(parts[1], out var ws))
                     result.Add((pid, ws));
             }

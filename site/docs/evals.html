@@ -20,12 +20,12 @@
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 24.6x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Evals">
 <meta name="twitter:description" content="How the correctness, test selection and latency evals measure Fuse against real dotnet build and dotnet test runs, and how to run them.">
 <meta name="twitter:image" content="https://fuse.codes/assets/og.png">
-<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 7.4x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 24.6x faster than dotnet build. dotnet tool install -g Fuse.">
 <link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
 <link rel="icon" href="../assets/fuse-icon.svg" type="image/svg+xml" sizes="any">
 <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -242,8 +242,8 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
     </ul>
 
     <h2 id="on-github-actions">On GitHub Actions <a class="anchor" href="#on-github-actions" aria-label="Link to this section">#</a></h2>
-    <p>Times depend on what else the machine is doing, so the recorded results come from <code>.github/workflows/evals.yml</code>, which runs each repository on a fresh <code>windows-latest</code> runner that runs nothing else. Add the <code>evals</code> label to a pull request to measure its code with every suite on the fixture and the three pinned repositories, or start the workflow from the Actions tab to choose the repositories and the suite.</p>
-    <p>Each job builds Fuse, publishes the native client, runs the suites with it, and then runs the latency suite again with the managed client on the same runner. Its artifact <code>evals-&lt;repo&gt;</code> holds <code>results/</code>, the files to commit to <code>evals/results</code> in place of the older ones, <code>managed/</code>, the managed client's latency file for comparison, which is not committed, and <code>runner.txt</code>, which names the runner image, processor, memory and SDK. The jobs run in parallel and each can take a few hours on the larger repositories.</p>
+    <p>Times depend on what else the machine is doing, so the recorded results come from <code>.github/workflows/evals.yml</code>, which runs each suite of each repository on a fresh <code>windows-latest</code> runner that runs nothing else. Add the <code>evals</code> label to a pull request to run the latency suite on the fixture and the three pinned repositories, which takes under an hour. Start the workflow from the Actions tab to choose the repositories and the suites; it runs all three by default, and takes as long as its slowest suite, the Community Toolkit's selection suite at about three hours. <a href="#what-to-run">What to run</a> says which suites a change needs.</p>
+    <p>Each job builds Fuse, publishes the native client and runs its suite with it; a latency job then runs the suite again with the managed client on the same runner. Its artifact <code>evals-&lt;repo&gt;-&lt;suite&gt;</code> holds <code>results/</code>, the file to commit to <code>evals/results</code> in place of the older one, <code>managed/</code>, the managed client's latency file, which goes to <code>evals/results/managed</code> in the same way and is the comparison <a href="benchmarks.html#native-client">Benchmarks</a> quotes, and <code>runner.txt</code>, which names the runner image, processor, memory and SDK. Runners of the same image can have different processors, so compare two builds within one job, as the latency jobs do, rather than across jobs.</p>
 
     <h2 id="result-files">Result files <a class="anchor" href="#result-files" aria-label="Link to this section">#</a></h2>
     <p>A suite writes <code>evals/results/&lt;suite&gt;-&lt;repo&gt;-&lt;yyyyMMdd-HHmm&gt;.json</code>, with the local time of the run. The repository keeps only the newest file of each suite and repository; older files stay in git history. Every file records:</p>
@@ -318,7 +318,7 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
   </div>
 
   <footer class="site-footer">
-    <span>Fuse, Apache-2.0. Benchmark medians, one Windows machine.</span>
+    <span>Fuse, Apache-2.0. Benchmark medians, GitHub Actions windows-latest runners.</span>
     <nav aria-label="Footer"><a href="index.html">Docs</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
   </footer>
 </div>

@@ -1,19 +1,37 @@
 # Changelog
 
-The list of changes in each release, which the release workflow publishes as the release notes. The [changelog page](https://fuse.codes/docs/changelog) explains each release with its upgrade steps and says which versions are supported. Versions before 5.0.0 are deprecated.
+The list of changes in each release, which the release workflow publishes as the release notes. The [changelog page](https://fuse.codes/docs/changelog) explains each release with its upgrade steps and says which versions are supported. Each release groups its changes as Added, Changed, Removed, Fixed, Security and Documentation, listing only the groups it has. Versions before 5.0.0 are deprecated.
+
+## 5.2.3
+
+Compared with 5.2.2. Update with `dotnet tool update -g Fuse`; nothing else needs to change.
+
+### Fixed
+
+- `fuse test` selects the tests that reach a change only through a helper class in a test project, such as a shared builder that holds no tests itself, both when the helper changes and when production code that the tests reach through it changes. 5.2.2 selected only the helper class, which matched no test, so those tests did not run ([#83](https://github.com/Litenova-Solutions/Fuse/issues/83)). The test filter leaves out a test name that its class already selects, so a change to a private helper inside a test class still passes one pattern for that class.
+
+### Documentation
+
+- The limits page says that when several agents edit one working tree, a check does not know which agent made an edit, so an agent can be told about another agent's error, and that the stop hook checks every change in the working tree ([#47](https://github.com/Litenova-Solutions/Fuse/issues/47) tracks telling each agent only about its own errors).
+- The home page shows the same edit through `dotnet build` and `fuse check`, played at the median times measured on Jellyfin, leads its features with parallel agents in one working tree, and links each feature to the page that explains it. Every page's header links to GitHub with its icon, and every footer links to the changelog and to Litenova Solutions. The FAQ says the benchmarks come from GitHub Actions windows-latest runners, as the benchmarks page does; it said one Windows machine.
+- The changelog groups each release's changes as Added, Changed, Removed, Fixed, Security and Documentation.
 
 ## 5.2.2
 
 Compared with 5.2.1. Update with `dotnet tool update -g Fuse`; nothing else needs to change.
 
+### Changed
+
+- A test plan holds the engine's request lock only while it syncs and selects tests, and prepares the copies for runs without MSBuild after releasing it, so a check from another agent no longer waits while a test plan emits assemblies; it still waits for the plan's sync and selection. An assembly that has not changed since the previous plan is not emitted again. The engine log's phase line splits that preparation into `mirror` and `emit`, and `gateHolder` names what a request waited behind for the request lock.
+
+### Fixed
+
 - `fuse test` passes the test filter to `dotnet test` in a runsettings file, as `RunConfiguration/TestCaseFilter` with `--settings`, instead of on the command line. A selection of up to 2,000 test names runs only those tests. 5.2.1 cut a filter above 8,000 characters back to whole test classes, and a longer one to the whole project, without saying so. Past 2,000 names the filter still collapses, and the summary says so and the engine log names the project.
 - A run without MSBuild uses the test project's own runsettings file (`RunSettingsFilePath`), with the filter added, as `dotnet test` on the project does. 5.2.1 ignored that file on such runs.
-- A test plan holds the engine's request lock only while it syncs and selects tests, and prepares the copies for runs without MSBuild after releasing it, so a check from another agent no longer waits while a test plan emits assemblies; it still waits for the plan's sync and selection. An assembly that has not changed since the previous plan is not emitted again. The engine log's phase line splits that preparation into `mirror` and `emit`, and `gateHolder` names what a request waited behind for the request lock.
 - A check whose reference search reaches a project that uses an analyzer the repository has not built yet, such as Jellyfin's own analyzer before its first build, leaves that analyzer out and answers. 5.2.1 answered `internal error: Unexpected value 'Microsoft.CodeAnalysis.Diagnostics.UnresolvedAnalyzerReference'`.
 - The pre-shell hook rewrites `dotnet build` and `dotnet test` after variable assignments, so `DOTNET_CLI_UI_LANGUAGE=en dotnet test` becomes `DOTNET_CLI_UI_LANGUAGE=en fuse test`. An assignment counts when its value has no whitespace, quote, backtick, separator, redirection or parenthesis; for Codex, only plain values count. 5.2.1 left such a command as it was.
 - A Microsoft.Testing.Platform run that exits with 8, the platform's code for a run in which no test ran, prints `fuse: no test matched the dotnet test arguments (exit code 8)` for `fuse test` with arguments, or `fuse: the test run of <project> ran no test (exit code 8)`. 5.2.1 printed that the run exited with code 8 and produced no results.
 - A second `fuse init` prints `unchanged <file>` for a settings file that already holds what it would write, and leaves the file as it was. 5.2.1 printed `wrote <file>` and wrote it again.
-- The benchmarks measure four open-source repositories: FluentValidation, a small library, takes the place of the generated fixture beside NodaTime, Jellyfin and the Community Toolkit. A check is 7.0x to 31.0x faster than `dotnet build` at the median, and 2.5x to 5.3x faster over all 30 edits of each repository; `fuse test` is 1.3x to 3.7x faster than `dotnet test`. The README, the home page and the sharing image quote these, where 5.2.1 quoted the fixture's 24.6x and, in the README, 5.7x for tests, which was a time in seconds. The `dotnet test` time is now one run of the whole solution, as a user runs it, instead of one test project after another, which lowered the test speedups. The benchmarks page and the chart give each command's fastest and slowest case, mean, standard deviation and P95 next to its median.
 - `fuse check` no longer reports CS8795 for a `[GeneratedRegex]` method that names a culture, such as `"en-US"`. The engine runs with invariant globalization, where the Regex source generator could not look the culture up and wrote no implementation. The same failure sent test projects that depend on such a project through MSBuild instead of running them without it.
 - The check summary counts every error the check found, in every file it found them in. 5.2.1 counted only the 200 errors the engine sends, so a change that broke 602 call sites in 3 files printed `200 error(s) introduced in 2 file(s)`.
 - A file whose only difference from HEAD is CRLF line endings inside a multi-line string constant, as a checkout with `core.autocrlf` writes it, has no declaration change, so the check stays within the file.
@@ -22,52 +40,79 @@ Compared with 5.2.1. Update with `dotnet tool update -g Fuse`; nothing else need
 - A state directory that `fuse build` or `fuse test` created records its repository, so the daily cleanup removes it once the repository is gone, as it does the directory of a repository an engine served.
 - A client that finds an engine copy without its completion marker, such as one a cleanup deleted part of, makes the copy again, or runs the engine from a fresh copy beside it when the old one cannot be replaced. 5.2.1 ran the engine from the incomplete copy, so the engine could not start until the copy was deleted by hand.
 
+### Documentation
+
+- The benchmarks measure four open-source repositories: FluentValidation, a small library, takes the place of the generated fixture beside NodaTime, Jellyfin and the Community Toolkit. A check is 7.0x to 31.0x faster than `dotnet build` at the median, and 2.5x to 5.3x faster over all 30 edits of each repository; `fuse test` is 1.3x to 3.7x faster than `dotnet test`. The README, the home page and the sharing image quote these, where 5.2.1 quoted the fixture's 24.6x and, in the README, 5.7x for tests, which was a time in seconds. The `dotnet test` time is now one run of the whole solution, as a user runs it, instead of one test project after another, which lowered the test speedups. The benchmarks page and the chart give each command's fastest and slowest case, mean, standard deviation and P95 next to its median.
+
 ## 5.2.1
 
 Compared with 5.2.0. 5.2.0 could not be installed from NuGet: nuget.org refused its per-platform packages, so `dotnet tool install` and `dotnet tool update` found the `Fuse` package but not the package for the platform. Update with `dotnet tool update -g Fuse`, from 5.1.0 or from a 5.2.0 installed another way; nothing else needs to change.
 
-- The per-platform packages are named `Litenova.Fuse.win-x64`, `Litenova.Fuse.linux-x64`, `Litenova.Fuse.linux-arm64`, `Litenova.Fuse.osx-arm64`, `Litenova.Fuse.linux-musl-x64`, `Litenova.Fuse.linux-musl-arm64` and `Litenova.Fuse.any`. The SDK names them after the tool, `Fuse.win-x64` and so on, and nuget.org reserves the `Fuse.` prefix without an owner, so it refused every one of them as "The package ID is reserved". The `Fuse` package points to the new names, and `dotnet tool install -g Fuse` stays the only command.
+### Added
+
 - The `Fuse` package on nuget.org shows the Fuse icon.
+
+### Fixed
+
+- The per-platform packages are named `Litenova.Fuse.win-x64`, `Litenova.Fuse.linux-x64`, `Litenova.Fuse.linux-arm64`, `Litenova.Fuse.osx-arm64`, `Litenova.Fuse.linux-musl-x64`, `Litenova.Fuse.linux-musl-arm64` and `Litenova.Fuse.any`. The SDK names them after the tool, `Fuse.win-x64` and so on, and nuget.org reserves the `Fuse.` prefix without an owner, so it refused every one of them as "The package ID is reserved". The `Fuse` package points to the new names, and `dotnet tool install -g Fuse` stays the only command.
 - The publish workflow fails when nuget.org refuses a package, with nuget.org's reason. It passed 5.2.0 although only the `Fuse` package was pushed, because `--skip-duplicate` reports every refusal with status 409 as a package that already exists.
 
 ## 5.2.0
 
 Compared with 5.1.0. Update with `dotnet tool update -g Fuse`; nothing else needs to change, and `fuse init` does not need to run again.
 
+### Added
+
 - On Windows x64, Linux x64, Linux Arm64 and macOS Arm64, the `fuse` command is the native client: the client compiled ahead of time to native code, so a hook or command starts no .NET runtime and compiles no code before it sends its request to the engine. The engine still runs on the .NET runtime, from the `fuse.dll` installed with the native client. On every other platform, Windows Arm64, macOS x64 and Alpine included, `fuse` runs `fuse.dll` as in 5.1.0, and so do `dotnet tool run fuse` and tool manifests everywhere.
+- Each state directory holds a `root` file with its repository's path. Once a day a starting engine deletes the state directories whose repository no longer exists and that nothing wrote to for a day, such as those of deleted temporary repositories, which 5.1.0 kept for good.
+
+### Changed
+
 - The `Fuse` package points to one package per platform, which `dotnet tool install` and `dotnet tool update` choose from: `Fuse.win-x64`, `Fuse.linux-x64`, `Fuse.linux-arm64`, `Fuse.osx-arm64`, `Fuse.linux-musl-x64`, `Fuse.linux-musl-arm64` and `Fuse.any`. The Linux native clients run on glibc 2.27 and later. On Windows, the native client is the `fuse.exe` in the tools directory, so Git Bash, PowerShell and cmd all run it.
 - The build id a request carries is the product version and the module id of `fuse.dll`, which the native client reads from the `fuse.dll` installed with it. A running 5.1.0 engine answers the first 5.2.0 request with a restart and exits, and the client starts a 5.2.0 engine, so no request fails.
 - `fuse engine <root>` in the native client prints that the engine runs from `fuse.dll` on the .NET runtime and exits with 2. Clients start the engine; nothing runs it by hand.
 - A client that starts the engine looks for the `dotnet` host on the `PATH` when neither `DOTNET_HOST_PATH` nor `DOTNET_ROOT` names one and it has no runtime directory of its own, as the native client has none.
 - For a test project on Microsoft.Testing.Platform, `fuse test` reads the counts from the run summary and each failed test's message and stack frames from the run's output, and answers as it does for VSTest: `FAILED` and the test for each failure, then `fuse: F failed, P passed in T s`. 5.1.0 printed `fuse: tests passed in T s` for a passing run and, for a failing one, the last 30 lines of the output and `exited with code E and produced no results`.
+- A starting engine deletes the engine copies of other builds that no running engine holds and that are more than ten minutes old, which each engine marks with a lock file in its copy. 5.1.0 deleted only copies last written more than seven days earlier, so every build of the tool left a copy behind for a week.
+
+### Fixed
+
 - In a repository whose `global.json` selects Microsoft.Testing.Platform, `fuse test` with arguments, such as the `fuse test --filter-class Name` the pre-shell hook writes for `dotnet test --filter-class Name`, passes the arguments without VSTest's `--logger`, `--results-directory`, `-nologo` and `-tl:off`. 5.1.0 added them, so every such run failed with exit code 5 and ran no test.
 - Whether `dotnet test` runs on Microsoft.Testing.Platform is read from the `test.runner` value of the `global.json` nearest to the working directory, up to the repository root, as the dotnet CLI reads it. 5.1.0 read only the root `global.json` and took any mention of the platform's name in it.
-- A starting engine deletes the engine copies of other builds that no running engine holds and that are more than ten minutes old, which each engine marks with a lock file in its copy. 5.1.0 deleted only copies last written more than seven days earlier, so every build of the tool left a copy behind for a week.
 - `fuse check` and the `fuse_check` tool with named files answer `fuse: none of the files named in the check is a C# source file of a project in this repository: <files>` and exit with 2 when every named file is one Fuse cannot check, such as a path with a typo or a file of another language. 5.1.0 answered `fuse: no errors introduced (0 file(s) checked)` and exited with 0, which read as a pass.
 - A file renamed since HEAD is compared with the errors HEAD had under its old name, so an error that existed before the rename is not reported as introduced. Git status reports a rename as a deleted file and a new one, and the new file is taken as a rename of the deleted file that shares at least half of its lines. 5.1.0 reported every error HEAD had in a renamed file as introduced.
-- Each state directory holds a `root` file with its repository's path. Once a day a starting engine deletes the state directories whose repository no longer exists and that nothing wrote to for a day, such as those of deleted temporary repositories, which 5.1.0 kept for good.
 
 ## 5.1.0
 
 Compared with 5.0.0. After updating, run `fuse init` again in each repository: the shell hook event is `pre-shell`, and 5.1.0 does not accept the `pre-bash` event that 5.0.0 settings call, so until then `dotnet build` and `dotnet test` are not rewritten.
 
-- The hook event that rewrites `dotnet build` and `dotnet test` is `pre-shell`, and `fuse init` writes it for Claude Code, Gemini CLI, Codex and the OpenCode plugin. `fuse hook` answers `pre-bash` with a usage line on standard error and exit code 0.
-- For Codex, whose answer to the pre-shell hook also approves the command, the hook rewrites only a command that is one `dotnet build` or `dotnet test` with plain arguments, and gives any other command no answer, so Codex asks you about it as usual. 5.0.0 rewrote `dotnet build` and `dotnet test` after any separator and approved the whole command line, so a command such as `dotnet build && curl x | sh` ran without your approval.
-- `fuse check` says "introduced": `fuse: N error(s) introduced in M file(s)` and `fuse: no errors introduced`, where 5.0.0 printed `new error(s)` and `no new errors`. `checked whole projects` replaces `whole projects bound`.
+### Added
+
 - An error in a file the agent did not edit is followed by a cause line: `changed:` or `removed:` and the header, on one line, of the declaration change that put the file in the check, as the working tree has it or as HEAD had it. An answer holds at most ten, and the summary ends with `N cause(s) left out` when a printed error lost its cause to that cap.
-- `fuse test` says `without MSBuild` and `without MSBuild for N of M project(s)` where 5.0.0 said `fast path`, `no test is affected by the changes` where it said `no test reaches the changed code`, and `ran the tests your dotnet test arguments name` where it said `ran the tests you selected`.
 - `fuse build` and `fuse test` take a per-repository lock for as long as they write build output, so two agents building or testing through Fuse run one after the other instead of making MSBuild fail with MSB3021, MSB3027 or CS2012 on a file the other holds. A client that has to wait says so once on standard error, and a client that cannot take the lock says why and runs anyway. The arguments `fuse build` passes to `dotnet build`, the implicit restore included, are unchanged.
+- `engine.log` names every request by its kind, such as `CheckFiles Calc.cs took 15 ms`, and writes one line of per-phase times for it, so a slow check or test run can be traced to its phases.
+- `fuse init` adds `.fuse/` to the root `.gitignore`, creating the file when there is none, unless a line already names the folder. The `.fuse` folder is reserved for files Fuse may keep in a repository, such as an index; 5.1.0 writes nothing there.
+
+### Changed
+
+- The hook event that rewrites `dotnet build` and `dotnet test` is `pre-shell`, and `fuse init` writes it for Claude Code, Gemini CLI, Codex and the OpenCode plugin. `fuse hook` answers `pre-bash` with a usage line on standard error and exit code 0.
+- `fuse check` says "introduced": `fuse: N error(s) introduced in M file(s)` and `fuse: no errors introduced`, where 5.0.0 printed `new error(s)` and `no new errors`. `checked whole projects` replaces `whole projects bound`.
+- `fuse test` says `without MSBuild` and `without MSBuild for N of M project(s)` where 5.0.0 said `fast path`, `no test is affected by the changes` where it said `no test reaches the changed code`, and `ran the tests your dotnet test arguments name` where it said `ran the tests you selected`.
+- Test selection selects fewer extra tests: splitting a field declaration into two, or adding a variable to one, selects the tests that reach those fields and no longer every test that reaches the type. A formatting-only or comment-only edit inside a type header, a parameter type or a conversion, and an edit above a nested delegate, no longer count as a change to that declaration.
+- A test run that exits with a code other than 0 and writes no results, as a failing Microsoft.Testing.Platform run does, ends with `fuse: the test run of <project> exited with code E and produced no results`, where 5.0.0 printed `test build failed (exit code E)`.
+- The engine's pipe requests and responses have a different shape. An engine of another build, a running 5.0.0 engine included, answers the first request with a restart and exits, and the client starts an engine of its own build, so the first command after updating starts a fresh engine and no request fails.
+- The stop hook tells the agent `HEAD does not have them, so your changes introduced them`, where 5.0.0 said `they are not in the last commit`, and the MCP check tool's description says HEAD too. `fuse init` says `hooks registered`, or `MCP server registered in .vscode/mcp.json` when it registered only that, and messages name the product Fuse.
+- `fuse init` and `fuse mcp` outside a git repository say `fuse: not inside a git repository; Fuse compares your changes with HEAD, so it needs one`, the message `fuse check` gives.
+
+### Fixed
+
 - An analyzer or source generator the repository builds itself is loaded from a copy in the state directory, so a running engine no longer holds its file open and a real build that rebuilds it no longer fails with MSB3021 or MSB3027.
 - Removing a `using` directive checks the files that use the edited file's types, because the declarations' text is unchanged while what their type names resolve to is not. An added `using` still checks only the edited file.
 - A check finds a change to a type's parameterless constructor, such as making `public C()` internal, when a static constructor follows it in the file, which 5.0.0 missed. It no longer counts a formatting-only edit inside an explicit interface name as a declaration change.
 - Test selection selects the tests that reach an edit it missed in 5.0.0: a body edit to an explicit interface implementation that shares its name and parameter types with another member, a changed parameter modifier (`ref`, `out`, `in`, `params` or `this`), which also selects the tests that reach the member's type, a change from `class` to `struct` or from `record` to `record struct`, and an edit to a delegate declared at namespace level.
-- Test selection selects fewer extra tests: splitting a field declaration into two, or adding a variable to one, selects the tests that reach those fields and no longer every test that reaches the type. A formatting-only or comment-only edit inside a type header, a parameter type or a conversion, and an edit above a nested delegate, no longer count as a change to that declaration.
 - `fuse test --all` with other arguments prints `fuse: --all runs every test and cannot be combined with other arguments; pass the arguments without --all to choose the scope` on standard error, runs nothing and exits with 2. 5.0.0 dropped `--all` and ran what the other arguments named.
 - A run without MSBuild emits a project the tests load when the test project's build output holds another build of it, as after `dotnet build Lib` when `Lib.Tests` references `Lib`. 5.0.0 ran the test project's older copy, so a test the working tree fails could pass.
 - `fuse test` prints the errors of a test project that does not build, and exits with 1, when other test projects ran too; their results come first and the failed build is the last line. 5.0.0 printed only the other projects' results, so a passing project hid the failed build.
-- A test run that exits with a code other than 0 and writes no results, as a failing Microsoft.Testing.Platform run does, ends with `fuse: the test run of <project> exited with code E and produced no results`, where 5.0.0 printed `test build failed (exit code E)`.
-- The engine's pipe requests and responses have a different shape. An engine of another build, a running 5.0.0 engine included, answers the first request with a restart and exits, and the client starts an engine of its own build, so the first command after updating starts a fresh engine and no request fails.
-- `engine.log` names every request by its kind, such as `CheckFiles Calc.cs took 15 ms`, and writes one line of per-phase times for it, so a slow check or test run can be traced to its phases.
 - A check that arrives just as the engine finishes loading a dependent project in the background checks that project too. In 5.0.0 such a check could find the project loaded but leave it out, and miss the errors in it.
 - A project with a NuGet restore warning, such as a package advisory, is no longer reported as a project Fuse could not load, so Fuse answers in a repository whose restore logs a warning.
 - A `restore needed` answer names the project to restore in its command, so it also works for a project the solution leaves out.
@@ -88,15 +133,18 @@ Compared with 5.0.0. After updating, run `fuse init` again in each repository: t
 - An answer from the engine that the client cannot read gives `fuse: the Fuse engine sent an answer this client cannot read (...)` and exit code 2 instead of a crash, and a hook exits 0 with no output.
 - `fuse init` on a settings file it cannot read, such as malformed JSON, names the file and exits with 2 instead of crashing, and treats an empty or comment-only file as empty. It leaves no temporary file behind.
 - `fuse check` with an empty or invalid file argument says which argument and exits with 2 before it starts the engine.
-- The stop hook tells the agent `HEAD does not have them, so your changes introduced them`, where 5.0.0 said `they are not in the last commit`, and the MCP check tool's description says HEAD too. `fuse init` says `hooks registered`, or `MCP server registered in .vscode/mcp.json` when it registered only that, and messages name the product Fuse.
-- `fuse init` adds `.fuse/` to the root `.gitignore`, creating the file when there is none, unless a line already names the folder. The `.fuse` folder is reserved for files Fuse may keep in a repository, such as an index; 5.1.0 writes nothing there.
-- `fuse init` and `fuse mcp` outside a git repository say `fuse: not inside a git repository; Fuse compares your changes with HEAD, so it needs one`, the message `fuse check` gives.
+
+### Security
+
+- For Codex, whose answer to the pre-shell hook also approves the command, the hook rewrites only a command that is one `dotnet build` or `dotnet test` with plain arguments, and gives any other command no answer, so Codex asks you about it as usual. 5.0.0 rewrote `dotnet build` and `dotnet test` after any separator and approved the whole command line, so a command such as `dotnet build && curl x | sh` ran without your approval.
 
 ## 5.0.0
 
 5.0.0 is a complete rewrite with no migration path from 4.x: nothing 4.x wrote, including the `.fuse` folder, is read, and the [changelog page](https://fuse.codes/docs/changelog#moving-from-4-x) lists what to remove. Versions before 5.0.0 are deprecated.
 
 Fuse keeps a warm Roslyn compilation of a .NET repository and gives coding agents the compiler errors their edits introduced, affected-test runs, and compact build output, through agent hooks and a three-tool MCP server.
+
+### Added
 
 - `fuse init` registers hooks with Claude Code, Cursor, Gemini CLI, Codex and GitHub Copilot CLI, a plugin with OpenCode, and the MCP server with VS Code, for the harnesses the repository uses.
 - `fuse hook <harness> <event>` runs a post-edit check that reports only new errors, rewrites `dotnet build` and `dotnet test` to their Fuse equivalents, and runs a stop check that sends the agent back once while its changes leave errors that were not at HEAD.

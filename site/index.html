@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fuse: faster .NET build and test loop for AI coding agents</title>
-<meta name="description" content="Fuse makes dotnet build and dotnet test faster for AI coding agents: it checks each edit 7.0x to 31.0x faster than dotnet build on open-source repositories and runs only the affected tests.">
+<meta name="description" content="Fuse makes dotnet build and dotnet test faster for AI coding agents: it checks each edit 7.0x to 31.0x faster than dotnet build and runs only the affected tests.">
 <link rel="canonical" href="https://fuse.codes/">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 <meta name="author" content="Litenova Solutions">
@@ -14,7 +14,7 @@
 <meta property="og:site_name" content="Fuse">
 <meta property="og:locale" content="en_US">
 <meta property="og:title" content="Fuse: faster .NET build and test loop for AI coding agents">
-<meta property="og:description" content="Fuse makes dotnet build and dotnet test faster for AI coding agents: it checks each edit 7.0x to 31.0x faster than dotnet build on open-source repositories and runs only the affected tests.">
+<meta property="og:description" content="Fuse makes dotnet build and dotnet test faster for AI coding agents: it checks each edit 7.0x to 31.0x faster than dotnet build and runs only the affected tests.">
 <meta property="og:url" content="https://fuse.codes/">
 <meta property="og:image" content="https://fuse.codes/assets/og.png">
 <meta property="og:image:type" content="image/png">
@@ -23,7 +23,7 @@
 <meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 7.0x to 31.0x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Fuse: faster .NET build and test loop for AI coding agents">
-<meta name="twitter:description" content="Fuse makes dotnet build and dotnet test faster for AI coding agents: it checks each edit 7.0x to 31.0x faster than dotnet build on open-source repositories and runs only the affected tests.">
+<meta name="twitter:description" content="Fuse makes dotnet build and dotnet test faster for AI coding agents: it checks each edit 7.0x to 31.0x faster than dotnet build and runs only the affected tests.">
 <meta name="twitter:image" content="https://fuse.codes/assets/og.png">
 <meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 7.0x to 31.0x faster than dotnet build. dotnet tool install -g Fuse.">
 <link rel="icon" href="assets/favicon.png" type="image/png" sizes="48x48">
@@ -72,7 +72,7 @@
       "@id": "https://fuse.codes/#software",
       "name": "Fuse",
       "url": "https://fuse.codes/",
-      "description": "Fuse makes dotnet build and dotnet test faster for AI coding agents. It keeps the solution loaded, reports the compiler errors each edit caused 7.0x to 31.0x faster than dotnet build on open-source repositories, and runs only the affected tests.",
+      "description": "Fuse makes dotnet build and dotnet test faster for AI coding agents. It keeps the solution loaded, reports the compiler errors each edit caused 7.0x to 31.0x faster than dotnet build, and runs only the affected tests.",
       "applicationCategory": "DeveloperApplication",
       "operatingSystem": "Windows, Linux, macOS",
       "softwareRequirements": ".NET 10 SDK",
@@ -117,17 +117,18 @@
     <nav aria-label="Main">
       <a href="docs/index.html">Docs</a>
       <a href="docs/benchmarks.html">Benchmarks</a>
-      <a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a>
+      <a class="gh" href="https://github.com/Litenova-Solutions/Fuse" aria-label="Fuse on GitHub"><svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg></a>
     </nav>
   </header>
 
   <main id="main" tabindex="-1">
     <section class="hero">
+      <a class="release" href="docs/changelog.html#v5-2-3"><b>v5.2.3</b>Latest release: see what changed</a>
       <h1>Faster .NET Build and Test Loop for AI Coding Agents</h1>
       <ul class="tags" aria-label="Requirements and license">
         <li>.NET 10 SDK</li><li>C#</li><li>Open Source</li><li>Apache-2.0</li><li>Runs Locally</li>
       </ul>
-      <p>AI agents run <code>dotnet build</code> and <code>dotnet test</code> after every change. Fuse keeps your solution loaded, checks each edit <b>7.0x to 31.0x faster</b> on open-source repositories, runs only the affected tests, and shows the agent only what it has to fix.</p>
+      <p>AI agents wait for <code>dotnet build</code> and <code>dotnet test</code> after every change. Fuse keeps your solution warm and loaded in memory, checks each edit <b>7.0x to 31.0x faster</b> and runs only the affected tests.</p>
       <div class="install">
         <p class="label">Install the tool:</p>
         <div class="cmd"><span><span class="dim">$ </span>dotnet tool install -g Fuse</span><button type="button" data-copy="dotnet tool install -g Fuse" aria-label="Copy dotnet tool install -g Fuse">Copy</button></div>
@@ -137,6 +138,24 @@
       </div>
     </section>
 
+    <section class="section" aria-labelledby="agents-heading">
+      <div class="section-head">
+        <p class="kicker">What Your Agent Sees</p>
+        <h2 id="agents-heading">Only What It Has to Fix</h2>
+        <p>The agent renames <code>Calc.Add</code> in a library that two other projects call, then checks its work.</p>
+      </div>
+      <div class="race" id="race">
+        <div class="term" data-total="11.1">
+          <div class="term-bar"><span>With <code>dotnet build</code></span><span class="clock">11.1 s</span></div>
+          <pre><code><span class="ln prompt"><span class="dim">$ </span>dotnet build</span><span class="ln" data-at="0.4">  Determining projects to restore...</span><span class="ln" data-at="1.6">  All projects are up-to-date for restore.</span><span class="ln warn" data-at="4.2">/repo/Lib/Legacy.cs(12,9): warning CS0618: 'Calc.Sum()' is obsolete [/repo/Lib/Lib.csproj]</span><span class="ln" data-at="5.8">  Lib -&gt; /repo/Lib/bin/Debug/net10.0/Lib.dll</span><span class="ln err" data-at="9.0">/repo/App/Program.cs(3,30): error CS1061: 'Calc' does not contain a definition for 'Add' ... [/repo/App/App.csproj]</span><span class="ln err" data-at="9.7">/repo/Lib.Tests/CalcTests.cs(6,54): error CS1061: 'Calc' does not contain a definition for 'Add' ... [/repo/Lib.Tests/Lib.Tests.csproj]</span><span class="ln" data-at="11.1"> </span><span class="ln err" data-at="11.1">Build FAILED.</span><span class="ln" data-at="11.1"> </span><span class="ln warn" data-at="11.1">/repo/Lib/Legacy.cs(12,9): warning CS0618: 'Calc.Sum()' is obsolete [/repo/Lib/Lib.csproj]</span><span class="ln err" data-at="11.1">/repo/App/Program.cs(3,30): error CS1061: 'Calc' does not contain a definition for 'Add' ... [/repo/App/App.csproj]</span><span class="ln err" data-at="11.1">/repo/Lib.Tests/CalcTests.cs(6,54): error CS1061: 'Calc' does not contain a definition for 'Add' ... [/repo/Lib.Tests/Lib.Tests.csproj]</span><span class="ln" data-at="11.1">    1 Warning(s)</span><span class="ln" data-at="11.1">    2 Error(s)</span></code></pre>
+        </div>
+        <div class="term fuse-term" data-total="0.69">
+          <div class="term-bar"><span>With <code>fuse check</code></span><span class="clock">0.69 s</span></div>
+          <pre><code><span class="ln prompt"><span class="dim">$ </span>fuse check</span><span class="ln err" data-at="0.69">App/Program.cs(3,30): error CS1061: 'Calc' does not contain a definition for 'Add' ...</span><span class="ln cause" data-at="0.69">  removed: public int Add(int a, int b)</span><span class="ln err" data-at="0.69">Lib.Tests/CalcTests.cs(6,54): error CS1061: 'Calc' does not contain a definition for 'Add' ...</span><span class="ln cause" data-at="0.69">  removed: public int Add(int a, int b)</span><span class="ln sum" data-at="0.69">fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations changed, 2 dependent project(s) checked</span></code></pre>
+        </div>
+      </div>
+      <p class="race-note">Played at real speed with the median times on Jellyfin, 40 projects: 0.69 s and 11.1 s. Each error once, with the change that caused it, and nothing at all when the edit compiles. <button type="button" class="replay" hidden>Replay</button></p>
+    </section>
     <section class="section" aria-labelledby="check-heading">
       <div class="section-head">
         <p class="kicker">After Every Edit</p>
@@ -146,34 +165,30 @@
       <div class="repos">
         <div class="repo">
           <h3>Validation Library <span><a href="https://github.com/FluentValidation/FluentValidation">FluentValidation</a>, 4 projects</span></h3>
-          <div class="lane fuse"><code>fuse check</code><span class="track" aria-hidden="true"><span class="fill" style="width:10.3%"></span></span><span class="t">0.24 s</span></div>
-          <div class="lane"><code>dotnet build</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">2.30 s</span></div>
+          <div class="lane fuse"><code>fuse check</code><span class="track" aria-hidden="true"><span class="fill" style="width:10.3%"></span></span><span class="t">0.24 s</span><span class="range">0.09 to 14.2 s, mean 0.94 s</span></div>
+          <div class="lane"><code>dotnet build</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">2.30 s</span><span class="range">1.55 to 9.41 s, mean 3.00 s</span></div>
           <p class="x"><b>9.8x</b> faster at the median</p>
-          <p class="spread">Fuse 0.09 to 14.2 s, mean 0.94 s; dotnet 1.55 to 9.41 s, mean 3.00 s</p>
         </div>
         <div class="repo">
           <h3>Date And Time Library <span><a href="https://github.com/nodatime/nodatime">NodaTime</a>, 15 projects</span></h3>
-          <div class="lane fuse"><code>fuse check</code><span class="track" aria-hidden="true"><span class="fill" style="width:14.3%"></span></span><span class="t">0.47 s</span></div>
-          <div class="lane"><code>dotnet build</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">3.28 s</span></div>
+          <div class="lane fuse"><code>fuse check</code><span class="track" aria-hidden="true"><span class="fill" style="width:14.3%"></span></span><span class="t">0.47 s</span><span class="range">0.04 to 15.1 s, mean 1.67 s</span></div>
+          <div class="lane"><code>dotnet build</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">3.28 s</span><span class="range">2.01 to 9.77 s, mean 4.21 s</span></div>
           <p class="x"><b>7.0x</b> faster at the median</p>
-          <p class="spread">Fuse 0.04 to 15.1 s, mean 1.67 s; dotnet 2.01 to 9.77 s, mean 4.21 s</p>
         </div>
         <div class="repo">
           <h3>Media Server <span><a href="https://github.com/jellyfin/jellyfin">Jellyfin</a>, 40 projects</span></h3>
-          <div class="lane fuse"><code>fuse check</code><span class="track" aria-hidden="true"><span class="fill" style="width:6.2%"></span></span><span class="t">0.69 s</span></div>
-          <div class="lane"><code>dotnet build</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">11.1 s</span></div>
+          <div class="lane fuse"><code>fuse check</code><span class="track" aria-hidden="true"><span class="fill" style="width:6.2%"></span></span><span class="t">0.69 s</span><span class="range">0.12 to 64.6 s, mean 5.91 s</span></div>
+          <div class="lane"><code>dotnet build</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">11.1 s</span><span class="range">1.36 to 64.4 s, mean 17.8 s</span></div>
           <p class="x"><b>16.1x</b> faster at the median</p>
-          <p class="spread">Fuse 0.12 to 64.6 s, mean 5.91 s; dotnet 1.36 to 64.4 s, mean 17.8 s</p>
         </div>
         <div class="repo">
           <h3>.NET Library Suite <span><a href="https://github.com/CommunityToolkit/dotnet">Community Toolkit</a>, 26 projects</span></h3>
-          <div class="lane fuse"><code>fuse check</code><span class="track" aria-hidden="true"><span class="fill" style="width:3.2%"></span></span><span class="t">0.48 s</span></div>
-          <div class="lane"><code>dotnet build</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">15.0 s</span></div>
+          <div class="lane fuse"><code>fuse check</code><span class="track" aria-hidden="true"><span class="fill" style="width:3.2%"></span></span><span class="t">0.48 s</span><span class="range">0.13 to 48.9 s, mean 4.24 s</span></div>
+          <div class="lane"><code>dotnet build</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">15.0 s</span><span class="range">6.94 to 68.2 s, mean 22.5 s</span></div>
           <p class="x"><b>31.0x</b> faster at the median</p>
-          <p class="spread">Fuse 0.13 to 48.9 s, mean 4.24 s; dotnet 6.94 to 68.2 s, mean 22.5 s</p>
         </div>
       </div>
-      <p class="proof"><b>1</b> compiler error missed in 120 generated cases (162 edits). Bars are medians; under them, each command's fastest to slowest case and mean.</p>
+      <p class="proof"><b>1</b> compiler error missed in 120 generated cases (162 edits). Bars are medians; under each bar, its fastest to slowest case and its mean.</p>
     </section>
 
     <section class="section" aria-labelledby="test-heading">
@@ -185,55 +200,66 @@
       <div class="repos">
         <div class="repo">
           <h3>Validation Library <span><a href="https://github.com/FluentValidation/FluentValidation">FluentValidation</a>, 2,664 tests</span></h3>
-          <div class="lane fuse"><code>fuse test</code><span class="track" aria-hidden="true"><span class="fill" style="width:51.3%"></span></span><span class="t">7.70 s</span></div>
-          <div class="lane"><code>dotnet test</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">15.0 s</span></div>
+          <div class="lane fuse"><code>fuse test</code><span class="track" aria-hidden="true"><span class="fill" style="width:51.3%"></span></span><span class="t">7.70 s</span><span class="range">7.36 to 28.2 s, mean 10.4 s</span></div>
+          <div class="lane"><code>dotnet test</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">15.0 s</span><span class="range">11.7 to 20.9 s, mean 14.8 s</span></div>
           <p class="x"><b>1.9x</b> faster at the median</p>
-          <p class="spread">Fuse 7.36 to 28.2 s, mean 10.4 s; dotnet 11.7 to 20.9 s, mean 14.8 s</p>
         </div>
         <div class="repo">
           <h3>Date And Time Library <span><a href="https://github.com/nodatime/nodatime">NodaTime</a>, 42,700 tests</span></h3>
-          <div class="lane fuse"><code>fuse test</code><span class="track" aria-hidden="true"><span class="fill" style="width:76.4%"></span></span><span class="t">47.6 s</span></div>
-          <div class="lane"><code>dotnet test</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">62.2 s</span></div>
+          <div class="lane fuse"><code>fuse test</code><span class="track" aria-hidden="true"><span class="fill" style="width:76.4%"></span></span><span class="t">47.6 s</span><span class="range">0.05 to 70.4 s, mean 43.8 s</span></div>
+          <div class="lane"><code>dotnet test</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">62.2 s</span><span class="range">58.1 to 70.3 s, mean 62.9 s</span></div>
           <p class="x"><b>1.3x</b> faster at the median</p>
-          <p class="spread">Fuse 0.05 to 70.4 s, mean 43.8 s; dotnet 58.1 to 70.3 s, mean 62.9 s</p>
         </div>
         <div class="repo">
           <h3>Media Server <span><a href="https://github.com/jellyfin/jellyfin">Jellyfin</a>, 2,535 tests</span></h3>
-          <div class="lane fuse"><code>fuse test</code><span class="track" aria-hidden="true"><span class="fill" style="width:77.5%"></span></span><span class="t">111.0 s</span></div>
-          <div class="lane"><code>dotnet test</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">143.2 s</span></div>
+          <div class="lane fuse"><code>fuse test</code><span class="track" aria-hidden="true"><span class="fill" style="width:77.5%"></span></span><span class="t">111.0 s</span><span class="range">7.17 to 144.3 s, mean 107.0 s</span></div>
+          <div class="lane"><code>dotnet test</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">143.2 s</span><span class="range">123.6 to 189.0 s, mean 150.5 s</span></div>
           <p class="x"><b>1.3x</b> faster at the median</p>
-          <p class="spread">Fuse 7.17 to 144.3 s, mean 107.0 s; dotnet 123.6 to 189.0 s, mean 150.5 s</p>
         </div>
         <div class="repo">
           <h3>.NET Library Suite <span><a href="https://github.com/CommunityToolkit/dotnet">Community Toolkit</a>, 12,449 tests</span></h3>
-          <div class="lane fuse"><code>fuse test</code><span class="track" aria-hidden="true"><span class="fill" style="width:27.3%"></span></span><span class="t">198.0 s</span></div>
-          <div class="lane"><code>dotnet test</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">723.9 s</span></div>
+          <div class="lane fuse"><code>fuse test</code><span class="track" aria-hidden="true"><span class="fill" style="width:27.3%"></span></span><span class="t">198.0 s</span><span class="range">14.6 to 224.5 s, mean 148.3 s</span></div>
+          <div class="lane"><code>dotnet test</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">723.9 s</span><span class="range">551.7 to 782.1 s, mean 701.4 s</span></div>
           <p class="x"><b>3.7x</b> faster at the median</p>
-          <p class="spread">Fuse 14.6 to 224.5 s, mean 148.3 s; dotnet 551.7 to 782.1 s, mean 701.4 s</p>
         </div>
       </div>
       <p class="proof">In 40 generated changes, 26 of which made tests fail, <code>fuse test</code> ran every failing test except 3 timing-dependent tests the changes could not reach. <a href="docs/benchmarks.html">How it was benchmarked</a></p>
     </section>
-    <section class="section" aria-labelledby="agents-heading">
+    <section class="section" aria-labelledby="features-heading">
       <div class="section-head">
-        <p class="kicker">For Agents and Subagents</p>
-        <h2 id="agents-heading">What Your Agent Gets</h2>
+        <h2 id="features-heading">Features</h2>
       </div>
-      <div class="cards benefits">
-        <div class="card"><b>Only new errors</b><span>Errors already in the last commit are not reported.</span></div>
-        <div class="card"><b>Breaks in other projects</b><span>Rename a method and every broken caller is listed, with the change that broke it.</span></div>
-        <div class="card"><b>Short output</b><span>At most 20 errors or 10 test failures, and one summary line. Nothing when the edit is clean.</span></div>
-        <div class="card"><b>One process for all agents</b><span>Subagents share it, so the solution is loaded once.</span></div>
-        <div class="card"><b>No build clashes</b><span>Builds through Fuse take turns, so parallel agents do not break each other's builds.</span></div>
-        <div class="card"><b>Safe hooks</b><span>If Fuse fails, the hook stays silent and the agent carries on.</span></div>
+      <div class="spot">
+        <div class="spot-text">
+          <h3>Parallel agents in one working tree</h3>
+          <p>Subagents edit, check and test the same repository at the same time, without a git worktree each. They share one Fuse engine, so the solution is loaded once, and builds through Fuse take turns, so no build fails on another agent's locked files.</p>
+          <ul class="spot-stats">
+            <li><b>0</b> locked-file errors in 60 builds run three at a time</li>
+            <li><b>150 of 150</b> checks answered with three or four agents editing at once</li>
+          </ul>
+          <p class="spot-links"><a href="docs/how-it-works.html#process-model">How agents share the engine -&gt;</a> <a href="docs/limits.html#what-a-check-does-not-see">Limits with several agents -&gt;</a></p>
+        </div>
+        <div class="spot-diagram" aria-hidden="true">
+          <div class="nodes"><span>Agent</span><span>Subagent</span><span>Subagent</span></div>
+          <div class="join"></div>
+          <div class="box engine"><b>One Fuse engine</b><span>solution loaded once, builds take turns</span></div>
+          <div class="join single"></div>
+          <div class="box"><b>One working tree</b><span>no worktree per agent</span></div>
+        </div>
       </div>
+      <ul class="features">
+        <li><a href="docs/how-it-works.html#test-selection"><b>Affected tests</b><span>Runs only the tests that reach the changed code, and skips the rebuild when only <code>.cs</code> files changed.</span><i>How tests are selected -&gt;</i></a></li>
+        <li><a href="docs/harnesses.html"><b>Supported agents</b><span>Claude Code, Cursor, Codex, Gemini CLI, GitHub Copilot CLI and OpenCode. One <code>fuse init</code> sets up the hooks that check every edit.</span><i>Setup for each agent -&gt;</i></a></li>
+        <li><a href="docs/how-it-works.html#privacy"><b>Runs locally</b><span>No telemetry, no network calls of its own, and no settings to maintain.</span><i>Privacy and footprint -&gt;</i></a></li>
+        <li><a href="docs/how-it-works.html#failure-handling"><b>Silent when it fails</b><span>If Fuse cannot answer, the hook prints nothing and the agent carries on. Fuse never edits your code.</span><i>When Fuse cannot answer -&gt;</i></a></li>
+      </ul>
       <p class="proof"><b>The cost is memory:</b> 256 MB to 795 MB in the benchmarks, and more on a machine with more memory. <a href="docs/index.html#what-fuse-costs">What Fuse costs</a></p>
     </section>
   </main>
 
   <footer class="site-footer">
-    <span>Fuse, Apache-2.0. Benchmark medians, GitHub Actions windows-latest runners.</span>
-    <nav aria-label="Footer"><a href="docs/index.html">Docs</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
+    <a class="maker" href="https://www.litenova.solutions"><img src="assets/litenova-mark.svg" alt="" width="20" height="20">Built by Litenova Solutions</a>
+    <nav aria-label="Footer"><a href="docs/index.html">Docs</a><a href="docs/changelog.html">Changelog</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
   </footer>
 </div>
 <script>
@@ -246,6 +272,55 @@ document.querySelectorAll("[data-copy]").forEach(function (b) {
     }, function () {});
   };
 });
+</script>
+<script>
+// Plays the dotnet build and fuse check terminals at real speed once they scroll into view.
+(function () {
+  var race = document.getElementById("race");
+  if (!race) return;
+  var terms = race.querySelectorAll(".term");
+  var pres = race.querySelectorAll(".term pre");
+  var replay = document.querySelector(".replay");
+  function fmt(t) { return t < 10 ? t.toFixed(2) + " s" : t.toFixed(1) + " s"; }
+  // Both terminals take the height of the dotnet build output, also when they stack on a phone.
+  function size() {
+    pres.forEach(function (p) { p.style.minHeight = ""; });
+    var h = pres[0].offsetHeight;
+    pres.forEach(function (p) { p.style.minHeight = h + "px"; });
+  }
+  size();
+  window.addEventListener("resize", size);
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || !("IntersectionObserver" in window)) return;
+  function play() {
+    replay.hidden = true;
+    terms.forEach(function (t) {
+      t.classList.remove("done");
+      t.querySelectorAll(".ln[data-at]").forEach(function (l) { l.classList.remove("on"); });
+    });
+    race.classList.add("armed");
+    var start = performance.now();
+    function tick() {
+      var e = (performance.now() - start) / 1000, running = 0;
+      terms.forEach(function (t) {
+        var total = parseFloat(t.dataset.total);
+        t.querySelectorAll(".ln[data-at]").forEach(function (l) {
+          if (e >= parseFloat(l.dataset.at)) l.classList.add("on");
+        });
+        if (e < total) { running++; t.querySelector(".clock").textContent = fmt(e); }
+        else if (!t.classList.contains("done")) { t.classList.add("done"); t.querySelector(".clock").textContent = fmt(total); }
+      });
+      if (running) setTimeout(tick, 40); else replay.hidden = false;
+    }
+    tick();
+  }
+  replay.onclick = play;
+  race.classList.add("armed");
+  terms.forEach(function (t) { t.querySelector(".clock").textContent = fmt(0); });
+  var seen = new IntersectionObserver(function (entries) {
+    if (entries[0].isIntersecting) { seen.disconnect(); play(); }
+  }, { threshold: 0.5 });
+  seen.observe(race);
+})();
 </script>
 </body>
 </html>

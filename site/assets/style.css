@@ -48,9 +48,11 @@ main:focus { outline: none; }
 .brand { display: flex; align-items: center; gap: 0.6rem; color: var(--text); font-weight: 700; font-size: 1.1rem; }
 .brand:hover { text-decoration: none; }
 .brand img { width: 1.6rem; height: 1.6rem; }
-.site-header nav { display: flex; gap: 1.5rem; font-size: 0.92rem; }
+.site-header nav { display: flex; align-items: center; gap: 1.5rem; font-size: 0.92rem; }
 .site-header nav a { color: var(--muted); }
 .site-header nav a:hover, .site-header nav a[aria-current="page"] { color: var(--text); text-decoration: none; }
+.site-header .gh { display: flex; }
+.site-header .gh svg { width: 1.25rem; height: 1.25rem; }
 @media (max-width: 420px) { .site-header nav { gap: 1rem; font-size: 0.85rem; } }
 
 /* Hero */
@@ -58,6 +60,9 @@ main:focus { outline: none; }
 .hero h1 { font-size: clamp(2.1rem, 4.4vw, 3.4rem); line-height: 1.08; letter-spacing: -0.03em; margin: 0 auto 1rem; max-width: 52rem; text-wrap: balance; }
 .hero p { font-size: clamp(1.08rem, 1.6vw, 1.3rem); color: var(--muted); max-width: 36rem; margin: 0 auto; text-wrap: balance; }
 .hero p b { color: var(--text); font-weight: 600; }
+.release { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 0.2rem 0.8rem 0.2rem 0.25rem; margin: 0 0 1.4rem; }
+.release b { color: #fff; background: var(--accent); border-radius: 999px; padding: 0 0.5rem; font-size: 0.74rem; font-weight: 600; }
+.release:hover { color: var(--text); border-color: var(--accent); text-decoration: none; }
 .tags { list-style: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 0.4rem; margin: 0 0 1.3rem; padding: 0; }
 .tags li { font-size: 0.72rem; line-height: 1.6; color: var(--tag-text); background: var(--tag-bg); border: 1px solid var(--tag-line); border-radius: 999px; padding: 0.1rem 0.6rem; }
 
@@ -84,7 +89,7 @@ main:focus { outline: none; }
 .repo h3 { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; font-size: 0.95rem; font-weight: 600; margin: 0 0 0.9rem; }
 .repo h3 span { font-weight: 400; font-size: 0.82rem; color: var(--muted); white-space: nowrap; }
 .repo h3 span a { color: var(--muted); text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 2px; }
-.lane { display: grid; grid-template-columns: 6.6rem 1fr 3.4rem; align-items: center; gap: 0.8rem; font-size: 0.88rem; margin-bottom: 0.6rem; }
+.lane { display: grid; grid-template-columns: 6.6rem 1fr 3.4rem; align-items: center; gap: 0.15rem 0.8rem; font-size: 0.88rem; margin-bottom: 0.6rem; }
 .lane code { color: var(--muted); }
 .lane.fuse code { color: var(--text); font-weight: 600; }
 .track { height: 0.6rem; background: var(--track); border-radius: 0 0.3rem 0.3rem 0; overflow: hidden; }
@@ -94,9 +99,62 @@ main:focus { outline: none; }
 .lane.fuse .t { color: var(--text); font-weight: 600; }
 .repo .x { font-size: 0.82rem; color: var(--muted); margin: 0.4rem 0 0; }
 .repo .x b { color: var(--text); }
-.repo .spread { font-size: 0.74rem; color: var(--muted); margin: 0.15rem 0 0; font-variant-numeric: tabular-nums; }
+/* Under each bar, the fastest to slowest case and the mean, quieter than the median beside the bar. */
+.lane .range { grid-column: 2 / -1; font-size: 0.7rem; line-height: 1.3; color: #75746e; font-variant-numeric: tabular-nums; }
 .proof { text-align: center; font-size: 0.9rem; color: var(--muted); margin: 2.6rem auto 0; }
 .proof b { color: var(--text); }
+
+/* The same edit through dotnet build and Fuse, played at real speed. Without script every line shows. */
+.race { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; max-width: 52rem; margin: 0 auto; }
+.term { min-width: 0; display: flex; flex-direction: column; background: var(--code-bg); border-radius: 0.7rem; overflow: hidden; }
+.term-bar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 0.5rem 0.9rem; border-bottom: 1px solid #2c2c32; font-size: 0.8rem; color: var(--code-muted); }
+.term-bar code { color: var(--code-text); font-weight: 600; }
+.term .clock { font: 0.8rem ui-monospace, SFMono-Regular, Consolas, monospace; font-variant-numeric: tabular-nums; }
+.term.done .clock { color: var(--code-text); font-weight: 700; }
+.fuse-term { box-shadow: 0 0 0 2px var(--accent); }
+.fuse-term.done .clock { color: #b9a8ff; }
+.term pre { flex: 1; margin: 0; border-radius: 0; font-size: 0.7rem; }
+.term pre code { white-space: pre-wrap; overflow-wrap: anywhere; }
+.term .ln { display: block; }
+.armed .term .ln[data-at] { visibility: hidden; }
+.armed .term .ln.on { visibility: visible; }
+.term .warn { color: #e5c07b; }
+.term .err { color: #f28b82; }
+.term .cause { color: var(--code-muted); }
+.term .sum { color: #b9a8ff; }
+.race-note { max-width: 44rem; margin: 1rem auto 0; text-align: center; font-size: 0.85rem; color: var(--muted); }
+.replay { margin-left: 0.4rem; border: 1px solid var(--line); background: var(--bg); color: var(--text); border-radius: 0.45rem; padding: 0.15rem 0.7rem; font: 600 0.8rem ui-sans-serif, system-ui, sans-serif; cursor: pointer; }
+.replay:hover { border-color: var(--accent); }
+@media (max-width: 720px) { .race { grid-template-columns: 1fr; } }
+
+/* Features: one wide block for the strongest feature, then a list of the rest, each a link to its page. */
+.spot { display: grid; grid-template-columns: 1.15fr 1fr; gap: 2.5rem; align-items: center; max-width: 52rem; margin: 0 auto 2.6rem; border: 1px solid var(--line); border-radius: 0.9rem; padding: 2rem 2.2rem; background: var(--surface); }
+.spot h3 { font-size: 1.3rem; letter-spacing: -0.01em; margin: 0 0 0.6rem; }
+.spot-text > p { color: var(--muted); font-size: 0.95rem; }
+.spot-stats { list-style: none; padding: 0; margin: 0 0 1.1rem; display: grid; gap: 0.4rem; font-size: 0.9rem; color: var(--muted); }
+.spot-stats b { color: var(--text); font-size: 1.05rem; margin-right: 0.25rem; }
+.spot-links { margin: 0; display: flex; flex-wrap: wrap; gap: 0.4rem 1.4rem; font-size: 0.9rem; }
+.spot-diagram { display: flex; flex-direction: column; align-items: center; font-size: 0.82rem; }
+.spot-diagram .nodes { display: flex; gap: 0.5rem; }
+.spot-diagram .nodes span { background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 0.25rem 0.75rem; }
+.spot-diagram .join { width: 66%; height: 1.4rem; border: 2px solid var(--slow); border-top: 0; border-radius: 0 0 0.5rem 0.5rem; position: relative; margin-bottom: 1.2rem; }
+.spot-diagram .join::after { content: ""; position: absolute; left: 50%; top: 100%; width: 2px; height: 1.2rem; background: var(--slow); transform: translateX(-1px); }
+.spot-diagram .join.single { width: 0; height: 0; border: 0; margin-bottom: 1.2rem; }
+.spot-diagram .box { width: 100%; max-width: 17rem; text-align: center; background: var(--bg); border: 1px solid var(--line); border-radius: 0.6rem; padding: 0.55rem 0.8rem; }
+.spot-diagram .box.engine { border: 2px solid var(--accent); }
+.spot-diagram .box b { display: block; }
+.spot-diagram .box span { color: var(--muted); font-size: 0.78rem; }
+.features { list-style: none; padding: 0; margin: 0 auto; max-width: 52rem; display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem; }
+.features a { display: flex; flex-direction: column; height: 100%; border: 1px solid var(--line); border-radius: 0.7rem; padding: 0.9rem 1rem; color: var(--text); background: var(--bg); }
+.features a:hover { border-color: var(--accent); text-decoration: none; }
+.features b { margin-bottom: 0.25rem; }
+.features span { color: var(--muted); font-size: 0.88rem; line-height: 1.5; flex: 1; }
+.features span code { font-size: 0.9em; }
+.features i { font-style: normal; color: var(--accent); font-size: 0.85rem; margin-top: 0.6rem; }
+@media (max-width: 720px) {
+  .spot { grid-template-columns: 1fr; padding: 1.4rem 1.2rem; gap: 1.8rem; }
+  .features { grid-template-columns: 1fr; }
+}
 
 /* Detail pages */
 .page { max-width: 42rem; margin: 0 auto; padding: 3.5rem 0 0; }
@@ -127,6 +185,8 @@ td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .site-footer { margin-top: 7rem; border-top: 1px solid var(--line); padding: 1.8rem 0 2.5rem; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.8rem 1.5rem; font-size: 0.85rem; color: var(--muted); }
 .site-footer nav { display: flex; gap: 1.2rem; }
 .site-footer a { color: var(--muted); }
+.site-footer .maker { display: inline-flex; align-items: center; gap: 0.5rem; color: var(--text); font-weight: 600; }
+.site-footer .maker img { width: 1.7rem; height: 1.7rem; background: #000; }
 @media (max-width: 520px) { .site-footer { justify-content: center; text-align: center; } }
 
 /* Documentation pages: a sidebar of every page beside one content column. */
@@ -214,11 +274,6 @@ pre .dim { color: var(--code-muted); user-select: none; }
 .card:hover { border-color: var(--accent); text-decoration: none; }
 .card b { display: block; margin-bottom: 0.25rem; }
 .card span { display: block; color: var(--muted); font-size: 0.88rem; line-height: 1.5; }
-
-/* Benefit cards on the home page, which do not link. */
-.cards.benefits { max-width: 48rem; margin: 0 auto; }
-.benefits .card:hover { border-color: var(--line); }
-.benefits .card code { font-size: 0.9em; }
 
 /* Glossary. */
 .page dl.terms { margin: 0 0 1.2rem; }

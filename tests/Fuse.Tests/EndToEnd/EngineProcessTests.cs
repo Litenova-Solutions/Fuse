@@ -31,6 +31,36 @@ public class EngineProcessTests
     }
 
     [Fact]
+    public async Task A_generated_regex_with_a_culture_name_is_not_an_error()
+    {
+        // The engine runs the repository's source generators, and the Regex generator looks the culture up by name. With
+        // invariant globalization and only predefined cultures, that lookup fails and the method gets no implementation.
+        using var repo = FixtureRepo.CreateStandard();
+        try
+        {
+            repo.Write("Lib/Patterns.cs", """
+                using System.Text.RegularExpressions;
+
+                namespace Lib;
+
+                public static partial class Patterns
+                {
+                    [GeneratedRegex("^[a-z]+$", RegexOptions.IgnoreCase, "en-US")]
+                    public static partial Regex Word();
+                }
+
+                """);
+            var result = await FuseProcess.RunAsync(repo.Path, null, "check");
+            Assert.Equal(0, result.ExitCode);
+            Assert.Contains("fuse: no errors introduced", result.Stdout, StringComparison.Ordinal);
+        }
+        finally
+        {
+            await FuseProcess.StopEngineAsync(repo.Root);
+        }
+    }
+
+    [Fact]
     public async Task Shutdown_request_stops_the_engine()
     {
         using var repo = FixtureRepo.CreateStandard();

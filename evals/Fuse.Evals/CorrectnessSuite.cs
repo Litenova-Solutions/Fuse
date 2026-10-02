@@ -64,7 +64,6 @@ internal static partial class CorrectnessSuite
             var item = truth.Cases[planned.Index];
             await CasePlanner.ApplyAsync(repo, planned);
             var fuse = await repo.FuseAsync(["check", .. edits.Select(e => Path.Combine(repo.Root, e.Path))]);
-            await repo.ResetAsync();
 
             // The cause lines `fuse check` prints under an error in a file this case did not edit.
             List<Match> Context() => [.. fuse.Result.Output.Split('\n').Select(l => CauseLine().Match(l.TrimEnd('\r'))).Where(m => m.Success)];
@@ -80,6 +79,11 @@ internal static partial class CorrectnessSuite
             };
             cases.Add(result);
             Console.WriteLine($"[correctness] {planned.Index + 1}/{truth.Count} {result.Verdict,-12} truth={truthErrors.Count,3} fuse={fuseCount,3} {fuse.Milliseconds,6:0} ms  {string.Join(" + ", edits.Select(e => $"{e.Kind} {e.Path}"))}");
+
+            // The classification reads the edited files, so the tree is reset after it. The pause stands for the time an
+            // agent takes between one edit's check and the next edit, in which the engine takes in the reset.
+            await repo.ResetAsync();
+            await Task.Delay(2000);
         }
 
         await repo.ResetAsync();

@@ -250,10 +250,10 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
     <h3 id="latency">Latency <a class="anchor" href="#latency" aria-label="Link to this section">#</a></h3>
     <p>The latency suite times <code>fuse check</code> and <code>fuse test</code> the way an agent waits for them, and reads the engine's phase line for each call from <code>engine.log</code>.</p>
     <ol>
-      <li>It picks a public method with a block body in one of the two code projects with the most dependents, the one whose name the other projects mention most.</li>
+      <li>It builds HEAD, as a repository an agent works in has been built, and picks a public method with a block body in one of the two code projects with the most dependents, the one whose name the other projects mention most.</li>
       <li>It times a check of the clean tree with a cold engine, and a check of a body edit with a cold engine, which loads the owning project.</li>
       <li>It times 15 body edits (a statement added to the method) and 10 signature edits (the method renamed), each followed by <code>fuse check</code> on the file, then 10 checks of the unchanged tree and 5 <code>fuse test</code> rounds after body edits.</li>
-      <li>It reads the engine's working set, then runs the multi-agent scenario.</li>
+      <li>It reads the engine's working set, then runs the multi-agent scenario. Run as <code>--part agents</code>, it first runs one unmeasured <code>fuse test</code> round, so the scenario starts from an engine that has loaded the test projects, as it does after the test rounds.</li>
     </ol>
 
     <h3 id="multi-agent-scenario">Multi-agent scenario <a class="anchor" href="#multi-agent-scenario" aria-label="Link to this section">#</a></h3>

@@ -39,6 +39,12 @@ internal static class LatencySuite
         var taken = new HashSet<string>(StringComparer.Ordinal);
         async Task<TimedCall> Timed(FuseRun run) => new(run.Milliseconds, RequestPhases.TakeNewest(repo.EngineLogLines(), taken));
 
+        // A repository an agent works in has been built, and a test run reuses its build output, so the suite builds HEAD
+        // first; on a fresh clone the first test rounds would otherwise time the whole first build.
+        var head = await repo.BuildAsync();
+        if (head.ExitCode != 0)
+            throw new InvalidOperationException($"HEAD does not build: {string.Join("; ", head.Errors.Take(3))}");
+
         await repo.KillEngineAsync();
         var coldClean = await repo.FuseTimedAsync("check");
         Console.WriteLine($"[latency] cold check of a clean tree: {coldClean.Milliseconds:0} ms ({Last(coldClean.Output)})");
@@ -100,6 +106,15 @@ internal static class LatencySuite
         var signaturePhases = PhaseReport.Build(signatureCalls);
         var cleanPhases = PhaseReport.Build(cleanCalls);
         var testPhases = PhaseReport.Build(testCalls);
+        if (part == "agents")
+        {
+            // In a whole run the test rounds come first and leave the test projects loaded, so the agents part runs one
+            // unmeasured test round to start from the same engine.
+            await File.WriteAllTextAsync(file, BodyEdit(original, method, 100));
+            await repo.FuseAsync("test");
+            await File.WriteAllBytesAsync(file, originalBytes);
+        }
+
         // The writers scenario compares the queue against one client on its own, which is the body-edit total above.
         var multiAgent = !agents ? null : await MultiAgentScenario.RunAsync(repo, solution, bodyPhases.Phases.GetValueOrDefault(Phase.Total)?.P50 ?? 0);
         var summary = new

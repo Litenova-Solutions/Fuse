@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Fuse.Graph;
 using Fuse.Paths;
 using Fuse.Testing.Model;
@@ -23,10 +24,14 @@ internal sealed class SelectionBuilder
     /// <summary>Selects every test in <paramref name="project"/>. A reason given later replaces an earlier one.</summary>
     public void SelectWhole(ProjectNode project, string reason) => _selections[project.Path] = new TestSelection.Whole(reason);
 
-    /// <summary>Selects the tests in <paramref name="project"/> whose fully qualified name contains <paramref name="pattern"/>.</summary>
+    /// <summary>
+    ///     Selects the tests in <paramref name="project"/> whose fully qualified name contains <paramref name="pattern"/>.
+    ///     A class pattern, which ends with a dot, covers the test names that start with it, so a name it covers is not
+    ///     added and a new class pattern replaces the names it covers.
+    /// </summary>
     /// <returns>
     ///     False when the project is whole or already has the pattern, so the caller can skip the work a new pattern
-    ///     would start.
+    ///     would start. A test name a class pattern covers still returns true, since the name itself is new.
     /// </returns>
     public bool Add(ProjectNode project, string pattern)
     {
@@ -37,11 +42,17 @@ internal sealed class SelectionBuilder
             case TestSelection.Methods methods:
                 if (methods.Patterns.Contains(pattern))
                     return false;
-                _selections[project.Path] = methods with { Patterns = methods.Patterns.Add(pattern) };
+                if (methods.Patterns.Any(p => Covers(p, pattern)))
+                    return true;
+                var patterns = methods.Patterns.Where(p => !Covers(pattern, p)).ToImmutableHashSet().Add(pattern);
+                _selections[project.Path] = methods with { Patterns = patterns };
                 return true;
             default:
                 _selections[project.Path] = new TestSelection.Methods([pattern]);
                 return true;
         }
     }
+
+    private static bool Covers(string classPattern, string pattern) =>
+        classPattern.EndsWith('.') && pattern.Length > classPattern.Length && pattern.StartsWith(classPattern, StringComparison.Ordinal);
 }

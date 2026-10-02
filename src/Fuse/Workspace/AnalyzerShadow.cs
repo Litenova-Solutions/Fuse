@@ -44,7 +44,8 @@ internal sealed class AnalyzerShadow
     }
 
     /// <summary>
-    ///     Returns <paramref name="solution"/> with every in-repository analyzer reference pointing at its copy. The same
+    ///     Returns <paramref name="solution"/> with every in-repository analyzer reference pointing at its copy, and without
+    ///     references to analyzer files that do not exist. The same
     ///     loader solution gets the same result object back, so the compilations Roslyn caches on it survive the next
     ///     rebuild of the views; a new result would drop them and recompile every project from scratch.
     /// </summary>
@@ -57,7 +58,10 @@ internal sealed class AnalyzerShadow
         foreach (var id in solution.ProjectIds)
         {
             var references = result.GetProject(id)!.AnalyzerReferences;
-            var shadowed = references.Select(Shadow).ToList();
+            // MSBuild loads an analyzer whose file does not exist yet, such as one the repository builds itself before its
+            // first build, as an UnresolvedAnalyzerReference. It supplies no analyzer, and Roslyn's checksums, which a
+            // reference search computes, throw on it, so it is left out.
+            var shadowed = references.Where(r => r is not UnresolvedAnalyzerReference).Select(Shadow).ToList();
             if (!shadowed.SequenceEqual(references))
                 result = result.WithProjectAnalyzerReferences(id, shadowed);
         }

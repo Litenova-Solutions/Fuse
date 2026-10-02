@@ -71,6 +71,10 @@ jobs:
           latency = [r for r in repos] if "latency" in suites else []
           measure = [{"suite": s, "repo": r} for s in staged for r in repos]
           truth = [{"suite": s, "repo": r, "shard": k, "shards": shards[s].get(r, 1)} for s in staged for r in repos for k in range(shards[s].get(r, 1))]
+          # Jobs start in matrix order when the runners are all busy, so the longest shards go first: selection before
+          # correctness, the largest repositories first, and HEAD's shard first within a repository.
+          order = {"CommunityToolkit": 0, "Jellyfin": 1, "NodaTime": 2, "fixture": 3}
+          truth.sort(key=lambda t: (t["suite"] != "selection", order.get(t["repo"], 4), t["shard"]))
           with open(os.environ["GITHUB_OUTPUT"], "a") as out:
               for name, value in (("latency", latency), ("truth", truth), ("measure", measure)):
                   out.write(f"{name}={json.dumps(value)}\n")

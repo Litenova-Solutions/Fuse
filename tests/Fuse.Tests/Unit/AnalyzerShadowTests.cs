@@ -46,6 +46,30 @@ public class AnalyzerShadowTests
         Assert.Same(shadow.Apply(solution), shadow.Apply(solution));
     }
 
+    [Fact]
+    public async Task An_analyzer_that_is_not_built_yet_is_left_out_so_a_reference_search_does_not_fail()
+    {
+        // MSBuild loads a reference to an analyzer the repository has not built yet, such as Jellyfin's own analyzer
+        // project before its first build, as an UnresolvedAnalyzerReference, which Roslyn's checksums reject.
+        using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });
+        var outside = typeof(object).Assembly.Location;
+        var project = ProjectInfo.Create(ProjectId.CreateNewId(), VersionStamp.Default, "P", "P", LanguageNames.CSharp)
+            .WithMetadataReferences([MetadataReference.CreateFromFile(outside)])
+            .WithAnalyzerReferences([new UnresolvedAnalyzerReference(repo.Full("Analyzers/bin/Analyzers.dll")), new AnalyzerFileReference(outside, new PathLoader())]);
+        using var workspace = new AdhocWorkspace();
+        var solution = workspace.CurrentSolution.AddProject(project)
+            .AddDocument(DocumentId.CreateNewId(project.Id), "A.cs", "public class Base { } public class Derived : Base { }");
+
+        var shadowed = new AnalyzerShadow(repo.Root).Apply(solution);
+
+        var only = Assert.Single(shadowed.Projects.Single().AnalyzerReferences);
+        Assert.Equal(outside, only.FullPath);
+        var compilation = await shadowed.Projects.Single().GetCompilationAsync(TestContext.Current.CancellationToken);
+        var type = compilation!.GetTypeByMetadataName("Base")!;
+        var derived = await Microsoft.CodeAnalysis.FindSymbols.SymbolFinder.FindDerivedClassesAsync(type, shadowed, cancellationToken: TestContext.Current.CancellationToken);
+        Assert.Equal("Derived", Assert.Single(derived).Name);
+    }
+
     private static Solution SolutionWith(params string[] analyzers)
     {
         var loader = new PathLoader();

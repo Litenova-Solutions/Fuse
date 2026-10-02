@@ -104,6 +104,8 @@ internal static partial class SelectionSuite
             meanSelectedFraction = cases.Count == 0 || head.Total == 0 ? 0 : cases.Average(c => (double)(c.FuseFailed + c.FusePassed) / head.Total),
             fuseMedianSeconds = CorrectnessSuite.Median(cases.Select(c => c.FuseSeconds)),
             dotnetMedianSeconds = CorrectnessSuite.Median(cases.Select(c => c.DotnetSeconds)),
+            fuseStats = CaseStats.Of(cases.Select(c => c.FuseSeconds)),
+            dotnetStats = CaseStats.Of(cases.Select(c => c.DotnetSeconds)),
             skippedNonCompiling = skipped,
             projectsWithoutResults = withoutResults,
             truthKey = truth.Key,

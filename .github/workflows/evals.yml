@@ -23,8 +23,8 @@ on:
   workflow_dispatch:
     inputs:
       repos:
-        description: Repositories to measure, as a JSON array (fixture, NodaTime, Jellyfin, CommunityToolkit).
-        default: '["fixture", "NodaTime", "Jellyfin", "CommunityToolkit"]'
+        description: Repositories to measure, as a JSON array (FluentValidation, NodaTime, Jellyfin, CommunityToolkit, or fixture for the generated solution).
+        default: '["FluentValidation", "NodaTime", "Jellyfin", "CommunityToolkit"]'
         required: true
       suites:
         description: Suites to run, as a JSON array (correctness, selection, latency).
@@ -56,7 +56,7 @@ jobs:
       - id: matrix
         shell: python
         env:
-          REPOS: ${{ inputs.repos || '["fixture", "NodaTime", "Jellyfin", "CommunityToolkit"]' }}
+          REPOS: ${{ inputs.repos || '["FluentValidation", "NodaTime", "Jellyfin", "CommunityToolkit"]' }}
           SUITES: ${{ inputs.suites || '["latency"]' }}
         run: |
           import json, os
@@ -65,8 +65,8 @@ jobs:
           # Truth shards per repository, from the 5.2.0 run's dotnet times: a selection case on the Community Toolkit
           # takes about 15 minutes of dotnet test and HEAD's full run as long, so HEAD gets a shard of its own there.
           shards = {
-              "correctness": {"fixture": 1, "NodaTime": 1, "Jellyfin": 2, "CommunityToolkit": 2},
-              "selection": {"fixture": 1, "NodaTime": 2, "Jellyfin": 4, "CommunityToolkit": 6},
+              "correctness": {"fixture": 1, "FluentValidation": 1, "NodaTime": 1, "Jellyfin": 2, "CommunityToolkit": 2},
+              "selection": {"fixture": 1, "FluentValidation": 1, "NodaTime": 2, "Jellyfin": 4, "CommunityToolkit": 6},
           }
           staged = [s for s in ("correctness", "selection") if s in suites]
           latency = [r for r in repos] if "latency" in suites else []
@@ -74,7 +74,7 @@ jobs:
           truth = [{"suite": s, "repo": r, "shard": k, "shards": shards[s].get(r, 1)} for s in staged for r in repos for k in range(shards[s].get(r, 1))]
           # Jobs start in matrix order when the runners are all busy, so the longest shards go first: selection before
           # correctness, the largest repositories first, and HEAD's shard first within a repository.
-          order = {"CommunityToolkit": 0, "Jellyfin": 1, "NodaTime": 2, "fixture": 3}
+          order = {"CommunityToolkit": 0, "Jellyfin": 1, "NodaTime": 2, "FluentValidation": 3, "fixture": 4}
           truth.sort(key=lambda t: (t["suite"] != "selection", order.get(t["repo"], 4), t["shard"]))
           with open(os.environ["GITHUB_OUTPUT"], "a") as out:
               for name, value in (("latency", latency), ("truth", truth), ("measure", measure)):
@@ -126,6 +126,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
+          # The pinned repositories test on .NET 8 and 9 as well; global.json adds the SDK that builds Fuse.
+          dotnet-version: |
+            8.0.x
+            9.0.x
           global-json-file: global.json
       - uses: actions/download-artifact@v4
         with:
@@ -232,6 +236,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
+          # The pinned repositories test on .NET 8 and 9 as well; global.json adds the SDK that builds Fuse.
+          dotnet-version: |
+            8.0.x
+            9.0.x
           global-json-file: global.json
       - uses: actions/download-artifact@v4
         with:
@@ -282,6 +290,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
+          # The pinned repositories test on .NET 8 and 9 as well; global.json adds the SDK that builds Fuse.
+          dotnet-version: |
+            8.0.x
+            9.0.x
           global-json-file: global.json
       - uses: actions/download-artifact@v4
         with:

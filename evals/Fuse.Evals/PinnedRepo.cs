@@ -26,6 +26,9 @@ internal sealed record PinnedRepo(
     public static IReadOnlyList<PinnedRepo> All { get; } =
     [
         // The counts are the .csproj entries of the pinned solution whose files exist, which is what the suites evaluate.
+        // FluentValidation is the small repository: a library, an extension project that depends on it, one xUnit test
+        // project for three target frameworks, and a benchmark project, so a signature edit still reaches a dependent.
+        new("FluentValidation", "https://github.com/FluentValidation/FluentValidation", "fa3c160b17796ff67d6aa5ae6c4b05b471f1a791", "FluentValidation.sln", "FluentValidation, 4 projects", "FluentValidation, 2,664 tests"),
         new("NodaTime", "https://github.com/nodatime/NodaTime", "fcd80e11216ba403ccce0abbcedc41ba37bb352e", "src/NodaTime.slnx", "NodaTime, 15 projects", "NodaTime, 42,700 tests"),
         // Pinned to the final commit before Jellyfin moved to Roslyn 5: its in-repo analyzer is built against a newer
         // compiler than any SDK that resolves on a machine whose newest SDK is 10.0.112, and Roslyn refuses that (CS9057).

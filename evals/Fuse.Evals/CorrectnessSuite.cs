@@ -115,6 +115,8 @@ internal static partial class CorrectnessSuite
             fuseUnanswered = cases.Count(c => c.FuseExit is not (0 or 1)),
             fuseMedianMs = Median(cases.Select(c => c.FuseMilliseconds)),
             buildMedianSeconds = Median(cases.Select(c => c.BuildSeconds)),
+            fuseStats = CaseStats.Of(cases.Select(c => c.FuseMilliseconds / 1000)),
+            dotnetStats = CaseStats.Of(cases.Select(c => c.BuildSeconds)),
             headBuildErrors = head.Names.Count,
             truthKey = truth.Key,
             truthOrigins = truth.Origins(),

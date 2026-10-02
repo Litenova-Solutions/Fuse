@@ -120,6 +120,7 @@
       <p>On this page</p>
       <ol>
         <li><a href="#supported-versions">Supported versions</a></li>
+        <li><a href="#v5-2-2">5.2.2</a></li>
         <li><a href="#v5-2-1">5.2.1</a></li>
         <li><a href="#v5-2-0">5.2.0</a></li>
         <li><a href="#v5-1-0">5.1.0</a></li>
@@ -134,13 +135,28 @@
       <thead><tr><th scope="col">Version</th><th scope="col">Status</th></tr></thead>
       <tbody>
         <tr><th scope="row">5.2.x</th><td>Supported. The latest release.</td></tr>
-        <tr><th scope="row">5.1.x</th><td>No longer fixed. Upgrade to 5.2.1 with the <a href="#upgrading-from-5-1-0">steps below</a>.</td></tr>
-        <tr><th scope="row">5.0.x</th><td>No longer fixed. Upgrade to 5.1.0 with the <a href="#upgrading-from-5-0-0">steps below</a>, then to 5.2.1.</td></tr>
+        <tr><th scope="row">5.1.x</th><td>No longer fixed. Upgrade to 5.2.2 with the <a href="#upgrading-from-5-1-0">steps below</a>.</td></tr>
+        <tr><th scope="row">5.0.x</th><td>No longer fixed. Upgrade to 5.1.0 with the <a href="#upgrading-from-5-0-0">steps below</a>, then to 5.2.2.</td></tr>
         <tr><th scope="row">1.0.0 to 4.4.0</th><td>Deprecated and unsupported. These versions are a different program under the same name; <a href="#moving-from-4-x">Moving from 4.x</a> says what to remove.</td></tr>
       </tbody>
     </table>
     <p>To upgrade the tool itself to the latest release:</p>
     <pre data-label="Shell"><code>dotnet tool update -g Fuse</code></pre>
+
+    <h2 id="v5-2-2">5.2.2 <a class="anchor" href="#v5-2-2" aria-label="Link to this section">#</a></h2>
+    <p>Not released yet. Compared with 5.2.1.</p>
+    <p>5.2.2 makes <code>fuse test</code> run only the selected tests when the selection is large, keeps a test plan from making other agents' checks wait, rewrites <code>dotnet test</code> commands that start with variable assignments, and corrects the speedups the README and the home page quote.</p>
+    <h3 id="upgrading-to-5-2-2">Upgrading to 5.2.2 <a class="anchor" href="#upgrading-to-5-2-2" aria-label="Link to this section">#</a></h3>
+    <p>Update the tool with <code>dotnet tool update -g Fuse</code>. Nothing else needs to change, and <code>fuse init</code> does not need to run again. A script that reads the engine log's phase lines finds a test plan's preparation in two phases, <code>mirror</code> and <code>emit</code>, where 5.2.1 had <code>mirror</code> alone.</p>
+    <ul>
+      <li><code>fuse test</code> passes the test filter to <code>dotnet test</code> in a runsettings file, as <code>RunConfiguration/TestCaseFilter</code> with <code>--settings</code>, instead of on the command line. A selection of up to 2,000 test names runs only those tests. 5.2.1 cut a filter above 8,000 characters back to whole test classes, and a longer one to the whole project, without saying so. Past 2,000 names the filter still collapses, and the summary says so and the engine log names the project.</li>
+      <li>A run without MSBuild uses the test project's own runsettings file (<code>RunSettingsFilePath</code>), with the filter added, as <code>dotnet test</code> on the project does. 5.2.1 ignored that file on such runs.</li>
+      <li>A test plan holds the engine's request lock only while it syncs and selects tests, and prepares the copies for runs without MSBuild after releasing it, so a check from another agent no longer waits behind a test plan. An assembly that has not changed since the previous plan is not emitted again. The engine log's phase line splits that preparation into <code>mirror</code> and <code>emit</code>, and <code>gateHolder</code> names what a request waited behind for the request lock.</li>
+      <li>The pre-shell hook rewrites <code>dotnet build</code> and <code>dotnet test</code> after variable assignments, so <code>DOTNET_CLI_UI_LANGUAGE=en dotnet test</code> becomes <code>DOTNET_CLI_UI_LANGUAGE=en fuse test</code>. An assignment counts when its value has no whitespace, quote, backtick, separator, redirection or parenthesis; for Codex, only plain values count. 5.2.1 left such a command as it was.</li>
+      <li>A Microsoft.Testing.Platform run that exits with 8, the platform's code for a run in which no test ran, prints <code>fuse: no test matched the dotnet test arguments (exit code 8)</code> for <code>fuse test</code> with arguments, or <code>fuse: the test run of &lt;project&gt; ran no test (exit code 8)</code>. 5.2.1 printed that the run exited with code 8 and produced no results.</li>
+      <li>A second <code>fuse init</code> prints <code>unchanged &lt;file&gt;</code> for a settings file that already holds what it would write, and leaves the file as it was. 5.2.1 printed <code>wrote &lt;file&gt;</code> and wrote it again.</li>
+      <li>The README, the home page and the sharing image quote the check speedup on the three open-source repositories, 7.2x to 22.6x at the median, instead of the generated fixture's 24.6x, and the README quotes the measured test speedup, up to 4.4x, instead of 5.7x, which was a time in seconds. The benchmarks page adds the total time over all 30 edits of each repository, 2.5x to 4.2x on the open-source repositories, and the chart shows the open-source repositories only.</li>
+    </ul>
 
     <h2 id="v5-2-1">5.2.1 <a class="anchor" href="#v5-2-1" aria-label="Link to this section">#</a></h2>
     <p>Released 2026-10-01. Compared with 5.2.0.</p>

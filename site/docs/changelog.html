@@ -163,6 +163,7 @@
       <li>For a test project on Microsoft.Testing.Platform, which runs whole, the <code>fuse test</code> summary counts every test in the project, not only the tests the selection named.</li>
       <li>The stop hook sends the agent back for a missing restore with the restore message alone, without the line that says the changes introduced errors. A stop payload whose <code>loop_count</code> is not a whole number that fits 32 bits no longer makes the hook fail and let the agent finish unchecked.</li>
       <li>A state directory that <code>fuse build</code> or <code>fuse test</code> created records its repository, so the daily cleanup removes it once the repository is gone, as it does the directory of a repository an engine served.</li>
+      <li>A client that finds an engine copy without its completion marker, such as one a cleanup deleted part of, makes the copy again, or runs the engine from a fresh copy beside it when the old one cannot be replaced. 5.2.1 ran the engine from the incomplete copy, so the engine could not start until the copy was deleted by hand.</li>
     </ul>
 
     <h2 id="v5-2-1">5.2.1 <a class="anchor" href="#v5-2-1" aria-label="Link to this section">#</a></h2>

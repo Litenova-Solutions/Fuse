@@ -81,29 +81,62 @@ internal static class EngineLauncher
     ///     for 30 minutes, which can be hours after it started; running it from the installed tool directory would lock those files and make <c>dotnet tool update</c> (and
     ///     rebuilding Fuse) fail while any repository has an engine running.
     /// </summary>
-    internal static string EngineHome()
+    internal static string EngineHome() =>
+        EngineHome(LocalState.EngineCopies, EngineVersion.Build, () => EngineVersion.ManagedDirectory
+            ?? throw new InvalidOperationException($"this build of Fuse has no {EngineVersion.ManagedAssembly} to run the engine from; reinstall Fuse with dotnet tool update -g Fuse"));
+
+    /// <summary>
+    ///     The copy of build <paramref name="build"/> under <paramref name="copies"/>, made from <paramref name="source"/>
+    ///     when it has no complete copy yet. A copy is complete once its <c>.complete</c> marker exists, which is written
+    ///     last. A copy directory without the marker, such as one a cleanup deleted part of, is replaced, and when it cannot
+    ///     be replaced because something still holds a file in it, the engine runs from the fresh copy beside it.
+    /// </summary>
+    internal static string EngineHome(string copies, string build, Func<string> source)
     {
-        var home = Path.Combine(LocalState.EngineCopies, EngineVersion.Build.Replace('/', '-'));
+        var home = Path.Combine(copies, build.Replace('/', '-'));
         var marker = Path.Combine(home, ".complete");
         if (File.Exists(marker))
             return home;
 
-        var source = EngineVersion.ManagedDirectory
-                     ?? throw new InvalidOperationException($"this build of Fuse has no {EngineVersion.ManagedAssembly} to run the engine from; reinstall Fuse with dotnet tool update -g Fuse");
         var staging = home + "." + Guid.NewGuid().ToString("N")[..8];
-        CopyDirectory(source, staging);
-        File.WriteAllText(Path.Combine(staging, ".complete"), EngineVersion.Build);
+        CopyDirectory(source(), staging);
+        File.WriteAllText(Path.Combine(staging, ".complete"), build);
+        if (TryMove(staging, home))
+            return home;
+
+        if (!File.Exists(marker))
+        {
+            try
+            {
+                Directory.Delete(home, recursive: true);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                return staging;
+            }
+
+            if (TryMove(staging, home))
+                return home;
+            if (!File.Exists(marker))
+                return staging;
+        }
+
+        // Another client copied the same build first; use theirs.
+        Directory.Delete(staging, recursive: true);
+        return home;
+    }
+
+    private static bool TryMove(string source, string target)
+    {
         try
         {
-            Directory.Move(staging, home);
+            Directory.Move(source, target);
+            return true;
         }
         catch (IOException)
         {
-            // Another client copied the same build first; use theirs.
-            Directory.Delete(staging, recursive: true);
+            return false;
         }
-
-        return home;
     }
 
     private static void CopyDirectory(string source, string target)

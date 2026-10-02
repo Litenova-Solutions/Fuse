@@ -20,6 +20,7 @@ Compared with 5.2.1. Update with `dotnet tool update -g Fuse`; nothing else need
 - For a test project on Microsoft.Testing.Platform, which runs whole, the `fuse test` summary counts every test in the project, not only the tests the selection named.
 - The stop hook sends the agent back for a missing restore with the restore message alone, without the line that says the changes introduced errors. A stop payload whose `loop_count` is not a whole number that fits 32 bits no longer makes the hook fail and let the agent finish unchecked.
 - A state directory that `fuse build` or `fuse test` created records its repository, so the daily cleanup removes it once the repository is gone, as it does the directory of a repository an engine served.
+- A client that finds an engine copy without its completion marker, such as one a cleanup deleted part of, makes the copy again, or runs the engine from a fresh copy beside it when the old one cannot be replaced. 5.2.1 ran the engine from the incomplete copy, so the engine could not start until the copy was deleted by hand.
 
 ## 5.2.1
 

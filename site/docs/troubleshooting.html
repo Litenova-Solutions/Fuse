@@ -219,15 +219,16 @@
 2026-09-29 04:54:37.837 test plan: selection in 71 ms: Lib.Tests 1 pattern(s)
 2026-09-29 04:54:38.277 test plan: Lib.Tests [Lib.Tests] runs from C:\...\shadow\Lib.Tests\Lib.Tests.dll after 512 ms
 2026-09-29 04:54:38.279 PlanAffectedTests took 516 ms
-2026-09-29 04:54:38.280 phases id=36068-1 kind=PlanAffectedTests gate=0.0 sync=1.3 selection=71.5 mirror=439.8 total=516.0</code></pre>
+2026-09-29 04:54:38.280 phases id=36068-1 kind=PlanAffectedTests gate=0.0 sync=1.3 selection=71.5 mirror=29.6 emit=410.2 total=516.0</code></pre>
     <p>The first check after the rename loaded all three projects and took 10,157 ms; the post-edit hook's check of the same edit, a few seconds later, took 15 ms, because everything it needed was already loaded. That difference is what the engine is for. A check logs a <code>check:</code> line with its compile and analyzer time, and a test plan logs its selection per test project and whether each runs from the copy (<code>runs from ...</code>) or <code>builds with MSBuild</code>, with the reason when it does not run from the copy.</p>
 
     <h3 id="reading-a-phase-line">Reading a phase line <a class="anchor" href="#reading-a-phase-line" aria-label="Link to this section">#</a></h3>
     <p>Every request ends with a request line, <code>&lt;request&gt; took &lt;ms&gt; ms</code>, and a phase line:</p>
-    <pre class="out" data-label="Format"><code>phases id=&lt;client process id&gt;-&lt;n&gt; kind=&lt;request&gt; &lt;phase&gt;=&lt;ms&gt; ... total=&lt;ms&gt;</code></pre>
+    <pre class="out" data-label="Format"><code>phases id=&lt;client process id&gt;-&lt;n&gt; kind=&lt;request&gt; [gateHolder=&lt;holder&gt;] &lt;phase&gt;=&lt;ms&gt; ... total=&lt;ms&gt;</code></pre>
     <ul>
       <li><code>id</code> names the client process and its request count, so a line can be matched to the command that sent it.</li>
       <li><code>kind</code> is the request: <code>CheckChanges</code> (every change), <code>CheckFiles</code> (named files, which is what a post-edit hook sends), <code>PlanAffectedTests</code> (<code>fuse test</code>) or <code>PlanAllTests</code> (<code>fuse test --all</code>).</li>
+      <li><code>gateHolder</code>, when the request waited for the request lock, names what held the lock longest during the wait: another request's <code>kind</code>, <code>Preload</code> (the background load choosing its next project) or <code>Initialization</code>. It is left out when nothing held the lock.</li>
       <li>The phases follow in the order they ran, in milliseconds.</li>
     </ul>
     <table>
@@ -238,8 +239,9 @@
         <tr><th scope="row"><code>load</code></th><td>Loading the projects that own the checked files, or for a test plan the projects it needs.</td></tr>
         <tr><th scope="row"><code>loadDependents</code></th><td>Loading the dependents of the projects with a declaration change.</td></tr>
         <tr><th scope="row"><code>bindTargets</code>, <code>surfaceDiff</code>, <code>referenceSearch</code>, <code>bindCandidates</code></th><td>The steps of a check, as <a href="how-it-works.html#check">How it works</a> describes them: compiling the targets, comparing declarations with HEAD, finding the files that use a changed declaration, and compiling those files.</td></tr>
-        <tr><th scope="row"><code>selection</code>, <code>mirror</code></th><td>Selecting the tests, including loading the projects they need, and preparing the copies for runs without MSBuild.</td></tr>
-        <tr><th scope="row"><code>total</code></th><td>The whole request from the moment it held the request lock. It is counted in system clock ticks, so on Windows a request that took less than about 16 ms shows <code>total=0.0</code>.</td></tr>
+        <tr><th scope="row"><code>selection</code></th><td>Selecting the tests, including loading the projects they need.</td></tr>
+        <tr><th scope="row"><code>mirror</code>, <code>emit</code></th><td>Preparing the copies for runs without MSBuild, after the request lock is released: deciding which assemblies changed and copying the build output, then emitting the changed assemblies and writing them into the copies. An assembly that has not changed since the previous plan is not emitted again.</td></tr>
+        <tr><th scope="row"><code>total</code></th><td>The whole request from the moment it held the request lock, including a test plan's <code>mirror</code> and <code>emit</code>. It is counted in system clock ticks, so on Windows a request that took less than about 16 ms shows <code>total=0.0</code>.</td></tr>
       </tbody>
     </table>
 

@@ -13,7 +13,7 @@ namespace Fuse.Engine;
 
 /// <summary>
 ///     Owns the warm workspace and answers requests: it initializes the workspace, admits one request at a time through
-///     the request lock, and routes each to the feature that answers it.
+///     the request lock (<see cref="RequestGate"/>), and routes each to the feature that answers it.
 /// </summary>
 internal sealed class RequestRouter : IDisposable
 {
@@ -21,7 +21,7 @@ internal sealed class RequestRouter : IDisposable
     private readonly RepoWorkspace _workspace;
     private readonly Checker _checker;
     private readonly TestPlanner _planner;
-    private readonly SemaphoreSlim _requestLock = new(1, 1);
+    private readonly RequestGate _requestLock = new();
     private readonly Preloader _preloader;
     private readonly RequestLog _requestLog;
     private Task? _initialization;
@@ -47,7 +47,7 @@ internal sealed class RequestRouter : IDisposable
 
     private async Task InitializeCoreAsync(CancellationToken cancellationToken)
     {
-        await _requestLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await _requestLock.EnterAsync(RequestGate.Initialization, cancellationToken).ConfigureAwait(false);
         try
         {
             await _workspace.InitializeAsync(cancellationToken).ConfigureAwait(false);
@@ -66,7 +66,7 @@ internal sealed class RequestRouter : IDisposable
         }
         finally
         {
-            _requestLock.Release();
+            _requestLock.Exit();
         }
 
         _preloader.Schedule(_shutdown);
@@ -74,7 +74,9 @@ internal sealed class RequestRouter : IDisposable
 
     /// <summary>
     ///     Answers one request. A ping or a shutdown is answered at once; a check or a test plan waits for initialization
-    ///     (a check that does not wait for the load is refused while loading), then for the request lock, then runs.
+    ///     (a check that does not wait for the load is refused while loading), then for the request lock, then runs. A check
+    ///     holds the lock until it is answered; a test plan holds it through the sync and the selection, and releases it
+    ///     before it mirrors and emits into the shadow folders from the snapshot it took.
     /// </summary>
     public async Task<EngineResponse> HandleAsync(EngineRequest request, CancellationToken cancellationToken)
     {
@@ -105,20 +107,31 @@ internal sealed class RequestRouter : IDisposable
 
         var phases = new PhaseTimes();
         var queued = Stopwatch.StartNew();
-        await _requestLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        var gateHolder = await _requestLock.EnterAsync(RequestLog.KindOf(request), cancellationToken).ConfigureAwait(false);
         phases.Add(Phase.Gate, queued);
         var started = Environment.TickCount64;
+        var held = true;
         try
         {
             // Each case carries its scope, which becomes the feature's own.
-            return request switch
+            if (request is EngineRequest.CheckChanges)
+                return ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.AllChanges(), phases, cancellationToken).ConfigureAwait(false));
+            if (request is EngineRequest.CheckFiles check)
+                return await CheckFilesAsync(check, phases, cancellationToken).ConfigureAwait(false);
+
+            TestScope scope = request switch
             {
-                EngineRequest.CheckChanges => ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.AllChanges(), phases, cancellationToken).ConfigureAwait(false)),
-                EngineRequest.CheckFiles check => await CheckFilesAsync(check, phases, cancellationToken).ConfigureAwait(false),
-                EngineRequest.PlanAffectedTests => ResponseMapper.Answered(await _planner.PlanAsync(new TestScope.Affected(), phases, cancellationToken).ConfigureAwait(false)),
-                EngineRequest.PlanAllTests => ResponseMapper.Answered(await _planner.PlanAsync(new TestScope.All(), phases, cancellationToken).ConfigureAwait(false)),
+                EngineRequest.PlanAffectedTests => new TestScope.Affected(),
+                EngineRequest.PlanAllTests => new TestScope.All(),
                 _ => throw new UnreachableException($"{request.GetType().Name} is answered before the request lock"),
             };
+            var pending = await _planner.SelectAsync(scope, phases, cancellationToken).ConfigureAwait(false);
+
+            // The shadow preparation reads only the snapshot the selection took, which is immutable, so it runs after the
+            // lock is released and a check from another client does not wait behind the emit.
+            held = false;
+            Release();
+            return ResponseMapper.Answered(await _planner.PrepareAsync(pending, phases, cancellationToken).ConfigureAwait(false));
         }
         catch (FuseException e)
         {
@@ -134,15 +147,25 @@ internal sealed class RequestRouter : IDisposable
             // Released whatever the log write does: a lock that stays held makes every later request wait for it.
             try
             {
-                _requestLog.Write(request, phases, Environment.TickCount64 - started);
+                _requestLog.Write(request, phases, Environment.TickCount64 - started, gateHolder);
             }
             finally
             {
-                _requestLock.Release();
-                _preloader.Schedule(_shutdown);
+                if (held)
+                    Release();
             }
         }
     }
+
+    /// <summary>Releases the request lock and lets the background load continue.</summary>
+    private void Release()
+    {
+        _requestLock.Exit();
+        _preloader.Schedule(_shutdown);
+    }
+
+    /// <summary>The planner the router answers test plans with, for a test that holds a plan in its shadow preparation.</summary>
+    internal TestPlanner Planner => _planner;
 
     /// <summary>
     ///     Checks the files <paramref name="check"/> names. The wire carries them as strings, absolute or relative to the
@@ -176,5 +199,9 @@ internal sealed class RequestRouter : IDisposable
     /// </summary>
     public Task WaitForPreloadAsync() => _preloader.WaitAsync();
 
-    public void Dispose() => _workspace.Dispose();
+    public void Dispose()
+    {
+        _workspace.Dispose();
+        _requestLock.Dispose();
+    }
 }

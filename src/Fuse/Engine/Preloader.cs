@@ -15,7 +15,7 @@ namespace Fuse.Engine;
 internal sealed class Preloader
 {
     private readonly RepoWorkspace _workspace;
-    private readonly SemaphoreSlim _requestLock;
+    private readonly RequestGate _requestLock;
     private readonly EngineLog _log;
 
     /// <summary>Makes starting a load one step, so two requests that finish together cannot both start one.</summary>
@@ -32,7 +32,7 @@ internal sealed class Preloader
     /// <param name="workspace">The workspace the projects load into.</param>
     /// <param name="requestLock">The request lock. It is held only while the next project is chosen, never during a load.</param>
     /// <param name="log">Where a load that was skipped or failed is written.</param>
-    public Preloader(RepoWorkspace workspace, SemaphoreSlim requestLock, EngineLog log)
+    public Preloader(RepoWorkspace workspace, RequestGate requestLock, EngineLog log)
     {
         _workspace = workspace;
         _requestLock = requestLock;
@@ -58,7 +58,7 @@ internal sealed class Preloader
         {
             ProjectNode? next;
             // The request lock only protects choosing the next project; the load itself runs outside it, so requests are served while a project loads.
-            await _requestLock.WaitAsync(shutdown).ConfigureAwait(false);
+            await _requestLock.EnterAsync(RequestGate.Preload, shutdown).ConfigureAwait(false);
             try
             {
                 var graph = _workspace.Graph;
@@ -69,7 +69,7 @@ internal sealed class Preloader
             }
             finally
             {
-                _requestLock.Release();
+                _requestLock.Exit();
             }
 
             if (next is null)

@@ -132,6 +132,41 @@ public class RequestRouterTests
     }
 
     [Fact]
+    public async Task A_check_sent_while_a_test_plan_emits_is_answered_before_the_plan_finishes()
+    {
+        using var repo = FixtureRepo.CreateStandard();
+        await using var engine = await InProcessRequestRouter.StartAsync(repo);
+        repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
+        await Task.Delay(400, TestContext.Current.CancellationToken);
+        using var limit = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        limit.CancelAfter(TimeSpan.FromMinutes(2));
+
+        // Holding the preparation keeps the plan in its shadow preparation, after its selection, for as long as the test likes.
+        await engine.Planner.Preparation.WaitAsync(limit.Token);
+        Task<EngineResponse> plan;
+        try
+        {
+            plan = engine.SendAsync(new EngineRequest.PlanAffectedTests { RequestId = "p-1" }, limit.Token);
+            await WaitForLogAsync(engine, "test plan: selection in ");
+
+            var check = await engine.SendAsync(new EngineRequest.CheckFiles(["Lib/Calc.cs"], WaitForLoad: true) { RequestId = "c-1" }, limit.Token);
+
+            Assert.IsType<EngineResponse.CheckAnswered>(check);
+            Assert.False(plan.IsCompleted, "the plan finished before the check, so the check may have waited for it");
+        }
+        finally
+        {
+            engine.Planner.Preparation.Release();
+        }
+
+        var answered = Assert.IsType<EngineResponse.PlanAnswered>(await plan);
+        Assert.IsType<TestRunMode.Shadow>(Assert.Single(answered.Plan.Runs).Mode);
+        var (kind, phases) = PhaseLineOf(engine, "p-1");
+        Assert.Equal("PlanAffectedTests", kind);
+        Assert.Equal(["emit", "gate", "mirror", "selection", "sync", "total"], phases.Keys.Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
     public async Task A_check_read_from_a_line_without_its_optional_fields_is_answered_and_the_next_one_is_too()
     {
         using var repo = FixtureRepo.CreateStandard();

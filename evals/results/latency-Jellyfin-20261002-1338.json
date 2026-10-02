@@ -2,43 +2,44 @@
   "suite": "latency",
   "repo": "Jellyfin",
   "commit": "1d7c6af520da5c84ceac1c21a1d2da34837540ac",
-  "fuseBuild": "5.2.0/ad78b5888eef4db888078d5e387d0faa",
+  "fuseBuild": "5.2.2/a655e25734bd41ec8ac1a86d91c8f940",
   "target": "MediaBrowser.Controller/Entities/LinkedChildComparer.cs",
   "method": "Equals",
   "referencingFilesInOtherProjects": 210,
-  "coldCleanMs": 3881.7829,
-  "coldBodyEditMs": 14732.1867,
+  "coldCleanMs": 3770.9708,
+  "coldBodyEditMs": 10464.1588,
   "bodyEdit": {
-    "p50": 182.9,
-    "p95": 419.5,
-    "max": 419.5,
+    "p50": 121,
+    "p95": 255.7,
+    "max": 255.7,
     "n": 15
   },
   "signatureEdit": {
-    "p50": 84.9,
-    "p95": 92202.7,
-    "max": 92202.7,
+    "p50": 65.7,
+    "p95": 56136.7,
+    "max": 56136.7,
     "n": 10
   },
   "signatureEditSample": "fuse: 1 error(s) introduced in 1 file(s) (MediaBrowser.Controller); MediaBrowser.Controller declarations changed, 27 dependent project(s) checked",
   "warmUnchanged": {
-    "p50": 27.4,
-    "p95": 38.8,
-    "max": 38.8,
+    "p50": 20.9,
+    "p95": 30.1,
+    "max": 30.1,
     "n": 10
   },
+  "part": "all",
   "testRound": {
-    "p50": 49132.6,
-    "p95": 59173,
-    "max": 59173,
+    "p50": 100978.2,
+    "p95": 115024.3,
+    "max": 115024.3,
     "n": 5
   },
   "bodyEditPhases": {
     "phases": {
       "bindTargets": {
-        "p50": 143.7,
-        "p95": 305.8,
-        "max": 305.8,
+        "p50": 87.5,
+        "p95": 220.6,
+        "max": 220.6,
         "n": 15
       },
       "gate": {
@@ -55,27 +56,27 @@
       },
       "surfaceDiff": {
         "p50": 0.8,
-        "p95": 1.2,
-        "max": 1.2,
+        "p95": 1.4,
+        "max": 1.4,
         "n": 15
       },
       "sync": {
-        "p50": 1.1,
-        "p95": 4.8,
-        "max": 4.8,
+        "p50": 0.9,
+        "p95": 3.7,
+        "max": 3.7,
         "n": 15
       },
       "total": {
-        "p50": 156,
-        "p95": 312,
-        "max": 312,
+        "p50": 94,
+        "p95": 219,
+        "max": 219,
         "n": 15
       }
     },
     "outsideEngine": {
-      "p50": 37.4,
-      "p95": 107.5,
-      "max": 107.5,
+      "p50": 28,
+      "p95": 67.2,
+      "max": 67.2,
       "n": 15
     },
     "n": 15
@@ -84,14 +85,14 @@
     "phases": {
       "bindCandidates": {
         "p50": 0.1,
-        "p95": 5.2,
-        "max": 5.2,
+        "p95": 4.3,
+        "max": 4.3,
         "n": 10
       },
       "bindTargets": {
-        "p50": 43.6,
-        "p95": 150.9,
-        "max": 150.9,
+        "p50": 33.1,
+        "p95": 111.2,
+        "max": 111.2,
         "n": 10
       },
       "gate": {
@@ -108,39 +109,39 @@
       },
       "loadDependents": {
         "p50": 0,
-        "p95": 30758.1,
-        "max": 30758.1,
+        "p95": 22501.9,
+        "max": 22501.9,
         "n": 10
       },
       "referenceSearch": {
-        "p50": 1.1,
-        "p95": 61241.6,
-        "max": 61241.6,
+        "p50": 0.9,
+        "p95": 33487,
+        "max": 33487,
         "n": 10
       },
       "surfaceDiff": {
-        "p50": 0.6,
-        "p95": 2.5,
-        "max": 2.5,
+        "p50": 0.5,
+        "p95": 2.2,
+        "max": 2.2,
         "n": 10
       },
       "sync": {
-        "p50": 0.8,
-        "p95": 1.1,
-        "max": 1.1,
+        "p50": 0.7,
+        "p95": 0.9,
+        "max": 0.9,
         "n": 10
       },
       "total": {
-        "p50": 47,
-        "p95": 92156,
-        "max": 92156,
+        "p50": 32,
+        "p95": 56109,
+        "max": 56109,
         "n": 10
       }
     },
     "outsideEngine": {
-      "p50": 33.8,
-      "p95": 49.7,
-      "max": 49.7,
+      "p50": 27.5,
+      "p95": 34,
+      "max": 34,
       "n": 10
     },
     "n": 10
@@ -155,8 +156,8 @@
       },
       "sync": {
         "p50": 0.1,
-        "p95": 0.2,
-        "max": 0.2,
+        "p95": 0.1,
+        "max": 0.1,
         "n": 10
       },
       "total": {
@@ -167,15 +168,21 @@
       }
     },
     "outsideEngine": {
-      "p50": 27.4,
-      "p95": 38.8,
-      "max": 38.8,
+      "p50": 20.9,
+      "p95": 30.1,
+      "max": 30.1,
       "n": 10
     },
     "n": 10
   },
   "testRoundPhases": {
     "phases": {
+      "emit": {
+        "p50": 4666.3,
+        "p95": 7466.6,
+        "max": 7466.6,
+        "n": 5
+      },
       "gate": {
         "p50": 0,
         "p95": 0,
@@ -183,34 +190,34 @@
         "n": 5
       },
       "mirror": {
-        "p50": 6117,
-        "p95": 10592.8,
-        "max": 10592.8,
+        "p50": 785.5,
+        "p95": 9436.2,
+        "max": 9436.2,
         "n": 5
       },
       "selection": {
-        "p50": 29.2,
-        "p95": 361.5,
-        "max": 361.5,
+        "p50": 37.4,
+        "p95": 264.6,
+        "max": 264.6,
         "n": 5
       },
       "sync": {
-        "p50": 1,
-        "p95": 1.2,
-        "max": 1.2,
+        "p50": 0.8,
+        "p95": 2.4,
+        "max": 2.4,
         "n": 5
       },
       "total": {
-        "p50": 6157,
-        "p95": 11094,
-        "max": 11094,
+        "p50": 5484,
+        "p95": 17281,
+        "max": 17281,
         "n": 5
       }
     },
     "outsideEngine": {
-      "p50": 43226.6,
-      "p95": 48079,
-      "max": 48079,
+      "p50": 95494.2,
+      "p95": 97743.3,
+      "max": 97743.3,
       "n": 5
     },
     "n": 5
@@ -219,32 +226,52 @@
     "writers": {
       "clients": 4,
       "editsPerClient": 10,
-      "wallMs": 202523.3306,
+      "wallMs": 314548.5247,
       "checks": 40,
       "unanswered": 0,
       "notRun": 0,
       "gate": {
-        "p50": 380.4,
-        "p95": 9695.3,
-        "max": 11500,
+        "p50": 308.6,
+        "p95": 3408.9,
+        "max": 5313.2,
         "n": 40
+      },
+      "gateByHolder": {
+        "CheckChanges": {
+          "p50": 199.1,
+          "p95": 199.1,
+          "max": 199.1,
+          "n": 1
+        },
+        "CheckFiles": {
+          "p50": 305.2,
+          "p95": 1278.7,
+          "max": 1498.5,
+          "n": 34
+        },
+        "PlanAffectedTests": {
+          "p50": 3408.9,
+          "p95": 5313.2,
+          "max": 5313.2,
+          "n": 4
+        }
       },
       "engineTotal": {
-        "p50": 156,
-        "p95": 406,
-        "max": 516,
+        "p50": 94,
+        "p95": 375,
+        "max": 672,
         "n": 40
       },
-      "singleClientTotalP50": 156
+      "singleClientTotalP50": 140
     },
     "builds": {
       "clients": 3,
       "rounds": 5,
-      "wallMs": 228512.3553,
+      "wallMs": 169713.3974,
       "each": {
-        "p50": 27773.5,
-        "p95": 64980.8,
-        "max": 64980.8,
+        "p50": 21847.9,
+        "p95": 43760.4,
+        "max": 43760.4,
         "n": 15
       },
       "collisions": 0,
@@ -255,7 +282,7 @@
         "index": 1,
         "project": "MediaBrowser.Model.csproj",
         "edit": "MediaBrowser.Model\\Configuration\\LibraryOptions.cs",
-        "ms": 61379.5986,
+        "ms": 110442.6315,
         "testProjects": [
           "Jellyfin.Api.Tests",
           "Jellyfin.Controller.Tests",
@@ -275,7 +302,7 @@
         "index": 2,
         "project": "Jellyfin.MediaEncoding.Keyframes.csproj",
         "edit": "src\\Jellyfin.MediaEncoding.Keyframes\\FfProbe\\FfProbeKeyframeExtractor.cs",
-        "ms": 65678.759,
+        "ms": 106237.862,
         "testProjects": [
           "Jellyfin.Api.Tests",
           "Jellyfin.Controller.Tests",
@@ -296,7 +323,7 @@
         "index": 3,
         "project": "Jellyfin.MediaEncoding.Keyframes.csproj",
         "edit": "src\\Jellyfin.MediaEncoding.Keyframes\\FfProbe\\FfProbeKeyframeExtractor.cs",
-        "ms": 64049.4478,
+        "ms": 101559.2337,
         "testProjects": [
           "Jellyfin.Api.Tests",
           "Jellyfin.Controller.Tests",
@@ -315,6 +342,6 @@
       }
     ]
   },
-  "engineWorkingSetMb": 794.5,
+  "engineWorkingSetMb": 695.5,
   "treeCleanAfter": true
 }

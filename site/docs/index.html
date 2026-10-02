@@ -20,12 +20,12 @@
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 7.2x to 22.6x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 7.0x to 31.0x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Fuse Documentation">
 <meta name="twitter:description" content="What Fuse is, what it gives an agent and its subagents, what it costs, the words the documentation uses, and which page answers which question.">
 <meta name="twitter:image" content="https://fuse.codes/assets/og.png">
-<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 7.2x to 22.6x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 7.0x to 31.0x faster than dotnet build. dotnet tool install -g Fuse.">
 <link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
 <link rel="icon" href="../assets/fuse-icon.svg" type="image/svg+xml" sizes="any">
 <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -140,8 +140,8 @@
       <li><b>The agent reads the result</b><span>the two callers that broke, or nothing when the edit is clean.</span></li>
     </ol>
     <ul>
-      <li><strong>Faster checks.</strong> 7.2x to 22.6x faster than <code>dotnet build</code> on three open-source repositories (<a href="benchmarks.html">Benchmarks</a>). A change inside a method body is checked in the edited file only.</li>
-      <li><strong>Only affected tests.</strong> 1.4x to 4.4x faster than <code>dotnet test</code>. When only <code>.cs</code> files changed, tests run without a rebuild.</li>
+      <li><strong>Faster checks.</strong> 7.0x to 31.0x faster than <code>dotnet build</code> on four open-source repositories (<a href="benchmarks.html">Benchmarks</a>). A change inside a method body is checked in the edited file only.</li>
+      <li><strong>Only affected tests.</strong> 1.3x to 3.7x faster than <code>dotnet test</code>. When only <code>.cs</code> files changed, tests run without a rebuild.</li>
       <li><strong>Only new errors.</strong> Errors that were already in the last commit are not reported.</li>
       <li><strong>Breaks in other projects.</strong> Each broken caller is listed with the change that broke it.</li>
       <li><strong>Short output.</strong> At most 20 errors or 10 test failures, plus one summary line. Nothing when the edit is clean.</li>

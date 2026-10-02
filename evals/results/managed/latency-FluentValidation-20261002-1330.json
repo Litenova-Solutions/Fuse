@@ -1,0 +1,177 @@
+{
+  "suite": "latency",
+  "repo": "FluentValidation",
+  "commit": "fa3c160b17796ff67d6aa5ae6c4b05b471f1a791",
+  "fuseBuild": "5.2.2/806c99444b87489186345535930bfb1c",
+  "target": "src/FluentValidation/AbstractValidator.cs",
+  "method": "RuleFor",
+  "referencingFilesInOtherProjects": 56,
+  "coldCleanMs": 2939.7219,
+  "coldBodyEditMs": 7572.9254,
+  "bodyEdit": {
+    "p50": 523.6,
+    "p95": 736.6,
+    "max": 736.6,
+    "n": 15
+  },
+  "signatureEdit": {
+    "p50": 3616,
+    "p95": 25802.4,
+    "max": 25802.4,
+    "n": 10
+  },
+  "signatureEditSample": "fuse: 883 error(s) introduced in 55 file(s), first 20 shown (FluentValidation.Tests.Benchmarks, FluentValidation.Tests); FluentValidation declarations changed, 3 dependent project(s) checked; 10 cause(s) left out",
+  "warmUnchanged": {
+    "p50": 206.5,
+    "p95": 221.6,
+    "max": 221.6,
+    "n": 10
+  },
+  "part": "checks",
+  "testRound": null,
+  "bodyEditPhases": {
+    "phases": {
+      "bindTargets": {
+        "p50": 303.1,
+        "p95": 498.5,
+        "max": 498.5,
+        "n": 15
+      },
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 15
+      },
+      "load": {
+        "p50": 0,
+        "p95": 0.3,
+        "max": 0.3,
+        "n": 15
+      },
+      "surfaceDiff": {
+        "p50": 3.3,
+        "p95": 60.8,
+        "max": 60.8,
+        "n": 15
+      },
+      "sync": {
+        "p50": 1.5,
+        "p95": 6,
+        "max": 6,
+        "n": 15
+      },
+      "total": {
+        "p50": 312,
+        "p95": 515,
+        "max": 515,
+        "n": 15
+      }
+    },
+    "outsideEngine": {
+      "p50": 226.2,
+      "p95": 239,
+      "max": 239,
+      "n": 15
+    },
+    "n": 15
+  },
+  "signatureEditPhases": {
+    "phases": {
+      "bindCandidates": {
+        "p50": 3372.8,
+        "p95": 18172.5,
+        "max": 18172.5,
+        "n": 9
+      },
+      "bindTargets": {
+        "p50": 84.8,
+        "p95": 3915.6,
+        "max": 3915.6,
+        "n": 10
+      },
+      "gate": {
+        "p50": 0,
+        "p95": 0.3,
+        "max": 0.3,
+        "n": 10
+      },
+      "load": {
+        "p50": 0,
+        "p95": 0.3,
+        "max": 0.3,
+        "n": 10
+      },
+      "loadDependents": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 9
+      },
+      "referenceSearch": {
+        "p50": 5.2,
+        "p95": 7098.7,
+        "max": 7098.7,
+        "n": 9
+      },
+      "surfaceDiff": {
+        "p50": 1.3,
+        "p95": 33.8,
+        "max": 33.8,
+        "n": 10
+      },
+      "sync": {
+        "p50": 1.4,
+        "p95": 9.5,
+        "max": 9.5,
+        "n": 10
+      },
+      "total": {
+        "p50": 3484,
+        "p95": 25594,
+        "max": 25594,
+        "n": 10
+      }
+    },
+    "outsideEngine": {
+      "p50": 215,
+      "p95": 225,
+      "max": 225,
+      "n": 10
+    },
+    "n": 10
+  },
+  "warmUnchangedPhases": {
+    "phases": {
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 10
+      },
+      "sync": {
+        "p50": 0.2,
+        "p95": 0.3,
+        "max": 0.3,
+        "n": 10
+      },
+      "total": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 10
+      }
+    },
+    "outsideEngine": {
+      "p50": 206.5,
+      "p95": 221.6,
+      "max": 221.6,
+      "n": 10
+    },
+    "n": 10
+  },
+  "testRoundPhases": null,
+  "multiAgent": null,
+  "engineWorkingSetMb": 649.7,
+  "treeCleanAfter": true
+}

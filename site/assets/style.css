@@ -94,6 +94,7 @@ main:focus { outline: none; }
 .lane.fuse .t { color: var(--text); font-weight: 600; }
 .repo .x { font-size: 0.82rem; color: var(--muted); margin: 0.4rem 0 0; }
 .repo .x b { color: var(--text); }
+.repo .spread { font-size: 0.74rem; color: var(--muted); margin: 0.15rem 0 0; font-variant-numeric: tabular-nums; }
 .proof { text-align: center; font-size: 0.9rem; color: var(--muted); margin: 2.6rem auto 0; }
 .proof b { color: var(--text); }
 

@@ -20,12 +20,12 @@
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 7.2x to 22.6x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 7.0x to 31.0x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="FAQ">
 <meta name="twitter:description" content="Common questions about Fuse, and how it differs from language servers, Roslyn MCP servers, code search tools and test impact analysis tools.">
 <meta name="twitter:image" content="https://fuse.codes/assets/og.png">
-<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 7.2x to 22.6x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 7.0x to 31.0x faster than dotnet build. dotnet tool install -g Fuse.">
 <link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
 <link rel="icon" href="../assets/fuse-icon.svg" type="image/svg+xml" sizes="any">
 <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -106,7 +106,7 @@
           "name": "Why does Fuse exist?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Agents check their work by running dotnet build and dotnet test, often dozens of times in one task. Each run is slow, lists old errors next to new ones, and prints far more than the agent needs. With several subagents, the builds also use a lot of memory and fail on each other's locked files. Fuse removes that wait. On the benchmark repositories a check took 0.07 to 1.04 seconds where dotnet build took 1.78 to 12.8 seconds, and fuse test was 1.4x to 4.4x faster than dotnet test (Benchmarks). All agents in a repository share one Fuse process, and their builds take turns."
+            "text": "Agents check their work by running dotnet build and dotnet test, often dozens of times in one task. Each run is slow, lists old errors next to new ones, and prints far more than the agent needs. With several subagents, the builds also use a lot of memory and fail on each other's locked files. Fuse removes that wait. On the benchmark repositories a check took 0.24 to 0.69 seconds at the median where dotnet build took 2.30 to 15.0 seconds, and fuse test was 1.3x to 3.7x faster than dotnet test (Benchmarks). All agents in a repository share one Fuse process, and their builds take turns."
           }
         },
         {
@@ -287,7 +287,7 @@
 
     <h3 id="why-does-fuse-exist">Why does Fuse exist? <a class="anchor" href="#why-does-fuse-exist" aria-label="Link to this section">#</a></h3>
     <p>Agents check their work by running <code>dotnet build</code> and <code>dotnet test</code>, often dozens of times in one task. Each run is slow, lists old errors next to new ones, and prints far more than the agent needs. With several subagents, the builds also use a lot of memory and fail on each other's locked files.</p>
-    <p>Fuse removes that wait. On the benchmark repositories a check took 0.07 to 1.04 seconds where <code>dotnet build</code> took 1.78 to 12.8 seconds, and <code>fuse test</code> was 1.4x to 4.4x faster than <code>dotnet test</code> (<a href="benchmarks.html">Benchmarks</a>). All agents in a repository share one Fuse process, and their builds take turns.</p>
+    <p>Fuse removes that wait. On the benchmark repositories a check took 0.24 to 0.69 seconds at the median where <code>dotnet build</code> took 2.30 to 15.0 seconds, and <code>fuse test</code> was 1.3x to 3.7x faster than <code>dotnet test</code> (<a href="benchmarks.html">Benchmarks</a>). All agents in a repository share one Fuse process, and their builds take turns.</p>
 
     <h3 id="is-fuse-for-people-or-for-agents">Is Fuse for people or for agents? <a class="anchor" href="#is-fuse-for-people-or-for-agents" aria-label="Link to this section">#</a></h3>
     <p>Agents. The hooks run Fuse without the agent asking, and the output is only what an agent needs to act on. You run <code>fuse init</code> once, and can use the commands to try Fuse or see what the agent gets. For your own editing, your IDE is the better tool.</p>

@@ -226,7 +226,21 @@ internal static partial class MultiAgentScenario
             .ToList();
         var pair = candidates.SelectMany(a => candidates.Where(b => b.Project != a.Project && a.Tests.Except(b.Tests).Any()).Select(b => (P1: a, P2: b))).FirstOrDefault();
         if (pair.P1.File is null)
-            throw new InvalidOperationException($"the rounds scenario needs two projects whose types different test projects use; found {candidates.Count} candidate(s) in {solution.Root}");
+        {
+            // A repository with one test project, such as FluentValidation, has no pair whose tests differ. The rounds
+            // still measure three test plans in a row, but cannot show a rerun of a test project only the first edit reaches.
+            // Only projects a test project references count: a type a test merely names, such as a benchmark's, is not
+            // something an edit reaches through a reference.
+            var referenced = solution.TestProjects.SelectMany(SolutionInfo.ReferencesOf).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var reachable = candidates.Where(c => referenced.Contains(Path.GetFullPath(c.Project))).ToList();
+            pair = reachable.SelectMany(a => reachable.Where(b => b.Project != a.Project).Select(b => (P1: a, P2: b))).FirstOrDefault();
+            // With one such project, all three rounds edit its file.
+            if (pair.P1.File is null && reachable.Count == 1)
+                pair = (reachable[0], reachable[0]);
+            if (pair.P1.File is null)
+                throw new InvalidOperationException($"the rounds scenario needs two projects whose types a test project uses; found {candidates.Count} candidate(s) in {solution.Root}");
+            Console.WriteLine("[multiAgent] rounds: every candidate pair reaches the same test projects, so the rounds cannot show a rerun");
+        }
 
         var (p1, f1) = (pair.P1.Project, pair.P1.File);
         var (p2, f2) = (pair.P2.Project, pair.P2.File);

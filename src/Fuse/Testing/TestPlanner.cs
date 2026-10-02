@@ -40,7 +40,7 @@ internal sealed class TestPlanner
 
         if (scope is TestScope.All)
         {
-            var everything = testProjects.Select(p => new PlannedRun(p.Path, p.Name, new RunMode.Build(), null, p.UsesTestingPlatform)).ToArray();
+            var everything = testProjects.Select(p => new PlannedRun(p.Path, p.Name, new RunMode.Build(), null, p.UsesTestingPlatform, p.UsesTestingPlatform ? null : p.RunSettings)).ToArray();
             return new TestPlanResult(everything, total, total, $"ran every test in {testProjects.Count} test project(s)");
         }
 
@@ -55,6 +55,7 @@ internal sealed class TestPlanner
         var runs = new List<PlannedRun>();
         var selected = 0;
         var reasons = new HashSet<string>(StringComparer.Ordinal);
+        var collapsed = new List<string>();
         var emitter = new ShadowEmitter(_workspace.Root, graph);
         var mirroring = phases.Start();
         foreach (var (path, selection) in selections.OrderBy(s => s.Key.Absolute, StringComparer.Ordinal))
@@ -71,20 +72,30 @@ internal sealed class TestPlanner
             if (selection is TestSelection.Whole whole)
                 reasons.Add(whole.Reason);
 
-            var filter = TestFilter.For(selection);
             if (node.UsesTestingPlatform)
             {
-                // Microsoft.Testing.Platform filters differ per framework; run the project whole.
-                runs.Add(new PlannedRun(node.Path, node.Name, new RunMode.Build(), null, true));
+                // Microsoft.Testing.Platform filters differ per framework; run the project whole, with no VSTest runsettings.
+                runs.Add(new PlannedRun(node.Path, node.Name, new RunMode.Build(), null, true, null));
                 continue;
             }
 
-            runs.AddRange(await RunsOfAsync(node, filter, emitter, timer, cancellationToken).ConfigureAwait(false));
+            var filter = TestFilter.For(selection);
+            if (filter.Collapse != FilterCollapse.None)
+            {
+                var patterns = ((TestSelection.Methods)selection).Patterns.Count;
+                var form = filter.Collapse == FilterCollapse.ToClasses ? $"{filter.Patterns} class prefix(es)" : "no filter, so the project runs whole";
+                _workspace.Log($"test plan: {node.Name} filter of {patterns} pattern(s) is above {TestFilter.MaxPatterns}, collapsed to {form}");
+                collapsed.Add(filter.Collapse == FilterCollapse.ToClasses ? $"whole test classes in {node.Name}" : $"all of {node.Name}");
+            }
+
+            runs.AddRange(await RunsOfAsync(node, filter.Expression, emitter, timer, cancellationToken).ConfigureAwait(false));
         }
 
         var summary = new StringBuilder($"ran {selected} test(s) affected by your changes out of {total}");
         if (reasons.Count > 0)
             summary.Append(" (whole projects where ").Append(string.Join("; ", reasons)).Append(')');
+        if (collapsed.Count > 0)
+            summary.Append("; ran ").Append(string.Join(", ", collapsed)).Append(", because a test filter holds at most ").Append(TestFilter.MaxPatterns).Append(" names");
         summary.Append("; fuse test --all runs everything");
         // The shadow copy and the in-memory emit happen together inside the emitter, so one phase covers both.
         phases.Add(Phase.Mirror, mirroring);
@@ -114,8 +125,8 @@ internal sealed class TestPlanner
 
         _workspace.Log($"test plan: {node.Name} [{string.Join(", ", variants.Select(v => v.Name))}] {(shadows.Count == 0 ? "builds with MSBuild" : $"runs from {string.Join(", ", shadows.Select(s => s.Assembly))}")} after {timer.ElapsedMilliseconds} ms");
         if (shadows.Count == 0)
-            return [new PlannedRun(node.Path, node.Name, new RunMode.Build(), filter, false)];
-        return [.. shadows.Select(s => new PlannedRun(node.Path, node.Name, s, filter, false))];
+            return [new PlannedRun(node.Path, node.Name, new RunMode.Build(), filter, false, node.RunSettings)];
+        return [.. shadows.Select(s => new PlannedRun(node.Path, node.Name, s, filter, false, node.RunSettings))];
     }
 
     /// <summary>A selection as the engine log gives it: "all", or how many patterns it has.</summary>

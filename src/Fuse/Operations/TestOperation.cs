@@ -66,7 +66,7 @@ internal static class TestOperation
             {
                 // One process per target framework, in parallel. Every run in a shadow group is a shadow run.
                 var results = await Task.WhenAll(group.Select(run => RunDotnetTestAsync(
-                    root, root.Path, [((TestRunMode.Shadow)run.Mode).Assembly, .. (run.Filter is null ? Array.Empty<string>() : ["--filter", run.Filter])], ct, assembly: true))).ConfigureAwait(false);
+                    root, root.Path, [((TestRunMode.Shadow)run.Mode).Assembly], ct, assembly: true, run: run))).ConfigureAwait(false);
                 // A shadow run that could not start (a test host or adapter problem) sends the whole project through MSBuild below.
                 if (results.Any(r => r.Outcome is null))
                     return;
@@ -90,7 +90,7 @@ internal static class TestOperation
             var run = group.First();
             var (outcome, process) = run.UsesTestingPlatform
                 ? await RunDotnetTestAsync(root, root.Path, ["--project", run.Project, "--no-restore"], cancellationToken, testingPlatform: true).ConfigureAwait(false)
-                : await RunDotnetTestAsync(root, root.Path, [run.Project, "--no-restore", .. (run.Filter is null ? Array.Empty<string>() : ["--filter", run.Filter])], cancellationToken).ConfigureAwait(false);
+                : await RunDotnetTestAsync(root, root.Path, [run.Project, "--no-restore"], cancellationToken, run: run).ConfigureAwait(false);
             if (outcome is not null)
             {
                 aggregate = aggregate.Add(outcome);
@@ -132,8 +132,9 @@ internal static class TestOperation
     ///     Microsoft.Testing.Platform run that exited with 0.
     /// </summary>
     /// <param name="assembly">True when <paramref name="arguments"/> name a test assembly: <c>dotnet test</c> then hands them to VSTest, which rejects MSBuild switches.</param>
+    /// <param name="run">The planned VSTest run, whose filter and project runsettings go into a runsettings file; null for none.</param>
     private static async Task<(TrxResults? Outcome, ProcessResult? Process)> RunDotnetTestAsync(
-        RepoRoot root, string workingDirectory, string[] arguments, CancellationToken cancellationToken, bool testingPlatform = false, bool assembly = false)
+        RepoRoot root, string workingDirectory, string[] arguments, CancellationToken cancellationToken, bool testingPlatform = false, bool assembly = false, TestRun? run = null)
     {
         var results = Path.Combine(root.StateDirectory, "results", Guid.NewGuid().ToString("N")[..8]);
         try
@@ -143,7 +144,7 @@ internal static class TestOperation
                 : assembly
                     ? ["--logger", "trx;LogFilePrefix=fuse", "--results-directory", results]
                     : ["--logger", "trx;LogFilePrefix=fuse", "--results-directory", results, "-nologo", "-tl:off"];
-            var result = await ProcessRunner.RunAsync("dotnet", ["test", .. arguments, .. reporting], workingDirectory, cancellationToken).ConfigureAwait(false);
+            var result = await ProcessRunner.RunAsync("dotnet", ["test", .. arguments, .. Settings(run, results, assembly), .. reporting], workingDirectory, cancellationToken).ConfigureAwait(false);
             var outcome = TrxReader.ReadDirectory(results, root.Path) ?? (testingPlatform ? TestingPlatformOutput.Read(result.Output, root.Path) : null);
             // Counts that say nothing failed from a run that exited with a code other than 0 do not explain its exit code.
             if (testingPlatform && outcome is { Failed: 0 } && result.ExitCode != 0)
@@ -165,6 +166,19 @@ internal static class TestOperation
             {
             }
         }
+    }
+
+    /// <summary>
+    ///     The <c>--settings</c> argument of a VSTest run: a runsettings file in its results folder that carries its filter,
+    ///     so a filter of any length leaves the command line short. A shadow run gets one for the project's runsettings
+    ///     too, because <c>dotnet test</c> on an assembly does not read the project; a build with MSBuild without a filter
+    ///     reads them itself.
+    /// </summary>
+    private static string[] Settings(TestRun? run, string results, bool assembly)
+    {
+        if (run is null || run.UsesTestingPlatform || (run.Filter is null && !(assembly && run.RunSettings is not null)))
+            return [];
+        return ["--settings", RunSettingsFile.Write(results, run.Filter, run.RunSettings)];
     }
 
     /// <summary>

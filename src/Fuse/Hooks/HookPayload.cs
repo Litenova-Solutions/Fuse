@@ -35,7 +35,7 @@ internal sealed partial class HookPayload
     /// <summary>True when the harness is already continuing because of an earlier Stop hook block.</summary>
     public bool StopHookActive =>
         (_root.TryGetProperty("stop_hook_active", out var active) && active.ValueKind == JsonValueKind.True)
-        || (_root.TryGetProperty("loop_count", out var loops) && loops.ValueKind == JsonValueKind.Number && loops.GetInt32() > 0);
+        || (_root.TryGetProperty("loop_count", out var loops) && loops.ValueKind == JsonValueKind.Number && (!loops.TryGetDouble(out var count) || count > 0));
 
     /// <summary>The tool input object (<c>tool_input</c>, or Copilot's <c>toolArgs</c>, which may be a JSON string).</summary>
     public JsonElement? ToolInput

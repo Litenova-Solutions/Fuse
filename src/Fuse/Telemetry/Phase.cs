@@ -34,9 +34,21 @@ internal static class Phase
     /// <summary>Selecting the affected tests in each test project.</summary>
     public const string Selection = "selection";
 
-    /// <summary>Copying build output into the shadow folders and emitting the changed assemblies into them.</summary>
+    /// <summary>
+    ///     Preparing the shadow folders, after the request lock is released: judging which assemblies are stale and copying
+    ///     the test project's build output into the shadow folder, everything but <see cref="Emit"/>.
+    /// </summary>
     public const string Mirror = "mirror";
 
-    /// <summary>The whole request once it holds the request lock, as the engine measured it.</summary>
+    /// <summary>
+    ///     Emitting the changed assemblies from the compilations of the snapshot the plan took, and writing them into the
+    ///     shadow folders, after the request lock is released.
+    /// </summary>
+    public const string Emit = "emit";
+
+    /// <summary>
+    ///     The whole request from the moment it holds the request lock until it is answered, as the engine measured it. A
+    ///     test plan's <see cref="Mirror"/> and <see cref="Emit"/> are inside it, although the lock is released before them.
+    /// </summary>
     public const string Total = "total";
 }

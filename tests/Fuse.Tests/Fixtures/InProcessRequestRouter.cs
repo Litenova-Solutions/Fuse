@@ -2,6 +2,7 @@ using Fuse.Engine;
 using Fuse.Paths;
 using Fuse.Protocol;
 using Fuse.Telemetry;
+using Fuse.Testing;
 
 namespace Fuse.Tests.Fixtures;
 
@@ -29,6 +30,9 @@ internal sealed class InProcessRequestRouter : IAsyncDisposable
     }
 
     public RepoRoot Root { get; }
+
+    /// <summary>The router's test planner, for a test that holds a plan in its shadow preparation.</summary>
+    public TestPlanner Planner => _router.Planner;
 
     /// <summary>Starts a router over <paramref name="repo"/>, initialized as the engine initializes it.</summary>
     /// <param name="repo">The repository to serve, which the test disposes; a standard fixture this router disposes when null.</param>

@@ -236,7 +236,7 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
     <h3 id="multi-agent-scenario">Multi-agent scenario <a class="anchor" href="#multi-agent-scenario" aria-label="Link to this section">#</a></h3>
     <p>The latency suite ends with three scenarios for several agents in one repository:</p>
     <ul>
-      <li><strong>Writers.</strong> Up to four clients each edit a file in a different code project ten times and check it, all at once, while a fifth client checks and runs the tests three times. The engine's <code>gate</code> phase shows whether requests queue behind each other.</li>
+      <li><strong>Writers.</strong> Up to four clients each edit a file in a different code project ten times and check it, all at once, while a fifth client checks and runs the tests three times. The engine's <code>gate</code> phase shows whether requests queue behind each other, and <code>gateByHolder</code> groups those waits by what held the request lock longest during each one.</li>
       <li><strong>Builds.</strong> Three clients run <code>fuse build</code> at once, five times. A collision is an output line with MSB3021, MSB3026, MSB3027 or CS2012, and the pass bar is zero.</li>
       <li><strong>Rounds.</strong> Three <code>fuse test</code> rounds: a body edit in one project, a body edit in a second project whose tests differ, and a second edit to the same file. The result records which test projects each round planned.</li>
     </ul>

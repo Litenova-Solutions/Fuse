@@ -25,6 +25,23 @@ public class PhaseLineTests
     }
 
     [Fact]
+    public void Round_trips_what_held_the_request_lock_during_the_wait()
+    {
+        var line = PhaseLine.Format("1234-8", "CheckFiles", [("gate", 900.0), ("total", 20.0)], "PlanAffectedTests");
+        Assert.Equal("phases id=1234-8 kind=CheckFiles gateHolder=PlanAffectedTests gate=900.0 total=20.0", line);
+
+        Assert.True(PhaseLine.TryParse(line, out _, out var kind, out var gateHolder, out var phases));
+        Assert.Equal("CheckFiles", kind);
+        Assert.Equal("PlanAffectedTests", gateHolder);
+        // The holder is not a phase: the phases stay the timed ones.
+        Assert.Equal(["gate", "total"], phases.Keys.Order(StringComparer.Ordinal));
+
+        // A request that waited behind nothing writes no holder, and reads back as none.
+        Assert.True(PhaseLine.TryParse(PhaseLine.Format("1234-9", "CheckFiles", [("gate", 0.0)]), out _, out _, out var none, out _));
+        Assert.Null(none);
+    }
+
+    [Fact]
     public void Keeps_a_phase_the_reader_does_not_know()
     {
         // An engine from a later build may time a phase this reader has never heard of; the known ones still come through.

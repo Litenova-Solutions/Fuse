@@ -7,7 +7,10 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Fuse.Evals;
 
-/// <summary>What four agents editing at once cost, and what one agent's check costs on its own.</summary>
+/// <summary>
+///     What four agents editing at once cost, and what one agent's check costs on its own. <c>GateByHolder</c> groups the
+///     writers' gate waits by what held the request lock longest during each wait, so a long wait names what it was behind.
+/// </summary>
 internal sealed record MultiAgentWriters(
     int Clients,
     int EditsPerClient,
@@ -16,6 +19,7 @@ internal sealed record MultiAgentWriters(
     int Unanswered,
     int NotRun,
     LatencyStats Gate,
+    Dictionary<string, LatencyStats> GateByHolder,
     LatencyStats EngineTotal,
     double SingleClientTotalP50);
 
@@ -94,6 +98,7 @@ internal static partial class MultiAgentScenario
         var unanswered = 0;
         var notRun = 0;
         var gates = new List<double>();
+        var gatesByHolder = new Dictionary<string, List<double>>(StringComparer.Ordinal);
         var totals = new List<double>();
         var checks = 0;
 
@@ -101,7 +106,7 @@ internal static partial class MultiAgentScenario
         try
         {
             var watch = Stopwatch.StartNew();
-            var clients = targets.Select(target => WriterAsync(repo, target, texts[target], taken, (ms, gate, total, exitCode) =>
+            var clients = targets.Select(target => WriterAsync(repo, target, texts[target], taken, (ms, gate, gateHolder, total, exitCode) =>
             {
                 lock (walls)
                 {
@@ -110,7 +115,15 @@ internal static partial class MultiAgentScenario
                     notRun += exitCode is 0 or 1 or 2 ? 0 : 1;
                     checks++;
                     if (gate is { } g)
+                    {
                         gates.Add(g);
+                        if (gateHolder is not null)
+                        {
+                            if (!gatesByHolder.TryGetValue(gateHolder, out var held))
+                                gatesByHolder[gateHolder] = held = [];
+                            held.Add(g);
+                        }
+                    }
                     if (total is { } t)
                         totals.Add(t);
                 }
@@ -120,6 +133,8 @@ internal static partial class MultiAgentScenario
             var wall = watch.Elapsed.TotalMilliseconds;
 
             Console.WriteLine($"[multiAgent] writers: {targets.Count} client(s) x {EditsPerWriter} edits in {wall:0} ms, {checks} check(s), {unanswered} unanswered, {notRun} did not run");
+            foreach (var (holder, waits) in gatesByHolder.OrderBy(h => h.Key, StringComparer.Ordinal))
+                Console.WriteLine($"[multiAgent] writers: {waits.Count} gate wait(s) behind {holder}, longest {waits.Max():0} ms");
             return new MultiAgentWriters(
                 targets.Count,
                 EditsPerWriter,
@@ -128,6 +143,7 @@ internal static partial class MultiAgentScenario
                 unanswered,
                 notRun,
                 LatencyStats.Of(gates),
+                gatesByHolder.OrderBy(h => h.Key, StringComparer.Ordinal).ToDictionary(h => h.Key, h => LatencyStats.Of(h.Value), StringComparer.Ordinal),
                 LatencyStats.Of(totals),
                 singleClientTotalP50);
         }
@@ -138,7 +154,7 @@ internal static partial class MultiAgentScenario
         }
     }
 
-    private static async Task WriterAsync(EvalRepo repo, string file, string original, HashSet<string> taken, Action<double, double?, double?, int> report)
+    private static async Task WriterAsync(EvalRepo repo, string file, string original, HashSet<string> taken, Action<double, double?, string?, double?, int> report)
     {
         for (var i = 1; i <= EditsPerWriter; i++)
         {
@@ -150,7 +166,7 @@ internal static partial class MultiAgentScenario
             var phases = RequestPhases.TakeNewest(repo.EngineLogLines(), taken);
             // A request with no gate phase did not wait for the gate at all; it is not a zero-length wait.
             double? gate = phases is not null && phases.Phases.TryGetValue(Phase.Gate, out var waited) ? waited : null;
-            report(ms, gate, phases?.Total, run.ExitCode);
+            report(ms, gate, phases?.GateHolder, phases?.Total, run.ExitCode);
         }
     }
 

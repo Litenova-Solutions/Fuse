@@ -156,22 +156,32 @@ internal sealed class FixtureRepo : IDisposable
         }
     }
 
+    /// <summary>
+    ///     Deletes the repository and its state directory. An in-process engine records no root, so without this every
+    ///     test run would leave state directories in the user's local application data that no cleanup can remove.
+    /// </summary>
     public void Dispose()
+    {
+        DeleteDirectory(Path);
+        DeleteDirectory(Root.StateDirectory);
+    }
+
+    private static void DeleteDirectory(string directory)
     {
         for (var attempt = 0; attempt < 10; attempt++)
         {
             try
             {
-                if (!Directory.Exists(Path))
+                if (!Directory.Exists(directory))
                     return;
-                foreach (var file in Directory.EnumerateFiles(Path, "*", SearchOption.AllDirectories))
+                foreach (var file in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories))
                     File.SetAttributes(file, FileAttributes.Normal);
-                Directory.Delete(Path, recursive: true);
+                Directory.Delete(directory, recursive: true);
                 return;
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
-                // A BuildHost or test host may still be releasing files.
+                // A BuildHost, test host or engine may still be releasing files.
                 Thread.Sleep(300);
             }
         }

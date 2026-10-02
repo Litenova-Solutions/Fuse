@@ -1,4 +1,5 @@
 using Fuse.Operations;
+using Fuse.Paths;
 using Fuse.Tests.Fixtures;
 
 namespace Fuse.Tests.EndToEnd;
@@ -138,6 +139,19 @@ public class BuildLockTests
         {
             await FuseProcess.StopEngineAsync(repo.Root);
         }
+    }
+
+    [Fact]
+    public void Taking_the_lock_records_the_repository_so_its_state_can_be_cleaned_up()
+    {
+        // A repository where only fuse build ever ran has no engine to record its root, and a state directory without
+        // one is never removed once the repository is gone.
+        using var repo = FixtureRepo.CreateStandard();
+        using (BuildLock.Acquire(repo.Root))
+        {
+        }
+
+        Assert.Equal(repo.Root.Path, LocalState.RootOf(repo.Root.StateDirectory));
     }
 
     [Fact]

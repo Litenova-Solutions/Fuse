@@ -40,7 +40,7 @@ internal sealed class BuildLock : IDisposable
         var held = new BuildLock("");
         try
         {
-            Directory.CreateDirectory(root.StateDirectory);
+            LocalState.RecordRoot(root);
             var path = Path.Combine(root.StateDirectory, "build.lock");
             var waited = false;
             while (true)

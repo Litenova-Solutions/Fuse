@@ -20,7 +20,8 @@ namespace Fuse.Testing;
 ///     <para>
 ///         The walk follows callers, overridden members and the interface members a changed member implements (so
 ///         calls through an interface or a DI registration are followed). A reference inside a test method selects that
-///         test; a reference elsewhere in a test class selects the whole class and every class derived from it.
+///         test; a reference elsewhere in a test class selects the whole class and every class derived from it, and the walk
+///         goes on to that member's callers, so a test that reaches the change through a helper class is selected too.
 ///     </para>
 ///     <para>
 ///         A member with no caller in source goes to <see cref="HostRule"/>. Code an application host calls selects every
@@ -216,7 +217,9 @@ internal sealed class MemberWalk
             return;
         }
 
-        // A helper, fixture or base class: every test in the class and in classes that derive from it.
+        // A helper, fixture or base class: every test in the class and in classes that derive from it, and the tests that
+        // call it from other classes, which the walk reaches through its callers. A helper class holds no tests itself.
+        Enqueue(symbol);
         if (!_selections.Add(node, TestName(type) + "."))
             return;
         if (type.TypeKind != TypeKind.Class)

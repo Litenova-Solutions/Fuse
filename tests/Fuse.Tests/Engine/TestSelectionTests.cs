@@ -53,6 +53,58 @@ public class TestSelectionTests
     }
 
     [Fact]
+    public async Task Changed_helper_class_in_a_test_project_selects_the_tests_that_call_it()
+    {
+        await using var engine = await InProcessEngine.StartAsync(WithNumbersHelper());
+        engine.Repo.Replace("Lib.Tests/Numbers.cs", "public static int Two() => 2;", "public static int Two() => 3;");
+        var selection = await SelectAsync(engine, "Lib.Tests/Numbers.cs");
+        Assert.Contains("Lib.Tests.CalcTests.Doubles", Assert.IsType<TestSelection.Methods>(selection["Lib.Tests"]).Patterns);
+    }
+
+    [Fact]
+    public async Task Change_reached_through_a_helper_class_in_a_test_project_selects_the_tests_that_call_the_helper()
+    {
+        await using var engine = await InProcessEngine.StartAsync(WithNumbersHelper());
+        engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
+        var selection = await SelectAsync(engine, "Lib/Calc.cs");
+        var lib = Assert.IsType<TestSelection.Methods>(selection["Lib.Tests"]).Patterns;
+        Assert.Contains("Lib.Tests.CalcTests.Multiplies", lib);
+        Assert.Contains("Lib.Tests.CalcTests.MultipliesThroughHelper", lib);
+    }
+
+    /// <summary>
+    ///     The standard repository with a committed helper class in Lib.Tests that holds no tests, and tests in CalcTests
+    ///     that reach Lib only through it.
+    /// </summary>
+    private static FixtureRepo WithNumbersHelper()
+    {
+        var repo = FixtureRepo.CreateStandard();
+        repo.Write("Lib.Tests/Numbers.cs", """
+            using Lib;
+
+            namespace Lib.Tests;
+
+            internal static class Numbers
+            {
+                public static int Two() => 2;
+
+                public static int Product(int a, int b) => new Calc().Mul(a, b);
+            }
+            """);
+        repo.Replace("Lib.Tests/CalcTests.cs", "    private static Calc NewCalc() => new();", """
+                [Fact]
+                public void Doubles() => Assert.Equal(4, NewCalc().Add(Numbers.Two(), 2));
+
+                [Fact]
+                public void MultipliesThroughHelper() => Assert.Equal(6, Numbers.Product(2, 3));
+
+                private static Calc NewCalc() => new();
+            """);
+        repo.Commit("add a helper class to Lib.Tests");
+        return repo;
+    }
+
+    [Fact]
     public async Task Changed_test_method_selects_itself()
     {
         await using var engine = await InProcessEngine.StartAsync();

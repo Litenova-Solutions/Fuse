@@ -3,6 +3,9 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
+    <!-- The engine runs on the MSBuild of the SDK it finds (MSBuild Locator, ExcludeAssets="runtime"), so these stay at
+         the MSBuild of the oldest SDK Fuse supports, 18.0 in .NET SDK 10.0.100. A newer version would compile against
+         APIs that MSBuild does not have. -->
     <PackageVersion Include="Microsoft.Build" Version="18.0.2" />
     <PackageVersion Include="Microsoft.Build.Framework" Version="18.0.2" />
     <PackageVersion Include="Microsoft.Build.Locator" Version="1.11.2" />

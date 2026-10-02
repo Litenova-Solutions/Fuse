@@ -90,15 +90,15 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
       - name: Build
         run: dotnet build Fuse.slnx -c Release
       - name: Publish the native client
         run: dotnet publish src/Fuse/Fuse.csproj -c Release -r win-x64 -o artifacts/native
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: build
           path: |
@@ -123,15 +123,15 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           # The pinned repositories test on .NET 8 and 9 as well; global.json adds the SDK that builds Fuse.
           dotnet-version: |
             8.0.x
             9.0.x
           global-json-file: global.json
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: build
       - &identity
@@ -141,7 +141,7 @@ jobs:
           git config --global user.name "Fuse CI"
       - &packages
         name: NuGet packages of the pinned repository
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.nuget/packages
           key: nuget-${{ matrix.repo }}-${{ hashFiles('evals/Fuse.Evals/PinnedRepo.cs', 'evals/Fuse.Evals/FixtureGenerator.cs') }}
@@ -171,7 +171,7 @@ jobs:
           New-Item -ItemType Directory -Force out | Out-Null
           "runner: $env:ImageOS $env:ImageVersion`ncpu: $cpu, $cores logical processors`nmemory: $memory GB`nsdk: $(dotnet --version)`ncommit: $env:GITHUB_SHA" | Set-Content out/runner.txt
           Get-Content out/runner.txt
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: latency-${{ matrix.part }}-${{ matrix.repo }}
@@ -188,11 +188,11 @@ jobs:
       matrix:
         repo: ${{ fromJSON(needs.plan.outputs.latency) }}
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: latency-main-${{ matrix.repo }}
           path: main
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: latency-agents-${{ matrix.repo }}
           path: agents
@@ -213,7 +213,7 @@ jobs:
           shutil.copytree("main/managed", "out/managed")
           shutil.copy("main/runner.txt", "out/runner.txt")
           shutil.copy("agents/runner.txt", "out/runner-agents.txt")
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: evals-${{ matrix.repo }}-latency
           path: out/
@@ -233,15 +233,15 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           # The pinned repositories test on .NET 8 and 9 as well; global.json adds the SDK that builds Fuse.
           dotnet-version: |
             8.0.x
             9.0.x
           global-json-file: global.json
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: build
       - *identity
@@ -254,7 +254,7 @@ jobs:
       - name: Look for the cached truth
         id: cached
         if: ${{ !inputs.fresh-truth }}
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: truth.json
           key: ${{ steps.key.outputs.key }}
@@ -265,7 +265,7 @@ jobs:
           mkdir -p out
           $EVALS truth "${{ matrix.suite }}" "${{ matrix.repo }}" --shard ${{ matrix.shard }} --shards ${{ matrix.shards }} --out out/truth-${{ matrix.shard }}.json
       - *runner
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: steps.cached.outputs.cache-hit != 'true'
         with:
           name: truth-${{ matrix.suite }}-${{ matrix.repo }}-${{ matrix.shard }}
@@ -287,15 +287,15 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           # The pinned repositories test on .NET 8 and 9 as well; global.json adds the SDK that builds Fuse.
           dotnet-version: |
             8.0.x
             9.0.x
           global-json-file: global.json
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: build
       - *identity
@@ -305,14 +305,14 @@ jobs:
       - name: Restore the cached truth
         id: cached
         if: ${{ !inputs.fresh-truth }}
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: truth.json
           key: ${{ steps.key.outputs.key }}
       - name: Download the truth shards
         # None exist when the truth came from the cache.
         continue-on-error: true
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: truth-${{ matrix.suite }}-${{ matrix.repo }}-*
           path: shards
@@ -324,12 +324,12 @@ jobs:
           cp out/truth/truth.json truth.json
       - name: Save the truth
         if: steps.cached.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: truth.json
           key: ${{ steps.key.outputs.key }}
       - *runner
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: evals-${{ matrix.repo }}-${{ matrix.suite }}

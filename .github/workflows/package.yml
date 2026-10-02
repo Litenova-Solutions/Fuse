@@ -41,9 +41,9 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
 
@@ -75,7 +75,7 @@ jobs:
           dotnet pack src/Fuse/Fuse.csproj -c Release -r win-x64 -p:PublishAot=false -p:UseAppHost=false \
             -p:PackAsToolShimRuntimeIdentifiers=win-x64 -p:NativeClientShim="$(cygpath -w "$PWD/artifacts/native/fuse.exe")" -o artifacts
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: package-${{ matrix.rid }}
           path: artifacts/Litenova.Fuse.${{ matrix.rid }}.*.nupkg
@@ -85,9 +85,9 @@ jobs:
     name: Pack the pointer and framework-dependent packages
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
 
@@ -99,7 +99,7 @@ jobs:
             dotnet pack src/Fuse/Fuse.csproj -c Release -r "$rid" -p:PublishAot=false -p:SelfContained=false -p:UseAppHost=false -o artifacts
           done
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: package-portable
           path: artifacts/*.nupkg
@@ -132,13 +132,13 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: package-*
           path: feed
@@ -154,7 +154,7 @@ jobs:
     needs: native
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: package-linux-x64
           path: feed

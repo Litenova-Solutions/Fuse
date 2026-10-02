@@ -7,6 +7,11 @@
     "html_handling": "auto-trailing-slash",
     "not_found_handling": "404-page"
   },
+  // A pull request branch builds a Preview with `wrangler preview`, which needs this block. The site has no bindings,
+  // so it stays empty. Previews are served on workers.dev, which Cloudflare marks noindex, and the custom domains
+  // below serve production only.
+  "previews": {},
+  "preview_urls": true,
   "routes": [
     { "pattern": "fuse.codes", "custom_domain": true },
     { "pattern": "www.fuse.codes", "custom_domain": true }

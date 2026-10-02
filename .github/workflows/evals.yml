@@ -1,14 +1,20 @@
 name: Evals
 
 # Runs the eval suites on GitHub-hosted runners. Adding the evals label to a pull request runs the latency suite, which
-# every change to a request's path needs and which takes under an hour; starting the workflow from the Actions tab
-# chooses the repositories and the suites, all three by default. Each suite of each repository gets a fresh
-# windows-latest VM that runs nothing else, so no other work skews the times and the run takes as long as its slowest
-# suite. The suites measure the native client, the fuse command a release installs on win-x64; a latency job then runs
-# the suite again with the managed client on the same VM.
+# every change to a request's path needs; starting the workflow from the Actions tab chooses the repositories and the
+# suites, all three by default.
 #
-# Each job uploads evals-<repo>-<suite>: results/ holds the file to commit to evals/results, managed/ the managed
-# client's latency file for evals/results/managed, and runner.txt describes the runner.
+# One build job compiles Fuse once, so every job measures the same build. The latency suite runs in one job per
+# repository: the native client, the fuse command a release installs on win-x64, then the checks alone again with the
+# managed client on the same VM. The correctness and selection suites run in two stages per repository. The truth jobs
+# run the real dotnet build or dotnet test for HEAD and for each case, split into shards; the truth does not change while
+# the repository's tree, the seed, the SDK and the eval code stay the same, so it is kept in the Actions cache and a later
+# run skips those jobs. The measure job then runs Fuse alone on a fresh VM against the merged truth, and saves it to the
+# cache. Each VM runs nothing else, so no other work skews the times.
+#
+# Each measure and latency job uploads evals-<repo>-<suite>: results/ holds the file to commit to evals/results,
+# managed/ the managed client's latency file for evals/results/managed, truth/ the merged truth, and runner.txt
+# describes the runner. Each truth job uploads its shard and its runner.txt.
 
 on:
   pull_request:
@@ -23,6 +29,10 @@ on:
         description: Suites to run, as a JSON array (correctness, selection, latency).
         default: '["correctness", "selection", "latency"]'
         required: true
+      fresh-truth:
+        description: Ignore the cached truth and run the real dotnet build and dotnet test again, as after a flaky test.
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -30,57 +40,117 @@ permissions:
 env:
   DOTNET_NOLOGO: '1'
   DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  EVALS: dotnet evals/Fuse.Evals/bin/Release/net10.0/Fuse.Evals.dll
 
 jobs:
-  evals:
-    name: ${{ matrix.suite }} on ${{ matrix.repo }}
+  plan:
+    name: Plan the jobs
     if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'evals'
+    runs-on: ubuntu-latest
+    outputs:
+      latency: ${{ steps.matrix.outputs.latency }}
+      truth: ${{ steps.matrix.outputs.truth }}
+      measure: ${{ steps.matrix.outputs.measure }}
+    steps:
+      - id: matrix
+        shell: python
+        env:
+          REPOS: ${{ inputs.repos || '["fixture", "NodaTime", "Jellyfin", "CommunityToolkit"]' }}
+          SUITES: ${{ inputs.suites || '["latency"]' }}
+        run: |
+          import json, os
+          repos = json.loads(os.environ["REPOS"])
+          suites = json.loads(os.environ["SUITES"])
+          # Truth shards per repository, from the 5.2.0 run's dotnet times: a selection case on the Community Toolkit
+          # takes about 15 minutes of dotnet test and HEAD's full run as long, so HEAD gets a shard of its own there.
+          shards = {
+              "correctness": {"fixture": 1, "NodaTime": 1, "Jellyfin": 2, "CommunityToolkit": 2},
+              "selection": {"fixture": 1, "NodaTime": 2, "Jellyfin": 4, "CommunityToolkit": 6},
+          }
+          staged = [s for s in ("correctness", "selection") if s in suites]
+          latency = [r for r in repos] if "latency" in suites else []
+          measure = [{"suite": s, "repo": r} for s in staged for r in repos]
+          truth = [{"suite": s, "repo": r, "shard": k, "shards": shards[s].get(r, 1)} for s in staged for r in repos for k in range(shards[s].get(r, 1))]
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              for name, value in (("latency", latency), ("truth", truth), ("measure", measure)):
+                  out.write(f"{name}={json.dumps(value)}\n")
+                  print(f"{name}: {json.dumps(value)}")
+
+  build:
+    name: Build Fuse
+    needs: plan
     runs-on: windows-latest
-    timeout-minutes: 350
-    strategy:
-      fail-fast: false
-      matrix:
-        repo: ${{ fromJSON(inputs.repos || '["fixture", "NodaTime", "Jellyfin", "CommunityToolkit"]') }}
-        suite: ${{ fromJSON(inputs.suites || '["latency"]') }}
+    timeout-minutes: 30
     defaults:
       run:
         shell: bash
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
+      - name: Build
+        run: dotnet build Fuse.slnx -c Release
+      - name: Publish the native client
+        run: dotnet publish src/Fuse/Fuse.csproj -c Release -r win-x64 -o artifacts/native
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build
+          path: |
+            src/Fuse/bin/Release/
+            evals/Fuse.Evals/bin/Release/
+            artifacts/native/
+          if-no-files-found: error
+          retention-days: 3
 
-      - name: Git identity for the generated fixture
+  latency:
+    name: latency on ${{ matrix.repo }}
+    needs: [plan, build]
+    if: needs.plan.outputs.latency != '[]'
+    runs-on: windows-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        repo: ${{ fromJSON(needs.plan.outputs.latency) }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - uses: actions/download-artifact@v4
+        with:
+          name: build
+      - &identity
+        name: Git identity for the generated fixture
         run: |
           git config --global user.email "ci@fuse.invalid"
           git config --global user.name "Fuse CI"
-
-      - name: Build
-        run: dotnet build Fuse.slnx -c Release
-
-      - name: Publish the native client
-        run: dotnet publish src/Fuse/Fuse.csproj -c Release -r win-x64 -o artifacts/native
-
-      - name: Clone the pinned repository
+      - &packages
+        name: NuGet packages of the pinned repository
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ matrix.repo }}-${{ hashFiles('evals/Fuse.Evals/PinnedRepo.cs', 'evals/Fuse.Evals/FixtureGenerator.cs') }}
+      - &clone
+        name: Clone the pinned repository
         if: matrix.repo != 'fixture'
-        run: dotnet run --project evals/Fuse.Evals -c Release --no-build -- clone "${{ matrix.repo }}"
-
-      - name: Run ${{ matrix.suite }} with the native client
+        run: $EVALS clone "${{ matrix.repo }}"
+      - name: Run latency with the native client
         run: |
-          dotnet run --project evals/Fuse.Evals -c Release --no-build -- "${{ matrix.suite }}" "${{ matrix.repo }}" --fuse "$(cygpath -w "$PWD/artifacts/native/fuse.exe")"
+          $EVALS latency "${{ matrix.repo }}" --fuse "$(cygpath -w "$PWD/artifacts/native/fuse.exe")"
           mkdir -p out/results
           git ls-files --others --exclude-standard evals/results | xargs -I{} mv {} out/results/
-
-      - name: Run latency with the managed client
-        if: matrix.suite == 'latency'
+      - name: Run the checks with the managed client
         run: |
-          dotnet run --project evals/Fuse.Evals -c Release --no-build -- latency "${{ matrix.repo }}" --fuse "$(cygpath -w "$PWD/src/Fuse/bin/Release/net10.0/fuse.exe")"
+          $EVALS latency "${{ matrix.repo }}" --part checks --fuse "$(cygpath -w "$PWD/src/Fuse/bin/Release/net10.0/fuse.exe")"
           mkdir -p out/managed
           git ls-files --others --exclude-standard evals/results | xargs -I{} mv {} out/managed/
-
-      - name: Describe the runner
+      - &runner
+        name: Describe the runner
         if: always()
         shell: pwsh
         run: |
@@ -90,7 +160,115 @@ jobs:
           New-Item -ItemType Directory -Force out | Out-Null
           "runner: $env:ImageOS $env:ImageVersion`ncpu: $cpu, $cores logical processors`nmemory: $memory GB`nsdk: $(dotnet --version)`ncommit: $env:GITHUB_SHA" | Set-Content out/runner.txt
           Get-Content out/runner.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: evals-${{ matrix.repo }}-latency
+          path: out/
+          if-no-files-found: error
 
+  truth:
+    name: truth of ${{ matrix.suite }} on ${{ matrix.repo }} (${{ matrix.shard }}/${{ matrix.shards }})
+    needs: [plan, build]
+    if: needs.plan.outputs.truth != '[]'
+    runs-on: windows-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.truth) }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - uses: actions/download-artifact@v4
+        with:
+          name: build
+      - *identity
+      - *packages
+      - *clone
+      - &key
+        name: Truth key
+        id: key
+        run: echo "key=$($EVALS key "${{ matrix.suite }}" "${{ matrix.repo }}" | tail -n 1)" >> "$GITHUB_OUTPUT"
+      - name: Look for the cached truth
+        id: cached
+        if: ${{ !inputs.fresh-truth }}
+        uses: actions/cache/restore@v4
+        with:
+          path: truth.json
+          key: ${{ steps.key.outputs.key }}
+          lookup-only: true
+      - name: Run shard ${{ matrix.shard }} of the truth
+        if: steps.cached.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p out
+          $EVALS truth "${{ matrix.suite }}" "${{ matrix.repo }}" --shard ${{ matrix.shard }} --shards ${{ matrix.shards }} --out out/truth-${{ matrix.shard }}.json
+      - *runner
+      - uses: actions/upload-artifact@v4
+        if: steps.cached.outputs.cache-hit != 'true'
+        with:
+          name: truth-${{ matrix.suite }}-${{ matrix.repo }}-${{ matrix.shard }}
+          path: out/
+          if-no-files-found: error
+
+  measure:
+    name: ${{ matrix.suite }} on ${{ matrix.repo }}
+    needs: [plan, build, truth]
+    # A failed truth shard leaves its cases to this job, which runs what the merged truth lacks.
+    if: ${{ !cancelled() && needs.build.result == 'success' && needs.plan.outputs.measure != '[]' }}
+    runs-on: windows-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.measure) }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - uses: actions/download-artifact@v4
+        with:
+          name: build
+      - *identity
+      - *packages
+      - *clone
+      - *key
+      - name: Restore the cached truth
+        id: cached
+        if: ${{ !inputs.fresh-truth }}
+        uses: actions/cache/restore@v4
+        with:
+          path: truth.json
+          key: ${{ steps.key.outputs.key }}
+      - name: Download the truth shards
+        # None exist when the truth came from the cache.
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          pattern: truth-${{ matrix.suite }}-${{ matrix.repo }}-*
+          path: shards
+      - name: Run ${{ matrix.suite }} with the native client
+        run: |
+          mkdir -p shards out/results out/truth
+          $EVALS "${{ matrix.suite }}" "${{ matrix.repo }}" --fuse "$(cygpath -w "$PWD/artifacts/native/fuse.exe")" --cache truth.json --truth-dir shards --cache-out out/truth/truth.json
+          git ls-files --others --exclude-standard evals/results | xargs -I{} mv {} out/results/
+          cp out/truth/truth.json truth.json
+      - name: Save the truth
+        if: steps.cached.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: truth.json
+          key: ${{ steps.key.outputs.key }}
+      - *runner
       - uses: actions/upload-artifact@v4
         if: always()
         with:

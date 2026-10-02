@@ -40,42 +40,38 @@ internal sealed record CorrectnessCase(
 /// </summary>
 internal static partial class CorrectnessSuite
 {
-    public static async Task<object> RunAsync(EvalRepo repo, SolutionInfo solution, int count, int seed)
+    /// <summary>
+    ///     Measures <c>fuse check</c> on every case of <paramref name="truth"/>, which holds the plan and the real build of
+    ///     HEAD and of every case, and compares the errors it reports with the errors each build reported beyond HEAD's.
+    /// </summary>
+    public static async Task<object> RunAsync(EvalRepo repo, SolutionInfo solution, TruthFile truth)
     {
         if (!await repo.IsCleanAsync())
             throw new InvalidOperationException($"{repo.Root} has uncommitted changes; the suite needs a clean tree");
+        if (!truth.IsComplete)
+            throw new InvalidOperationException($"the truth for {truth.Key} is not complete");
+        var head = truth.Head!;
         Console.WriteLine($"[correctness] {repo.Name}: HEAD build...");
-        var head = await repo.BuildAsync();
-        Console.WriteLine($"[correctness] HEAD build exit {head.ExitCode}, {head.Errors.Count} error(s), {head.Seconds:0.0} s");
+        var headBuild = await repo.BuildAsync();
+        Console.WriteLine($"[correctness] HEAD build exit {headBuild.ExitCode}, {head.Names.Count} error(s) in the truth ({head.Origin})");
         var warm = await repo.FuseAsync("check");
         Console.WriteLine($"[correctness] fuse warm-up: {warm.Result.Output.Trim().Split('\n').Last()} ({warm.Milliseconds:0} ms)");
 
-        var sources = solution.CodeSources();
-        var random = new Random(seed);
         var cases = new List<CorrectnessCase>();
-        for (var i = 0; i < count; i++)
+        foreach (var planned in truth.Plan!)
         {
-            var editCount = random.NextDouble() < 0.7 ? 1 : random.Next(2, 4);
-            var edits = PickEdits(repo, solution, sources, editCount, random);
-            if (edits.Count == 0)
-                continue;
-            foreach (var edit in edits)
-            {
-                var full = Path.Combine(repo.Root, edit.Path);
-                if (edit.NewText is null)
-                    File.Delete(full);
-                else
-                    await File.WriteAllTextAsync(full, edit.NewText);
-            }
-
+            var edits = planned.Edits;
+            var item = truth.Cases[planned.Index];
+            await CasePlanner.ApplyAsync(repo, planned);
             var fuse = await repo.FuseAsync(["check", .. edits.Select(e => Path.Combine(repo.Root, e.Path))]);
+            await repo.ResetAsync();
+
             // The cause lines `fuse check` prints under an error in a file this case did not edit.
             List<Match> Context() => [.. fuse.Result.Output.Split('\n').Select(l => CauseLine().Match(l.TrimEnd('\r'))).Where(m => m.Success)];
-            var build = await repo.BuildAsync();
-            var truth = Subtract(build.Errors, head.Errors);
+            var truthErrors = Subtract(item.Names, head.Names);
             var fuseErrors = EvalRepo.ParseFuseErrors(fuse.Result.Output);
             var fuseCount = EvalRepo.ParseFuseCount(fuse.Result.Output);
-            var result = Classify(solution, i, edits, truth, fuseErrors, fuseCount, fuse.Result.ExitCode, fuse.Milliseconds, build.Seconds,
+            var result = Classify(solution, planned.Index, edits, truthErrors, fuseErrors, fuseCount, fuse.Result.ExitCode, fuse.Milliseconds, item.Seconds,
                 fuse.Result.ExitCode is 0 or 1 ? null : fuse.Result.Output.Trim()) with
             {
                 CauseLines = Context().Count(m => m.Success),
@@ -83,8 +79,7 @@ internal static partial class CorrectnessSuite
                 CauseBytes = System.Text.Encoding.UTF8.GetByteCount(string.Join("\n", Context().Select(m => m.Value))),
             };
             cases.Add(result);
-            Console.WriteLine($"[correctness] {i + 1}/{count} {result.Verdict,-12} truth={truth.Count,3} fuse={fuseCount,3} {fuse.Milliseconds,6:0} ms  {string.Join(" + ", edits.Select(e => $"{e.Kind} {e.Path}"))}");
-            await repo.ResetAsync();
+            Console.WriteLine($"[correctness] {planned.Index + 1}/{truth.Count} {result.Verdict,-12} truth={truthErrors.Count,3} fuse={fuseCount,3} {fuse.Milliseconds,6:0} ms  {string.Join(" + ", edits.Select(e => $"{e.Kind} {e.Path}"))}");
         }
 
         await repo.ResetAsync();
@@ -96,8 +91,8 @@ internal static partial class CorrectnessSuite
             repo = repo.Name,
             commit = await repo.HeadAsync(),
             fuseBuild = await repo.VersionAsync(),
-            seed,
-            requested = count,
+            seed = truth.Seed,
+            requested = truth.Count,
             cases = cases.Count,
             breaking,
             neutral = cases.Count - breaking,
@@ -116,34 +111,14 @@ internal static partial class CorrectnessSuite
             fuseUnanswered = cases.Count(c => c.FuseExit is not (0 or 1)),
             fuseMedianMs = Median(cases.Select(c => c.FuseMilliseconds)),
             buildMedianSeconds = Median(cases.Select(c => c.BuildSeconds)),
-            headBuildErrors = head.Errors.Count,
+            headBuildErrors = head.Names.Count,
+            truthKey = truth.Key,
+            truthOrigins = truth.Origins(),
             treeCleanAfter = clean,
             details = cases,
         };
         Console.WriteLine($"[correctness] {repo.Name}: {cases.Count} cases, {breaking} breaking, false green {summary.falseGreen}, false-red cases {summary.falseRedCases}, unverifiable errors {summary.unverifiableErrors}, deferred by csc {summary.deferredByCompilerErrors}, message mismatches {summary.messageMismatchErrors}, partial {summary.partialMisses}, exact {summary.exactAgreement}, file agreement {summary.fileAgreement}, tree clean {clean}");
         return summary;
-    }
-
-    private static List<FileEdit> PickEdits(EvalRepo repo, SolutionInfo solution, List<string> sources, int editCount, Random random)
-    {
-        var edits = new List<FileEdit>();
-        var usedProjects = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        for (var attempt = 0; attempt < 200 && edits.Count < editCount; attempt++)
-        {
-            var file = sources[random.Next(sources.Count)];
-            var project = solution.ProjectOf(file) ?? "";
-            // Sequences spread over different projects when the solution has more than one.
-            if (usedProjects.Contains(project) && solution.CodeProjects.Count > 1)
-                continue;
-            var kind = CompileMutator.Kinds[random.Next(CompileMutator.Kinds.Length)];
-            var edit = CompileMutator.Mutate(file, Path.GetRelativePath(repo.Root, file).Replace('\\', '/'), kind, random);
-            if (edit is null)
-                continue;
-            edits.Add(edit);
-            usedProjects.Add(project);
-        }
-
-        return edits;
     }
 
     /// <summary>

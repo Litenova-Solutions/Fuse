@@ -13,7 +13,11 @@ internal static class LatencySuite
 {
     private const int TestRounds = 5;
 
-    public static async Task<object> RunAsync(EvalRepo repo, SolutionInfo solution, int bodyEdits = 15, int signatureEdits = 10)
+    /// <param name="checksOnly">
+    ///     Measures the checks alone and leaves out the test rounds and the multi-agent scenario. The managed client's run
+    ///     uses it: the client's cost shows in the checks, and the rest would only repeat the native client's engine work.
+    /// </param>
+    public static async Task<object> RunAsync(EvalRepo repo, SolutionInfo solution, bool checksOnly = false, int bodyEdits = 15, int signatureEdits = 10)
     {
         if (!await repo.IsCleanAsync())
             throw new InvalidOperationException($"{repo.Root} has uncommitted changes; the suite needs a clean tree");
@@ -74,7 +78,7 @@ internal static class LatencySuite
         // A test round is what an agent waits for when it runs the tests, so it is measured the same way.
         var testRound = new List<double>();
         var testCalls = new List<TimedCall>();
-        for (var i = 1; i <= TestRounds; i++)
+        for (var i = 1; !checksOnly && i <= TestRounds; i++)
         {
             await File.WriteAllTextAsync(file, BodyEdit(original, method, 100 + i));
             var run = await repo.FuseTimedAsync("test");
@@ -90,7 +94,7 @@ internal static class LatencySuite
         var cleanPhases = PhaseReport.Build(cleanCalls);
         var testPhases = PhaseReport.Build(testCalls);
         // The writers scenario compares the queue against one client on its own, which is the body-edit total above.
-        var multiAgent = await MultiAgentScenario.RunAsync(repo, solution, bodyPhases.Phases.GetValueOrDefault(Phase.Total)?.P50 ?? 0);
+        var multiAgent = checksOnly ? null : await MultiAgentScenario.RunAsync(repo, solution, bodyPhases.Phases.GetValueOrDefault(Phase.Total)?.P50 ?? 0);
         var summary = new
         {
             suite = "latency",
@@ -106,18 +110,20 @@ internal static class LatencySuite
             signatureEdit = LatencyStats.Of(signature),
             signatureEditSample = signatureSummary,
             warmUnchanged = LatencyStats.Of(clean),
-            testRound = LatencyStats.Of(testRound),
+            checksOnly,
+            testRound = checksOnly ? null : LatencyStats.Of(testRound),
             bodyEditPhases = bodyPhases,
             signatureEditPhases = signaturePhases,
             warmUnchangedPhases = cleanPhases,
-            testRoundPhases = testPhases,
+            testRoundPhases = checksOnly ? null : testPhases,
             multiAgent,
             engineWorkingSetMb = Math.Round(rss, 1),
             treeCleanAfter = await repo.IsCleanAsync(),
         };
-        Console.WriteLine($"[latency] body edit P50 {summary.bodyEdit.P50:0} / P95 {summary.bodyEdit.P95:0} ms; signature edit P50 {summary.signatureEdit.P50:0} / P95 {summary.signatureEdit.P95:0} ms ({signatureSummary}); unchanged P50 {summary.warmUnchanged.P50:0} ms; test round P50 {summary.testRound.P50:0} ms; engine {rss:0} MB");
+        Console.WriteLine($"[latency] body edit P50 {summary.bodyEdit.P50:0} / P95 {summary.bodyEdit.P95:0} ms; signature edit P50 {summary.signatureEdit.P50:0} / P95 {summary.signatureEdit.P95:0} ms ({signatureSummary}); unchanged P50 {summary.warmUnchanged.P50:0} ms; test round P50 {summary.testRound?.P50:0} ms; engine {rss:0} MB");
         Console.WriteLine($"[latency] body edit phases: {PhaseReport.Describe(summary.bodyEditPhases)}");
-        Console.WriteLine($"[latency] test round phases: {PhaseReport.Describe(summary.testRoundPhases)}");
+        if (summary.testRoundPhases is { } testRoundPhases)
+            Console.WriteLine($"[latency] test round phases: {PhaseReport.Describe(testRoundPhases)}");
         return summary;
     }
 

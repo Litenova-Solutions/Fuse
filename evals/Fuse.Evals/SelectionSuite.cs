@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Text.RegularExpressions;
-using Fuse.Dotnet;
 
 namespace Fuse.Evals;
 
@@ -24,57 +23,51 @@ internal sealed record SelectionCase(
 /// </summary>
 internal static partial class SelectionSuite
 {
-    public static async Task<object> RunAsync(EvalRepo repo, SolutionInfo solution, int count, int seed)
+    /// <summary>
+    ///     Measures <c>fuse test</c> on every case of <paramref name="truth"/>, which holds the plan and the full test run of
+    ///     HEAD and of every case, and compares the tests it reports failing with the tests the full run saw failing.
+    /// </summary>
+    public static async Task<object> RunAsync(EvalRepo repo, TruthFile truth)
     {
         if (!await repo.IsCleanAsync())
             throw new InvalidOperationException($"{repo.Root} has uncommitted changes; the suite needs a clean tree");
-        Console.WriteLine($"[selection] {repo.Name}: HEAD build and full test run...");
+        if (!truth.IsComplete)
+            throw new InvalidOperationException($"the truth for {truth.Key} is not complete");
+        var head = truth.Head!;
+        Console.WriteLine($"[selection] {repo.Name}: HEAD build...");
         var headBuild = await repo.BuildAsync();
         if (headBuild.ExitCode != 0)
             throw new InvalidOperationException($"HEAD does not build: {string.Join("; ", headBuild.Errors.Take(3))}");
-        var withoutResults = new SortedSet<string>(StringComparer.Ordinal);
-        var head = await FullTestAsync(repo, solution, withoutResults);
-        if (withoutResults.Count > 0)
-            throw new InvalidOperationException(
-                $"{withoutResults.Count} test project(s) produced no results, so the truth side of this suite would be missing them: {string.Join(", ", withoutResults)}");
-        Console.WriteLine($"[selection] HEAD: {head.Outcome.Total} tests, {head.Outcome.Failed} failing, {head.Seconds:0.0} s");
-        var baselineFailing = head.Outcome.Failures.Select(f => f.Name).ToHashSet(StringComparer.Ordinal);
+        Console.WriteLine($"[selection] HEAD: {head.Total} tests, {head.Names.Count} failing ({head.Origin})");
+        var baselineFailing = head.Names.ToHashSet(StringComparer.Ordinal);
         await repo.FuseAsync("check");
 
-        var sources = solution.CodeSources();
-        var random = new Random(seed);
         var cases = new List<SelectionCase>();
-        var skipped = new List<string>();
-        for (var attempt = 0; cases.Count < count && attempt < count * 8; attempt++)
+        var skipped = new List<string>(truth.Skipped);
+        var withoutResults = new List<string>();
+        foreach (var planned in truth.Plan!)
         {
-            var file = sources[random.Next(sources.Count)];
-            var kind = BehaviorMutator.Kinds[random.Next(BehaviorMutator.Kinds.Length)];
-            var edit = BehaviorMutator.Mutate(file, Path.GetRelativePath(repo.Root, file).Replace('\\', '/'), kind, random);
-            if (edit is null)
+            var edit = planned.Edits[0];
+            var item = truth.Cases[planned.Index];
+            if (item.BuildFailed)
+            {
+                skipped.Add($"{edit.Kind} {edit.Path}: {edit.Description} (a test project does not compile)");
                 continue;
-            await File.WriteAllTextAsync(file, edit.NewText);
+            }
 
+            await CasePlanner.ApplyAsync(repo, planned);
             // An agent runs tests some time after its edit; give the file watcher a moment, as that gap would.
             await Task.Delay(500);
             var watch = Stopwatch.StartNew();
             var fuse = await repo.FuseAsync("test");
             var fuseSeconds = watch.Elapsed.TotalSeconds;
-            if (fuse.Result.Output.Contains("test build failed", StringComparison.Ordinal))
-            {
-                skipped.Add($"{edit.Kind} {edit.Path}: {edit.Description} (does not compile)");
-                await repo.ResetAsync();
-                continue;
-            }
+            await repo.ResetAsync();
 
-            var truth = await FullTestAsync(repo, solution, withoutResults);
-            if (truth.BuildFailed)
-            {
-                skipped.Add($"{edit.Kind} {edit.Path}: {edit.Description} (does not compile)");
-                await repo.ResetAsync();
-                continue;
-            }
-
-            var truthFailing = truth.Outcome.Failures.Select(f => f.Name).Where(n => !baselineFailing.Contains(n)).Distinct().ToList();
+            // The full run writes one TRX file per test project and target framework, as HEAD's did; fewer means a project
+            // wrote no results, and its failures are missing from the truth side.
+            if (item.ResultFiles < head.ResultFiles)
+                withoutResults.Add($"case {planned.Index}: {item.ResultFiles} of {head.ResultFiles} result files");
+            var truthFailing = item.Names.Where(n => !baselineFailing.Contains(n)).ToList();
             var fuseFailing = FailingNames(fuse.Result.Output);
             var counts = Counts().Match(fuse.Result.Output);
             var fuseFailed = counts.Success ? int.Parse(counts.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture) : 0;
@@ -85,9 +78,8 @@ internal static partial class SelectionSuite
             var missed = truthFailing.Where(t => !fuseFailing.Contains(t)).ToList();
             var truncated = fuse.Result.Output.Contains("... and ", StringComparison.Ordinal);
             var verdict = missed.Count > 0 ? (truncated ? "unverified" : "missed") : truthFailing.Count == 0 ? "no-failure" : "caught";
-            cases.Add(new SelectionCase(cases.Count, edit with { NewText = null }, truthFailing, fuseFailing, fuseFailed, fusePassed, lastLine, missed, fuseSeconds, truth.Seconds, verdict));
-            Console.WriteLine($"[selection] {cases.Count}/{count} {verdict,-10} truth-failing={truthFailing.Count} fuse ran={fuseFailed + fusePassed} fuse={fuseSeconds:0.0}s dotnet={truth.Seconds:0.0}s  {edit.Kind} {edit.Path}");
-            await repo.ResetAsync();
+            cases.Add(new SelectionCase(cases.Count, edit with { NewText = null }, truthFailing, fuseFailing, fuseFailed, fusePassed, lastLine, missed, fuseSeconds, item.Seconds, verdict));
+            Console.WriteLine($"[selection] {cases.Count}/{truth.Plan.Count} {verdict,-10} truth-failing={truthFailing.Count} fuse ran={fuseFailed + fusePassed} fuse={fuseSeconds:0.0}s dotnet={item.Seconds:0.0}s  {edit.Kind} {edit.Path}");
         }
 
         await repo.ResetAsync();
@@ -98,8 +90,8 @@ internal static partial class SelectionSuite
             repo = repo.Name,
             commit = await repo.HeadAsync(),
             fuseBuild = await repo.VersionAsync(),
-            seed,
-            requested = count,
+            seed = truth.Seed,
+            requested = truth.Count,
             cases = cases.Count,
             withFailures = cases.Count(c => c.TruthFailing.Count > 0),
             missedCases = cases.Count(c => c.Verdict == "missed"),
@@ -108,80 +100,19 @@ internal static partial class SelectionSuite
             // names are counted apart from misses the suite could verify.
             missedTests = cases.Where(c => c.Verdict == "missed").Sum(c => c.Missed.Count),
             unverifiedTests = cases.Where(c => c.Verdict == "unverified").Sum(c => c.Missed.Count),
-            totalTests = head.Outcome.Total,
-            meanSelectedFraction = cases.Count == 0 || head.Outcome.Total == 0 ? 0 : cases.Average(c => (double)(c.FuseFailed + c.FusePassed) / head.Outcome.Total),
+            totalTests = head.Total,
+            meanSelectedFraction = cases.Count == 0 || head.Total == 0 ? 0 : cases.Average(c => (double)(c.FuseFailed + c.FusePassed) / head.Total),
             fuseMedianSeconds = CorrectnessSuite.Median(cases.Select(c => c.FuseSeconds)),
             dotnetMedianSeconds = CorrectnessSuite.Median(cases.Select(c => c.DotnetSeconds)),
             skippedNonCompiling = skipped,
-            projectsWithoutResults = withoutResults.ToList(),
+            projectsWithoutResults = withoutResults,
+            truthKey = truth.Key,
+            truthOrigins = truth.Origins(),
             treeCleanAfter = clean,
             details = cases,
         };
         Console.WriteLine($"[selection] {repo.Name}: {cases.Count} cases, {summary.withFailures} with failures, missed cases {summary.missedCases}, selected fraction {summary.meanSelectedFraction:P1}, fuse median {summary.fuseMedianSeconds:0.0} s vs dotnet test {summary.dotnetMedianSeconds:0.0} s, tree clean {clean}");
         return summary;
-    }
-
-    /// <summary>
-    ///     Runs every test project in the solution with dotnet test and reads the TRX results. A project that writes none is
-    ///     added to <paramref name="withoutResults"/> with the reason it is expected to, because a silent gap in the truth
-    ///     side would flatter every selection number.
-    /// </summary>
-    private static async Task<(TrxResults Outcome, double Seconds, bool BuildFailed)> FullTestAsync(
-        EvalRepo repo,
-        SolutionInfo solution,
-        SortedSet<string> withoutResults)
-    {
-        var watch = Stopwatch.StartNew();
-        var total = TrxResults.Empty;
-        var buildFailed = false;
-        foreach (var project in solution.TestProjects)
-        {
-            var results = Path.Combine(repo.Root, "obj", "fuse-evals", Guid.NewGuid().ToString("N")[..8]);
-            var (run, outcome) = await RunProjectAsync(repo, project, results);
-            if (outcome is null)
-            {
-                var name = Path.GetRelativePath(repo.Root, project).Replace('\\', '/');
-                if (run.ExitCode != 0 && BuildOutputParser.Errors(run.Output, repo.Root).Count > 0)
-                    buildFailed = true;
-                else if (SolutionInfo.IsMicrosoftTestingPlatform(project))
-                    withoutResults.Add($"{name} (Microsoft.Testing.Platform runner, no VSTest trx)");
-                else
-                    withoutResults.Add(name);
-            }
-            else
-            {
-                total = total.Add(outcome);
-            }
-
-            try
-            {
-                Directory.Delete(results, recursive: true);
-            }
-            catch (IOException)
-            {
-                // DirectoryNotFoundException included: a run that writes no results leaves no directory.
-            }
-        }
-
-        return (total, watch.Elapsed.TotalSeconds, buildFailed);
-    }
-
-    /// <summary>
-    ///     Runs one test project with <c>dotnet test</c> and reads its results. A build that cannot replace a file another
-    ///     process holds open stops the suite (see <see cref="EvalRepo.ThrowIfLocked"/>): it is a defect, not a test result.
-    /// </summary>
-    private static async Task<(ProcessResult Run, TrxResults? Outcome)> RunProjectAsync(EvalRepo repo, string project, string results)
-    {
-        var (run, outcome) = await RunProjectOnceAsync(repo, project, results);
-        if (outcome is null)
-            EvalRepo.ThrowIfLocked(BuildOutputParser.Errors(run.Output, repo.Root), $"dotnet test {Path.GetFileName(project)}");
-        return (run, outcome);
-    }
-
-    private static async Task<(ProcessResult Run, TrxResults? Outcome)> RunProjectOnceAsync(EvalRepo repo, string project, string results)
-    {
-        var run = await ProcessRunner.RunAsync("dotnet", ["test", project, "--no-restore", "--logger", "trx;LogFilePrefix=truth", "--results-directory", results, "-nologo", "-tl:off"], repo.Root, CancellationToken.None);
-        return (run, TrxReader.ReadDirectory(results, repo.Root));
     }
 
     /// <summary>Names of the failing tests in <c>fuse test</c> output: each <c>FAILED name</c> line and each name listed under <c>also failed</c>.</summary>

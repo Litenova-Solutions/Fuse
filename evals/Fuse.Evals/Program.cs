@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using Fuse.Dotnet;
 
@@ -11,11 +12,19 @@ internal static class Program
 {
     private const string Usage = """
         usage: Fuse.Evals <suite> <repo> [--mutations N] [--seed S] [--solution path] [--fuse path]
+                          [--cache file] [--truth-dir dir] [--cache-out file] [--part checks]
+               Fuse.Evals truth <correctness|selection> <repo> --out file [--shard K --shards N] [--cache file]
+               Fuse.Evals key <correctness|selection> <repo> [--mutations N] [--seed S]
                Fuse.Evals chart
                Fuse.Evals clone <repo>
                Fuse.Evals clean
           suite: correctness | selection | latency | all
           repo:  fixture (generated under evals/.work/fixture), a pinned repository name, or a path to a git repository
+          truth: runs shard K of N of the truth side (the real dotnet build or dotnet test) and writes it to a file; the
+                 suite run merges the files in --truth-dir and runs what is still missing. Without them it reads and
+                 writes evals/.work/truth/<suite>-<repo>.json, so a second run on the same tree measures only Fuse
+          key:   prints the key the truth is cached under: suite, repository tree, seed, count, SDK and eval code
+          --part checks: for latency, measure the checks alone, without the test rounds and the multi-agent scenario
           clone: NodaTime | Jellyfin | CommunityToolkit, checked out at the pinned commit under
                  %LOCALAPPDATA%/fuse/evals/repos (outside this repository, so its build settings do not leak in)
           clean: deletes %LOCALAPPDATA%/fuse/evals, which holds every checkout; the generated fixture in
@@ -41,46 +50,68 @@ internal static class Program
         if (args is ["clean"])
             return CleanAsync();
 
-        if (args.Length < 2)
+        // "truth <suite> <repo>" and "key <suite> <repo>" name the suite after the command.
+        var command = args.Length > 0 && args[0] is "truth" or "key" ? args[0] : null;
+        var rest = command is null ? args : args.Skip(1).ToArray();
+        if (rest.Length < 2 || (command is not null && rest[0] is not ("correctness" or "selection")))
         {
             Console.Error.WriteLine(Usage);
             return 2;
         }
 
-        var suite = args[0];
-        var options = Options(args.Skip(2).ToArray());
+        var suite = rest[0];
+        var options = Options(rest.Skip(2).ToArray());
         var fuseRoot = FindFuseRoot();
         var fuse = options.GetValueOrDefault("fuse") ?? DefaultFuse(fuseRoot);
-        if (!File.Exists(fuse))
+        if (command is null && !File.Exists(fuse))
         {
             Console.Error.WriteLine($"fuse executable not found at {fuse}; build Fuse.slnx -c Release first or pass --fuse");
             return 2;
         }
 
-        var repoPath = await ResolveAsync(args[1], fuseRoot);
+        var repoPath = await ResolveAsync(rest[1], fuseRoot);
         var solutionPath = options.GetValueOrDefault("solution") ?? DefaultSolution(repoPath);
         var repo = new EvalRepo(repoPath, fuse, solutionPath);
+        var seed = int.Parse(options.GetValueOrDefault("seed") ?? "1", CultureInfo.InvariantCulture);
+        int Mutations(string name) => int.Parse(options.GetValueOrDefault("mutations") ?? (name == "selection" ? "10" : "30"), CultureInfo.InvariantCulture);
+        async Task<string> KeyAsync(string name) => TruthFile.KeyOf(fuseRoot, name, repo.Name, await TreeAsync(repoPath), seed, Mutations(name), await SdkAsync(repoPath));
+
+        if (command == "key")
+        {
+            Console.WriteLine(await KeyAsync(suite));
+            return 0;
+        }
+
         var solution = SolutionInfo.Load(repoPath, solutionPath);
         Console.WriteLine($"repo {repoPath}, solution {solutionPath}: {solution.CodeProjects.Count} code project(s), {solution.TestProjects.Count} test project(s); fuse {fuse}");
-
         if (!await RestoreAsync(repoPath, solutionPath, solution))
         {
             Console.Error.WriteLine("restore failed");
             return 1;
         }
 
-        var seed = int.Parse(options.GetValueOrDefault("seed") ?? "1", System.Globalization.CultureInfo.InvariantCulture);
-        int Mutations(int fallback) => int.Parse(options.GetValueOrDefault("mutations") ?? fallback.ToString(System.Globalization.CultureInfo.InvariantCulture), System.Globalization.CultureInfo.InvariantCulture);
+        if (command == "truth")
+            return await TruthAsync(suite, repo, solution, await KeyAsync(suite), seed, Mutations(suite), options);
+
         var suites = suite == "all" ? new[] { "correctness", "selection", "latency" } : [suite];
         foreach (var name in suites)
         {
-            object result = name switch
+            object result;
+            if (name == "latency")
             {
-                "correctness" => await CorrectnessSuite.RunAsync(repo, solution, Mutations(30), seed),
-                "selection" => await SelectionSuite.RunAsync(repo, solution, Mutations(10), seed),
-                "latency" => await LatencySuite.RunAsync(repo, solution),
-                _ => throw new ArgumentException($"unknown suite {name}"),
-            };
+                result = await LatencySuite.RunAsync(repo, solution, checksOnly: options.GetValueOrDefault("part") == "checks");
+            }
+            else
+            {
+                var truth = await TruthForAsync(name, repo, solution, await KeyAsync(name), seed, Mutations(name), options, fuseRoot);
+                result = name switch
+                {
+                    "correctness" => await CorrectnessSuite.RunAsync(repo, solution, truth),
+                    "selection" => await SelectionSuite.RunAsync(repo, truth),
+                    _ => throw new ArgumentException($"unknown suite {name}"),
+                };
+            }
+
             var file = Path.Combine(fuseRoot, "evals", "results", $"{name}-{repo.Name}-{DateTime.Now:yyyyMMdd-HHmm}.json");
             Directory.CreateDirectory(Path.GetDirectoryName(file)!);
             await File.WriteAllTextAsync(file, JsonSerializer.Serialize(result, Json));
@@ -88,6 +119,77 @@ internal static class Program
         }
 
         return 0;
+    }
+
+    /// <summary>
+    ///     The complete truth for a suite: the cached file (<c>--cache</c>, or the one under <c>evals/.work/truth</c>), then
+    ///     the shard files in <c>--truth-dir</c>, then whatever is still missing, run here. The result is saved to
+    ///     <c>--cache-out</c> (or back to the cache), so the next run reads it.
+    /// </summary>
+    private static async Task<TruthFile> TruthForAsync(string suite, EvalRepo repo, SolutionInfo solution, string key, int seed, int count, Dictionary<string, string> options, string fuseRoot)
+    {
+        var cache = options.GetValueOrDefault("cache") ?? Path.Combine(fuseRoot, "evals", ".work", "truth", $"{suite}-{repo.Name}.json");
+        var truth = TruthFile.Load(cache, key) ?? new TruthFile { Key = key, Suite = suite, Repo = repo.Name, Seed = seed, Count = count };
+        if (options.GetValueOrDefault("truth-dir") is { } directory && Directory.Exists(directory))
+        {
+            foreach (var path in Directory.EnumerateFiles(directory, "*.json", SearchOption.AllDirectories).Order(StringComparer.Ordinal))
+            {
+                if (TruthFile.Load(path, key) is { } shard)
+                    truth.Merge(shard);
+                else
+                    Console.WriteLine($"[truth] {path} is not the truth for {key}; left out");
+            }
+        }
+
+        if (!truth.IsComplete)
+            await TruthRunner.FillAsync(truth, repo, solution, head: true, cases: null, Origin(options));
+        truth.Save(options.GetValueOrDefault("cache-out") ?? cache);
+        Console.WriteLine($"[truth] {key}: from {string.Join("; ", truth.Origins())}");
+        return truth;
+    }
+
+    /// <summary>
+    ///     Runs one shard of the truth side: shard <c>--shard</c> of <c>--shards</c>, numbered from 0. For the selection suite
+    ///     with more than one shard, shard 0 runs HEAD's full test run alone, which takes as long as several cases, and the
+    ///     cases go round the other shards; otherwise shard 0 also runs HEAD and the cases go round every shard.
+    /// </summary>
+    private static async Task<int> TruthAsync(string suite, EvalRepo repo, SolutionInfo solution, string key, int seed, int count, Dictionary<string, string> options)
+    {
+        var shard = int.Parse(options.GetValueOrDefault("shard") ?? "0", CultureInfo.InvariantCulture);
+        var shards = int.Parse(options.GetValueOrDefault("shards") ?? "1", CultureInfo.InvariantCulture);
+        var output = options.GetValueOrDefault("out") ?? throw new ArgumentException("truth needs --out <file>");
+        var truth = (options.GetValueOrDefault("cache") is { } cache ? TruthFile.Load(cache, key) : null)
+            ?? new TruthFile { Key = key, Suite = suite, Repo = repo.Name, Seed = seed, Count = count };
+        var headAlone = suite == "selection" && shards > 1;
+        Func<int, bool> mine = headAlone
+            ? index => shard > 0 && index % (shards - 1) == shard - 1
+            : index => index % shards == shard;
+        await TruthRunner.FillAsync(truth, repo, solution, head: shard == 0, mine, Origin(options));
+        truth.Save(output);
+        Console.WriteLine($"[truth] shard {shard} of {shards} for {key} written to {output}");
+        return 0;
+    }
+
+    /// <summary>Where the truth is measured, as each answer records it: the GitHub Actions run and job, or this machine.</summary>
+    private static string Origin(Dictionary<string, string> options)
+    {
+        var run = Environment.GetEnvironmentVariable("GITHUB_RUN_ID");
+        var shard = options.GetValueOrDefault("shard") is { } s ? $", shard {s}" : "";
+        return run is null ? "local" : $"GitHub Actions run {run}, job {Environment.GetEnvironmentVariable("GITHUB_JOB")}{shard}";
+    }
+
+    /// <summary>The git tree of HEAD, which names the repository's content whatever commit it is on.</summary>
+    private static async Task<string> TreeAsync(string repoPath)
+    {
+        var result = await GitAsync(repoPath, "rev-parse", "HEAD^{tree}");
+        return result.ExitCode == 0 ? result.Output.Trim() : throw new InvalidOperationException($"no HEAD tree in {repoPath}: {result.Output}");
+    }
+
+    /// <summary>The SDK version <c>dotnet</c> picks in the repository, which is the one the truth side builds with.</summary>
+    private static async Task<string> SdkAsync(string repoPath)
+    {
+        var result = await ProcessRunner.RunAsync("dotnet", ["--version"], repoPath, CancellationToken.None);
+        return result.ExitCode == 0 ? result.Output.Trim() : throw new InvalidOperationException($"dotnet --version failed in {repoPath}: {result.Output}");
     }
 
     /// <summary>

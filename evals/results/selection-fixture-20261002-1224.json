@@ -1,0 +1,257 @@
+{
+  "suite": "selection",
+  "repo": "fixture",
+  "commit": "6c4e298f4c770038ea1d01cab2359f545e7c06fc",
+  "fuseBuild": "5.2.2/ebed87f8e78941d9b59b47aa3e6e8006",
+  "seed": 1,
+  "requested": 10,
+  "cases": 10,
+  "withFailures": 9,
+  "missedCases": 0,
+  "unverifiedCases": 0,
+  "missedTests": 0,
+  "unverifiedTests": 0,
+  "totalTests": 22,
+  "meanSelectedFraction": 0.15,
+  "fuseMedianSeconds": 1.3920968,
+  "dotnetMedianSeconds": 4.8216693500000005,
+  "skippedNonCompiling": [],
+  "projectsWithoutResults": [],
+  "truthKey": "truth-v1-selection-fixture-8b8e2a4ee3a6-s1-n10-sdk10.0.112-g11118dd7ae08",
+  "truthOrigins": [
+    "local"
+  ],
+  "treeCleanAfter": true,
+  "details": [
+    {
+      "index": 0,
+      "edit": {
+        "path": "src/Core/Geometry.cs",
+        "kind": "flip-comparison",
+        "description": "flipped \u003C= at line 15",
+        "newText": null
+      },
+      "truthFailing": [
+        "Core.Tests.GeometryTests.Square",
+        "Services.Tests.ReportBuilderTests.DescribesSquare"
+      ],
+      "fuseFailing": [
+        "Core.Tests.GeometryTests.Square",
+        "Services.Tests.ReportBuilderTests.DescribesSquare"
+      ],
+      "fuseFailed": 2,
+      "fusePassed": 3,
+      "fuseSummary": "fuse: 2 failed, 3 passed in 12.0 s; ran 5 test(s) affected by your changes out of 22; fuse test --all runs everything; without MSBuild",
+      "missed": [],
+      "fuseSeconds": 12.0929851,
+      "dotnetSeconds": 5.4847037,
+      "verdict": "caught"
+    },
+    {
+      "index": 1,
+      "edit": {
+        "path": "src/Core/TextTools.cs",
+        "kind": "off-by-one",
+        "description": "changed 1 to 2 at line 14",
+        "newText": null
+      },
+      "truthFailing": [
+        "Core.Tests.TextToolsTests.Slugifies"
+      ],
+      "fuseFailing": [
+        "Core.Tests.TextToolsTests.Slugifies"
+      ],
+      "fuseFailed": 1,
+      "fusePassed": 1,
+      "fuseSummary": "fuse: 1 failed, 1 passed in 1.3 s; ran 2 test(s) affected by your changes out of 22; fuse test --all runs everything; without MSBuild",
+      "missed": [],
+      "fuseSeconds": 1.4364065,
+      "dotnetSeconds": 4.7874442,
+      "verdict": "caught"
+    },
+    {
+      "index": 2,
+      "edit": {
+        "path": "src/Services/OrderService.cs",
+        "kind": "drop-statement",
+        "description": "dropped \u0060_lines.Add(price.Multiply(quantity));\u0060 at line 13",
+        "newText": null
+      },
+      "truthFailing": [
+        "Services.Tests.OrderServiceTests.Discounts",
+        "Services.Tests.OrderServiceTests.Large",
+        "Services.Tests.OrderServiceTests.Totals"
+      ],
+      "fuseFailing": [
+        "Services.Tests.OrderServiceTests.Totals",
+        "Services.Tests.OrderServiceTests.Large",
+        "Services.Tests.OrderServiceTests.Discounts"
+      ],
+      "fuseFailed": 3,
+      "fusePassed": 1,
+      "fuseSummary": "fuse: 3 failed, 1 passed in 1.3 s; ran 4 test(s) affected by your changes out of 22; fuse test --all runs everything; without MSBuild",
+      "missed": [],
+      "fuseSeconds": 1.4040304,
+      "dotnetSeconds": 5.6052774,
+      "verdict": "caught"
+    },
+    {
+      "index": 3,
+      "edit": {
+        "path": "src/Services/OrderService.cs",
+        "kind": "drop-statement",
+        "description": "dropped \u0060_lines.Add(price.Multiply(quantity));\u0060 at line 13",
+        "newText": null
+      },
+      "truthFailing": [
+        "Services.Tests.OrderServiceTests.Totals",
+        "Services.Tests.OrderServiceTests.Discounts",
+        "Services.Tests.OrderServiceTests.Large"
+      ],
+      "fuseFailing": [
+        "Services.Tests.OrderServiceTests.Totals",
+        "Services.Tests.OrderServiceTests.Large",
+        "Services.Tests.OrderServiceTests.Discounts"
+      ],
+      "fuseFailed": 3,
+      "fusePassed": 1,
+      "fuseSummary": "fuse: 3 failed, 1 passed in 1.4 s; ran 4 test(s) affected by your changes out of 22; fuse test --all runs everything; without MSBuild",
+      "missed": [],
+      "fuseSeconds": 1.4866852,
+      "dotnetSeconds": 3.6589046,
+      "verdict": "caught"
+    },
+    {
+      "index": 4,
+      "edit": {
+        "path": "src/Core/Geometry.cs",
+        "kind": "off-by-one",
+        "description": "changed 0 to 1 at line 15",
+        "newText": null
+      },
+      "truthFailing": [],
+      "fuseFailing": [],
+      "fuseFailed": 0,
+      "fusePassed": 5,
+      "fuseSummary": "fuse: 0 failed, 5 passed in 1.2 s; ran 5 test(s) affected by your changes out of 22; fuse test --all runs everything; without MSBuild",
+      "missed": [],
+      "fuseSeconds": 1.3142795,
+      "dotnetSeconds": 6.0656763,
+      "verdict": "no-failure"
+    },
+    {
+      "index": 5,
+      "edit": {
+        "path": "src/Core/Geometry.cs",
+        "kind": "negate-return",
+        "description": "negated \u0060return false;\u0060 at line 16",
+        "newText": null
+      },
+      "truthFailing": [
+        "Core.Tests.GeometryTests.NegativeIsNotSquare"
+      ],
+      "fuseFailing": [
+        "Core.Tests.GeometryTests.NegativeIsNotSquare"
+      ],
+      "fuseFailed": 1,
+      "fusePassed": 4,
+      "fuseSummary": "fuse: 1 failed, 4 passed in 1.3 s; ran 5 test(s) affected by your changes out of 22; fuse test --all runs everything; without MSBuild",
+      "missed": [],
+      "fuseSeconds": 1.4421684,
+      "dotnetSeconds": 4.6830419,
+      "verdict": "caught"
+    },
+    {
+      "index": 6,
+      "edit": {
+        "path": "src/Services/OrderService.cs",
+        "kind": "flip-comparison",
+        "description": "flipped \u003E= at line 24",
+        "newText": null
+      },
+      "truthFailing": [
+        "Services.Tests.OrderServiceTests.Large"
+      ],
+      "fuseFailing": [
+        "Services.Tests.OrderServiceTests.Large"
+      ],
+      "fuseFailed": 1,
+      "fusePassed": 0,
+      "fuseSummary": "fuse: 1 failed, 0 passed in 1.2 s; ran 1 test(s) affected by your changes out of 22; fuse test --all runs everything; without MSBuild",
+      "missed": [],
+      "fuseSeconds": 1.2622957,
+      "dotnetSeconds": 5.7041022,
+      "verdict": "caught"
+    },
+    {
+      "index": 7,
+      "edit": {
+        "path": "src/Core/TextTools.cs",
+        "kind": "off-by-one",
+        "description": "changed 1 to 2 at line 14",
+        "newText": null
+      },
+      "truthFailing": [
+        "Core.Tests.TextToolsTests.Slugifies"
+      ],
+      "fuseFailing": [
+        "Core.Tests.TextToolsTests.Slugifies"
+      ],
+      "fuseFailed": 1,
+      "fusePassed": 1,
+      "fuseSummary": "fuse: 1 failed, 1 passed in 1.3 s; ran 2 test(s) affected by your changes out of 22; fuse test --all runs everything; without MSBuild",
+      "missed": [],
+      "fuseSeconds": 1.3801632,
+      "dotnetSeconds": 4.8558945,
+      "verdict": "caught"
+    },
+    {
+      "index": 8,
+      "edit": {
+        "path": "src/Services/OrderService.cs",
+        "kind": "off-by-one",
+        "description": "changed 100 to 101 at line 31",
+        "newText": null
+      },
+      "truthFailing": [
+        "Services.Tests.OrderServiceTests.Discounts"
+      ],
+      "fuseFailing": [
+        "Services.Tests.OrderServiceTests.Discounts"
+      ],
+      "fuseFailed": 1,
+      "fusePassed": 0,
+      "fuseSummary": "fuse: 1 failed, 0 passed in 1.3 s; ran 1 test(s) affected by your changes out of 22; fuse test --all runs everything; without MSBuild",
+      "missed": [],
+      "fuseSeconds": 1.3656258,
+      "dotnetSeconds": 4.0583514,
+      "verdict": "caught"
+    },
+    {
+      "index": 9,
+      "edit": {
+        "path": "src/Services/OrderService.cs",
+        "kind": "drop-statement",
+        "description": "dropped \u0060_lines.Add(price.Multiply(quantity));\u0060 at line 13",
+        "newText": null
+      },
+      "truthFailing": [
+        "Services.Tests.OrderServiceTests.Totals",
+        "Services.Tests.OrderServiceTests.Large",
+        "Services.Tests.OrderServiceTests.Discounts"
+      ],
+      "fuseFailing": [
+        "Services.Tests.OrderServiceTests.Discounts",
+        "Services.Tests.OrderServiceTests.Large",
+        "Services.Tests.OrderServiceTests.Totals"
+      ],
+      "fuseFailed": 3,
+      "fusePassed": 1,
+      "fuseSummary": "fuse: 3 failed, 1 passed in 1.2 s; ran 4 test(s) affected by your changes out of 22; fuse test --all runs everything; without MSBuild",
+      "missed": [],
+      "fuseSeconds": 1.2457984,
+      "dotnetSeconds": 3.8888809,
+      "verdict": "caught"
+    }
+  ]
+}

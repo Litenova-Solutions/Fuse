@@ -4,6 +4,10 @@
     <OutputType>Exe</OutputType>
     <AssemblyName>fuse</AssemblyName>
     <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- The engine runs the repository's source generators, and some look a culture up by name, as the Regex generator
+         does for [GeneratedRegex(..., "en-US")]. With only predefined cultures that lookup throws in invariant mode, the
+         generator writes no implementation, and the check reports an error dotnet build does not have. -->
+    <PredefinedCulturesOnly>false</PredefinedCulturesOnly>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>fuse</ToolCommandName>

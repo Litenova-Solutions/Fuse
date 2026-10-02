@@ -95,7 +95,8 @@ internal sealed class TestPlanner
             if (node is null)
                 continue;
             var tests = _counter.TestsIn(node);
-            var count = TestCounter.Count(tests, selection);
+            // A Microsoft.Testing.Platform project runs whole (below), so every test in it counts as run.
+            var count = node.UsesTestingPlatform ? tests.Count : TestCounter.Count(tests, selection);
             // A static count of zero is not proof nothing matches (inherited test methods run under the derived class's name), so only an empty selection is skipped.
             if (selection is TestSelection.Methods { Patterns.Count: 0 })
                 continue;

@@ -145,6 +145,27 @@ public class TestSelectionTests
     }
 
     [Fact]
+    public async Task A_testing_platform_project_runs_whole_and_the_summary_counts_all_its_tests()
+    {
+        var repo = FixtureRepo.CreateStandard();
+        repo.Write("global.json", """{ "test": { "runner": "Microsoft.Testing.Platform" } }""");
+        repo.Replace("Lib.Tests/Lib.Tests.csproj", "<IsPackable>false</IsPackable>", "<IsPackable>false</IsPackable><IsTestingPlatformApplication>true</IsTestingPlatformApplication>");
+        repo.Commit();
+        await using var engine = await InProcessEngine.StartAsync(repo);
+        engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
+
+        var plan = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
+
+        // One test reaches the change, but the project runs whole, so the summary counts every test in it.
+        var run = Assert.Single(plan.Runs);
+        Assert.True(run.UsesTestingPlatform);
+        Assert.Null(run.Filter);
+        // Lib.Tests has three tests: Adds and Multiplies in CalcTests, and Greets in GreeterTests.
+        Assert.Equal(3, plan.SelectedTests);
+        Assert.StartsWith("ran 3 test(s) affected by your changes out of 4", plan.Summary, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Plan_falls_back_to_msbuild_when_a_non_source_file_changed()
     {
         await using var engine = await InProcessEngine.StartAsync();

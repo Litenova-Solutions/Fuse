@@ -269,7 +269,7 @@
           <tr><th scope="row"><code>Reach</code></th><td><code>None</code> (no declaration change), <code>Broad(IReadOnlySet&lt;RepoPath&gt;)</code> (every file in the reached projects), <code>Precise(IReadOnlyDictionary&lt;RepoPath, Cause&gt;)</code></td></tr>
           <tr><th scope="row"><code>Cause</code></th><td><code>Changed(declaration)</code>, <code>Removed(declaration as it was at HEAD)</code></td></tr>
           <tr><th scope="row"><code>IntroducedError</code></th><td><code>CompilerError</code>, <code>Cause?</code>, and <code>IsCauseLeftOut</code> when the cap on causes left its cause out</td></tr>
-          <tr><th scope="row"><code>CheckResult</code></th><td>introduced errors, files checked, the projects the errors are in, projects with declaration changes, dependents checked, whether whole projects were checked</td></tr>
+          <tr><th scope="row"><code>CheckResult</code></th><td>introduced errors, files checked, the projects the errors are in, projects with declaration changes, dependents checked, whether whole projects were checked, and how many errors were found in how many files before the cap</td></tr>
         </tbody>
       </table>
     </div>

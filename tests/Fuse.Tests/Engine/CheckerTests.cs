@@ -41,6 +41,19 @@ public class CheckerTests
     }
 
     [Fact]
+    public async Task Errors_past_the_cap_are_still_counted()
+    {
+        await using var engine = await InProcessEngine.StartAsync();
+        var lines = string.Concat(Enumerable.Range(1, 205).Select(i => $"    public static int F{i}() => missing{i};\n"));
+        engine.Repo.Write("Lib/Many.cs", $"namespace Lib;\n\npublic static class Many\n{{\n{lines}}}\n");
+        engine.Repo.Write("Lib/Other.cs", "namespace Lib;\n\npublic static class Other\n{\n    public static int G() => missing;\n}\n");
+        var report = await engine.CheckAllAsync();
+        Assert.Equal(200, report.Errors.Count);
+        Assert.Equal(206, report.ErrorCount);
+        Assert.Equal(2, report.ErrorFileCount);
+    }
+
+    [Fact]
     public async Task Renamed_member_breaks_dependent_projects()
     {
         await using var engine = await InProcessEngine.StartAsync();

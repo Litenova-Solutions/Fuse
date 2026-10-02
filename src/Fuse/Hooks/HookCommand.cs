@@ -107,7 +107,10 @@ internal static class HookCommand
         var (result, response) = await CheckOperation.RunAsync(root, null, waitForLoad: true, TimeSpan.FromMinutes(5), cancellationToken).ConfigureAwait(false);
         if (!ShouldReport(result, response))
             return harness.AllowStop();
-        return harness.BlockStop(result.Text + "\nFix these errors before finishing; HEAD does not have them, so your changes introduced them.");
+        // A missing restore is not an error the changes introduced; its message already names the command to run.
+        return result.Outcome == Outcome.ProblemsFound
+            ? harness.BlockStop(result.Text + "\nFix these errors before finishing; HEAD does not have them, so your changes introduced them.")
+            : harness.BlockStop(result.Text);
     }
 
     /// <summary>
@@ -156,7 +159,7 @@ internal static class HookCommand
             var root = RepoRoot.Find(cwd);
             if (root is null)
                 return;
-            Directory.CreateDirectory(root.StateDirectory);
+            LocalState.RecordRoot(root);
             File.AppendAllText(Path.Combine(root.StateDirectory, "hook.log"), $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {message}{Environment.NewLine}");
         }
         catch (Exception e) when (e is not OperationCanceledException)

@@ -74,15 +74,16 @@ internal static class CheckOperation
             summaryParts.Add($"{causesLeftOut} cause(s) left out");
         var summaryTail = summaryParts.Count > 0 ? "; " + string.Join("; ", summaryParts) : "";
 
-        if (report.Errors.Length == 0)
+        if (report.ErrorCount == 0)
         {
             text.Append($"fuse: no errors introduced ({report.FilesChecked} file(s) checked{summaryTail})");
             return new OperationResult(Outcome.Clean, text.ToString());
         }
 
-        var files = report.Errors.Select(e => e.Error.Path).Distinct().Count();
-        var more = report.Errors.Length > MaxShown ? $", first {MaxShown} shown" : "";
-        text.Append($"fuse: {report.Errors.Length} error(s) introduced in {files} file(s){more} ({string.Join(", ", report.Projects)}){summaryTail}");
+        // The counts are the engine's, over every error it found; the errors it sends are capped, and so are those printed.
+        var shown = Math.Min(MaxShown, report.Errors.Length);
+        var more = report.ErrorCount > shown ? $", first {shown} shown" : "";
+        text.Append($"fuse: {report.ErrorCount} error(s) introduced in {report.ErrorFileCount} file(s){more} ({string.Join(", ", report.Projects)}){summaryTail}");
         return new OperationResult(Outcome.ProblemsFound, text.ToString());
     }
 }

@@ -48,6 +48,14 @@ public class SurfaceDiffTests
         Assert.Contains("X", Names(Changes("class C { public const int X = 1; }", "class C { public const int X = 2; }")));
 
     [Fact]
+    public void Line_endings_inside_a_multi_line_constant_change_nothing()
+    {
+        // A checkout with core.autocrlf writes CRLF where HEAD has LF, inside a raw or verbatim string as anywhere else.
+        const string Lf = "class C { public const string X = \"\"\"\n    a\n    b\n    \"\"\"; public const string Y = @\"a\nb\"; }";
+        Assert.Empty(Changes(Lf, Lf.Replace("\n", "\r\n", StringComparison.Ordinal)));
+    }
+
+    [Fact]
     public void Field_initializer_is_not_part_of_the_surface() =>
         Assert.Empty(Changes("class C { public int X = 1; }", "class C { public int X = 2; }"));
 

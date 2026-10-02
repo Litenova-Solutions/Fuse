@@ -101,7 +101,7 @@
     <nav aria-label="Main">
       <a href="index.html" aria-current="page">Docs</a>
       <a href="benchmarks.html">Benchmarks</a>
-      <a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a>
+      <a class="gh" href="https://github.com/Litenova-Solutions/Fuse" aria-label="Fuse on GitHub"><svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg></a>
     </nav>
   </header>
 
@@ -110,7 +110,7 @@
     <p class="crumbs"><a href="index.html">Docs</a> / Reference</p>
     <h1>Changelog</h1>
     <p class="jump"><a href="#docs-nav">All documentation pages</a></p>
-    <p class="intro">This page lists what changed in each Fuse release, newest first, and what to do when you upgrade to it. Only Fuse 5 is supported; every version before 5.0.0 is deprecated.</p>
+    <p class="intro">This page lists what changed in each Fuse release, newest first, and what to do when you upgrade to it. Each release groups its changes as Added, Changed, Removed, Fixed, Security and Documentation. Only Fuse 5 is supported; every version before 5.0.0 is deprecated.</p>
     <div class="audience">
       <p><b>This page is for</b> someone upgrading Fuse, or deciding whether to, who wants to know what will behave differently.</p>
       <p><b>After reading it</b>, follow the upgrade steps of each release between the version you have and the latest one. <code>fuse --version</code> prints the version you have.</p>
@@ -120,6 +120,7 @@
       <p>On this page</p>
       <ol>
         <li><a href="#supported-versions">Supported versions</a></li>
+        <li><a href="#v5-2-3">5.2.3</a></li>
         <li><a href="#v5-2-2">5.2.2</a></li>
         <li><a href="#v5-2-1">5.2.1</a></li>
         <li><a href="#v5-2-0">5.2.0</a></li>
@@ -135,28 +136,51 @@
       <thead><tr><th scope="col">Version</th><th scope="col">Status</th></tr></thead>
       <tbody>
         <tr><th scope="row">5.2.x</th><td>Supported. The latest release.</td></tr>
-        <tr><th scope="row">5.1.x</th><td>No longer fixed. Upgrade to 5.2.2 with the <a href="#upgrading-from-5-1-0">steps below</a>.</td></tr>
-        <tr><th scope="row">5.0.x</th><td>No longer fixed. Upgrade to 5.1.0 with the <a href="#upgrading-from-5-0-0">steps below</a>, then to 5.2.2.</td></tr>
+        <tr><th scope="row">5.1.x</th><td>No longer fixed. Upgrade to 5.2.3 with the <a href="#upgrading-from-5-1-0">steps below</a>.</td></tr>
+        <tr><th scope="row">5.0.x</th><td>No longer fixed. Upgrade to 5.1.0 with the <a href="#upgrading-from-5-0-0">steps below</a>, then to 5.2.3.</td></tr>
         <tr><th scope="row">1.0.0 to 4.4.0</th><td>Deprecated and unsupported. These versions are a different program under the same name; <a href="#moving-from-4-x">Moving from 4.x</a> says what to remove.</td></tr>
       </tbody>
     </table>
     <p>To upgrade the tool itself to the latest release:</p>
     <pre data-label="Shell"><code>dotnet tool update -g Fuse</code></pre>
 
+    <h2 id="v5-2-3">5.2.3 <a class="anchor" href="#v5-2-3" aria-label="Link to this section">#</a></h2>
+    <p>Released 2026-10-02. Compared with 5.2.2.</p>
+    <p>5.2.3 makes <code>fuse test</code> run the tests that reach a change through a helper class in a test project, and updates the website.</p>
+    <h3 id="upgrading-to-5-2-3">Upgrading to 5.2.3 <a class="anchor" href="#upgrading-to-5-2-3" aria-label="Link to this section">#</a></h3>
+    <p>Update the tool with <code>dotnet tool update -g Fuse</code>. Nothing else needs to change, and <code>fuse init</code> does not need to run again. A repository with shared helpers in its test projects can see <code>fuse test</code> run more tests than 5.2.2 did: the ones 5.2.2 left out.</p>
+
+    <h3 id="v5-2-3-fixed">Fixed <a class="anchor" href="#v5-2-3-fixed" aria-label="Link to this section">#</a></h3>
+    <ul>
+      <li><code>fuse test</code> selects the tests that reach a change only through a helper class in a test project, such as a shared builder that holds no tests itself, both when the helper changes and when production code that the tests reach through it changes. 5.2.2 selected only the helper class, which matched no test, so those tests did not run (<a href="https://github.com/Litenova-Solutions/Fuse/issues/83">#83</a>). The test filter leaves out a test name that its class already selects, so a change to a private helper inside a test class still passes one pattern for that class.</li>
+    </ul>
+
+    <h3 id="v5-2-3-documentation">Documentation <a class="anchor" href="#v5-2-3-documentation" aria-label="Link to this section">#</a></h3>
+    <ul>
+      <li>The <a href="limits.html#what-a-check-does-not-see">limits page</a> says that when several agents edit one working tree, a check does not know which agent made an edit, so an agent can be told about another agent's error, and that the stop hook checks every change in the working tree (<a href="https://github.com/Litenova-Solutions/Fuse/issues/47">#47</a> tracks telling each agent only about its own errors).</li>
+      <li>The <a href="../index.html">home page</a> shows the same edit through <code>dotnet build</code> and <code>fuse check</code>, played at the median times measured on Jellyfin, leads its features with parallel agents in one working tree, and links each feature to the page that explains it. Every page's header links to GitHub with its icon, and every footer links to the changelog and to Litenova Solutions. The FAQ says the benchmarks come from GitHub Actions windows-latest runners, as the benchmarks page does; it said one Windows machine.</li>
+      <li>This page groups each release's changes as Added, Changed, Removed, Fixed, Security and Documentation.</li>
+    </ul>
+
     <h2 id="v5-2-2">5.2.2 <a class="anchor" href="#v5-2-2" aria-label="Link to this section">#</a></h2>
     <p>Released 2026-10-02. Compared with 5.2.1.</p>
     <p>5.2.2 makes <code>fuse test</code> run only the selected tests when the selection is large, shortens how long a test plan makes other agents' checks wait, rewrites <code>dotnet test</code> commands that start with variable assignments, and measures the benchmarks on four open-source repositories, with the spread of every time.</p>
     <h3 id="upgrading-to-5-2-2">Upgrading to 5.2.2 <a class="anchor" href="#upgrading-to-5-2-2" aria-label="Link to this section">#</a></h3>
     <p>Update the tool with <code>dotnet tool update -g Fuse</code>. Nothing else needs to change, and <code>fuse init</code> does not need to run again. A script that reads the engine log's phase lines finds a test plan's preparation in two phases, <code>mirror</code> and <code>emit</code>, where 5.2.1 had <code>mirror</code> alone.</p>
+
+    <h3 id="v5-2-2-changed">Changed <a class="anchor" href="#v5-2-2-changed" aria-label="Link to this section">#</a></h3>
+    <ul>
+      <li>A test plan holds the engine's request lock only while it syncs and selects tests, and prepares the copies for runs without MSBuild after releasing it, so a check from another agent no longer waits while a test plan emits assemblies; it still waits for the plan's sync and selection. An assembly that has not changed since the previous plan is not emitted again. The engine log's phase line splits that preparation into <code>mirror</code> and <code>emit</code>, and <code>gateHolder</code> names what a request waited behind for the request lock.</li>
+    </ul>
+
+    <h3 id="v5-2-2-fixed">Fixed <a class="anchor" href="#v5-2-2-fixed" aria-label="Link to this section">#</a></h3>
     <ul>
       <li><code>fuse test</code> passes the test filter to <code>dotnet test</code> in a runsettings file, as <code>RunConfiguration/TestCaseFilter</code> with <code>--settings</code>, instead of on the command line. A selection of up to 2,000 test names runs only those tests. 5.2.1 cut a filter above 8,000 characters back to whole test classes, and a longer one to the whole project, without saying so. Past 2,000 names the filter still collapses, and the summary says so and the engine log names the project.</li>
       <li>A run without MSBuild uses the test project's own runsettings file (<code>RunSettingsFilePath</code>), with the filter added, as <code>dotnet test</code> on the project does. 5.2.1 ignored that file on such runs.</li>
-      <li>A test plan holds the engine's request lock only while it syncs and selects tests, and prepares the copies for runs without MSBuild after releasing it, so a check from another agent no longer waits while a test plan emits assemblies; it still waits for the plan's sync and selection. An assembly that has not changed since the previous plan is not emitted again. The engine log's phase line splits that preparation into <code>mirror</code> and <code>emit</code>, and <code>gateHolder</code> names what a request waited behind for the request lock.</li>
       <li>A check whose reference search reaches a project that uses an analyzer the repository has not built yet, such as Jellyfin's own analyzer before its first build, leaves that analyzer out and answers. 5.2.1 answered <code>internal error: Unexpected value 'Microsoft.CodeAnalysis.Diagnostics.UnresolvedAnalyzerReference'</code>.</li>
       <li>The pre-shell hook rewrites <code>dotnet build</code> and <code>dotnet test</code> after variable assignments, so <code>DOTNET_CLI_UI_LANGUAGE=en dotnet test</code> becomes <code>DOTNET_CLI_UI_LANGUAGE=en fuse test</code>. An assignment counts when its value has no whitespace, quote, backtick, separator, redirection or parenthesis; for Codex, only plain values count. 5.2.1 left such a command as it was.</li>
       <li>A Microsoft.Testing.Platform run that exits with 8, the platform's code for a run in which no test ran, prints <code>fuse: no test matched the dotnet test arguments (exit code 8)</code> for <code>fuse test</code> with arguments, or <code>fuse: the test run of &lt;project&gt; ran no test (exit code 8)</code>. 5.2.1 printed that the run exited with code 8 and produced no results.</li>
       <li>A second <code>fuse init</code> prints <code>unchanged &lt;file&gt;</code> for a settings file that already holds what it would write, and leaves the file as it was. 5.2.1 printed <code>wrote &lt;file&gt;</code> and wrote it again.</li>
-      <li>The benchmarks measure four open-source repositories: FluentValidation, a small library, takes the place of the generated fixture beside NodaTime, Jellyfin and the Community Toolkit. A check is 7.0x to 31.0x faster than <code>dotnet build</code> at the median, and 2.5x to 5.3x faster over all 30 edits of each repository; <code>fuse test</code> is 1.3x to 3.7x faster than <code>dotnet test</code>. The README, the home page and the sharing image quote these, where 5.2.1 quoted the fixture's 24.6x and, in the README, 5.7x for tests, which was a time in seconds. The <code>dotnet test</code> time is now one run of the whole solution, as a user runs it, instead of one test project after another, which lowered the test speedups. The benchmarks page and the chart give each command's fastest and slowest case, mean, standard deviation and P95 next to its median.</li>
       <li><code>fuse check</code> no longer reports CS8795 for a <code>[GeneratedRegex]</code> method that names a culture, such as <code>"en-US"</code>. The engine runs with invariant globalization, where the Regex source generator could not look the culture up and wrote no implementation. The same failure sent test projects that depend on such a project through MSBuild instead of running them without it.</li>
       <li>The check summary counts every error the check found, in every file it found them in. 5.2.1 counted only the 200 errors the engine sends, so a change that broke 602 call sites in 3 files printed <code>200 error(s) introduced in 2 file(s)</code>.</li>
       <li>A file whose only difference from HEAD is CRLF line endings inside a multi-line string constant, as a checkout with <code>core.autocrlf</code> writes it, has no declaration change, so the check stays within the file.</li>
@@ -166,14 +190,25 @@
       <li>A client that finds an engine copy without its completion marker, such as one a cleanup deleted part of, makes the copy again, or runs the engine from a fresh copy beside it when the old one cannot be replaced. 5.2.1 ran the engine from the incomplete copy, so the engine could not start until the copy was deleted by hand.</li>
     </ul>
 
+    <h3 id="v5-2-2-documentation">Documentation <a class="anchor" href="#v5-2-2-documentation" aria-label="Link to this section">#</a></h3>
+    <ul>
+      <li>The benchmarks measure four open-source repositories: FluentValidation, a small library, takes the place of the generated fixture beside NodaTime, Jellyfin and the Community Toolkit. A check is 7.0x to 31.0x faster than <code>dotnet build</code> at the median, and 2.5x to 5.3x faster over all 30 edits of each repository; <code>fuse test</code> is 1.3x to 3.7x faster than <code>dotnet test</code>. The README, the home page and the sharing image quote these, where 5.2.1 quoted the fixture's 24.6x and, in the README, 5.7x for tests, which was a time in seconds. The <code>dotnet test</code> time is now one run of the whole solution, as a user runs it, instead of one test project after another, which lowered the test speedups. The benchmarks page and the chart give each command's fastest and slowest case, mean, standard deviation and P95 next to its median.</li>
+    </ul>
+
     <h2 id="v5-2-1">5.2.1 <a class="anchor" href="#v5-2-1" aria-label="Link to this section">#</a></h2>
     <p>Released 2026-10-01. Compared with 5.2.0.</p>
     <p>5.2.1 makes Fuse installable from NuGet again. 5.2.0 could not be installed from NuGet: nuget.org refused its per-platform packages, so <code>dotnet tool install</code> and <code>dotnet tool update</code> found the <code>Fuse</code> package but not the package for the platform. Everything 5.2.0 describes below ships in 5.2.1.</p>
     <h3 id="upgrading-to-5-2-1">Upgrading to 5.2.1 <a class="anchor" href="#upgrading-to-5-2-1" aria-label="Link to this section">#</a></h3>
     <p>Update the tool with <code>dotnet tool update -g Fuse</code>, from 5.1.0 as the <a href="#upgrading-from-5-1-0">5.2.0 steps</a> describe, or from a 5.2.0 installed another way. Nothing else needs to change. A mirror or offline feed that copies the <code>Fuse</code> package needs the per-platform packages it points to as well: <code>Litenova.Fuse.win-x64</code>, <code>Litenova.Fuse.linux-x64</code>, <code>Litenova.Fuse.linux-arm64</code>, <code>Litenova.Fuse.osx-arm64</code>, <code>Litenova.Fuse.linux-musl-x64</code>, <code>Litenova.Fuse.linux-musl-arm64</code> and <code>Litenova.Fuse.any</code>.</p>
+
+    <h3 id="v5-2-1-added">Added <a class="anchor" href="#v5-2-1-added" aria-label="Link to this section">#</a></h3>
+    <ul>
+      <li>The <code>Fuse</code> package on nuget.org shows the Fuse icon.</li>
+    </ul>
+
+    <h3 id="v5-2-1-fixed">Fixed <a class="anchor" href="#v5-2-1-fixed" aria-label="Link to this section">#</a></h3>
     <ul>
       <li>The per-platform packages are named <code>Litenova.Fuse.win-x64</code>, <code>Litenova.Fuse.linux-x64</code>, <code>Litenova.Fuse.linux-arm64</code>, <code>Litenova.Fuse.osx-arm64</code>, <code>Litenova.Fuse.linux-musl-x64</code>, <code>Litenova.Fuse.linux-musl-arm64</code> and <code>Litenova.Fuse.any</code>. The SDK names them after the tool, <code>Fuse.win-x64</code> and so on, and nuget.org reserves the <code>Fuse.</code> prefix without an owner, so it refused every one of them as "The package ID is reserved". The <code>Fuse</code> package points to the new names, and <code>dotnet tool install -g Fuse</code> stays the only command.</li>
-      <li>The <code>Fuse</code> package on nuget.org shows the Fuse icon.</li>
       <li>The publish workflow fails when nuget.org refuses a package, with nuget.org's reason. It passed 5.2.0 although only the <code>Fuse</code> package was pushed, because <code>--skip-duplicate</code> reports every refusal with status 409 as a package that already exists.</li>
     </ul>
 
@@ -192,32 +227,28 @@
       <li><strong>Your own packaging.</strong> A mirror or offline feed that copies the <code>Fuse</code> package needs the per-platform packages it points to as well; <a href="#v5-2-1">5.2.1</a> names them.</li>
     </ul>
 
-    <h3 id="v5-2-0-native-client">The native client <a class="anchor" href="#v5-2-0-native-client" aria-label="Link to this section">#</a></h3>
+    <h3 id="v5-2-0-added">Added <a class="anchor" href="#v5-2-0-added" aria-label="Link to this section">#</a></h3>
     <ul>
       <li>On Windows x64, Linux x64, Linux Arm64 and macOS Arm64, the <code>fuse</code> command is the native client: the client compiled ahead of time to native code, so a hook or command starts no .NET runtime and compiles no code before it sends its request to the engine (<a href="how-it-works.html">How it works</a>). The engine still runs on the .NET runtime, from the <code>fuse.dll</code> installed with the native client, because it loads MSBuild and the repository's analyzers at run time. On every other platform, Windows Arm64, macOS x64 and Alpine included, <code>fuse</code> runs <code>fuse.dll</code> as in 5.1.0, and so do <code>dotnet tool run fuse</code> and tool manifests everywhere.</li>
+      <li>Each state directory holds a <code>root</code> file with its repository's path. Once a day a starting engine deletes the state directories whose repository no longer exists and that nothing wrote to for a day, such as those of deleted temporary repositories, which 5.1.0 kept for good (<a href="troubleshooting.html#where-the-logs-are">Where the logs are</a>).</li>
+    </ul>
+
+    <h3 id="v5-2-0-changed">Changed <a class="anchor" href="#v5-2-0-changed" aria-label="Link to this section">#</a></h3>
+    <ul>
       <li>The Linux native clients run on glibc 2.27 and later. On Windows the native client is the <code>fuse.exe</code> in the tools directory, so Git Bash, PowerShell and cmd all run it.</li>
       <li>The build id a request carries is the product version and the module id of <code>fuse.dll</code>, which the native client reads from the <code>fuse.dll</code> installed with it, so the native client and the engine it starts always agree.</li>
       <li><code>fuse engine &lt;root&gt;</code> in the native client prints that the engine runs from <code>fuse.dll</code> on the .NET runtime and exits with 2.</li>
       <li>A client that starts the engine looks for the <code>dotnet</code> host on the <code>PATH</code> when neither <code>DOTNET_HOST_PATH</code> nor <code>DOTNET_ROOT</code> names one and it has no runtime directory of its own.</li>
+      <li>For a test project on Microsoft.Testing.Platform, <code>fuse test</code> reads the counts from the run summary and each failed test's message and stack frames from the run's output, and answers as it does for VSTest (<a href="commands.html">Commands</a>). 5.1.0 printed <code>fuse: tests passed in T s</code> for a passing run and, for a failing one, the last 30 lines of the output and <code>exited with code E and produced no results</code>.</li>
+      <li>A starting engine deletes the engine copies of other builds that no running engine holds and that are more than ten minutes old; each engine marks its copy with a lock file while it runs. 5.1.0 deleted only copies last written more than seven days earlier, so every build of the tool left a copy behind for a week.</li>
     </ul>
 
-    <h3 id="v5-2-0-tests">Test runs <a class="anchor" href="#v5-2-0-tests" aria-label="Link to this section">#</a></h3>
+    <h3 id="v5-2-0-fixed">Fixed <a class="anchor" href="#v5-2-0-fixed" aria-label="Link to this section">#</a></h3>
     <ul>
-      <li>For a test project on Microsoft.Testing.Platform, <code>fuse test</code> reads the counts from the run summary and each failed test's message and stack frames from the run's output, and answers as it does for VSTest (<a href="commands.html">Commands</a>). 5.1.0 printed <code>fuse: tests passed in T s</code> for a passing run and, for a failing one, the last 30 lines of the output and <code>exited with code E and produced no results</code>.</li>
       <li>In a repository whose <code>global.json</code> selects Microsoft.Testing.Platform, <code>fuse test</code> with arguments, such as the <code>fuse test --filter-class Name</code> the pre-shell hook writes for <code>dotnet test --filter-class Name</code>, passes the arguments without VSTest's <code>--logger</code>, <code>--results-directory</code>, <code>-nologo</code> and <code>-tl:off</code>. 5.1.0 added them, so every such run failed with exit code 5 and ran no test.</li>
       <li>Whether <code>dotnet test</code> runs on Microsoft.Testing.Platform is read from the <code>test.runner</code> value of the <code>global.json</code> nearest to the working directory, up to the repository root, as the dotnet CLI reads it. 5.1.0 read only the root <code>global.json</code> and took any mention of the platform's name in it.</li>
-    </ul>
-
-    <h3 id="v5-2-0-checks">Checks <a class="anchor" href="#v5-2-0-checks" aria-label="Link to this section">#</a></h3>
-    <ul>
       <li><code>fuse check</code> and the <code>fuse_check</code> tool with named files answer <code>fuse: none of the files named in the check is a C# source file of a project in this repository: &lt;files&gt;</code> and exit with 2 when every named file is one Fuse cannot check, such as a path with a typo or a file of another language (<a href="messages.html#invalidpath">InvalidPath</a>). 5.1.0 answered <code>fuse: no errors introduced (0 file(s) checked)</code> and exited with 0, which read as a pass.</li>
       <li>A file renamed since HEAD is compared with the errors HEAD had under its old name, so an error that existed before the rename is not reported as introduced. Git status reports a rename as a deleted file and a new one, and the new file is taken as a rename of the deleted file that shares at least half of its lines. 5.1.0 reported every error HEAD had in a renamed file as introduced.</li>
-    </ul>
-
-    <h3 id="v5-2-0-local-state">Local state <a class="anchor" href="#v5-2-0-local-state" aria-label="Link to this section">#</a></h3>
-    <ul>
-      <li>A starting engine deletes the engine copies of other builds that no running engine holds and that are more than ten minutes old; each engine marks its copy with a lock file while it runs. 5.1.0 deleted only copies last written more than seven days earlier, so every build of the tool left a copy behind for a week.</li>
-      <li>Each state directory holds a <code>root</code> file with its repository's path. Once a day a starting engine deletes the state directories whose repository no longer exists and that nothing wrote to for a day, such as those of deleted temporary repositories, which 5.1.0 kept for good (<a href="troubleshooting.html#where-the-logs-are">Where the logs are</a>).</li>
     </ul>
 
     <h2 id="v5-1-0">5.1.0 <a class="anchor" href="#v5-1-0" aria-label="Link to this section">#</a></h2>
@@ -251,20 +282,28 @@
     </table>
     </div>
 
-    <h3 id="v5-1-0-hooks">Hooks and harnesses <a class="anchor" href="#v5-1-0-hooks" aria-label="Link to this section">#</a></h3>
+    <p>A check compiles the edited files and the files that use a declaration the edit changed, and reports the errors HEAD did not have (<a href="how-it-works.html#check">How it works</a>). Test selection picks the tests the changed code can reach (<a href="how-it-works.html#test-selection">How it works</a>).</p>
+
+    <h3 id="v5-1-0-added">Added <a class="anchor" href="#v5-1-0-added" aria-label="Link to this section">#</a></h3>
     <ul>
-      <li>The hook event that rewrites <code>dotnet build</code> and <code>dotnet test</code> is <code>pre-shell</code>, and <code>fuse init</code> writes it for Claude Code, Gemini CLI, Codex and the OpenCode plugin.</li>
-      <li>For Codex, whose answer to the pre-shell hook also approves the command, the hook rewrites only a command that is one <code>dotnet build</code> or <code>dotnet test</code> with plain arguments (<a href="harnesses.html#codex">Codex</a>).</li>
-      <li>A hook and the MCP server read their input as UTF-8, so a repository whose path or file names are not ASCII is checked from a harness whose console uses another code page. 5.0.0 failed to parse the payload and reported nothing.</li>
-      <li>A hook whose payload names an empty working directory runs in the harness's own working directory, where 5.0.0 crashed. A payload that is valid JSON but not an object exits 0 with no output and a line in <code>hook.log</code>, as every other internal failure does.</li>
       <li><code>fuse init</code> adds <code>.fuse/</code> to the root <code>.gitignore</code>, creating the file when there is none, unless a line already names the folder. The <code>.fuse</code> folder is reserved for files Fuse may keep in a repository, such as an index; 5.1.0 writes nothing there (<a href="harnesses.html#the-fuse-folder">The .fuse folder</a>).</li>
-      <li><code>fuse init</code> and <code>fuse mcp</code> outside a git repository say <code>fuse: not inside a git repository; Fuse compares your changes with HEAD, so it needs one</code>, the message <code>fuse check</code> gives.</li>
+      <li>An error in a file the agent did not edit is followed by a cause line: <code>changed:</code> or <code>removed:</code> and the header, on one line, of the declaration change that put the file in the check, as the working tree has it or as HEAD had it. An answer holds at most ten cause lines, and the summary ends with <code>N cause(s) left out</code> when a printed error lost its cause to that cap.</li>
+      <li><code>fuse build</code> and <code>fuse test</code> take a per-repository lock for as long as they write build output, so two agents building or testing through Fuse run one after the other instead of making MSBuild fail with MSB3021, MSB3027 or CS2012 on a file the other holds. A client that has to wait says so once on standard error, and a client that cannot take the lock says why and runs anyway (<a href="how-it-works.html#builds-and-the-build-lock">The build lock</a>). The arguments <code>fuse build</code> passes to <code>dotnet build</code>, the implicit restore included, are unchanged.</li>
+      <li><code>engine.log</code> names every request by its kind, such as <code>CheckFiles Calc.cs took 15 ms</code>, and writes one line of per-phase times for it, so a slow check or test run can be traced to its phases (<a href="troubleshooting.html#reading-a-phase-line">Reading a phase line</a>).</li>
     </ul>
 
-    <h3 id="v5-1-0-checks">Checks <a class="anchor" href="#v5-1-0-checks" aria-label="Link to this section">#</a></h3>
-    <p>A check compiles the edited files and the files that use a declaration the edit changed, and reports the errors HEAD did not have (<a href="how-it-works.html#check">How it works</a>).</p>
+    <h3 id="v5-1-0-changed">Changed <a class="anchor" href="#v5-1-0-changed" aria-label="Link to this section">#</a></h3>
     <ul>
-      <li>An error in a file the agent did not edit is followed by a cause line: <code>changed:</code> or <code>removed:</code> and the header, on one line, of the declaration change that put the file in the check, as the working tree has it or as HEAD had it. An answer holds at most ten cause lines, and the summary ends with <code>N cause(s) left out</code> when a printed error lost its cause to that cap.</li>
+      <li>The hook event that rewrites <code>dotnet build</code> and <code>dotnet test</code> is <code>pre-shell</code>, and <code>fuse init</code> writes it for Claude Code, Gemini CLI, Codex and the OpenCode plugin.</li>
+      <li><code>fuse init</code> and <code>fuse mcp</code> outside a git repository say <code>fuse: not inside a git repository; Fuse compares your changes with HEAD, so it needs one</code>, the message <code>fuse check</code> gives.</li>
+      <li>Test selection selects fewer extra tests. Splitting a field declaration into two, or adding a variable to one, selects the tests that reach those fields and no longer every test that reaches the type. A formatting-only or comment-only edit inside a type header, a parameter type or a conversion, and an edit above a nested delegate, no longer count as a change to that declaration.</li>
+      <li>The engine's pipe requests and responses have a different shape. An engine of another build, a running 5.0.0 engine included, answers the first request with a restart and exits, and the client starts an engine of its own build.</li>
+    </ul>
+
+    <h3 id="v5-1-0-fixed">Fixed <a class="anchor" href="#v5-1-0-fixed" aria-label="Link to this section">#</a></h3>
+    <ul>
+      <li>A hook and the MCP server read their input as UTF-8, so a repository whose path or file names are not ASCII is checked from a harness whose console uses another code page. 5.0.0 failed to parse the payload and reported nothing.</li>
+      <li>A hook whose payload names an empty working directory runs in the harness's own working directory, where 5.0.0 crashed. A payload that is valid JSON but not an object exits 0 with no output and a line in <code>hook.log</code>, as every other internal failure does.</li>
       <li>A check compares declarations with each project's own preprocessor symbols, once per target framework, so a declaration change inside <code>#if DEBUG</code> or <code>#if NET8_0_OR_GREATER</code> checks the files that use it. 5.0.0 read such a region as inactive and reported no errors in its callers.</li>
       <li>Removing a <code>using</code> directive checks the files that use the edited file's types, because the declarations' text is unchanged while what their type names resolve to is not. An added <code>using</code> still checks only the edited file.</li>
       <li>Adding a constructor with parameters to a class that had only the implicit one checks every file that constructs the class, so each broken <code>new C()</code> is reported. 5.0.0 checked no other file.</li>
@@ -274,29 +313,12 @@
       <li>A file a hook names outside the repository, or under <code>bin</code> or <code>obj</code>, is left out of the change set. In 5.0.0 the first made git fail and dropped the edits of that request, and the second removed the generated file from the HEAD side of the check.</li>
       <li>A project with a NuGet restore warning, such as a package advisory, is no longer reported as a project Fuse could not load, so Fuse answers in a repository whose restore logs a warning.</li>
       <li>A <code>restore needed</code> answer names the project to restore in its command, so it also works for a project the solution leaves out.</li>
-    </ul>
-
-    <h3 id="v5-1-0-tests">Test selection and test runs <a class="anchor" href="#v5-1-0-tests" aria-label="Link to this section">#</a></h3>
-    <p>Test selection picks the tests the changed code can reach (<a href="how-it-works.html#test-selection">How it works</a>).</p>
-    <ul>
       <li>Test selection selects the tests that reach an edit it missed in 5.0.0: a body edit to an explicit interface implementation that shares its name and parameter types with another member; a changed parameter modifier (<code>ref</code>, <code>out</code>, <code>in</code>, <code>params</code> or <code>this</code>), which also selects the tests that reach the member's type; a change from <code>class</code> to <code>struct</code> or from <code>record</code> to <code>record struct</code>; and an edit to a delegate declared at namespace level.</li>
       <li>A change to the usings inside a namespace, and not only at the top of the file, selects the tests that reach the file's types.</li>
-      <li>Test selection selects fewer extra tests. Splitting a field declaration into two, or adding a variable to one, selects the tests that reach those fields and no longer every test that reaches the type. A formatting-only or comment-only edit inside a type header, a parameter type or a conversion, and an edit above a nested delegate, no longer count as a change to that declaration.</li>
       <li>A run without MSBuild emits a project the tests load when the test project's build output holds another build of it, as after <code>dotnet build Lib</code> when <code>Lib.Tests</code> references <code>Lib</code>. 5.0.0 ran the test project's older copy, so a test the working tree fails could pass.</li>
       <li><code>fuse test</code> prints the errors of a test project that does not build, and exits with 1, when other test projects ran too; their results come first and the failed build is the last line. 5.0.0 printed only the other projects' results, so a passing project hid the failed build.</li>
       <li><code>fuse test --all</code> with other arguments prints <code>fuse: --all runs every test and cannot be combined with other arguments; pass the arguments without --all to choose the scope</code> on standard error, runs nothing and exits with 2.</li>
-    </ul>
-
-    <h3 id="v5-1-0-builds">Builds <a class="anchor" href="#v5-1-0-builds" aria-label="Link to this section">#</a></h3>
-    <ul>
-      <li><code>fuse build</code> and <code>fuse test</code> take a per-repository lock for as long as they write build output, so two agents building or testing through Fuse run one after the other instead of making MSBuild fail with MSB3021, MSB3027 or CS2012 on a file the other holds. A client that has to wait says so once on standard error, and a client that cannot take the lock says why and runs anyway (<a href="how-it-works.html#builds-and-the-build-lock">The build lock</a>). The arguments <code>fuse build</code> passes to <code>dotnet build</code>, the implicit restore included, are unchanged.</li>
       <li>An analyzer or source generator the repository builds itself is loaded from a copy in the state directory, so a running engine no longer holds its file open and a real build that rebuilds it no longer fails with MSB3021 or MSB3027.</li>
-    </ul>
-
-    <h3 id="v5-1-0-engine">Engine <a class="anchor" href="#v5-1-0-engine" aria-label="Link to this section">#</a></h3>
-    <ul>
-      <li>The engine's pipe requests and responses have a different shape. An engine of another build, a running 5.0.0 engine included, answers the first request with a restart and exits, and the client starts an engine of its own build.</li>
-      <li><code>engine.log</code> names every request by its kind, such as <code>CheckFiles Calc.cs took 15 ms</code>, and writes one line of per-phase times for it, so a slow check or test run can be traced to its phases (<a href="troubleshooting.html#reading-a-phase-line">Reading a phase line</a>).</li>
       <li>A check that arrives just as the engine finishes loading a dependent project in the background checks that project too. In 5.0.0 such a check could find the project loaded but leave it out, and miss the errors in it.</li>
       <li>A request that a hook gives up on while projects load no longer leaves those projects out of later checks. In 5.0.0 every later check of their files said <code>no errors introduced</code> until the next reload.</li>
       <li>After a commit or branch switch, a re-evaluation that a cancelled or failed request left undone is finished by the next request, and the baseline is read at the new HEAD. In 5.0.0 later checks compared with the old HEAD and reported errors HEAD has as introduced.</li>
@@ -306,12 +328,18 @@
       <li>A project that fails to load in the background is tried again after the projects reload or a restore, and only one background load runs at a time.</li>
     </ul>
 
+    <h3 id="v5-1-0-security">Security <a class="anchor" href="#v5-1-0-security" aria-label="Link to this section">#</a></h3>
+    <ul>
+      <li>For Codex, whose answer to the pre-shell hook also approves the command, the hook rewrites only a command that is one <code>dotnet build</code> or <code>dotnet test</code> with plain arguments (<a href="harnesses.html#codex">Codex</a>).</li>
+    </ul>
+
     <h2 id="v5-0-0">5.0.0 <a class="anchor" href="#v5-0-0" aria-label="Link to this section">#</a></h2>
     <p>Released 2026-09-25.</p>
     <div class="callout warn">
       <p><strong>5.0.0 is a complete rewrite.</strong> It shares the name and the NuGet package with Fuse 4.x and nothing else. No command, file, setting or MCP tool of 4.x carries over, 5.x reads nothing 4.x wrote, and there is no migration path. Treat 5.0.0 as a new tool: remove what 4.x left in your repositories (<a href="#moving-from-4-x">Moving from 4.x</a>) and set Fuse up again with <code>fuse init</code>.</p>
     </div>
     <p>Fuse 5 keeps a warm Roslyn compilation of a .NET repository and gives coding agents the compiler errors their edits introduced, affected-test runs, and compact build output, through agent hooks and a three-tool MCP server.</p>
+    <h3 id="v5-0-0-added">Added <a class="anchor" href="#v5-0-0-added" aria-label="Link to this section">#</a></h3>
     <ul>
       <li><code>fuse init</code> registers hooks with Claude Code, Cursor, Gemini CLI, Codex and GitHub Copilot CLI, a plugin with OpenCode, and the MCP server with VS Code, for the harnesses the repository uses.</li>
       <li><code>fuse hook &lt;harness&gt; &lt;event&gt;</code> runs a post-edit check that reports only introduced errors, rewrites <code>dotnet build</code> and <code>dotnet test</code> to their Fuse equivalents, and runs a stop check that sends the agent back once while its changes leave errors that were not at HEAD.</li>
@@ -385,8 +413,8 @@
   </div>
 
   <footer class="site-footer">
-    <span>Fuse, Apache-2.0. Benchmark medians, GitHub Actions windows-latest runners.</span>
-    <nav aria-label="Footer"><a href="index.html">Docs</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
+    <a class="maker" href="https://www.litenova.solutions"><img src="../assets/litenova-mark.svg" alt="" width="20" height="20">Built by Litenova Solutions</a>
+    <nav aria-label="Footer"><a href="index.html">Docs</a><a href="changelog.html">Changelog</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
   </footer>
 </div>
 </body>

@@ -181,6 +181,28 @@ public class EngineProcessTests
     }
 
     [Fact]
+    public async Task Stop_hook_sends_the_agent_back_to_restore_without_calling_it_an_introduced_error()
+    {
+        using var repo = FixtureRepo.CreateStandard();
+        try
+        {
+            File.Delete(repo.Full("Lib/obj/project.assets.json"));
+            repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
+            var payload = $$"""{"hook_event_name":"Stop","stop_hook_active":false,"cwd":{{System.Text.Json.JsonSerializer.Serialize(repo.Path)}}}""";
+
+            var result = await FuseProcess.RunAsync(repo.Path, payload, "hook", "claude", "stop");
+            Assert.Equal(0, result.ExitCode);
+            Assert.Contains("\"decision\":\"block\"", result.Stdout, StringComparison.Ordinal);
+            Assert.Contains("dotnet restore", result.Stdout, StringComparison.Ordinal);
+            Assert.DoesNotContain("introduced", result.Stdout, StringComparison.Ordinal);
+        }
+        finally
+        {
+            await FuseProcess.StopEngineAsync(repo.Root);
+        }
+    }
+
+    [Fact]
     public async Task A_hook_with_an_empty_cwd_exits_zero_without_output()
     {
         using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });

@@ -157,8 +157,16 @@ internal static class FuseProcess
             // Every harness writes UTF-8 to a hook's standard input, with no byte order mark. The encoding is set on the
             // stream rather than on StandardInput, which encodes with the console output code page instead.
             var bytes = new UTF8Encoding(false).GetBytes(stdin);
-            _process.StandardInput.BaseStream.Write(bytes);
-            _process.StandardInput.Close();
+            try
+            {
+                _process.StandardInput.BaseStream.Write(bytes);
+                _process.StandardInput.Close();
+            }
+            catch (IOException)
+            {
+                // A client can exit before it reads its standard input, as it does when it only prints its usage; on
+                // macOS and Linux the write then fails with a broken pipe. Its exit code and output are what the test reads.
+            }
         }
 
         /// <summary>Waits for the client to finish, or gives up after <paramref name="timeout"/>.</summary>

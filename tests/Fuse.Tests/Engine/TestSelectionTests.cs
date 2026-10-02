@@ -153,6 +153,8 @@ public class TestSelectionTests
         repo.Commit();
         await using var engine = await InProcessEngine.StartAsync(repo);
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
+        // The file watcher reports the edit a moment later, later still on macOS.
+        await Task.Delay(400, TestContext.Current.CancellationToken);
 
         var plan = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
 

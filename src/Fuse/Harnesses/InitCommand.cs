@@ -36,7 +36,7 @@ internal static class InitCommand
             harnesses.Add(new ClaudeCode());
 
         // Each file is named as it is written, so a failure part way leaves a list of what was written before it.
-        var registrations = harnesses.Select<Harness, Func<string?>>(h => () => h.RegisterHooks(root)).ToList();
+        var registrations = harnesses.Select<Harness, Func<WrittenFile?>>(h => () => h.RegisterHooks(root)).ToList();
         if (vsCode)
             registrations.Add(() => RegisterMcpServer(root));
         registrations.Add(() => GitIgnore.AddFuseFolder(root));
@@ -44,8 +44,9 @@ internal static class InitCommand
         {
             try
             {
+                // A second fuse init changes nothing, and says so.
                 if (register() is { } written)
-                    output.WriteLine($"wrote {written}");
+                    output.WriteLine($"{(written.Changed ? "wrote" : "unchanged")} {written.Path}");
             }
             catch (Exception e) when (e is System.Text.Json.JsonException or IOException)
             {
@@ -61,8 +62,8 @@ internal static class InitCommand
         return 0;
     }
 
-    /// <summary>Registers <c>fuse mcp</c> in <c>.vscode/mcp.json</c>, keeping the other servers, and returns that path.</summary>
-    private static string RegisterMcpServer(RepoRoot root)
+    /// <summary>Registers <c>fuse mcp</c> in <c>.vscode/mcp.json</c>, keeping the other servers, and returns that file.</summary>
+    private static WrittenFile RegisterMcpServer(RepoRoot root)
     {
         var path = Path.Combine(root.Path, ".vscode", "mcp.json");
         var settings = SettingsFile.Read(root, path);

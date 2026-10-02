@@ -33,7 +33,7 @@ internal static class TestOperation
             var (outcome, process) = await RunDotnetTestAsync(root, workingDirectory, [.. arguments], cancellationToken, testingPlatform).ConfigureAwait(false);
             const string summary = "ran the tests your dotnet test arguments name";
             return outcome is null
-                ? WithoutResults(process, root, "dotnet test", summary, Seconds(started))
+                ? WithoutResults(process, root, ArgumentsRun, summary, Seconds(started))
                 : Render(outcome, summary, Seconds(started));
         }
 
@@ -167,15 +167,22 @@ internal static class TestOperation
         }
     }
 
+    /// <summary>How <see cref="WithoutResults"/> names a run of the user's own <c>dotnet test</c> arguments.</summary>
+    internal const string ArgumentsRun = "dotnet test";
+
+    /// <summary>Microsoft.Testing.Platform's exit code for a run in which no test ran, such as one whose filter matched none.</summary>
+    internal const int NoTestRanExitCode = 8;
+
     /// <summary>
     ///     The answer for a run without results. Error lines in its output mean the project did not build, and print as a
-    ///     failed test build. A run that exited with a code other than 0 and printed no error line ended without results
-    ///     Fuse can read, which the answer says after the end of its output; a Microsoft.Testing.Platform run that crashed
-    ///     before its run summary ends this way.
+    ///     failed test build. A Microsoft.Testing.Platform run that exited with <see cref="NoTestRanExitCode"/> ran no
+    ///     test, which the answer says. Any other run that exited with a code other than 0 and printed no error line ended
+    ///     without results Fuse can read, which the answer says after the end of its output; a Microsoft.Testing.Platform
+    ///     run that crashed before its run summary ends this way.
     /// </summary>
     /// <param name="result">The <c>dotnet test</c> process, or null for a Microsoft.Testing.Platform run that exited with 0.</param>
     /// <param name="root">The repository, which error paths are printed relative to.</param>
-    /// <param name="run">What ran, as the answer names it: "the test run of" a project, or "dotnet test" for the user's arguments.</param>
+    /// <param name="run">What ran, as the answer names it: "the test run of" a project, or <see cref="ArgumentsRun"/> for the user's arguments.</param>
     /// <param name="summary">What ran and why, for a run that passed.</param>
     /// <param name="seconds">How long the operation has taken.</param>
     internal static OperationResult WithoutResults(ProcessResult? result, RepoRoot root, string run, string summary, double seconds)
@@ -183,6 +190,12 @@ internal static class TestOperation
         // A Microsoft.Testing.Platform run that passed without printing a run summary, so there are no counts to show.
         if (result is null)
             return new OperationResult(Outcome.Clean, $"fuse: tests passed in {seconds:0.0} s; {summary}");
+        if (result.ExitCode == NoTestRanExitCode && BuildOutputParser.Errors(result.Output, root.Path).Count == 0)
+        {
+            var what = run == ArgumentsRun ? "no test matched the dotnet test arguments" : $"{run} ran no test";
+            return new OperationResult(Outcome.ProblemsFound, $"fuse: {what} (exit code {NoTestRanExitCode})");
+        }
+
         if (result.ExitCode != 0 && BuildOutputParser.Errors(result.Output, root.Path).Count == 0)
         {
             var tail = BuildOperation.Tail(result.Output);

@@ -66,7 +66,7 @@ public class SettingsFileTests
             var root = RepoRoot.Find(directory)!;
             var path = Path.Combine(root.Path, ".claude", "settings.json");
             SettingsFile.WriteText(root, path, "first");
-            Assert.Equal(".claude/settings.json", SettingsFile.WriteText(root, path, "second"));
+            Assert.Equal(new WrittenFile(".claude/settings.json", Changed: true), SettingsFile.WriteText(root, path, "second"));
 
             Assert.Equal("second", File.ReadAllText(path));
             Assert.Equal([path], Directory.GetFiles(Path.GetDirectoryName(path)!));

@@ -11,7 +11,7 @@ internal sealed class GeminiCli : Harness
 
     public override bool IsUsedIn(RepoRoot root) => HasAny(root, ".gemini", "GEMINI.md");
 
-    public override string RegisterHooks(RepoRoot root)
+    public override WrittenFile RegisterHooks(RepoRoot root)
     {
         var path = Path.Combine(root.Path, ".gemini", "settings.json");
         var settings = SettingsFile.Read(root, path);

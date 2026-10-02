@@ -6,6 +6,9 @@ The list of changes in each release, which the release workflow publishes as the
 
 Compared with 5.2.1. Update with `dotnet tool update -g Fuse`; nothing else needs to change.
 
+- The pre-shell hook rewrites `dotnet build` and `dotnet test` after variable assignments, so `DOTNET_CLI_UI_LANGUAGE=en dotnet test` becomes `DOTNET_CLI_UI_LANGUAGE=en fuse test`. An assignment counts when its value has no whitespace, quote, backtick, separator, redirection or parenthesis; for Codex, only plain values count. 5.2.1 left such a command as it was.
+- A Microsoft.Testing.Platform run that exits with 8, the platform's code for a run in which no test ran, prints `fuse: no test matched the dotnet test arguments (exit code 8)` for `fuse test` with arguments, or `fuse: the test run of <project> ran no test (exit code 8)`. 5.2.1 printed that the run exited with code 8 and produced no results.
+- A second `fuse init` prints `unchanged <file>` for a settings file that already holds what it would write, and leaves the file as it was. 5.2.1 printed `wrote <file>` and wrote it again.
 - The README, the home page and the sharing image quote the check speedup on the three open-source repositories, 7.2x to 22.6x at the median, instead of the generated fixture's 24.6x, and the README quotes the measured test speedup, up to 4.4x, instead of 5.7x, which was a time in seconds. The benchmarks page adds the total time over all 30 edits of each repository, 2.5x to 4.2x on the open-source repositories, and the chart shows the open-source repositories only.
 
 ## 5.2.1

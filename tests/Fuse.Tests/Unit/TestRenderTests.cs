@@ -23,6 +23,25 @@ public class TestRenderTests
     }
 
     [Fact]
+    public void A_testing_platform_run_of_the_arguments_that_ran_no_test_says_no_test_matched()
+    {
+        var output = "Zero tests ran\nTest run summary: Zero tests ran\n  total: 0\n";
+        var result = TestOperation.WithoutResults(new ProcessResult(TestOperation.NoTestRanExitCode, output), FixtureRepo.CheckoutRoot, TestOperation.ArgumentsRun, "ran the tests your dotnet test arguments name", 4.7);
+
+        Assert.Equal(Outcome.ProblemsFound, result.Outcome);
+        Assert.Equal("fuse: no test matched the dotnet test arguments (exit code 8)", result.Text);
+    }
+
+    [Fact]
+    public void A_testing_platform_run_of_a_project_that_ran_no_test_names_the_project()
+    {
+        var result = TestOperation.WithoutResults(new ProcessResult(TestOperation.NoTestRanExitCode, ""), FixtureRepo.CheckoutRoot, "the test run of Lib.Tests", "ran every test in 1 test project(s)", 1.5);
+
+        Assert.Equal(Outcome.ProblemsFound, result.Outcome);
+        Assert.Equal("fuse: the test run of Lib.Tests ran no test (exit code 8)", result.Text);
+    }
+
+    [Fact]
     public void A_run_whose_output_holds_build_errors_is_a_failed_test_build()
     {
         var output = "C:/nowhere/App.Tests/ReportTests.cs(6,70): error CS1026: ) expected [C:/nowhere/App.Tests/App.Tests.csproj]\n";

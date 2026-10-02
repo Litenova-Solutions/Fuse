@@ -48,9 +48,9 @@ internal abstract class Harness
 
     /// <summary>
     ///     Registers Fuse's hooks in the harness's settings in <paramref name="root"/>, replacing Fuse's earlier handlers
-    ///     and keeping every other entry, and returns the repository-relative path of the file it wrote.
+    ///     and keeping every other entry, and returns the file and whether it changed.
     /// </summary>
-    public abstract string RegisterHooks(RepoRoot root);
+    public abstract WrittenFile RegisterHooks(RepoRoot root);
 
     /// <summary>The answer to a pre-shell event whose shell command Fuse rewrote.</summary>
     /// <param name="toolInput">The tool input the harness sent, for a harness whose answer replaces all of it.</param>

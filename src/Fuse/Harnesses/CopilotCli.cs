@@ -15,7 +15,7 @@ internal sealed class CopilotCli : Harness
 
     public override bool IsUsedIn(RepoRoot root) => HasAny(root, ".github/copilot-instructions.md", ".github/hooks");
 
-    public override string RegisterHooks(RepoRoot root)
+    public override WrittenFile RegisterHooks(RepoRoot root)
     {
         var path = Path.Combine(root.Path, ".github", "hooks", "fuse.json");
         var settings = new JsonObject

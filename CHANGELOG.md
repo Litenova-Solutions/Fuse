@@ -2,6 +2,12 @@
 
 The list of changes in each release, which the release workflow publishes as the release notes. The [changelog page](https://fuse.codes/docs/changelog) explains each release with its upgrade steps and says which versions are supported. Versions before 5.0.0 are deprecated.
 
+## 5.2.2
+
+Compared with 5.2.1. Update with `dotnet tool update -g Fuse`; nothing else needs to change.
+
+- The README, the home page and the sharing image quote the check speedup on the three open-source repositories, 7.2x to 22.6x at the median, instead of the generated fixture's 24.6x, and the README quotes the measured test speedup, up to 4.4x, instead of 5.7x, which was a time in seconds. The benchmarks page adds the total time over all 30 edits of each repository, 2.5x to 4.2x on the open-source repositories, and the chart shows the open-source repositories only.
+
 ## 5.2.1
 
 Compared with 5.2.0. 5.2.0 could not be installed from NuGet: nuget.org refused its per-platform packages, so `dotnet tool install` and `dotnet tool update` found the `Fuse` package but not the package for the platform. Update with `dotnet tool update -g Fuse`, from 5.1.0 or from a 5.2.0 installed another way; nothing else needs to change.

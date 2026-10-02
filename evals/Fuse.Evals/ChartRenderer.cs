@@ -7,7 +7,8 @@ namespace Fuse.Evals;
 
 /// <summary>
 ///     Renders <c>site/assets/benefits.svg</c>, the chart the README and the results page show, from the newest correctness and
-///     selection result of every pinned repository. It has two panels: <c>fuse check</c> against <c>dotnet build</c>, and
+///     selection result of every cloned open-source repository. The generated fixture is left out: it is the most favorable
+///     result, and the chart is what a reader sees first, so it shows the repositories an agent works on. It has two panels: <c>fuse check</c> against <c>dotnet build</c>, and
 ///     <c>fuse test</c> against <c>dotnet test</c>. Each panel has one cell per repository, drawn like the landing page's
 ///     lanes: the dotnet command at full length, Fuse at its median time as a share of that, each with its time, and under
 ///     them how many times faster Fuse is. Every number is read from the result files, so the chart and the landing page
@@ -108,7 +109,9 @@ internal static class ChartRenderer
             var gridTop = y + PanelGridTop;
             for (var i = 0; i < panelRows.Count; i++)
             {
-                var x = PadX + (i % 2) * (CellWidth + ColumnGap);
+                // A last cell alone on its row is centered under the two above it.
+                var alone = i == panelRows.Count - 1 && i % 2 == 0;
+                var x = alone ? (Width - CellWidth) / 2 : PadX + (i % 2) * (CellWidth + ColumnGap);
                 AppendCell(body, panelRows[i], x, gridTop + (i / 2) * RowPitch);
             }
 
@@ -174,7 +177,7 @@ internal static class ChartRenderer
     private static List<Row> ReadRows(string results)
     {
         var rows = new List<Row>();
-        foreach (var repo in PinnedRepo.Charted)
+        foreach (var repo in PinnedRepo.All)
         {
             if (Latest(results, $"correctness-{repo.Name}-") is { } correctness)
             {

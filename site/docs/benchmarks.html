@@ -20,12 +20,12 @@
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 24.6x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 7.2x to 22.6x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Benchmarks">
 <meta name="twitter:description" content="Benchmarks of Fuse against dotnet build and dotnet test on a small fixture and on NodaTime, Jellyfin and the .NET Community Toolkit.">
 <meta name="twitter:image" content="https://fuse.codes/assets/og.png">
-<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 24.6x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 7.2x to 22.6x faster than dotnet build. dotnet tool install -g Fuse.">
 <link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
 <link rel="icon" href="../assets/fuse-icon.svg" type="image/svg+xml" sizes="any">
 <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -110,7 +110,7 @@
     <p class="crumbs"><a href="index.html">Docs</a> / Understand</p>
     <h1>Benchmarks</h1>
     <p class="jump"><a href="#docs-nav">All documentation pages</a></p>
-    <p class="intro">On four repositories, Fuse checked an edit 7.2x to 24.6x faster than <code>dotnet build</code> and ran the affected tests 1.4x to 4.4x faster than <code>dotnet test</code>. It missed 1 compiler error in 120 generated cases (168 edits).</p>
+    <p class="intro">On three open-source repositories, Fuse checked an edit 7.2x to 22.6x faster than <code>dotnet build</code> at the median, took 2.5x to 4.2x less time than the build over all 30 edits of each, and ran the affected tests 1.4x to 4.4x faster than <code>dotnet test</code>. On a small generated solution the median check was 24.6x faster. It missed 1 compiler error in 120 generated cases (168 edits).</p>
     <div class="audience">
       <p><b>This page is for</b> anyone deciding whether to rely on Fuse, and contributors comparing a change with the published numbers.</p>
       <p><b>After reading it</b> you know how fast and how accurate Fuse was, on what, and where each number comes from. <a href="evals.html">Evals</a> explains how the numbers are produced and how to reproduce them.</p>
@@ -118,8 +118,8 @@
     <p>The four repositories are a small generated fixture solution and three open-source repositories: <a href="https://github.com/nodatime/nodatime">NodaTime</a>, a date and time library; <a href="https://github.com/jellyfin/jellyfin">Jellyfin</a>, a media server; and the <a href="https://github.com/CommunityToolkit/dotnet">.NET Community Toolkit</a>, a set of libraries with one source generator for each supported compiler version. The evals in <code>evals/Fuse.Evals</code> run the <code>fuse</code> executable the way an agent does, and compare every answer with a real <code>dotnet build</code> or <code>dotnet test</code>. Each repository ran on its own GitHub Actions <code>windows-latest</code> runner, with 4 logical processors and 16 GB of memory, that ran nothing else (<a href="evals.html#on-github-actions">Evals</a>). On Windows x64 the <code>fuse</code> command is the native client, so the evals measure it.</p>
 
     <figure>
-      <img src="../assets/benefits.svg" width="800" height="708" alt="Two panels that compare Fuse with the dotnet command it replaces on four repositories: one for checking an edit and one for running the affected tests. The table below lists every number.">
-      <figcaption>Medians over the eval cases, on GitHub Actions windows-latest runners. Each dotnet bar is 100 percent, and each Fuse bar is Fuse's time as a share of it.</figcaption>
+      <img src="../assets/benefits.svg" width="800" height="708" alt="Two panels that compare Fuse with the dotnet command it replaces on the three open-source repositories: one for checking an edit and one for running the affected tests. The table below lists every number, the small solution's included.">
+      <figcaption>Medians over the eval cases of the three open-source repositories, on GitHub Actions windows-latest runners. Each dotnet bar is 100 percent, and each Fuse bar is Fuse's time as a share of it.</figcaption>
     </figure>
 
     <h2 id="speed-and-accuracy">Speed and accuracy <a class="anchor" href="#speed-and-accuracy" aria-label="Link to this section">#</a></h2>
@@ -131,6 +131,7 @@
         <tbody>
           <tr><th scope="row">Size</th><td>5 projects, 22 tests</td><td>15 projects, 42,700 tests</td><td>40 projects, 2,535 tests</td><td>26 projects, 12,449 tests</td></tr>
           <tr><th scope="row">Check an edit: <code>fuse check</code> vs <code>dotnet build</code>, median</th><td class="num">0.07 s vs 1.78 s (24.6x)</td><td class="num">0.41 s vs 2.96 s (7.2x)</td><td class="num">1.04 s vs 12.4 s (12.0x)</td><td class="num">0.57 s vs 12.8 s (22.6x)</td></tr>
+          <tr><th scope="row">Check an edit: <code>fuse check</code> vs <code>dotnet build</code>, total over the 30 cases</th><td class="num">16.1 s vs 55.1 s (3.4x)</td><td class="num">40.9 s vs 114.8 s (2.8x)</td><td class="num">216.7 s vs 539.1 s (2.5x)</td><td class="num">131.7 s vs 559.6 s (4.2x)</td></tr>
           <tr><th scope="row">Warm check after a body edit, P50 / P95</th><td class="num">56 / 135 ms</td><td class="num">504 / 676 ms</td><td class="num">183 / 420 ms</td><td class="num">822 / 1,168 ms</td></tr>
           <tr><th scope="row">Warm check after a signature edit, P50 / P95</th><td class="num">102 / 5,757 ms</td><td class="num">2,166 / 11,390 ms</td><td class="num">85 / 92,203 ms</td><td class="num">375 / 33,417 ms</td></tr>
           <tr><th scope="row">Warm check of an unchanged tree, P50</th><td class="num">29 ms</td><td class="num">23 ms</td><td class="num">27 ms</td><td class="num">29 ms</td></tr>
@@ -175,6 +176,7 @@
     <h3 id="what-the-time-rows-measure">What the time rows measure <a class="anchor" href="#what-the-time-rows-measure" aria-label="Link to this section">#</a></h3>
     <ul>
       <li><strong>Medians and speedups.</strong> A median is over the 30 correctness cases or the 10 selection cases. The speedup in parentheses is the <code>dotnet</code> median divided by the Fuse median, rounded half up to one decimal, as in the chart.</li>
+      <li><strong>Totals.</strong> The total row adds up <code>fuseMilliseconds</code> and <code>buildSeconds</code> over the 30 correctness cases of each repository, and divides the build total by the Fuse total. It is lower than the median ratio because the slowest checks are slower than the build they replace: the first check after the engine starts, and signature edits that load dependent projects. The slowest single check took 11,624 ms on the small solution, 13,052 ms on NodaTime, 60,524 ms on Jellyfin and 47,497 ms on the Community Toolkit. The total is closer to the time an agent saves over a whole task.</li>
       <li><strong>P50 and P95.</strong> Both use the nearest-rank method. P50 is the 8th fastest of the 15 body edits, which is their median, and the 5th fastest of the 10 signature edits. P95 is the slowest check of each kind.</li>
       <li><strong>The signature-edit P95.</strong> The slowest signature edit is the one that loads the dependent projects and searches them for the first time; the median edit loads nothing. In the signature-edit runs, the slowest <code>loadDependents</code> phase took 30,758 ms on Jellyfin, which checked 27 dependent projects, and 15,019 ms on the Community Toolkit, which checked 12; the slowest <code>referenceSearch</code> phase took 61,242 ms and 17,408 ms.</li>
       <li><strong>An unchanged tree.</strong> A check of a tree with no changes does almost nothing in the engine, so its time is the client's: starting the <code>fuse</code> process, sending the request and reading the answer. The native client needs no .NET runtime to start, which is why it is under 30 ms on every repository.</li>

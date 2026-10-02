@@ -22,7 +22,7 @@ internal sealed record PinnedRepo(
     /// <summary>The generated fixture: built on the spot, so it has no source and no commit.</summary>
     public static PinnedRepo Fixture { get; } = new("fixture", null, "", "Fixture.sln", "Small solution, 5 projects", "Small solution, 5 projects");
 
-    /// <summary>The cloned repositories, in the order the chart draws them.</summary>
+    /// <summary>The cloned open-source repositories, in the order the chart draws them.</summary>
     public static IReadOnlyList<PinnedRepo> All { get; } =
     [
         // The counts are the .csproj entries of the pinned solution whose files exist, which is what the suites evaluate.
@@ -39,10 +39,10 @@ internal sealed record PinnedRepo(
     /// <summary>Deletes <see cref="StateDirectory"/>, which holds the checkouts; the generated fixture is not in it.</summary>
     public static void Clean() => Directory.Delete(StateDirectory, recursive: true);
 
-    /// <summary>Every repository the chart draws: the fixture first, then the cloned ones.</summary>
-    public static IReadOnlyList<PinnedRepo> Charted { get; } = [Fixture, .. All];
+    /// <summary>Every repository the evals measure: the fixture first, then the cloned ones.</summary>
+    public static IReadOnlyList<PinnedRepo> Measured { get; } = [Fixture, .. All];
 
-    public static PinnedRepo? Find(string name) => Charted.FirstOrDefault(r => string.Equals(r.Name, name, StringComparison.OrdinalIgnoreCase));
+    public static PinnedRepo? Find(string name) => Measured.FirstOrDefault(r => string.Equals(r.Name, name, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
     ///     Where a checkout of this repository lives. Outside the Fuse tree on purpose: a repository with no

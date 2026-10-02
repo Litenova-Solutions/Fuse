@@ -11,7 +11,9 @@ namespace Fuse.Evals;
 ///     <c>fuse test</c> against <c>dotnet test</c>. Each panel has one cell per repository, drawn like the landing page's
 ///     lanes: the dotnet command at full length, Fuse at its median time as a share of that, each with its time, and under
 ///     them how many times faster Fuse is, then for each command the range from its fastest to its slowest case, its mean
-///     and its P95, so the median is not shown without the spread behind it. Every number is read from the result files, so the chart and the landing page
+///     and its P95, so the median is not shown without the spread behind it. A header names Fuse with its logo, what it
+///     is, its website and repository, and the last lines name the version and date measured and where every number is
+///     documented, so the chart still says what it is when it is shared on its own. Every number is read from the result files, so the chart and the landing page
 ///     agree as long as both are updated from the same files. The colors and fonts are the site's; a dark variant applies
 ///     when the viewer asks for one.
 /// </summary>
@@ -31,6 +33,7 @@ internal static class ChartRenderer
     // Vertical distances, all in the SVG's own units. A panel starts at its top, and a cell starts at the baseline of
     // its repository name.
     private const int TopMargin = 40;
+    private const int HeaderHeight = 92;
     private const int PanelSubtitleBaseline = 46;
     private const int PanelGridTop = 80;
     private const int FirstLaneCenter = 25;
@@ -46,6 +49,10 @@ internal static class ChartRenderer
 
     private const string Style = """
           .bg { fill: #fcfcfb; stroke: #e4e3de; }
+          .brand { font-size: 24px; font-weight: 700; letter-spacing: -0.3px; }
+          .tagline { font-size: 13.5px; fill: #5b5a55; }
+          .site { font-size: 14px; font-weight: 600; fill: #6d4aff; }
+          .repo-url { font-size: 12.5px; fill: #5b5a55; }
           .rule { stroke: #e4e3de; }
           text { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; fill: #0b0b0b; }
           .mono { font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; }
@@ -66,6 +73,8 @@ internal static class ChartRenderer
           .fill-fuse { fill: #6d4aff; }
           @media (prefers-color-scheme: dark) {
             .bg { fill: #1a1a19; stroke: #34332f; }
+            .tagline, .repo-url { fill: #b9b8af; }
+            .site { fill: #9b85ff; }
             .rule { stroke: #34332f; }
             text, .fuse-text, .speed tspan { fill: #f4f4f0; }
             .sub, .meta, .note, .cmd, .t, .speed, .stats { fill: #b9b8af; }
@@ -93,7 +102,8 @@ internal static class ChartRenderer
     {
         var rows = ReadRows(Path.Combine(fuseRoot, "evals", "results"));
         var body = new StringBuilder();
-        var y = TopMargin;
+        AppendHeader(body);
+        var y = HeaderHeight + PanelSpacing;
         var drawn = 0;
         foreach (var panel in Panels)
         {
@@ -126,12 +136,13 @@ internal static class ChartRenderer
         var noteY = y + NoteOffset;
         body.Append(CultureInfo.InvariantCulture, $"""<text class="note" x="{PadX}" y="{noteY}">Bars are medians over the eval cases: each dotnet bar is 100 percent, each Fuse bar its share of it.</text>""").Append('\n');
         body.Append(CultureInfo.InvariantCulture, $"""<text class="note" x="{PadX}" y="{noteY + 18}">Under them: fastest to slowest case, mean and P95. On GitHub Actions windows-latest runners.</text>""").Append('\n');
-        noteY += 18;
+        body.Append(CultureInfo.InvariantCulture, $"""<text class="note" x="{PadX}" y="{noteY + 36}">{Escape(Provenance(Path.Combine(fuseRoot, "evals", "results")))} Every number and how it was measured: fuse.codes/docs/benchmarks</text>""").Append('\n');
+        noteY += 36;
         var height = noteY + BottomMargin;
 
         return string.Create(CultureInfo.InvariantCulture, $"""
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {Width} {height}" width="{Width}" height="{height}" role="img" aria-labelledby="t d">
-            <title id="t">Fuse compared with dotnet build and dotnet test</title>
+            <title id="t">Fuse compared with dotnet build and dotnet test (fuse.codes)</title>
             <desc id="d">{Escape(Description(rows))}</desc>
             <style>
             {Style}
@@ -140,6 +151,39 @@ internal static class ChartRenderer
             {body}</svg>
 
             """);
+    }
+
+    /// <summary>The Fuse logo and name, what Fuse is, and its website and repository, above a rule.</summary>
+    private static void AppendHeader(StringBuilder svg)
+    {
+        svg.Append(CultureInfo.InvariantCulture, $"""<g transform="translate({PadX},26) scale(1.25)">{Logo}</g>""").Append('\n');
+        svg.Append(CultureInfo.InvariantCulture, $"""<text class="brand" x="{PadX + 52}" y="48">Fuse</text>""").Append('\n');
+        svg.Append(CultureInfo.InvariantCulture, $"""<text class="tagline" x="{PadX + 52}" y="68">Faster .NET build and test loop for AI coding agents</text>""").Append('\n');
+        svg.Append(CultureInfo.InvariantCulture, $"""<a href="https://fuse.codes"><text class="site" x="{Width - PadX}" y="46" text-anchor="end">fuse.codes</text></a>""").Append('\n');
+        svg.Append(CultureInfo.InvariantCulture, $"""<a href="https://github.com/Litenova-Solutions/Fuse"><text class="repo-url" x="{Width - PadX}" y="66" text-anchor="end">github.com/Litenova-Solutions/Fuse</text></a>""").Append('\n');
+        svg.Append(CultureInfo.InvariantCulture, $"""<line class="rule" x1="{PadX}" y1="{HeaderHeight}" x2="{Width - PadX}" y2="{HeaderHeight}"/>""").Append('\n');
+    }
+
+    /// <summary>The site's icon, site/assets/fuse-icon.svg, drawn in a 32 by 32 box.</summary>
+    private const string Logo = """<rect width="32" height="32" rx="7" fill="#6d4aff"/><g fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"><path d="M10 7c-2.5 0-3 1.2-3 3.5v2.3c0 1.8-1 3.2-2.5 3.2 1.5 0 2.5 1.4 2.5 3.2v2.3C7 23.8 7.5 25 10 25"/><path d="M22 7c2.5 0 3 1.2 3 3.5v2.3c0 1.8 1 3.2 2.5 3.2-1.5 0-2.5 1.4-2.5 3.2v2.3c0 2.3-.5 3.5-3 3.5"/></g><path d="M17.8 7.5 11.5 17.2h4.3l-1.6 7.3 6.3-9.7h-4.3z" fill="#ffffff" stroke="#ffffff" stroke-width="0.8" stroke-linejoin="round"/>""";
+
+    /// <summary>
+    ///     "Fuse 5.2.2, measured 2026-10-02.": the version of the build the newest correctness file records, and the date in
+    ///     its name.
+    /// </summary>
+    private static string Provenance(string results)
+    {
+        var file = PinnedRepo.All
+            .Select(r => Directory.Exists(results) ? Directory.GetFiles(results, $"correctness-{r.Name}-*.json").OrderBy(f => f, StringComparer.Ordinal).LastOrDefault() : null)
+            .OfType<string>()
+            .OrderBy(f => Path.GetFileNameWithoutExtension(f)[^13..], StringComparer.Ordinal)
+            .LastOrDefault();
+        if (file is null)
+            return "";
+        using var document = JsonDocument.Parse(File.ReadAllText(file));
+        var version = document.RootElement.GetProperty("fuseBuild").GetString()!.Split('/')[0];
+        var stamp = Path.GetFileNameWithoutExtension(file)[^13..^5];
+        return $"Fuse {version}, measured {stamp[..4]}-{stamp[4..6]}-{stamp[6..]}.";
     }
 
     private static void AppendCell(StringBuilder svg, Row row, int x, int y)
@@ -264,6 +308,7 @@ internal static class ChartRenderer
                 sentences.Add($"{panel.Title}, {panel.FuseCommand} against {panel.DotnetCommand}. {string.Join("; ", cells)}.");
         }
 
+        sentences.Insert(0, "Fuse, a faster .NET build and test loop for AI coding agents (fuse.codes, github.com/Litenova-Solutions/Fuse).");
         sentences.Add("Median times over the eval cases, each with the range from the fastest to the slowest case, the mean and P95, on GitHub Actions windows-latest runners.");
         return string.Join(' ', sentences);
     }

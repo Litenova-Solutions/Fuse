@@ -144,7 +144,7 @@
     <pre data-label="Shell"><code>dotnet tool update -g Fuse</code></pre>
 
     <h2 id="v5-2-2">5.2.2 <a class="anchor" href="#v5-2-2" aria-label="Link to this section">#</a></h2>
-    <p>Not released yet. Compared with 5.2.1.</p>
+    <p>Released 2026-10-02. Compared with 5.2.1.</p>
     <p>5.2.2 makes <code>fuse test</code> run only the selected tests when the selection is large, shortens how long a test plan makes other agents' checks wait, rewrites <code>dotnet test</code> commands that start with variable assignments, and measures the benchmarks on four open-source repositories, with the spread of every time.</p>
     <h3 id="upgrading-to-5-2-2">Upgrading to 5.2.2 <a class="anchor" href="#upgrading-to-5-2-2" aria-label="Link to this section">#</a></h3>
     <p>Update the tool with <code>dotnet tool update -g Fuse</code>. Nothing else needs to change, and <code>fuse init</code> does not need to run again. A script that reads the engine log's phase lines finds a test plan's preparation in two phases, <code>mirror</code> and <code>emit</code>, where 5.2.1 had <code>mirror</code> alone.</p>

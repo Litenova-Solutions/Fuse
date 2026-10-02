@@ -12,7 +12,7 @@ internal static class Program
 {
     private const string Usage = """
         usage: Fuse.Evals <suite> <repo> [--mutations N] [--seed S] [--solution path] [--fuse path]
-                          [--cache file] [--truth-dir dir] [--cache-out file] [--part checks]
+                          [--cache file] [--truth-dir dir] [--cache-out file] [--part all|checks|main|agents]
                Fuse.Evals truth <correctness|selection> <repo> --out file [--shard K --shards N] [--cache file]
                Fuse.Evals key <correctness|selection> <repo> [--mutations N] [--seed S]
                Fuse.Evals chart
@@ -24,7 +24,8 @@ internal static class Program
                  suite run merges the files in --truth-dir and runs what is still missing. Without them it reads and
                  writes evals/.work/truth/<suite>-<repo>.json, so a second run on the same tree measures only Fuse
           key:   prints the key the truth is cached under: suite, repository tree, seed, count, SDK and eval code
-          --part checks: for latency, measure the checks alone, without the test rounds and the multi-agent scenario
+          --part: for latency, what to measure: all (the default); checks, the checks alone; main, the checks and
+                 the test rounds; agents, the multi-agent scenario after the cold checks and body edits
           clone: NodaTime | Jellyfin | CommunityToolkit, checked out at the pinned commit under
                  %LOCALAPPDATA%/fuse/evals/repos (outside this repository, so its build settings do not leak in)
           clean: deletes %LOCALAPPDATA%/fuse/evals, which holds every checkout; the generated fixture in
@@ -99,7 +100,7 @@ internal static class Program
             object result;
             if (name == "latency")
             {
-                result = await LatencySuite.RunAsync(repo, solution, checksOnly: options.GetValueOrDefault("part") == "checks");
+                result = await LatencySuite.RunAsync(repo, solution, options.GetValueOrDefault("part") ?? "all");
             }
             else
             {

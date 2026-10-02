@@ -4,15 +4,16 @@ name: Evals
 # every change to a request's path needs; starting the workflow from the Actions tab chooses the repositories and the
 # suites, all three by default.
 #
-# One build job compiles Fuse once, so every job measures the same build. The latency suite runs in one job per
-# repository: the native client, the fuse command a release installs on win-x64, then the checks alone again with the
-# managed client on the same VM. The correctness and selection suites run in two stages per repository. The truth jobs
+# One build job compiles Fuse once, so every job measures the same build. The latency suite runs in two jobs per
+# repository: one runs the checks and the test rounds with the native client, the fuse command a release installs on
+# win-x64, then the checks alone again with the managed client on the same VM; the other runs the multi-agent scenario.
+# A merge job puts the multi-agent result into the first job's file. The correctness and selection suites run in two stages per repository. The truth jobs
 # run the real dotnet build or dotnet test for HEAD and for each case, split into shards; the truth does not change while
 # the repository's tree, the seed, the SDK and the eval code stay the same, so it is kept in the Actions cache and a later
 # run skips those jobs. The measure job then runs Fuse alone on a fresh VM against the merged truth, and saves it to the
 # cache. Each VM runs nothing else, so no other work skews the times.
 #
-# Each measure and latency job uploads evals-<repo>-<suite>: results/ holds the file to commit to evals/results,
+# Each measure job and each latency merge job uploads evals-<repo>-<suite>: results/ holds the file to commit to evals/results,
 # managed/ the managed client's latency file for evals/results/managed, truth/ the merged truth, and runner.txt
 # describes the runner. Each truth job uploads its shard and its runner.txt.
 
@@ -108,7 +109,7 @@ jobs:
           retention-days: 3
 
   latency:
-    name: latency on ${{ matrix.repo }}
+    name: latency (${{ matrix.part }}) on ${{ matrix.repo }}
     needs: [plan, build]
     if: needs.plan.outputs.latency != '[]'
     runs-on: windows-latest
@@ -117,6 +118,7 @@ jobs:
       fail-fast: false
       matrix:
         repo: ${{ fromJSON(needs.plan.outputs.latency) }}
+        part: [main, agents]
     defaults:
       run:
         shell: bash
@@ -143,12 +145,13 @@ jobs:
         name: Clone the pinned repository
         if: matrix.repo != 'fixture'
         run: $EVALS clone "${{ matrix.repo }}"
-      - name: Run latency with the native client
+      - name: Run latency (${{ matrix.part }}) with the native client
         run: |
-          $EVALS latency "${{ matrix.repo }}" --fuse "$(cygpath -w "$PWD/artifacts/native/fuse.exe")"
+          $EVALS latency "${{ matrix.repo }}" --part ${{ matrix.part }} --fuse "$(cygpath -w "$PWD/artifacts/native/fuse.exe")"
           mkdir -p out/results
           git ls-files --others --exclude-standard evals/results | xargs -I{} mv {} out/results/
       - name: Run the checks with the managed client
+        if: matrix.part == 'main'
         run: |
           $EVALS latency "${{ matrix.repo }}" --part checks --fuse "$(cygpath -w "$PWD/src/Fuse/bin/Release/net10.0/fuse.exe")"
           mkdir -p out/managed
@@ -166,6 +169,47 @@ jobs:
           Get-Content out/runner.txt
       - uses: actions/upload-artifact@v4
         if: always()
+        with:
+          name: latency-${{ matrix.part }}-${{ matrix.repo }}
+          path: out/
+          if-no-files-found: error
+
+  latency-merge:
+    name: merge latency on ${{ matrix.repo }}
+    needs: [plan, latency]
+    if: ${{ !cancelled() && needs.plan.outputs.latency != '[]' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        repo: ${{ fromJSON(needs.plan.outputs.latency) }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: latency-main-${{ matrix.repo }}
+          path: main
+      - uses: actions/download-artifact@v4
+        with:
+          name: latency-agents-${{ matrix.repo }}
+          path: agents
+      - name: Put the multi-agent result into the latency file
+        shell: python
+        run: |
+          import glob, json, os, shutil
+          main_file = glob.glob("main/results/*.json")[0]
+          main = json.load(open(main_file))
+          agents = json.load(open(glob.glob("agents/results/*.json")[0]))
+          if agents["fuseBuild"] != main["fuseBuild"] or agents["commit"] != main["commit"]:
+              raise SystemExit("the two latency parts measured different builds or commits")
+          main["part"] = "all"
+          main["multiAgent"] = agents["multiAgent"]
+          os.makedirs("out/results")
+          with open(os.path.join("out/results", os.path.basename(main_file)), "w") as f:
+              json.dump(main, f, indent=2)
+          shutil.copytree("main/managed", "out/managed")
+          shutil.copy("main/runner.txt", "out/runner.txt")
+          shutil.copy("agents/runner.txt", "out/runner-agents.txt")
+      - uses: actions/upload-artifact@v4
         with:
           name: evals-${{ matrix.repo }}-latency
           path: out/

@@ -72,7 +72,7 @@ internal sealed class TestPlanner
 
         if (scope is TestScope.All)
         {
-            var everything = testProjects.Select(p => new PlannedRun(p.Path, p.Name, new RunMode.Build(), null, p.UsesTestingPlatform)).ToArray();
+            var everything = testProjects.Select(p => new PlannedRun(p.Path, p.Name, new RunMode.Build(), null, p.UsesTestingPlatform, p.UsesTestingPlatform ? null : p.RunSettings)).ToArray();
             return PendingPlan.Of(new TestPlanResult(everything, total, total, $"ran every test in {testProjects.Count} test project(s)"), graph);
         }
 
@@ -87,6 +87,7 @@ internal sealed class TestPlanner
         var projects = new List<(ProjectNode Node, string? Filter, IReadOnlyList<Project> Variants)>();
         var selected = 0;
         var reasons = new HashSet<string>(StringComparer.Ordinal);
+        var collapsed = new List<string>();
         var snapshot = _workspace.Current;
         foreach (var (path, selection) in selections.OrderBy(s => s.Key.Absolute, StringComparer.Ordinal))
         {
@@ -102,15 +103,30 @@ internal sealed class TestPlanner
             if (selection is TestSelection.Whole whole)
                 reasons.Add(whole.Reason);
 
-            // Microsoft.Testing.Platform filters differ per framework, so such a project runs whole and has no shadow run.
-            projects.Add(node.UsesTestingPlatform
-                ? (node, null, [])
-                : (node, TestFilter.For(selection), RepoWorkspace.ProjectsFor(snapshot, node).ToList()));
+            if (node.UsesTestingPlatform)
+            {
+                // Microsoft.Testing.Platform filters differ per framework, so such a project runs whole and has no shadow run.
+                projects.Add((node, null, []));
+                continue;
+            }
+
+            var filter = TestFilter.For(selection);
+            if (filter.Collapse != FilterCollapse.None)
+            {
+                var patterns = ((TestSelection.Methods)selection).Patterns.Count;
+                var form = filter.Collapse == FilterCollapse.ToClasses ? $"{filter.Patterns} class prefix(es)" : "no filter, so the project runs whole";
+                _workspace.Log($"test plan: {node.Name} filter of {patterns} pattern(s) is above {TestFilter.MaxPatterns}, collapsed to {form}");
+                collapsed.Add(filter.Collapse == FilterCollapse.ToClasses ? $"whole test classes in {node.Name}" : $"all of {node.Name}");
+            }
+
+            projects.Add((node, filter.Expression, RepoWorkspace.ProjectsFor(snapshot, node).ToList()));
         }
 
         var summary = new StringBuilder($"ran {selected} test(s) affected by your changes out of {total}");
         if (reasons.Count > 0)
             summary.Append(" (whole projects where ").Append(string.Join("; ", reasons)).Append(')');
+        if (collapsed.Count > 0)
+            summary.Append("; ran ").Append(string.Join(", ", collapsed)).Append(", because a test filter holds at most ").Append(TestFilter.MaxPatterns).Append(" names");
         summary.Append("; fuse test --all runs everything");
         return PendingPlan.ToPrepare(graph, projects, selected, total, summary.ToString());
     }
@@ -136,7 +152,7 @@ internal sealed class TestPlanner
             foreach (var (node, filter, variants) in pending.Projects)
             {
                 if (node.UsesTestingPlatform)
-                    runs.Add(new PlannedRun(node.Path, node.Name, new RunMode.Build(), null, true));
+                    runs.Add(new PlannedRun(node.Path, node.Name, new RunMode.Build(), null, true, null));
                 else
                     runs.AddRange(await RunsOfAsync(node, filter, variants, pending.Graph, emitting, preparing, cancellationToken).ConfigureAwait(false));
             }
@@ -174,8 +190,8 @@ internal sealed class TestPlanner
 
         _workspace.Log($"test plan: {node.Name} [{string.Join(", ", variants.Select(v => v.Name))}] {(shadows.Count == 0 ? "builds with MSBuild" : $"runs from {string.Join(", ", shadows.Select(s => s.Assembly))}")} after {timer.ElapsedMilliseconds} ms");
         if (shadows.Count == 0)
-            return [new PlannedRun(node.Path, node.Name, new RunMode.Build(), filter, false)];
-        return [.. shadows.Select(s => new PlannedRun(node.Path, node.Name, s, filter, false))];
+            return [new PlannedRun(node.Path, node.Name, new RunMode.Build(), filter, false, node.RunSettings)];
+        return [.. shadows.Select(s => new PlannedRun(node.Path, node.Name, s, filter, false, node.RunSettings))];
     }
 
     /// <summary>A selection as the engine log gives it: "all", or how many patterns it has.</summary>

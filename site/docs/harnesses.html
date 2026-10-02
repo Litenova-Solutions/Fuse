@@ -20,12 +20,12 @@
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 24.6x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 7.0x to 31.0x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Connect Your Agent">
 <meta name="twitter:description" content="What fuse init detects and writes for Claude Code, Cursor, Gemini CLI, Codex, GitHub Copilot CLI, OpenCode and VS Code, and how any MCP host runs fuse mcp.">
 <meta name="twitter:image" content="https://fuse.codes/assets/og.png">
-<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 24.6x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 7.0x to 31.0x faster than dotnet build. dotnet tool install -g Fuse.">
 <link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
 <link rel="icon" href="../assets/fuse-icon.svg" type="image/svg+xml" sizes="any">
 <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -414,6 +414,7 @@ fuse: hooks registered; after each edit your agent gets the compiler errors the 
       <li>In the settings files shared with other tools (<code>.claude/settings.json</code>, <code>.cursor/hooks.json</code>, <code>.gemini/settings.json</code>, <code>.codex/hooks.json</code> and <code>.vscode/mcp.json</code>), it removes Fuse's own entries, the handlers whose command starts with <code>fuse hook</code> and the <code>fuse</code> MCP server, and writes them again. Every other entry is kept. The file is read with comments and trailing commas allowed and written back as plain JSON, so comments are not kept.</li>
       <li><code>.github/hooks/fuse.json</code> and <code>.opencode/plugins/fuse.js</code> belong to Fuse and are written whole.</li>
       <li><code>.gitignore</code> is changed only when it has no line about the <code>.fuse</code> folder (<a href="#the-fuse-folder">The .fuse folder</a>).</li>
+      <li>A file that already holds exactly what <code>fuse init</code> would write is left as it was, and the output names it with <code>unchanged</code> instead of <code>wrote</code>, so a second run in the same repository prints <code>unchanged .claude/settings.json</code>.</li>
     </ul>
     <p>For example, take a Claude Code settings file that holds a comment, a formatter hook and a <code>dotnet test</code> allowance:</p>
     <pre data-label="Before"><code>{

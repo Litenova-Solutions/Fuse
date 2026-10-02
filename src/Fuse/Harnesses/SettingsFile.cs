@@ -68,24 +68,26 @@ internal static class SettingsFile
         return created;
     }
 
-    /// <summary>Writes <paramref name="content"/> indented to <paramref name="path"/> and returns its repository-relative path.</summary>
-    public static string Write(RepoRoot root, string path, JsonObject content) =>
+    /// <summary>Writes <paramref name="content"/> indented to <paramref name="path"/> and returns the file and whether it changed.</summary>
+    public static WrittenFile Write(RepoRoot root, string path, JsonObject content) =>
         WriteText(root, path, content.ToJsonString(Indented) + Environment.NewLine);
 
     /// <summary>
-    ///     Writes <paramref name="content"/> to <paramref name="path"/> as it is, creating its directory, and returns its
-    ///     repository-relative path.
+    ///     Writes <paramref name="content"/> to <paramref name="path"/> as it is, creating its directory, and returns the file
+    ///     and whether it changed. A file that already holds exactly this content is left as it was.
     /// </summary>
     /// <exception cref="IOException">
     ///     The file could not be written or replaced. The message names the file; the file is as it was and no temporary
     ///     file is left beside it.
     /// </exception>
-    public static string WriteText(RepoRoot root, string path, string content)
+    public static WrittenFile WriteText(RepoRoot root, string path, string content)
     {
         var relative = root.PathOf(path).Relative;
         var temp = path + ".fuse-tmp";
         try
         {
+            if (File.Exists(path) && File.ReadAllText(path) == content)
+                return new WrittenFile(relative, Changed: false);
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             File.WriteAllText(temp, content);
             MoveWithRetry(() => File.Move(temp, path, overwrite: true), Thread.Sleep);
@@ -104,7 +106,7 @@ internal static class SettingsFile
             throw new IOException($"could not write {relative} ({e.Message})", e);
         }
 
-        return relative;
+        return new WrittenFile(relative, Changed: true);
     }
 
     /// <summary>

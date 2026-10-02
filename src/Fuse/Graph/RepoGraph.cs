@@ -241,6 +241,7 @@ internal sealed class RepoGraph
         var isWeb = evaluations.Any(e => e.GetPropertyValue("UsingMicrosoftNETSdkWeb").Equals("true", StringComparison.OrdinalIgnoreCase));
 
         var assets = project.GetPropertyValue("ProjectAssetsFile");
+        var runSettings = evaluations.Select(e => e.GetPropertyValue("RunSettingsFilePath").Trim()).FirstOrDefault(s => s.Length > 0);
         return new ProjectNode
         {
             Path = path,
@@ -252,6 +253,7 @@ internal sealed class RepoGraph
             AssetsFile = Full(string.IsNullOrEmpty(assets) ? System.IO.Path.Combine("obj", "project.assets.json") : assets),
             IsTest = isTest,
             UsesTestingPlatform = isTestingPlatform,
+            RunSettings = runSettings is null ? null : System.IO.Path.GetFullPath(System.IO.Path.Combine(dir, runSettings)),
             IsExecutable = !isTest && (outputType.Equals("Exe", StringComparison.OrdinalIgnoreCase) || outputType.Equals("WinExe", StringComparison.OrdinalIgnoreCase) || isWeb),
         };
     }

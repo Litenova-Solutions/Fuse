@@ -7,8 +7,14 @@
     "html_handling": "auto-trailing-slash",
     "not_found_handling": "404-page"
   },
+  // A pull request branch builds a Preview with `wrangler preview`, which needs this block. The site has no bindings,
+  // so it stays empty. Previews are served on subdomains of fuse.codes (<preview-name>.fuse.codes), which the
+  // previews_enabled route below turns on once main deploys; every page names its fuse.codes address as canonical, so a
+  // Preview is not indexed as a second site. workers.dev serves no Preview.
+  "previews": {},
+  "preview_urls": false,
   "routes": [
-    { "pattern": "fuse.codes", "custom_domain": true },
+    { "pattern": "fuse.codes", "custom_domain": true, "previews_enabled": true },
     { "pattern": "www.fuse.codes", "custom_domain": true }
   ]
 }

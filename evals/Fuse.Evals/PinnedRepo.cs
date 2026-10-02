@@ -22,10 +22,13 @@ internal sealed record PinnedRepo(
     /// <summary>The generated fixture: built on the spot, so it has no source and no commit.</summary>
     public static PinnedRepo Fixture { get; } = new("fixture", null, "", "Fixture.sln", "Small solution, 5 projects", "Small solution, 5 projects");
 
-    /// <summary>The cloned repositories, in the order the chart draws them.</summary>
+    /// <summary>The cloned open-source repositories, in the order the chart draws them.</summary>
     public static IReadOnlyList<PinnedRepo> All { get; } =
     [
         // The counts are the .csproj entries of the pinned solution whose files exist, which is what the suites evaluate.
+        // FluentValidation is the small repository: a library, an extension project that depends on it, one xUnit test
+        // project for three target frameworks, and a benchmark project, so a signature edit still reaches a dependent.
+        new("FluentValidation", "https://github.com/FluentValidation/FluentValidation", "fa3c160b17796ff67d6aa5ae6c4b05b471f1a791", "FluentValidation.sln", "FluentValidation, 4 projects", "FluentValidation, 2,664 tests"),
         new("NodaTime", "https://github.com/nodatime/NodaTime", "fcd80e11216ba403ccce0abbcedc41ba37bb352e", "src/NodaTime.slnx", "NodaTime, 15 projects", "NodaTime, 42,700 tests"),
         // Pinned to the final commit before Jellyfin moved to Roslyn 5: its in-repo analyzer is built against a newer
         // compiler than any SDK that resolves on a machine whose newest SDK is 10.0.112, and Roslyn refuses that (CS9057).
@@ -39,10 +42,10 @@ internal sealed record PinnedRepo(
     /// <summary>Deletes <see cref="StateDirectory"/>, which holds the checkouts; the generated fixture is not in it.</summary>
     public static void Clean() => Directory.Delete(StateDirectory, recursive: true);
 
-    /// <summary>Every repository the chart draws: the fixture first, then the cloned ones.</summary>
-    public static IReadOnlyList<PinnedRepo> Charted { get; } = [Fixture, .. All];
+    /// <summary>Every repository the evals measure: the fixture first, then the cloned ones.</summary>
+    public static IReadOnlyList<PinnedRepo> Measured { get; } = [Fixture, .. All];
 
-    public static PinnedRepo? Find(string name) => Charted.FirstOrDefault(r => string.Equals(r.Name, name, StringComparison.OrdinalIgnoreCase));
+    public static PinnedRepo? Find(string name) => Measured.FirstOrDefault(r => string.Equals(r.Name, name, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
     ///     Where a checkout of this repository lives. Outside the Fuse tree on purpose: a repository with no

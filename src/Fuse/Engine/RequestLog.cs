@@ -23,13 +23,14 @@ internal sealed class RequestLog
     /// <param name="request">The request, which names the files a check was scoped to.</param>
     /// <param name="phases">The phases the request went through, in order.</param>
     /// <param name="tookMs">The whole request from the moment it held the request lock, written as <see cref="Phase.Total"/>.</param>
-    public void Write(EngineRequest request, PhaseTimes phases, long tookMs)
+    /// <param name="gateHolder">What held the request lock longest while the request waited for it, or null when nothing did.</param>
+    public void Write(EngineRequest request, PhaseTimes phases, long tookMs, string? gateHolder)
     {
         var kind = KindOf(request);
         var files = request is EngineRequest.CheckFiles { Files.Count: > 0 } check ? " " + string.Join(",", check.Files.Select(Path.GetFileName)) : "";
         _log.Write($"{kind}{files} took {tookMs} ms");
         // One line per request, naming it and timing each phase, so a measurement can be matched to its own call.
         if (request.RequestId.Length > 0)
-            _log.Write(PhaseLine.Format(request.RequestId, kind, [.. phases.All, (Phase.Total, tookMs)]));
+            _log.Write(PhaseLine.Format(request.RequestId, kind, [.. phases.All, (Phase.Total, tookMs)], gateHolder));
     }
 }

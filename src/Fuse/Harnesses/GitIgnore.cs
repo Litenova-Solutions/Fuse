@@ -21,11 +21,11 @@ internal static class GitIgnore
     private static readonly HashSet<string> Decided = [".fuse", ".fuse/", "/.fuse", "/.fuse/", "**/.fuse", "**/.fuse/"];
 
     /// <summary>
-    ///     Adds <see cref="FuseFolder"/> to the root <c>.gitignore</c>, creating the file when there is none, and returns its
-    ///     repository-relative path; returns null when the file already has a line about the folder.
+    ///     Adds <see cref="FuseFolder"/> to the root <c>.gitignore</c>, creating the file when there is none, and returns the
+    ///     file; returns null when the file already has a line about the folder.
     /// </summary>
     /// <exception cref="IOException">The file could not be read or written. The message names the file.</exception>
-    public static string? AddFuseFolder(RepoRoot root)
+    public static WrittenFile? AddFuseFolder(RepoRoot root)
     {
         var path = Path.Combine(root.Path, ".gitignore");
         string text;

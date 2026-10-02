@@ -48,7 +48,8 @@ public class NonAsciiPathTests
             repo.Replace("Lib/Calc.cs", "public int Add(", "public int Plus(");
             var result = await FuseProcess.RunAsync(repo.Path, null, "check", "Lib/Calc.cs");
             Assert.Equal(1, result.ExitCode);
-            Assert.Contains("Lib.Tests/CalcTests.cs", result.Stdout, StringComparison.Ordinal);
+            // The whole output on failure: xUnit cuts a Contains failure to its first line.
+            Assert.True(result.Stdout.Contains("Lib.Tests/CalcTests.cs", StringComparison.Ordinal), $"fuse check printed:\n{result.Stdout}\n{result.Stderr}");
         }
         finally
         {
@@ -65,7 +66,7 @@ public class NonAsciiPathTests
             repo.Replace("Lib/Calc.cs", "public int Add(", "public int Plus(");
             var result = await FuseProcess.RunAsync(repo.Path, Payload(repo.Path, repo.Full("Lib/Calc.cs")), "hook", "claude", "post-edit");
             Assert.Equal(2, result.ExitCode);
-            Assert.Contains("Lib.Tests/CalcTests.cs", result.Stderr, StringComparison.Ordinal);
+            Assert.True(result.Stderr.Contains("Lib.Tests/CalcTests.cs", StringComparison.Ordinal), $"the hook printed:\n{result.Stderr}");
         }
         finally
         {

@@ -13,6 +13,10 @@ public class CommandRewriterTests
     [InlineData("dotnet test | tail -20", "fuse test | tail -20")]
     [InlineData("false || dotnet test", "false || fuse test")]
     [InlineData("  dotnet.exe test", "  fuse test")]
+    [InlineData("DOTNET_CLI_UI_LANGUAGE=en dotnet test", "DOTNET_CLI_UI_LANGUAGE=en fuse test")]
+    [InlineData("A=1 B_2=x/y dotnet build -c Release", "A=1 B_2=x/y fuse build -c Release")]
+    [InlineData("cd src && CI= dotnet test | tail", "cd src && CI= fuse test | tail")]
+    [InlineData("X=$HOME dotnet test", "X=$HOME fuse test")]
     public void Rewrites_dotnet_build_and_test_at_segment_starts(string command, string expected)
     {
         Assert.Equal(expected, CommandRewriter.Rewrite(command));
@@ -35,6 +39,7 @@ public class CommandRewriterTests
     [InlineData("dotnet test", "fuse test")]
     [InlineData("dotnet test --no-build --filter FullyQualifiedName~Lib.Tests.CalcTests", "fuse test --no-build --filter FullyQualifiedName~Lib.Tests.CalcTests")]
     [InlineData("  dotnet.exe build src\\App\\App.csproj -c Release -p:Version=1.2.3  ", "  fuse build src\\App\\App.csproj -c Release -p:Version=1.2.3  ")]
+    [InlineData("DOTNET_CLI_UI_LANGUAGE=en dotnet test --no-build", "DOTNET_CLI_UI_LANGUAGE=en fuse test --no-build")]
     public void A_command_that_is_one_plain_invocation_is_rewritten_whole(string command, string expected)
     {
         Assert.Equal(expected, CommandRewriter.RewriteWhole(command));
@@ -59,6 +64,10 @@ public class CommandRewriterTests
     [InlineData("(dotnet test)")]
     [InlineData("dotnet run")]
     [InlineData("echo dotnet test")]
+    [InlineData("X=$HOME dotnet test")]
+    [InlineData("X=\"a b\" dotnet test")]
+    [InlineData("X=1 dotnet test; rm -rf ~")]
+    [InlineData("echo X=1 dotnet test")]
     public void A_command_with_anything_besides_one_plain_invocation_is_not_rewritten_whole(string command)
     {
         Assert.Null(CommandRewriter.RewriteWhole(command));

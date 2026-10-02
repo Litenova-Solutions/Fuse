@@ -73,6 +73,15 @@ public class HookPayloadTests
     }
 
     [Fact]
+    public void A_loop_count_that_is_not_an_int32_still_reads()
+    {
+        // GetInt32 throws on these, and the stop hook then logged a failure and let the agent finish unchecked.
+        Assert.True(HookPayload.Parse("""{"loop_count":99999999999}""").StopHookActive);
+        Assert.True(HookPayload.Parse("""{"loop_count":1.0}""").StopHookActive);
+        Assert.False(HookPayload.Parse("""{"loop_count":0.0}""").StopHookActive);
+    }
+
+    [Fact]
     public void Bash_command_is_read()
     {
         Assert.Equal("dotnet test", HookPayload.Parse("""{"tool_input":{"command":"dotnet test","description":"d"}}""").Command);

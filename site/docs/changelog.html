@@ -20,12 +20,12 @@
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 24.6x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 7.0x to 31.0x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Changelog">
 <meta name="twitter:description" content="What changed in each Fuse release, what to do when you upgrade to it, and which versions are supported.">
 <meta name="twitter:image" content="https://fuse.codes/assets/og.png">
-<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 24.6x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 7.0x to 31.0x faster than dotnet build. dotnet tool install -g Fuse.">
 <link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
 <link rel="icon" href="../assets/fuse-icon.svg" type="image/svg+xml" sizes="any">
 <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -120,6 +120,7 @@
       <p>On this page</p>
       <ol>
         <li><a href="#supported-versions">Supported versions</a></li>
+        <li><a href="#v5-2-2">5.2.2</a></li>
         <li><a href="#v5-2-1">5.2.1</a></li>
         <li><a href="#v5-2-0">5.2.0</a></li>
         <li><a href="#v5-1-0">5.1.0</a></li>
@@ -134,13 +135,36 @@
       <thead><tr><th scope="col">Version</th><th scope="col">Status</th></tr></thead>
       <tbody>
         <tr><th scope="row">5.2.x</th><td>Supported. The latest release.</td></tr>
-        <tr><th scope="row">5.1.x</th><td>No longer fixed. Upgrade to 5.2.1 with the <a href="#upgrading-from-5-1-0">steps below</a>.</td></tr>
-        <tr><th scope="row">5.0.x</th><td>No longer fixed. Upgrade to 5.1.0 with the <a href="#upgrading-from-5-0-0">steps below</a>, then to 5.2.1.</td></tr>
+        <tr><th scope="row">5.1.x</th><td>No longer fixed. Upgrade to 5.2.2 with the <a href="#upgrading-from-5-1-0">steps below</a>.</td></tr>
+        <tr><th scope="row">5.0.x</th><td>No longer fixed. Upgrade to 5.1.0 with the <a href="#upgrading-from-5-0-0">steps below</a>, then to 5.2.2.</td></tr>
         <tr><th scope="row">1.0.0 to 4.4.0</th><td>Deprecated and unsupported. These versions are a different program under the same name; <a href="#moving-from-4-x">Moving from 4.x</a> says what to remove.</td></tr>
       </tbody>
     </table>
     <p>To upgrade the tool itself to the latest release:</p>
     <pre data-label="Shell"><code>dotnet tool update -g Fuse</code></pre>
+
+    <h2 id="v5-2-2">5.2.2 <a class="anchor" href="#v5-2-2" aria-label="Link to this section">#</a></h2>
+    <p>Released 2026-10-02. Compared with 5.2.1.</p>
+    <p>5.2.2 makes <code>fuse test</code> run only the selected tests when the selection is large, shortens how long a test plan makes other agents' checks wait, rewrites <code>dotnet test</code> commands that start with variable assignments, and measures the benchmarks on four open-source repositories, with the spread of every time.</p>
+    <h3 id="upgrading-to-5-2-2">Upgrading to 5.2.2 <a class="anchor" href="#upgrading-to-5-2-2" aria-label="Link to this section">#</a></h3>
+    <p>Update the tool with <code>dotnet tool update -g Fuse</code>. Nothing else needs to change, and <code>fuse init</code> does not need to run again. A script that reads the engine log's phase lines finds a test plan's preparation in two phases, <code>mirror</code> and <code>emit</code>, where 5.2.1 had <code>mirror</code> alone.</p>
+    <ul>
+      <li><code>fuse test</code> passes the test filter to <code>dotnet test</code> in a runsettings file, as <code>RunConfiguration/TestCaseFilter</code> with <code>--settings</code>, instead of on the command line. A selection of up to 2,000 test names runs only those tests. 5.2.1 cut a filter above 8,000 characters back to whole test classes, and a longer one to the whole project, without saying so. Past 2,000 names the filter still collapses, and the summary says so and the engine log names the project.</li>
+      <li>A run without MSBuild uses the test project's own runsettings file (<code>RunSettingsFilePath</code>), with the filter added, as <code>dotnet test</code> on the project does. 5.2.1 ignored that file on such runs.</li>
+      <li>A test plan holds the engine's request lock only while it syncs and selects tests, and prepares the copies for runs without MSBuild after releasing it, so a check from another agent no longer waits while a test plan emits assemblies; it still waits for the plan's sync and selection. An assembly that has not changed since the previous plan is not emitted again. The engine log's phase line splits that preparation into <code>mirror</code> and <code>emit</code>, and <code>gateHolder</code> names what a request waited behind for the request lock.</li>
+      <li>A check whose reference search reaches a project that uses an analyzer the repository has not built yet, such as Jellyfin's own analyzer before its first build, leaves that analyzer out and answers. 5.2.1 answered <code>internal error: Unexpected value 'Microsoft.CodeAnalysis.Diagnostics.UnresolvedAnalyzerReference'</code>.</li>
+      <li>The pre-shell hook rewrites <code>dotnet build</code> and <code>dotnet test</code> after variable assignments, so <code>DOTNET_CLI_UI_LANGUAGE=en dotnet test</code> becomes <code>DOTNET_CLI_UI_LANGUAGE=en fuse test</code>. An assignment counts when its value has no whitespace, quote, backtick, separator, redirection or parenthesis; for Codex, only plain values count. 5.2.1 left such a command as it was.</li>
+      <li>A Microsoft.Testing.Platform run that exits with 8, the platform's code for a run in which no test ran, prints <code>fuse: no test matched the dotnet test arguments (exit code 8)</code> for <code>fuse test</code> with arguments, or <code>fuse: the test run of &lt;project&gt; ran no test (exit code 8)</code>. 5.2.1 printed that the run exited with code 8 and produced no results.</li>
+      <li>A second <code>fuse init</code> prints <code>unchanged &lt;file&gt;</code> for a settings file that already holds what it would write, and leaves the file as it was. 5.2.1 printed <code>wrote &lt;file&gt;</code> and wrote it again.</li>
+      <li>The benchmarks measure four open-source repositories: FluentValidation, a small library, takes the place of the generated fixture beside NodaTime, Jellyfin and the Community Toolkit. A check is 7.0x to 31.0x faster than <code>dotnet build</code> at the median, and 2.5x to 5.3x faster over all 30 edits of each repository; <code>fuse test</code> is 1.3x to 3.7x faster than <code>dotnet test</code>. The README, the home page and the sharing image quote these, where 5.2.1 quoted the fixture's 24.6x and, in the README, 5.7x for tests, which was a time in seconds. The <code>dotnet test</code> time is now one run of the whole solution, as a user runs it, instead of one test project after another, which lowered the test speedups. The benchmarks page and the chart give each command's fastest and slowest case, mean, standard deviation and P95 next to its median.</li>
+      <li><code>fuse check</code> no longer reports CS8795 for a <code>[GeneratedRegex]</code> method that names a culture, such as <code>"en-US"</code>. The engine runs with invariant globalization, where the Regex source generator could not look the culture up and wrote no implementation. The same failure sent test projects that depend on such a project through MSBuild instead of running them without it.</li>
+      <li>The check summary counts every error the check found, in every file it found them in. 5.2.1 counted only the 200 errors the engine sends, so a change that broke 602 call sites in 3 files printed <code>200 error(s) introduced in 2 file(s)</code>.</li>
+      <li>A file whose only difference from HEAD is CRLF line endings inside a multi-line string constant, as a checkout with <code>core.autocrlf</code> writes it, has no declaration change, so the check stays within the file.</li>
+      <li>For a test project on Microsoft.Testing.Platform, which runs whole, the <code>fuse test</code> summary counts every test in the project, not only the tests the selection named.</li>
+      <li>The stop hook sends the agent back for a missing restore with the restore message alone, without the line that says the changes introduced errors. A stop payload whose <code>loop_count</code> is not a whole number that fits 32 bits no longer makes the hook fail and let the agent finish unchecked.</li>
+      <li>A state directory that <code>fuse build</code> or <code>fuse test</code> created records its repository, so the daily cleanup removes it once the repository is gone, as it does the directory of a repository an engine served.</li>
+      <li>A client that finds an engine copy without its completion marker, such as one a cleanup deleted part of, makes the copy again, or runs the engine from a fresh copy beside it when the old one cannot be replaced. 5.2.1 ran the engine from the incomplete copy, so the engine could not start until the copy was deleted by hand.</li>
+    </ul>
 
     <h2 id="v5-2-1">5.2.1 <a class="anchor" href="#v5-2-1" aria-label="Link to this section">#</a></h2>
     <p>Released 2026-10-01. Compared with 5.2.0.</p>

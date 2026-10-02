@@ -2,21 +2,50 @@
   "suite": "selection",
   "repo": "CommunityToolkit",
   "commit": "b135626dd54d33b8f05f2ff31591592c004aa848",
-  "fuseBuild": "5.2.0/ad78b5888eef4db888078d5e387d0faa",
+  "fuseBuild": "5.2.2/a655e25734bd41ec8ac1a86d91c8f940",
   "seed": 1,
   "requested": 10,
   "cases": 10,
-  "withFailures": 8,
-  "missedCases": 2,
+  "withFailures": 9,
+  "missedCases": 3,
   "unverifiedCases": 0,
-  "missedTests": 2,
+  "missedTests": 3,
   "unverifiedTests": 0,
   "totalTests": 12449,
-  "meanSelectedFraction": 0.13724797172463649,
-  "fuseMedianSeconds": 200.09530755,
-  "dotnetMedianSeconds": 880.1096904,
+  "meanSelectedFraction": 0.11996144268615953,
+  "fuseMedianSeconds": 197.9565699,
+  "dotnetMedianSeconds": 723.8889549,
+  "fuseStats": {
+    "n": 10,
+    "fastest": 14.641659,
+    "median": 197.9565699,
+    "mean": 148.29874449,
+    "standardDeviation": 86.66955641054577,
+    "p95": 224.5219745,
+    "slowest": 224.5219745,
+    "total": 1482.9874449
+  },
+  "dotnetStats": {
+    "n": 10,
+    "fastest": 551.7430188,
+    "median": 723.8889549,
+    "mean": 701.3545486599999,
+    "standardDeviation": 82.83387786717806,
+    "p95": 782.0620819,
+    "slowest": 782.0620819,
+    "total": 7013.545486599999
+  },
   "skippedNonCompiling": [],
   "projectsWithoutResults": [],
+  "truthKey": "truth-v1-selection-CommunityToolkit-88ee43658fdd-s1-n10-sdk10.0.401-g11118dd7ae08",
+  "truthOrigins": [
+    "GitHub Actions run 36995535254, job truth, shard 0",
+    "GitHub Actions run 36995535254, job truth, shard 1",
+    "GitHub Actions run 36995535254, job truth, shard 2",
+    "GitHub Actions run 36995535254, job truth, shard 3",
+    "GitHub Actions run 36995535254, job truth, shard 4",
+    "GitHub Actions run 36995535254, job truth, shard 5"
+  ],
   "treeCleanAfter": true,
   "details": [
     {
@@ -28,25 +57,22 @@
         "newText": null
       },
       "truthFailing": [
-        "Test_ReadOnlySpanExtensions_Enumerate_Empty",
-        "Test_IBufferWriterStream_WriteByte",
         "Test_MemoryStream_ReadWriteByte",
-        "Test_ObservableObject_ThrowingTaskOfTBubblesToUnobservedTaskException"
+        "Test_IBufferWriterStream_WriteByte",
+        "Test_ReadOnlySpanExtensions_Enumerate_Empty"
       ],
       "fuseFailing": [
-        "Test_IBufferWriterStream_WriteByte",
         "Test_ReadOnlySpanExtensions_Enumerate_Empty",
-        "Test_MemoryStream_ReadWriteByte"
+        "Test_MemoryStream_ReadWriteByte",
+        "Test_IBufferWriterStream_WriteByte"
       ],
       "fuseFailed": 12,
       "fusePassed": 1749,
-      "fuseSummary": "fuse: 12 failed, 1749 passed in 203.4 s; ran 310 test(s) affected by your changes out of 2503; fuse test --all runs everything; without MSBuild",
-      "missed": [
-        "Test_ObservableObject_ThrowingTaskOfTBubblesToUnobservedTaskException"
-      ],
-      "fuseSeconds": 203.4488389,
-      "dotnetSeconds": 876.764138,
-      "verdict": "missed"
+      "fuseSummary": "fuse: 12 failed, 1749 passed in 224.5 s; ran 310 test(s) affected by your changes out of 2503; fuse test --all runs everything; without MSBuild",
+      "missed": [],
+      "fuseSeconds": 224.5219745,
+      "dotnetSeconds": 561.6496691,
+      "verdict": "caught"
     },
     {
       "index": 1,
@@ -57,25 +83,25 @@
         "newText": null
       },
       "truthFailing": [
-        "Test_Messenger_ConcurrentOperations_DefaultChannel_SeparateRecipients (CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger)",
-        "Test_Messenger_CreateObservable (CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger)",
         "Test_Messenger_IsRegistered_Register_Send_UnregisterOfTMessage_WithNoToken (CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger)",
+        "Test_Messenger_CreateObservable (CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger)",
         "Test_Messenger_ConcurrentOperations_DefaultChannel_SharedRecipients (CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger)",
+        "Test_Messenger_ConcurrentOperations_DefaultChannel_SeparateRecipients (CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger)",
         "Test_Messenger_RegisterAndUnregisterRecipientWithMessageType (CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger)"
       ],
       "fuseFailing": [
-        "Test_Messenger_CreateObservable (CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger)",
-        "Test_Messenger_RegisterAndUnregisterRecipientWithMessageType (CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger)",
         "Test_Messenger_ConcurrentOperations_DefaultChannel_SharedRecipients (CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger)",
+        "Test_Messenger_CreateObservable (CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger)",
         "Test_Messenger_IsRegistered_Register_Send_UnregisterOfTMessage_WithNoToken (CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger)",
+        "Test_Messenger_RegisterAndUnregisterRecipientWithMessageType (CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger)",
         "Test_Messenger_ConcurrentOperations_DefaultChannel_SeparateRecipients (CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger)"
       ],
       "fuseFailed": 20,
-      "fusePassed": 1525,
-      "fuseSummary": "fuse: 20 failed, 1525 passed in 115.0 s; ran 951 test(s) affected by your changes out of 2503; fuse test --all runs everything; without MSBuild",
+      "fusePassed": 1165,
+      "fuseSummary": "fuse: 20 failed, 1165 passed in 173.4 s; ran 951 test(s) affected by your changes out of 2503; fuse test --all runs everything; without MSBuild",
       "missed": [],
-      "fuseSeconds": 114.996084,
-      "dotnetSeconds": 830.2418145,
+      "fuseSeconds": 173.4350604,
+      "dotnetSeconds": 714.6593352,
       "verdict": "caught"
     },
     {
@@ -87,23 +113,23 @@
         "newText": null
       },
       "truthFailing": [
-        "Test_Guard_IsNull_StructFail",
         "Test_Guard_IsNull_GenericStructFail",
-        "Test_Guard_IsNull_GenericClassFail",
-        "Test_Guard_IsNull_ClassFail"
+        "Test_Guard_IsNull_StructFail",
+        "Test_Guard_IsNull_ClassFail",
+        "Test_Guard_IsNull_GenericClassFail"
       ],
       "fuseFailing": [
         "Test_Guard_IsNull_StructFail",
         "Test_Guard_IsNull_ClassFail",
-        "Test_Guard_IsNull_GenericStructFail",
-        "Test_Guard_IsNull_GenericClassFail"
+        "Test_Guard_IsNull_GenericClassFail",
+        "Test_Guard_IsNull_GenericStructFail"
       ],
       "fuseFailed": 16,
       "fusePassed": 700,
-      "fuseSummary": "fuse: 16 failed, 700 passed in 6.0 s; ran 110 test(s) affected by your changes out of 2503; fuse test --all runs everything; without MSBuild",
+      "fuseSummary": "fuse: 16 failed, 700 passed in 14.6 s; ran 110 test(s) affected by your changes out of 2503; fuse test --all runs everything; without MSBuild",
       "missed": [],
-      "fuseSeconds": 5.9817911,
-      "dotnetSeconds": 870.5800798,
+      "fuseSeconds": 14.641659,
+      "dotnetSeconds": 782.0620819,
       "verdict": "caught"
     },
     {
@@ -116,22 +142,22 @@
       },
       "truthFailing": [
         "Test_ReadOnlySpanExtensions_Enumerate",
+        "Test_MemoryStream_ReadWriteByte",
         "Test_IBufferWriterStream_WriteByte",
-        "Test_ReadOnlySpanExtensions_Enumerate_Empty",
-        "Test_MemoryStream_ReadWriteByte"
+        "Test_ReadOnlySpanExtensions_Enumerate_Empty"
       ],
       "fuseFailing": [
-        "Test_ReadOnlySpanExtensions_Enumerate",
-        "Test_ReadOnlySpanExtensions_Enumerate_Empty",
+        "Test_MemoryStream_ReadWriteByte",
         "Test_IBufferWriterStream_WriteByte",
-        "Test_MemoryStream_ReadWriteByte"
+        "Test_ReadOnlySpanExtensions_Enumerate_Empty",
+        "Test_ReadOnlySpanExtensions_Enumerate"
       ],
       "fuseFailed": 16,
       "fusePassed": 1745,
-      "fuseSummary": "fuse: 16 failed, 1745 passed in 200.1 s; ran 310 test(s) affected by your changes out of 2503; fuse test --all runs everything; without MSBuild",
+      "fuseSummary": "fuse: 16 failed, 1745 passed in 200.3 s; ran 310 test(s) affected by your changes out of 2503; fuse test --all runs everything; without MSBuild",
       "missed": [],
-      "fuseSeconds": 200.1692517,
-      "dotnetSeconds": 854.0249559,
+      "fuseSeconds": 200.2821699,
+      "dotnetSeconds": 733.1185746,
       "verdict": "caught"
     },
     {
@@ -142,34 +168,38 @@
         "description": "dropped \u0060OnPropertyChanged(propertyName);\u0060 at line 157",
         "newText": null
       },
-      "truthFailing": [],
+      "truthFailing": [
+        "Test_ObservableObject_ThrowingTaskOfTBubblesToUnobservedTaskException"
+      ],
       "fuseFailing": [
-        "SimpleProperty_Multiple (CSharp14)",
-        "ObservablePropertyWithValueType_OnPartialProperty_WithNoModifiers_CSharp14_WorksCorrectly",
-        "SimpleProperty_Multiple_WithMissingUsingDirective (CSharp14)",
-        "SimpleProperty (CSharp14)",
         "SimplePropertyWithNestedBlockSyntax (CSharp14)",
         "WinRTObservablePropertyOnFieldsIsNotAotCompatibleAnalyzer_TargetingWindows_CsWinRTAotOptimizerEnabled_Auto_LanguageVersionIsCSharp14_Warns",
-        "SimpleProperty_WithMissingUsingDirective (CSharp14)",
-        "UseObservablePropertyOnSemiAutoPropertyAnalyzer_ValidProperty_LanguageVersionIsCSharp14_Warns",
         "SimpleProperty_WithinPartialType_Multiple (CSharp14)",
-        "SimpleProperty_WithSemicolonTokenGetAccessor (CSharp14)",
         "SimplePropertyWithBlockAccessorSyntax (CSharp14)",
-        "SimpleProperty_WithLeadingTrivia_AndAttributes (CSharp14)",
-        "SimpleProperty_WithLeadingTrivia (CSharp14)",
+        "UseObservablePropertyOnSemiAutoPropertyAnalyzer_ValidProperty_LanguageVersionIsCSharp14_Warns",
         "SimpleProperty_Multiple_OnlyTriggersOnSecondOne (CSharp14)",
+        "SimpleProperty_WithLeadingTrivia (CSharp14)",
+        "SimpleProperty_WithinPartialType (CSharp14)",
         "SimpleProperty_WithinPartialType_Multiple_MixedScenario (CSharp14)",
+        "SimpleProperty_WithLeadingTrivia_AndAttributes (CSharp14)",
         "UseObservablePropertyOnPartialPropertyAnalyzer_LanguageVersionIsCSharp14_Warns",
+        "SimpleProperty_Multiple (CSharp14)",
+        "SimpleProperty (CSharp14)",
+        "SimpleProperty_WithMissingUsingDirective (CSharp14)",
+        "ObservablePropertyWithValueType_OnPartialProperty_WithNoModifiers_CSharp14_WorksCorrectly",
         "SimpleProperty_Multiple_OnlyTriggersOnFirstOne (CSharp14)",
-        "SimpleProperty_WithinPartialType (CSharp14)"
+        "SimpleProperty_Multiple_WithMissingUsingDirective (CSharp14)",
+        "SimpleProperty_WithSemicolonTokenGetAccessor (CSharp14)"
       ],
       "fuseFailed": 54,
-      "fusePassed": 4443,
-      "fuseSummary": "fuse: 54 failed, 4443 passed in 294.2 s; ran 1389 test(s) affected by your changes out of 2503; fuse test --all runs everything; without MSBuild",
-      "missed": [],
-      "fuseSeconds": 294.23129,
-      "dotnetSeconds": 899.3154417,
-      "verdict": "no-failure"
+      "fusePassed": 3567,
+      "fuseSummary": "fuse: 54 failed, 3567 passed in 209.9 s; ran 1389 test(s) affected by your changes out of 2503; fuse test --all runs everything; without MSBuild",
+      "missed": [
+        "Test_ObservableObject_ThrowingTaskOfTBubblesToUnobservedTaskException"
+      ],
+      "fuseSeconds": 209.9304492,
+      "dotnetSeconds": 711.4869839,
+      "verdict": "missed"
     },
     {
       "index": 5,
@@ -183,10 +213,10 @@
       "fuseFailing": [],
       "fuseFailed": 0,
       "fusePassed": 1761,
-      "fuseSummary": "fuse: 0 failed, 1761 passed in 200.0 s; ran 310 test(s) affected by your changes out of 2503; fuse test --all runs everything; without MSBuild",
+      "fuseSummary": "fuse: 0 failed, 1761 passed in 198.5 s; ran 310 test(s) affected by your changes out of 2503; fuse test --all runs everything; without MSBuild",
       "missed": [],
-      "fuseSeconds": 200.0213634,
-      "dotnetSeconds": 883.7579932,
+      "fuseSeconds": 198.4834166,
+      "dotnetSeconds": 551.7430188,
       "verdict": "no-failure"
     },
     {
@@ -198,20 +228,23 @@
         "newText": null
       },
       "truthFailing": [
-        "Test_ArrayPoolBufferWriterOfT_BufferSize (1048577,2097152)",
-        "Test_ArrayPoolBufferWriterOfT_BufferSize (2097153,4194304)"
+        "Test_ObservableObject_ThrowingTaskOfTBubblesToUnobservedTaskException",
+        "Test_ArrayPoolBufferWriterOfT_BufferSize (2097153,4194304)",
+        "Test_ArrayPoolBufferWriterOfT_BufferSize (1048577,2097152)"
       ],
       "fuseFailing": [
-        "Test_ArrayPoolBufferWriterOfT_BufferSize (1048577,2097152)",
-        "Test_ArrayPoolBufferWriterOfT_BufferSize (2097153,4194304)"
+        "Test_ArrayPoolBufferWriterOfT_BufferSize (2097153,4194304)",
+        "Test_ArrayPoolBufferWriterOfT_BufferSize (1048577,2097152)"
       ],
       "fuseFailed": 2,
       "fusePassed": 1604,
-      "fuseSummary": "fuse: 2 failed, 1604 passed in 209.2 s; ran 299 test(s) affected by your changes out of 2503; fuse test --all runs everything; without MSBuild",
-      "missed": [],
-      "fuseSeconds": 209.2593992,
-      "dotnetSeconds": 842.3716466,
-      "verdict": "caught"
+      "fuseSummary": "fuse: 2 failed, 1604 passed in 206.3 s; ran 299 test(s) affected by your changes out of 2503; fuse test --all runs everything; without MSBuild",
+      "missed": [
+        "Test_ObservableObject_ThrowingTaskOfTBubblesToUnobservedTaskException"
+      ],
+      "fuseSeconds": 206.3744686,
+      "dotnetSeconds": 780.9906184,
+      "verdict": "missed"
     },
     {
       "index": 7,
@@ -222,21 +255,21 @@
         "newText": null
       },
       "truthFailing": [
-        "Test_ReadOnlyObservableGroup_Ctor_WithKeyAndCollection_ShouldHaveExpectedInitialState",
         "Test_ReadOnlyObservableGroupedCollection_Ctor_WithListOfReadOnlyObservableGroupSource_ShoudInitializeObject",
+        "Test_ReadOnlyObservableGroup_Ctor_WithKeyAndCollection_ShouldHaveExpectedInitialState",
         "Test_ReadOnlyObservableGroup_Ctor_WithKeyAndOBservableCollection_ShouldHaveExpectedInitialState"
       ],
       "fuseFailing": [
-        "Test_ReadOnlyObservableGroup_Ctor_WithKeyAndCollection_ShouldHaveExpectedInitialState",
         "Test_ReadOnlyObservableGroupedCollection_Ctor_WithListOfReadOnlyObservableGroupSource_ShoudInitializeObject",
-        "Test_ReadOnlyObservableGroup_Ctor_WithKeyAndOBservableCollection_ShouldHaveExpectedInitialState"
+        "Test_ReadOnlyObservableGroup_Ctor_WithKeyAndOBservableCollection_ShouldHaveExpectedInitialState",
+        "Test_ReadOnlyObservableGroup_Ctor_WithKeyAndCollection_ShouldHaveExpectedInitialState"
       ],
       "fuseFailed": 12,
       "fusePassed": 136,
-      "fuseSummary": "fuse: 12 failed, 136 passed in 31.2 s; ran 104 test(s) affected by your changes out of 2503; fuse test --all runs everything; without MSBuild",
+      "fuseSummary": "fuse: 12 failed, 136 passed in 29.8 s; ran 104 test(s) affected by your changes out of 2503; fuse test --all runs everything; without MSBuild",
       "missed": [],
-      "fuseSeconds": 31.2210318,
-      "dotnetSeconds": 905.4752965,
+      "fuseSeconds": 29.8397073,
+      "dotnetSeconds": 757.4452653,
       "verdict": "caught"
     },
     {
@@ -249,25 +282,25 @@
       },
       "truthFailing": [
         "Test_MemoryStream_ReadWriteByte",
-        "Test_ReadOnlySpanExtensions_Enumerate_Empty",
         "Test_IBufferWriterStream_WriteByte",
         "Test_ReadOnlySpanExtensions_Enumerate",
-        "Test_AsyncRelayCommand_ThrowingTaskBubblesToUnobservedTaskException"
+        "Test_ReadOnlySpanExtensions_Enumerate_Empty",
+        "Test_AsyncRelayCommandOfT_ThrowingTaskBubblesToUnobservedTaskException"
       ],
       "fuseFailing": [
         "Test_MemoryStream_ReadWriteByte",
-        "Test_ReadOnlySpanExtensions_Enumerate_Empty",
         "Test_IBufferWriterStream_WriteByte",
+        "Test_ReadOnlySpanExtensions_Enumerate_Empty",
         "Test_ReadOnlySpanExtensions_Enumerate"
       ],
       "fuseFailed": 16,
       "fusePassed": 1745,
-      "fuseSummary": "fuse: 16 failed, 1745 passed in 244.5 s; ran 310 test(s) affected by your changes out of 2503; fuse test --all runs everything; without MSBuild",
+      "fuseSummary": "fuse: 16 failed, 1745 passed in 197.4 s; ran 310 test(s) affected by your changes out of 2503; fuse test --all runs everything; without MSBuild",
       "missed": [
-        "Test_AsyncRelayCommand_ThrowingTaskBubblesToUnobservedTaskException"
+        "Test_AsyncRelayCommandOfT_ThrowingTaskBubblesToUnobservedTaskException"
       ],
-      "fuseSeconds": 244.5657151,
-      "dotnetSeconds": 887.84224,
+      "fuseSeconds": 197.4297232,
+      "dotnetSeconds": 675.5158865,
       "verdict": "missed"
     },
     {
@@ -279,19 +312,19 @@
         "newText": null
       },
       "truthFailing": [
-        "Test_ObservableRecipient_ValidationOnNonValidatableProperties_WithFallback (CommunityToolkit.Mvvm.UnitTests.Test_ObservableValidator\u002BObservableValidatorDerived)",
-        "Test_ObservableRecipient_ValidationOnNonValidatableProperties_WithFallback (CommunityToolkit.Mvvm.UnitTests.Test_ObservableValidator\u002BObservableValidatorBase)"
+        "Test_ObservableRecipient_ValidationOnNonValidatableProperties_WithFallback (CommunityToolkit.Mvvm.UnitTests.Test_ObservableValidator\u002BObservableValidatorBase)",
+        "Test_ObservableRecipient_ValidationOnNonValidatableProperties_WithFallback (CommunityToolkit.Mvvm.UnitTests.Test_ObservableValidator\u002BObservableValidatorDerived)"
       ],
       "fuseFailing": [
         "Test_ObservableRecipient_ValidationOnNonValidatableProperties_WithFallback (CommunityToolkit.Mvvm.UnitTests.Test_ObservableValidator\u002BObservableValidatorBase)",
         "Test_ObservableRecipient_ValidationOnNonValidatableProperties_WithFallback (CommunityToolkit.Mvvm.UnitTests.Test_ObservableValidator\u002BObservableValidatorDerived)"
       ],
       "fuseFailed": 8,
-      "fusePassed": 1522,
-      "fuseSummary": "fuse: 8 failed, 1522 passed in 178.6 s; ran 584 test(s) affected by your changes out of 2503; fuse test --all runs everything; without MSBuild",
+      "fusePassed": 606,
+      "fuseSummary": "fuse: 8 failed, 606 passed in 28.0 s; ran 584 test(s) affected by your changes out of 2503; fuse test --all runs everything; without MSBuild",
       "missed": [],
-      "fuseSeconds": 178.6586653,
-      "dotnetSeconds": 883.4552428,
+      "fuseSeconds": 28.0488162,
+      "dotnetSeconds": 744.8740529,
       "verdict": "caught"
     }
   ]

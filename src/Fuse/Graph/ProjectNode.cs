@@ -33,5 +33,11 @@ internal sealed class ProjectNode
     /// <summary>True when the tests run on Microsoft.Testing.Platform rather than VSTest.</summary>
     public required bool UsesTestingPlatform { get; init; }
 
+    /// <summary>
+    ///     The absolute path of the runsettings file the project names in <c>RunSettingsFilePath</c>, which
+    ///     <c>dotnet test</c> on the project uses; null when it names none.
+    /// </summary>
+    public string? RunSettings { get; init; }
+
     public override string ToString() => Name;
 }

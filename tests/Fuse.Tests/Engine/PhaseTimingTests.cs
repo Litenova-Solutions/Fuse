@@ -39,7 +39,7 @@ public class PhaseTimingTests
     }
 
     [Fact]
-    public async Task A_test_plan_times_the_sync_the_selection_and_the_shadow_preparation()
+    public async Task A_test_plan_times_the_sync_the_selection_the_mirror_and_the_emit()
     {
         await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
@@ -48,7 +48,9 @@ public class PhaseTimingTests
         var phases = new PhaseTimes();
         var plan = await engine.Planner.PlanAsync(new TestScope.Affected(), phases, TestContext.Current.CancellationToken);
 
-        Assert.Equal(["sync", "selection", "mirror"], phases.All.Select(p => p.Phase));
+        Assert.Equal(["sync", "selection", "mirror", "emit"], phases.All.Select(p => p.Phase));
+        // The change in Lib makes Lib and Lib.Tests be emitted, so the emit took time of its own.
+        Assert.True(phases.All.Single(p => p.Phase == "emit").Ms > 0);
         Assert.All(phases.All, p => Assert.True(p.Ms >= 0, $"{p.Phase} was {p.Ms}"));
         Assert.NotEmpty(plan.Runs);
     }

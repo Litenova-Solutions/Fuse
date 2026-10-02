@@ -12,7 +12,11 @@ namespace Fuse.Evals;
 ///     <c>PlanAllTests</c>. The line is found by its id, so no reader depends on the kind.
 /// </param>
 /// <param name="Phases">Each timed phase in milliseconds, by the names in <see cref="Phase"/>.</param>
-internal sealed record RequestPhases(string RequestId, string Kind, Dictionary<string, double> Phases)
+/// <param name="GateHolder">
+///     What held the request lock longest while the request waited for it: a request's case, <c>Preload</c> or
+///     <c>Initialization</c>. Null when nothing held it during the wait.
+/// </param>
+internal sealed record RequestPhases(string RequestId, string Kind, Dictionary<string, double> Phases, string? GateHolder)
 {
     /// <summary>The engine's own total for the request, or null when the line carries none.</summary>
     public double? Total => Phases.GetValueOrDefault(Phase.Total);
@@ -26,9 +30,9 @@ internal sealed record RequestPhases(string RequestId, string Kind, Dictionary<s
     {
         for (var i = logLines.Count - 1; i >= 0; i--)
         {
-            if (!PhaseLine.TryParse(logLines[i], out var id, out var kind, out var phases) || !seen.Add(id))
+            if (!PhaseLine.TryParse(logLines[i], out var id, out var kind, out var gateHolder, out var phases) || !seen.Add(id))
                 continue;
-            return new RequestPhases(id, kind, phases);
+            return new RequestPhases(id, kind, phases, gateHolder);
         }
 
         return null;

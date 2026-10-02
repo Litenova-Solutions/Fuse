@@ -21,7 +21,7 @@ internal sealed class ClaudeCode : Harness
 
     public override bool IsUsedIn(RepoRoot root) => HasAny(root, ".claude", "CLAUDE.md");
 
-    public override string RegisterHooks(RepoRoot root)
+    public override WrittenFile RegisterHooks(RepoRoot root)
     {
         var path = Path.Combine(root.Path, ".claude", "settings.json");
         var settings = SettingsFile.Read(root, path);

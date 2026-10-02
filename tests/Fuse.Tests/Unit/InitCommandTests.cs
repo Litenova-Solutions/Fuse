@@ -182,6 +182,21 @@ public class InitCommandTests
     }
 
     [Fact]
+    public void A_second_run_names_the_settings_it_did_not_change()
+    {
+        using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["App/App.csproj"] = "<Project />" });
+        using var first = new StringWriter();
+        Assert.Equal(0, InitCommand.Run(repo.Root.Path, first, TextWriter.Null));
+        var written = File.GetLastWriteTimeUtc(repo.Full(".claude/settings.json"));
+        using var second = new StringWriter();
+        Assert.Equal(0, InitCommand.Run(repo.Root.Path, second, TextWriter.Null));
+
+        Assert.Contains("wrote .claude/settings.json", first.ToString(), StringComparison.Ordinal);
+        Assert.StartsWith("unchanged .claude/settings.json" + Environment.NewLine, second.ToString(), StringComparison.Ordinal);
+        Assert.Equal(written, File.GetLastWriteTimeUtc(repo.Full(".claude/settings.json")));
+    }
+
+    [Fact]
     public void Appends_the_fuse_folder_to_an_existing_gitignore_in_its_line_endings()
     {
         using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["App/App.csproj"] = "<Project />" });

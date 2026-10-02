@@ -261,6 +261,11 @@ internal sealed class FileDeclarations
     private static string Qualify(string container, string name) => container.Length == 0 ? name : container + "." + name;
 
     /// <summary>Text of a node with all trivia collapsed, so formatting and comments never register as changes.</summary>
+    /// <summary>
+    ///     The node's tokens separated by single spaces. A line break inside a token, in a multi-line string, reads as LF,
+    ///     because a checkout with <c>core.autocrlf</c> writes CRLF where HEAD has LF and that is not an edit
+    ///     (<see cref="Repo.HeadComparison"/> ignores it too).
+    /// </summary>
     private static string Flat(SyntaxNode? node)
     {
         if (node is null)
@@ -270,7 +275,8 @@ internal sealed class FileDeclarations
         {
             if (builder.Length > 0)
                 builder.Append(' ');
-            builder.Append(token.Text);
+            var text = token.Text;
+            builder.Append(text.Contains('\r') ? text.Replace("\r\n", "\n", StringComparison.Ordinal) : text);
         }
 
         return builder.ToString();

@@ -1,8 +1,8 @@
+using System.Diagnostics;
 using Fuse.Graph;
 using Fuse.Paths;
 using Fuse.Testing.Model;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.Emit;
 
 namespace Fuse.Testing;
 
@@ -12,28 +12,39 @@ namespace Fuse.Testing;
 ///     emitted from the warm compilations.
 /// </summary>
 /// <remarks>
-///     A shadow run is prepared only when no project file, import, resource or content file in the involved project
-///     directories has a timestamp newer than the build output (freshness is judged by timestamps, not content).
-///     Otherwise <see cref="PrepareAsync"/> returns <see cref="RunMode.Build"/> and the client runs <c>dotnet test</c>
-///     on the project, which builds it with MSBuild.
+///     <para>
+///         A shadow run is prepared only when no project file, import, resource or content file in the involved project
+///         directories has a timestamp newer than the build output (freshness is judged by timestamps, not content).
+///         Otherwise <see cref="PrepareAsync"/> returns <see cref="RunMode.Build"/> and the client runs <c>dotnet test</c>
+///         on the project, which builds it with MSBuild.
+///     </para>
+///     <para>
+///         One emitter serves every plan of the engine. It keeps the emitted images in an <see cref="EmitCache"/>, and
+///         remembers each shadow file it wrote, so an image that is already in place is not written again and the copy
+///         from build output never overwrites a file it is about to emit. It runs after the request lock is released,
+///         against the snapshot the plan took under it; <see cref="TestPlanner"/> prepares one plan at a time.
+///     </para>
 /// </remarks>
 internal sealed class ShadowEmitter
 {
     private readonly RepoRoot _root;
-    private readonly RepoGraph _graph;
-    private readonly Dictionary<ProjectId, (byte[] Pe, byte[] Pdb)?> _emitted = [];
+    private readonly EmitCache _cache = new();
 
-    public ShadowEmitter(RepoRoot root, RepoGraph graph)
-    {
-        _root = root;
-        _graph = graph;
-    }
+    /// <summary>Each shadow file this emitter wrote, with the bytes it wrote and the length and time the file had after.</summary>
+    private readonly Dictionary<string, Written> _written = new(StringComparer.OrdinalIgnoreCase);
+
+    public ShadowEmitter(RepoRoot root) => _root = root;
+
+    /// <summary>How many assemblies were emitted since the engine started, as opposed to taken from the cache.</summary>
+    public int Emits => _cache.Emits;
 
     /// <summary>Returns a shadow run of the prepared test assembly, or a build with MSBuild when a shadow run is not safe.</summary>
-    /// <param name="testProject">The Roslyn project for one target framework of the test project.</param>
+    /// <param name="testProject">The Roslyn project for one target framework of the test project, from the plan's snapshot.</param>
+    /// <param name="graph">The project graph the plan's snapshot was taken with.</param>
     /// <param name="log">Receives the reason when a shadow run is refused.</param>
+    /// <param name="emitting">Runs while assemblies are emitted and written, so the caller can tell the emit from the rest.</param>
     /// <param name="cancellationToken">Cancels emitting.</param>
-    public async Task<RunMode> PrepareAsync(Project testProject, Action<string> log, CancellationToken cancellationToken)
+    public async Task<RunMode> PrepareAsync(Project testProject, RepoGraph graph, Action<string> log, Stopwatch emitting, CancellationToken cancellationToken)
     {
         var solution = testProject.Solution;
         var testOutput = testProject.OutputFilePath;
@@ -56,7 +67,7 @@ internal sealed class ShadowEmitter
             }
 
             var built = File.GetLastWriteTimeUtc(project.OutputFilePath);
-            var node = project.FilePath is null ? null : _graph.Find(_root.PathOf(project.FilePath));
+            var node = project.FilePath is null ? null : graph.Find(_root.PathOf(project.FilePath));
             if (node is null)
                 return new RunMode.Build();
             if (node.EvaluationInputs.Any(i => File.Exists(i.Absolute) && File.GetLastWriteTimeUtc(i.Absolute) > built))
@@ -93,45 +104,51 @@ internal sealed class ShadowEmitter
         while (grew);
 
         var shadow = Path.Combine(_root.StateDirectory, "shadow", $"{testProject.Name.Replace('(', '-').Replace(")", "")}");
-        Mirror(testOutputDirectory, shadow);
+        var targets = emit.Select(id => Path.Combine(shadow, Path.GetFileName(solution.GetProject(id)!.OutputFilePath!))).ToList();
+        // The files about to be emitted are not copied first: the copy would only be overwritten, and when the emitted
+        // image is already in place, it would make the image be written again.
+        Mirror(testOutputDirectory, shadow, [.. targets, .. targets.Select(t => Path.ChangeExtension(t, ".pdb"))]);
         foreach (var id in emit)
         {
             var project = solution.GetProject(id)!;
-            var image = await EmitOnceAsync(project, cancellationToken).ConfigureAwait(false);
-            if (image is null)
+            emitting.Start();
+            try
             {
-                log($"{project.Name}: does not compile; building with MSBuild to report the errors");
-                return new RunMode.Build();
-            }
+                var image = await _cache.GetAsync(project, cancellationToken).ConfigureAwait(false);
+                if (image is null)
+                {
+                    log($"{project.Name}: does not compile; building with MSBuild to report the errors");
+                    return new RunMode.Build();
+                }
 
-            var target = Path.Combine(shadow, Path.GetFileName(project.OutputFilePath!));
-            await File.WriteAllBytesAsync(target, image.Value.Pe, cancellationToken).ConfigureAwait(false);
-            await File.WriteAllBytesAsync(Path.ChangeExtension(target, ".pdb"), image.Value.Pdb, cancellationToken).ConfigureAwait(false);
+                var target = Path.Combine(shadow, Path.GetFileName(project.OutputFilePath!));
+                await WriteAsync(target, image.Pe, cancellationToken).ConfigureAwait(false);
+                await WriteAsync(Path.ChangeExtension(target, ".pdb"), image.Pdb, cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                emitting.Stop();
+            }
         }
 
         return new RunMode.Shadow(Path.Combine(shadow, Path.GetFileName(testOutput)));
     }
 
-    /// <summary>Emits a project's assembly once per plan; several test assemblies usually load the same changed project.</summary>
-    private async Task<(byte[] Pe, byte[] Pdb)?> EmitOnceAsync(Project project, CancellationToken cancellationToken)
+    /// <summary>
+    ///     Writes <paramref name="bytes"/> to a shadow file, unless this emitter already wrote those same bytes there and the
+    ///     file still has the length and time it had after.
+    /// </summary>
+    private async Task WriteAsync(string path, byte[] bytes, CancellationToken cancellationToken)
     {
-        if (_emitted.TryGetValue(project.Id, out var cached))
-            return cached;
-        var compilation = await project.GetCompilationAsync(cancellationToken).ConfigureAwait(false);
-        if (compilation is null)
-            return null;
-        using var pe = new MemoryStream();
-        using var pdb = new MemoryStream();
-        var pdbPath = Path.ChangeExtension(Path.GetFileName(project.OutputFilePath!), ".pdb");
-        var result = compilation.Emit(
-            pe,
-            pdb,
-            manifestResources: BuiltResources.ReadFrom(project.OutputFilePath!),
-            options: new EmitOptions(debugInformationFormat: DebugInformationFormat.PortablePdb, pdbFilePath: pdbPath),
-            cancellationToken: cancellationToken);
-        (byte[], byte[])? image = result.Success ? (pe.ToArray(), pdb.ToArray()) : null;
-        _emitted[project.Id] = image;
-        return image;
+        var file = new FileInfo(path);
+        if (_written.TryGetValue(path, out var written) && ReferenceEquals(written.Bytes, bytes)
+            && file.Exists && file.Length == written.Length && file.LastWriteTimeUtc == written.WrittenUtc)
+            return;
+
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        await File.WriteAllBytesAsync(path, bytes, cancellationToken).ConfigureAwait(false);
+        file.Refresh();
+        _written[path] = new Written(bytes, file.Length, file.LastWriteTimeUtc);
     }
 
     private static IEnumerable<Project> Closure(Project project)
@@ -221,13 +238,19 @@ internal sealed class ShadowEmitter
         }
     }
 
-    /// <summary>Overlays <paramref name="source"/> onto <paramref name="target"/>, copying files whose size or time differ; files only in the target stay.</summary>
-    private static void Mirror(string source, string target)
+    /// <summary>
+    ///     Overlays <paramref name="source"/> onto <paramref name="target"/>, copying files whose size or time differ; files
+    ///     only in the target stay, and so do the destinations in <paramref name="emitted"/>, which are about to be emitted.
+    /// </summary>
+    private static void Mirror(string source, string target, IReadOnlyCollection<string> emitted)
     {
+        var skipped = new HashSet<string>(emitted, StringComparer.OrdinalIgnoreCase);
         foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
         {
             var relative = Path.GetRelativePath(source, file);
             var destination = Path.Combine(target, relative);
+            if (skipped.Contains(destination))
+                continue;
             var from = new FileInfo(file);
             var to = new FileInfo(destination);
             if (to.Exists && to.Length == from.Length && to.LastWriteTimeUtc == from.LastWriteTimeUtc)
@@ -237,4 +260,7 @@ internal sealed class ShadowEmitter
             File.SetLastWriteTimeUtc(destination, from.LastWriteTimeUtc);
         }
     }
+
+    /// <summary>A shadow file this emitter wrote: the bytes, and the length and last write time the file had after.</summary>
+    private sealed record Written(byte[] Bytes, long Length, DateTime WrittenUtc);
 }

@@ -79,7 +79,8 @@ main:focus { outline: none; }
 .section-head h2 code { font-size: 0.8em; padding: 0.02em 0.35em; font-weight: 600; letter-spacing: 0; vertical-align: 0.04em; }
 .section-head p { color: var(--muted); margin: 0; text-wrap: balance; }
 .repos { display: grid; grid-template-columns: 1fr 1fr; gap: 2.2rem 3.5rem; max-width: 48rem; margin: 0 auto; }
-@media (max-width: 720px) { .repos { grid-template-columns: 1fr; gap: 2rem; } }
+.repos > .repo:last-child:nth-child(odd) { grid-column: 1 / -1; justify-self: center; width: calc((100% - 3.5rem) / 2); }
+@media (max-width: 720px) { .repos { grid-template-columns: 1fr; gap: 2rem; } .repos > .repo:last-child:nth-child(odd) { width: auto; justify-self: stretch; } }
 .repo h3 { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; font-size: 0.95rem; font-weight: 600; margin: 0 0 0.9rem; }
 .repo h3 span { font-weight: 400; font-size: 0.82rem; color: var(--muted); white-space: nowrap; }
 .repo h3 span a { color: var(--muted); text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 2px; }
@@ -93,6 +94,7 @@ main:focus { outline: none; }
 .lane.fuse .t { color: var(--text); font-weight: 600; }
 .repo .x { font-size: 0.82rem; color: var(--muted); margin: 0.4rem 0 0; }
 .repo .x b { color: var(--text); }
+.repo .spread { font-size: 0.74rem; color: var(--muted); margin: 0.15rem 0 0; font-variant-numeric: tabular-nums; }
 .proof { text-align: center; font-size: 0.9rem; color: var(--muted); margin: 2.6rem auto 0; }
 .proof b { color: var(--text); }
 

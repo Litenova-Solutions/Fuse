@@ -17,7 +17,7 @@ internal sealed class OpenCode : Harness
 
     public override bool IsUsedIn(RepoRoot root) => HasAny(root, ".opencode", "opencode.json", "opencode.jsonc");
 
-    public override string RegisterHooks(RepoRoot root)
+    public override WrittenFile RegisterHooks(RepoRoot root)
     {
         var path = Path.Combine(root.Path, ".opencode", "plugins", "fuse.js");
         using var plugin = typeof(OpenCode).Assembly.GetManifestResourceStream(PluginResource)!;

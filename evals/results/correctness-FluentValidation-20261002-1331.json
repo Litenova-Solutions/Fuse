@@ -1,0 +1,1308 @@
+{
+  "suite": "correctness",
+  "repo": "FluentValidation",
+  "commit": "fa3c160b17796ff67d6aa5ae6c4b05b471f1a791",
+  "fuseBuild": "5.2.2/a655e25734bd41ec8ac1a86d91c8f940",
+  "seed": 1,
+  "requested": 30,
+  "cases": 30,
+  "breaking": 29,
+  "neutral": 1,
+  "falseGreen": 0,
+  "falseRedCases": 0,
+  "falseRedErrors": 0,
+  "unverifiableErrors": 39,
+  "deferredByCompilerErrors": 6,
+  "messageMismatchErrors": 0,
+  "causeLines": 97,
+  "causeBytes": 10195,
+  "outputBytes": 53056,
+  "partialMisses": 0,
+  "exactAgreement": 30,
+  "fileAgreement": 30,
+  "fuseUnanswered": 0,
+  "fuseMedianMs": 236.13664999999997,
+  "buildMedianSeconds": 2.3033199,
+  "fuseStats": {
+    "n": 30,
+    "fastest": 0.08749979999999999,
+    "median": 0.23613664999999998,
+    "mean": 0.9382295433333333,
+    "standardDeviation": 2.56415498471067,
+    "p95": 2.0287365,
+    "slowest": 14.230621,
+    "total": 28.1468863
+  },
+  "dotnetStats": {
+    "n": 30,
+    "fastest": 1.5492836,
+    "median": 2.3033199,
+    "mean": 2.9968869633333335,
+    "standardDeviation": 1.8705708681978184,
+    "p95": 8.0285619,
+    "slowest": 9.4124434,
+    "total": 89.90660890000001
+  },
+  "headBuildErrors": 0,
+  "truthKey": "truth-v1-correctness-FluentValidation-32572242c86e-s1-n30-sdk10.0.401-g11118dd7ae08",
+  "truthOrigins": [
+    "GitHub Actions run 37007240631, job truth, shard 0"
+  ],
+  "treeCleanAfter": true,
+  "details": [
+    {
+      "index": 0,
+      "edits": [
+        {
+          "path": "src/FluentValidation/Resources/Languages/MacedonianLanguage.cs",
+          "kind": "change-return-type",
+          "description": "changed the return type of MacedonianLanguage.GetTranslation from string to object",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/FluentValidation/Resources/LanguageManager.cs(75,34): error CS0029: Cannot implicitly convert type \u0027object\u0027 to \u0027string\u0027"
+      ],
+      "fuse": [
+        "src/FluentValidation/Resources/LanguageManager.cs(75,34): error CS0029: Cannot implicitly convert type \u0027object\u0027 to \u0027string\u0027"
+      ],
+      "fuseCount": 1,
+      "fuseExit": 1,
+      "fuseMilliseconds": 14230.621,
+      "buildSeconds": 4.0520204,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 1,
+      "outputBytes": 314,
+      "causeBytes": 58
+    },
+    {
+      "index": 1,
+      "edits": [
+        {
+          "path": "src/FluentValidation.DependencyInjectionExtensions/ServiceCollectionExtensions.cs",
+          "kind": "remove-member",
+          "description": "removed ServiceCollectionExtensions.AddValidatorsFromAssemblyContaining",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/FluentValidation.Tests/DependencyInjectionExtensions/ServiceCollectionExtensionsTests.cs(29,42): error CS0411: The type arguments for method \u0027ServiceCollectionExtensions.AddValidatorsFromAssemblyContaining\u003CT\u003E(IServiceCollection, ServiceLifetime, Func\u003CAssemblyScanner.AssemblyScanResult, bool\u003E, bool)\u0027 cannot be inferred from the usage. Try specifying the type arguments explicitly.",
+        "src/FluentValidation.Tests/DependencyInjectionExtensions/ServiceCollectionExtensionsTests.cs(37,42): error CS0411: The type arguments for method \u0027ServiceCollectionExtensions.AddValidatorsFromAssemblyContaining\u003CT\u003E(IServiceCollection, ServiceLifetime, Func\u003CAssemblyScanner.AssemblyScanResult, bool\u003E, bool)\u0027 cannot be inferred from the usage. Try specifying the type arguments explicitly.",
+        "src/FluentValidation.Tests/DependencyInjectionExtensions/ServiceCollectionExtensionsTests.cs(46,42): error CS0411: The type arguments for method \u0027ServiceCollectionExtensions.AddValidatorsFromAssemblyContaining\u003CT\u003E(IServiceCollection, ServiceLifetime, Func\u003CAssemblyScanner.AssemblyScanResult, bool\u003E, bool)\u0027 cannot be inferred from the usage. Try specifying the type arguments explicitly.",
+        "src/FluentValidation.Tests/DependencyInjectionExtensions/ServiceCollectionExtensionsTests.cs(58,42): error CS0411: The type arguments for method \u0027ServiceCollectionExtensions.AddValidatorsFromAssemblyContaining\u003CT\u003E(IServiceCollection, ServiceLifetime, Func\u003CAssemblyScanner.AssemblyScanResult, bool\u003E, bool)\u0027 cannot be inferred from the usage. Try specifying the type arguments explicitly."
+      ],
+      "fuse": [
+        "src/FluentValidation.Tests/DependencyInjectionExtensions/ServiceCollectionExtensionsTests.cs(29,42): error CS0411: The type arguments for method \u0027ServiceCollectionExtensions.AddValidatorsFromAssemblyContaining\u003CT\u003E(IServiceCollection, ServiceLifetime, Func\u003CAssemblyScanner.AssemblyScanResult, bool\u003E, bool)\u0027 cannot be inferred from the usage. Try specifying the type arguments explicitly.",
+        "src/FluentValidation.Tests/DependencyInjectionExtensions/ServiceCollectionExtensionsTests.cs(37,42): error CS0411: The type arguments for method \u0027ServiceCollectionExtensions.AddValidatorsFromAssemblyContaining\u003CT\u003E(IServiceCollection, ServiceLifetime, Func\u003CAssemblyScanner.AssemblyScanResult, bool\u003E, bool)\u0027 cannot be inferred from the usage. Try specifying the type arguments explicitly.",
+        "src/FluentValidation.Tests/DependencyInjectionExtensions/ServiceCollectionExtensionsTests.cs(46,42): error CS0411: The type arguments for method \u0027ServiceCollectionExtensions.AddValidatorsFromAssemblyContaining\u003CT\u003E(IServiceCollection, ServiceLifetime, Func\u003CAssemblyScanner.AssemblyScanResult, bool\u003E, bool)\u0027 cannot be inferred from the usage. Try specifying the type arguments explicitly.",
+        "src/FluentValidation.Tests/DependencyInjectionExtensions/ServiceCollectionExtensionsTests.cs(58,42): error CS0411: The type arguments for method \u0027ServiceCollectionExtensions.AddValidatorsFromAssemblyContaining\u003CT\u003E(IServiceCollection, ServiceLifetime, Func\u003CAssemblyScanner.AssemblyScanResult, bool\u003E, bool)\u0027 cannot be inferred from the usage. Try specifying the type arguments explicitly."
+      ],
+      "fuseCount": 4,
+      "fuseExit": 1,
+      "fuseMilliseconds": 1393.4201,
+      "buildSeconds": 9.4124434,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 4,
+      "outputBytes": 2803,
+      "causeBytes": 1091
+    },
+    {
+      "index": 2,
+      "edits": [
+        {
+          "path": "src/FluentValidation/Internal/RuleBase.cs",
+          "kind": "change-parameters",
+          "description": "added an int parameter to RuleBase.ApplySharedAsyncCondition",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/FluentValidation/Internal/RuleBase.cs(31,58): error CS0535: \u0027RuleBase\u003CT, TProperty, TValue\u003E\u0027 does not implement interface member \u0027IValidationRule\u003CT\u003E.ApplySharedAsyncCondition(Func\u003CValidationContext\u003CT\u003E, CancellationToken, Task\u003Cbool\u003E\u003E)\u0027"
+      ],
+      "fuse": [
+        "src/FluentValidation/Internal/RuleBase.cs(31,58): error CS0535: \u0027RuleBase\u003CT, TProperty, TValue\u003E\u0027 does not implement interface member \u0027IValidationRule\u003CT\u003E.ApplySharedAsyncCondition(Func\u003CValidationContext\u003CT\u003E, CancellationToken, Task\u003Cbool\u003E\u003E)\u0027"
+      ],
+      "fuseCount": 1,
+      "fuseExit": 1,
+      "fuseMilliseconds": 561.1835,
+      "buildSeconds": 2.3367685,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 0,
+      "outputBytes": 370,
+      "causeBytes": 0
+    },
+    {
+      "index": 3,
+      "edits": [
+        {
+          "path": "src/FluentValidation/Resources/Languages/FinnishLanguage.cs",
+          "kind": "change-parameters",
+          "description": "added an int parameter to FinnishLanguage.GetTranslation",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/FluentValidation/Resources/LanguageManager.cs(57,47): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027FinnishLanguage.GetTranslation(string, int)\u0027"
+      ],
+      "fuse": [
+        "src/FluentValidation/Resources/LanguageManager.cs(57,47): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027FinnishLanguage.GetTranslation(string, int)\u0027"
+      ],
+      "fuseCount": 1,
+      "fuseExit": 1,
+      "fuseMilliseconds": 197.9844,
+      "buildSeconds": 3.0700736,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 1,
+      "outputBytes": 393,
+      "causeBytes": 58
+    },
+    {
+      "index": 4,
+      "edits": [
+        {
+          "path": "src/FluentValidation/Internal/CompositeValidatorSelector.cs",
+          "kind": "make-private",
+          "description": "made CompositeValidatorSelector.CanExecute private",
+          "newText": null
+        },
+        {
+          "path": "src/FluentValidation.Tests.Benchmarks/InitializationBenchmark.cs",
+          "kind": "make-private",
+          "description": "made InitializationBenchmark.Initialization_without_cache private",
+          "newText": null
+        },
+        {
+          "path": "src/FluentValidation.DependencyInjectionExtensions/ServiceCollectionExtensions.cs",
+          "kind": "duplicate-signature",
+          "description": "duplicated the signature of ServiceCollectionExtensions.AddValidatorsFromAssemblyContaining",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/FluentValidation/Internal/CompositeValidatorSelector.cs(24,45): error CS0737: \u0027CompositeValidatorSelector\u0027 does not implement interface member \u0027IValidatorSelector.CanExecute(IValidationRule, string, IValidationContext)\u0027. \u0027CompositeValidatorSelector.CanExecute(IValidationRule, string, IValidationContext)\u0027 cannot implement an interface member because it is not public."
+      ],
+      "fuse": [
+        "src/FluentValidation.DependencyInjectionExtensions/ServiceCollectionExtensions.cs(73,34): error CS0111: Type \u0027ServiceCollectionExtensions\u0027 already defines a member called \u0027AddValidatorsFromAssemblyContaining\u0027 with the same parameter types",
+        "src/FluentValidation.Tests/DependencyInjectionExtensions/ServiceCollectionExtensionsTests.cs(29,42): error CS0121: The call is ambiguous between the following methods or properties: \u0027FluentValidation.ServiceCollectionExtensions.AddValidatorsFromAssemblyContaining(Microsoft.Extensions.DependencyInjection.IServiceCollection, System.Type, Microsoft.Extensions.DependencyInjection.ServiceLifetime, System.Func\u003CFluentValidation.AssemblyScanner.AssemblyScanResult, bool\u003E, bool) [C:\\Users\\runneradmin\\AppData\\Local\\fuse\\evals\\repos\\FluentValidation\\src\\FluentValidation.DependencyInjectionExtensions\\ServiceCollectionExtensions.cs(70)]\u0027 and \u0027FluentValidation.ServiceCollectionExtensions.AddValidatorsFromAssemblyContaining(Microsoft.Extensions.DependencyInjection.IServiceCollection, System.Type, Microsoft.Extensions.DependencyInjection.ServiceLifetime, System.Func\u003CFluentValidation.AssemblyScanner.AssemblyScanResult, bool\u003E, bool) [C:\\Users\\runneradmin\\AppData\\Local\\fuse\\evals\\repos\\FluentValidation\\src\\FluentValidation.DependencyInjectionExtensions\\ServiceCollectionExtensions.cs(73)]\u0027",
+        "src/FluentValidation.Tests/DependencyInjectionExtensions/ServiceCollectionExtensionsTests.cs(37,42): error CS0121: The call is ambiguous between the following methods or properties: \u0027FluentValidation.ServiceCollectionExtensions.AddValidatorsFromAssemblyContaining(Microsoft.Extensions.DependencyInjection.IServiceCollection, System.Type, Microsoft.Extensions.DependencyInjection.ServiceLifetime, System.Func\u003CFluentValidation.AssemblyScanner.AssemblyScanResult, bool\u003E, bool) [C:\\Users\\runneradmin\\AppData\\Local\\fuse\\evals\\repos\\FluentValidation\\src\\FluentValidation.DependencyInjectionExtensions\\ServiceCollectionExtensions.cs(70)]\u0027 and \u0027FluentValidation.ServiceCollectionExtensions.AddValidatorsFromAssemblyContaining(Microsoft.Extensions.DependencyInjection.IServiceCollection, System.Type, Microsoft.Extensions.DependencyInjection.ServiceLifetime, System.Func\u003CFluentValidation.AssemblyScanner.AssemblyScanResult, bool\u003E, bool) [C:\\Users\\runneradmin\\AppData\\Local\\fuse\\evals\\repos\\FluentValidation\\src\\FluentValidation.DependencyInjectionExtensions\\ServiceCollectionExtensions.cs(73)]\u0027",
+        "src/FluentValidation.Tests/DependencyInjectionExtensions/ServiceCollectionExtensionsTests.cs(46,42): error CS0121: The call is ambiguous between the following methods or properties: \u0027FluentValidation.ServiceCollectionExtensions.AddValidatorsFromAssemblyContaining(Microsoft.Extensions.DependencyInjection.IServiceCollection, System.Type, Microsoft.Extensions.DependencyInjection.ServiceLifetime, System.Func\u003CFluentValidation.AssemblyScanner.AssemblyScanResult, bool\u003E, bool) [C:\\Users\\runneradmin\\AppData\\Local\\fuse\\evals\\repos\\FluentValidation\\src\\FluentValidation.DependencyInjectionExtensions\\ServiceCollectionExtensions.cs(70)]\u0027 and \u0027FluentValidation.ServiceCollectionExtensions.AddValidatorsFromAssemblyContaining(Microsoft.Extensions.DependencyInjection.IServiceCollection, System.Type, Microsoft.Extensions.DependencyInjection.ServiceLifetime, System.Func\u003CFluentValidation.AssemblyScanner.AssemblyScanResult, bool\u003E, bool) [C:\\Users\\runneradmin\\AppData\\Local\\fuse\\evals\\repos\\FluentValidation\\src\\FluentValidation.DependencyInjectionExtensions\\ServiceCollectionExtensions.cs(73)]\u0027",
+        "src/FluentValidation.Tests/DependencyInjectionExtensions/ServiceCollectionExtensionsTests.cs(58,42): error CS0121: The call is ambiguous between the following methods or properties: \u0027FluentValidation.ServiceCollectionExtensions.AddValidatorsFromAssemblyContaining(Microsoft.Extensions.DependencyInjection.IServiceCollection, System.Type, Microsoft.Extensions.DependencyInjection.ServiceLifetime, System.Func\u003CFluentValidation.AssemblyScanner.AssemblyScanResult, bool\u003E, bool) [C:\\Users\\runneradmin\\AppData\\Local\\fuse\\evals\\repos\\FluentValidation\\src\\FluentValidation.DependencyInjectionExtensions\\ServiceCollectionExtensions.cs(70)]\u0027 and \u0027FluentValidation.ServiceCollectionExtensions.AddValidatorsFromAssemblyContaining(Microsoft.Extensions.DependencyInjection.IServiceCollection, System.Type, Microsoft.Extensions.DependencyInjection.ServiceLifetime, System.Func\u003CFluentValidation.AssemblyScanner.AssemblyScanResult, bool\u003E, bool) [C:\\Users\\runneradmin\\AppData\\Local\\fuse\\evals\\repos\\FluentValidation\\src\\FluentValidation.DependencyInjectionExtensions\\ServiceCollectionExtensions.cs(73)]\u0027",
+        "src/FluentValidation/Internal/CompositeValidatorSelector.cs(24,45): error CS0737: \u0027CompositeValidatorSelector\u0027 does not implement interface member \u0027IValidatorSelector.CanExecute(IValidationRule, string, IValidationContext)\u0027. \u0027CompositeValidatorSelector.CanExecute(IValidationRule, string, IValidationContext)\u0027 cannot implement an interface member because it is not public."
+      ],
+      "fuseCount": 6,
+      "fuseExit": 1,
+      "fuseMilliseconds": 310.9461,
+      "buildSeconds": 2.1671699,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "src/FluentValidation.DependencyInjectionExtensions/ServiceCollectionExtensions.cs(73,34): error CS0111: Type \u0027ServiceCollectionExtensions\u0027 already defines a member called \u0027AddValidatorsFromAssemblyContaining\u0027 with the same parameter types",
+        "src/FluentValidation.Tests/DependencyInjectionExtensions/ServiceCollectionExtensionsTests.cs(29,42): error CS0121: The call is ambiguous between the following methods or properties: \u0027FluentValidation.ServiceCollectionExtensions.AddValidatorsFromAssemblyContaining(Microsoft.Extensions.DependencyInjection.IServiceCollection, System.Type, Microsoft.Extensions.DependencyInjection.ServiceLifetime, System.Func\u003CFluentValidation.AssemblyScanner.AssemblyScanResult, bool\u003E, bool) [C:\\Users\\runneradmin\\AppData\\Local\\fuse\\evals\\repos\\FluentValidation\\src\\FluentValidation.DependencyInjectionExtensions\\ServiceCollectionExtensions.cs(70)]\u0027 and \u0027FluentValidation.ServiceCollectionExtensions.AddValidatorsFromAssemblyContaining(Microsoft.Extensions.DependencyInjection.IServiceCollection, System.Type, Microsoft.Extensions.DependencyInjection.ServiceLifetime, System.Func\u003CFluentValidation.AssemblyScanner.AssemblyScanResult, bool\u003E, bool) [C:\\Users\\runneradmin\\AppData\\Local\\fuse\\evals\\repos\\FluentValidation\\src\\FluentValidation.DependencyInjectionExtensions\\ServiceCollectionExtensions.cs(73)]\u0027",
+        "src/FluentValidation.Tests/DependencyInjectionExtensions/ServiceCollectionExtensionsTests.cs(37,42): error CS0121: The call is ambiguous between the following methods or properties: \u0027FluentValidation.ServiceCollectionExtensions.AddValidatorsFromAssemblyContaining(Microsoft.Extensions.DependencyInjection.IServiceCollection, System.Type, Microsoft.Extensions.DependencyInjection.ServiceLifetime, System.Func\u003CFluentValidation.AssemblyScanner.AssemblyScanResult, bool\u003E, bool) [C:\\Users\\runneradmin\\AppData\\Local\\fuse\\evals\\repos\\FluentValidation\\src\\FluentValidation.DependencyInjectionExtensions\\ServiceCollectionExtensions.cs(70)]\u0027 and \u0027FluentValidation.ServiceCollectionExtensions.AddValidatorsFromAssemblyContaining(Microsoft.Extensions.DependencyInjection.IServiceCollection, System.Type, Microsoft.Extensions.DependencyInjection.ServiceLifetime, System.Func\u003CFluentValidation.AssemblyScanner.AssemblyScanResult, bool\u003E, bool) [C:\\Users\\runneradmin\\AppData\\Local\\fuse\\evals\\repos\\FluentValidation\\src\\FluentValidation.DependencyInjectionExtensions\\ServiceCollectionExtensions.cs(73)]\u0027",
+        "src/FluentValidation.Tests/DependencyInjectionExtensions/ServiceCollectionExtensionsTests.cs(46,42): error CS0121: The call is ambiguous between the following methods or properties: \u0027FluentValidation.ServiceCollectionExtensions.AddValidatorsFromAssemblyContaining(Microsoft.Extensions.DependencyInjection.IServiceCollection, System.Type, Microsoft.Extensions.DependencyInjection.ServiceLifetime, System.Func\u003CFluentValidation.AssemblyScanner.AssemblyScanResult, bool\u003E, bool) [C:\\Users\\runneradmin\\AppData\\Local\\fuse\\evals\\repos\\FluentValidation\\src\\FluentValidation.DependencyInjectionExtensions\\ServiceCollectionExtensions.cs(70)]\u0027 and \u0027FluentValidation.ServiceCollectionExtensions.AddValidatorsFromAssemblyContaining(Microsoft.Extensions.DependencyInjection.IServiceCollection, System.Type, Microsoft.Extensions.DependencyInjection.ServiceLifetime, System.Func\u003CFluentValidation.AssemblyScanner.AssemblyScanResult, bool\u003E, bool) [C:\\Users\\runneradmin\\AppData\\Local\\fuse\\evals\\repos\\FluentValidation\\src\\FluentValidation.DependencyInjectionExtensions\\ServiceCollectionExtensions.cs(73)]\u0027",
+        "src/FluentValidation.Tests/DependencyInjectionExtensions/ServiceCollectionExtensionsTests.cs(58,42): error CS0121: The call is ambiguous between the following methods or properties: \u0027FluentValidation.ServiceCollectionExtensions.AddValidatorsFromAssemblyContaining(Microsoft.Extensions.DependencyInjection.IServiceCollection, System.Type, Microsoft.Extensions.DependencyInjection.ServiceLifetime, System.Func\u003CFluentValidation.AssemblyScanner.AssemblyScanResult, bool\u003E, bool) [C:\\Users\\runneradmin\\AppData\\Local\\fuse\\evals\\repos\\FluentValidation\\src\\FluentValidation.DependencyInjectionExtensions\\ServiceCollectionExtensions.cs(70)]\u0027 and \u0027FluentValidation.ServiceCollectionExtensions.AddValidatorsFromAssemblyContaining(Microsoft.Extensions.DependencyInjection.IServiceCollection, System.Type, Microsoft.Extensions.DependencyInjection.ServiceLifetime, System.Func\u003CFluentValidation.AssemblyScanner.AssemblyScanResult, bool\u003E, bool) [C:\\Users\\runneradmin\\AppData\\Local\\fuse\\evals\\repos\\FluentValidation\\src\\FluentValidation.DependencyInjectionExtensions\\ServiceCollectionExtensions.cs(73)]\u0027"
+      ],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 4,
+      "outputBytes": 6334,
+      "causeBytes": 1091
+    },
+    {
+      "index": 5,
+      "edits": [
+        {
+          "path": "src/FluentValidation/AssemblyScanner.cs",
+          "kind": "remove-member",
+          "description": "removed AssemblyScanner.FindValidatorsInAssembly",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/FluentValidation/AssemblyScanner.cs(56,10): error CS0103: The name \u0027FindValidatorsInAssembly\u0027 does not exist in the current context",
+        "src/FluentValidation/AssemblyScanner.cs(63,10): error CS0103: The name \u0027FindValidatorsInAssembly\u0027 does not exist in the current context"
+      ],
+      "fuse": [
+        "src/FluentValidation.DependencyInjectionExtensions/ServiceCollectionExtensions.cs(55,5): error CS0117: \u0027AssemblyScanner\u0027 does not contain a definition for \u0027FindValidatorsInAssembly\u0027",
+        "src/FluentValidation.Tests/AssemblyScannerTester.cs(50,33): error CS0117: \u0027AssemblyScanner\u0027 does not contain a definition for \u0027FindValidatorsInAssembly\u0027",
+        "src/FluentValidation.Tests/AssemblyScannerTester.cs(59,33): error CS0117: \u0027AssemblyScanner\u0027 does not contain a definition for \u0027FindValidatorsInAssembly\u0027",
+        "src/FluentValidation/AssemblyScanner.cs(56,10): error CS0103: The name \u0027FindValidatorsInAssembly\u0027 does not exist in the current context",
+        "src/FluentValidation/AssemblyScanner.cs(63,10): error CS0103: The name \u0027FindValidatorsInAssembly\u0027 does not exist in the current context"
+      ],
+      "fuseCount": 5,
+      "fuseExit": 1,
+      "fuseMilliseconds": 335.1526,
+      "buildSeconds": 3.0610513,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "src/FluentValidation.DependencyInjectionExtensions/ServiceCollectionExtensions.cs(55,5): error CS0117: \u0027AssemblyScanner\u0027 does not contain a definition for \u0027FindValidatorsInAssembly\u0027",
+        "src/FluentValidation.Tests/AssemblyScannerTester.cs(50,33): error CS0117: \u0027AssemblyScanner\u0027 does not contain a definition for \u0027FindValidatorsInAssembly\u0027",
+        "src/FluentValidation.Tests/AssemblyScannerTester.cs(59,33): error CS0117: \u0027AssemblyScanner\u0027 does not contain a definition for \u0027FindValidatorsInAssembly\u0027"
+      ],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 3,
+      "outputBytes": 1323,
+      "causeBytes": 359
+    },
+    {
+      "index": 6,
+      "edits": [
+        {
+          "path": "src/FluentValidation/Internal/ValidationStrategy.cs",
+          "kind": "rename-member",
+          "description": "renamed ValidationStrategy.IncludeProperties to IncludePropertiesRenamed",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/FluentValidation.Tests/AbstractValidatorTester.cs(175,74): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.Person, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/AbstractValidatorTester.cs(183,74): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.Person, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/AbstractValidatorTester.cs(196,100): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.Person, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/ChainedValidationTester.cs(76,69): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.Person, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/ComplexValidationTester.cs(93,69): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.Person, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/CollectionValidatorWithParentTests.cs(131,69): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.Person, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/ForEachRuleTests.cs(430,70): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.Person, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/ValidatorSelectorTests.cs(36,78): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.ValidatorSelectorTests.TestObject, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/ValidatorSelectorTests.cs(46,77): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.ValidatorSelectorTests.TestObject, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/ValidatorSelectorTests.cs(92,100): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.Person, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/ValidatorSelectorTests.cs(117,74): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.Person, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/ValidatorSelectorTests.cs(129,74): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.Person, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/ValidatorSelectorTests.cs(142,85): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.Person, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/ValidatorSelectorTests.cs(162,74): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.Person, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/ValidatorSelectorTests.cs(166,80): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.Person, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/ValidatorSelectorTests.cs(192,80): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.Person, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/ValidatorSelectorTests.cs(217,72): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.Person, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/ValidatorSelectorTests.cs(244,72): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.Person, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/ValidatorSelectorTests.cs(270,72): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.Person, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/ValidatorSelectorTests.cs(306,72): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.Person, object\u003E\u003E\u0027"
+      ],
+      "fuse": [
+        "src/FluentValidation.Tests/AbstractValidatorTester.cs(175,74): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.Person, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/AbstractValidatorTester.cs(183,74): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.Person, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/AbstractValidatorTester.cs(196,100): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.Person, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/ChainedValidationTester.cs(76,69): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.Person, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/CollectionValidatorWithParentTests.cs(131,69): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.Person, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/ComplexValidationTester.cs(93,69): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.Person, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/ForEachRuleTests.cs(430,70): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.Person, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/ValidatorSelectorTests.cs(36,78): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.ValidatorSelectorTests.TestObject, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/ValidatorSelectorTests.cs(46,77): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.ValidatorSelectorTests.TestObject, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/ValidatorSelectorTests.cs(92,100): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.Person, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/ValidatorSelectorTests.cs(117,74): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.Person, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/ValidatorSelectorTests.cs(129,74): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.Person, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/ValidatorSelectorTests.cs(142,85): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.Person, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/ValidatorSelectorTests.cs(162,74): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.Person, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/ValidatorSelectorTests.cs(166,80): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.Person, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/ValidatorSelectorTests.cs(192,80): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.Person, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/ValidatorSelectorTests.cs(217,72): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.Person, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/ValidatorSelectorTests.cs(244,72): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.Person, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/ValidatorSelectorTests.cs(270,72): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.Person, object\u003E\u003E\u0027",
+        "src/FluentValidation.Tests/ValidatorSelectorTests.cs(306,72): error CS1503: Argument 1: cannot convert from \u0027string\u0027 to \u0027System.Linq.Expressions.Expression\u003CSystem.Func\u003CFluentValidation.Tests.Person, object\u003E\u003E\u0027"
+      ],
+      "fuseCount": 20,
+      "fuseExit": 1,
+      "fuseMilliseconds": 2028.7365,
+      "buildSeconds": 8.0285619,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 10,
+      "outputBytes": 5262,
+      "causeBytes": 859
+    },
+    {
+      "index": 7,
+      "edits": [
+        {
+          "path": "src/FluentValidation/Resources/Languages/RomanshLanguage.cs",
+          "kind": "delete-file",
+          "description": "deleted the file",
+          "newText": null
+        },
+        {
+          "path": "src/FluentValidation.Tests.Benchmarks/InitializationBenchmark.cs",
+          "kind": "change-parameters",
+          "description": "added an int parameter to InitializationBenchmark.Initialization_using_cache",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/FluentValidation/Resources/LanguageManager.cs(83,4): error CS0103: The name \u0027RomanshLanguage\u0027 does not exist in the current context",
+        "src/FluentValidation/Resources/LanguageManager.cs(83,31): error CS0103: The name \u0027RomanshLanguage\u0027 does not exist in the current context"
+      ],
+      "fuse": [
+        "src/FluentValidation/Resources/LanguageManager.cs(83,4): error CS0103: The name \u0027RomanshLanguage\u0027 does not exist in the current context",
+        "src/FluentValidation/Resources/LanguageManager.cs(83,31): error CS0103: The name \u0027RomanshLanguage\u0027 does not exist in the current context"
+      ],
+      "fuseCount": 2,
+      "fuseExit": 1,
+      "fuseMilliseconds": 213.47,
+      "buildSeconds": 2.9654234,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 2,
+      "outputBytes": 523,
+      "causeBytes": 83
+    },
+    {
+      "index": 8,
+      "edits": [
+        {
+          "path": "src/FluentValidation/IValidatorDescriptor.cs",
+          "kind": "delete-file",
+          "description": "deleted the file",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/FluentValidation/AbstractValidator.cs(194,17): error CS0246: The type or namespace name \u0027IValidatorDescriptor\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation/IValidator.cs(70,2): error CS0246: The type or namespace name \u0027IValidatorDescriptor\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation/TestHelper/ValidatorTestExtensions.cs(63,153): error CS0246: The type or namespace name \u0027IValidatorDescriptor\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation/TestHelper/ValidatorTestExtensions.cs(75,65): error CS0246: The type or namespace name \u0027IValidatorDescriptor\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation/ValidatorDescriptor.cs(31,39): error CS0246: The type or namespace name \u0027IValidatorDescriptor\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuse": [
+        "src/FluentValidation.Tests/ChainedValidationTester.cs(153,20): error CS0246: The type or namespace name \u0027IValidatorDescriptor\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/EqualValidatorTests.cs(60,20): error CS0246: The type or namespace name \u0027IValidatorDescriptor\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/EqualValidatorTests.cs(72,20): error CS0246: The type or namespace name \u0027IValidatorDescriptor\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/GreaterThanOrEqualToValidatorTester.cs(113,27): error CS0246: The type or namespace name \u0027IValidatorDescriptor\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/GreaterThanValidatorTester.cs(116,27): error CS0246: The type or namespace name \u0027IValidatorDescriptor\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/LessThanValidatorTester.cs(97,27): error CS0246: The type or namespace name \u0027IValidatorDescriptor\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/NotEqualValidatorTests.cs(88,27): error CS0246: The type or namespace name \u0027IValidatorDescriptor\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/NotEqualValidatorTests.cs(100,27): error CS0246: The type or namespace name \u0027IValidatorDescriptor\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/ValidatorDescriptorTester.cs(37,20): error CS0246: The type or namespace name \u0027IValidatorDescriptor\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/ValidatorDescriptorTester.cs(45,20): error CS0246: The type or namespace name \u0027IValidatorDescriptor\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/ValidatorDescriptorTester.cs(52,20): error CS0246: The type or namespace name \u0027IValidatorDescriptor\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/ValidatorDescriptorTester.cs(60,20): error CS0246: The type or namespace name \u0027IValidatorDescriptor\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/ValidatorDescriptorTester.cs(67,20): error CS0246: The type or namespace name \u0027IValidatorDescriptor\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation/AbstractValidator.cs(194,17): error CS0246: The type or namespace name \u0027IValidatorDescriptor\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation/IValidator.cs(70,2): error CS0246: The type or namespace name \u0027IValidatorDescriptor\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation/TestHelper/ValidatorTestExtensions.cs(63,153): error CS0246: The type or namespace name \u0027IValidatorDescriptor\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation/TestHelper/ValidatorTestExtensions.cs(75,65): error CS0246: The type or namespace name \u0027IValidatorDescriptor\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation/ValidatorDescriptor.cs(31,39): error CS0246: The type or namespace name \u0027IValidatorDescriptor\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuseCount": 18,
+      "fuseExit": 1,
+      "fuseMilliseconds": 1082.1052,
+      "buildSeconds": 2.000718,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "src/FluentValidation.Tests/ChainedValidationTester.cs(153,20): error CS0246: The type or namespace name \u0027IValidatorDescriptor\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/EqualValidatorTests.cs(60,20): error CS0246: The type or namespace name \u0027IValidatorDescriptor\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/EqualValidatorTests.cs(72,20): error CS0246: The type or namespace name \u0027IValidatorDescriptor\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/GreaterThanOrEqualToValidatorTester.cs(113,27): error CS0246: The type or namespace name \u0027IValidatorDescriptor\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/GreaterThanValidatorTester.cs(116,27): error CS0246: The type or namespace name \u0027IValidatorDescriptor\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/LessThanValidatorTester.cs(97,27): error CS0246: The type or namespace name \u0027IValidatorDescriptor\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/NotEqualValidatorTests.cs(88,27): error CS0246: The type or namespace name \u0027IValidatorDescriptor\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/NotEqualValidatorTests.cs(100,27): error CS0246: The type or namespace name \u0027IValidatorDescriptor\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/ValidatorDescriptorTester.cs(37,20): error CS0246: The type or namespace name \u0027IValidatorDescriptor\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/ValidatorDescriptorTester.cs(45,20): error CS0246: The type or namespace name \u0027IValidatorDescriptor\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/ValidatorDescriptorTester.cs(52,20): error CS0246: The type or namespace name \u0027IValidatorDescriptor\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/ValidatorDescriptorTester.cs(60,20): error CS0246: The type or namespace name \u0027IValidatorDescriptor\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/ValidatorDescriptorTester.cs(67,20): error CS0246: The type or namespace name \u0027IValidatorDescriptor\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 10,
+      "outputBytes": 4894,
+      "causeBytes": 1000
+    },
+    {
+      "index": 9,
+      "edits": [
+        {
+          "path": "src/FluentValidation/Resources/Languages/RomanshLanguage.cs",
+          "kind": "rename-member",
+          "description": "renamed RomanshLanguage.GetTranslation to GetTranslationRenamed",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/FluentValidation/Resources/LanguageManager.cs(83,47): error CS0117: \u0027RomanshLanguage\u0027 does not contain a definition for \u0027GetTranslation\u0027"
+      ],
+      "fuse": [
+        "src/FluentValidation/Resources/LanguageManager.cs(83,47): error CS0117: \u0027RomanshLanguage\u0027 does not contain a definition for \u0027GetTranslation\u0027"
+      ],
+      "fuseCount": 1,
+      "fuseExit": 1,
+      "fuseMilliseconds": 105.4884,
+      "buildSeconds": 2.7412756,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 1,
+      "outputBytes": 331,
+      "causeBytes": 58
+    },
+    {
+      "index": 10,
+      "edits": [
+        {
+          "path": "src/FluentValidation/Internal/PropertyChain.cs",
+          "kind": "remove-member",
+          "description": "removed PropertyChain.Add",
+          "newText": null
+        },
+        {
+          "path": "src/FluentValidation.DependencyInjectionExtensions/ServiceCollectionExtensions.cs",
+          "kind": "change-parameters",
+          "description": "added an int parameter to ServiceCollectionExtensions.AddValidatorsFromAssemblyContaining",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/FluentValidation.DependencyInjectionExtensions/ServiceCollectionExtensions.cs(81,268): error CS1737: Optional parameters must appear after all required parameters"
+      ],
+      "fuse": [
+        "src/FluentValidation.DependencyInjectionExtensions/ServiceCollectionExtensions.cs(81,268): error CS1737: Optional parameters must appear after all required parameters",
+        "src/FluentValidation.Tests/PropertyChainTests.cs(36,13): error CS1503: Argument 1: cannot convert from \u0027System.Reflection.PropertyInfo\u0027 to \u0027string\u0027",
+        "src/FluentValidation.Tests/PropertyChainTests.cs(37,13): error CS1503: Argument 1: cannot convert from \u0027System.Reflection.PropertyInfo\u0027 to \u0027string\u0027",
+        "src/FluentValidation.Tests/PropertyChainTests.cs(45,13): error CS1503: Argument 1: cannot convert from \u0027System.Reflection.PropertyInfo\u0027 to \u0027string\u0027",
+        "src/FluentValidation.Tests/PropertyChainTests.cs(47,13): error CS1503: Argument 1: cannot convert from \u0027System.Reflection.PropertyInfo\u0027 to \u0027string\u0027"
+      ],
+      "fuseCount": 5,
+      "fuseExit": 1,
+      "fuseMilliseconds": 609.8416,
+      "buildSeconds": 3.5217631,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "src/FluentValidation.Tests/PropertyChainTests.cs(36,13): error CS1503: Argument 1: cannot convert from \u0027System.Reflection.PropertyInfo\u0027 to \u0027string\u0027",
+        "src/FluentValidation.Tests/PropertyChainTests.cs(37,13): error CS1503: Argument 1: cannot convert from \u0027System.Reflection.PropertyInfo\u0027 to \u0027string\u0027",
+        "src/FluentValidation.Tests/PropertyChainTests.cs(45,13): error CS1503: Argument 1: cannot convert from \u0027System.Reflection.PropertyInfo\u0027 to \u0027string\u0027",
+        "src/FluentValidation.Tests/PropertyChainTests.cs(47,13): error CS1503: Argument 1: cannot convert from \u0027System.Reflection.PropertyInfo\u0027 to \u0027string\u0027"
+      ],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 4,
+      "outputBytes": 1176,
+      "causeBytes": 183
+    },
+    {
+      "index": 11,
+      "edits": [
+        {
+          "path": "src/FluentValidation/Validators/PrecisionScaleValidator.cs",
+          "kind": "delete-file",
+          "description": "deleted the file",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/FluentValidation/DefaultValidatorExtensions.cs(1108,35): error CS0246: The type or namespace name \u0027PrecisionScaleValidator\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation/DefaultValidatorExtensions.cs(1120,35): error CS0246: The type or namespace name \u0027PrecisionScaleValidator\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuse": [
+        "src/FluentValidation.Tests/DefaultValidatorExtensionTester.cs(218,19): error CS0246: The type or namespace name \u0027PrecisionScaleValidator\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/DefaultValidatorExtensionTester.cs(224,19): error CS0246: The type or namespace name \u0027PrecisionScaleValidator\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation/DefaultValidatorExtensions.cs(1108,35): error CS0246: The type or namespace name \u0027PrecisionScaleValidator\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation/DefaultValidatorExtensions.cs(1120,35): error CS0246: The type or namespace name \u0027PrecisionScaleValidator\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuseCount": 4,
+      "fuseExit": 1,
+      "fuseMilliseconds": 1305.7534,
+      "buildSeconds": 2.646993,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "src/FluentValidation.Tests/DefaultValidatorExtensionTester.cs(218,19): error CS0246: The type or namespace name \u0027PrecisionScaleValidator\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/DefaultValidatorExtensionTester.cs(224,19): error CS0246: The type or namespace name \u0027PrecisionScaleValidator\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 4,
+      "outputBytes": 1351,
+      "causeBytes": 331
+    },
+    {
+      "index": 12,
+      "edits": [
+        {
+          "path": "src/FluentValidation/Internal/RuleComponent.cs",
+          "kind": "change-parameters",
+          "description": "added an int parameter to RuleComponent.ApplyAsyncCondition",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/FluentValidation/Internal/RuleComponent.cs(33,52): error CS0535: \u0027RuleComponent\u003CT, TProperty\u003E\u0027 does not implement interface member \u0027IRuleComponent\u003CT, TProperty\u003E.ApplyAsyncCondition(Func\u003CValidationContext\u003CT\u003E, CancellationToken, Task\u003Cbool\u003E\u003E)\u0027"
+      ],
+      "fuse": [
+        "src/FluentValidation/Internal/RuleBase.cs(244,15): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027RuleComponent\u003CT, TValue\u003E.ApplyAsyncCondition(Func\u003CValidationContext\u003CT\u003E, CancellationToken, Task\u003Cbool\u003E\u003E, int)\u0027",
+        "src/FluentValidation/Internal/RuleComponent.cs(33,52): error CS0535: \u0027RuleComponent\u003CT, TProperty\u003E\u0027 does not implement interface member \u0027IRuleComponent\u003CT, TProperty\u003E.ApplyAsyncCondition(Func\u003CValidationContext\u003CT\u003E, CancellationToken, Task\u003Cbool\u003E\u003E)\u0027"
+      ],
+      "fuseCount": 2,
+      "fuseExit": 1,
+      "fuseMilliseconds": 147.2838,
+      "buildSeconds": 1.9221887,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [
+        "src/FluentValidation/Internal/RuleBase.cs(244,15): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027RuleComponent\u003CT, TValue\u003E.ApplyAsyncCondition(Func\u003CValidationContext\u003CT\u003E, CancellationToken, Task\u003Cbool\u003E\u003E, int)\u0027"
+      ],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 1,
+      "outputBytes": 749,
+      "causeBytes": 111
+    },
+    {
+      "index": 13,
+      "edits": [
+        {
+          "path": "src/FluentValidation/Resources/Languages/CatalanLanguage.cs",
+          "kind": "change-parameters",
+          "description": "added an int parameter to CatalanLanguage.GetTranslation",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/FluentValidation/Resources/LanguageManager.cs(98,47): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027CatalanLanguage.GetTranslation(string, int)\u0027"
+      ],
+      "fuse": [
+        "src/FluentValidation/Resources/LanguageManager.cs(98,47): error CS7036: There is no argument given that corresponds to the required parameter \u0027fuseExtra\u0027 of \u0027CatalanLanguage.GetTranslation(string, int)\u0027"
+      ],
+      "fuseCount": 1,
+      "fuseExit": 1,
+      "fuseMilliseconds": 143.7974,
+      "buildSeconds": 2.5257195,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 1,
+      "outputBytes": 393,
+      "causeBytes": 58
+    },
+    {
+      "index": 14,
+      "edits": [
+        {
+          "path": "src/FluentValidation/TestHelper/TestValidationResult.cs",
+          "kind": "change-return-type",
+          "description": "changed the return type of TestValidationResult.ShouldHaveValidationErrorFor from ITestValidationWith to object",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(229,3): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithErrorCode\u0027 and the best extension method overload \u0027ValidationTestExtension.WithErrorCode(ITestValidationContinuation, string)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(231,3): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithErrorCode\u0027 and the best extension method overload \u0027ValidationTestExtension.WithErrorCode(ITestValidationContinuation, string)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(351,4): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithErrorMessage\u0027 and the best extension method overload \u0027ValidationTestExtension.WithErrorMessage(ITestValidationContinuation, string)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(382,4): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithMessageArgument\u0027 and the best extension method overload \u0027ValidationTestExtension.WithMessageArgument\u003Cstring\u003E(ITestValidationContinuation, string, string)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(395,4): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithCustomState\u0027 and the best extension method overload \u0027ValidationTestExtension.WithCustomState(ITestValidationContinuation, object, IEqualityComparer)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(408,4): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithoutCustomState\u0027 and the best extension method overload \u0027ValidationTestExtension.WithoutCustomState(ITestValidationContinuation, object)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(427,3): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithCustomState\u0027 and the best extension method overload \u0027ValidationTestExtension.WithCustomState(ITestValidationContinuation, object, IEqualityComparer)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(439,4): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithCustomState\u0027 and the best extension method overload \u0027ValidationTestExtension.WithCustomState(ITestValidationContinuation, object, IEqualityComparer)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(444,3): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithCustomState\u0027 and the best extension method overload \u0027ValidationTestExtension.WithCustomState(ITestValidationContinuation, object, IEqualityComparer)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(454,4): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithErrorCode\u0027 and the best extension method overload \u0027ValidationTestExtension.WithErrorCode(ITestValidationContinuation, string)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(467,4): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithoutErrorCode\u0027 and the best extension method overload \u0027ValidationTestExtension.WithoutErrorCode(ITestValidationContinuation, string)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(481,3): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithoutErrorCode\u0027 and the best extension method overload \u0027ValidationTestExtension.WithoutErrorCode(ITestValidationContinuation, string)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(499,4): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithErrorMessage\u0027 and the best extension method overload \u0027ValidationTestExtension.WithErrorMessage(ITestValidationContinuation, string)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(516,3): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithErrorCode\u0027 and the best extension method overload \u0027ValidationTestExtension.WithErrorCode(ITestValidationContinuation, string)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(531,4): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithSeverity\u0027 and the best extension method overload \u0027ValidationTestExtension.WithSeverity(ITestValidationContinuation, Severity)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(545,4): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithoutSeverity\u0027 and the best extension method overload \u0027ValidationTestExtension.WithoutSeverity(ITestValidationContinuation, Severity)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(816,3): error CS1929: \u0027object\u0027 does not contain a definition for \u0027Only\u0027 and the best extension method overload \u0027ValidationTestExtension.Only(ITestValidationWith)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationWith\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(827,4): error CS1929: \u0027object\u0027 does not contain a definition for \u0027Only\u0027 and the best extension method overload \u0027ValidationTestExtension.Only(ITestValidationWith)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationWith\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(837,3): error CS1929: \u0027object\u0027 does not contain a definition for \u0027Only\u0027 and the best extension method overload \u0027ValidationTestExtension.Only(ITestValidationWith)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationWith\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(848,4): error CS1929: \u0027object\u0027 does not contain a definition for \u0027Only\u0027 and the best extension method overload \u0027ValidationTestExtension.Only(ITestValidationWith)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationWith\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(860,3): error CS1929: \u0027object\u0027 does not contain a definition for \u0027Only\u0027 and the best extension method overload \u0027ValidationTestExtension.Only(ITestValidationWith)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationWith\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(872,4): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithErrorMessage\u0027 and the best extension method overload \u0027ValidationTestExtension.WithErrorMessage(ITestValidationContinuation, string)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(886,3): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithErrorMessage\u0027 and the best extension method overload \u0027ValidationTestExtension.WithErrorMessage(ITestValidationContinuation, string)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(900,4): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithErrorMessage\u0027 and the best extension method overload \u0027ValidationTestExtension.WithErrorMessage(ITestValidationContinuation, string)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(913,3): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithSeverity\u0027 and the best extension method overload \u0027ValidationTestExtension.WithSeverity(ITestValidationContinuation, Severity)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(926,4): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithSeverity\u0027 and the best extension method overload \u0027ValidationTestExtension.WithSeverity(ITestValidationContinuation, Severity)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(939,3): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithErrorCode\u0027 and the best extension method overload \u0027ValidationTestExtension.WithErrorCode(ITestValidationContinuation, string)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(952,4): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithErrorCode\u0027 and the best extension method overload \u0027ValidationTestExtension.WithErrorCode(ITestValidationContinuation, string)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(997,4): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithErrorMessage\u0027 and the best extension method overload \u0027ValidationTestExtension.WithErrorMessage(ITestValidationContinuation, string)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(1021,4): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithErrorMessage\u0027 and the best extension method overload \u0027ValidationTestExtension.WithErrorMessage(ITestValidationContinuation, string)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027"
+      ],
+      "fuse": [
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(229,3): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithErrorCode\u0027 and the best extension method overload \u0027ValidationTestExtension.WithErrorCode(ITestValidationContinuation, string)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(231,3): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithErrorCode\u0027 and the best extension method overload \u0027ValidationTestExtension.WithErrorCode(ITestValidationContinuation, string)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(351,4): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithErrorMessage\u0027 and the best extension method overload \u0027ValidationTestExtension.WithErrorMessage(ITestValidationContinuation, string)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(382,4): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithMessageArgument\u0027 and the best extension method overload \u0027ValidationTestExtension.WithMessageArgument\u003Cstring\u003E(ITestValidationContinuation, string, string)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(395,4): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithCustomState\u0027 and the best extension method overload \u0027ValidationTestExtension.WithCustomState(ITestValidationContinuation, object, IEqualityComparer)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(408,4): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithoutCustomState\u0027 and the best extension method overload \u0027ValidationTestExtension.WithoutCustomState(ITestValidationContinuation, object)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(427,3): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithCustomState\u0027 and the best extension method overload \u0027ValidationTestExtension.WithCustomState(ITestValidationContinuation, object, IEqualityComparer)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(439,4): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithCustomState\u0027 and the best extension method overload \u0027ValidationTestExtension.WithCustomState(ITestValidationContinuation, object, IEqualityComparer)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(444,3): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithCustomState\u0027 and the best extension method overload \u0027ValidationTestExtension.WithCustomState(ITestValidationContinuation, object, IEqualityComparer)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(454,4): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithErrorCode\u0027 and the best extension method overload \u0027ValidationTestExtension.WithErrorCode(ITestValidationContinuation, string)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(467,4): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithoutErrorCode\u0027 and the best extension method overload \u0027ValidationTestExtension.WithoutErrorCode(ITestValidationContinuation, string)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(481,3): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithoutErrorCode\u0027 and the best extension method overload \u0027ValidationTestExtension.WithoutErrorCode(ITestValidationContinuation, string)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(499,4): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithErrorMessage\u0027 and the best extension method overload \u0027ValidationTestExtension.WithErrorMessage(ITestValidationContinuation, string)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(516,3): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithErrorCode\u0027 and the best extension method overload \u0027ValidationTestExtension.WithErrorCode(ITestValidationContinuation, string)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(531,4): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithSeverity\u0027 and the best extension method overload \u0027ValidationTestExtension.WithSeverity(ITestValidationContinuation, Severity)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(545,4): error CS1929: \u0027object\u0027 does not contain a definition for \u0027WithoutSeverity\u0027 and the best extension method overload \u0027ValidationTestExtension.WithoutSeverity(ITestValidationContinuation, Severity)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationContinuation\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(816,3): error CS1929: \u0027object\u0027 does not contain a definition for \u0027Only\u0027 and the best extension method overload \u0027ValidationTestExtension.Only(ITestValidationWith)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationWith\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(827,4): error CS1929: \u0027object\u0027 does not contain a definition for \u0027Only\u0027 and the best extension method overload \u0027ValidationTestExtension.Only(ITestValidationWith)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationWith\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(837,3): error CS1929: \u0027object\u0027 does not contain a definition for \u0027Only\u0027 and the best extension method overload \u0027ValidationTestExtension.Only(ITestValidationWith)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationWith\u0027",
+        "src/FluentValidation.Tests/ValidatorTesterTester.cs(848,4): error CS1929: \u0027object\u0027 does not contain a definition for \u0027Only\u0027 and the best extension method overload \u0027ValidationTestExtension.Only(ITestValidationWith)\u0027 requires a receiver of type \u0027FluentValidation.TestHelper.ITestValidationWith\u0027"
+      ],
+      "fuseCount": 30,
+      "fuseExit": 1,
+      "fuseMilliseconds": 1738.7093,
+      "buildSeconds": 5.5429295,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 10,
+      "outputBytes": 7988,
+      "causeBytes": 1119
+    },
+    {
+      "index": 15,
+      "edits": [
+        {
+          "path": "src/FluentValidation/Resources/Languages/WelshLanguage.cs",
+          "kind": "change-return-type",
+          "description": "changed the return type of WelshLanguage.GetTranslation from string to object",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/FluentValidation/Resources/LanguageManager.cs(95,29): error CS0029: Cannot implicitly convert type \u0027object\u0027 to \u0027string\u0027"
+      ],
+      "fuse": [
+        "src/FluentValidation/Resources/LanguageManager.cs(95,29): error CS0029: Cannot implicitly convert type \u0027object\u0027 to \u0027string\u0027"
+      ],
+      "fuseCount": 1,
+      "fuseExit": 1,
+      "fuseMilliseconds": 111.0184,
+      "buildSeconds": 2.3191372,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 1,
+      "outputBytes": 314,
+      "causeBytes": 58
+    },
+    {
+      "index": 16,
+      "edits": [
+        {
+          "path": "src/FluentValidation/ValidatorDescriptor.cs",
+          "kind": "delete-file",
+          "description": "deleted the file",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/FluentValidation/AbstractValidator.cs(194,64): error CS0246: The type or namespace name \u0027ValidatorDescriptor\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuse": [
+        "src/FluentValidation/AbstractValidator.cs(194,64): error CS0246: The type or namespace name \u0027ValidatorDescriptor\u003C\u003E\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuseCount": 1,
+      "fuseExit": 1,
+      "fuseMilliseconds": 437.7353,
+      "buildSeconds": 2.4192273,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 1,
+      "outputBytes": 398,
+      "causeBytes": 69
+    },
+    {
+      "index": 17,
+      "edits": [
+        {
+          "path": "src/FluentValidation/DefaultValidatorExtensions.cs",
+          "kind": "change-return-type",
+          "description": "changed the return type of DefaultValidatorExtensions.LessThanOrEqualTo from IRuleBuilderOptions\u003CT, TProperty\u003E to object",
+          "newText": null
+        }
+      ],
+      "truth": [],
+      "fuse": [],
+      "fuseCount": 0,
+      "fuseExit": 0,
+      "fuseMilliseconds": 335.6689,
+      "buildSeconds": 5.9358924,
+      "verdict": "agree-clean",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 0,
+      "outputBytes": 118,
+      "causeBytes": 0
+    },
+    {
+      "index": 18,
+      "edits": [
+        {
+          "path": "src/FluentValidation/Resources/Languages/EstonianLanguage.cs",
+          "kind": "remove-member",
+          "description": "removed EstonianLanguage.GetTranslation",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/FluentValidation/Resources/LanguageManager.cs(58,49): error CS0117: \u0027EstonianLanguage\u0027 does not contain a definition for \u0027GetTranslation\u0027"
+      ],
+      "fuse": [
+        "src/FluentValidation/Resources/LanguageManager.cs(58,49): error CS0117: \u0027EstonianLanguage\u0027 does not contain a definition for \u0027GetTranslation\u0027"
+      ],
+      "fuseCount": 1,
+      "fuseExit": 1,
+      "fuseMilliseconds": 128.8759,
+      "buildSeconds": 2.2875026,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 1,
+      "outputBytes": 332,
+      "causeBytes": 58
+    },
+    {
+      "index": 19,
+      "edits": [
+        {
+          "path": "src/FluentValidation/Validators/PropertyValidator.cs",
+          "kind": "remove-member",
+          "description": "removed PropertyValidator.IsValid",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/FluentValidation/Validators/PropertyValidator.cs(23,57): error CS0535: \u0027PropertyValidator\u003CT, TProperty\u003E\u0027 does not implement interface member \u0027IPropertyValidator\u003CT, TProperty\u003E.IsValid(ValidationContext\u003CT\u003E, TProperty)\u0027",
+        "src/FluentValidation/Validators/AbstractComparisonValidator.cs(69,30): error CS0115: \u0027AbstractComparisonValidator\u003CT, TProperty\u003E.IsValid(ValidationContext\u003CT\u003E, TProperty)\u0027: no suitable method found to override",
+        "src/FluentValidation/Validators/CreditCardValidator.cs(35,23): error CS0115: \u0027CreditCardValidator\u003CT\u003E.IsValid(ValidationContext\u003CT\u003E, string)\u0027: no suitable method found to override",
+        "src/FluentValidation/Validators/EmailValidator.cs(51,23): error CS0115: \u0027EmailValidator\u003CT\u003E.IsValid(ValidationContext\u003CT\u003E, string)\u0027: no suitable method found to override",
+        "src/FluentValidation/Validators/EmailValidator.cs(72,23): error CS0115: \u0027AspNetCoreCompatibleEmailValidator\u003CT\u003E.IsValid(ValidationContext\u003CT\u003E, string)\u0027: no suitable method found to override",
+        "src/FluentValidation/Validators/EmptyValidator.cs(31,23): error CS0115: \u0027EmptyValidator\u003CT, TProperty\u003E.IsValid(ValidationContext\u003CT\u003E, TProperty)\u0027: no suitable method found to override",
+        "src/FluentValidation/Validators/EnumValidator.cs(33,23): error CS0115: \u0027EnumValidator\u003CT, TProperty\u003E.IsValid(ValidationContext\u003CT\u003E, TProperty)\u0027: no suitable method found to override",
+        "src/FluentValidation/Validators/EqualValidator.cs(47,23): error CS0115: \u0027EqualValidator\u003CT, TProperty\u003E.IsValid(ValidationContext\u003CT\u003E, TProperty)\u0027: no suitable method found to override",
+        "src/FluentValidation/Validators/RangeValidator.cs(51,23): error CS0115: \u0027RangeValidator\u003CT, TProperty\u003E.IsValid(ValidationContext\u003CT\u003E, TProperty)\u0027: no suitable method found to override",
+        "src/FluentValidation/Validators/LengthValidator.cs(46,23): error CS0115: \u0027LengthValidator\u003CT\u003E.IsValid(ValidationContext\u003CT\u003E, string)\u0027: no suitable method found to override",
+        "src/FluentValidation/Validators/NotNullValidator.cs(25,23): error CS0115: \u0027NotNullValidator\u003CT, TProperty\u003E.IsValid(ValidationContext\u003CT\u003E, TProperty)\u0027: no suitable method found to override",
+        "src/FluentValidation/Validators/NotEqualValidator.cs(44,23): error CS0115: \u0027NotEqualValidator\u003CT, TProperty\u003E.IsValid(ValidationContext\u003CT\u003E, TProperty)\u0027: no suitable method found to override",
+        "src/FluentValidation/Validators/NullValidator.cs(25,23): error CS0115: \u0027NullValidator\u003CT, TProperty\u003E.IsValid(ValidationContext\u003CT\u003E, TProperty)\u0027: no suitable method found to override",
+        "src/FluentValidation/Validators/RegularExpressionValidator.cs(59,23): error CS0115: \u0027RegularExpressionValidator\u003CT\u003E.IsValid(ValidationContext\u003CT\u003E, string)\u0027: no suitable method found to override",
+        "src/FluentValidation/Validators/StringEnumValidator.cs(39,23): error CS0115: \u0027StringEnumValidator\u003CT\u003E.IsValid(ValidationContext\u003CT\u003E, string)\u0027: no suitable method found to override",
+        "src/FluentValidation/Validators/PrecisionScaleValidator.cs(67,23): error CS0115: \u0027PrecisionScaleValidator\u003CT\u003E.IsValid(ValidationContext\u003CT\u003E, decimal)\u0027: no suitable method found to override",
+        "src/FluentValidation/Validators/PredicateValidator.cs(34,23): error CS0115: \u0027PredicateValidator\u003CT, TProperty\u003E.IsValid(ValidationContext\u003CT\u003E, TProperty)\u0027: no suitable method found to override",
+        "src/FluentValidation/Validators/NoopPropertyValidator.cs(22,23): error CS0115: \u0027NoopPropertyValidator\u003CT, TProperty\u003E.IsValid(ValidationContext\u003CT\u003E, TProperty)\u0027: no suitable method found to override",
+        "src/FluentValidation/Validators/NotEmptyValidator.cs(31,23): error CS0115: \u0027NotEmptyValidator\u003CT, TProperty\u003E.IsValid(ValidationContext\u003CT\u003E, TProperty)\u0027: no suitable method found to override"
+      ],
+      "fuse": [
+        "src/FluentValidation.Tests/ForEachRuleTests.cs(378,24): error CS0115: \u0027ForEachRuleTests.AppropriatenessAnswerViewModelRequiredValidator\u003CT, TProperty\u003E.IsValid(ValidationContext\u003CT\u003E, TProperty)\u0027: no suitable method found to override",
+        "src/FluentValidation.Tests/RuleBuilderTests.cs(204,24): error CS0115: \u0027RuleBuilderTests.TestPropertyValidator\u003CT, TProperty\u003E.IsValid(ValidationContext\u003CT\u003E, TProperty)\u0027: no suitable method found to override",
+        "src/FluentValidation/Validators/AbstractComparisonValidator.cs(69,30): error CS0115: \u0027AbstractComparisonValidator\u003CT, TProperty\u003E.IsValid(ValidationContext\u003CT\u003E, TProperty)\u0027: no suitable method found to override",
+        "src/FluentValidation/Validators/CreditCardValidator.cs(35,23): error CS0115: \u0027CreditCardValidator\u003CT\u003E.IsValid(ValidationContext\u003CT\u003E, string)\u0027: no suitable method found to override",
+        "src/FluentValidation/Validators/EmailValidator.cs(51,23): error CS0115: \u0027EmailValidator\u003CT\u003E.IsValid(ValidationContext\u003CT\u003E, string)\u0027: no suitable method found to override",
+        "src/FluentValidation/Validators/EmailValidator.cs(72,23): error CS0115: \u0027AspNetCoreCompatibleEmailValidator\u003CT\u003E.IsValid(ValidationContext\u003CT\u003E, string)\u0027: no suitable method found to override",
+        "src/FluentValidation/Validators/EmptyValidator.cs(31,23): error CS0115: \u0027EmptyValidator\u003CT, TProperty\u003E.IsValid(ValidationContext\u003CT\u003E, TProperty)\u0027: no suitable method found to override",
+        "src/FluentValidation/Validators/EnumValidator.cs(33,23): error CS0115: \u0027EnumValidator\u003CT, TProperty\u003E.IsValid(ValidationContext\u003CT\u003E, TProperty)\u0027: no suitable method found to override",
+        "src/FluentValidation/Validators/EqualValidator.cs(47,23): error CS0115: \u0027EqualValidator\u003CT, TProperty\u003E.IsValid(ValidationContext\u003CT\u003E, TProperty)\u0027: no suitable method found to override",
+        "src/FluentValidation/Validators/LengthValidator.cs(46,23): error CS0115: \u0027LengthValidator\u003CT\u003E.IsValid(ValidationContext\u003CT\u003E, string)\u0027: no suitable method found to override",
+        "src/FluentValidation/Validators/NoopPropertyValidator.cs(22,23): error CS0115: \u0027NoopPropertyValidator\u003CT, TProperty\u003E.IsValid(ValidationContext\u003CT\u003E, TProperty)\u0027: no suitable method found to override",
+        "src/FluentValidation/Validators/NotEmptyValidator.cs(31,23): error CS0115: \u0027NotEmptyValidator\u003CT, TProperty\u003E.IsValid(ValidationContext\u003CT\u003E, TProperty)\u0027: no suitable method found to override",
+        "src/FluentValidation/Validators/NotEqualValidator.cs(44,23): error CS0115: \u0027NotEqualValidator\u003CT, TProperty\u003E.IsValid(ValidationContext\u003CT\u003E, TProperty)\u0027: no suitable method found to override",
+        "src/FluentValidation/Validators/NotNullValidator.cs(25,23): error CS0115: \u0027NotNullValidator\u003CT, TProperty\u003E.IsValid(ValidationContext\u003CT\u003E, TProperty)\u0027: no suitable method found to override",
+        "src/FluentValidation/Validators/NullValidator.cs(25,23): error CS0115: \u0027NullValidator\u003CT, TProperty\u003E.IsValid(ValidationContext\u003CT\u003E, TProperty)\u0027: no suitable method found to override",
+        "src/FluentValidation/Validators/PrecisionScaleValidator.cs(67,23): error CS0115: \u0027PrecisionScaleValidator\u003CT\u003E.IsValid(ValidationContext\u003CT\u003E, decimal)\u0027: no suitable method found to override",
+        "src/FluentValidation/Validators/PredicateValidator.cs(34,23): error CS0115: \u0027PredicateValidator\u003CT, TProperty\u003E.IsValid(ValidationContext\u003CT\u003E, TProperty)\u0027: no suitable method found to override",
+        "src/FluentValidation/Validators/PropertyValidator.cs(23,57): error CS0535: \u0027PropertyValidator\u003CT, TProperty\u003E\u0027 does not implement interface member \u0027IPropertyValidator\u003CT, TProperty\u003E.IsValid(ValidationContext\u003CT\u003E, TProperty)\u0027",
+        "src/FluentValidation/Validators/RangeValidator.cs(51,23): error CS0115: \u0027RangeValidator\u003CT, TProperty\u003E.IsValid(ValidationContext\u003CT\u003E, TProperty)\u0027: no suitable method found to override",
+        "src/FluentValidation/Validators/RegularExpressionValidator.cs(59,23): error CS0115: \u0027RegularExpressionValidator\u003CT\u003E.IsValid(ValidationContext\u003CT\u003E, string)\u0027: no suitable method found to override"
+      ],
+      "fuseCount": 21,
+      "fuseExit": 1,
+      "fuseMilliseconds": 788.575,
+      "buildSeconds": 1.95289,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "src/FluentValidation.Tests/ForEachRuleTests.cs(378,24): error CS0115: \u0027ForEachRuleTests.AppropriatenessAnswerViewModelRequiredValidator\u003CT, TProperty\u003E.IsValid(ValidationContext\u003CT\u003E, TProperty)\u0027: no suitable method found to override",
+        "src/FluentValidation.Tests/RuleBuilderTests.cs(204,24): error CS0115: \u0027RuleBuilderTests.TestPropertyValidator\u003CT, TProperty\u003E.IsValid(ValidationContext\u003CT\u003E, TProperty)\u0027: no suitable method found to override"
+      ],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 10,
+      "outputBytes": 4864,
+      "causeBytes": 869
+    },
+    {
+      "index": 20,
+      "edits": [
+        {
+          "path": "src/FluentValidation/Internal/DefaultValidatorSelector.cs",
+          "kind": "make-private",
+          "description": "made DefaultValidatorSelector.CanExecute private",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/FluentValidation/Internal/DefaultValidatorSelector.cs(27,41): error CS0737: \u0027DefaultValidatorSelector\u0027 does not implement interface member \u0027IValidatorSelector.CanExecute(IValidationRule, string, IValidationContext)\u0027. \u0027DefaultValidatorSelector.CanExecute(IValidationRule, string, IValidationContext)\u0027 cannot implement an interface member because it is not public."
+      ],
+      "fuse": [
+        "src/FluentValidation/Internal/DefaultValidatorSelector.cs(27,41): error CS0737: \u0027DefaultValidatorSelector\u0027 does not implement interface member \u0027IValidatorSelector.CanExecute(IValidationRule, string, IValidationContext)\u0027. \u0027DefaultValidatorSelector.CanExecute(IValidationRule, string, IValidationContext)\u0027 cannot implement an interface member because it is not public."
+      ],
+      "fuseCount": 1,
+      "fuseExit": 1,
+      "fuseMilliseconds": 141.8147,
+      "buildSeconds": 1.5492836,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 0,
+      "outputBytes": 498,
+      "causeBytes": 0
+    },
+    {
+      "index": 21,
+      "edits": [
+        {
+          "path": "src/FluentValidation/Resources/Languages/EnglishLanguage.cs",
+          "kind": "duplicate-signature",
+          "description": "duplicated the signature of EnglishLanguage.GetTranslation",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/FluentValidation/Resources/Languages/EnglishLanguage.cs(63,22): error CS0111: Type \u0027EnglishLanguage\u0027 already defines a member called \u0027GetTranslation\u0027 with the same parameter types"
+      ],
+      "fuse": [
+        "src/FluentValidation/Resources/LanguageManager.cs(41,55): error CS0121: The call is ambiguous between the following methods or properties: \u0027FluentValidation.Resources.EnglishLanguage.GetTranslation(string) [C:\\Users\\runneradmin\\AppData\\Local\\fuse\\evals\\repos\\FluentValidation\\src\\FluentValidation\\Resources\\Languages\\EnglishLanguage.cs(30)]\u0027 and \u0027FluentValidation.Resources.EnglishLanguage.GetTranslation(string) [C:\\Users\\runneradmin\\AppData\\Local\\fuse\\evals\\repos\\FluentValidation\\src\\FluentValidation\\Resources\\Languages\\EnglishLanguage.cs(63)]\u0027",
+        "src/FluentValidation/Resources/LanguageManager.cs(42,54): error CS0121: The call is ambiguous between the following methods or properties: \u0027FluentValidation.Resources.EnglishLanguage.GetTranslation(string) [C:\\Users\\runneradmin\\AppData\\Local\\fuse\\evals\\repos\\FluentValidation\\src\\FluentValidation\\Resources\\Languages\\EnglishLanguage.cs(30)]\u0027 and \u0027FluentValidation.Resources.EnglishLanguage.GetTranslation(string) [C:\\Users\\runneradmin\\AppData\\Local\\fuse\\evals\\repos\\FluentValidation\\src\\FluentValidation\\Resources\\Languages\\EnglishLanguage.cs(63)]\u0027",
+        "src/FluentValidation/Resources/LanguageManager.cs(43,47): error CS0121: The call is ambiguous between the following methods or properties: \u0027FluentValidation.Resources.EnglishLanguage.GetTranslation(string) [C:\\Users\\runneradmin\\AppData\\Local\\fuse\\evals\\repos\\FluentValidation\\src\\FluentValidation\\Resources\\Languages\\EnglishLanguage.cs(30)]\u0027 and \u0027FluentValidation.Resources.EnglishLanguage.GetTranslation(string) [C:\\Users\\runneradmin\\AppData\\Local\\fuse\\evals\\repos\\FluentValidation\\src\\FluentValidation\\Resources\\Languages\\EnglishLanguage.cs(63)]\u0027",
+        "src/FluentValidation/Resources/LanguageManager.cs(150,92): error CS0121: The call is ambiguous between the following methods or properties: \u0027FluentValidation.Resources.EnglishLanguage.GetTranslation(string) [C:\\Users\\runneradmin\\AppData\\Local\\fuse\\evals\\repos\\FluentValidation\\src\\FluentValidation\\Resources\\Languages\\EnglishLanguage.cs(30)]\u0027 and \u0027FluentValidation.Resources.EnglishLanguage.GetTranslation(string) [C:\\Users\\runneradmin\\AppData\\Local\\fuse\\evals\\repos\\FluentValidation\\src\\FluentValidation\\Resources\\Languages\\EnglishLanguage.cs(63)]\u0027",
+        "src/FluentValidation/Resources/LanguageManager.cs(155,90): error CS0121: The call is ambiguous between the following methods or properties: \u0027FluentValidation.Resources.EnglishLanguage.GetTranslation(string) [C:\\Users\\runneradmin\\AppData\\Local\\fuse\\evals\\repos\\FluentValidation\\src\\FluentValidation\\Resources\\Languages\\EnglishLanguage.cs(30)]\u0027 and \u0027FluentValidation.Resources.EnglishLanguage.GetTranslation(string) [C:\\Users\\runneradmin\\AppData\\Local\\fuse\\evals\\repos\\FluentValidation\\src\\FluentValidation\\Resources\\Languages\\EnglishLanguage.cs(63)]\u0027",
+        "src/FluentValidation/Resources/Languages/EnglishLanguage.cs(63,22): error CS0111: Type \u0027EnglishLanguage\u0027 already defines a member called \u0027GetTranslation\u0027 with the same parameter types"
+      ],
+      "fuseCount": 6,
+      "fuseExit": 1,
+      "fuseMilliseconds": 115.7901,
+      "buildSeconds": 1.5780552,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [
+        "src/FluentValidation/Resources/LanguageManager.cs(41,55): error CS0121: The call is ambiguous between the following methods or properties: \u0027FluentValidation.Resources.EnglishLanguage.GetTranslation(string) [C:\\Users\\runneradmin\\AppData\\Local\\fuse\\evals\\repos\\FluentValidation\\src\\FluentValidation\\Resources\\Languages\\EnglishLanguage.cs(30)]\u0027 and \u0027FluentValidation.Resources.EnglishLanguage.GetTranslation(string) [C:\\Users\\runneradmin\\AppData\\Local\\fuse\\evals\\repos\\FluentValidation\\src\\FluentValidation\\Resources\\Languages\\EnglishLanguage.cs(63)]\u0027",
+        "src/FluentValidation/Resources/LanguageManager.cs(42,54): error CS0121: The call is ambiguous between the following methods or properties: \u0027FluentValidation.Resources.EnglishLanguage.GetTranslation(string) [C:\\Users\\runneradmin\\AppData\\Local\\fuse\\evals\\repos\\FluentValidation\\src\\FluentValidation\\Resources\\Languages\\EnglishLanguage.cs(30)]\u0027 and \u0027FluentValidation.Resources.EnglishLanguage.GetTranslation(string) [C:\\Users\\runneradmin\\AppData\\Local\\fuse\\evals\\repos\\FluentValidation\\src\\FluentValidation\\Resources\\Languages\\EnglishLanguage.cs(63)]\u0027",
+        "src/FluentValidation/Resources/LanguageManager.cs(43,47): error CS0121: The call is ambiguous between the following methods or properties: \u0027FluentValidation.Resources.EnglishLanguage.GetTranslation(string) [C:\\Users\\runneradmin\\AppData\\Local\\fuse\\evals\\repos\\FluentValidation\\src\\FluentValidation\\Resources\\Languages\\EnglishLanguage.cs(30)]\u0027 and \u0027FluentValidation.Resources.EnglishLanguage.GetTranslation(string) [C:\\Users\\runneradmin\\AppData\\Local\\fuse\\evals\\repos\\FluentValidation\\src\\FluentValidation\\Resources\\Languages\\EnglishLanguage.cs(63)]\u0027",
+        "src/FluentValidation/Resources/LanguageManager.cs(150,92): error CS0121: The call is ambiguous between the following methods or properties: \u0027FluentValidation.Resources.EnglishLanguage.GetTranslation(string) [C:\\Users\\runneradmin\\AppData\\Local\\fuse\\evals\\repos\\FluentValidation\\src\\FluentValidation\\Resources\\Languages\\EnglishLanguage.cs(30)]\u0027 and \u0027FluentValidation.Resources.EnglishLanguage.GetTranslation(string) [C:\\Users\\runneradmin\\AppData\\Local\\fuse\\evals\\repos\\FluentValidation\\src\\FluentValidation\\Resources\\Languages\\EnglishLanguage.cs(63)]\u0027",
+        "src/FluentValidation/Resources/LanguageManager.cs(155,90): error CS0121: The call is ambiguous between the following methods or properties: \u0027FluentValidation.Resources.EnglishLanguage.GetTranslation(string) [C:\\Users\\runneradmin\\AppData\\Local\\fuse\\evals\\repos\\FluentValidation\\src\\FluentValidation\\Resources\\Languages\\EnglishLanguage.cs(30)]\u0027 and \u0027FluentValidation.Resources.EnglishLanguage.GetTranslation(string) [C:\\Users\\runneradmin\\AppData\\Local\\fuse\\evals\\repos\\FluentValidation\\src\\FluentValidation\\Resources\\Languages\\EnglishLanguage.cs(63)]\u0027"
+      ],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 5,
+      "outputBytes": 3357,
+      "causeBytes": 294
+    },
+    {
+      "index": 22,
+      "edits": [
+        {
+          "path": "src/FluentValidation/Resources/Languages/GreekLanguage.cs",
+          "kind": "rename-member",
+          "description": "renamed GreekLanguage.GetTranslation to GetTranslationRenamed",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/FluentValidation/Resources/LanguageManager.cs(62,43): error CS0117: \u0027GreekLanguage\u0027 does not contain a definition for \u0027GetTranslation\u0027"
+      ],
+      "fuse": [
+        "src/FluentValidation/Resources/LanguageManager.cs(62,43): error CS0117: \u0027GreekLanguage\u0027 does not contain a definition for \u0027GetTranslation\u0027"
+      ],
+      "fuseCount": 1,
+      "fuseExit": 1,
+      "fuseMilliseconds": 109.5157,
+      "buildSeconds": 1.9100379,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 1,
+      "outputBytes": 329,
+      "causeBytes": 58
+    },
+    {
+      "index": 23,
+      "edits": [
+        {
+          "path": "src/FluentValidation/Internal/ConditionBuilder.cs",
+          "kind": "make-private",
+          "description": "made ConditionBuilder.When private",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/FluentValidation/AbstractValidator.cs(271,41): error CS0411: The type arguments for method \u0027DefaultValidatorOptions.When\u003CT, TProperty\u003E(IRuleBuilderOptions\u003CT, TProperty\u003E, Func\u003CT, bool\u003E, ApplyConditionTo)\u0027 cannot be inferred from the usage. Try specifying the type arguments explicitly."
+      ],
+      "fuse": [
+        "src/FluentValidation/AbstractValidator.cs(271,41): error CS0411: The type arguments for method \u0027DefaultValidatorOptions.When\u003CT, TProperty\u003E(IRuleBuilderOptions\u003CT, TProperty\u003E, Func\u003CT, bool\u003E, ApplyConditionTo)\u0027 cannot be inferred from the usage. Try specifying the type arguments explicitly."
+      ],
+      "fuseCount": 1,
+      "fuseExit": 1,
+      "fuseMilliseconds": 120.9641,
+      "buildSeconds": 2.0372839,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 1,
+      "outputBytes": 524,
+      "causeBytes": 103
+    },
+    {
+      "index": 24,
+      "edits": [
+        {
+          "path": "src/FluentValidation/Resources/Languages/BosnianLanguage.cs",
+          "kind": "make-private",
+          "description": "made BosnianLanguage.GetTranslation private",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/FluentValidation/Resources/LanguageManager.cs(49,47): error CS0122: \u0027BosnianLanguage.GetTranslation(string)\u0027 is inaccessible due to its protection level"
+      ],
+      "fuse": [
+        "src/FluentValidation/Resources/LanguageManager.cs(49,47): error CS0122: \u0027BosnianLanguage.GetTranslation(string)\u0027 is inaccessible due to its protection level"
+      ],
+      "fuseCount": 1,
+      "fuseExit": 1,
+      "fuseMilliseconds": 125.7021,
+      "buildSeconds": 2.0013483,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 1,
+      "outputBytes": 348,
+      "causeBytes": 59
+    },
+    {
+      "index": 25,
+      "edits": [
+        {
+          "path": "src/FluentValidation/Resources/Languages/TamilLanguage.cs",
+          "kind": "change-return-type",
+          "description": "changed the return type of TamilLanguage.GetTranslation from string to object",
+          "newText": null
+        },
+        {
+          "path": "src/FluentValidation.Tests.Benchmarks/InitializationBenchmark.cs",
+          "kind": "rename-member",
+          "description": "renamed InitializationBenchmark.Initialization_using_cache to Initialization_using_cacheRenamed",
+          "newText": null
+        },
+        {
+          "path": "src/FluentValidation.DependencyInjectionExtensions/ServiceCollectionExtensions.cs",
+          "kind": "delete-file",
+          "description": "deleted the file",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/FluentValidation/Resources/LanguageManager.cs(100,29): error CS0029: Cannot implicitly convert type \u0027object\u0027 to \u0027string\u0027"
+      ],
+      "fuse": [
+        "src/FluentValidation.Tests/DependencyInjectionExtensions/ServiceCollectionExtensionsTests.cs(29,42): error CS1061: \u0027ServiceCollection\u0027 does not contain a definition for \u0027AddValidatorsFromAssemblyContaining\u0027 and no accessible extension method \u0027AddValidatorsFromAssemblyContaining\u0027 accepting a first argument of type \u0027ServiceCollection\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/DependencyInjectionExtensions/ServiceCollectionExtensionsTests.cs(37,42): error CS1061: \u0027ServiceCollection\u0027 does not contain a definition for \u0027AddValidatorsFromAssemblyContaining\u0027 and no accessible extension method \u0027AddValidatorsFromAssemblyContaining\u0027 accepting a first argument of type \u0027ServiceCollection\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/DependencyInjectionExtensions/ServiceCollectionExtensionsTests.cs(46,42): error CS1061: \u0027ServiceCollection\u0027 does not contain a definition for \u0027AddValidatorsFromAssemblyContaining\u0027 and no accessible extension method \u0027AddValidatorsFromAssemblyContaining\u0027 accepting a first argument of type \u0027ServiceCollection\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/DependencyInjectionExtensions/ServiceCollectionExtensionsTests.cs(58,42): error CS1061: \u0027ServiceCollection\u0027 does not contain a definition for \u0027AddValidatorsFromAssemblyContaining\u0027 and no accessible extension method \u0027AddValidatorsFromAssemblyContaining\u0027 accepting a first argument of type \u0027ServiceCollection\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation/Resources/LanguageManager.cs(100,29): error CS0029: Cannot implicitly convert type \u0027object\u0027 to \u0027string\u0027"
+      ],
+      "fuseCount": 5,
+      "fuseExit": 1,
+      "fuseMilliseconds": 179.799,
+      "buildSeconds": 2.0383889,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "src/FluentValidation.Tests/DependencyInjectionExtensions/ServiceCollectionExtensionsTests.cs(29,42): error CS1061: \u0027ServiceCollection\u0027 does not contain a definition for \u0027AddValidatorsFromAssemblyContaining\u0027 and no accessible extension method \u0027AddValidatorsFromAssemblyContaining\u0027 accepting a first argument of type \u0027ServiceCollection\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/DependencyInjectionExtensions/ServiceCollectionExtensionsTests.cs(37,42): error CS1061: \u0027ServiceCollection\u0027 does not contain a definition for \u0027AddValidatorsFromAssemblyContaining\u0027 and no accessible extension method \u0027AddValidatorsFromAssemblyContaining\u0027 accepting a first argument of type \u0027ServiceCollection\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/DependencyInjectionExtensions/ServiceCollectionExtensionsTests.cs(46,42): error CS1061: \u0027ServiceCollection\u0027 does not contain a definition for \u0027AddValidatorsFromAssemblyContaining\u0027 and no accessible extension method \u0027AddValidatorsFromAssemblyContaining\u0027 accepting a first argument of type \u0027ServiceCollection\u0027 could be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/DependencyInjectionExtensions/ServiceCollectionExtensionsTests.cs(58,42): error CS1061: \u0027ServiceCollection\u0027 does not contain a definition for \u0027AddValidatorsFromAssemblyContaining\u0027 and no accessible extension method \u0027AddValidatorsFromAssemblyContaining\u0027 accepting a first argument of type \u0027ServiceCollection\u0027 could be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 5,
+      "outputBytes": 3162,
+      "causeBytes": 1150
+    },
+    {
+      "index": 26,
+      "edits": [
+        {
+          "path": "src/FluentValidation/Resources/Languages/PersianLanguage.cs",
+          "kind": "rename-member",
+          "description": "renamed PersianLanguage.GetTranslation to GetTranslationRenamed",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/FluentValidation/Resources/LanguageManager.cs(78,47): error CS0117: \u0027PersianLanguage\u0027 does not contain a definition for \u0027GetTranslation\u0027"
+      ],
+      "fuse": [
+        "src/FluentValidation/Resources/LanguageManager.cs(78,47): error CS0117: \u0027PersianLanguage\u0027 does not contain a definition for \u0027GetTranslation\u0027"
+      ],
+      "fuseCount": 1,
+      "fuseExit": 1,
+      "fuseMilliseconds": 87.4998,
+      "buildSeconds": 1.8830908,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 1,
+      "outputBytes": 331,
+      "causeBytes": 58
+    },
+    {
+      "index": 27,
+      "edits": [
+        {
+          "path": "src/FluentValidation/Internal/MessageFormatter.cs",
+          "kind": "make-private",
+          "description": "made MessageFormatter.AppendPropertyName private",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/FluentValidation/Internal/RuleBase.cs(296,28): error CS0122: \u0027MessageFormatter.AppendPropertyName(string)\u0027 is inaccessible due to its protection level"
+      ],
+      "fuse": [
+        "src/FluentValidation.Tests/LocalisedMessagesTester.cs(51,47): error CS0122: \u0027MessageFormatter.AppendPropertyName(string)\u0027 is inaccessible due to its protection level",
+        "src/FluentValidation.Tests/MessageFormatterTests.cs(45,5): error CS0122: \u0027MessageFormatter.AppendPropertyName(string)\u0027 is inaccessible due to its protection level",
+        "src/FluentValidation/Internal/RuleBase.cs(296,28): error CS0122: \u0027MessageFormatter.AppendPropertyName(string)\u0027 is inaccessible due to its protection level"
+      ],
+      "fuseCount": 3,
+      "fuseExit": 1,
+      "fuseMilliseconds": 258.8033,
+      "buildSeconds": 2.0202775,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "src/FluentValidation.Tests/LocalisedMessagesTester.cs(51,47): error CS0122: \u0027MessageFormatter.AppendPropertyName(string)\u0027 is inaccessible due to its protection level",
+        "src/FluentValidation.Tests/MessageFormatterTests.cs(45,5): error CS0122: \u0027MessageFormatter.AppendPropertyName(string)\u0027 is inaccessible due to its protection level"
+      ],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 3,
+      "outputBytes": 843,
+      "causeBytes": 203
+    },
+    {
+      "index": 28,
+      "edits": [
+        {
+          "path": "src/FluentValidation/Internal/RulesetValidatorSelector.cs",
+          "kind": "delete-file",
+          "description": "deleted the file",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/FluentValidation/AbstractValidator.cs(187,30): error CS0103: The name \u0027RulesetValidatorSelector\u0027 does not exist in the current context",
+        "src/FluentValidation/Validators/PolymorphicValidator.cs(112,15): error CS0246: The type or namespace name \u0027RulesetValidatorSelector\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation/Internal/ValidationStrategy.cs(73,17): error CS0103: The name \u0027RulesetValidatorSelector\u0027 does not exist in the current context",
+        "src/FluentValidation/Internal/ValidationStrategy.cs(84,17): error CS0103: The name \u0027RulesetValidatorSelector\u0027 does not exist in the current context",
+        "src/FluentValidation/Internal/DefaultValidatorSelector.cs(37,84): error CS0103: The name \u0027RulesetValidatorSelector\u0027 does not exist in the current context",
+        "src/FluentValidation/Validators/ChildValidatorAdaptor.cs(104,37): error CS0246: The type or namespace name \u0027RulesetValidatorSelector\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation/ValidatorOptions.cs(155,100): error CS0246: The type or namespace name \u0027RulesetValidatorSelector\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation/ValidatorOptions.cs(179,38): error CS0019: Operator \u0027??\u0027 cannot be applied to operands of type \u0027Func\u003CIEnumerable\u003Cstring\u003E, IValidatorSelector\u003E\u0027 and \u0027lambda expression\u0027"
+      ],
+      "fuse": [
+        "src/FluentValidation.Tests/RulesetTests.cs(34,104): error CS0246: The type or namespace name \u0027RulesetValidatorSelector\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/RulesetTests.cs(66,98): error CS0246: The type or namespace name \u0027RulesetValidatorSelector\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/RulesetTests.cs(89,98): error CS0246: The type or namespace name \u0027RulesetValidatorSelector\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/RulesetTests.cs(104,98): error CS0246: The type or namespace name \u0027RulesetValidatorSelector\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation/AbstractValidator.cs(187,30): error CS0103: The name \u0027RulesetValidatorSelector\u0027 does not exist in the current context",
+        "src/FluentValidation/Internal/DefaultValidatorSelector.cs(37,84): error CS0103: The name \u0027RulesetValidatorSelector\u0027 does not exist in the current context",
+        "src/FluentValidation/Internal/ValidationStrategy.cs(73,17): error CS0103: The name \u0027RulesetValidatorSelector\u0027 does not exist in the current context",
+        "src/FluentValidation/Internal/ValidationStrategy.cs(84,17): error CS0103: The name \u0027RulesetValidatorSelector\u0027 does not exist in the current context",
+        "src/FluentValidation/ValidatorOptions.cs(155,100): error CS0246: The type or namespace name \u0027RulesetValidatorSelector\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation/ValidatorOptions.cs(179,38): error CS0019: Operator \u0027??\u0027 cannot be applied to operands of type \u0027Func\u003CIEnumerable\u003Cstring\u003E, IValidatorSelector\u003E\u0027 and \u0027lambda expression\u0027",
+        "src/FluentValidation/Validators/ChildValidatorAdaptor.cs(104,37): error CS0246: The type or namespace name \u0027RulesetValidatorSelector\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation/Validators/PolymorphicValidator.cs(112,15): error CS0246: The type or namespace name \u0027RulesetValidatorSelector\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "fuseCount": 12,
+      "fuseExit": 1,
+      "fuseMilliseconds": 645.7296,
+      "buildSeconds": 2.1681235,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [
+        "src/FluentValidation.Tests/RulesetTests.cs(34,104): error CS0246: The type or namespace name \u0027RulesetValidatorSelector\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/RulesetTests.cs(66,98): error CS0246: The type or namespace name \u0027RulesetValidatorSelector\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/RulesetTests.cs(89,98): error CS0246: The type or namespace name \u0027RulesetValidatorSelector\u0027 could not be found (are you missing a using directive or an assembly reference?)",
+        "src/FluentValidation.Tests/RulesetTests.cs(104,98): error CS0246: The type or namespace name \u0027RulesetValidatorSelector\u0027 could not be found (are you missing a using directive or an assembly reference?)"
+      ],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 10,
+      "outputBytes": 3085,
+      "causeBytes": 699
+    },
+    {
+      "index": 29,
+      "edits": [
+        {
+          "path": "src/FluentValidation/Resources/Languages/FrenchLanguage.cs",
+          "kind": "change-return-type",
+          "description": "changed the return type of FrenchLanguage.GetTranslation from string to object",
+          "newText": null
+        },
+        {
+          "path": "src/FluentValidation.Tests.Benchmarks/Program.cs",
+          "kind": "delete-file",
+          "description": "deleted the file",
+          "newText": null
+        }
+      ],
+      "truth": [
+        "src/FluentValidation/Resources/LanguageManager.cs(59,30): error CS0029: Cannot implicitly convert type \u0027object\u0027 to \u0027string\u0027"
+      ],
+      "fuse": [
+        "src/FluentValidation/Resources/LanguageManager.cs(59,30): error CS0029: Cannot implicitly convert type \u0027object\u0027 to \u0027string\u0027"
+      ],
+      "fuseCount": 1,
+      "fuseExit": 1,
+      "fuseMilliseconds": 154.9011,
+      "buildSeconds": 1.81097,
+      "verdict": "agree",
+      "falseRed": [],
+      "missed": [],
+      "unverifiable": [],
+      "deferredByCompiler": [],
+      "messageMismatch": [],
+      "fileAgreement": true,
+      "note": null,
+      "causeLines": 1,
+      "outputBytes": 349,
+      "causeBytes": 58
+    }
+  ]
+}

@@ -20,12 +20,12 @@
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 24.6x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 7.0x to 31.0x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Architecture">
 <meta name="twitter:description" content="How Fuse's code is organized: its layers, which namespace may use which, the order to read it in, and the words its types are named with.">
 <meta name="twitter:image" content="https://fuse.codes/assets/og.png">
-<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit up to 24.6x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 7.0x to 31.0x faster than dotnet build. dotnet tool install -g Fuse.">
 <link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
 <link rel="icon" href="../assets/fuse-icon.svg" type="image/svg+xml" sizes="any">
 <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -269,7 +269,7 @@
           <tr><th scope="row"><code>Reach</code></th><td><code>None</code> (no declaration change), <code>Broad(IReadOnlySet&lt;RepoPath&gt;)</code> (every file in the reached projects), <code>Precise(IReadOnlyDictionary&lt;RepoPath, Cause&gt;)</code></td></tr>
           <tr><th scope="row"><code>Cause</code></th><td><code>Changed(declaration)</code>, <code>Removed(declaration as it was at HEAD)</code></td></tr>
           <tr><th scope="row"><code>IntroducedError</code></th><td><code>CompilerError</code>, <code>Cause?</code>, and <code>IsCauseLeftOut</code> when the cap on causes left its cause out</td></tr>
-          <tr><th scope="row"><code>CheckResult</code></th><td>introduced errors, files checked, the projects the errors are in, projects with declaration changes, dependents checked, whether whole projects were checked</td></tr>
+          <tr><th scope="row"><code>CheckResult</code></th><td>introduced errors, files checked, the projects the errors are in, projects with declaration changes, dependents checked, whether whole projects were checked, and how many errors were found in how many files before the cap</td></tr>
         </tbody>
       </table>
     </div>
@@ -292,8 +292,10 @@
         <tbody>
           <tr><th scope="row"><code>TestScope</code></th><td><code>Affected</code>, <code>All</code></td></tr>
           <tr><th scope="row"><code>TestSelection</code></th><td><code>Whole(reason)</code>, <code>Methods(ImmutableHashSet&lt;string&gt; patterns)</code></td></tr>
+          <tr><th scope="row"><code>RunFilter</code></th><td>VSTest filter expression, its number of patterns, <code>FilterCollapse</code></td></tr>
+          <tr><th scope="row"><code>FilterCollapse</code></th><td><code>None</code>, <code>ToClasses</code>, <code>ToWholeProject</code></td></tr>
           <tr><th scope="row"><code>RunMode</code></th><td><code>Shadow(assembly)</code>, <code>Build</code></td></tr>
-          <tr><th scope="row"><code>PlannedRun</code></th><td>test project, name, <code>RunMode</code>, filter, whether it uses Microsoft.Testing.Platform</td></tr>
+          <tr><th scope="row"><code>PlannedRun</code></th><td>test project, name, <code>RunMode</code>, filter, whether it uses Microsoft.Testing.Platform, the project's runsettings file</td></tr>
           <tr><th scope="row"><code>TestPlanResult</code></th><td>one <code>PlannedRun</code> per run, selected and total test counts, summary</td></tr>
         </tbody>
       </table>
@@ -307,9 +309,9 @@
       <li><code>MemberWalk</code>: the member-level refinement within its budget of 300 symbols and 8 seconds. It also seeds both walks: it finds each changed file's changed declarations with <code>CodeDiff</code>, selects the ones in test projects at once, and selects the test projects behind an application whole when its top-level statements change.</li>
       <li><code>HostRule</code>: application code reached through an application host selects every test project that depends on the application. It decides which members an application host or a framework calls (<code>IsEntryPoint</code>, <code>IsFrameworkInvoked</code>, <code>IsCalledByHost</code>) and which test projects that selects (<code>DependentTestProjects</code>).</li>
       <li><code>TestSelector</code>: chooses between the walks and merges their selections. The class-level answer is the projects the seeds selected whole, overlaid by the type walk, whose whole selections replace the seeds' reasons. The member walk's answer replaces it only when at most 40 test classes are reachable and the walk finishes, and then a project the seeds selected whole keeps the class-level answer's reason, so the summary does not depend on which answer was returned. <code>SelectionBuilder</code> holds one walk's selections while it runs.</li>
-      <li><code>TestFilter</code>: builds the VSTest filter for a <code>TestSelection</code> and collapses it when it grows past 8,000 characters, to class prefixes and then to no filter.</li>
-      <li><code>ShadowEmitter</code>: prepares a shadow run and returns <code>RunMode.Shadow</code>, or returns <code>RunMode.Build</code> when a shadow run is not safe.</li>
-      <li><code>TestPlanner</code>: turns the selections into a <code>TestPlanResult</code>, with <code>TestCounter</code> counting tests from source for the summary, and records the <code>sync</code>, <code>selection</code> and <code>mirror</code> phases.</li>
+      <li><code>TestFilter</code>: builds the VSTest filter for a <code>TestSelection</code> as a <code>RunFilter</code>, and collapses it when the selection has more than 2,000 patterns, to class prefixes and then to no filter (<code>FilterCollapse</code>). The client writes it into a runsettings file with <code>Dotnet.RunSettingsFile</code>.</li>
+      <li><code>ShadowEmitter</code>: prepares a shadow run and returns <code>RunMode.Shadow</code>, or returns <code>RunMode.Build</code> when a shadow run is not safe. One emitter serves every plan: <code>EmitCache</code> keeps each emitted image (<code>EmittedImage</code>) per build output path, reused while the project's dependent version and the write time of its build output stay the same, and the emitter does not copy build output over a shadow file it is about to emit, or write an image that is already in place.</li>
+      <li><code>TestPlanner</code>: turns the selections into a <code>TestPlanResult</code> in two parts, with <code>TestCounter</code> counting tests from source for the summary. <code>SelectAsync</code> runs under the request lock, records the <code>sync</code> and <code>selection</code> phases, and returns a <code>PendingPlan</code> that holds the snapshot it selected from. <code>PrepareAsync</code> runs after the lock is released, one plan at a time, prepares the shadow runs from that snapshot, and records the <code>mirror</code> and <code>emit</code> phases.</li>
     </ol>
 
     <h2 id="workspace-and-sources">Workspace and sources <a class="anchor" href="#workspace-and-sources" aria-label="Link to this section">#</a></h2>
@@ -358,7 +360,8 @@
     <p><code>Fuse.Engine.Client</code> holds <code>EngineClient</code>, which finds, starts and calls the engine, and <code>EngineLauncher</code>, which starts it detached from the caller. <code>EngineVersion</code> is in <code>Fuse.Protocol</code>, because the build id it defines is part of every request. The build id is the product version and the module id of <code>fuse.dll</code>. The native client is compiled separately from the same sources and has a module id of its own, so it reads the module id of the <code>fuse.dll</code> installed with it (<code>EngineVersion.ManagedDirectory</code>) instead, and the engine it starts from that <code>fuse.dll</code> reports the same id (D14). <code>EngineVersion.IsNativeClient</code> is <code>RuntimeFeature.IsDynamicCodeSupported</code> negated; <code>Program</code> reads that feature switch directly for <code>fuse engine</code>, because the native compiler treats it as a constant only there, and so leaves the engine, Roslyn and MSBuild out of the native client.</p>
     <p>The engine process is <code>EngineServer</code>, the pipe server, and four classes behind it:</p>
     <ul>
-      <li><code>RequestRouter</code>: initialization and routing a request to its feature.</li>
+      <li><code>RequestRouter</code>: initialization and routing a request to its feature. A check holds the request lock until it is answered; a test plan holds it through the sync and the selection (<code>TestPlanner.SelectAsync</code>) and releases it before its shadow preparation (<code>TestPlanner.PrepareAsync</code>).</li>
+      <li><code>RequestGate</code>: the request lock. It admits one holder at a time and tells each request what held the lock longest while it waited: a request's case, <code>Preload</code> or <code>Initialization</code>, which the phase line writes as <code>gateHolder</code>.</li>
       <li><code>Preloader</code>: the background load of dependents, one load at a time, and the projects that failed to preload, each tried again once the projects reload or a restore writes a <code>project.assets.json</code> in its closure.</li>
       <li><code>RequestLog</code>: the log line and the phase line per request, both naming the request by its case (<code>CheckChanges</code>, <code>CheckFiles</code>, <code>PlanAffectedTests</code>, <code>PlanAllTests</code>), which the phase line writes as its <code>kind</code>.</li>
       <li><code>ResponseMapper</code>: <code>CheckResult</code> and <code>TestPlanResult</code> to <code>Protocol</code> records, and <code>FuseException</code> to an unanswered response.</li>

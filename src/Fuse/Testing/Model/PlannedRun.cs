@@ -14,4 +14,8 @@ namespace Fuse.Testing.Model;
 ///     True when the project runs on Microsoft.Testing.Platform, which takes different arguments. Such a project always
 ///     builds with MSBuild and runs whole, because its filters differ per test framework.
 /// </param>
-internal sealed record PlannedRun(RepoPath Project, string Name, RunMode Mode, string? Filter, bool UsesTestingPlatform);
+/// <param name="RunSettings">
+///     The absolute path of the project's own runsettings file (<c>RunSettingsFilePath</c>), which the client merges with
+///     <paramref name="Filter"/>; null when the project names none or runs on Microsoft.Testing.Platform.
+/// </param>
+internal sealed record PlannedRun(RepoPath Project, string Name, RunMode Mode, string? Filter, bool UsesTestingPlatform, string? RunSettings);

@@ -14,7 +14,7 @@ internal sealed class Cursor : Harness
 
     public override bool IsUsedIn(RepoRoot root) => HasAny(root, ".cursor");
 
-    public override string RegisterHooks(RepoRoot root)
+    public override WrittenFile RegisterHooks(RepoRoot root)
     {
         var path = Path.Combine(root.Path, ".cursor", "hooks.json");
         var settings = SettingsFile.Read(root, path);

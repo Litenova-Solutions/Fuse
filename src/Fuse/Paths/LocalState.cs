@@ -56,13 +56,28 @@ internal static partial class LocalState
     }
 
     /// <summary>
-    ///     Records which repository <paramref name="root"/>'s state directory belongs to, so a later cleanup can tell when
-    ///     the repository is gone.
+    ///     Creates <paramref name="root"/>'s state directory if needed and records which repository it belongs to, so a
+    ///     later cleanup can tell when the repository is gone. Every process that creates the directory calls this: a
+    ///     client that only builds or a hook that only logs leaves a directory the cleanup must be able to remove too.
     /// </summary>
+    /// <remarks>
+    ///     The directory's name derives from the root, so the recorded text never changes once written. Writing it is best
+    ///     effort: another process may be writing the same text, and a directory that cannot be written is reported by
+    ///     whatever the caller writes next.
+    /// </remarks>
     public static void RecordRoot(RepoRoot root)
     {
         System.IO.Directory.CreateDirectory(root.StateDirectory);
-        File.WriteAllText(Path.Combine(root.StateDirectory, RootFile), root.Path);
+        var recorded = Path.Combine(root.StateDirectory, RootFile);
+        if (File.Exists(recorded))
+            return;
+        try
+        {
+            File.WriteAllText(recorded, root.Path);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+        }
     }
 
     /// <summary>

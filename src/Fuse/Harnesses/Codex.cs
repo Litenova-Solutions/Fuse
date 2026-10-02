@@ -14,7 +14,7 @@ internal sealed class Codex : Harness
 
     public override bool IsUsedIn(RepoRoot root) => HasAny(root, ".codex");
 
-    public override string RegisterHooks(RepoRoot root)
+    public override WrittenFile RegisterHooks(RepoRoot root)
     {
         var path = Path.Combine(root.Path, ".codex", "hooks.json");
         var settings = SettingsFile.Read(root, path);

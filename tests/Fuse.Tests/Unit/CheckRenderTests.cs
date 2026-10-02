@@ -9,7 +9,7 @@ public class CheckRenderTests
     [Fact]
     public void Clean_report_says_so_with_its_summary()
     {
-        var result = CheckOperation.Render(new CheckReport([], 3, [], ["Lib"], 2, false));
+        var result = CheckOperation.Render(new CheckReport([], 3, [], ["Lib"], 2, false, 0, 0));
         Assert.Equal(0, result.ExitCode);
         Assert.Equal("fuse: no errors introduced (3 file(s) checked; Lib declarations changed, 2 dependent project(s) checked)", result.Text);
     }
@@ -20,12 +20,23 @@ public class CheckRenderTests
         var errors = Enumerable.Range(1, 25)
             .Select(i => new ReportedError(new CompilerError($"src/F{i}.cs", i, 2, "CS0103", "The name 'x' does not exist in the current context")))
             .ToArray();
-        var result = CheckOperation.Render(new CheckReport(errors, 25, ["App"], [], 0, false));
+        var result = CheckOperation.Render(new CheckReport(errors, 25, ["App"], [], 0, false, 25, 25));
         Assert.Equal(1, result.ExitCode);
         var lines = result.Text.Split('\n');
         Assert.Equal(21, lines.Length);
         Assert.Equal("src/F1.cs(1,2): error CS0103: The name 'x' does not exist in the current context", lines[0]);
         Assert.Equal("fuse: 25 error(s) introduced in 25 file(s), first 20 shown (App)", lines[^1]);
+    }
+
+    [Fact]
+    public void The_summary_counts_every_error_found_not_only_the_capped_ones_sent()
+    {
+        // The engine sends at most 200 errors; the summary still counts all 602, in their 3 files.
+        var errors = Enumerable.Range(1, 200)
+            .Select(i => new ReportedError(new CompilerError(i == 1 ? "src/A.cs" : "src/B.cs", i, 1, "CS1061", "no Multiply")))
+            .ToArray();
+        var result = CheckOperation.Render(new CheckReport(errors, 4, ["App", "Tests"], [], 0, false, 602, 3));
+        Assert.Equal("fuse: 602 error(s) introduced in 3 file(s), first 20 shown (App, Tests)", result.Text.Split('\n')[^1]);
     }
 
     [Fact]
@@ -38,7 +49,7 @@ public class CheckRenderTests
                 : new ReportedError(new CompilerError($"src/F{i}.cs", 1, 1, "CS1061", "no Add"), IsCauseLeftOut: true))
             .ToArray();
 
-        var result = CheckOperation.Render(new CheckReport(errors, 25, ["App"], ["Lib"], 1, false));
+        var result = CheckOperation.Render(new CheckReport(errors, 25, ["App"], ["Lib"], 1, false, 25, 25));
 
         Assert.EndsWith("; 10 cause(s) left out", result.Text.Split('\n')[^1], StringComparison.Ordinal);
     }
@@ -54,7 +65,7 @@ public class CheckRenderTests
             new(new CompilerError("App/Other.cs", 9, 1, "CS1061", "no Add"), IsCauseLeftOut: true),
         ];
 
-        var result = CheckOperation.Render(new CheckReport(errors, 640, ["App", "Lib"], ["Lib"], 2, true));
+        var result = CheckOperation.Render(new CheckReport(errors, 640, ["App", "Lib"], ["Lib"], 2, true, 4, 4));
 
         Assert.Equal(1, result.ExitCode);
         Assert.Equal(

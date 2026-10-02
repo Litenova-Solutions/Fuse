@@ -34,7 +34,7 @@ internal sealed class Checker
 {
     private const int MaxReported = 200;
 
-    private static readonly CheckResult NoTargets = new([], 0, [], [], 0, false);
+    private static readonly CheckResult NoTargets = new([], 0, [], [], 0, false, 0, 0);
 
     private readonly RepoWorkspace _workspace;
     private readonly TargetResolver _targets;
@@ -132,7 +132,9 @@ internal sealed class Checker
             projects,
             [.. changedIn.Select(p => p.Name)],
             dependents.Count,
-            wholeProjects);
+            wholeProjects,
+            ordered.Count,
+            ordered.Select(d => d.Path).Distinct(StringComparer.Ordinal).Count());
     }
 
     private static List<ProjectNode> OwnersOf(RepoGraph graph, IEnumerable<RepoPath> paths) =>

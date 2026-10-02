@@ -188,7 +188,7 @@ fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations chan
       <li><strong>Cause lines</strong>, indented by two spaces under an error in a file the check reached because of a declaration change: <code>changed:</code> and the changed declaration as the working tree has it, or <code>removed:</code> and the removed declaration as HEAD had it, on one line without its body. A field is quoted as its modifiers, type and name, as in <code>changed: public long Limit</code>, and a constant with its value. An error in a checked file itself and an analyzer error get no cause line. When any change in the check can break code without naming it (a type header, a delegate, a global using or an assembly attribute), no error in the answer gets one. An answer holds at most ten.</li>
       <li><strong>The summary line</strong>, last, in one of two forms:
         <ul>
-          <li><code>fuse: N error(s) introduced in M file(s)</code>, followed by <code>, first 20 shown</code> when N is over 20, and the projects the errors are in, in parentheses.</li>
+          <li><code>fuse: N error(s) introduced in M file(s)</code>, followed by <code>, first 20 shown</code> when N is over 20, and the projects the errors are in, in parentheses. N, M and the projects count every error the check found, including those past the 200 the engine returns.</li>
           <li><code>fuse: no errors introduced (F file(s) checked)</code>, where F counts the checked files and the files the check reached.</li>
         </ul>
       </li>

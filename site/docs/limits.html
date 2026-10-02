@@ -147,7 +147,7 @@
       <li><strong>Warnings.</strong> A check reports errors only: compiler errors, warnings the project treats as errors, and analyzer diagnostics configured as errors.</li>
       <li><strong>Matching.</strong> An error counts as introduced when HEAD has fewer errors in the same file with the same id and message. An edit that removes one error and causes an identical one in the same file reports nothing.</li>
       <li><strong>Differences from the build's wording.</strong> The build compiles a dependent project against reference assemblies, which leave out private members, while Fuse compiles against the source. After a member is made private, the build says "does not contain a definition" and Fuse says "is inaccessible due to its protection level", at the same position. This difference is behind the one error Fuse missed in the <a href="benchmarks.html#reading-the-numbers">benchmarks</a>.</li>
-      <li><strong>Output limits.</strong> An answer holds at most 200 errors, of which the command prints 20, and at most ten cause lines. What to do: fix what is printed and check again, or run <code>fuse build</code> for the full list.</li>
+      <li><strong>Output limits.</strong> An answer holds at most 200 errors, of which the command prints 20, and at most ten cause lines; its summary line still counts every error found. What to do: fix what is printed and check again, or run <code>fuse build</code> for the full list.</li>
     </ul>
 
     <h2 id="test-selection">Test selection <a class="anchor" href="#test-selection" aria-label="Link to this section">#</a></h2>

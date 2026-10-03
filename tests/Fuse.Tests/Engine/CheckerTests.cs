@@ -413,7 +413,7 @@ public class CheckerTests
     }
 
     [Fact]
-    public async Task A_file_two_changes_reach_gets_the_cause_of_the_change_in_the_first_path()
+    public async Task A_file_two_changes_reach_names_under_each_error_the_change_it_is_about()
     {
         await using var engine = await InProcessEngine.StartAsync();
         // App/Program.cs calls both Calc.Add and IGreeter.Greet, so both changes reach it.
@@ -421,13 +421,16 @@ public class CheckerTests
         engine.Repo.Replace("Lib/Greeting.cs", "string Greet(string name);", "string Greet(string name, bool loud);");
         var addRemoved = new Cause.Removed("public int Add(int a, int b)");
 
-        // A file has one cause, so both of Program.cs's errors (the missing argument and the missing Add) name it.
+        // Each of Program.cs's errors names the change its message is about: the missing argument names Greet, the
+        // missing Add names Add.
         var report = await engine.CheckAllAsync();
         var inProgram = report.Errors.Where(e => e.Error.Path == "App/Program.cs").ToList();
         Assert.Equal(2, inProgram.Count);
-        Assert.All(inProgram, e => Assert.Equal(addRemoved, e.Cause));
+        Assert.Equal(addRemoved, Assert.Single(inProgram, e => e.Error.Id == "CS1061").Cause);
+        Assert.Equal(new Cause.Removed("string Greet(string name)"), Assert.Single(inProgram, e => e.Error.Id == "CS7036").Cause);
 
-        // The order the targets arrive in does not decide it: Lib/Calc.cs comes before Lib/Greeting.cs by path.
+        // An error that names neither gets the first change in path order, and the order the targets arrive in does not
+        // decide which that is: Lib/Calc.cs comes before Lib/Greeting.cs by path.
         var precise = Assert.IsType<Reach.Precise>(await engine.ReachAsync("Lib/Greeting.cs", "Lib/Calc.cs"));
         Assert.Equal(addRemoved, precise.Causes[engine.Repo.PathOf("App/Program.cs")]);
     }

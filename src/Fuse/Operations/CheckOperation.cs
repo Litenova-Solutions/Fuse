@@ -12,13 +12,19 @@ internal static class CheckOperation
     private const int MaxShown = 20;
 
     /// <param name="files">Absolute paths of the files to check, or null for every change.</param>
+    /// <param name="session">
+    ///     The session that just wrote <paramref name="files"/>, as its harness identifies it, or null. With one, the answer
+    ///     leaves out the errors other sessions' edits caused without it. Ignored when <paramref name="files"/> is null.
+    /// </param>
     /// <param name="waitForLoad">Wait for the engine to finish loading, or return immediately with <see cref="ErrorCode.Loading"/>.</param>
     /// <param name="timeout">How long to wait for the answer.</param>
     /// <param name="cancellationToken">Cancels the check.</param>
     public static async Task<(OperationResult Result, EngineResponse Response)> RunAsync(
-        RepoRoot root, IReadOnlyList<string>? files, bool waitForLoad, TimeSpan timeout, CancellationToken cancellationToken)
+        RepoRoot root, IReadOnlyList<string>? files, string? session, bool waitForLoad, TimeSpan timeout, CancellationToken cancellationToken)
     {
-        EngineRequest request = files is null ? new EngineRequest.CheckChanges(waitForLoad) : new EngineRequest.CheckFiles(files, waitForLoad);
+        EngineRequest request = files is null
+            ? new EngineRequest.CheckChanges(waitForLoad)
+            : new EngineRequest.CheckFiles(files, waitForLoad) { Session = session };
         var response = await EngineClient.SendAsync(root, request, timeout, cancellationToken).ConfigureAwait(false);
         if (response is not EngineResponse.CheckAnswered answered)
             return (OperationResult.Unanswered(response, "check result"), response);
@@ -72,11 +78,15 @@ internal static class CheckOperation
         var causesLeftOut = report.Errors.Take(MaxShown).Count(e => e.IsCauseLeftOut);
         if (causesLeftOut > 0)
             summaryParts.Add($"{causesLeftOut} cause(s) left out");
+        // Only an answer to a session leaves errors to other sessions; the session is told they exist, not what they are.
+        if (report.LeftToOtherSessions > 0)
+            summaryParts.Add($"{report.LeftToOtherSessions} error(s) from other sessions' edits left out");
         var summaryTail = summaryParts.Count > 0 ? "; " + string.Join("; ", summaryParts) : "";
 
         if (report.ErrorCount == 0)
         {
-            text.Append($"fuse: no errors introduced ({report.FilesChecked} file(s) checked{summaryTail})");
+            var whose = report.LeftToOtherSessions > 0 ? " by this session's edits" : "";
+            text.Append($"fuse: no errors introduced{whose} ({report.FilesChecked} file(s) checked{summaryTail})");
             return new OperationResult(Outcome.Clean, text.ToString());
         }
 

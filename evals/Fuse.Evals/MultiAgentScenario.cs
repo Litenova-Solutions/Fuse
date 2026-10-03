@@ -29,13 +29,14 @@ internal sealed record MultiAgentBuilds(int Clients, int Rounds, double WallMs, 
 /// <summary>One verify round: the project the edit was in, how long the test run took, and the test projects it ran.</summary>
 internal sealed record MultiAgentRound(int Index, string Project, string Edit, double Ms, List<string> TestProjects, int FailingTests);
 
-/// <summary>All three scenarios, as the latency result file's <c>multiAgent</c> object.</summary>
-internal sealed record MultiAgentResult(MultiAgentWriters Writers, MultiAgentBuilds Builds, List<MultiAgentRound> Rounds);
+/// <summary>All four scenarios, the last from <see cref="AttributionSuite"/>, as the latency result file's <c>multiAgent</c> object.</summary>
+internal sealed record MultiAgentResult(MultiAgentWriters Writers, MultiAgentBuilds Builds, List<MultiAgentRound> Rounds, AttributionPair? Attribution);
 
 /// <summary>
-///     The three multi-agent scenarios: several agents checking at once, several builds at once, and
-///     three verify rounds over two projects. They answer whether a check queue is worth coalescing and whether a test
-///     project is rerun for an edit that cannot reach it.
+///     The four multi-agent scenarios: several agents checking at once, several builds at once, three verify rounds over
+///     two projects, and two writers whose breaking changes reach each other. They answer whether a check queue is worth
+///     coalescing, whether a test project is rerun for an edit that cannot reach it, and whether a writer is told about
+///     another writer's errors.
 /// </summary>
 internal static partial class MultiAgentScenario
 {
@@ -46,15 +47,17 @@ internal static partial class MultiAgentScenario
 
     private static readonly string[] CollisionIds = ["MSB3021", "MSB3026", "MSB3027", "CS2012"];
 
-    /// <summary>Runs the three scenarios against <paramref name="repo"/> and restores every file it edits.</summary>
+    /// <summary>Runs the four scenarios against <paramref name="repo"/> and restores every file it edits.</summary>
     public static async Task<MultiAgentResult> RunAsync(EvalRepo repo, SolutionInfo solution, double singleClientTotalP50)
     {
         var targets = EditablePerProject(solution, text => TextEdit(text, "1")).Take(Writers).Select(t => t.File).ToList();
         var writers = await WritersAsync(repo, targets, singleClientTotalP50);
         var builds = await BuildsAsync(repo);
         var rounds = await RoundsAsync(repo, solution);
-        return new MultiAgentResult(writers, builds, rounds);
+        var attribution = (await AttributionSuite.PairsAsync(repo, solution, 1)).FirstOrDefault();
+        return new MultiAgentResult(writers, builds, rounds, attribution);
     }
+
 
     /// <summary>
     ///     One file per non-test project that <paramref name="edit"/> would actually change, ordered by how many test
@@ -313,7 +316,7 @@ internal static partial class MultiAgentScenario
     private static string BodyEdit(string original, int i) => TextEdit(original, i.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
     /// <summary>Adds a statement to the first method body in the file, or returns it unchanged when there is none.</summary>
-    private static string TextEdit(string text, string i)
+    internal static string TextEdit(string text, string i)
     {
         var root = CSharpSyntaxTree.ParseText(text).GetRoot();
         var method = root.DescendantNodes().OfType<MethodDeclarationSyntax>().FirstOrDefault(m => m.Body is { Statements.Count: > 0 });

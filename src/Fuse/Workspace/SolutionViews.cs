@@ -145,6 +145,21 @@ internal sealed class SolutionViews
         }
     }
 
+    /// <summary>
+    ///     <see cref="Current"/> with each of <paramref name="paths"/> at its HEAD content, and a file HEAD does not have
+    ///     left out. Neither view changes; the result shares every other document with <see cref="Current"/>, so only the
+    ///     projects that compile those files bind again.
+    /// </summary>
+    /// <param name="paths">The files to put back at HEAD content.</param>
+    /// <param name="cancellationToken">Cancels reading file contents.</param>
+    public async Task<Solution> CurrentWithHeadContentAsync(IEnumerable<RepoPath> paths, CancellationToken cancellationToken)
+    {
+        var solution = Current;
+        foreach (var path in paths)
+            solution = await WithHeadContentAsync(solution, path, cancellationToken).ConfigureAwait(false);
+        return solution;
+    }
+
     /// <summary>The files of the documents and additional documents <see cref="Current"/> holds under <paramref name="directory"/>.</summary>
     public IEnumerable<RepoPath> FilesUnder(RepoPath directory) =>
         Current.Projects.SelectMany(p => p.Documents.Concat<TextDocument>(p.AdditionalDocuments))

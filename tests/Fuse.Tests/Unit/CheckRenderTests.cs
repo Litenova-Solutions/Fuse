@@ -9,7 +9,7 @@ public class CheckRenderTests
     [Fact]
     public void Clean_report_says_so_with_its_summary()
     {
-        var result = CheckOperation.Render(new CheckReport([], 3, [], ["Lib"], 2, false, 0, 0));
+        var result = CheckOperation.Render(new CheckReport([], 3, [], ["Lib"], 2, false, 0, 0, 0));
         Assert.Equal(0, result.ExitCode);
         Assert.Equal("fuse: no errors introduced (3 file(s) checked; Lib declarations changed, 2 dependent project(s) checked)", result.Text);
     }
@@ -20,7 +20,7 @@ public class CheckRenderTests
         var errors = Enumerable.Range(1, 25)
             .Select(i => new ReportedError(new CompilerError($"src/F{i}.cs", i, 2, "CS0103", "The name 'x' does not exist in the current context")))
             .ToArray();
-        var result = CheckOperation.Render(new CheckReport(errors, 25, ["App"], [], 0, false, 25, 25));
+        var result = CheckOperation.Render(new CheckReport(errors, 25, ["App"], [], 0, false, 25, 25, 0));
         Assert.Equal(1, result.ExitCode);
         var lines = result.Text.Split('\n');
         Assert.Equal(21, lines.Length);
@@ -35,7 +35,7 @@ public class CheckRenderTests
         var errors = Enumerable.Range(1, 200)
             .Select(i => new ReportedError(new CompilerError(i == 1 ? "src/A.cs" : "src/B.cs", i, 1, "CS1061", "no Multiply")))
             .ToArray();
-        var result = CheckOperation.Render(new CheckReport(errors, 4, ["App", "Tests"], [], 0, false, 602, 3));
+        var result = CheckOperation.Render(new CheckReport(errors, 4, ["App", "Tests"], [], 0, false, 602, 3, 0));
         Assert.Equal("fuse: 602 error(s) introduced in 3 file(s), first 20 shown (App, Tests)", result.Text.Split('\n')[^1]);
     }
 
@@ -49,7 +49,7 @@ public class CheckRenderTests
                 : new ReportedError(new CompilerError($"src/F{i}.cs", 1, 1, "CS1061", "no Add"), IsCauseLeftOut: true))
             .ToArray();
 
-        var result = CheckOperation.Render(new CheckReport(errors, 25, ["App"], ["Lib"], 1, false, 25, 25));
+        var result = CheckOperation.Render(new CheckReport(errors, 25, ["App"], ["Lib"], 1, false, 25, 25, 0));
 
         Assert.EndsWith("; 10 cause(s) left out", result.Text.Split('\n')[^1], StringComparison.Ordinal);
     }
@@ -65,7 +65,7 @@ public class CheckRenderTests
             new(new CompilerError("App/Other.cs", 9, 1, "CS1061", "no Add"), IsCauseLeftOut: true),
         ];
 
-        var result = CheckOperation.Render(new CheckReport(errors, 640, ["App", "Lib"], ["Lib"], 2, true, 4, 4));
+        var result = CheckOperation.Render(new CheckReport(errors, 640, ["App", "Lib"], ["Lib"], 2, true, 4, 4, 0));
 
         Assert.Equal(1, result.ExitCode);
         Assert.Equal(
@@ -79,5 +79,26 @@ public class CheckRenderTests
                 "fuse: 4 error(s) introduced in 4 file(s) (App, Lib); Lib declarations changed, 2 dependent project(s) checked; checked whole projects; 1 cause(s) left out",
             ],
             result.Text.Split('\n'));
+    }
+
+    [Fact]
+    public void Errors_left_to_other_sessions_are_counted_in_the_summary()
+    {
+        ReportedError[] errors = [new(new CompilerError("App/Program.cs", 2, 28, "CS1061", "no Add"))];
+
+        var result = CheckOperation.Render(new CheckReport(errors, 3, ["App"], ["Lib"], 1, false, 1, 1, 2));
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.EndsWith("; 2 error(s) from other sessions' edits left out", result.Text.Split('\n')[^1], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_session_whose_edits_introduced_nothing_is_answered_clean()
+    {
+        var result = CheckOperation.Render(new CheckReport([], 3, [], [], 0, false, 0, 0, 2));
+
+        // The hook stays silent on a clean answer, so the session is not sent after errors it did not cause.
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("fuse: no errors introduced by this session's edits (3 file(s) checked; 2 error(s) from other sessions' edits left out)", result.Text);
     }
 }

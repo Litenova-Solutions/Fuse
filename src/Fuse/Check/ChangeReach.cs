@@ -123,7 +123,8 @@ internal sealed class ChangeReach
             }
         }
 
-        return new Reach.Precise(await CausesAsync(routes, projects, cancellationToken).ConfigureAwait(false));
+        var causes = await CausesAsync(routes, projects, cancellationToken).ConfigureAwait(false);
+        return new Reach.Precise(causes.ToDictionary(c => c.Key, c => c.Value[0]), causes);
     }
 
     /// <summary>
@@ -190,11 +191,11 @@ internal sealed class ChangeReach
     }
 
     /// <summary>
-    ///     Each file the routes reach, with the cause of the first route that reaches it, so the cause does not depend on
-    ///     the order of any set. A symbol or a type is searched once however many routes name it, and every name is looked
-    ///     for in one pass over the reached projects' documents.
+    ///     Each file the routes reach, with the cause of every route that reaches it, in route order, so the causes do not
+    ///     depend on the order of any set. A symbol or a type is searched once however many routes name it, and every name
+    ///     is looked for in one pass over the reached projects' documents.
     /// </summary>
-    private async Task<Dictionary<RepoPath, Cause>> CausesAsync(IReadOnlyList<Route> routes, IReadOnlyList<Project> projects, CancellationToken cancellationToken)
+    private async Task<Dictionary<RepoPath, IReadOnlyList<Cause>>> CausesAsync(IReadOnlyList<Route> routes, IReadOnlyList<Project> projects, CancellationToken cancellationToken)
     {
         var baseline = _workspace.Baseline;
         var searchedIds = projects.Select(p => p.Id).ToHashSet();
@@ -203,8 +204,15 @@ internal sealed class ChangeReach
         var baselineProjects = baseline.Projects.Where(p => searchedIds.Contains(p.Id)).ToImmutableHashSet();
         var baselineDocuments = baselineProjects.SelectMany(p => p.Documents).ToImmutableHashSet();
 
-        // The index in routes of the first route that reaches each file.
-        var first = new Dictionary<RepoPath, int>();
+        // The indexes in routes of the routes that reach each file.
+        var reachedBy = new Dictionary<RepoPath, SortedSet<int>>();
+        void Add(RepoPath file, int index)
+        {
+            if (!reachedBy.TryGetValue(file, out var indexes))
+                reachedBy[file] = indexes = [];
+            indexes.Add(index);
+        }
+
         var searched = new HashSet<ISymbol>(SymbolEqualityComparer.Default);
         var searchedWithImplementations = new HashSet<ISymbol>(SymbolEqualityComparer.Default);
         var searchedTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
@@ -230,7 +238,7 @@ internal sealed class ChangeReach
             }
 
             foreach (var file in files)
-                first.TryAdd(file, index);
+                Add(file, index);
         }
 
         var byName = routes.Select((route, index) => (Route: route as Route.ByName, Index: index)).Where(r => r.Route is not null).ToList();
@@ -241,17 +249,18 @@ internal sealed class ChangeReach
                 if (document.FilePath is null)
                     continue;
                 var text = (await document.GetTextAsync(cancellationToken).ConfigureAwait(false)).ToString();
-                // The routes are in order, so the first name the text holds belongs to the earliest route that reaches it.
-                var match = byName.FindIndex(r => text.Contains(r.Route!.Name, StringComparison.Ordinal));
-                if (match < 0)
-                    continue;
-                var file = _workspace.Root.PathOf(document.FilePath);
-                if (!first.TryGetValue(file, out var earlier) || byName[match].Index < earlier)
-                    first[file] = byName[match].Index;
+                RepoPath? file = null;
+                foreach (var (route, index) in byName)
+                {
+                    if (!text.Contains(route!.Name, StringComparison.Ordinal))
+                        continue;
+                    file ??= _workspace.Root.PathOf(document.FilePath);
+                    Add(file.Value, index);
+                }
             }
         }
 
-        return first.ToDictionary(f => f.Key, f => routes[f.Value].Cause);
+        return reachedBy.ToDictionary(f => f.Key, IReadOnlyList<Cause> (f) => [.. f.Value.Select(i => routes[i].Cause).Distinct()]);
     }
 
     /// <summary>

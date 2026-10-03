@@ -27,6 +27,10 @@ namespace Fuse.Check;
 ///             Otherwise the dependents of the projects with declaration changes load, <see cref="ChangeReach"/> turns
 ///             the changes into a <see cref="Reach"/>, and <see cref="CandidateBinding"/> binds what it names.
 ///         </item>
+///         <item>
+///             When the check is answered to a session, <see cref="SessionAttribution"/> leaves out the errors other
+///             sessions' edits caused without it.
+///         </item>
 ///         <item><see cref="CauseLines"/> gives each error in a candidate the declaration change that reached it.</item>
 ///     </list>
 /// </remarks>
@@ -34,31 +38,49 @@ internal sealed class Checker
 {
     private const int MaxReported = 200;
 
-    private static readonly CheckResult NoTargets = new([], 0, [], [], 0, false, 0, 0);
+    private static readonly CheckResult NoTargets = new([], 0, [], [], 0, false, 0, 0, 0);
 
     private readonly RepoWorkspace _workspace;
     private readonly TargetResolver _targets;
     private readonly IntroducedErrors _introduced;
     private readonly ChangeReach _reach;
     private readonly CandidateBinding _candidates;
+    private readonly SessionEdits _sessions;
+    private readonly SessionAttribution _attribution;
 
-    public Checker(RepoWorkspace workspace)
+    /// <param name="workspace">The repository's projects and views.</param>
+    /// <param name="sessions">Which sessions wrote each changed file; a check answered to a session reads it.</param>
+    public Checker(RepoWorkspace workspace, SessionEdits sessions)
     {
         _workspace = workspace;
         _targets = new TargetResolver(workspace);
         _introduced = new IntroducedErrors(workspace);
         _reach = new ChangeReach(workspace);
         _candidates = new CandidateBinding(workspace, _introduced);
+        _sessions = sessions;
+        _attribution = new SessionAttribution(workspace, _introduced, sessions);
     }
 
     /// <param name="scope">The files to check, or every change since HEAD.</param>
     /// <param name="phases">Collects how long each phase of this check took; <see cref="PhaseTimes.None"/> collects nothing.</param>
     /// <param name="cancellationToken">Cancels the check.</param>
-    public async Task<CheckResult> CheckAsync(CheckScope scope, PhaseTimes phases, CancellationToken cancellationToken)
+    public Task<CheckResult> CheckAsync(CheckScope scope, PhaseTimes phases, CancellationToken cancellationToken) =>
+        CheckAsync(scope, null, phases, cancellationToken);
+
+    /// <param name="scope">The files to check, or every change since HEAD.</param>
+    /// <param name="session">
+    ///     The session the answer is for, or null to answer with every error. A session is told only the errors its own
+    ///     edits cause, alone or together with other sessions' edits (<see cref="SessionAttribution"/>).
+    /// </param>
+    /// <param name="phases">Collects how long each phase of this check took; <see cref="PhaseTimes.None"/> collects nothing.</param>
+    /// <param name="cancellationToken">Cancels the check.</param>
+    public async Task<CheckResult> CheckAsync(CheckScope scope, string? session, PhaseTimes phases, CancellationToken cancellationToken)
     {
         var syncing = phases.Start();
         await _workspace.SyncAsync(TargetResolver.NamedPaths(scope), cancellationToken).ConfigureAwait(false);
         phases.Add(Phase.Sync, syncing);
+        // A file that matches HEAD again is no longer credited to the sessions that wrote it, whichever check sees it first.
+        _sessions.Forget(_workspace.Tracker.Changed);
 
         var targets = _targets.Resolve(scope);
         // Named files that are all outside every project, or not C# sources, would check nothing and read as a pass.
@@ -118,13 +140,25 @@ internal sealed class Checker
         var ordered = errors.Distinct()
             .OrderBy(d => d.Path, StringComparer.Ordinal).ThenBy(d => d.Line).ThenBy(d => d.Column)
             .ToList();
+        var leftToOthers = 0;
+        if (session is not null)
+        {
+            var attributing = phases.Start();
+            if (await _attribution.ToldAsync(ordered, session, cancellationToken).ConfigureAwait(false) is { } told)
+            {
+                leftToOthers = ordered.Count - told.Count;
+                ordered = told;
+                phases.Add(Phase.Attribution, attributing);
+            }
+        }
+
         var projects = ordered
             .Select(d => graph.OwnersOf(root.PathOf(d.Path)) is [var owner, ..] ? owner.Name : null)
             .OfType<string>()
             .Distinct()
             .ToArray();
         var (compilerMs, analyzerMs) = _introduced.TakeTimings();
-        _workspace.Log($"check: binding {compilerMs} ms, analyzers {analyzerMs} ms (summed over files); {targets.Count} target(s) in {targetsMs} ms, {changedTargets.Count} with declaration changes, {filesChecked} file(s) bound, {timer.ElapsedMilliseconds} ms total{(wholeProjects ? ", whole projects" : "")}");
+        _workspace.Log($"check: binding {compilerMs} ms, analyzers {analyzerMs} ms (summed over files); {targets.Count} target(s) in {targetsMs} ms, {changedTargets.Count} with declaration changes, {filesChecked} file(s) bound, {timer.ElapsedMilliseconds} ms total{(wholeProjects ? ", whole projects" : "")}{(leftToOthers > 0 ? $", {leftToOthers} error(s) left to other sessions" : "")}");
         var reported = CauseLines.Attach([.. ordered.Take(MaxReported)], reach, root, targets);
         return new CheckResult(
             reported,
@@ -134,7 +168,8 @@ internal sealed class Checker
             dependents.Count,
             wholeProjects,
             ordered.Count,
-            ordered.Select(d => d.Path).Distinct(StringComparer.Ordinal).Count());
+            ordered.Select(d => d.Path).Distinct(StringComparer.Ordinal).Count(),
+            leftToOthers);
     }
 
     private static List<ProjectNode> OwnersOf(RepoGraph graph, IEnumerable<RepoPath> paths) =>

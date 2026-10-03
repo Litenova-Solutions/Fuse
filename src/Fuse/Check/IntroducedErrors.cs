@@ -3,6 +3,7 @@ using Fuse.Check.Model;
 using Fuse.Graph;
 using Fuse.Paths;
 using Fuse.Workspace;
+using Microsoft.CodeAnalysis;
 
 namespace Fuse.Check;
 
@@ -43,6 +44,16 @@ internal sealed class IntroducedErrors
         return [.. results];
     }
 
+    /// <summary>
+    ///     The introduced errors in <paramref name="path"/> as <paramref name="view"/> has it, a solution derived from
+    ///     <see cref="RepoWorkspace.Current"/> with some files at another content. A file the view does not hold has none.
+    /// </summary>
+    public async Task<List<CompilerError>> InFileOfAsync(Solution view, RepoPath path, CancellationToken cancellationToken)
+    {
+        var renames = await RenamesAsync(cancellationToken).ConfigureAwait(false);
+        return [.. await InFileAsync(view, path, renames, cancellationToken).ConfigureAwait(false)];
+    }
+
     /// <summary>The introduced errors in every file of <paramref name="node"/>, in each target framework, bound as whole compilations.</summary>
     public async Task<List<CompilerError>> InProjectAsync(ProjectNode node, CancellationToken cancellationToken)
     {
@@ -65,11 +76,12 @@ internal sealed class IntroducedErrors
         return result;
     }
 
-    private async Task<IEnumerable<CompilerError>> InFileAsync(RepoPath path, Dictionary<RepoPath, RepoPath> renames, CancellationToken cancellationToken)
+    private Task<IEnumerable<CompilerError>> InFileAsync(RepoPath path, Dictionary<RepoPath, RepoPath> renames, CancellationToken cancellationToken) =>
+        File.Exists(path.Absolute) ? InFileAsync(_workspace.Current, path, renames, cancellationToken) : Task.FromResult<IEnumerable<CompilerError>>([]);
+
+    private async Task<IEnumerable<CompilerError>> InFileAsync(Solution solution, RepoPath path, Dictionary<RepoPath, RepoPath> renames, CancellationToken cancellationToken)
     {
-        if (!File.Exists(path.Absolute))
-            return [];
-        var current = await _collector.ForFileAsync(_workspace.Current, path, cancellationToken).ConfigureAwait(false);
+        var current = await _collector.ForFileAsync(solution, path, cancellationToken).ConfigureAwait(false);
         if (current.Count == 0)
             return [];
         // A file renamed since HEAD is compared with the errors HEAD had under its old name.

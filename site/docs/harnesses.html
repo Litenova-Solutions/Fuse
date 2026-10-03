@@ -127,6 +127,7 @@
         <li><a href="#codex">Codex</a></li>
         <li><a href="#github-copilot-cli">GitHub Copilot CLI</a></li>
         <li><a href="#opencode">OpenCode</a></li>
+        <li><a href="#sessions">Sessions: several agents in one working tree</a></li>
         <li><a href="#vs-code-agent-mode">VS Code agent mode</a></li>
         <li><a href="#other-mcp-hosts">Other MCP hosts</a></li>
         <li><a href="#running-fuse-init-again">Running fuse init again</a></li>
@@ -384,11 +385,28 @@ fuse: hooks registered; after each edit your agent gets the compiler errors the 
     <h2 id="opencode">OpenCode <a class="anchor" href="#opencode" aria-label="Link to this section">#</a></h2>
     <p>OpenCode runs JavaScript plugins rather than commands, so <code>fuse init</code> writes <code>.opencode/plugins/fuse.js</code>, a plugin that starts <code>fuse hook opencode &lt;event&gt;</code> for each tool event and applies the answer. It carries both plugin formats: OpenCode 2 calls its <code>setup</code> function, and OpenCode 1 calls its <code>server</code> function.</p>
     <ul>
-      <li><strong>post-edit</strong> runs after the <code>edit</code>, <code>write</code>, <code>multiedit</code>, <code>patch</code> and <code>apply_patch</code> tools, and appends the errors to the tool's result, which the agent reads next.</li>
+      <li><strong>post-edit</strong> runs after the <code>edit</code>, <code>write</code>, <code>multiedit</code>, <code>patch</code> and <code>apply_patch</code> tools, sends the tool call's <code>sessionID</code> as <code>session_id</code>, and appends the errors to the tool's result, which the agent reads next.</li>
       <li><strong>pre-shell</strong> runs before the <code>shell</code> and <code>bash</code> tools and sets the rewritten command on the tool's arguments.</li>
       <li><strong>stop</strong> runs when a session finishes a turn (<code>session.execution.succeeded</code> in OpenCode 2, <code>session.idle</code> in OpenCode 1). With errors it sends the agent the stop hook's text as a prompt, once; the next finished turn of that session ends whatever the result.</li>
     </ul>
     <p>The plugin allows 10 seconds for pre-shell, 60 for post-edit and 300 for stop, and treats a failure or a timeout as no answer.</p>
+
+    <h2 id="sessions">Sessions: several agents in one working tree <a class="anchor" href="#sessions" aria-label="Link to this section">#</a></h2>
+    <p>A session is one agent's run as its harness identifies it in a hook's payload. When the post-edit payload names one, the post-edit hook tells that agent only the errors its own edits cause, and leaves out, with a count, the errors other agents' edits in the same working tree caused without it (<a href="how-it-works.html#check">how an error is attributed</a>). Fuse prefixes each id with the harness's name, so two harnesses never share a session. The stop hook checks every change whatever the payload says.</p>
+    <div class="table-scroll" role="region" aria-label="Session id per harness" tabindex="0">
+      <table>
+        <thead><tr><th scope="col">Harness</th><th scope="col">Session id Fuse reads</th><th scope="col">A subagent</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Claude Code</th><td><code>session_id</code>, and <code>agent_id</code> inside a subagent (Claude Code 2.1.69 and later)</td><td>A session of its own: the parent's <code>session_id</code> and its <code>agent_id</code></td></tr>
+          <tr><th scope="row">Cursor</th><td><code>conversation_id</code></td><td>A session of its own: Cursor gives a subagent a conversation of its own</td></tr>
+          <tr><th scope="row">Gemini CLI</th><td><code>session_id</code></td><td>The parent's session: the payload has nothing that tells them apart</td></tr>
+          <tr><th scope="row">Codex</th><td><code>session_id</code>, and <code>agent_id</code> inside a subagent</td><td>A session of its own: the parent's <code>session_id</code> and its <code>agent_id</code></td></tr>
+          <tr><th scope="row">GitHub Copilot CLI</th><td><code>sessionId</code> (<code>session_id</code> in its PascalCase events)</td><td>The parent's session: the payload has nothing that tells them apart</td></tr>
+          <tr><th scope="row">OpenCode</th><td>The tool call's <code>sessionID</code>, which the plugin sends as <code>session_id</code></td><td>A session of its own: OpenCode runs a subagent in a child session with its own id</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>A payload without an id, a blank one, or one longer than 256 characters or holding a control character counts as no session, and the hook reports every error, as it does for a harness that sends none.</p>
 
     <h2 id="vs-code-agent-mode">VS Code agent mode <a class="anchor" href="#vs-code-agent-mode" aria-label="Link to this section">#</a></h2>
     <p>VS Code runs no hooks, so <code>fuse init</code> registers Fuse's MCP server instead. The agent then has three tools, <code>fuse_check</code>, <code>fuse_test</code> and <code>fuse_build</code>, and calls them when it decides to, rather than after every edit.</p>
@@ -497,7 +515,7 @@ fuse: hooks registered; after each edit your agent gets the compiler errors the 
     </ul>
 
     <h2 id="tested-versions">Tested versions <a class="anchor" href="#tested-versions" aria-label="Link to this section">#</a></h2>
-    <p>Fuse 5.0.0 was run by hand end to end with Claude Code 2.1.282 and with OpenCode 2.0.15. Every harness's answers and the files <code>fuse init</code> writes have unit tests. The Cursor, Gemini CLI, Codex and Copilot CLI adapters, and the OpenCode 1 plugin format, follow each harness's documented hook format, and the plugin's JavaScript has no tests of its own.</p>
+    <p>Fuse 5.0.0 was run by hand end to end with Claude Code 2.1.282 and with OpenCode 2.0.15. Fuse 5.2.4's sessions were run end to end with Claude Code 2.1.288, with two sessions at once and with two subagents of one session, and with OpenCode 2.0.21, with up to four sessions at once and with two subagents of one session. Every harness's answers and the files <code>fuse init</code> writes have unit tests. The Cursor, Gemini CLI, Codex and Copilot CLI adapters, and the OpenCode 1 plugin format, follow each harness's documented hook format, and the plugin's JavaScript has no tests of its own.</p>
 
     <nav class="pager" aria-label="Previous and next page">
       <a href="getting-started.html"><span>Previous</span>Getting started</a>

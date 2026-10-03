@@ -9,6 +9,7 @@ namespace Fuse.Protocol;
 /// <param name="CheckedWholeProjects">True when the candidate count exceeded the threshold and whole projects were checked.</param>
 /// <param name="ErrorCount">How many errors the check found, which is more than <paramref name="Errors"/> holds when they were capped.</param>
 /// <param name="ErrorFileCount">How many files those errors are in.</param>
+/// <param name="LeftToOtherSessions">How many errors other sessions' edits caused, left out of the errors and counts above.</param>
 internal sealed record CheckReport(
     ReportedError[] Errors,
     int FilesChecked,
@@ -17,4 +18,5 @@ internal sealed record CheckReport(
     int DependentProjectsChecked,
     bool CheckedWholeProjects,
     int ErrorCount,
-    int ErrorFileCount);
+    int ErrorFileCount,
+    int LeftToOtherSessions);

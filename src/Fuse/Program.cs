@@ -72,7 +72,7 @@ internal static class Program
                 return Print(refusal);
         }
 
-        var (result, _) = await CheckOperation.RunAsync(root, absolute, waitForLoad: true, TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
+        var (result, _) = await CheckOperation.RunAsync(root, absolute, session: null, waitForLoad: true, TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
         return Print(result);
     }
 

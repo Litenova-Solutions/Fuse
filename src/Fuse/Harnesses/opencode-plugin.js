@@ -32,8 +32,12 @@ const rewrite = async (cwd, input) => {
   if (typeof answer?.command === "string") input.command = answer.command;
 };
 
-const check = async (cwd, input) => {
-  const answer = await runHook("post-edit", { cwd, tool_input: input }, 60000);
+// The session id lets Fuse tell this session only the errors its own edits cause when other sessions edit the same
+// working tree. A subagent runs in a child session with an id of its own.
+const check = async (cwd, sessionID, input) => {
+  const payload = { cwd, tool_input: input };
+  if (typeof sessionID === "string" && sessionID) payload.session_id = sessionID;
+  const answer = await runHook("post-edit", payload, 60000);
   return typeof answer?.additionalContext === "string" ? answer.additionalContext : null;
 };
 
@@ -69,7 +73,7 @@ export default {
     });
     await ctx.tool.hook("execute.after", async (event) => {
       if (event.status !== "completed" || !EDIT_TOOLS.has(event.tool)) return;
-      const text = await check(cwd, event.input);
+      const text = await check(cwd, event.sessionID, event.input);
       if (text) event.result = { ...event.result, content: [...(event.result.content ?? []), { type: "text", text }] };
     });
 
@@ -95,7 +99,7 @@ export default {
       },
       "tool.execute.after": async (input, output) => {
         if (!EDIT_TOOLS.has(input.tool)) return;
-        const text = await check(directory, input.args);
+        const text = await check(directory, input.sessionID, input.args);
         if (text) output.output = `${output.output ?? ""}\n\n${text}`;
       },
       event: async ({ event }) => {

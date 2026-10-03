@@ -2,6 +2,30 @@
 
 The list of changes in each release, which the release workflow publishes as the release notes. The [changelog page](https://fuse.codes/docs/changelog) explains each release with its upgrade steps and says which versions are supported. Each release groups its changes as Added, Changed, Removed, Fixed, Security and Documentation, listing only the groups it has. Versions before 5.0.0 are deprecated.
 
+## 5.2.4
+
+Compared with 5.2.3. When several agents share a working tree, each one now hears only about the errors its own edits caused, and the stop hook no longer blames the stopping agent for every error.
+
+Update with `dotnet tool update -g Fuse`. If you use OpenCode, run `fuse init` again so its plugin sends the session id; until you do, OpenCode's post-edit hook reports every error, as before.
+
+### Added
+
+- The post-edit hook reports only the errors your session's edits caused, and says how many it left out. [How it works](https://fuse.codes/docs/how-it-works) explains how Fuse decides whose an error is, and [Limits](https://fuse.codes/docs/limits) lists the cases it cannot separate ([#47](https://github.com/Litenova-Solutions/Fuse/issues/47)).
+- The evals have an attribution suite, light enough to run on one or two repositories, with two agents whose changes break each other's code; the latency suite records one such pair too. [Evals](https://fuse.codes/docs/evals) describes it.
+
+### Changed
+
+- The stop hook's message says another agent may have caused some of the errors. Previously it said `your changes introduced them`.
+- The OpenCode plugin that `fuse init` writes sends the session id to the post-edit hook.
+
+### Fixed
+
+- When several changes reach one file, each error's cause line names the change that error is about. Previously every error in the file showed the same change.
+
+### Documentation
+
+- How it works, Connect your agent, Limits, Commands, Troubleshooting and Architecture describe sessions and attribution.
+
 ## 5.2.3
 
 Compared with 5.2.2. Update with `dotnet tool update -g Fuse`; nothing else needs to change.

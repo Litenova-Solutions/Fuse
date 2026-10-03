@@ -1,0 +1,50 @@
+{
+  "suite": "attribution",
+  "repo": "FluentValidation",
+  "commit": "fa3c160b17796ff67d6aa5ae6c4b05b471f1a791",
+  "fuseBuild": "5.2.4/e17d90a7ab6b4fdb961f0b6c0a40f005",
+  "pairs": [
+    {
+      "renamedIn": "src/FluentValidation/AssemblyScanner.cs",
+      "method": "FindValidatorsInAssembly",
+      "brokenIn": "src/FluentValidation.DependencyInjectionExtensions/ServiceCollectionExtensions.cs",
+      "ownWithoutSessions": 6,
+      "otherWithoutSessions": 2,
+      "ownWithSessions": 6,
+      "otherWithSessions": 0,
+      "leftToOtherSessions": 2,
+      "msWithoutSessions": 94.5975,
+      "msWithSessions": 449.40469999999993
+    },
+    {
+      "renamedIn": "src/FluentValidation/Internal/AccessorCache.cs",
+      "method": "GetCachedAccessor",
+      "brokenIn": "src/FluentValidation.Tests.Benchmarks/AccessorCacheBenchmark.cs",
+      "ownWithoutSessions": 19,
+      "otherWithoutSessions": 3,
+      "ownWithSessions": 19,
+      "otherWithSessions": 0,
+      "leftToOtherSessions": 3,
+      "msWithoutSessions": 55.5415,
+      "msWithSessions": 305.8579
+    }
+  ],
+  "ownWithoutSessions": 25,
+  "otherWithoutSessions": 5,
+  "ownWithSessions": 25,
+  "otherWithSessions": 0,
+  "leftToOtherSessions": 5,
+  "msWithoutSessions": {
+    "p50": 55.5,
+    "p95": 94.6,
+    "max": 94.6,
+    "n": 2
+  },
+  "msWithSessions": {
+    "p50": 305.9,
+    "p95": 449.4,
+    "max": 449.4,
+    "n": 2
+  },
+  "treeCleanAfter": true
+}

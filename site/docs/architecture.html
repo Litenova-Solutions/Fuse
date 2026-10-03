@@ -266,10 +266,10 @@
         <thead><tr><th scope="col">Type</th><th scope="col">Cases or fields</th></tr></thead>
         <tbody>
           <tr><th scope="row"><code>CheckScope</code></th><td><code>AllChanges</code>, <code>Files(IReadOnlyList&lt;RepoPath&gt;)</code></td></tr>
-          <tr><th scope="row"><code>Reach</code></th><td><code>None</code> (no declaration change), <code>Broad(IReadOnlySet&lt;RepoPath&gt;)</code> (every file in the reached projects), <code>Precise(IReadOnlyDictionary&lt;RepoPath, Cause&gt;)</code></td></tr>
+          <tr><th scope="row"><code>Reach</code></th><td><code>None</code> (no declaration change), <code>Broad(IReadOnlySet&lt;RepoPath&gt;)</code> (every file in the reached projects), <code>Precise(IReadOnlyDictionary&lt;RepoPath, Cause&gt;)</code>, with every cause that reaches each file in <code>AllCauses</code></td></tr>
           <tr><th scope="row"><code>Cause</code></th><td><code>Changed(declaration)</code>, <code>Removed(declaration as it was at HEAD)</code></td></tr>
           <tr><th scope="row"><code>IntroducedError</code></th><td><code>CompilerError</code>, <code>Cause?</code>, and <code>IsCauseLeftOut</code> when the cap on causes left its cause out</td></tr>
-          <tr><th scope="row"><code>CheckResult</code></th><td>introduced errors, files checked, the projects the errors are in, projects with declaration changes, dependents checked, whether whole projects were checked, and how many errors were found in how many files before the cap</td></tr>
+          <tr><th scope="row"><code>CheckResult</code></th><td>introduced errors, files checked, the projects the errors are in, projects with declaration changes, dependents checked, whether whole projects were checked, how many errors were found in how many files before the cap, and how many errors were left to other sessions</td></tr>
         </tbody>
       </table>
     </div>
@@ -280,8 +280,9 @@
       <li><code>IntroducedErrors</code>: binds files or whole projects in both views and keeps the errors with no match at HEAD, using <code>DiagnosticCollector</code>, <code>AnalyzerSelector</code> and <code>ErrorDelta</code>, and matches a file renamed since HEAD with its old name.</li>
       <li><code>ChangeReach</code>: turns the declaration changes of the targets, as <code>SurfaceDiff</code> finds them, into a <code>Reach</code>.</li>
       <li><code>CandidateBinding</code>: binds the reached files, or whole projects past 500 candidates.</li>
-      <li><code>CauseLines</code>: attaches causes to errors in candidate files, at most ten per answer.</li>
-      <li><code>Checker</code>: answers one check request, behind the engine's request lock. It syncs the workspace, loads the owners of the targets and later the dependents of the projects with declaration changes, runs steps 1 to 5 in order, records each as a <code>Phase</code>, and returns a <code>CheckResult</code>.</li>
+      <li><code>SessionAttribution</code>: for a check answered to a session, leaves out the errors other sessions' edits caused without it, by binding the files with errors again in views of the current solution with some sessions' files at HEAD content (<code>RepoWorkspace.CurrentWithHeadContentAsync</code>). It reads <code>SessionEdits</code>, the record of which sessions wrote each changed file, which <code>RequestRouter</code> fills from <code>CheckFiles.Session</code> and keeps in <code>sessions.tsv</code> in the state directory.</li>
+      <li><code>CauseLines</code>: attaches causes to errors in candidate files, at most ten per answer, each error getting the cause whose declared name its message quotes.</li>
+      <li><code>Checker</code>: answers one check request, behind the engine's request lock. It syncs the workspace, loads the owners of the targets and later the dependents of the projects with declaration changes, runs steps 1 to 6 in order, records each as a <code>Phase</code>, and returns a <code>CheckResult</code>.</li>
     </ol>
 
     <h2 id="testing">Testing <a class="anchor" href="#testing" aria-label="Link to this section">#</a></h2>
@@ -371,7 +372,7 @@
       <table>
         <thead><tr><th scope="col">Record</th><th scope="col">Cases</th></tr></thead>
         <tbody>
-          <tr><th scope="row"><code>EngineRequest</code>, its case in a <code>request</code> property</th><td><code>Ping</code>, <code>ShutDown</code>, <code>CheckChanges(WaitForLoad)</code>, <code>CheckFiles(Files, WaitForLoad)</code>, <code>PlanAffectedTests</code>, <code>PlanAllTests</code></td></tr>
+          <tr><th scope="row"><code>EngineRequest</code>, its case in a <code>request</code> property</th><td><code>Ping</code>, <code>ShutDown</code>, <code>CheckChanges(WaitForLoad)</code>, <code>CheckFiles(Files, WaitForLoad)</code> with an optional <code>Session</code>, <code>PlanAffectedTests</code>, <code>PlanAllTests</code></td></tr>
           <tr><th scope="row"><code>EngineResponse</code>, its case in a <code>status</code> property</th><td><code>Acknowledged</code> (to <code>Ping</code> and <code>ShutDown</code>), <code>CheckAnswered(Report)</code>, <code>PlanAnswered(Plan)</code>, <code>Unanswered(Code, Message)</code>, <code>Restart</code></td></tr>
         </tbody>
       </table>
@@ -409,6 +410,7 @@
           <tr><th scope="row">Shadow run</th><td>Running a test assembly from a copy of its build output with the changed assemblies emitted into it.</td><td>yes ("without MSBuild")</td><td>fast path, fast build</td></tr>
           <tr><th scope="row">Summary</th><td>The sentence at the end of an answer that says what was done and why.</td><td>no</td><td>scope, message</td></tr>
           <tr><th scope="row">Client</th><td>The process that sent a request.</td><td>no</td><td>caller, agent (the agent is outside Fuse)</td></tr>
+          <tr><th scope="row">Session</th><td>One agent's run as its harness identifies it in a hook payload, prefixed with the harness's name. A subagent the harness identifies on its own is a session of its own.</td><td>yes ("other sessions' edits")</td><td>agent id, writer, owner (for a file's sessions)</td></tr>
           <tr><th scope="row">Native client</th><td>The client compiled ahead of time to native code, which the <code>fuse</code> command is on Windows x64, Linux x64, Linux Arm64 and macOS Arm64.</td><td>no</td><td>AOT client, thin client, native build</td></tr>
           <tr><th scope="row">Phase</th><td>One named, timed part of a request.</td><td>no</td><td>stage, step</td></tr>
           <tr><th scope="row">Configuration generation</th><td>The counter that invalidates everything derived from project configuration.</td><td>no</td><td>loader generation</td></tr>

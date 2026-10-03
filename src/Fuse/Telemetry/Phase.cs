@@ -31,6 +31,12 @@ internal static class Phase
     /// <summary>Binding the candidates, or whole projects past the candidate threshold.</summary>
     public const string BindCandidates = "bindCandidates";
 
+    /// <summary>
+    ///     Deciding which errors other sessions' edits caused, for a check answered to a session while other sessions have
+    ///     written files.
+    /// </summary>
+    public const string Attribution = "attribution";
+
     /// <summary>Selecting the affected tests in each test project.</summary>
     public const string Selection = "selection";
 

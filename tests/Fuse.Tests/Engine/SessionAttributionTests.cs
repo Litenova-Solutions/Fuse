@@ -18,7 +18,7 @@ public class SessionAttributionTests
     public async Task An_error_only_one_sessions_change_causes_is_told_to_that_session_alone()
     {
         await using var engine = await InProcessEngine.StartAsync();
-        BreakAddAndGreet(engine);
+        await BreakAddAndGreetAsync(engine);
 
         var a = await engine.CheckAsSessionAsync("A", "Lib/Calc.cs");
         var b = await engine.CheckAsSessionAsync("B", "Lib/Greeting.cs");
@@ -39,7 +39,7 @@ public class SessionAttributionTests
     public async Task A_check_answered_to_no_session_reports_every_error()
     {
         await using var engine = await InProcessEngine.StartAsync();
-        BreakAddAndGreet(engine);
+        await BreakAddAndGreetAsync(engine);
 
         var result = await engine.CheckAsync("Lib/Calc.cs");
 
@@ -55,6 +55,7 @@ public class SessionAttributionTests
         engine.Repo.Replace("Lib/Calc.cs", "public int Add(", "public int Plus(");
         // An error nobody is credited with; with no other session, there is nothing to leave out.
         engine.Repo.Replace("App/Program.cs", "calc.Add(1, 2));", "calc.Add(1, 2));\nSystem.Console.WriteLine(missingName);");
+        await engine.SyncAsync("Lib/Calc.cs", "App/Program.cs");
 
         var (result, phases) = await CheckAsSessionWithPhasesAsync(engine, "A", "Lib/Calc.cs");
 
@@ -72,6 +73,7 @@ public class SessionAttributionTests
         // a different error; without B's file there is no call.
         engine.Repo.Write("Lib/Helper.cs", "namespace Lib;\n\npublic static class Helper\n{\n    public static int Twice(int x) => 2 * x;\n}\n");
         engine.Repo.Replace("App/Report.cs", "Lib.Formatter.Format(value)", "Lib.Formatter.Format(Lib.Helper.Twice(value, 1))");
+        await engine.SyncAsync("Lib/Helper.cs", "App/Report.cs");
         engine.Sessions.Record("A", [engine.Repo.PathOf("Lib/Helper.cs")]);
         engine.Sessions.Record("B", [engine.Repo.PathOf("App/Report.cs")]);
 
@@ -93,6 +95,7 @@ public class SessionAttributionTests
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * missingFactor;");
         engine.Repo.Replace("Lib/Greeting.cs", "\"Hello \"", "\"Hi \"");
         engine.Repo.Replace("Lib/Formatter.cs", "value.ToString(", "(value + 0).ToString(");
+        await engine.SyncAsync("Lib/Calc.cs", "Lib/Greeting.cs", "Lib/Formatter.cs");
         engine.Sessions.Record("A", [engine.Repo.PathOf("Lib/Calc.cs"), engine.Repo.PathOf("Lib/Greeting.cs")]);
         engine.Sessions.Record("B", [engine.Repo.PathOf("Lib/Calc.cs"), engine.Repo.PathOf("Lib/Formatter.cs")]);
 
@@ -111,9 +114,10 @@ public class SessionAttributionTests
     public async Task An_error_from_an_edit_no_session_is_credited_with_is_told_to_every_session()
     {
         await using var engine = await InProcessEngine.StartAsync();
-        BreakAddAndGreet(engine);
+        await BreakAddAndGreetAsync(engine);
         // Written without a post-edit hook, as a shell command or a generator would.
         engine.Repo.Replace("App/Program.cs", "calc.Add(1, 2));", "calc.Add(1, 2));\nSystem.Console.WriteLine(missingName);");
+        await engine.SyncAsync("App/Program.cs");
 
         var a = await engine.CheckAsSessionAsync("A", "Lib/Calc.cs");
         var b = await engine.CheckAsSessionAsync("B", "Lib/Greeting.cs");
@@ -129,8 +133,9 @@ public class SessionAttributionTests
     public async Task The_check_of_every_change_reports_every_sessions_errors()
     {
         await using var engine = await InProcessEngine.StartAsync();
-        BreakAddAndGreet(engine);
+        await BreakAddAndGreetAsync(engine);
         engine.Repo.Replace("App/Program.cs", "calc.Add(1, 2));", "calc.Add(1, 2));\nSystem.Console.WriteLine(missingName);");
+        await engine.SyncAsync("App/Program.cs");
         await engine.CheckAsSessionAsync("A", "Lib/Calc.cs");
         await engine.CheckAsSessionAsync("B", "Lib/Greeting.cs");
 
@@ -147,13 +152,15 @@ public class SessionAttributionTests
     public async Task A_file_that_matches_HEAD_again_is_no_longer_credited()
     {
         await using var engine = await InProcessEngine.StartAsync();
-        BreakAddAndGreet(engine);
+        await BreakAddAndGreetAsync(engine);
         await engine.CheckAsSessionAsync("B", "Lib/Greeting.cs");
         // B undoes its change, and writes it again without a post-edit hook.
         var greeting = engine.Repo.Read("Lib/Greeting.cs");
         engine.Repo.Replace("Lib/Greeting.cs", "string Hail(string name);", "string Greet(string name);");
+        await engine.SyncAsync("Lib/Greeting.cs");
         await engine.CheckAllAsync();
         engine.Repo.Write("Lib/Greeting.cs", greeting);
+        await engine.SyncAsync("Lib/Greeting.cs");
 
         var a = await engine.CheckAsSessionAsync("A", "Lib/Calc.cs");
 
@@ -162,11 +169,16 @@ public class SessionAttributionTests
         Assert.Equal(0, a.LeftToOtherSessions);
     }
 
-    /// <summary>A renames <c>Calc.Add</c>; B renames the interface's <c>Greet</c>. <c>App/Program.cs</c> calls both.</summary>
-    private static void BreakAddAndGreet(InProcessEngine engine)
+    /// <summary>
+    ///     A renames <c>Calc.Add</c>; B renames the interface's <c>Greet</c>. <c>App/Program.cs</c> calls both. Both files
+    ///     are synced, as each session's own post-edit hook would have synced them, so a check that names only one still
+    ///     sees the other without waiting for the file watcher.
+    /// </summary>
+    private static async Task BreakAddAndGreetAsync(InProcessEngine engine)
     {
         engine.Repo.Replace("Lib/Calc.cs", "public int Add(", "public int Plus(");
         engine.Repo.Replace("Lib/Greeting.cs", "string Greet(string name);", "string Hail(string name);");
+        await engine.SyncAsync("Lib/Calc.cs", "Lib/Greeting.cs");
         engine.Sessions.Record("A", [engine.Repo.PathOf("Lib/Calc.cs")]);
         engine.Sessions.Record("B", [engine.Repo.PathOf("Lib/Greeting.cs")]);
     }

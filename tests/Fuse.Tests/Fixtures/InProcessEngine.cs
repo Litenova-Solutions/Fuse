@@ -54,6 +54,13 @@ internal sealed class InProcessEngine : IAsyncDisposable
         return Checker.CheckAsync(scope, session, PhaseTimes.None, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>
+    ///     Folds the given repository-relative files into both views at once, the way a check that names them does, so a
+    ///     test does not wait for the file watcher to report a file the next check does not name.
+    /// </summary>
+    public Task SyncAsync(params string[] files) =>
+        Workspace.SyncAsync(files.Select(Repo.PathOf), TestContext.Current.CancellationToken);
+
     /// <summary>Checks the same files and returns the phase times the check recorded.</summary>
     public async Task<(CheckResult Result, IReadOnlyList<(string Phase, double Ms)> Phases)> CheckWithPhasesAsync(params string[] files)
     {

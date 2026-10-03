@@ -1,0 +1,50 @@
+{
+  "suite": "attribution",
+  "repo": "NodaTime",
+  "commit": "fcd80e11216ba403ccce0abbcedc41ba37bb352e",
+  "fuseBuild": "5.2.4/e17d90a7ab6b4fdb961f0b6c0a40f005",
+  "pairs": [
+    {
+      "renamedIn": "src/NodaTime/CalendarSystem.cs",
+      "method": "GetHebrewCalendar",
+      "brokenIn": "src/NodaTime.Benchmarks/NodaTimeTests/Calendars/HebrewCalendarBenchmarks.cs",
+      "ownWithoutSessions": 12,
+      "otherWithoutSessions": 3,
+      "ownWithSessions": 12,
+      "otherWithSessions": 0,
+      "leftToOtherSessions": 3,
+      "msWithoutSessions": 116.9595,
+      "msWithSessions": 968.798
+    },
+    {
+      "renamedIn": "src/NodaTime/CalendarSystem.cs",
+      "method": "GetDaysInMonth",
+      "brokenIn": "src/NodaTime.Benchmarks/NodaTimeTests/Calendars/IsoCalendarBenchmarks.cs",
+      "ownWithoutSessions": 20,
+      "otherWithoutSessions": 4,
+      "ownWithSessions": 21,
+      "otherWithSessions": 0,
+      "leftToOtherSessions": 4,
+      "msWithoutSessions": 80.2632,
+      "msWithSessions": 1483.5489
+    }
+  ],
+  "ownWithoutSessions": 32,
+  "otherWithoutSessions": 7,
+  "ownWithSessions": 33,
+  "otherWithSessions": 0,
+  "leftToOtherSessions": 7,
+  "msWithoutSessions": {
+    "p50": 80.3,
+    "p95": 117,
+    "max": 117,
+    "n": 2
+  },
+  "msWithSessions": {
+    "p50": 968.8,
+    "p95": 1483.5,
+    "max": 1483.5,
+    "n": 2
+  },
+  "treeCleanAfter": true
+}

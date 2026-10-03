@@ -29,13 +29,37 @@ internal sealed record MultiAgentBuilds(int Clients, int Rounds, double WallMs, 
 /// <summary>One verify round: the project the edit was in, how long the test run took, and the test projects it ran.</summary>
 internal sealed record MultiAgentRound(int Index, string Project, string Edit, double Ms, List<string> TestProjects, int FailingTests);
 
-/// <summary>All three scenarios, as the latency result file's <c>multiAgent</c> object.</summary>
-internal sealed record MultiAgentResult(MultiAgentWriters Writers, MultiAgentBuilds Builds, List<MultiAgentRound> Rounds);
+/// <summary>
+///     Two writers, each with a breaking change, whose checks reach each other's errors, checked once without sessions and
+///     once as two sessions through the post-edit hook. "Own" errors are the ones a writer's change caused, "other" errors
+///     the ones the other writer's change caused, both counted over the errors the answers print.
+/// </summary>
+/// <param name="RenamedIn">The file where writer A renamed a public method.</param>
+/// <param name="Method">The method A renamed.</param>
+/// <param name="BrokenIn">The file, in another project and calling the method, where writer B added a statement naming nothing.</param>
+/// <param name="OwnWithoutSessions">Own errors in both writers' answers without sessions.</param>
+/// <param name="OtherWithoutSessions">Other errors in both writers' answers without sessions: what a writer was told about the other's edit.</param>
+/// <param name="OwnWithSessions">Own errors in both writers' answers as sessions; the same as without, or attribution lost one.</param>
+/// <param name="OtherWithSessions">Other errors in both writers' answers as sessions.</param>
+/// <param name="LeftToOtherSessions">The errors both answers as sessions counted as left to the other session.</param>
+internal sealed record MultiAgentAttribution(
+    string RenamedIn,
+    string Method,
+    string BrokenIn,
+    int OwnWithoutSessions,
+    int OtherWithoutSessions,
+    int OwnWithSessions,
+    int OtherWithSessions,
+    int LeftToOtherSessions);
+
+/// <summary>All four scenarios, as the latency result file's <c>multiAgent</c> object.</summary>
+internal sealed record MultiAgentResult(MultiAgentWriters Writers, MultiAgentBuilds Builds, List<MultiAgentRound> Rounds, MultiAgentAttribution? Attribution);
 
 /// <summary>
-///     The three multi-agent scenarios: several agents checking at once, several builds at once, and
-///     three verify rounds over two projects. They answer whether a check queue is worth coalescing and whether a test
-///     project is rerun for an edit that cannot reach it.
+///     The four multi-agent scenarios: several agents checking at once, several builds at once, three verify rounds over
+///     two projects, and two writers whose breaking changes reach each other. They answer whether a check queue is worth
+///     coalescing, whether a test project is rerun for an edit that cannot reach it, and whether a writer is told about
+///     another writer's errors.
 /// </summary>
 internal static partial class MultiAgentScenario
 {
@@ -44,17 +68,135 @@ internal static partial class MultiAgentScenario
     private const int Builders = 3;
     private const int BuildRounds = 5;
 
+    /// <summary>The name writer B's statement uses, which nothing declares, so its error names it and no other error does.</summary>
+    private const string MissingName = "fuseEvalMissingName";
+
     private static readonly string[] CollisionIds = ["MSB3021", "MSB3026", "MSB3027", "CS2012"];
 
-    /// <summary>Runs the three scenarios against <paramref name="repo"/> and restores every file it edits.</summary>
+    /// <summary>Runs the four scenarios against <paramref name="repo"/> and restores every file it edits.</summary>
     public static async Task<MultiAgentResult> RunAsync(EvalRepo repo, SolutionInfo solution, double singleClientTotalP50)
     {
         var targets = EditablePerProject(solution, text => TextEdit(text, "1")).Take(Writers).Select(t => t.File).ToList();
         var writers = await WritersAsync(repo, targets, singleClientTotalP50);
         var builds = await BuildsAsync(repo);
         var rounds = await RoundsAsync(repo, solution);
-        return new MultiAgentResult(writers, builds, rounds);
+        var attribution = await AttributionAsync(repo, solution);
+        return new MultiAgentResult(writers, builds, rounds, attribution);
     }
+
+    /// <summary>
+    ///     Writer A renames a public method that a file in another project calls, and writer B adds a statement naming an
+    ///     undeclared variable to that calling file. A's check reaches B's file, and B's check of its own file sees A's
+    ///     break there. Each writer is checked first with <c>fuse check</c>, which names no session, then through the
+    ///     Claude Code post-edit hook with a session id each, B first so both are recorded before the answers that count.
+    ///     Returns null when no method has a caller in another project whose break A's check reports.
+    /// </summary>
+    private static async Task<MultiAgentAttribution?> AttributionAsync(EvalRepo repo, SolutionInfo solution)
+    {
+        foreach (var (renamedIn, method, brokenIn) in AttributionCandidates(solution).Take(5))
+        {
+            var renamedBytes = File.ReadAllBytes(renamedIn);
+            var brokenBytes = File.ReadAllBytes(brokenIn);
+            try
+            {
+                var renamed = RenameMethod(File.ReadAllText(renamedIn), method);
+                var broken = TextEdit(File.ReadAllText(brokenIn), MissingName);
+                if (renamed is null || broken == File.ReadAllText(brokenIn))
+                    continue;
+                await File.WriteAllTextAsync(renamedIn, renamed);
+                await File.WriteAllTextAsync(brokenIn, broken);
+                var ownOfA = $"'{method}'";
+                var relativeBroken = Path.GetRelativePath(repo.Root, brokenIn).Replace('\\', '/');
+
+                var a = EvalRepo.ParseFuseErrors((await repo.FuseTimedAsync("check", renamedIn)).Output);
+                // A candidate whose break A's check does not report in B's file measures nothing.
+                if (!a.Any(e => e.StartsWith(relativeBroken + "(", StringComparison.Ordinal) && e.Contains(ownOfA, StringComparison.Ordinal)))
+                    continue;
+                var b = EvalRepo.ParseFuseErrors((await repo.FuseTimedAsync("check", brokenIn)).Output);
+
+                await repo.FuseHookAsync("claude", "post-edit", HookPayload(repo, "eval-b", brokenIn));
+                var sessionA = (await repo.FuseHookAsync("claude", "post-edit", HookPayload(repo, "eval-a", renamedIn))).Output;
+                var sessionB = (await repo.FuseHookAsync("claude", "post-edit", HookPayload(repo, "eval-b", brokenIn))).Output;
+                var aAsSession = EvalRepo.ParseFuseErrors(sessionA);
+                var bAsSession = EvalRepo.ParseFuseErrors(sessionB);
+
+                int Count(List<string> errors, string text) => errors.Count(e => e.Contains(text, StringComparison.Ordinal));
+                var result = new MultiAgentAttribution(
+                    Path.GetRelativePath(repo.Root, renamedIn).Replace('\\', '/'),
+                    method,
+                    relativeBroken,
+                    Count(a, ownOfA) + Count(b, MissingName),
+                    Count(a, MissingName) + Count(b, ownOfA),
+                    Count(aAsSession, ownOfA) + Count(bAsSession, MissingName),
+                    Count(aAsSession, MissingName) + Count(bAsSession, ownOfA),
+                    LeftOut(sessionA) + LeftOut(sessionB));
+                Console.WriteLine($"[multiAgent] attribution: {method} in {result.RenamedIn}, {MissingName} in {result.BrokenIn}; other writer's errors told {result.OtherWithoutSessions} without sessions, {result.OtherWithSessions} with; own {result.OwnWithoutSessions} and {result.OwnWithSessions}; {result.LeftToOtherSessions} left to the other session");
+                return result;
+            }
+            finally
+            {
+                File.WriteAllBytes(renamedIn, renamedBytes);
+                File.WriteAllBytes(brokenIn, brokenBytes);
+            }
+        }
+
+        Console.WriteLine("[multiAgent] attribution: no public method has a caller in another project that its rename breaks");
+        return null;
+    }
+
+    /// <summary>
+    ///     Public methods with a block body, declared once in their file, in the code projects with the most dependents,
+    ///     each with the first file of another code project that calls it by name.
+    /// </summary>
+    private static IEnumerable<(string RenamedIn, string Method, string BrokenIn)> AttributionCandidates(SolutionInfo solution)
+    {
+        var sources = solution.CodeSources();
+        foreach (var project in solution.CodeProjects.OrderByDescending(solution.DependentCount).ThenBy(p => p, StringComparer.Ordinal).Take(2))
+        {
+            var dir = Path.GetDirectoryName(project)!;
+            var own = sources.Where(f => string.Equals(solution.ProjectOf(f), dir, StringComparison.OrdinalIgnoreCase)).Order(StringComparer.Ordinal).Take(200);
+            var others = sources.Where(f => !string.Equals(solution.ProjectOf(f), dir, StringComparison.OrdinalIgnoreCase)).Order(StringComparer.Ordinal).ToList();
+            foreach (var file in own)
+            {
+                var root = CSharpSyntaxTree.ParseText(File.ReadAllText(file)).GetRoot();
+                var methods = root.DescendantNodes().OfType<MethodDeclarationSyntax>().ToList();
+                foreach (var m in methods.Where(m => m.Body is { Statements.Count: > 0 } && m.Modifiers.Any(SyntaxKind.PublicKeyword) && !m.Modifiers.Any(SyntaxKind.OverrideKeyword) && m.Parent is ClassDeclarationSyntax))
+                {
+                    var name = m.Identifier.Text;
+                    if (methods.Count(x => x.Identifier.Text == name) > 1)
+                        continue;
+                    var caller = others.FirstOrDefault(f => File.ReadAllText(f).Contains("." + name + "(", StringComparison.Ordinal));
+                    if (caller is not null)
+                        yield return (file, name, caller);
+                }
+            }
+        }
+    }
+
+    /// <summary>The text with <paramref name="method"/>'s declaration renamed, or null when the file does not declare it.</summary>
+    private static string? RenameMethod(string text, string method)
+    {
+        var root = CSharpSyntaxTree.ParseText(text).GetRoot();
+        var declaration = root.DescendantNodes().OfType<MethodDeclarationSyntax>().FirstOrDefault(m => m.Identifier.Text == method);
+        return declaration is null
+            ? null
+            : root.ReplaceToken(declaration.Identifier, SyntaxFactory.Identifier(method + "Renamed").WithTriviaFrom(declaration.Identifier)).ToFullString();
+    }
+
+    /// <summary>A Claude Code post-edit payload for <paramref name="file"/>, from <paramref name="session"/>.</summary>
+    private static string HookPayload(EvalRepo repo, string session, string file) =>
+        System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, object>
+        {
+            ["session_id"] = session,
+            ["hook_event_name"] = "PostToolUse",
+            ["tool_name"] = "Edit",
+            ["cwd"] = repo.Root,
+            ["tool_input"] = new Dictionary<string, string> { ["file_path"] = file },
+        });
+
+    /// <summary>The count in an answer's "N error(s) from other sessions' edits left out", or 0.</summary>
+    private static int LeftOut(string output) =>
+        int.TryParse(LeftToOthers().Match(output).Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture, out var n) ? n : 0;
 
     /// <summary>
     ///     One file per non-test project that <paramref name="edit"/> would actually change, ordered by how many test
@@ -330,4 +472,7 @@ internal static partial class MultiAgentScenario
 
     [GeneratedRegex(@"fuse: (\d+) failed", RegexOptions.CultureInvariant)]
     private static partial Regex Failing();
+
+    [GeneratedRegex(@"(\d+) error\(s\) from other sessions' edits left out", RegexOptions.CultureInvariant)]
+    private static partial Regex LeftToOthers();
 }

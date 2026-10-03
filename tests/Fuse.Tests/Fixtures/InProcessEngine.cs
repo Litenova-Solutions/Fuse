@@ -13,7 +13,8 @@ internal sealed class InProcessEngine : IAsyncDisposable
     {
         Repo = repo;
         Workspace = new RepoWorkspace(repo.Root, _ => { });
-        Checker = new Checker(Workspace);
+        Sessions = new SessionEdits(repo.Root, null);
+        Checker = new Checker(Workspace, Sessions);
         Planner = new TestPlanner(Workspace);
         Selector = new TestSelector(Workspace, TimeProvider.System);
     }
@@ -23,6 +24,9 @@ internal sealed class InProcessEngine : IAsyncDisposable
     public RepoWorkspace Workspace { get; }
 
     public Checker Checker { get; }
+
+    /// <summary>Which sessions wrote each file, kept in memory; a test records what a post-edit hook would.</summary>
+    public SessionEdits Sessions { get; }
 
     public TestPlanner Planner { get; }
 
@@ -38,6 +42,17 @@ internal sealed class InProcessEngine : IAsyncDisposable
     /// <summary>Checks the given repository-relative files, the way the post-edit hook does.</summary>
     public Task<CheckResult> CheckAsync(params string[] files) =>
         Checker.CheckAsync(Files(files), PhaseTimes.None, TestContext.Current.CancellationToken);
+
+    /// <summary>
+    ///     Records that <paramref name="session"/> wrote the given repository-relative files and checks them, answered to
+    ///     that session, the way the engine answers a post-edit hook whose harness identifies the session.
+    /// </summary>
+    public Task<CheckResult> CheckAsSessionAsync(string session, params string[] files)
+    {
+        var scope = Files(files);
+        Sessions.Record(session, scope.Paths);
+        return Checker.CheckAsync(scope, session, PhaseTimes.None, TestContext.Current.CancellationToken);
+    }
 
     /// <summary>Checks the same files and returns the phase times the check recorded.</summary>
     public async Task<(CheckResult Result, IReadOnlyList<(string Phase, double Ms)> Phases)> CheckWithPhasesAsync(params string[] files)

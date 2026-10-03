@@ -86,7 +86,7 @@ internal static class McpCommand
                         return Text(refusal.Text, isError: true);
                 }
 
-                (result, _) = await CheckOperation.RunAsync(root, files, waitForLoad: true, TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
+                (result, _) = await CheckOperation.RunAsync(root, files, session: null, waitForLoad: true, TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
                 break;
             case "fuse_test":
                 var all = arguments.TryGetValue("all", out var flag) && flag.ValueKind == JsonValueKind.True;

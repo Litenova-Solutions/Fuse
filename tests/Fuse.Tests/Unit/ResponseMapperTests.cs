@@ -34,7 +34,8 @@ public class ResponseMapperTests
         DependentProjectsChecked: 3,
         CheckedWholeProjects: true,
         ErrorCount: 250,
-        ErrorFileCount: 6);
+        ErrorFileCount: 6,
+        LeftToOtherSessions: 2);
 
     // The project files are never read, so any root will do; the wire carries each as its absolute path.
     private static readonly RepoRoot Root = FixtureRepo.CheckoutRoot;
@@ -62,7 +63,7 @@ public class ResponseMapperTests
         Assert.Equal(["Lib"], report.DeclarationsChangedIn);
         Assert.Equal(3, report.DependentProjectsChecked);
         Assert.True(report.CheckedWholeProjects);
-        Assert.Equal((250, 6), (report.ErrorCount, report.ErrorFileCount));
+        Assert.Equal((250, 6, 2), (report.ErrorCount, report.ErrorFileCount, report.LeftToOtherSessions));
         Assert.Equal([false, false, false, true], report.Errors.Select(e => e.IsCauseLeftOut));
     }
 

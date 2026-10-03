@@ -204,6 +204,46 @@ public class CauseLinesTests
         Assert.Equal("  removed: public int Add(int a, int b)", lines[errorIndex + 1]);
     }
 
+    [Fact]
+    public async Task An_error_in_a_file_two_changes_reach_names_the_change_it_is_about()
+    {
+        await using var engine = await InProcessEngine.StartAsync();
+        // App/Program.cs calls both Calc.Add and IGreeter.Greet, so both renames reach it.
+        engine.Repo.Replace("Lib/Calc.cs", "public int Add(", "public int Plus(");
+        engine.Repo.Replace("Lib/Greeting.cs", "string Greet(string name);", "string Hail(string name);");
+        var result = await engine.CheckAllAsync();
+
+        Assert.Equal(new Cause.Removed("public int Add(int a, int b)"), CauseOf(result, "App/Program.cs", "'Add'"));
+        Assert.Equal(new Cause.Removed("string Greet(string name)"), CauseOf(result, "App/Program.cs", "'Greet'"));
+    }
+
+    [Theory]
+    [InlineData("public int Add(int a, int b)", "Add")]
+    [InlineData("public T Get<T>(int index) where T : class", "Get")]
+    [InlineData("public System.Collections.Generic.List<int> Items { get; }", "Items")]
+    [InlineData("public sealed class Repository<TKey, TValue> : IRepository<TKey>", "Repository")]
+    [InlineData("public const int Limit = 3", "Limit")]
+    [InlineData("public int this[int index]", "this")]
+    [InlineData("public record Point(int X, int Y)", "Point")]
+    public void A_declaration_is_named_as_compiler_messages_quote_it(string declaration, string name) =>
+        Assert.Equal(name, CauseLines.NameOf(declaration));
+
+    [Fact]
+    public void An_error_naming_no_declaration_keeps_the_first_cause()
+    {
+        Cause add = new Cause.Removed("public int Add(int a, int b)");
+        Cause greet = new Cause.Removed("string Greet(string name)");
+        var error = new CompilerError("App/Program.cs", 1, 1, "CS0029", "Cannot implicitly convert type 'int' to 'string'");
+
+        Assert.Equal(add, CauseLines.About(error, add, [add, greet]));
+        // 'IGreeter' holds Greet, but not as a whole word, so it does not name the method.
+        Assert.Equal(add, CauseLines.About(error with { Message = "'IGreeter' is inaccessible" }, add, [add, greet]));
+        Assert.Equal(greet, CauseLines.About(error with { Message = "'IGreeter.Greet(string)' is inaccessible" }, add, [add, greet]));
+    }
+
+    private static Cause? CauseOf(CheckResult result, string path, string quoted) =>
+        Assert.Single(result.Errors, e => e.Error.Path == path && e.Error.Message.Contains(quoted, StringComparison.Ordinal)).Cause;
+
     /// <summary>What the client prints for <paramref name="result"/>, after the engine maps it to the wire.</summary>
     private static string Render(CheckResult result) => CheckOperation.Render(ResponseMapper.Report(result)).Text;
 

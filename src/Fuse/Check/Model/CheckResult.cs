@@ -12,6 +12,10 @@ namespace Fuse.Check.Model;
 /// <param name="CheckedWholeProjects">True when there were too many candidates to bind one at a time, so whole projects were bound.</param>
 /// <param name="ErrorCount">How many errors were found, counted before the cap on <paramref name="Errors"/>.</param>
 /// <param name="ErrorFileCount">How many files those errors are in, counted before the cap.</param>
+/// <param name="LeftToOtherSessions">
+///     How many errors the check found that other sessions' edits caused without the session the check is answered to,
+///     and that are left out of <paramref name="Errors"/> and the counts above. Always 0 for a check answered to no session.
+/// </param>
 internal sealed record CheckResult(
     IReadOnlyList<IntroducedError> Errors,
     int FilesChecked,
@@ -20,4 +24,5 @@ internal sealed record CheckResult(
     int DependentProjectsChecked,
     bool CheckedWholeProjects,
     int ErrorCount,
-    int ErrorFileCount);
+    int ErrorFileCount,
+    int LeftToOtherSessions);

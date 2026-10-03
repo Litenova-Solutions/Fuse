@@ -284,6 +284,43 @@ public class RequestRouterTests
         await WaitForLogAsync(engine, " loaded App in ");
     }
 
+    [Fact]
+    public async Task A_check_from_a_session_is_recorded_and_answered_to_that_session()
+    {
+        using var repo = FixtureRepo.CreateStandard();
+        await using var engine = await InProcessRequestRouter.StartAsync(repo);
+        repo.Replace("Lib/Calc.cs", "public int Add(", "public int Plus(");
+        repo.Replace("Lib/Greeting.cs", "string Greet(string name);", "string Hail(string name);");
+
+        await engine.SendAsync(new EngineRequest.CheckFiles([repo.Full("Lib/Greeting.cs")], WaitForLoad: true) { Session = "claude:b" });
+        var answer = await engine.SendAsync(new EngineRequest.CheckFiles([repo.Full("Lib/Calc.cs")], WaitForLoad: true) { Session = "claude:a", RequestId = "attributed" });
+        var unattributed = await engine.SendAsync(new EngineRequest.CheckFiles([repo.Full("Lib/Calc.cs")], WaitForLoad: true));
+
+        var report = Assert.IsType<EngineResponse.CheckAnswered>(answer).Report;
+        Assert.DoesNotContain(report.Errors, e => e.Error.Message.Contains("'Greet'", StringComparison.Ordinal));
+        Assert.Equal(1, report.LeftToOtherSessions);
+        var all = Assert.IsType<EngineResponse.CheckAnswered>(unattributed).Report;
+        Assert.Contains(all.Errors, e => e.Error.Message.Contains("'Greet'", StringComparison.Ordinal));
+        Assert.Equal(0, all.LeftToOtherSessions);
+
+        var recorded = File.ReadAllLines(Path.Combine(repo.Root.StateDirectory, "sessions.tsv"));
+        Assert.Equal(["Lib/Calc.cs\tclaude:a", "Lib/Greeting.cs\tclaude:b"], recorded);
+        Assert.Contains(engine.Log.Split('\n'), l => l.Contains("phases id=attributed ", StringComparison.Ordinal) && l.Contains(" attribution=", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task A_session_id_that_cannot_be_recorded_is_answered_as_no_session()
+    {
+        using var repo = FixtureRepo.CreateStandard();
+        await using var engine = await InProcessRequestRouter.StartAsync(repo);
+        repo.Replace("Lib/Calc.cs", "public int Add(", "public int Plus(");
+
+        var answer = await engine.SendAsync(new EngineRequest.CheckFiles([repo.Full("Lib/Calc.cs")], WaitForLoad: true) { Session = "a\tb" });
+
+        Assert.NotEmpty(Assert.IsType<EngineResponse.CheckAnswered>(answer).Report.Errors);
+        Assert.False(File.Exists(Path.Combine(repo.Root.StateDirectory, "sessions.tsv")));
+    }
+
     /// <summary>Waits up to a minute for the router's log to hold <paramref name="text"/>, which a background load writes when it gets there.</summary>
     private static async Task WaitForLogAsync(InProcessRequestRouter engine, string text)
     {

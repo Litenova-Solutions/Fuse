@@ -24,6 +24,7 @@ internal sealed class RequestRouter : IDisposable
     private readonly RequestGate _requestLock = new();
     private readonly Preloader _preloader;
     private readonly RequestLog _requestLog;
+    private readonly SessionEdits _sessions;
     private Task? _initialization;
     private CancellationToken _shutdown;
 
@@ -31,7 +32,8 @@ internal sealed class RequestRouter : IDisposable
     {
         _log = log;
         _workspace = new RepoWorkspace(root, log.Write);
-        _checker = new Checker(_workspace);
+        _sessions = new SessionEdits(root, Path.Combine(root.StateDirectory, "sessions.tsv"));
+        _checker = new Checker(_workspace, _sessions);
         _planner = new TestPlanner(_workspace);
         _preloader = new Preloader(_workspace, _requestLock, log);
         _requestLog = new RequestLog(log);
@@ -82,6 +84,11 @@ internal sealed class RequestRouter : IDisposable
     {
         if (request is EngineRequest.Ping or EngineRequest.ShutDown)
             return new EngineResponse.Acknowledged();
+
+        // Recorded before anything can refuse the check, so a check answered "still loading" still credits the session
+        // with its files.
+        if (request is EngineRequest.CheckFiles { Session: { } writer } written && SessionEdits.IsValid(writer))
+            RecordSession(writer, written.Files);
 
         var initialization = _initialization ?? Task.CompletedTask;
         if (!initialization.IsCompleted && request is EngineRequest.CheckChanges { WaitForLoad: false } or EngineRequest.CheckFiles { WaitForLoad: false })
@@ -157,6 +164,26 @@ internal sealed class RequestRouter : IDisposable
         }
     }
 
+    /// <summary>Records that <paramref name="session"/> wrote <paramref name="files"/>. A name that is not a valid path is left to the check to refuse.</summary>
+    private void RecordSession(string session, IReadOnlyList<string> files)
+    {
+        var paths = new List<RepoPath>(files.Count);
+        foreach (var file in files)
+        {
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(file))
+                    paths.Add(_workspace.Root.PathOfNamed(file));
+            }
+            catch (Exception e) when (e is ArgumentException or PathTooLongException)
+            {
+                // CheckFilesAsync answers this file with InvalidPath.
+            }
+        }
+
+        _sessions.Record(session, paths);
+    }
+
     /// <summary>Releases the request lock and lets the background load continue.</summary>
     private void Release()
     {
@@ -190,7 +217,8 @@ internal sealed class RequestRouter : IDisposable
             }
         }
 
-        return ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.Files(paths), phases, cancellationToken).ConfigureAwait(false));
+        var session = SessionEdits.IsValid(check.Session) ? check.Session : null;
+        return ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.Files(paths), session, phases, cancellationToken).ConfigureAwait(false));
     }
 
     /// <summary>

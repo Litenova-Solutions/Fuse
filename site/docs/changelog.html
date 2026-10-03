@@ -120,6 +120,7 @@
       <p>On this page</p>
       <ol>
         <li><a href="#supported-versions">Supported versions</a></li>
+        <li><a href="#v5-2-4">5.2.4</a></li>
         <li><a href="#v5-2-3">5.2.3</a></li>
         <li><a href="#v5-2-2">5.2.2</a></li>
         <li><a href="#v5-2-1">5.2.1</a></li>
@@ -136,13 +137,41 @@
       <thead><tr><th scope="col">Version</th><th scope="col">Status</th></tr></thead>
       <tbody>
         <tr><th scope="row">5.2.x</th><td>Supported. The latest release.</td></tr>
-        <tr><th scope="row">5.1.x</th><td>No longer fixed. Upgrade to 5.2.3 with the <a href="#upgrading-from-5-1-0">steps below</a>.</td></tr>
-        <tr><th scope="row">5.0.x</th><td>No longer fixed. Upgrade to 5.1.0 with the <a href="#upgrading-from-5-0-0">steps below</a>, then to 5.2.3.</td></tr>
+        <tr><th scope="row">5.1.x</th><td>No longer fixed. Upgrade to 5.2.4 with the <a href="#upgrading-from-5-1-0">steps below</a>.</td></tr>
+        <tr><th scope="row">5.0.x</th><td>No longer fixed. Upgrade to 5.1.0 with the <a href="#upgrading-from-5-0-0">steps below</a>, then to 5.2.4.</td></tr>
         <tr><th scope="row">1.0.0 to 4.4.0</th><td>Deprecated and unsupported. These versions are a different program under the same name; <a href="#moving-from-4-x">Moving from 4.x</a> says what to remove.</td></tr>
       </tbody>
     </table>
     <p>To upgrade the tool itself to the latest release:</p>
     <pre data-label="Shell"><code>dotnet tool update -g Fuse</code></pre>
+
+    <h2 id="v5-2-4">5.2.4 <a class="anchor" href="#v5-2-4" aria-label="Link to this section">#</a></h2>
+    <p>Released 2026-10-03. Compared with 5.2.3.</p>
+    <p>When several agents share a working tree, each one now hears only about the errors its own edits caused, and the stop hook no longer blames the stopping agent for every error.</p>
+    <h3 id="upgrading-to-5-2-4">Upgrading to 5.2.4 <a class="anchor" href="#upgrading-to-5-2-4" aria-label="Link to this section">#</a></h3>
+    <p>Update the tool with <code>dotnet tool update -g Fuse</code>. If you use OpenCode, run <code>fuse init</code> again so its plugin sends the session id; until you do, OpenCode's post-edit hook reports every error, as before. The other harnesses already send the session, so they need nothing.</p>
+
+    <h3 id="v5-2-4-added">Added <a class="anchor" href="#v5-2-4-added" aria-label="Link to this section">#</a></h3>
+    <ul>
+      <li>The post-edit hook reports only the errors your session's edits caused, and says how many it left out. <a href="how-it-works.html#check">How it works</a> explains how Fuse decides whose an error is, <a href="harnesses.html#sessions">Connect your agent</a> lists what each harness sends, and <a href="limits.html#what-a-check-does-not-see">Limits</a> lists the cases it cannot separate (<a href="https://github.com/Litenova-Solutions/Fuse/issues/47">#47</a>).</li>
+      <li>The latency evals have an <a href="evals.html#multi-agent-scenario">attribution scenario</a> with two agents whose changes break each other's code.</li>
+    </ul>
+
+    <h3 id="v5-2-4-changed">Changed <a class="anchor" href="#v5-2-4-changed" aria-label="Link to this section">#</a></h3>
+    <ul>
+      <li>The stop hook's message says another agent may have caused some of the errors. Previously it said <code>your changes introduced them</code>.</li>
+      <li>The OpenCode plugin that <code>fuse init</code> writes sends the session id to the post-edit hook.</li>
+    </ul>
+
+    <h3 id="v5-2-4-fixed">Fixed <a class="anchor" href="#v5-2-4-fixed" aria-label="Link to this section">#</a></h3>
+    <ul>
+      <li>When several changes reach one file, each error's <a href="how-it-works.html#check">cause line</a> names the change that error is about. Previously every error in the file showed the same change.</li>
+    </ul>
+
+    <h3 id="v5-2-4-documentation">Documentation <a class="anchor" href="#v5-2-4-documentation" aria-label="Link to this section">#</a></h3>
+    <ul>
+      <li><a href="how-it-works.html#check">How it works</a>, <a href="harnesses.html#sessions">Connect your agent</a>, <a href="limits.html#what-a-check-does-not-see">Limits</a>, <a href="commands.html#post-edit">Commands</a>, <a href="troubleshooting.html#reading-a-phase-line">Troubleshooting</a> and <a href="architecture.html#steps-fuse-check">Architecture</a> describe sessions and attribution.</li>
+    </ul>
 
     <h2 id="v5-2-3">5.2.3 <a class="anchor" href="#v5-2-3" aria-label="Link to this section">#</a></h2>
     <p>Released 2026-10-02. Compared with 5.2.2.</p>

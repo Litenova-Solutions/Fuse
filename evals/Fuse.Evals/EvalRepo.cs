@@ -128,6 +128,35 @@ internal sealed partial class EvalRepo
         return new FuseRun(result, milliseconds);
     }
 
+    /// <summary>
+    ///     Runs <c>fuse hook &lt;harness&gt; &lt;event&gt;</c> with <paramref name="payload"/> on standard input, the way a
+    ///     harness runs a hook, and returns its exit code and its standard output and error together.
+    /// </summary>
+    public async Task<ProcessResult> FuseHookAsync(string harness, string hookEvent, string payload)
+    {
+        var psi = new ProcessStartInfo(Fuse)
+        {
+            WorkingDirectory = Root,
+            RedirectStandardInput = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            StandardInputEncoding = new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
+            StandardOutputEncoding = System.Text.Encoding.UTF8,
+            StandardErrorEncoding = System.Text.Encoding.UTF8,
+        };
+        foreach (var argument in new[] { "hook", harness, hookEvent })
+            psi.ArgumentList.Add(argument);
+        using var process = Process.Start(psi)!;
+        var output = process.StandardOutput.ReadToEndAsync();
+        var error = process.StandardError.ReadToEndAsync();
+        await process.StandardInput.WriteAsync(payload);
+        process.StandardInput.Close();
+        await process.WaitForExitAsync();
+        return new ProcessResult(process.ExitCode, await output + await error);
+    }
+
     /// <summary>Stops every Fuse engine serving this repository so the next call starts cold.</summary>
     public async Task KillEngineAsync()
     {

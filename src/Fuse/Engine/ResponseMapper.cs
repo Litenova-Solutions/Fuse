@@ -30,7 +30,8 @@ internal static class ResponseMapper
         result.DependentProjectsChecked,
         result.CheckedWholeProjects,
         result.ErrorCount,
-        result.ErrorFileCount);
+        result.ErrorFileCount,
+        result.LeftToOtherSessions);
 
     /// <summary>A test plan as the client receives it, each run with the mode the client starts it in and its project file's absolute path.</summary>
     public static TestPlan Plan(TestPlanResult result) => new(

@@ -29,7 +29,7 @@ public class EngineClientTests
         using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });
         using var engine = new FakeEngine(repo.Root, line);
 
-        var (result, response) = await CheckOperation.RunAsync(repo.Root, ["Lib/Calc.cs"], waitForLoad: true, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+        var (result, response) = await CheckOperation.RunAsync(repo.Root, ["Lib/Calc.cs"], session: null, waitForLoad: true, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
         var unanswered = Assert.IsType<EngineResponse.Unanswered>(response);
         Assert.Equal(ErrorCode.Internal, unanswered.Code);

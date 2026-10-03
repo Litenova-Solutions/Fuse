@@ -21,7 +21,7 @@ public class WorkspaceSyncTests
         var log = new ConcurrentQueue<string>();
         using var workspace = new RepoWorkspace(repo.Root, log.Enqueue);
         await workspace.InitializeAsync(TestContext.Current.CancellationToken);
-        var checker = new Checker(workspace);
+        var checker = new Checker(workspace, new SessionEdits(workspace.Root, null));
         Assert.Empty((await CheckAsync(checker, repo, "Lib/Calc.cs")).Errors);
         var lib = workspace.Graph.Find(repo.PathOf("Lib/Lib.csproj"))!;
         Assert.True(workspace.IsLoaded(lib));
@@ -119,7 +119,7 @@ public class WorkspaceSyncTests
                 cut.Cancel();
         });
         await workspace.InitializeAsync(TestContext.Current.CancellationToken);
-        var checker = new Checker(workspace);
+        var checker = new Checker(workspace, new SessionEdits(workspace.Root, null));
         // Introduced while only the working tree has it, so the check keeps HEAD's clean result for the file.
         repo.Replace("App/Report.cs", "Lib.Formatter.Format(value)", "Lib.Formatter.Format(value, 2)");
         Assert.Equal("CS1501", Assert.Single((await CheckAsync(checker, repo, "App/Report.cs")).Errors).Error.Id);
@@ -171,7 +171,7 @@ public class WorkspaceSyncTests
         Assert.False(workspace.IsLoaded(multi));
 
         repo.Replace("Lib/Calc.cs", "a * b;", "a * undefinedValue;");
-        var report = await CheckAsync(new Checker(workspace), repo, "Lib/Calc.cs");
+        var report = await CheckAsync(new Checker(workspace, new SessionEdits(workspace.Root, null)), repo, "Lib/Calc.cs");
         Assert.Equal("CS0103", Assert.Single(report.Errors).Error.Id);
     }
 
@@ -192,7 +192,7 @@ public class WorkspaceSyncTests
             }
         });
         await workspace.InitializeAsync(TestContext.Current.CancellationToken);
-        var checker = new Checker(workspace);
+        var checker = new Checker(workspace, new SessionEdits(workspace.Root, null));
         Assert.Empty((await CheckAsync(checker, repo, "Lib/Calc.cs")).Errors);
         Assert.Empty((await CheckAsync(checker, repo, "Multi/Shape.cs")).Errors);
 

@@ -28,5 +28,10 @@ internal abstract record Reach
     ///     Keyed by file. A file several changes reach keeps the first of them, taking the targets in path order and each
     ///     target's changes in the order <c>SurfaceDiff</c> lists them, so the same edits give the same cause on every run.
     /// </param>
-    public sealed record Precise(IReadOnlyDictionary<RepoPath, Cause> Causes) : Reach;
+    /// <param name="AllCauses">
+    ///     Keyed by file: every change that reaches it, in the same order, the first being the one in
+    ///     <paramref name="Causes"/>. An error whose message names a later change's declaration prints that change instead,
+    ///     so an error in a file two changes reach names the one it is about. Null when only the first is known.
+    /// </param>
+    public sealed record Precise(IReadOnlyDictionary<RepoPath, Cause> Causes, IReadOnlyDictionary<RepoPath, IReadOnlyList<Cause>>? AllCauses = null) : Reach;
 }

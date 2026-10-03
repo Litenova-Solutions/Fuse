@@ -154,6 +154,46 @@ public class EngineProcessTests
     }
 
     [Fact]
+    public async Task Two_claude_sessions_are_each_told_their_own_errors_and_the_stop_hook_reports_all()
+    {
+        using var repo = FixtureRepo.CreateStandard();
+        try
+        {
+            string Payload(string session, string file) => System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, object>
+            {
+                ["session_id"] = session,
+                ["hook_event_name"] = "PostToolUse",
+                ["tool_name"] = "Edit",
+                ["cwd"] = repo.Path,
+                ["tool_input"] = new Dictionary<string, string> { ["file_path"] = repo.Full(file) },
+            });
+
+            // Session b renames the interface's Greet, then session a renames Calc.Add. App/Program.cs calls both.
+            repo.Replace("Lib/Greeting.cs", "string Greet(string name);", "string Hail(string name);");
+            var b = await FuseProcess.RunAsync(repo.Path, Payload("b", "Lib/Greeting.cs"), "hook", "claude", "post-edit");
+            repo.Replace("Lib/Calc.cs", "public int Add(", "public int Plus(");
+            var a = await FuseProcess.RunAsync(repo.Path, Payload("a", "Lib/Calc.cs"), "hook", "claude", "post-edit");
+
+            Assert.Equal(2, b.ExitCode);
+            Assert.Equal(2, a.ExitCode);
+            Assert.Contains("'Add'", a.Stderr, StringComparison.Ordinal);
+            Assert.DoesNotContain("'Greet'", a.Stderr, StringComparison.Ordinal);
+            Assert.Contains("1 error(s) from other sessions' edits left out", a.Stderr, StringComparison.Ordinal);
+
+            var stop = await FuseProcess.RunAsync(repo.Path, $$"""{"session_id":"a","hook_event_name":"Stop","stop_hook_active":false,"cwd":{{System.Text.Json.JsonSerializer.Serialize(repo.Path)}}}""", "hook", "claude", "stop");
+            Assert.Contains("\"decision\":\"block\"", stop.Stdout, StringComparison.Ordinal);
+            Assert.Contains("'Greet'", stop.Stdout, StringComparison.Ordinal);
+            Assert.Contains("'Add'", stop.Stdout, StringComparison.Ordinal);
+            Assert.Contains("The working tree has them and HEAD does not", stop.Stdout, StringComparison.Ordinal);
+            Assert.DoesNotContain("your changes introduced them", stop.Stdout, StringComparison.Ordinal);
+        }
+        finally
+        {
+            await FuseProcess.StopEngineAsync(repo.Root);
+        }
+    }
+
+    [Fact]
     public async Task Post_edit_hook_tells_the_agent_to_restore_an_unrestored_project()
     {
         using var repo = FixtureRepo.CreateStandard();

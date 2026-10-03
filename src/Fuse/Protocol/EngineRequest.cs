@@ -79,6 +79,13 @@ internal abstract record EngineRequest
     {
         /// <summary>The named files. A line without the list reads as one that names none, which checks nothing.</summary>
         public IReadOnlyList<string> Files { get; init; } = Files ?? [];
+
+        /// <summary>
+        ///     The session that wrote <see cref="Files"/>, as its harness identifies it, or null when the client knows none.
+        ///     The engine records that the session wrote the files, and answers with the errors that session's edits cause,
+        ///     leaving out those other sessions' edits caused without it. Only the post-edit hook sends one.
+        /// </summary>
+        public string? Session { get; init; }
     }
 
     /// <summary>

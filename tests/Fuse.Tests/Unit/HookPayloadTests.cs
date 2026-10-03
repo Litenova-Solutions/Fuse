@@ -94,6 +94,28 @@ public class HookPayloadTests
     }
 
     [Fact]
+    public void Claude_session_is_read_and_a_subagent_is_a_session_of_its_own()
+    {
+        Assert.Equal("s1", Parse(new { session_id = "s1", tool_input = new { file_path = At("A.cs") } }).Session);
+        Assert.Equal("s1/agent-7", Parse(new { session_id = "s1", agent_id = "agent-7", agent_type = "general-purpose" }).Session);
+    }
+
+    [Fact]
+    public void Each_harness_spelling_of_the_session_is_read()
+    {
+        Assert.Equal("conv-1", Parse(new { conversation_id = "conv-1", generation_id = "gen-9", cursor_version = "2.0" }).Session);
+        Assert.Equal("copilot-1", Parse(new { sessionId = "copilot-1", toolName = "edit" }).Session);
+    }
+
+    [Fact]
+    public void A_payload_with_no_session_has_none()
+    {
+        Assert.Null(Parse(new { cwd = Repo, tool_input = new { file_path = At("A.cs") } }).Session);
+        Assert.Null(Parse(new { session_id = " ", agent_id = "agent-7" }).Session);
+        Assert.Null(HookPayload.Parse("""{"session_id":42}""").Session);
+    }
+
+    [Fact]
     public void A_blank_cwd_falls_back_to_the_process_directory()
     {
         Assert.Equal(Environment.CurrentDirectory, Parse(new { cwd = "" }).Cwd);

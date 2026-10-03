@@ -90,10 +90,12 @@ internal static class HookCommand
         var files = edited.Select(root.PathOf).Distinct().Select(p => p.Absolute).ToList();
 
         // A hook the harness runs in the background can wait for a cold load. One it runs inline answers only once the
-        // engine is warm and leaves the rest to the stop hook.
+        // engine is warm and leaves the rest to the stop hook. The session, when the harness names one, is told only the
+        // errors its own edits cause; one harness's ids never meet another's, because each is prefixed with its name.
         var background = harness.RunsPostEditInBackground;
+        var session = payload.Session is { } id ? $"{harness.Name}:{id}" : null;
         var (result, response) = await CheckOperation.RunAsync(
-            root, files, waitForLoad: background, background ? TimeSpan.FromMinutes(5) : TimeSpan.FromSeconds(50), cancellationToken).ConfigureAwait(false);
+            root, files, session, waitForLoad: background, background ? TimeSpan.FromMinutes(5) : TimeSpan.FromSeconds(50), cancellationToken).ConfigureAwait(false);
         return ShouldReport(result, response) ? harness.ReportAfterEdit(result.Text) : HookAnswer.None;
     }
 
@@ -104,14 +106,23 @@ internal static class HookCommand
         var root = RepoRoot.Find(payload.Cwd);
         if (root is null)
             return harness.AllowStop();
-        var (result, response) = await CheckOperation.RunAsync(root, null, waitForLoad: true, TimeSpan.FromMinutes(5), cancellationToken).ConfigureAwait(false);
+        // The stop hook checks every change in the working tree, whoever wrote it: the agent that stops is the one that has
+        // to be sure the tree builds, so the check is not answered to a session.
+        var (result, response) = await CheckOperation.RunAsync(root, null, session: null, waitForLoad: true, TimeSpan.FromMinutes(5), cancellationToken).ConfigureAwait(false);
         if (!ShouldReport(result, response))
             return harness.AllowStop();
         // A missing restore is not an error the changes introduced; its message already names the command to run.
         return result.Outcome == Outcome.ProblemsFound
-            ? harness.BlockStop(result.Text + "\nFix these errors before finishing; HEAD does not have them, so your changes introduced them.")
+            ? harness.BlockStop(result.Text + "\n" + StopReason)
             : harness.BlockStop(result.Text);
     }
+
+    /// <summary>
+    ///     The line under the errors that block a stop. It says what is true of every error, that the working tree has it
+    ///     and HEAD does not, and not that this agent caused it, because another agent editing the same working tree may have.
+    /// </summary>
+    internal const string StopReason =
+        "Fix these errors before finishing. The working tree has them and HEAD does not; another agent editing this working tree may have caused some of them.";
 
     /// <summary>
     ///     A check that found problems is reported, and so is a missing restore; loading, timeouts and internal failures

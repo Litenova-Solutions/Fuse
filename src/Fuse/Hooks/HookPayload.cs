@@ -29,6 +29,35 @@ internal sealed partial class HookPayload
 
     private static string? NonBlank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
 
+    /// <summary>
+    ///     The session the hook runs in, as the harness identifies it, or null when the payload carries none. A subagent
+    ///     the harness identifies on its own is a session of its own: its id is the parent's session id and the subagent's
+    ///     id joined by a slash.
+    /// </summary>
+    /// <remarks>
+    ///     <para>
+    ///         The harnesses name the field differently: <c>conversation_id</c> (Cursor, which gives a subagent a
+    ///         conversation of its own), <c>session_id</c> (Claude Code, Codex, Gemini CLI, GitHub Copilot CLI's PascalCase
+    ///         events, and the payload the OpenCode plugin sends, which is OpenCode's <c>sessionID</c>) and
+    ///         <c>sessionId</c> (GitHub Copilot CLI's camelCase events). Claude Code and Codex add <c>agent_id</c> inside a
+    ///         subagent and keep the parent's <c>session_id</c>. An OpenCode subagent runs in a child session with its own id.
+    ///     </para>
+    ///     <para>
+    ///         Gemini CLI and GitHub Copilot CLI send no field that tells a subagent from its parent, so their subagents
+    ///         share the parent's session. A blank value, or one that is not a string, counts as absent.
+    ///     </para>
+    /// </remarks>
+    public string? Session
+    {
+        get
+        {
+            var session = NonBlank(StringProperty("conversation_id")) ?? NonBlank(StringProperty("session_id")) ?? NonBlank(StringProperty("sessionId"));
+            if (session is null)
+                return null;
+            return NonBlank(StringProperty("agent_id")) is { } agent ? $"{session}/{agent}" : session;
+        }
+    }
+
     /// <summary>True when Cursor runs a hook it loaded from Claude Code's settings.</summary>
     public bool FromCursor => _root.TryGetProperty("cursor_version", out _);
 

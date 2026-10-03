@@ -92,6 +92,9 @@ internal sealed class RepoWorkspace : IDisposable
     /// <inheritdoc cref="SolutionViews.HeadText"/>
     public SourceText? HeadText(RepoPath path) => _views.HeadText(path);
 
+    /// <inheritdoc cref="SolutionViews.CurrentWithHeadContentAsync"/>
+    public Task<Solution> CurrentWithHeadContentAsync(IEnumerable<RepoPath> paths, CancellationToken cancellationToken) =>
+        _views.CurrentWithHeadContentAsync(paths, cancellationToken);
 
     public void Dispose()
     {

@@ -18,12 +18,14 @@ internal static class Program
                Fuse.Evals chart
                Fuse.Evals clone <repo>
                Fuse.Evals clean
-          suite: correctness | selection | latency | all
+          suite: correctness | selection | latency | attribution | all
           repo:  fixture (generated under evals/.work/fixture), a pinned repository name, or a path to a git repository
           truth: runs shard K of N of the truth side (the real dotnet build or dotnet test) and writes it to a file; the
                  suite run merges the files in --truth-dir and runs what is still missing. Without them it reads and
                  writes evals/.work/truth/<suite>-<repo>.json, so a second run on the same tree measures only Fuse
           key:   prints the key the truth is cached under: suite, repository tree, seed, count, SDK and eval code
+          attribution: two writers whose breaking changes reach each other, checked through the post-edit hook
+                 without and with sessions; no truth and no test runs
           --part: for latency, what to measure: all (the default); checks, the checks alone; main, the checks and
                  the test rounds; agents, the multi-agent scenario after the cold checks and body edits
           clone: NodaTime | Jellyfin | CommunityToolkit, checked out at the pinned commit under
@@ -101,6 +103,10 @@ internal static class Program
             if (name == "latency")
             {
                 result = await LatencySuite.RunAsync(repo, solution, options.GetValueOrDefault("part") ?? "all");
+            }
+            else if (name == "attribution")
+            {
+                result = await AttributionSuite.RunAsync(repo, solution);
             }
             else
             {

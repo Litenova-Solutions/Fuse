@@ -53,6 +53,9 @@ internal sealed class RequestRouter : IDisposable
         try
         {
             await _workspace.InitializeAsync(cancellationToken).ConfigureAwait(false);
+            // A file an earlier engine recorded that matches HEAD now was reverted or committed while no engine watched;
+            // forgotten here, its sessions are not still credited when the file is written again before the first check.
+            _sessions.Forget(_workspace.Tracker.Changed);
             var owners = _workspace.Tracker.Changed.SelectMany(_workspace.Graph.OwnersOf).DistinctBy(p => p.Path).ToList();
             if (owners.Count > 0)
             {

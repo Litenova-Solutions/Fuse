@@ -11,7 +11,7 @@ Update with `dotnet tool update -g Fuse`. If you use OpenCode, run `fuse init` a
 ### Added
 
 - The post-edit hook reports only the errors your session's edits caused, and says how many it left out. [How it works](https://fuse.codes/docs/how-it-works) explains how Fuse decides whose an error is, and [Limits](https://fuse.codes/docs/limits) lists the cases it cannot separate ([#47](https://github.com/Litenova-Solutions/Fuse/issues/47)).
-- The latency evals have a scenario with two agents whose changes break each other's code.
+- The evals have an attribution suite, light enough to run on one or two repositories, with two agents whose changes break each other's code; the latency suite records one such pair too. [Evals](https://fuse.codes/docs/evals) describes it.
 
 ### Changed
 

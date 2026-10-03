@@ -16,6 +16,10 @@ name: Evals
 # Each measure job and each latency merge job uploads evals-<repo>-<suite>: results/ holds the file to commit to evals/results,
 # managed/ the managed client's latency file for evals/results/managed, truth/ the merged truth, and runner.txt
 # describes the runner. Each truth job uploads its shard and its runner.txt.
+#
+# The attribution suite is the light one: one job per repository checks two writers whose breaking changes reach each
+# other through the post-edit hook, without and with sessions, and uploads evals-<repo>-attribution. It needs no truth
+# and runs no tests, so it is not in the default set; ask for it in the suites input.
 
 on:
   pull_request:
@@ -27,7 +31,7 @@ on:
         default: '["FluentValidation", "NodaTime", "Jellyfin", "CommunityToolkit"]'
         required: true
       suites:
-        description: Suites to run, as a JSON array (correctness, selection, latency).
+        description: Suites to run, as a JSON array (correctness, selection, latency, attribution).
         default: '["correctness", "selection", "latency"]'
         required: true
       fresh-truth:
@@ -50,6 +54,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       latency: ${{ steps.matrix.outputs.latency }}
+      attribution: ${{ steps.matrix.outputs.attribution }}
       truth: ${{ steps.matrix.outputs.truth }}
       measure: ${{ steps.matrix.outputs.measure }}
     steps:
@@ -70,6 +75,7 @@ jobs:
           }
           staged = [s for s in ("correctness", "selection") if s in suites]
           latency = [r for r in repos] if "latency" in suites else []
+          attribution = [r for r in repos] if "attribution" in suites else []
           measure = [{"suite": s, "repo": r} for s in staged for r in repos]
           truth = [{"suite": s, "repo": r, "shard": k, "shards": shards[s].get(r, 1)} for s in staged for r in repos for k in range(shards[s].get(r, 1))]
           # Jobs start in matrix order when the runners are all busy, so the longest shards go first: selection before
@@ -77,7 +83,7 @@ jobs:
           order = {"CommunityToolkit": 0, "Jellyfin": 1, "NodaTime": 2, "FluentValidation": 3, "fixture": 4}
           truth.sort(key=lambda t: (t["suite"] != "selection", order.get(t["repo"], 4), t["shard"]))
           with open(os.environ["GITHUB_OUTPUT"], "a") as out:
-              for name, value in (("latency", latency), ("truth", truth), ("measure", measure)):
+              for name, value in (("latency", latency), ("attribution", attribution), ("truth", truth), ("measure", measure)):
                   out.write(f"{name}={json.dumps(value)}\n")
                   print(f"{name}: {json.dumps(value)}")
 
@@ -175,6 +181,47 @@ jobs:
         if: always()
         with:
           name: latency-${{ matrix.part }}-${{ matrix.repo }}
+          path: out/
+          if-no-files-found: error
+
+  attribution:
+    name: attribution on ${{ matrix.repo }}
+    needs: [plan, build]
+    if: needs.plan.outputs.attribution != '[]'
+    runs-on: windows-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        repo: ${{ fromJSON(needs.plan.outputs.attribution) }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          # The pinned repositories test on .NET 8 and 9 as well; global.json adds the SDK that builds Fuse.
+          dotnet-version: |
+            8.0.x
+            9.0.x
+          global-json-file: global.json
+      - uses: actions/download-artifact@v8
+        with:
+          name: build
+      - *identity
+      - *packages
+      - *clone
+      - name: Run attribution with the native client
+        run: |
+          $EVALS attribution "${{ matrix.repo }}" --fuse "$(cygpath -w "$PWD/artifacts/native/fuse.exe")"
+          mkdir -p out/results
+          git ls-files --others --exclude-standard evals/results | xargs -I{} mv {} out/results/
+      - *runner
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: evals-${{ matrix.repo }}-attribution
           path: out/
           if-no-files-found: error
 

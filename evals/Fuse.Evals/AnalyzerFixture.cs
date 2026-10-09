@@ -82,6 +82,7 @@ internal static class AnalyzerFixture
         <Project Sdk="Microsoft.NET.Sdk">
           <PropertyGroup>
             <TargetFramework>netstandard2.0</TargetFramework>
+            <LangVersion>latest</LangVersion>
             <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
             <IsRoslynComponent>true</IsRoslynComponent>
             <NoWarn>RS1030;RS2008</NoWarn>

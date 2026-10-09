@@ -69,8 +69,8 @@ public class AnalyzerPlanTests
         }
 
         Assert.Empty(lines);
-        // The probe's syntax and semantic calls on the first file, then the per-file calls on the second.
-        Assert.Equal(4, moderate.Starts);
+        // The probe's syntax and semantic calls, on a wrapper of its own, then two per-file calls on each file.
+        Assert.Equal(6, moderate.Starts);
     }
 
     [Fact]

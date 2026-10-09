@@ -67,8 +67,9 @@ internal sealed partial class EvalRepo
 
     /// <summary>
     ///     The engine log this repository's engine writes, read as lines with the leading timestamp stripped, so a caller
-    ///     can match them against the formats in <see cref="Fuse.Telemetry.PhaseLine"/>. The engine is the only writer and
-    ///     it is idle between requests, so a read cannot catch a line half-written.
+    ///     can match them against the formats in <see cref="Fuse.Telemetry.PhaseLine"/>. The engine also writes between
+    ///     requests (a background load, the memory it returns once idle), so the file is opened to share it with that
+    ///     writer, and a last line without its line break, which the writer has not finished, is left out.
     /// </summary>
     public IReadOnlyList<string> EngineLogLines()
     {
@@ -76,7 +77,12 @@ internal sealed partial class EvalRepo
         if (!File.Exists(path))
             return [];
 
-        return [.. File.ReadAllLines(path).Select(line => Timestamp().Replace(line, "", 1).Trim()).Where(line => line.Length > 0)];
+        string text;
+        using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+        using (var reader = new StreamReader(stream))
+            text = reader.ReadToEnd();
+        var complete = text.EndsWith('\n') ? text : text[..(text.LastIndexOf('\n') + 1)];
+        return [.. complete.Split('\n').Select(line => Timestamp().Replace(line.TrimEnd('\r'), "", 1).Trim()).Where(line => line.Length > 0)];
     }
 
     /// <summary>Where this repository's engine keeps its state, which is where its log is.</summary>

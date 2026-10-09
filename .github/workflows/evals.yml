@@ -20,6 +20,10 @@ name: Evals
 # The attribution suite is the light one: one job per repository checks two writers whose breaking changes reach each
 # other through the post-edit hook, without and with sessions, and uploads evals-<repo>-attribution. It needs no truth
 # and runs no tests, so it is not in the default set; ask for it in the suites input.
+#
+# The analyzers suite is lighter still: one job generates a small repository whose analyzer reads the whole project at
+# error severity, measures the post-edit hook, checks of one and twenty files and the engine's memory, and uploads
+# evals-analyzer-fixture-analyzers. The evals label runs it with the latency suite.
 
 on:
   pull_request:
@@ -31,7 +35,7 @@ on:
         default: '["FluentValidation", "NodaTime", "Jellyfin", "CommunityToolkit"]'
         required: true
       suites:
-        description: Suites to run, as a JSON array (correctness, selection, latency, attribution).
+        description: Suites to run, as a JSON array (correctness, selection, latency, attribution, analyzers).
         default: '["correctness", "selection", "latency"]'
         required: true
       fresh-truth:
@@ -55,6 +59,7 @@ jobs:
     outputs:
       latency: ${{ steps.matrix.outputs.latency }}
       attribution: ${{ steps.matrix.outputs.attribution }}
+      analyzers: ${{ steps.matrix.outputs.analyzers }}
       truth: ${{ steps.matrix.outputs.truth }}
       measure: ${{ steps.matrix.outputs.measure }}
     steps:
@@ -62,7 +67,7 @@ jobs:
         shell: python
         env:
           REPOS: ${{ inputs.repos || '["FluentValidation", "NodaTime", "Jellyfin", "CommunityToolkit"]' }}
-          SUITES: ${{ inputs.suites || '["latency"]' }}
+          SUITES: ${{ inputs.suites || '["latency", "analyzers"]' }}
         run: |
           import json, os
           repos = json.loads(os.environ["REPOS"])
@@ -76,6 +81,7 @@ jobs:
           staged = [s for s in ("correctness", "selection") if s in suites]
           latency = [r for r in repos] if "latency" in suites else []
           attribution = [r for r in repos] if "attribution" in suites else []
+          analyzers = "analyzers" in suites
           measure = [{"suite": s, "repo": r} for s in staged for r in repos]
           truth = [{"suite": s, "repo": r, "shard": k, "shards": shards[s].get(r, 1)} for s in staged for r in repos for k in range(shards[s].get(r, 1))]
           # Jobs start in matrix order when the runners are all busy, so the longest shards go first: selection before
@@ -83,6 +89,7 @@ jobs:
           order = {"CommunityToolkit": 0, "Jellyfin": 1, "NodaTime": 2, "FluentValidation": 3, "fixture": 4}
           truth.sort(key=lambda t: (t["suite"] != "selection", order.get(t["repo"], 4), t["shard"]))
           with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write(f"analyzers={str(analyzers).lower()}\n")
               for name, value in (("latency", latency), ("attribution", attribution), ("truth", truth), ("measure", measure)):
                   out.write(f"{name}={json.dumps(value)}\n")
                   print(f"{name}: {json.dumps(value)}")
@@ -222,6 +229,37 @@ jobs:
         if: always()
         with:
           name: evals-${{ matrix.repo }}-attribution
+          path: out/
+          if-no-files-found: error
+
+  analyzers:
+    name: analyzers on the analyzer fixture
+    needs: [plan, build]
+    if: needs.plan.outputs.analyzers == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - uses: actions/download-artifact@v8
+        with:
+          name: build
+      - *identity
+      - name: Run analyzers with the native client
+        run: |
+          $EVALS analyzers analyzer-fixture --fuse "$(cygpath -w "$PWD/artifacts/native/fuse.exe")"
+          mkdir -p out/results
+          git ls-files --others --exclude-standard evals/results | xargs -I{} mv {} out/results/
+      - *runner
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: evals-analyzer-fixture-analyzers
           path: out/
           if-no-files-found: error
 

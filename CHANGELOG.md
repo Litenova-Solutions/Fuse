@@ -12,7 +12,7 @@ Update with `dotnet tool update -g Fuse`; nothing else needs to change.
 
 - An analyzer that reads the whole project in its compilation start or compilation actions now runs once per compilation instead of once per checked file, so a check of many files no longer repeats it for each file and holds far less memory, and the engine log names it. [How it works](https://fuse.codes/docs/how-it-works#check) explains which analyzers count ([#88](https://github.com/Litenova-Solutions/Fuse/issues/88)).
 - A check stops its analyzers when 80% of its client's wait has passed and answers with every compiler error and the analyzer errors found so far, and the summary says where the analyzers did not finish. Previously the client gave up and the check answered nothing. [Limits](https://fuse.codes/docs/limits) describes it ([#88](https://github.com/Litenova-Solutions/Fuse/issues/88)).
-- The latency suite records the engine's peak working set and its working set once idle. [Evals](https://fuse.codes/docs/evals) describes the fields.
+- The latency suite records the engine's peak working set and its working set once idle, and a new analyzers suite measures a generated repository whose analyzer reads the whole project. [Evals](https://fuse.codes/docs/evals) describes the fields.
 
 ### Changed
 

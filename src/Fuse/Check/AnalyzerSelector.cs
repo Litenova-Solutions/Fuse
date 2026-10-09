@@ -39,8 +39,8 @@ internal sealed class AnalyzerSelector
     ///     The project's <see cref="AnalyzerPlan"/>, made once per project until the configuration changes. Making it runs
     ///     every analyzer on the file of <paramref name="probe"/>, syntax then semantics, and reads the time each took: an analyzer that
     ///     registers compilation start or compilation actions and took at least <see cref="AnalyzerPlan.CompilationWideStart"/>
-    ///     on one file is compilation-wide. Those results stay in <paramref name="analyzers"/>, so the probe file is not
-    ///     analyzed again.
+    ///     on one file is compilation-wide. The probe runs on a wrapper of its own that times the analyzers; the wrapper
+    ///     every check uses does not, because timing every analyzer callback costs time on every file.
     /// </summary>
     public Task<AnalyzerPlan> PlanAsync(Project project, CompilationWithAnalyzers analyzers, SemanticModel probe, CancellationToken cancellationToken)
     {
@@ -57,8 +57,9 @@ internal sealed class AnalyzerSelector
 
     private async Task<AnalyzerPlan> MakePlanAsync(Project project, CompilationWithAnalyzers analyzers, SemanticModel probe, CancellationToken cancellationToken)
     {
-        await analyzers.GetAnalysisResultAsync(probe.SyntaxTree, analyzers.Analyzers, cancellationToken).ConfigureAwait(false);
-        var result = await analyzers.GetAnalysisResultAsync(probe, filterSpan: null, analyzers.Analyzers, cancellationToken).ConfigureAwait(false);
+        var timed = probe.Compilation.WithAnalyzers(analyzers.Analyzers, Options(project, logExecutionTime: true));
+        await timed.GetAnalysisResultAsync(probe.SyntaxTree, timed.Analyzers, cancellationToken).ConfigureAwait(false);
+        var result = await timed.GetAnalysisResultAsync(probe, filterSpan: null, timed.Analyzers, cancellationToken).ConfigureAwait(false);
         var perFile = ImmutableArray.CreateBuilder<DiagnosticAnalyzer>();
         var compilationWide = ImmutableArray.CreateBuilder<(DiagnosticAnalyzer, TimeSpan)>();
         foreach (var analyzer in analyzers.Analyzers)
@@ -104,8 +105,11 @@ internal sealed class AnalyzerSelector
 
         return selected.Analyzers.IsEmpty
             ? null
-            : compilation.WithAnalyzers(selected.Analyzers, new CompilationWithAnalyzersOptions(project.AnalyzerOptions, onAnalyzerException: null, concurrentAnalysis: true, logAnalyzerExecutionTime: true));
+            : compilation.WithAnalyzers(selected.Analyzers, Options(project, logExecutionTime: false));
     }
+
+    private static CompilationWithAnalyzersOptions Options(Project project, bool logExecutionTime) =>
+        new(project.AnalyzerOptions, onAnalyzerException: null, concurrentAnalysis: true, logAnalyzerExecutionTime: logExecutionTime);
 
     private static ImmutableArray<DiagnosticAnalyzer> Select(Project project, Compilation compilation)
     {

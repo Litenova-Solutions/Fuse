@@ -157,7 +157,7 @@
     <ul>
       <li>An analyzer that reads the whole project in its compilation start or compilation actions now runs once per compilation instead of once per checked file, so a check of many files no longer repeats it for each file and holds far less memory, and the engine log names it. <a href="how-it-works.html#check">How it works</a> explains which analyzers count (<a href="https://github.com/Litenova-Solutions/Fuse/issues/88">#88</a>).</li>
       <li>A check stops its analyzers when 80% of its client's wait has passed and answers with every compiler error and the analyzer errors found so far, and the summary says where the analyzers did not finish. Previously the client gave up and the check answered nothing. <a href="limits.html#what-a-check-does-not-see">Limits</a> describes it (<a href="https://github.com/Litenova-Solutions/Fuse/issues/88">#88</a>).</li>
-      <li>The latency suite records the engine's peak working set and its working set once idle. <a href="evals.html#result-files">Evals</a> describes the fields.</li>
+      <li>The latency suite records the engine's peak working set and its working set once idle, and a new analyzers suite measures a generated repository whose analyzer reads the whole project. <a href="evals.html#result-files">Evals</a> describes the fields.</li>
     </ul>
 
     <h3 id="v5-3-0-changed">Changed <a class="anchor" href="#v5-3-0-changed" aria-label="Link to this section">#</a></h3>

@@ -78,7 +78,7 @@ internal static class EngineLauncher
 
     /// <summary>
     ///     A private copy of this build's binaries that the engine runs from. An engine runs until it has had no request
-    ///     for 30 minutes, which can be hours after it started; running it from the installed tool directory would lock those files and make <c>dotnet tool update</c> (and
+    ///     for 10 minutes, which can be hours after it started; running it from the installed tool directory would lock those files and make <c>dotnet tool update</c> (and
     ///     rebuilding Fuse) fail while any repository has an engine running.
     /// </summary>
     internal static string EngineHome() =>

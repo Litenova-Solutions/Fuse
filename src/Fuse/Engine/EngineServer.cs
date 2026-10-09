@@ -10,13 +10,12 @@ namespace Fuse.Engine;
 
 /// <summary>
 ///     The engine process: one per repository root, guarded by a named mutex, serving one request per pipe
-///     connection. It exits after <see cref="IdleTimeout"/> without requests, when a client of another build
-///     connects, or when the repository disappears.
+///     connection. It returns its free memory once idle for <see cref="IdleClock.ReleaseAfter"/>, and exits after
+///     <see cref="IdleClock.ExitAfter"/> without requests, when a client of another build connects, or when the
+///     repository disappears.
 /// </summary>
 internal static class EngineServer
 {
-    public static readonly TimeSpan IdleTimeout = TimeSpan.FromMinutes(30);
-
     public static async Task<int> RunAsync(string rootPath)
     {
         var root = RepoRoot.Find(rootPath);
@@ -45,8 +44,8 @@ internal static class EngineServer
         using var router = new RequestRouter(root, log);
         _ = router.InitializeAsync(shutdown.Token);
 
-        var state = new ServerState();
-        var watchdog = WatchIdleAsync(root, state, shutdown, log);
+        var state = new IdleClock(TimeProvider.System);
+        var watchdog = WatchIdleAsync(root, router, state, shutdown, log);
         try
         {
             while (!shutdown.IsCancellationRequested)
@@ -122,7 +121,7 @@ internal static class EngineServer
         }
     }
 
-    private static async Task ServeAsync(NamedPipeServerStream pipe, RequestRouter router, ServerState state, CancellationTokenSource shutdown, EngineLog log)
+    private static async Task ServeAsync(NamedPipeServerStream pipe, RequestRouter router, IdleClock state, CancellationTokenSource shutdown, EngineLog log)
     {
         await using (pipe.ConfigureAwait(false))
         {
@@ -148,7 +147,7 @@ internal static class EngineServer
                 if (request is null)
                     return;
 
-                Interlocked.Increment(ref state.Active);
+                state.Begin();
                 try
                 {
                     using var requestCancellation = CancellationTokenSource.CreateLinkedTokenSource(shutdown.Token);
@@ -177,8 +176,7 @@ internal static class EngineServer
                 }
                 finally
                 {
-                    Interlocked.Decrement(ref state.Active);
-                    state.Touch();
+                    state.End();
                 }
             }
             catch (Exception e) when (e is IOException or OperationCanceledException or ObjectDisposedException)
@@ -208,7 +206,7 @@ internal static class EngineServer
         }
     }
 
-    private static async Task WatchIdleAsync(RepoRoot root, ServerState state, CancellationTokenSource shutdown, EngineLog log)
+    private static async Task WatchIdleAsync(RepoRoot root, RequestRouter router, IdleClock state, CancellationTokenSource shutdown, EngineLog log)
     {
         try
         {
@@ -220,16 +218,32 @@ internal static class EngineServer
                     log.Write("repository removed; exiting");
                     await shutdown.CancelAsync().ConfigureAwait(false);
                 }
-                else if (Volatile.Read(ref state.Active) == 0 && state.IdleFor > IdleTimeout)
+                else if (state.ShouldExit)
                 {
                     log.Write("idle; exiting");
                     await shutdown.CancelAsync().ConfigureAwait(false);
+                }
+                else if (!router.IsLoading && state.TakeRelease())
+                {
+                    ReleaseMemory(log);
                 }
             }
         }
         catch (OperationCanceledException)
         {
         }
+    }
+
+    /// <summary>
+    ///     Collects and compacts the whole heap and returns the free memory to the operating system. A check on a large
+    ///     repository allocates gigabytes that the background collector frees without returning, so an idle engine would
+    ///     otherwise keep the size it peaked at.
+    /// </summary>
+    private static void ReleaseMemory(EngineLog log)
+    {
+        var before = Environment.WorkingSet;
+        GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, blocking: true, compacting: true);
+        log.Write($"released memory: working set {before / (1024 * 1024)} MB before, {Environment.WorkingSet / (1024 * 1024)} MB after");
     }
 
     private static async Task WriteAsync(Stream stream, EngineResponse response, CancellationToken cancellationToken)
@@ -241,14 +255,4 @@ internal static class EngineServer
 
     [DllImport("libc")]
     private static extern int setsid();
-
-    private sealed class ServerState
-    {
-        public int Active;
-        private long _lastRequest = Environment.TickCount64;
-
-        public TimeSpan IdleFor => TimeSpan.FromMilliseconds(Environment.TickCount64 - Interlocked.Read(ref _lastRequest));
-
-        public void Touch() => Interlocked.Exchange(ref _lastRequest, Environment.TickCount64);
-    }
 }

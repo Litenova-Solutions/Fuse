@@ -19,4 +19,11 @@ internal sealed record CheckReport(
     bool CheckedWholeProjects,
     int ErrorCount,
     int ErrorFileCount,
-    int LeftToOtherSessions);
+    int LeftToOtherSessions)
+{
+    /// <summary>How many files or whole projects were answered before their analyzers finished; their compiler errors are complete.</summary>
+    public int AnalyzersUnfinished { get; init; }
+
+    /// <summary>The compilation-wide analyzers the check left out, by assembly and type name.</summary>
+    public string[] CompilationWideLeftOut { get; init; } = [];
+}

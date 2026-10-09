@@ -39,6 +39,9 @@ internal sealed class Preloader
         _log = log;
     }
 
+    /// <summary>True while a background load runs.</summary>
+    public bool IsRunning => !_running.IsCompleted;
+
     /// <summary>Starts loading in the background, unless a load is already running or the engine is shutting down.</summary>
     /// <param name="shutdown">The engine's shutdown token, which stops the load between two projects.</param>
     public void Schedule(CancellationToken shutdown)

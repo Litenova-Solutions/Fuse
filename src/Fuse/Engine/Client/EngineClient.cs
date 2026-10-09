@@ -22,12 +22,12 @@ internal static class EngineClient
 
     /// <summary>Sends <paramref name="request"/> and waits for the answer.</summary>
     /// <param name="root">The repository whose engine to use.</param>
-    /// <param name="request">The request. Its build id and request id are replaced with this build's and a fresh one.</param>
+    /// <param name="request">The request. Its build id and request id are replaced with this build's and a fresh one, and its wait with <paramref name="timeout"/>.</param>
     /// <param name="timeout">How long to wait for the answer.</param>
     /// <param name="cancellationToken">Cancels the request; the engine stops the work when the connection closes.</param>
     public static async Task<EngineResponse> SendAsync(RepoRoot root, EngineRequest request, TimeSpan timeout, CancellationToken cancellationToken)
     {
-        request = request with { BuildId = EngineVersion.Build, RequestId = NextRequestId() };
+        request = request with { BuildId = EngineVersion.Build, RequestId = NextRequestId(), WaitMs = (long)timeout.TotalMilliseconds };
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         deadline.CancelAfter(timeout);
         try

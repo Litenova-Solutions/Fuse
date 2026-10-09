@@ -2,44 +2,44 @@
   "suite": "latency",
   "repo": "FluentValidation",
   "commit": "fa3c160b17796ff67d6aa5ae6c4b05b471f1a791",
-  "fuseBuild": "5.2.2/a655e25734bd41ec8ac1a86d91c8f940",
+  "fuseBuild": "5.3.0/02f26609215e4a0faa9339ba828c94e1",
   "target": "src/FluentValidation/AbstractValidator.cs",
   "method": "RuleFor",
   "referencingFilesInOtherProjects": 56,
-  "coldCleanMs": 2212.3267,
-  "coldBodyEditMs": 7611.3349,
+  "coldCleanMs": 2503.6126,
+  "coldBodyEditMs": 7993.3424,
   "bodyEdit": {
-    "p50": 325.4,
-    "p95": 437.2,
-    "max": 437.2,
+    "p50": 357.4,
+    "p95": 454.5,
+    "max": 454.5,
     "n": 15
   },
   "signatureEdit": {
-    "p50": 3395.5,
-    "p95": 24488.6,
-    "max": 24488.6,
+    "p50": 3544.3,
+    "p95": 29816.1,
+    "max": 29816.1,
     "n": 10
   },
   "signatureEditSample": "fuse: 883 error(s) introduced in 55 file(s), first 20 shown (FluentValidation.Tests.Benchmarks, FluentValidation.Tests); FluentValidation declarations changed, 3 dependent project(s) checked; 10 cause(s) left out",
   "warmUnchanged": {
-    "p50": 30.1,
-    "p95": 36.8,
-    "max": 36.8,
+    "p50": 29.9,
+    "p95": 43.9,
+    "max": 43.9,
     "n": 10
   },
   "part": "all",
   "testRound": {
-    "p50": 11010,
-    "p95": 24923.9,
-    "max": 24923.9,
+    "p50": 11562.2,
+    "p95": 27399,
+    "max": 27399,
     "n": 5
   },
   "bodyEditPhases": {
     "phases": {
       "bindTargets": {
-        "p50": 270.7,
-        "p95": 359.2,
-        "max": 359.2,
+        "p50": 303.4,
+        "p95": 411.2,
+        "max": 411.2,
         "n": 15
       },
       "gate": {
@@ -55,28 +55,28 @@
         "n": 15
       },
       "surfaceDiff": {
-        "p50": 3,
-        "p95": 16.5,
-        "max": 16.5,
+        "p50": 2.9,
+        "p95": 37.7,
+        "max": 37.7,
         "n": 15
       },
       "sync": {
-        "p50": 1.3,
-        "p95": 4.2,
-        "max": 4.2,
+        "p50": 1.4,
+        "p95": 6.2,
+        "max": 6.2,
         "n": 15
       },
       "total": {
-        "p50": 266,
-        "p95": 360,
-        "max": 360,
+        "p50": 312,
+        "p95": 421,
+        "max": 421,
         "n": 15
       }
     },
     "outsideEngine": {
-      "p50": 45.4,
-      "p95": 203.2,
-      "max": 203.2,
+      "p50": 40.5,
+      "p95": 59.3,
+      "max": 59.3,
       "n": 15
     },
     "n": 15
@@ -84,64 +84,64 @@
   "signatureEditPhases": {
     "phases": {
       "bindCandidates": {
-        "p50": 3717.8,
-        "p95": 18729,
-        "max": 18729,
-        "n": 9
+        "p50": 3391.7,
+        "p95": 23221.4,
+        "max": 23221.4,
+        "n": 10
       },
       "bindTargets": {
-        "p50": 99,
-        "p95": 4018.7,
-        "max": 4018.7,
+        "p50": 99.5,
+        "p95": 232.7,
+        "max": 232.7,
         "n": 10
       },
       "gate": {
         "p50": 0,
-        "p95": 5.3,
-        "max": 5.3,
+        "p95": 0,
+        "max": 0,
         "n": 10
       },
       "load": {
         "p50": 0,
-        "p95": 0.3,
-        "max": 0.3,
+        "p95": 0,
+        "max": 0,
         "n": 10
       },
       "loadDependents": {
         "p50": 0,
-        "p95": 0,
-        "max": 0,
-        "n": 9
+        "p95": 1,
+        "max": 1,
+        "n": 10
       },
       "referenceSearch": {
-        "p50": 8.1,
-        "p95": 5522.6,
-        "max": 5522.6,
-        "n": 9
+        "p50": 8.4,
+        "p95": 6307.5,
+        "max": 6307.5,
+        "n": 10
       },
       "surfaceDiff": {
         "p50": 1.8,
-        "p95": 31.2,
-        "max": 31.2,
+        "p95": 4.3,
+        "max": 4.3,
         "n": 10
       },
       "sync": {
         "p50": 1.2,
-        "p95": 10.6,
-        "max": 10.6,
+        "p95": 1.3,
+        "max": 1.3,
         "n": 10
       },
       "total": {
-        "p50": 3812,
-        "p95": 24453,
-        "max": 24453,
+        "p50": 3500,
+        "p95": 29765,
+        "max": 29765,
         "n": 10
       }
     },
     "outsideEngine": {
-      "p50": 34.2,
-      "p95": 55.9,
-      "max": 55.9,
+      "p50": 43.5,
+      "p95": 51.1,
+      "max": 51.1,
       "n": 10
     },
     "n": 10
@@ -168,9 +168,9 @@
       }
     },
     "outsideEngine": {
-      "p50": 30.1,
-      "p95": 36.8,
-      "max": 36.8,
+      "p50": 29.9,
+      "p95": 43.9,
+      "max": 43.9,
       "n": 10
     },
     "n": 10
@@ -178,9 +178,9 @@
   "testRoundPhases": {
     "phases": {
       "emit": {
-        "p50": 2206.2,
-        "p95": 4366,
-        "max": 4366,
+        "p50": 2551.3,
+        "p95": 4772,
+        "max": 4772,
         "n": 5
       },
       "gate": {
@@ -190,34 +190,34 @@
         "n": 5
       },
       "mirror": {
-        "p50": 39.8,
-        "p95": 667.9,
-        "max": 667.9,
+        "p50": 49.3,
+        "p95": 777.5,
+        "max": 777.5,
         "n": 5
       },
       "selection": {
-        "p50": 75.4,
-        "p95": 199.1,
-        "max": 199.1,
+        "p50": 52.6,
+        "p95": 358,
+        "max": 358,
         "n": 5
       },
       "sync": {
-        "p50": 1.3,
-        "p95": 1.6,
-        "max": 1.6,
+        "p50": 1.4,
+        "p95": 6069,
+        "max": 6069,
         "n": 5
       },
       "total": {
-        "p50": 2312,
-        "p95": 5125,
-        "max": 5125,
+        "p50": 2672,
+        "p95": 11984,
+        "max": 11984,
         "n": 5
       }
     },
     "outsideEngine": {
-      "p50": 7459.7,
-      "p95": 24595.9,
-      "max": 24595.9,
+      "p50": 7855,
+      "p95": 27071,
+      "max": 27071,
       "n": 5
     },
     "n": 5
@@ -226,40 +226,46 @@
     "writers": {
       "clients": 3,
       "editsPerClient": 10,
-      "wallMs": 24913.3051,
+      "wallMs": 36120.2292,
       "checks": 30,
       "unanswered": 0,
       "notRun": 0,
       "gate": {
-        "p50": 45.4,
-        "p95": 465.5,
-        "max": 477.9,
+        "p50": 0,
+        "p95": 678.3,
+        "max": 736.8,
         "n": 30
       },
       "gateByHolder": {
         "CheckFiles": {
-          "p50": 80.5,
-          "p95": 477.9,
-          "max": 477.9,
-          "n": 19
+          "p50": 73.1,
+          "p95": 736.8,
+          "max": 736.8,
+          "n": 14
+        },
+        "PlanAffectedTests": {
+          "p50": 48.3,
+          "p95": 48.3,
+          "max": 48.3,
+          "n": 1
         }
       },
       "engineTotal": {
-        "p50": 47,
-        "p95": 281,
-        "max": 468,
+        "p50": 62,
+        "p95": 422,
+        "max": 516,
         "n": 30
       },
-      "singleClientTotalP50": 156
+      "singleClientTotalP50": 312
     },
     "builds": {
       "clients": 3,
       "rounds": 5,
-      "wallMs": 29153.5413,
+      "wallMs": 52452.0332,
       "each": {
-        "p50": 3701,
-        "p95": 8687.9,
-        "max": 8687.9,
+        "p50": 6418.1,
+        "p95": 13611.4,
+        "max": 13611.4,
         "n": 15
       },
       "collisions": 0,
@@ -270,7 +276,7 @@
         "index": 1,
         "project": "FluentValidation.csproj",
         "edit": "src\\FluentValidation\\AbstractValidator.cs",
-        "ms": 8483.4682,
+        "ms": 12985.4021,
         "testProjects": [
           "FluentValidation.Tests"
         ],
@@ -280,7 +286,7 @@
         "index": 2,
         "project": "FluentValidation.csproj",
         "edit": "src\\FluentValidation\\AbstractValidator.cs",
-        "ms": 5425.2207,
+        "ms": 9792.7107,
         "testProjects": [
           "FluentValidation.Tests"
         ],
@@ -290,14 +296,28 @@
         "index": 3,
         "project": "FluentValidation.csproj",
         "edit": "src\\FluentValidation\\AbstractValidator.cs",
-        "ms": 7159.6799,
+        "ms": 10404.5441,
         "testProjects": [
           "FluentValidation.Tests"
         ],
         "failingTests": 0
       }
-    ]
+    ],
+    "attribution": {
+      "renamedIn": "src/FluentValidation/AssemblyScanner.cs",
+      "method": "FindValidatorsInAssembly",
+      "brokenIn": "src/FluentValidation.DependencyInjectionExtensions/ServiceCollectionExtensions.cs",
+      "ownWithoutSessions": 6,
+      "otherWithoutSessions": 2,
+      "ownWithSessions": 6,
+      "otherWithSessions": 0,
+      "leftToOtherSessions": 2,
+      "msWithoutSessions": 105.6445,
+      "msWithSessions": 212.3998
+    }
   },
-  "engineWorkingSetMb": 749,
+  "engineWorkingSetMb": 552.1,
+  "enginePeakWorkingSetMb": 717.8,
+  "engineIdleWorkingSetMb": 386.5,
   "treeCleanAfter": true
 }

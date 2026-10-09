@@ -2,44 +2,44 @@
   "suite": "latency",
   "repo": "Jellyfin",
   "commit": "1d7c6af520da5c84ceac1c21a1d2da34837540ac",
-  "fuseBuild": "5.2.2/a655e25734bd41ec8ac1a86d91c8f940",
+  "fuseBuild": "5.3.0/02f26609215e4a0faa9339ba828c94e1",
   "target": "MediaBrowser.Controller/Entities/LinkedChildComparer.cs",
   "method": "Equals",
   "referencingFilesInOtherProjects": 210,
-  "coldCleanMs": 3770.9708,
-  "coldBodyEditMs": 10464.1588,
+  "coldCleanMs": 3625.4262,
+  "coldBodyEditMs": 11179.2147,
   "bodyEdit": {
-    "p50": 121,
-    "p95": 255.7,
-    "max": 255.7,
+    "p50": 139.8,
+    "p95": 309.6,
+    "max": 309.6,
     "n": 15
   },
   "signatureEdit": {
-    "p50": 65.7,
-    "p95": 56136.7,
-    "max": 56136.7,
+    "p50": 66.1,
+    "p95": 67990.8,
+    "max": 67990.8,
     "n": 10
   },
   "signatureEditSample": "fuse: 1 error(s) introduced in 1 file(s) (MediaBrowser.Controller); MediaBrowser.Controller declarations changed, 27 dependent project(s) checked",
   "warmUnchanged": {
-    "p50": 20.9,
-    "p95": 30.1,
-    "max": 30.1,
+    "p50": 21.8,
+    "p95": 28.9,
+    "max": 28.9,
     "n": 10
   },
   "part": "all",
   "testRound": {
-    "p50": 100978.2,
-    "p95": 115024.3,
-    "max": 115024.3,
+    "p50": 102726.1,
+    "p95": 112212.8,
+    "max": 112212.8,
     "n": 5
   },
   "bodyEditPhases": {
     "phases": {
       "bindTargets": {
-        "p50": 87.5,
-        "p95": 220.6,
-        "max": 220.6,
+        "p50": 106.9,
+        "p95": 227,
+        "max": 227,
         "n": 15
       },
       "gate": {
@@ -56,27 +56,27 @@
       },
       "surfaceDiff": {
         "p50": 0.8,
-        "p95": 1.4,
-        "max": 1.4,
+        "p95": 1.3,
+        "max": 1.3,
         "n": 15
       },
       "sync": {
-        "p50": 0.9,
-        "p95": 3.7,
-        "max": 3.7,
+        "p50": 1,
+        "p95": 5,
+        "max": 5,
         "n": 15
       },
       "total": {
-        "p50": 94,
-        "p95": 219,
-        "max": 219,
+        "p50": 110,
+        "p95": 234,
+        "max": 234,
         "n": 15
       }
     },
     "outsideEngine": {
-      "p50": 28,
-      "p95": 67.2,
-      "max": 67.2,
+      "p50": 30.6,
+      "p95": 75.6,
+      "max": 75.6,
       "n": 15
     },
     "n": 15
@@ -85,14 +85,14 @@
     "phases": {
       "bindCandidates": {
         "p50": 0.1,
-        "p95": 4.3,
-        "max": 4.3,
+        "p95": 3.8,
+        "max": 3.8,
         "n": 10
       },
       "bindTargets": {
-        "p50": 33.1,
-        "p95": 111.2,
-        "max": 111.2,
+        "p50": 33.6,
+        "p95": 107.2,
+        "max": 107.2,
         "n": 10
       },
       "gate": {
@@ -109,20 +109,20 @@
       },
       "loadDependents": {
         "p50": 0,
-        "p95": 22501.9,
-        "max": 22501.9,
+        "p95": 22980.7,
+        "max": 22980.7,
         "n": 10
       },
       "referenceSearch": {
         "p50": 0.9,
-        "p95": 33487,
-        "max": 33487,
+        "p95": 44867.7,
+        "max": 44867.7,
         "n": 10
       },
       "surfaceDiff": {
         "p50": 0.5,
-        "p95": 2.2,
-        "max": 2.2,
+        "p95": 1.7,
+        "max": 1.7,
         "n": 10
       },
       "sync": {
@@ -132,16 +132,16 @@
         "n": 10
       },
       "total": {
-        "p50": 32,
-        "p95": 56109,
-        "max": 56109,
+        "p50": 47,
+        "p95": 67968,
+        "max": 67968,
         "n": 10
       }
     },
     "outsideEngine": {
-      "p50": 27.5,
-      "p95": 34,
-      "max": 34,
+      "p50": 25.4,
+      "p95": 35.1,
+      "max": 35.1,
       "n": 10
     },
     "n": 10
@@ -168,9 +168,9 @@
       }
     },
     "outsideEngine": {
-      "p50": 20.9,
-      "p95": 30.1,
-      "max": 30.1,
+      "p50": 21.8,
+      "p95": 28.9,
+      "max": 28.9,
       "n": 10
     },
     "n": 10
@@ -178,10 +178,10 @@
   "testRoundPhases": {
     "phases": {
       "emit": {
-        "p50": 4666.3,
-        "p95": 7466.6,
-        "max": 7466.6,
-        "n": 5
+        "p50": 4525.1,
+        "p95": 8340.4,
+        "max": 8340.4,
+        "n": 4
       },
       "gate": {
         "p50": 0,
@@ -190,34 +190,34 @@
         "n": 5
       },
       "mirror": {
-        "p50": 785.5,
-        "p95": 9436.2,
-        "max": 9436.2,
-        "n": 5
+        "p50": 770.5,
+        "p95": 6297,
+        "max": 6297,
+        "n": 4
       },
       "selection": {
-        "p50": 37.4,
-        "p95": 264.6,
-        "max": 264.6,
-        "n": 5
+        "p50": 25.4,
+        "p95": 269.2,
+        "max": 269.2,
+        "n": 4
       },
       "sync": {
-        "p50": 0.8,
-        "p95": 2.4,
-        "max": 2.4,
+        "p50": 1,
+        "p95": 1.1,
+        "max": 1.1,
         "n": 5
       },
       "total": {
-        "p50": 5484,
-        "p95": 17281,
-        "max": 17281,
+        "p50": 5297,
+        "p95": 15031,
+        "max": 15031,
         "n": 5
       }
     },
     "outsideEngine": {
-      "p50": 95494.2,
-      "p95": 97743.3,
-      "max": 97743.3,
+      "p50": 97181.8,
+      "p95": 102726.1,
+      "max": 102726.1,
       "n": 5
     },
     "n": 5
@@ -226,52 +226,52 @@
     "writers": {
       "clients": 4,
       "editsPerClient": 10,
-      "wallMs": 314548.5247,
+      "wallMs": 287819.5035,
       "checks": 40,
       "unanswered": 0,
       "notRun": 0,
       "gate": {
-        "p50": 308.6,
-        "p95": 3408.9,
-        "max": 5313.2,
+        "p50": 321.7,
+        "p95": 3150.2,
+        "max": 3808.9,
         "n": 40
       },
       "gateByHolder": {
         "CheckChanges": {
-          "p50": 199.1,
-          "p95": 199.1,
-          "max": 199.1,
+          "p50": 174.6,
+          "p95": 174.6,
+          "max": 174.6,
           "n": 1
         },
         "CheckFiles": {
-          "p50": 305.2,
-          "p95": 1278.7,
-          "max": 1498.5,
+          "p50": 312.7,
+          "p95": 955.1,
+          "max": 974.7,
           "n": 34
         },
         "PlanAffectedTests": {
-          "p50": 3408.9,
-          "p95": 5313.2,
-          "max": 5313.2,
+          "p50": 3150.2,
+          "p95": 3808.9,
+          "max": 3808.9,
           "n": 4
         }
       },
       "engineTotal": {
         "p50": 94,
-        "p95": 375,
-        "max": 672,
+        "p95": 297,
+        "max": 516,
         "n": 40
       },
-      "singleClientTotalP50": 140
+      "singleClientTotalP50": 62
     },
     "builds": {
       "clients": 3,
       "rounds": 5,
-      "wallMs": 169713.3974,
+      "wallMs": 116375.035,
       "each": {
-        "p50": 21847.9,
-        "p95": 43760.4,
-        "max": 43760.4,
+        "p50": 14579,
+        "p95": 32890.1,
+        "max": 32890.1,
         "n": 15
       },
       "collisions": 0,
@@ -282,7 +282,7 @@
         "index": 1,
         "project": "MediaBrowser.Model.csproj",
         "edit": "MediaBrowser.Model\\Configuration\\LibraryOptions.cs",
-        "ms": 110442.6315,
+        "ms": 93601.6679,
         "testProjects": [
           "Jellyfin.Api.Tests",
           "Jellyfin.Controller.Tests",
@@ -302,7 +302,7 @@
         "index": 2,
         "project": "Jellyfin.MediaEncoding.Keyframes.csproj",
         "edit": "src\\Jellyfin.MediaEncoding.Keyframes\\FfProbe\\FfProbeKeyframeExtractor.cs",
-        "ms": 106237.862,
+        "ms": 90417.9606,
         "testProjects": [
           "Jellyfin.Api.Tests",
           "Jellyfin.Controller.Tests",
@@ -323,7 +323,7 @@
         "index": 3,
         "project": "Jellyfin.MediaEncoding.Keyframes.csproj",
         "edit": "src\\Jellyfin.MediaEncoding.Keyframes\\FfProbe\\FfProbeKeyframeExtractor.cs",
-        "ms": 101559.2337,
+        "ms": 98493.5376,
         "testProjects": [
           "Jellyfin.Api.Tests",
           "Jellyfin.Controller.Tests",
@@ -340,8 +340,22 @@
         ],
         "failingTests": 0
       }
-    ]
+    ],
+    "attribution": {
+      "renamedIn": "MediaBrowser.Model/Configuration/LibraryOptions.cs",
+      "method": "GetTypeOptions",
+      "brokenIn": "MediaBrowser.Providers/Manager/ItemImageProvider.cs",
+      "ownWithoutSessions": 4,
+      "otherWithoutSessions": 2,
+      "ownWithSessions": 4,
+      "otherWithSessions": 0,
+      "leftToOtherSessions": 8,
+      "msWithoutSessions": 70.5887,
+      "msWithSessions": 569.3897
+    }
   },
-  "engineWorkingSetMb": 695.5,
+  "engineWorkingSetMb": 430,
+  "enginePeakWorkingSetMb": 817.2,
+  "engineIdleWorkingSetMb": 423.5,
   "treeCleanAfter": true
 }

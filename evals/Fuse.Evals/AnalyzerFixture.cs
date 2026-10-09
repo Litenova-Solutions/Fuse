@@ -105,7 +105,8 @@ internal static class AnalyzerFixture
         </Project>
         """;
 
-    // Three passes stand in for a package of several such analyzers, as real ones are.
+    // Six passes stand in for a package of several such analyzers, as real ones are, and keep its start well past the
+    // engine's one-second threshold on any runner.
     private const string AnalyzerSource = """
         using System.Collections.Immutable;
         using System.Linq;
@@ -129,7 +130,7 @@ internal static class AnalyzerFixture
                 context.RegisterCompilationStartAction(start =>
                 {
                     var bound = 0;
-                    for (var pass = 0; pass < 3; pass++)
+                    for (var pass = 0; pass < 6; pass++)
                     {
                         foreach (var tree in start.Compilation.SyntaxTrees)
                         {

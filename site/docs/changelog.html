@@ -148,7 +148,7 @@
     <pre data-label="Shell"><code>dotnet tool update -g Fuse</code></pre>
 
     <h2 id="v5-3-0">5.3.0 <a class="anchor" href="#v5-3-0" aria-label="Link to this section">#</a></h2>
-    <p>Released 2026-10-09. Compared with 5.2.4.</p>
+    <p>Released 2026-10-10. Compared with 5.2.4.</p>
     <p>A repository whose analyzers read the whole project no longer makes every check slow: the post-edit hook answers in seconds, checks of many files take a fraction of the time and memory, and a slow analyzer can no longer leave a check with no answer. The engine also gives memory back once idle and exits sooner.</p>
     <h3 id="upgrading-to-5-3-0">Upgrading to 5.3.0 <a class="anchor" href="#upgrading-to-5-3-0" aria-label="Link to this section">#</a></h3>
     <p>Update the tool with <code>dotnet tool update -g Fuse</code>. Nothing else needs to change, and <code>fuse init</code> does not need to run again. In a repository whose analyzers read the whole project, the post-edit hook now leaves those analyzers out and names them, so their errors reach the agent at the stop hook. After 10 idle minutes the next command starts the engine again, which loads the projects again.</p>

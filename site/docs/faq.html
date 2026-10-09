@@ -122,7 +122,7 @@
           "name": "What does Fuse cost?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Mainly memory. Fuse keeps the loaded projects in memory until it has been idle for 10 minutes: 256 MB to 795 MB in the benchmarks, and more on a machine with more memory. Each git worktree runs its own copy. The first edit that affects other projects has to load them, which took up to 92.2 s on Jellyfin, and agents in one repository wait for each other's checks. What Fuse costs lists every cost."
+            "text": "Mainly memory. Fuse keeps the loaded projects in memory until it has been idle for 10 minutes: 356 MB to 947 MB once idle in the benchmarks, up to 1,640 MB while it checks, and more on a machine with more memory. Each git worktree runs its own copy. The first edit that affects other projects has to load them, which took up to 92.2 s on Jellyfin, and agents in one repository wait for each other's checks. What Fuse costs lists every cost."
           }
         },
         {
@@ -293,7 +293,7 @@
     <p>Agents. The hooks run Fuse without the agent asking, and the output is only what an agent needs to act on. You run <code>fuse init</code> once, and can use the commands to try Fuse or see what the agent gets. For your own editing, your IDE is the better tool.</p>
 
     <h3 id="what-does-fuse-cost">What does Fuse cost? <a class="anchor" href="#what-does-fuse-cost" aria-label="Link to this section">#</a></h3>
-    <p>Mainly memory. Fuse keeps the loaded projects in memory until it has been idle for 10 minutes: 256 MB to 795 MB in the <a href="benchmarks.html">benchmarks</a>, and more on a machine with more memory. Each git worktree runs its own copy. The first edit that affects other projects has to load them, which took up to 92.2 s on Jellyfin, and agents in one repository wait for each other's checks. <a href="index.html#what-fuse-costs">What Fuse costs</a> lists every cost.</p>
+    <p>Mainly memory. Fuse keeps the loaded projects in memory until it has been idle for 10 minutes: 356 MB to 947 MB once idle in the <a href="benchmarks.html">benchmarks</a>, up to 1,640 MB while it checks, and more on a machine with more memory. Each git worktree runs its own copy. The first edit that affects other projects has to load them, which took up to 92.2 s on Jellyfin, and agents in one repository wait for each other's checks. <a href="index.html#what-fuse-costs">What Fuse costs</a> lists every cost.</p>
 
     <h3 id="which-harnesses-does-fuse-support">Which harnesses does Fuse support? <a class="anchor" href="#which-harnesses-does-fuse-support" aria-label="Link to this section">#</a></h3>
     <p>Fuse supports Claude Code, Cursor, Gemini CLI, Codex, GitHub Copilot CLI and OpenCode through hooks, and VS Code agent mode and any other MCP host through <code>fuse mcp</code>. Claude Code and OpenCode are tested end to end. The others follow each harness's documented hook format and are covered by payload tests. <a href="harnesses.html">Connect your agent</a> lists what <code>fuse init</code> writes for each one.</p>

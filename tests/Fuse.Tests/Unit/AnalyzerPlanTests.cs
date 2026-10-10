@@ -31,8 +31,9 @@ public class AnalyzerPlanTests
         // Each file still gets both analyzers' errors for its own class, and no other file's.
         for (var i = 0; i < Files; i++)
             Assert.Equal([($"C{i}.cs", "CHEAP1"), ($"C{i}.cs", "SLOW1")], errors[i].Select(e => (e.Path, e.Id)).Order());
-        // File by file it would start twice per file; planned, it starts for the probe's two calls and the one compilation-wide run.
-        Assert.Equal(3, slow.Starts);
+        // File by file it would start twice per file; planned, it starts for the two probes' two calls each and the one
+        // compilation-wide run.
+        Assert.Equal(5, slow.Starts);
         var plan = Assert.Single(lines);
         Assert.Contains("1 per file, 1 compilation-wide", plan);
         Assert.Contains(nameof(SlowStartAnalyzer), plan);
@@ -69,8 +70,8 @@ public class AnalyzerPlanTests
         }
 
         Assert.Empty(lines);
-        // The probe's syntax and semantic calls, on a wrapper of its own, then two per-file calls on each file.
-        Assert.Equal(6, moderate.Starts);
+        // The two probes' syntax and semantic calls, each on a wrapper of its own, then two per-file calls on each file.
+        Assert.Equal(8, moderate.Starts);
     }
 
     [Fact]

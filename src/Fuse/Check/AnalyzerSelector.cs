@@ -39,7 +39,7 @@ internal sealed class AnalyzerSelector
     ///     The project's <see cref="AnalyzerPlan"/>, made once per project until the configuration changes. Making it runs
     ///     every analyzer on the file of <paramref name="probe"/>, syntax then semantics, and reads the time each took: an analyzer that
     ///     registers compilation start or compilation actions and took at least <see cref="AnalyzerPlan.CompilationWideStart"/>
-    ///     on one file is compilation-wide. The probe runs on a wrapper of its own that times the analyzers; the wrapper
+    ///     on one file, timed on a second run, is compilation-wide. The probe runs on a wrapper of its own that times the analyzers; the wrapper
     ///     every check uses does not, because timing every analyzer callback costs time on every file.
     /// </summary>
     public Task<AnalyzerPlan> PlanAsync(Project project, CompilationWithAnalyzers analyzers, SemanticModel probe, CancellationToken cancellationToken)
@@ -57,9 +57,10 @@ internal sealed class AnalyzerSelector
 
     private async Task<AnalyzerPlan> MakePlanAsync(Project project, CompilationWithAnalyzers analyzers, SemanticModel probe, CancellationToken cancellationToken)
     {
-        var timed = probe.Compilation.WithAnalyzers(analyzers.Analyzers, Options(project, logExecutionTime: true));
-        await timed.GetAnalysisResultAsync(probe.SyntaxTree, timed.Analyzers, cancellationToken).ConfigureAwait(false);
-        var result = await timed.GetAnalysisResultAsync(probe, filterSpan: null, timed.Analyzers, cancellationToken).ConfigureAwait(false);
+        // The first run also pays for compiling the analyzers' code and Roslyn's own, which can make an analyzer that
+        // starts in milliseconds take over a second once, so only a second run is timed.
+        await ProbeAsync(project, analyzers, probe, cancellationToken).ConfigureAwait(false);
+        var result = await ProbeAsync(project, analyzers, probe, cancellationToken).ConfigureAwait(false);
         var perFile = ImmutableArray.CreateBuilder<DiagnosticAnalyzer>();
         var compilationWide = ImmutableArray.CreateBuilder<(DiagnosticAnalyzer, TimeSpan)>();
         foreach (var analyzer in analyzers.Analyzers)
@@ -78,6 +79,14 @@ internal sealed class AnalyzerSelector
         if (!plan.CompilationWide.IsEmpty)
             _log($"analyzers of {project.Name}: {plan.PerFile.Length} per file, {plan.CompilationWide.Length} compilation-wide ({string.Join(", ", plan.CompilationWide.Select(c => $"{Name(c.Analyzer)} {c.PerFile.TotalMilliseconds:0} ms on one file"))})");
         return plan;
+    }
+
+    /// <summary>Runs every analyzer on the file of <paramref name="probe"/>, syntax then semantics, on a wrapper of its own that times them.</summary>
+    private static async Task<AnalysisResult> ProbeAsync(Project project, CompilationWithAnalyzers analyzers, SemanticModel probe, CancellationToken cancellationToken)
+    {
+        var timed = probe.Compilation.WithAnalyzers(analyzers.Analyzers, Options(project, logExecutionTime: true));
+        await timed.GetAnalysisResultAsync(probe.SyntaxTree, timed.Analyzers, cancellationToken).ConfigureAwait(false);
+        return await timed.GetAnalysisResultAsync(probe, filterSpan: null, timed.Analyzers, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>An analyzer's assembly and type name, as a log line names it.</summary>

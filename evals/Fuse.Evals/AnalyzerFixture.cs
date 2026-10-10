@@ -105,8 +105,8 @@ internal static class AnalyzerFixture
         </Project>
         """;
 
-    // Six passes stand in for a package of several such analyzers, as real ones are, and keep its start well past the
-    // engine's one-second threshold on any runner.
+    // The start scans the project until two seconds have passed, so it costs the same on any runner: an analyzer whose start
+    // takes two seconds per call, well past the engine's one-second threshold.
     private const string AnalyzerSource = """
         using System.Collections.Immutable;
         using System.Linq;
@@ -130,7 +130,8 @@ internal static class AnalyzerFixture
                 context.RegisterCompilationStartAction(start =>
                 {
                     var bound = 0;
-                    for (var pass = 0; pass < 6; pass++)
+                    var watch = System.Diagnostics.Stopwatch.StartNew();
+                    while (watch.ElapsedMilliseconds < 2000)
                     {
                         foreach (var tree in start.Compilation.SyntaxTrees)
                         {

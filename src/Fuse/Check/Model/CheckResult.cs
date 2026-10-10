@@ -25,4 +25,14 @@ internal sealed record CheckResult(
     bool CheckedWholeProjects,
     int ErrorCount,
     int ErrorFileCount,
-    int LeftToOtherSessions);
+    int LeftToOtherSessions)
+{
+    /// <summary>
+    ///     How many files or whole projects the check answered without all their analyzer errors, because the analyzers
+    ///     had not finished when the client's wait was almost over. Their compiler errors are complete.
+    /// </summary>
+    public int AnalyzersUnfinished { get; init; }
+
+    /// <summary>The compilation-wide analyzers the check left out, by assembly and type name; the stop hook runs them.</summary>
+    public IReadOnlyList<string> CompilationWideLeftOut { get; init; } = [];
+}

@@ -67,8 +67,9 @@ internal sealed partial class EvalRepo
 
     /// <summary>
     ///     The engine log this repository's engine writes, read as lines with the leading timestamp stripped, so a caller
-    ///     can match them against the formats in <see cref="Fuse.Telemetry.PhaseLine"/>. The engine is the only writer and
-    ///     it is idle between requests, so a read cannot catch a line half-written.
+    ///     can match them against the formats in <see cref="Fuse.Telemetry.PhaseLine"/>. The engine also writes between
+    ///     requests (a background load, the memory it returns once idle), so the file is opened to share it with that
+    ///     writer, and a last line without its line break, which the writer has not finished, is left out.
     /// </summary>
     public IReadOnlyList<string> EngineLogLines()
     {
@@ -76,7 +77,12 @@ internal sealed partial class EvalRepo
         if (!File.Exists(path))
             return [];
 
-        return [.. File.ReadAllLines(path).Select(line => Timestamp().Replace(line, "", 1).Trim()).Where(line => line.Length > 0)];
+        string text;
+        using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+        using (var reader = new StreamReader(stream))
+            text = reader.ReadToEnd();
+        var complete = text.EndsWith('\n') ? text : text[..(text.LastIndexOf('\n') + 1)];
+        return [.. complete.Split('\n').Select(line => Timestamp().Replace(line.TrimEnd('\r'), "", 1).Trim()).Where(line => line.Length > 0)];
     }
 
     /// <summary>Where this repository's engine keeps its state, which is where its log is.</summary>
@@ -174,10 +180,13 @@ internal sealed partial class EvalRepo
         await Task.Delay(500);
     }
 
-    /// <summary>The Fuse engine processes whose command line names this repository, with their working set in bytes.</summary>
-    public async Task<List<(int Pid, long WorkingSet)>> EngineProcessesAsync()
+    /// <summary>
+    ///     The Fuse engine processes whose command line names this repository, with their working set and the largest
+    ///     working set each has had since it started, in bytes.
+    /// </summary>
+    public async Task<List<(int Pid, long WorkingSet, long PeakWorkingSet)>> EngineProcessesAsync()
     {
-        var result = new List<(int, long)>();
+        var result = new List<(int, long, long)>();
         if (OperatingSystem.IsWindows())
         {
             var query = await ProcessRunner.RunAsync(
@@ -193,7 +202,7 @@ internal sealed partial class EvalRepo
                 if (parts.Length == 3 && parts[2].Contains(" engine ", StringComparison.Ordinal) && parts[2].Contains(Root, StringComparison.OrdinalIgnoreCase)
                     && parts[2].Contains("fuse", StringComparison.OrdinalIgnoreCase)
                     && int.TryParse(parts[0], out var pid) && long.TryParse(parts[1], out var ws))
-                    result.Add((pid, ws));
+                    result.Add((pid, ws, PeakOf(pid, ws)));
             }
         }
         else
@@ -206,7 +215,10 @@ internal sealed partial class EvalRepo
                 {
                     var cmd = File.ReadAllText(Path.Combine(dir, "cmdline")).Replace('\0', ' ');
                     if (cmd.Contains(" engine ", StringComparison.Ordinal) && cmd.Contains(Root, StringComparison.Ordinal))
-                        result.Add((pid, Process.GetProcessById(pid).WorkingSet64));
+                    {
+                        var ws = Process.GetProcessById(pid).WorkingSet64;
+                        result.Add((pid, ws, PeakOf(pid, ws)));
+                    }
                 }
                 catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException)
                 {
@@ -215,6 +227,19 @@ internal sealed partial class EvalRepo
         }
 
         return result;
+    }
+
+    /// <summary>The largest working set <paramref name="pid"/> has had, or <paramref name="workingSet"/> when it cannot be read.</summary>
+    private static long PeakOf(int pid, long workingSet)
+    {
+        try
+        {
+            return Math.Max(Process.GetProcessById(pid).PeakWorkingSet64, workingSet);
+        }
+        catch (Exception e) when (e is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            return workingSet;
+        }
     }
 
     /// <summary>Error lines from fuse check output (canonical form).</summary>

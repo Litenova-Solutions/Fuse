@@ -102,6 +102,12 @@ internal static class LatencySuite
         await File.WriteAllBytesAsync(file, originalBytes);
         var engines = await repo.EngineProcessesAsync();
         var rss = engines.Count > 0 ? engines.Max(e => e.WorkingSet) / (1024.0 * 1024.0) : 0;
+        // The engine started for the cold body edit served every later check and test round, so its peak is theirs.
+        var peak = engines.Count > 0 ? engines.Max(e => e.PeakWorkingSet) / (1024.0 * 1024.0) : 0;
+        // An engine returns the memory its requests freed once idle for 30 s, and looks every 15 s, so 50 s covers both.
+        await Task.Delay(TimeSpan.FromSeconds(50));
+        var idleEngines = await repo.EngineProcessesAsync();
+        var idle = idleEngines.Count > 0 ? idleEngines.Max(e => e.WorkingSet) / (1024.0 * 1024.0) : 0;
         var bodyPhases = PhaseReport.Build(bodyCalls);
         var signaturePhases = PhaseReport.Build(signatureCalls);
         var cleanPhases = PhaseReport.Build(cleanCalls);
@@ -140,9 +146,11 @@ internal static class LatencySuite
             testRoundPhases = tests ? testPhases : null,
             multiAgent,
             engineWorkingSetMb = Math.Round(rss, 1),
+            enginePeakWorkingSetMb = Math.Round(peak, 1),
+            engineIdleWorkingSetMb = Math.Round(idle, 1),
             treeCleanAfter = await repo.IsCleanAsync(),
         };
-        Console.WriteLine($"[latency] body edit P50 {summary.bodyEdit.P50:0} / P95 {summary.bodyEdit.P95:0} ms; signature edit P50 {summary.signatureEdit?.P50:0} / P95 {summary.signatureEdit?.P95:0} ms ({signatureSummary}); unchanged P50 {summary.warmUnchanged?.P50:0} ms; test round P50 {summary.testRound?.P50:0} ms; engine {rss:0} MB");
+        Console.WriteLine($"[latency] body edit P50 {summary.bodyEdit.P50:0} / P95 {summary.bodyEdit.P95:0} ms; signature edit P50 {summary.signatureEdit?.P50:0} / P95 {summary.signatureEdit?.P95:0} ms ({signatureSummary}); unchanged P50 {summary.warmUnchanged?.P50:0} ms; test round P50 {summary.testRound?.P50:0} ms; engine {rss:0} MB after the last request, {peak:0} MB at peak, {idle:0} MB once idle");
         Console.WriteLine($"[latency] body edit phases: {PhaseReport.Describe(summary.bodyEditPhases)}");
         if (summary.testRoundPhases is { } testRoundPhases)
             Console.WriteLine($"[latency] test round phases: {PhaseReport.Describe(testRoundPhases)}");

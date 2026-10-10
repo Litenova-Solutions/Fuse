@@ -2,6 +2,31 @@
 
 The list of changes in each release, which the release workflow publishes as the release notes. The [changelog page](https://fuse.codes/docs/changelog) explains each release with its upgrade steps and says which versions are supported. Each release groups its changes as Added, Changed, Removed, Fixed, Security and Documentation, listing only the groups it has. Versions before 5.0.0 are deprecated.
 
+## 5.3.0
+
+Compared with 5.2.4. A repository whose analyzers read the whole project no longer makes every check slow: the post-edit hook answers in seconds, checks of many files take a fraction of the time and memory, and a slow analyzer can no longer leave a check with no answer. The engine also gives memory back once idle and exits sooner.
+
+Update with `dotnet tool update -g Fuse`; nothing else needs to change.
+
+### Added
+
+- An analyzer that reads the whole project in its compilation start or compilation actions now runs once per compilation instead of once per checked file, so a check of many files no longer repeats it for each file and holds far less memory, and the engine log names it. [How it works](https://fuse.codes/docs/how-it-works#check) explains which analyzers count ([#88](https://github.com/Litenova-Solutions/Fuse/issues/88)).
+- A check stops its analyzers when 80% of its client's wait has passed and answers with every compiler error and the analyzer errors found so far, and the summary says where the analyzers did not finish. Previously the client gave up and the check answered nothing. [Limits](https://fuse.codes/docs/limits) describes it ([#88](https://github.com/Litenova-Solutions/Fuse/issues/88)).
+- The latency suite records the engine's peak working set and its working set once idle, and a new analyzers suite measures a generated repository whose analyzer reads the whole project. [Evals](https://fuse.codes/docs/evals) describes the fields.
+
+### Changed
+
+- The post-edit hook leaves out the analyzers that read the whole project and names them in its summary; the stop hook, `fuse check` and the MCP tool run them, so an edit is answered in seconds whatever analyzers the repository uses. [Limits](https://fuse.codes/docs/limits) describes it ([#88](https://github.com/Litenova-Solutions/Fuse/issues/88)).
+- 30 seconds after its last request the engine returns the memory its checks freed to the operating system, and it exits after 10 idle minutes. Previously it kept the memory and exited after 30 minutes. [How it works](https://fuse.codes/docs/how-it-works#process-model) describes it ([#88](https://github.com/Litenova-Solutions/Fuse/issues/88)).
+
+### Fixed
+
+- The engine log's `check:` line counts only the check's own binding and analyzer time. Previously a check that followed a cancelled one also counted the cancelled check's time.
+
+### Documentation
+
+- How it works, Limits, Commands, Troubleshooting (a new section, A slow analyzer), Architecture, Evals, Getting started, the FAQ and the README describe compilation-wide analyzers, the analyzer deadline and the engine's idle time.
+
 ## 5.2.4
 
 Compared with 5.2.3. When several agents share a working tree, each one now hears only about the errors its own edits caused, and the stop hook no longer blames the stopping agent for every error.

@@ -120,6 +120,7 @@
       <p>On this page</p>
       <ol>
         <li><a href="#supported-versions">Supported versions</a></li>
+        <li><a href="#v5-3-0">5.3.0</a></li>
         <li><a href="#v5-2-4">5.2.4</a></li>
         <li><a href="#v5-2-3">5.2.3</a></li>
         <li><a href="#v5-2-2">5.2.2</a></li>
@@ -136,14 +137,44 @@
     <table>
       <thead><tr><th scope="col">Version</th><th scope="col">Status</th></tr></thead>
       <tbody>
-        <tr><th scope="row">5.2.x</th><td>Supported. The latest release.</td></tr>
-        <tr><th scope="row">5.1.x</th><td>No longer fixed. Upgrade to 5.2.4 with the <a href="#upgrading-from-5-1-0">steps below</a>.</td></tr>
-        <tr><th scope="row">5.0.x</th><td>No longer fixed. Upgrade to 5.1.0 with the <a href="#upgrading-from-5-0-0">steps below</a>, then to 5.2.4.</td></tr>
+        <tr><th scope="row">5.3.x</th><td>Supported. The latest release.</td></tr>
+        <tr><th scope="row">5.2.x</th><td>No longer fixed. Upgrade to 5.3.0 with the <a href="#upgrading-to-5-3-0">steps below</a>.</td></tr>
+        <tr><th scope="row">5.1.x</th><td>No longer fixed. Upgrade to 5.3.0 with the <a href="#upgrading-from-5-1-0">steps below</a>.</td></tr>
+        <tr><th scope="row">5.0.x</th><td>No longer fixed. Upgrade to 5.1.0 with the <a href="#upgrading-from-5-0-0">steps below</a>, then to 5.3.0.</td></tr>
         <tr><th scope="row">1.0.0 to 4.4.0</th><td>Deprecated and unsupported. These versions are a different program under the same name; <a href="#moving-from-4-x">Moving from 4.x</a> says what to remove.</td></tr>
       </tbody>
     </table>
     <p>To upgrade the tool itself to the latest release:</p>
     <pre data-label="Shell"><code>dotnet tool update -g Fuse</code></pre>
+
+    <h2 id="v5-3-0">5.3.0 <a class="anchor" href="#v5-3-0" aria-label="Link to this section">#</a></h2>
+    <p>Released 2026-10-10. Compared with 5.2.4.</p>
+    <p>A repository whose analyzers read the whole project no longer makes every check slow: the post-edit hook answers in seconds, checks of many files take a fraction of the time and memory, and a slow analyzer can no longer leave a check with no answer. The engine also gives memory back once idle and exits sooner.</p>
+    <h3 id="upgrading-to-5-3-0">Upgrading to 5.3.0 <a class="anchor" href="#upgrading-to-5-3-0" aria-label="Link to this section">#</a></h3>
+    <p>Update the tool with <code>dotnet tool update -g Fuse</code>. Nothing else needs to change, and <code>fuse init</code> does not need to run again. In a repository whose analyzers read the whole project, the post-edit hook now leaves those analyzers out and names them, so their errors reach the agent at the stop hook. After 10 idle minutes the next command starts the engine again, which loads the projects again.</p>
+
+    <h3 id="v5-3-0-added">Added <a class="anchor" href="#v5-3-0-added" aria-label="Link to this section">#</a></h3>
+    <ul>
+      <li>An analyzer that reads the whole project in its compilation start or compilation actions now runs once per compilation instead of once per checked file, so a check of many files no longer repeats it for each file and holds far less memory, and the engine log names it. <a href="how-it-works.html#check">How it works</a> explains which analyzers count (<a href="https://github.com/Litenova-Solutions/Fuse/issues/88">#88</a>).</li>
+      <li>A check stops its analyzers when 80% of its client's wait has passed and answers with every compiler error and the analyzer errors found so far, and the summary says where the analyzers did not finish. Previously the client gave up and the check answered nothing. <a href="limits.html#what-a-check-does-not-see">Limits</a> describes it (<a href="https://github.com/Litenova-Solutions/Fuse/issues/88">#88</a>).</li>
+      <li>The latency suite records the engine's peak working set and its working set once idle, and a new analyzers suite measures a generated repository whose analyzer reads the whole project. <a href="evals.html#result-files">Evals</a> describes the fields.</li>
+    </ul>
+
+    <h3 id="v5-3-0-changed">Changed <a class="anchor" href="#v5-3-0-changed" aria-label="Link to this section">#</a></h3>
+    <ul>
+      <li>The post-edit hook leaves out the analyzers that read the whole project and names them in its summary; the stop hook, <code>fuse check</code> and the MCP tool run them, so an edit is answered in seconds whatever analyzers the repository uses. <a href="limits.html#what-a-check-does-not-see">Limits</a> describes it (<a href="https://github.com/Litenova-Solutions/Fuse/issues/88">#88</a>).</li>
+      <li>30 seconds after its last request the engine returns the memory its checks freed to the operating system, and it exits after 10 idle minutes. Previously it kept the memory and exited after 30 minutes. <a href="how-it-works.html#process-model">How it works</a> describes it (<a href="https://github.com/Litenova-Solutions/Fuse/issues/88">#88</a>).</li>
+    </ul>
+
+    <h3 id="v5-3-0-fixed">Fixed <a class="anchor" href="#v5-3-0-fixed" aria-label="Link to this section">#</a></h3>
+    <ul>
+      <li>The engine log's <code>check:</code> line counts only the check's own binding and analyzer time. Previously a check that followed a cancelled one also counted the cancelled check's time.</li>
+    </ul>
+
+    <h3 id="v5-3-0-documentation">Documentation <a class="anchor" href="#v5-3-0-documentation" aria-label="Link to this section">#</a></h3>
+    <ul>
+      <li><a href="how-it-works.html#check">How it works</a>, <a href="limits.html">Limits</a>, <a href="commands.html">Commands</a>, <a href="troubleshooting.html#a-slow-analyzer">Troubleshooting</a>, <a href="architecture.html#steps-fuse-check">Architecture</a>, <a href="evals.html">Evals</a>, <a href="getting-started.html">Getting started</a> and the <a href="faq.html">FAQ</a> describe compilation-wide analyzers, the analyzer deadline and the engine's idle time.</li>
+    </ul>
 
     <h2 id="v5-2-4">5.2.4 <a class="anchor" href="#v5-2-4" aria-label="Link to this section">#</a></h2>
     <p>Released 2026-10-03. Compared with 5.2.3.</p>

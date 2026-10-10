@@ -74,8 +74,18 @@ internal sealed class Checker
     /// </param>
     /// <param name="phases">Collects how long each phase of this check took; <see cref="PhaseTimes.None"/> collects nothing.</param>
     /// <param name="cancellationToken">Cancels the check.</param>
-    public async Task<CheckResult> CheckAsync(CheckScope scope, string? session, PhaseTimes phases, CancellationToken cancellationToken)
+    public Task<CheckResult> CheckAsync(CheckScope scope, string? session, PhaseTimes phases, CancellationToken cancellationToken) =>
+        CheckAsync(scope, session, AnalyzerRun.Full, phases, cancellationToken);
+
+    /// <param name="scope">The files to check, or every change since HEAD.</param>
+    /// <param name="session">The session the answer is for, or null to answer with every error.</param>
+    /// <param name="analyzers">How analyzers run on the working tree.</param>
+    /// <param name="phases">Collects how long each phase of this check took; <see cref="PhaseTimes.None"/> collects nothing.</param>
+    /// <param name="cancellationToken">Cancels the check.</param>
+    public async Task<CheckResult> CheckAsync(CheckScope scope, string? session, AnalyzerRun analyzers, PhaseTimes phases, CancellationToken cancellationToken)
     {
+        // Also drops what a cancelled check left behind: its binding times and its analyzer report are not this check's.
+        _introduced.Begin(analyzers);
         var syncing = phases.Start();
         await _workspace.SyncAsync(TargetResolver.NamedPaths(scope), cancellationToken).ConfigureAwait(false);
         phases.Add(Phase.Sync, syncing);
@@ -158,7 +168,8 @@ internal sealed class Checker
             .Distinct()
             .ToArray();
         var (compilerMs, analyzerMs) = _introduced.TakeTimings();
-        _workspace.Log($"check: binding {compilerMs} ms, analyzers {analyzerMs} ms (summed over files); {targets.Count} target(s) in {targetsMs} ms, {changedTargets.Count} with declaration changes, {filesChecked} file(s) bound, {timer.ElapsedMilliseconds} ms total{(wholeProjects ? ", whole projects" : "")}{(leftToOthers > 0 ? $", {leftToOthers} error(s) left to other sessions" : "")}");
+        var (unfinished, leftOut) = _introduced.TakeAnalyzerReport();
+        _workspace.Log($"check: binding {compilerMs} ms, analyzers {analyzerMs} ms (summed over files); {targets.Count} target(s) in {targetsMs} ms, {changedTargets.Count} with declaration changes, {filesChecked} file(s) bound, {timer.ElapsedMilliseconds} ms total{(wholeProjects ? ", whole projects" : "")}{(leftToOthers > 0 ? $", {leftToOthers} error(s) left to other sessions" : "")}{(unfinished > 0 ? $", analyzers unfinished in {unfinished}" : "")}{(leftOut.Count > 0 ? $", left out {string.Join(", ", leftOut)}" : "")}");
         var reported = CauseLines.Attach([.. ordered.Take(MaxReported)], reach, root, targets);
         return new CheckResult(
             reported,
@@ -169,7 +180,11 @@ internal sealed class Checker
             wholeProjects,
             ordered.Count,
             ordered.Select(d => d.Path).Distinct(StringComparer.Ordinal).Count(),
-            leftToOthers);
+            leftToOthers)
+        {
+            AnalyzersUnfinished = unfinished,
+            CompilationWideLeftOut = leftOut,
+        };
     }
 
     private static List<ProjectNode> OwnersOf(RepoGraph graph, IEnumerable<RepoPath> paths) =>

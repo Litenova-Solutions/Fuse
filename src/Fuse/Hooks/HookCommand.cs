@@ -90,12 +90,13 @@ internal static class HookCommand
         var files = edited.Select(root.PathOf).Distinct().Select(p => p.Absolute).ToList();
 
         // A hook the harness runs in the background can wait for a cold load. One it runs inline answers only once the
-        // engine is warm and leaves the rest to the stop hook. The session, when the harness names one, is told only the
+        // engine is warm and leaves the rest to the stop hook. Either leaves the analyzers that read the whole project to
+        // the stop hook too, so an edit is answered in seconds whatever analyzers the repository uses. The session, when the harness names one, is told only the
         // errors its own edits cause; one harness's ids never meet another's, because each is prefixed with its name.
         var background = harness.RunsPostEditInBackground;
         var session = payload.Session is { } id ? $"{harness.Name}:{id}" : null;
         var (result, response) = await CheckOperation.RunAsync(
-            root, files, session, waitForLoad: background, background ? TimeSpan.FromMinutes(5) : TimeSpan.FromSeconds(50), cancellationToken).ConfigureAwait(false);
+            root, files, session, waitForLoad: background, compilationWideAnalyzers: false, background ? TimeSpan.FromMinutes(5) : TimeSpan.FromSeconds(50), cancellationToken).ConfigureAwait(false);
         return ShouldReport(result, response) ? harness.ReportAfterEdit(result.Text) : HookAnswer.None;
     }
 
@@ -108,7 +109,7 @@ internal static class HookCommand
             return harness.AllowStop();
         // The stop hook checks every change in the working tree, whoever wrote it: the agent that stops is the one that has
         // to be sure the tree builds, so the check is not answered to a session.
-        var (result, response) = await CheckOperation.RunAsync(root, null, session: null, waitForLoad: true, TimeSpan.FromMinutes(5), cancellationToken).ConfigureAwait(false);
+        var (result, response) = await CheckOperation.RunAsync(root, null, session: null, waitForLoad: true, compilationWideAnalyzers: true, TimeSpan.FromMinutes(5), cancellationToken).ConfigureAwait(false);
         if (!ShouldReport(result, response))
             return harness.AllowStop();
         // A missing restore is not an error the changes introduced; its message already names the command to run.

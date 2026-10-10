@@ -147,7 +147,7 @@
 wrote .gitignore
 fuse: hooks registered; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors</code></pre>
     <p><code>fuse init</code> finds the agent tools your repository uses, such as <code>.cursor/</code> or <code>.gemini/</code>, and adds Fuse's hooks to each. With none found, it sets up Claude Code. Run it again at any time; it only replaces its own entries. That is the whole setup.</p>
-    <p>The first Fuse command in a repository starts a background process that loads your solution. It stays running until it has been idle for 30 minutes, and every later command and hook reuses it.</p>
+    <p>The first Fuse command in a repository starts a background process that loads your solution. It stays running until it has been idle for 10 minutes, and every later command and hook reuses it.</p>
 
     <h2 id="check-an-edit">3. Check an edit <a class="anchor" href="#check-an-edit" aria-label="Link to this section">#</a></h2>
     <p>Rename a public method that another project calls, then run:</p>

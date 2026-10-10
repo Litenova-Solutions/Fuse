@@ -17,14 +17,18 @@ internal static class CheckOperation
     ///     leaves out the errors other sessions' edits caused without it. Ignored when <paramref name="files"/> is null.
     /// </param>
     /// <param name="waitForLoad">Wait for the engine to finish loading, or return immediately with <see cref="ErrorCode.Loading"/>.</param>
+    /// <param name="compilationWideAnalyzers">
+    ///     False to leave out the analyzers that read the whole compilation, which the summary then names. Ignored when
+    ///     <paramref name="files"/> is null: a check of every change runs them.
+    /// </param>
     /// <param name="timeout">How long to wait for the answer.</param>
     /// <param name="cancellationToken">Cancels the check.</param>
     public static async Task<(OperationResult Result, EngineResponse Response)> RunAsync(
-        RepoRoot root, IReadOnlyList<string>? files, string? session, bool waitForLoad, TimeSpan timeout, CancellationToken cancellationToken)
+        RepoRoot root, IReadOnlyList<string>? files, string? session, bool waitForLoad, bool compilationWideAnalyzers, TimeSpan timeout, CancellationToken cancellationToken)
     {
         EngineRequest request = files is null
             ? new EngineRequest.CheckChanges(waitForLoad)
-            : new EngineRequest.CheckFiles(files, waitForLoad) { Session = session };
+            : new EngineRequest.CheckFiles(files, waitForLoad) { Session = session, LeaveOutCompilationWide = !compilationWideAnalyzers };
         var response = await EngineClient.SendAsync(root, request, timeout, cancellationToken).ConfigureAwait(false);
         if (response is not EngineResponse.CheckAnswered answered)
             return (OperationResult.Unanswered(response, "check result"), response);
@@ -81,6 +85,10 @@ internal static class CheckOperation
         // Only an answer to a session leaves errors to other sessions; the session is told they exist, not what they are.
         if (report.LeftToOtherSessions > 0)
             summaryParts.Add($"{report.LeftToOtherSessions} error(s) from other sessions' edits left out");
+        if (report.CompilationWideLeftOut.Length > 0)
+            summaryParts.Add($"left out {report.CompilationWideLeftOut.Length} analyzer(s) that read the whole project, which the stop hook and fuse check run: {string.Join(", ", report.CompilationWideLeftOut)}");
+        if (report.AnalyzersUnfinished > 0)
+            summaryParts.Add($"analyzers did not finish in {report.AnalyzersUnfinished} file(s) or project(s) in time, so their analyzer errors may be missing; fuse build runs every analyzer");
         var summaryTail = summaryParts.Count > 0 ? "; " + string.Join("; ", summaryParts) : "";
 
         if (report.ErrorCount == 0)

@@ -93,6 +93,23 @@ public class CheckRenderTests
     }
 
     [Fact]
+    public void Analyzers_left_out_or_unfinished_are_named_in_the_summary()
+    {
+        var report = new CheckReport([], 1, [], [], 0, false, 0, 0, 0)
+        {
+            CompilationWideLeftOut = ["Vendor.Analyzers/DuplicateHandlerAnalyzer"],
+            AnalyzersUnfinished = 2,
+        };
+
+        var result = CheckOperation.Render(report);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(
+            "fuse: no errors introduced (1 file(s) checked; left out 1 analyzer(s) that read the whole project, which the stop hook and fuse check run: Vendor.Analyzers/DuplicateHandlerAnalyzer; analyzers did not finish in 2 file(s) or project(s) in time, so their analyzer errors may be missing; fuse build runs every analyzer)",
+            result.Text);
+    }
+
+    [Fact]
     public void A_session_whose_edits_introduced_nothing_is_answered_clean()
     {
         var result = CheckOperation.Render(new CheckReport([], 3, [], [], 0, false, 0, 0, 2));

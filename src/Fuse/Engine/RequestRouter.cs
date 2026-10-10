@@ -88,6 +88,12 @@ internal sealed class RequestRouter : IDisposable
         if (request is EngineRequest.Ping or EngineRequest.ShutDown)
             return new EngineResponse.Acknowledged();
 
+        // The client's wait started before this request queued, so the analyzers' share of it is counted from here.
+        using var analyzerDeadline = new CancellationTokenSource();
+        if (request.WaitMs > 0)
+            analyzerDeadline.CancelAfter(TimeSpan.FromMilliseconds(request.WaitMs * AnalyzerRun.ShareOfWait));
+        var analyzers = new AnalyzerRun(request is not EngineRequest.CheckFiles { LeaveOutCompilationWide: true }, analyzerDeadline.Token);
+
         // Recorded before anything can refuse the check, so a check answered "still loading" still credits the session
         // with its files.
         if (request is EngineRequest.CheckFiles { Session: { } writer } written && SessionEdits.IsValid(writer))
@@ -125,9 +131,9 @@ internal sealed class RequestRouter : IDisposable
         {
             // Each case carries its scope, which becomes the feature's own.
             if (request is EngineRequest.CheckChanges)
-                return ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.AllChanges(), phases, cancellationToken).ConfigureAwait(false));
+                return ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.AllChanges(), null, analyzers, phases, cancellationToken).ConfigureAwait(false));
             if (request is EngineRequest.CheckFiles check)
-                return await CheckFilesAsync(check, phases, cancellationToken).ConfigureAwait(false);
+                return await CheckFilesAsync(check, analyzers, phases, cancellationToken).ConfigureAwait(false);
 
             TestScope scope = request switch
             {
@@ -194,6 +200,9 @@ internal sealed class RequestRouter : IDisposable
         _preloader.Schedule(_shutdown);
     }
 
+    /// <summary>True while the projects are evaluated and first loaded, or while a background load runs.</summary>
+    public bool IsLoading => _initialization is { IsCompleted: false } || _preloader.IsRunning;
+
     /// <summary>The planner the router answers test plans with, for a test that holds a plan in its shadow preparation.</summary>
     internal TestPlanner Planner => _planner;
 
@@ -203,7 +212,7 @@ internal sealed class RequestRouter : IDisposable
     ///     system holds it under, and one that is empty or not a valid path is answered with
     ///     <see cref="ErrorCode.InvalidPath"/>, naming it, before anything is checked.
     /// </summary>
-    private async Task<EngineResponse> CheckFilesAsync(EngineRequest.CheckFiles check, PhaseTimes phases, CancellationToken cancellationToken)
+    private async Task<EngineResponse> CheckFilesAsync(EngineRequest.CheckFiles check, AnalyzerRun analyzers, PhaseTimes phases, CancellationToken cancellationToken)
     {
         var paths = new List<RepoPath>(check.Files.Count);
         foreach (var file in check.Files)
@@ -221,7 +230,7 @@ internal sealed class RequestRouter : IDisposable
         }
 
         var session = SessionEdits.IsValid(check.Session) ? check.Session : null;
-        return ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.Files(paths), session, phases, cancellationToken).ConfigureAwait(false));
+        return ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.Files(paths), session, analyzers, phases, cancellationToken).ConfigureAwait(false));
     }
 
     /// <summary>

@@ -127,6 +127,7 @@
         <li><a href="#not-a-repository-or-no-projects">Not a repository, or no projects</a></li>
         <li><a href="#the-first-answer-is-slow">The first answer after the engine starts is slow</a></li>
         <li><a href="#a-command-times-out">A command times out</a></li>
+        <li><a href="#a-slow-analyzer">A slow analyzer</a></li>
         <li><a href="#internal-errors">Internal errors</a></li>
         <li><a href="#a-build-waits">A build waits</a></li>
         <li><a href="#where-the-logs-are">Where the logs are</a></li>
@@ -169,6 +170,12 @@
     <h2 id="a-command-times-out">A command times out <a class="anchor" href="#a-command-times-out" aria-label="Link to this section">#</a></h2>
     <pre class="out" data-label="Message"><code>fuse: the Fuse engine did not answer within 600 s</code></pre>
     <p>The request waited longer than the command allows: 600 s for <code>fuse check</code>, <code>fuse test</code> and the MCP tools, 300 s for the Claude Code post-edit hook and every stop hook, 50 s for the other post-edit hooks. Read the end of <code>engine.log</code>: <code>loaded &lt;project&gt;</code> lines mean the engine is still loading, and the <code>phases</code> line of the request, when it finishes, shows where the time went. Run the command again; the engine keeps its progress between requests.</p>
+
+    <h2 id="a-slow-analyzer">A slow analyzer <a class="anchor" href="#a-slow-analyzer" aria-label="Link to this section">#</a></h2>
+    <pre class="out" data-label="Summary"><code>left out 1 analyzer(s) that read the whole project, which the stop hook and fuse check run: Vendor.Analyzers/RegistrationAnalyzer</code></pre>
+    <p>An analyzer package can make every check slow when it reads the whole project in its compilation start or compilation actions, for example by calling <code>Compilation.GetSemanticModel</code> on every file, which the Roslyn rule <a href="https://github.com/dotnet/roslyn/blob/main/src/RoslynAnalyzers/Microsoft.CodeAnalysis.Analyzers/Microsoft.CodeAnalysis.Analyzers.md">RS1030</a> warns analyzer authors against. Fuse runs such an analyzer once per compilation instead of once per file (<a href="how-it-works.html#check">compilation-wide analyzers</a>), and the post-edit hook leaves it out. The engine log names it when it first decides:</p>
+    <pre class="out" data-label="engine.log"><code>analyzers of Shop.Application: 212 per file, 3 compilation-wide (Vendor.Analyzers/RegistrationAnalyzer 21480 ms on one file, ...)</code></pre>
+    <p>A check line that ends in <code>analyzers unfinished in N</code>, and a summary that says the analyzers did not finish in time, mean an analyzer was still running when the check had to answer. To see which analyzer costs the time in a real build, build with <code>-p:ReportAnalyzer=true -bl</code> and open the binary log's Analyzer Summary, which lists each analyzer's time. Report a slow analyzer to its authors with that summary; until it is fixed, <code>fuse build</code> runs it.</p>
 
     <h2 id="internal-errors">Internal errors <a class="anchor" href="#internal-errors" aria-label="Link to this section">#</a></h2>
     <pre class="out" data-label="Message"><code>fuse: internal error: &lt;message&gt; (details in &lt;state directory&gt;/engine.log)</code></pre>
@@ -252,7 +259,7 @@
     </table>
 
     <h2 id="stopping-or-restarting-the-engine">Stopping or restarting the engine <a class="anchor" href="#stopping-or-restarting-the-engine" aria-label="Link to this section">#</a></h2>
-    <p>The engine exits on its own after 30 minutes without a request, when its repository directory is deleted, and when a client of another build connects. Ending the engine's process is safe: it holds no lock and writes nothing into the repository, and the next command or hook starts a fresh engine.</p>
+    <p>The engine exits on its own after 10 minutes without a request, when its repository directory is deleted, and when a client of another build connects. Ending the engine's process is safe: it holds no lock and writes nothing into the repository, and the next command or hook starts a fresh engine.</p>
     <p>The engine is a <code>dotnet</code> process whose command line holds <code>fuse.dll engine</code> and the repository's root path. On Windows, this lists the running engines:</p>
     <pre data-label="PowerShell"><code>Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" | Where-Object CommandLine -like '*fuse.dll engine *' | Select-Object ProcessId, CommandLine</code></pre>
     <p>and this stops the engine of <code>C:\src\my-repo</code>:</p>

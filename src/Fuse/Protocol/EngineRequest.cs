@@ -53,6 +53,13 @@ internal abstract record EngineRequest
         init => _requestId = value ?? "";
     }
 
+    /// <summary>
+    ///     How long the client waits for the answer, in milliseconds, which the client sets on every request it sends; 0
+    ///     when it did not say. A check stops its analyzers before then and answers with what finished, so a client is
+    ///     never left with no answer because an analyzer was slow.
+    /// </summary>
+    public long WaitMs { get; init; }
+
     /// <summary>A liveness probe, answered with <see cref="EngineResponse.Acknowledged"/> once the pipe is up, even while the engine loads.</summary>
     public sealed record Ping : EngineRequest;
 
@@ -86,6 +93,13 @@ internal abstract record EngineRequest
         ///     leaving out those other sessions' edits caused without it. Only the post-edit hook sends one.
         /// </summary>
         public string? Session { get; init; }
+
+        /// <summary>
+        ///     True to leave out the analyzers that read the whole compilation (compilation-wide analyzers), which the
+        ///     check then names. The post-edit hook sends true, so an edit is answered in seconds; the stop hook, which
+        ///     checks every change, runs them. A line without it reads as false, which runs every analyzer.
+        /// </summary>
+        public bool LeaveOutCompilationWide { get; init; }
     }
 
     /// <summary>

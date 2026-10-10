@@ -95,7 +95,21 @@ public partial class ProtocolJsonTests
         Assert.Equal(("", ""), (check.BuildId, check.RequestId));
         Assert.Empty(check.Files);
         Assert.False(check.WaitForLoad);
+        // A check that does not say runs every analyzer, with no wait to keep within.
+        Assert.False(check.LeaveOutCompilationWide);
+        Assert.Equal(0, check.WaitMs);
         Assert.Equal(("", ""), (ping.BuildId, ping.RequestId));
+    }
+
+    [Fact]
+    public void A_check_carries_its_wait_and_its_analyzer_choice()
+    {
+        var line = ProtocolJson.Serialize(new EngineRequest.CheckFiles(["A.cs"], true) { LeaveOutCompilationWide = true, WaitMs = 50_000 });
+
+        var read = Assert.IsType<EngineRequest.CheckFiles>(ProtocolJson.ReadRequest(line));
+
+        Assert.True(read.LeaveOutCompilationWide);
+        Assert.Equal(50_000, read.WaitMs);
     }
 
     [Fact]

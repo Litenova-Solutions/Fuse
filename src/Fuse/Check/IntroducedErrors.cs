@@ -20,11 +20,17 @@ internal sealed class IntroducedErrors
     public IntroducedErrors(RepoWorkspace workspace)
     {
         _workspace = workspace;
-        _collector = new DiagnosticCollector(workspace.Root, () => workspace.ConfigurationGeneration);
+        _collector = new DiagnosticCollector(workspace.Root, () => workspace.ConfigurationGeneration, workspace.Log);
     }
 
     /// <summary>Time spent binding and running analyzers since the last call, summed over files, for the engine log.</summary>
     public (long CompilerMs, long AnalyzerMs) TakeTimings() => _collector.TakeTimings();
+
+    /// <summary>Starts a check that runs analyzers on the working tree as <paramref name="run"/> says.</summary>
+    public void Begin(AnalyzerRun run) => _collector.Begin(run);
+
+    /// <inheritdoc cref="DiagnosticCollector.TakeAnalyzerReport"/>
+    public (int Unfinished, IReadOnlyList<string> LeftOut) TakeAnalyzerReport() => _collector.TakeAnalyzerReport();
 
     /// <summary>The introduced errors in <paramref name="paths"/>, bound in parallel; semantic models of different documents bind independently.</summary>
     /// <param name="paths">The files to bind. A file that no longer exists has no errors.</param>

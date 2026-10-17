@@ -22,7 +22,7 @@ Update with `dotnet tool update -g Fuse`. If you use Claude Code, run `fuse init
 
 - The stop hook blocks only on the errors the stopping session's edits cause, alone or with other sessions' edits, and on those in changes no session is credited with; it counts the rest. A subagent's edits count as its parent's once the subagent has stopped. Previously the stop hook blocked on every error in the working tree. [How it works](https://fuse.codes/docs/how-it-works#check) describes it.
 - Test runs without MSBuild from several agents run at the same time, each from its own copy, and `fuse test` gives up the build lock while they run. Previously every `fuse test` waited for the one before it. [How it works](https://fuse.codes/docs/how-it-works#without-msbuild) describes it, and [Limits](https://fuse.codes/docs/limits#test-runs-without-msbuild) lists the integration tests that can collide.
-- A check keeps a file's errors from an earlier check when nothing it depends on changed since, so a stop hook that checks many files again after a small fix takes the time of that fix. [How it works](https://fuse.codes/docs/how-it-works#check) describes it.
+- A check of every change keeps a file's errors from an earlier one when nothing the file depends on changed since, so a stop hook that checks many files again after a small fix takes the time of that fix. [How it works](https://fuse.codes/docs/how-it-works#check) describes it.
 
 ### Fixed
 

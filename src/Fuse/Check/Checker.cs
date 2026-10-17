@@ -91,7 +91,7 @@ internal sealed class Checker
     public async Task<CheckResult> CheckAsync(CheckScope scope, string? session, AnalyzerRun analyzers, PhaseTimes phases, CancellationToken cancellationToken)
     {
         // Also drops what a cancelled check left behind: its binding times and its analyzer report are not this check's.
-        _introduced.Begin(analyzers);
+        _introduced.Begin(analyzers, reuse: scope is CheckScope.AllChanges);
         var syncing = phases.Start();
         await _workspace.SyncAsync(TargetResolver.NamedPaths(scope), cancellationToken).ConfigureAwait(false);
         phases.Add(Phase.Sync, syncing);

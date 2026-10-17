@@ -29,6 +29,9 @@ internal sealed class DiagnosticCollector
     private int _currentFilesGeneration = -1;
     private int _reused;
 
+    /// <summary>Whether the current check reuses and keeps working-tree errors (<see cref="Begin"/>).</summary>
+    private bool _reuse;
+
     private long _compilerTicks;
     private long _analyzerTicks;
 
@@ -38,10 +41,19 @@ internal sealed class DiagnosticCollector
     private int _unfinished;
     private readonly ConcurrentDictionary<string, byte> _leftOut = new(StringComparer.Ordinal);
 
-    /// <summary>Starts a check that runs analyzers on the working tree as <paramref name="run"/> says.</summary>
-    public void Begin(AnalyzerRun run)
+    /// <summary>
+    ///     Starts a check that runs analyzers on the working tree as <paramref name="run"/> says, and reuses working-tree
+    ///     errors from an earlier check when <paramref name="reuse"/> is true.
+    /// </summary>
+    /// <param name="reuse">
+    ///     True for a check of every change, which binds many files again after a small edit. The key needs Roslyn's
+    ///     dependent semantic version, which costs more than it saves in a check of the files an edit just wrote, so a check
+    ///     of named files neither reads nor fills the cache.
+    /// </param>
+    public void Begin(AnalyzerRun run, bool reuse)
     {
         _run = run;
+        _reuse = reuse;
         // Projects that loaded again have new document ids, so what was kept for the old ones is dropped with them.
         var generation = _configurationGeneration();
         if (generation != _currentFilesGeneration)
@@ -181,7 +193,7 @@ internal sealed class DiagnosticCollector
         // A working-tree file whose text and whose project's declarations are as they were at an earlier check has the same
         // compiler and per-file analyzer errors, so they are reused; the compilation-wide analyzers read every file's
         // bodies, so their part is never reused this way.
-        var key = baseline || document is SourceGeneratedDocument ? null : await KeyAsync(document, cancellationToken).ConfigureAwait(false);
+        var key = baseline || !_reuse || document is SourceGeneratedDocument ? null : await KeyAsync(document, cancellationToken).ConfigureAwait(false);
         if (key is not null && _currentFiles.TryGetValue(document.Id, out var cached) && cached.Key == key)
         {
             Interlocked.Increment(ref _reused);

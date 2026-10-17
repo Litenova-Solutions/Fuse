@@ -60,6 +60,39 @@ public class CompilationAnalysesTests
     }
 
     [Fact]
+    public async Task A_check_that_reaches_a_newer_compilation_without_a_run_stops_the_older_ones_run()
+    {
+        var analyses = new CompilationAnalyses();
+        var older = analyses.RunAsync(Project, baseline: false, NewCompilation(), everyAnalyzer: false, async stop =>
+        {
+            await Task.Delay(Timeout.Infinite, stop);
+            return [];
+        }, TestContext.Current.CancellationToken);
+
+        analyses.StopOlder(Project, baseline: false, NewCompilation());
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => older.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task A_check_of_the_same_compilation_leaves_its_run_going()
+    {
+        var analyses = new CompilationAnalyses();
+        var compilation = NewCompilation();
+        var release = new TaskCompletionSource();
+        var run = analyses.RunAsync(Project, baseline: false, compilation, everyAnalyzer: false, async stop =>
+        {
+            await release.Task.WaitAsync(stop);
+            return [];
+        }, TestContext.Current.CancellationToken);
+
+        analyses.StopOlder(Project, baseline: false, compilation);
+        release.SetResult();
+
+        Assert.Empty(await run.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
     public async Task The_baseline_and_the_working_tree_of_one_project_run_side_by_side()
     {
         var analyses = new CompilationAnalyses();

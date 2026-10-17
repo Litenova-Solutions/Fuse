@@ -321,6 +321,8 @@ internal sealed class DiagnosticCollector
             {
                 foreach (var (analyzer, _) in plan.CompilationWide)
                     _leftOut.TryAdd(AnalyzerSelector.Name(analyzer), 0);
+                // This compilation is the project's newest, so a run an earlier check left going over an older one stops.
+                _analyses.StopOlder(project.Id, baseline, withAnalyzers);
             }
             else if (!plan.CompilationWide.IsEmpty)
             {

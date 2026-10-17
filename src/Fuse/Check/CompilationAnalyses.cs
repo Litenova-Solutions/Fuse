@@ -57,6 +57,26 @@ internal sealed class CompilationAnalyses
         return run.WaitAsync(wait);
     }
 
+    /// <summary>
+    ///     Stops the runs of an older compilation of <paramref name="project"/> on that side, for a check that reached
+    ///     <paramref name="analyzers"/> without starting a run of its own, such as one that leaves the compilation-wide
+    ///     analyzers out. Without it, a run past an earlier check's deadline would go on analyzing code an edit replaced.
+    /// </summary>
+    public void StopOlder(ProjectId project, bool baseline, CompilationWithAnalyzers analyzers)
+    {
+        CancellationTokenSource? older = null;
+        lock (_lock)
+        {
+            if (_latest.TryGetValue((project, baseline), out var latest) && !ReferenceEquals(latest.Analyzers, analyzers))
+            {
+                older = latest.Stop;
+                _latest.Remove((project, baseline));
+            }
+        }
+
+        older?.Cancel();
+    }
+
     /// <summary>Stops every run of the baseline, or of the current solution and its views, for a baseline or configuration that changed.</summary>
     public void StopAll(bool baseline)
     {

@@ -38,7 +38,6 @@ internal static class EngineServer
 
         var log = new EngineLog(root.StateDirectory);
         log.Write($"engine {EngineVersion.Build} started for {root.Path} (pid {Environment.ProcessId})");
-        LowerPriority(log);
         using var copy = HoldEngineCopy(log);
         _ = Task.Run(() => CleanUpLocalState(root, log));
         using var shutdown = new CancellationTokenSource();
@@ -47,6 +46,7 @@ internal static class EngineServer
 
         var state = new IdleClock(TimeProvider.System);
         var watchdog = WatchIdleAsync(root, router, state, shutdown, log);
+        var lowered = false;
         try
         {
             while (!shutdown.IsCancellationRequested)
@@ -71,6 +71,13 @@ internal static class EngineServer
                     log.Write($"accept failed: {e.Message}");
                     await pipe.DisposeAsync().ConfigureAwait(false);
                     continue;
+                }
+
+                // Lowered once the pipe is up: the client that started the engine waits only so long for it to accept.
+                if (!lowered)
+                {
+                    lowered = true;
+                    LowerPriority(log);
                 }
 
                 _ = ServeAsync(pipe, router, state, shutdown, log);

@@ -1,0 +1,172 @@
+name: Evals suite
+
+# One suite on one repository, called by evals.yml once per pair: the truth shards, then the measure job. Each pair is its
+# own call, so a repository's measure job waits only for its own truth shards, not for the slowest repository's.
+#
+# The truth jobs run the real dotnet build or dotnet test for HEAD and for each case, split into shards; the truth does
+# not change while the repository's tree, the seed, the SDK and the eval code stay the same, so it is kept in the Actions
+# cache and a later run skips those jobs. The measure job then runs Fuse alone on a fresh VM against the merged truth,
+# and saves it to the cache. Each VM runs nothing else, so no other work skews the times.
+
+on:
+  workflow_call:
+    inputs:
+      suite:
+        description: correctness or selection.
+        type: string
+        required: true
+      repo:
+        description: The repository to measure.
+        type: string
+        required: true
+      shards:
+        description: How many truth shards, as a number.
+        type: number
+        required: true
+      shard-list:
+        description: The shard numbers, as a JSON array from 0 to shards - 1.
+        type: string
+        required: true
+      fresh-truth:
+        description: Ignore the cached truth and run the real dotnet build and dotnet test again.
+        type: boolean
+        default: false
+
+env:
+  DOTNET_NOLOGO: '1'
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  EVALS: dotnet evals/Fuse.Evals/bin/Release/net10.0/Fuse.Evals.dll
+
+jobs:
+  truth:
+    name: truth (${{ matrix.shard }}/${{ inputs.shards }})
+    runs-on: windows-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(inputs.shard-list) }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          # The pinned repositories test on .NET 8 and 9 as well; global.json adds the SDK that builds Fuse.
+          dotnet-version: |
+            8.0.x
+            9.0.x
+          global-json-file: global.json
+      - uses: actions/download-artifact@v8
+        with:
+          name: build
+      - &identity
+        name: Git identity for the generated fixture
+        run: |
+          git config --global user.email "ci@fuse.invalid"
+          git config --global user.name "Fuse CI"
+      - &packages
+        name: NuGet packages of the pinned repository
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ inputs.repo }}-${{ hashFiles('evals/Fuse.Evals/PinnedRepo.cs', 'evals/Fuse.Evals/FixtureGenerator.cs') }}
+      - &clone
+        name: Clone the pinned repository
+        if: inputs.repo != 'fixture'
+        run: $EVALS clone "${{ inputs.repo }}"
+      - &key
+        name: Truth key
+        id: key
+        run: echo "key=$($EVALS key "${{ inputs.suite }}" "${{ inputs.repo }}" | tail -n 1)" >> "$GITHUB_OUTPUT"
+      - name: Look for the cached truth
+        id: cached
+        if: ${{ !inputs.fresh-truth }}
+        uses: actions/cache/restore@v6
+        with:
+          path: truth.json
+          key: ${{ steps.key.outputs.key }}
+          lookup-only: true
+      - name: Run shard ${{ matrix.shard }} of the truth
+        if: steps.cached.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p out
+          $EVALS truth "${{ inputs.suite }}" "${{ inputs.repo }}" --shard ${{ matrix.shard }} --shards ${{ inputs.shards }} --out out/truth-${{ matrix.shard }}.json
+      - &runner
+        name: Describe the runner
+        if: always()
+        shell: pwsh
+        run: |
+          $cpu = (Get-CimInstance Win32_Processor | Select-Object -First 1).Name
+          $cores = (Get-CimInstance Win32_Processor | Measure-Object NumberOfLogicalProcessors -Sum).Sum
+          $memory = [math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB)
+          New-Item -ItemType Directory -Force out | Out-Null
+          "runner: $env:ImageOS $env:ImageVersion`ncpu: $cpu, $cores logical processors`nmemory: $memory GB`nsdk: $(dotnet --version)`ncommit: $env:GITHUB_SHA" | Set-Content out/runner.txt
+          Get-Content out/runner.txt
+      - uses: actions/upload-artifact@v7
+        if: steps.cached.outputs.cache-hit != 'true'
+        with:
+          name: truth-${{ inputs.suite }}-${{ inputs.repo }}-${{ matrix.shard }}
+          path: out/
+          if-no-files-found: error
+
+  measure:
+    name: measure
+    needs: truth
+    # A failed truth shard leaves its cases to this job, which runs what the merged truth lacks.
+    if: ${{ !cancelled() }}
+    runs-on: windows-latest
+    timeout-minutes: 300
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          # The pinned repositories test on .NET 8 and 9 as well; global.json adds the SDK that builds Fuse.
+          dotnet-version: |
+            8.0.x
+            9.0.x
+          global-json-file: global.json
+      - uses: actions/download-artifact@v8
+        with:
+          name: build
+      - *identity
+      - *packages
+      - *clone
+      - *key
+      - name: Restore the cached truth
+        id: cached
+        if: ${{ !inputs.fresh-truth }}
+        uses: actions/cache/restore@v6
+        with:
+          path: truth.json
+          key: ${{ steps.key.outputs.key }}
+      - name: Download the truth shards
+        # None exist when the truth came from the cache.
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          pattern: truth-${{ inputs.suite }}-${{ inputs.repo }}-*
+          path: shards
+      - name: Run ${{ inputs.suite }} with the native client
+        run: |
+          mkdir -p shards out/results out/truth
+          $EVALS "${{ inputs.suite }}" "${{ inputs.repo }}" --fuse "$(cygpath -w "$PWD/artifacts/native/fuse.exe")" --cache truth.json --truth-dir shards --cache-out out/truth/truth.json
+          git ls-files --others --exclude-standard evals/results | xargs -I{} mv {} out/results/
+          cp out/truth/truth.json truth.json
+      - name: Save the truth
+        if: steps.cached.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: truth.json
+          key: ${{ steps.key.outputs.key }}
+      - *runner
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: evals-${{ inputs.repo }}-${{ inputs.suite }}
+          path: out/
+          if-no-files-found: error

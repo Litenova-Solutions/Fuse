@@ -31,4 +31,19 @@ internal static class ErrorDelta
             yield return d;
         }
     }
+
+    /// <summary>
+    ///     Same as <see cref="Introduced(IEnumerable{CompilerError}, IEnumerable{CompilerError})"/>, for a baseline whose
+    ///     analyzers may not have finished. When they did not, an analyzer error in <paramref name="current"/> may be one
+    ///     HEAD has too, so the analyzer errors are left out and only the compiler errors are compared.
+    /// </summary>
+    /// <returns>The introduced errors, and whether analyzer errors were left out.</returns>
+    public static (List<CompilerError> Errors, bool AnalyzerErrorsLeftOut) Introduced(IEnumerable<CompilerError> current, IEnumerable<CompilerError> baseline, bool baselineAnalyzersFinished)
+    {
+        var introduced = Introduced(current, baseline).ToList();
+        if (baselineAnalyzersFinished)
+            return (introduced, false);
+        var compiler = introduced.Where(e => !e.FromAnalyzer).ToList();
+        return (compiler, compiler.Count < introduced.Count);
+    }
 }

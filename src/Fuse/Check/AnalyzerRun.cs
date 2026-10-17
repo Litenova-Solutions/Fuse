@@ -1,9 +1,9 @@
 namespace Fuse.Check;
 
 /// <summary>
-///     How one check runs analyzers on the working tree. The baseline always runs every analyzer to the end: an error is
-///     introduced only when HEAD does not have it, so HEAD's errors must all be known, while a working-tree error that an
-///     analyzer did not get to is only one the check does not report.
+///     How one check runs analyzers, on the working tree and on the baseline alike. An error is introduced only when HEAD
+///     does not have it, so a working-tree analyzer error in a file whose HEAD analyzers did not finish is not reported:
+///     like one the working tree's analyzers did not get to, it is only an error the check does not report.
 /// </summary>
 /// <param name="CompilationWide">Whether the compilation-wide analyzers (<see cref="AnalyzerPlan"/>) run.</param>
 /// <param name="Deadline">Cancelled when the analyzers must stop so the check can still answer in time.</param>

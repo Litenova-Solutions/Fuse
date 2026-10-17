@@ -75,11 +75,14 @@ internal sealed class IntroducedErrors
             if (current.Count == 0)
                 continue;
             var baselineProject = _workspace.Baseline.GetProject(project.Id);
-            var baseline = baselineProject is null
-                ? []
+            var (baseline, finished) = baselineProject is null
+                ? ((IReadOnlyList<CompilerError>)[], true)
                 : await _collector.ForBaselineProjectAsync(baselineProject, _workspace.BaselineGeneration, cancellationToken).ConfigureAwait(false);
             // An error HEAD had in a file renamed since then is matched under the file's new name.
-            result.AddRange(ErrorDelta.Introduced(current, baseline.Select(e => renamedFrom.TryGetValue(e.Path, out var renamed) ? e with { Path = renamed } : e)));
+            var (introduced, leftOut) = ErrorDelta.Introduced(current, baseline.Select(e => renamedFrom.TryGetValue(e.Path, out var renamed) ? e with { Path = renamed } : e), finished);
+            if (leftOut)
+                _collector.MarkUnfinished(project.Name);
+            result.AddRange(introduced);
         }
 
         return result;
@@ -95,8 +98,11 @@ internal sealed class IntroducedErrors
             return [];
         // A file renamed since HEAD is compared with the errors HEAD had under its old name.
         var headPath = renames.TryGetValue(path, out var renamedFrom) ? renamedFrom : path;
-        var baseline = await _collector.ForBaselineFileAsync(_workspace.Baseline, _workspace.BaselineGeneration, headPath, cancellationToken).ConfigureAwait(false);
-        return ErrorDelta.Introduced(current, headPath == path ? baseline : baseline.Select(e => e with { Path = path.Relative })).ToList();
+        var (baseline, finished) = await _collector.ForBaselineFileAsync(_workspace.Baseline, _workspace.BaselineGeneration, headPath, cancellationToken).ConfigureAwait(false);
+        var (introduced, leftOut) = ErrorDelta.Introduced(current, headPath == path ? baseline : baseline.Select(e => e with { Path = path.Relative }), finished);
+        if (leftOut)
+            _collector.MarkUnfinished(path.Relative);
+        return introduced;
     }
 
     /// <summary>

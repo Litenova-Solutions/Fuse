@@ -85,6 +85,18 @@ internal abstract class Harness
     /// <remarks>Most harnesses read <c>{"decision":"block","reason":...}</c> as that.</remarks>
     public virtual HookAnswer BlockStop(string reason) => HookAnswer.Json(new JsonObject { ["decision"] = "block", ["reason"] = reason });
 
+    /// <summary>
+    ///     How long <c>fuse init</c> lets a harness run a stop hook, and a post-edit hook it runs in the background, before
+    ///     the harness ends it.
+    /// </summary>
+    public static readonly TimeSpan LongHookTimeout = TimeSpan.FromSeconds(300);
+
+    /// <summary><see cref="LongHookTimeout"/> in whole seconds, as most harnesses' settings take it.</summary>
+    protected static int LongHookSeconds => (int)LongHookTimeout.TotalSeconds;
+
+    /// <summary><see cref="LongHookTimeout"/> in milliseconds, as Gemini CLI and Muse Code take it.</summary>
+    protected static int LongHookMilliseconds => (int)LongHookTimeout.TotalMilliseconds;
+
     /// <summary>The hook command this harness runs for <paramref name="hookEvent"/>, one of the <see cref="HookEvent"/> names.</summary>
     protected string Command(string hookEvent) => $"fuse hook {Name} {hookEvent}";
 

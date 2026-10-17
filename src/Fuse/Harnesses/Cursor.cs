@@ -21,7 +21,7 @@ internal sealed class Cursor : Harness
         settings["version"] ??= 1;
         var hooks = SettingsFile.GetOrAddObject(settings, "hooks");
         SetFlatHook(hooks, "postToolUse", new JsonObject { ["command"] = Command(HookEvent.PostEdit), ["matcher"] = "Write", ["timeout"] = 60 });
-        SetFlatHook(hooks, "stop", new JsonObject { ["command"] = Command(HookEvent.Stop), ["timeout"] = 300 });
+        SetFlatHook(hooks, "stop", new JsonObject { ["command"] = Command(HookEvent.Stop), ["timeout"] = LongHookSeconds });
         return SettingsFile.Write(root, path, settings);
     }
 

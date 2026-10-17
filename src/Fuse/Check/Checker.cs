@@ -157,12 +157,14 @@ internal sealed class Checker
             .OrderBy(d => d.Path, StringComparer.Ordinal).ThenBy(d => d.Line).ThenBy(d => d.Column)
             .ToList();
         var leftToOthers = 0;
+        var notAttributed = 0;
         if (session is not null)
         {
             var attributing = phases.Start();
-            if (await _attribution.ToldAsync(ordered, session, cancellationToken).ConfigureAwait(false) is { } told)
+            if (await _attribution.ToldAsync(ordered, session, cancellationToken).ConfigureAwait(false) is ({ } told, var filesNotAttributed))
             {
                 leftToOthers = ordered.Count - told.Count;
+                notAttributed = filesNotAttributed;
                 ordered = told;
                 phases.Add(Phase.Attribution, attributing);
             }
@@ -176,7 +178,7 @@ internal sealed class Checker
         var (compilerMs, analyzerMs) = _introduced.TakeTimings();
         var (unfinished, leftOut) = _introduced.TakeAnalyzerReport();
         var reused = _introduced.TakeReused();
-        _workspace.Log($"check: binding {compilerMs} ms, analyzers {analyzerMs} ms (summed over files); {targets.Count} target(s) in {targetsMs} ms, {changedTargets.Count} with declaration changes, {filesChecked} file(s) bound{(reused > 0 ? $" ({reused} with errors reused from an earlier check)" : "")}, {timer.ElapsedMilliseconds} ms total{(wholeProjects ? ", whole projects" : "")}{(leftToOthers > 0 ? $", {leftToOthers} error(s) left to other sessions" : "")}{(unfinished > 0 ? $", analyzers unfinished in {unfinished}" : "")}{(leftOut.Count > 0 ? $", left out {string.Join(", ", leftOut)}" : "")}");
+        _workspace.Log($"check: binding {compilerMs} ms, analyzers {analyzerMs} ms (summed over files); {targets.Count} target(s) in {targetsMs} ms, {changedTargets.Count} with declaration changes, {filesChecked} file(s) bound{(reused > 0 ? $" ({reused} with errors reused from an earlier check)" : "")}, {timer.ElapsedMilliseconds} ms total{(wholeProjects ? ", whole projects" : "")}{(leftToOthers > 0 ? $", {leftToOthers} error(s) left to other sessions" : "")}{(notAttributed > 0 ? $", {notAttributed} file(s) not attributed" : "")}{(unfinished > 0 ? $", analyzers unfinished in {unfinished}" : "")}{(leftOut.Count > 0 ? $", left out {string.Join(", ", leftOut)}" : "")}");
         var reported = CauseLines.Attach([.. ordered.Take(MaxReported)], reach, root, targets);
         reported = await _generated.AttachAsync(_workspace.Current, reported, cancellationToken).ConfigureAwait(false);
         return new CheckResult(
@@ -192,6 +194,7 @@ internal sealed class Checker
         {
             AnalyzersUnfinished = unfinished,
             CompilationWideLeftOut = leftOut,
+            FilesNotAttributed = notAttributed,
         };
     }
 

@@ -35,4 +35,10 @@ internal sealed record CheckResult(
 
     /// <summary>The compilation-wide analyzers the check left out, by assembly and type name; the stop hook runs them.</summary>
     public IReadOnlyList<string> CompilationWideLeftOut { get; init; } = [];
+
+    /// <summary>
+    ///     How many files with errors the session was told about without the check deciding whose edits caused them,
+    ///     because more files needed deciding than attribution decides in one check.
+    /// </summary>
+    public int FilesNotAttributed { get; init; }
 }

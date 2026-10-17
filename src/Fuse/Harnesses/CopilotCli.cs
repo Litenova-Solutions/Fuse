@@ -24,7 +24,7 @@ internal sealed class CopilotCli : Harness
             ["hooks"] = new JsonObject
             {
                 ["postToolUse"] = new JsonArray(new JsonObject { ["type"] = "command", ["matcher"] = "edit|create", ["bash"] = Command(HookEvent.PostEdit), ["powershell"] = Command(HookEvent.PostEdit), ["timeoutSec"] = 60 }),
-                ["agentStop"] = new JsonArray(new JsonObject { ["type"] = "command", ["bash"] = Command(HookEvent.Stop), ["powershell"] = Command(HookEvent.Stop), ["timeoutSec"] = 300 }),
+                ["agentStop"] = new JsonArray(new JsonObject { ["type"] = "command", ["bash"] = Command(HookEvent.Stop), ["powershell"] = Command(HookEvent.Stop), ["timeoutSec"] = LongHookSeconds }),
             },
         };
         return SettingsFile.Write(root, path, settings);

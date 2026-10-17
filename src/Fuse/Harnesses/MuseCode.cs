@@ -56,7 +56,7 @@ internal sealed class MuseCode : Harness
                 ["hooks"] = new JsonArray(
                     Hook("post-edit", "PostToolUse", HookEvent.PostEdit, 60000, "Checking the edit with Fuse"),
                     Hook("pre-shell", "PreToolUse", HookEvent.PreShell, 10000, null),
-                    Hook("stop", "Stop", HookEvent.Stop, 300000, "Checking every change with Fuse")),
+                    Hook("stop", "Stop", HookEvent.Stop, LongHookMilliseconds, "Checking every change with Fuse")),
                 ["mcpServers"] = new JsonArray(),
                 ["reminders"] = new JsonArray(),
             },

@@ -26,4 +26,7 @@ internal sealed record CheckReport(
 
     /// <summary>The compilation-wide analyzers the check left out, by assembly and type name.</summary>
     public string[] CompilationWideLeftOut { get; init; } = [];
+
+    /// <summary>How many files with errors were told to the session without deciding whose edits caused them.</summary>
+    public int FilesNotAttributed { get; init; }
 }

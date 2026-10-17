@@ -94,6 +94,9 @@ internal static class CheckOperation
         // Only an answer to a session leaves errors to other sessions; the session is told they exist, not what they are.
         if (report.LeftToOtherSessions > 0)
             summaryParts.Add($"{report.LeftToOtherSessions} error(s) from other sessions' edits left out");
+        // Past the files attribution decides, errors are told as a check without a session tells them.
+        if (report.FilesNotAttributed > 0)
+            summaryParts.Add($"errors in {report.FilesNotAttributed} file(s) not compared with other sessions' edits, so some of them may be other sessions'");
         if (report.CompilationWideLeftOut.Length > 0)
             summaryParts.Add($"left out {report.CompilationWideLeftOut.Length} analyzer(s) that read the whole project, which the stop hook and fuse check run: {string.Join(", ", report.CompilationWideLeftOut)}");
         if (report.AnalyzersUnfinished > 0)

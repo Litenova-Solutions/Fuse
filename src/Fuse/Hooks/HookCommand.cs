@@ -20,6 +20,13 @@ namespace Fuse.Hooks;
 /// </remarks>
 internal static class HookCommand
 {
+    /// <summary>
+    ///     How long a stop hook, and a post-edit hook the harness runs in the background, waits for its answer. The 20
+    ///     seconds left of <see cref="Harness.LongHookTimeout"/> deliver the answer before the harness ends the hook, as
+    ///     an inline post-edit hook waits 50 of its 60.
+    /// </summary>
+    internal static readonly TimeSpan LongWait = Harness.LongHookTimeout - TimeSpan.FromSeconds(20);
+
     private static readonly string Usage =
         $"usage: fuse hook <{string.Join('|', SupportedHarnesses.All.Select(h => h.Name))}> <{HookEvent.PostEdit}|{HookEvent.PreShell}|{HookEvent.Stop}>";
 
@@ -102,7 +109,7 @@ internal static class HookCommand
         var background = harness.RunsPostEditInBackground;
         var session = payload.Session is { } id ? $"{harness.Name}:{id}" : null;
         var (result, response) = await CheckOperation.RunAsync(
-            root, files, session, waitForLoad: background, compilationWideAnalyzers: false, background ? TimeSpan.FromMinutes(5) : TimeSpan.FromSeconds(50), cancellationToken).ConfigureAwait(false);
+            root, files, session, waitForLoad: background, compilationWideAnalyzers: false, background ? LongWait : TimeSpan.FromSeconds(50), cancellationToken).ConfigureAwait(false);
         return ShouldReport(result, response) ? harness.ReportAfterEdit(result.Text) : HookAnswer.None;
     }
 
@@ -117,7 +124,7 @@ internal static class HookCommand
         // that session's edits cause, alone or with other sessions' edits, and on those no session's edits are credited
         // with; an error another session's edits cause without it is left to that session, which may still be writing.
         var session = payload.Session is { } id ? $"{harness.Name}:{id}" : null;
-        var (result, response) = await CheckOperation.RunAsync(root, null, session, waitForLoad: true, compilationWideAnalyzers: true, TimeSpan.FromMinutes(5), cancellationToken).ConfigureAwait(false);
+        var (result, response) = await CheckOperation.RunAsync(root, null, session, waitForLoad: true, compilationWideAnalyzers: true, LongWait, cancellationToken).ConfigureAwait(false);
         if (!ShouldReport(result, response))
             return harness.AllowStop();
         // A missing restore is not an error the changes introduced; its message already names the command to run.

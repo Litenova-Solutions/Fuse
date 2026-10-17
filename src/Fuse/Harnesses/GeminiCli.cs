@@ -18,7 +18,7 @@ internal sealed class GeminiCli : Harness
         var hooks = SettingsFile.GetOrAddObject(settings, "hooks");
         SetNestedHook(hooks, "AfterTool", "write_file|replace", new JsonObject { ["name"] = "fuse-check", ["type"] = "command", ["command"] = Command(HookEvent.PostEdit), ["timeout"] = 60000 });
         SetNestedHook(hooks, "BeforeTool", "run_shell_command", new JsonObject { ["name"] = "fuse-dotnet", ["type"] = "command", ["command"] = Command(HookEvent.PreShell), ["timeout"] = 10000 });
-        SetNestedHook(hooks, "AfterAgent", null, new JsonObject { ["name"] = "fuse-stop", ["type"] = "command", ["command"] = Command(HookEvent.Stop), ["timeout"] = 300000 });
+        SetNestedHook(hooks, "AfterAgent", null, new JsonObject { ["name"] = "fuse-stop", ["type"] = "command", ["command"] = Command(HookEvent.Stop), ["timeout"] = LongHookMilliseconds });
         return SettingsFile.Write(root, path, settings);
     }
 

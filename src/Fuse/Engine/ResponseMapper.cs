@@ -35,6 +35,7 @@ internal static class ResponseMapper
     {
         AnalyzersUnfinished = result.AnalyzersUnfinished,
         CompilationWideLeftOut = [.. result.CompilationWideLeftOut],
+        FilesNotAttributed = result.FilesNotAttributed,
     };
 
     /// <summary>A test plan as the client receives it, each run with the mode the client starts it in and its project file's absolute path.</summary>

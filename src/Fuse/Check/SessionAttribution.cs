@@ -52,14 +52,15 @@ internal sealed class SessionAttribution
     }
 
     /// <summary>
-    ///     The errors of <paramref name="errors"/> that <paramref name="session"/> is told about, in the same order, or null
-    ///     when no file that differs from HEAD was written only by other sessions, so every error is told and nothing was
-    ///     bound again.
+    ///     The errors of <paramref name="errors"/> that <paramref name="session"/> is told about, in the same order, and how
+    ///     many files with errors to decide were past <see cref="MaxDecidedFiles"/>, whose errors are told undecided; or
+    ///     null when no file that differs from HEAD was written only by other sessions, so every error is told and nothing
+    ///     was bound again.
     /// </summary>
     /// <param name="errors">Every error the check found, before the cap on reported errors.</param>
     /// <param name="session">The session the check is answered to.</param>
     /// <param name="cancellationToken">Cancels the binding.</param>
-    public async Task<List<CompilerError>?> ToldAsync(IReadOnlyList<CompilerError> errors, string session, CancellationToken cancellationToken)
+    public async Task<(List<CompilerError> Told, int FilesNotAttributed)?> ToldAsync(IReadOnlyList<CompilerError> errors, string session, CancellationToken cancellationToken)
     {
         var writers = _edits.WritersOf(_workspace.Tracker.Changed);
         var onlyOthers = writers.Where(w => !w.Value.Any(s => _edits.IsOwnEdit(s, session))).Select(w => w.Key).ToList();
@@ -72,6 +73,7 @@ internal sealed class SessionAttribution
         Solution? withoutThis = null;
         var notTold = new HashSet<CompilerError>();
         var decided = 0;
+        var notAttributed = 0;
         var root = _workspace.Root;
         foreach (var file in errors.GroupBy(e => e.Path, StringComparer.Ordinal))
         {
@@ -79,7 +81,10 @@ internal sealed class SessionAttribution
             if (writers.TryGetValue(path, out var sessions) && sessions.Any(s => _edits.IsOwnEdit(s, session)) && !sessions.All(s => _edits.IsOwnEdit(s, session)))
                 continue;
             if (decided++ >= MaxDecidedFiles)
+            {
+                notAttributed++;
                 continue;
+            }
 
             withoutOthers ??= await _workspace.CurrentWithHeadContentAsync(onlyOthers, cancellationToken).ConfigureAwait(false);
             var alone = Keys(await _introduced.InFileOfAsync(withoutOthers, path, cancellationToken).ConfigureAwait(false));
@@ -92,7 +97,7 @@ internal sealed class SessionAttribution
             notTold.UnionWith(undecided.Where(e => byOthers.Contains(Key(e))));
         }
 
-        return [.. errors.Where(e => !notTold.Contains(e))];
+        return ([.. errors.Where(e => !notTold.Contains(e))], notAttributed);
     }
 
     /// <summary>An error as <see cref="ErrorDelta"/> matches it: file, id and message, without the position an edit moves.</summary>

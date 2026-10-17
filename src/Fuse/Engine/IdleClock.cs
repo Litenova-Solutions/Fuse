@@ -6,8 +6,12 @@ namespace Fuse.Engine;
 /// </summary>
 internal sealed class IdleClock
 {
-    /// <summary>An engine with no request for this long exits; the next client starts a fresh one.</summary>
-    public static readonly TimeSpan ExitAfter = TimeSpan.FromMinutes(10);
+    /// <summary>
+    ///     An engine with no request for this long exits; the next client starts a fresh one, which loads the projects and
+    ///     runs HEAD's analyzers again. Agents often think, read or run commands for more than ten minutes between two
+    ///     checks, so the engine waits longer than that.
+    /// </summary>
+    public static readonly TimeSpan ExitAfter = TimeSpan.FromMinutes(30);
 
     /// <summary>
     ///     An engine with no request for this long returns the memory its last requests freed. Agents often send several

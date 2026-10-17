@@ -9,4 +9,8 @@ namespace Fuse.Protocol;
 ///     analyzer error, an error under a broad reach, or an error past the cap on causes per answer.
 /// </param>
 /// <param name="IsCauseLeftOut">True when the error had a cause that the cap on causes per answer left out.</param>
-internal sealed record ReportedError(CompilerError Error, ReportedCause? Cause = null, bool IsCauseLeftOut = false);
+internal sealed record ReportedError(CompilerError Error, ReportedCause? Cause = null, bool IsCauseLeftOut = false)
+{
+    /// <summary>The repository-relative path of the generated file that declares what the error is about, or null.</summary>
+    public string? GeneratedFile { get; init; }
+}

@@ -23,6 +23,26 @@ public class CommandRewriterTests
     }
 
     [Theory]
+    [InlineData("dotnet test", "fuse test --session claude:a1/agent-2")]
+    [InlineData("dotnet test --filter Foo", "fuse test --session claude:a1/agent-2 --filter Foo")]
+    [InlineData("dotnet build && dotnet test", "fuse build && fuse test --session claude:a1/agent-2")]
+    public void Passes_the_session_to_fuse_test_only(string command, string expected)
+    {
+        Assert.Equal(expected, CommandRewriter.Rewrite(command, "claude:a1/agent-2"));
+        Assert.Equal(expected.Contains("&&", StringComparison.Ordinal) ? null : expected, CommandRewriter.RewriteWhole(command, "claude:a1/agent-2"));
+    }
+
+    [Theory]
+    [InlineData("a b")]
+    [InlineData("a;rm -rf x")]
+    [InlineData("$(id)")]
+    [InlineData("a'b")]
+    public void Leaves_out_a_session_id_a_shell_would_not_pass_on_unchanged(string session)
+    {
+        Assert.Equal("fuse test", CommandRewriter.Rewrite("dotnet test", session));
+    }
+
+    [Theory]
     [InlineData("dotnet run")]
     [InlineData("dotnet builder")]
     [InlineData("dotnet testx")]

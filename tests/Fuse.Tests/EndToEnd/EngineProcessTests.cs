@@ -6,6 +6,34 @@ namespace Fuse.Tests.EndToEnd;
 public class EngineProcessTests
 {
     [Fact]
+    public async Task Stop_stops_the_engine_and_the_next_command_starts_a_new_one()
+    {
+        using var repo = FixtureRepo.CreateStandard();
+        try
+        {
+            Assert.Equal(0, (await FuseProcess.RunAsync(repo.Path, null, "check")).ExitCode);
+            Assert.True(FuseProcess.EngineRunning(repo.Root));
+
+            var stop = await FuseProcess.RunAsync(repo.Path, null, "stop");
+            Assert.Equal(0, stop.ExitCode);
+            Assert.StartsWith("fuse: stopped the engine for ", stop.Stdout, StringComparison.Ordinal);
+            Assert.True(await FuseProcess.WaitForExitAsync(repo.Root, TimeSpan.FromSeconds(5)));
+
+            var again = await FuseProcess.RunAsync(repo.Path, null, "stop");
+            Assert.StartsWith("fuse: no engine runs for ", again.Stdout, StringComparison.Ordinal);
+
+            Assert.Equal(0, (await FuseProcess.RunAsync(repo.Path, null, "check")).ExitCode);
+            var log = File.ReadAllLines(Path.Combine(repo.Root.StateDirectory, "engine.log"));
+            Assert.Equal(2, log.Count(l => l.Contains(" started for ", StringComparison.Ordinal)));
+            Assert.Equal(2, (await FuseProcess.RunAsync(repo.Path, null, "stop", "--now")).ExitCode);
+        }
+        finally
+        {
+            await FuseProcess.StopEngineAsync(repo.Root);
+        }
+    }
+
+    [Fact]
     public async Task Check_starts_an_engine_and_the_next_call_reuses_it()
     {
         using var repo = FixtureRepo.CreateStandard();
@@ -154,7 +182,7 @@ public class EngineProcessTests
     }
 
     [Fact]
-    public async Task Two_claude_sessions_are_each_told_their_own_errors_and_the_stop_hook_reports_all()
+    public async Task Two_claude_sessions_are_each_told_their_own_errors_after_an_edit_and_at_their_stop()
     {
         using var repo = FixtureRepo.CreateStandard();
         try
@@ -180,12 +208,18 @@ public class EngineProcessTests
             Assert.DoesNotContain("'Greet'", a.Stderr, StringComparison.Ordinal);
             Assert.Contains("1 error(s) from other sessions' edits left out", a.Stderr, StringComparison.Ordinal);
 
-            var stop = await FuseProcess.RunAsync(repo.Path, $$"""{"session_id":"a","hook_event_name":"Stop","stop_hook_active":false,"cwd":{{System.Text.Json.JsonSerializer.Serialize(repo.Path)}}}""", "hook", "claude", "stop");
+            // Each session's stop is blocked on its own errors only; the other session's are left to it.
+            string Stop(string session) => $$"""{"session_id":"{{session}}","hook_event_name":"Stop","stop_hook_active":false,"cwd":{{System.Text.Json.JsonSerializer.Serialize(repo.Path)}}}""";
+            var stop = await FuseProcess.RunAsync(repo.Path, Stop("a"), "hook", "claude", "stop");
             Assert.Contains("\"decision\":\"block\"", stop.Stdout, StringComparison.Ordinal);
-            Assert.Contains("'Greet'", stop.Stdout, StringComparison.Ordinal);
             Assert.Contains("'Add'", stop.Stdout, StringComparison.Ordinal);
-            Assert.Contains("The working tree has them and HEAD does not", stop.Stdout, StringComparison.Ordinal);
-            Assert.DoesNotContain("your changes introduced them", stop.Stdout, StringComparison.Ordinal);
+            Assert.DoesNotContain("'Greet'", stop.Stdout, StringComparison.Ordinal);
+            Assert.Contains("3 error(s) from other sessions' edits left out", stop.Stdout, StringComparison.Ordinal);
+            Assert.Contains("no other session's edits cause them on their own", stop.Stdout, StringComparison.Ordinal);
+
+            var stopB = await FuseProcess.RunAsync(repo.Path, Stop("b"), "hook", "claude", "stop");
+            Assert.Contains("'Greet'", stopB.Stdout, StringComparison.Ordinal);
+            Assert.DoesNotContain("'Add'", stopB.Stdout, StringComparison.Ordinal);
         }
         finally
         {
@@ -278,7 +312,7 @@ public class EngineProcessTests
         var result = await FuseProcess.RunAsync(repo.Path, """{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"dotnet test --no-build"}}""", "hook", "claude", "pre-bash");
         Assert.Equal(0, result.ExitCode);
         Assert.Equal("", result.Stdout);
-        Assert.Equal("usage: fuse hook <claude|cursor|gemini|codex|copilot|opencode> <post-edit|pre-shell|stop>", result.Stderr.TrimEnd());
+        Assert.Equal("usage: fuse hook <claude|cursor|gemini|codex|copilot|opencode|muse> <post-edit|pre-shell|stop>", result.Stderr.TrimEnd());
     }
 
     [Fact]
@@ -288,7 +322,7 @@ public class EngineProcessTests
         var result = await FuseProcess.RunAsync(repo.Path, """{"tool_input":{"command":"dotnet test"}}""", "hook", "vscode", "pre-shell");
         Assert.Equal(0, result.ExitCode);
         Assert.Equal("", result.Stdout);
-        Assert.Equal("usage: fuse hook <claude|cursor|gemini|codex|copilot|opencode> <post-edit|pre-shell|stop>", result.Stderr.TrimEnd());
+        Assert.Equal("usage: fuse hook <claude|cursor|gemini|codex|copilot|opencode|muse> <post-edit|pre-shell|stop>", result.Stderr.TrimEnd());
     }
 
     [Theory]

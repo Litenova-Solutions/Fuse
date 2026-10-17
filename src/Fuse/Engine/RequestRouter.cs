@@ -98,6 +98,8 @@ internal sealed class RequestRouter : IDisposable
         // with its files.
         if (request is EngineRequest.CheckFiles { Session: { } writer } written && SessionEdits.IsValid(writer))
             RecordSession(writer, written.Files);
+        if (request is EngineRequest.CheckChanges { IsStopping: true, Session: { } stopping } && SessionEdits.IsValid(stopping))
+            _sessions.MarkStopped(stopping);
 
         var initialization = _initialization ?? Task.CompletedTask;
         if (!initialization.IsCompleted && request is EngineRequest.CheckChanges { WaitForLoad: false } or EngineRequest.CheckFiles { WaitForLoad: false })
@@ -130,13 +132,18 @@ internal sealed class RequestRouter : IDisposable
         try
         {
             // Each case carries its scope, which becomes the feature's own.
-            if (request is EngineRequest.CheckChanges)
-                return ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.AllChanges(), null, analyzers, phases, cancellationToken).ConfigureAwait(false));
+            if (request is EngineRequest.CheckChanges changes)
+            {
+                var session = SessionEdits.IsValid(changes.Session) ? changes.Session : null;
+                return ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.AllChanges(), session, analyzers, phases, cancellationToken).ConfigureAwait(false));
+            }
             if (request is EngineRequest.CheckFiles check)
                 return await CheckFilesAsync(check, analyzers, phases, cancellationToken).ConfigureAwait(false);
 
             TestScope scope = request switch
             {
+                EngineRequest.PlanAffectedTests { Session: { } session } when SessionEdits.IsValid(session) =>
+                    new TestScope.Affected { LeftOut = await OnlyOtherSessionsWroteAsync(session, cancellationToken).ConfigureAwait(false) },
                 EngineRequest.PlanAffectedTests => new TestScope.Affected(),
                 EngineRequest.PlanAllTests => new TestScope.All(),
                 _ => throw new UnreachableException($"{request.GetType().Name} is answered before the request lock"),
@@ -191,6 +198,19 @@ internal sealed class RequestRouter : IDisposable
         }
 
         _sessions.Record(session, paths);
+    }
+
+    /// <summary>
+    ///     The changed files whose writers are all other sessions than <paramref name="session"/>, after a sync, so a plan
+    ///     for the session leaves their changes out. A file no session is credited with, or one the session wrote, stays.
+    /// </summary>
+    private async Task<IReadOnlySet<RepoPath>> OnlyOtherSessionsWroteAsync(string session, CancellationToken cancellationToken)
+    {
+        await _workspace.SyncAsync([], cancellationToken).ConfigureAwait(false);
+        return _sessions.WritersOf(_workspace.Tracker.Changed)
+            .Where(w => !w.Value.Any(writer => _sessions.IsOwnEdit(writer, session)))
+            .Select(w => w.Key)
+            .ToHashSet();
     }
 
     /// <summary>Releases the request lock and lets the background load continue.</summary>

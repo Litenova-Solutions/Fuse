@@ -13,8 +13,9 @@ internal static class CheckOperation
 
     /// <param name="files">Absolute paths of the files to check, or null for every change.</param>
     /// <param name="session">
-    ///     The session that just wrote <paramref name="files"/>, as its harness identifies it, or null. With one, the answer
-    ///     leaves out the errors other sessions' edits caused without it. Ignored when <paramref name="files"/> is null.
+    ///     The session that just wrote <paramref name="files"/>, or that is stopping when <paramref name="files"/> is null,
+    ///     as its harness identifies it, or null. With one, the answer leaves out the errors other sessions' edits caused
+    ///     without it.
     /// </param>
     /// <param name="waitForLoad">Wait for the engine to finish loading, or return immediately with <see cref="ErrorCode.Loading"/>.</param>
     /// <param name="compilationWideAnalyzers">
@@ -27,7 +28,7 @@ internal static class CheckOperation
         RepoRoot root, IReadOnlyList<string>? files, string? session, bool waitForLoad, bool compilationWideAnalyzers, TimeSpan timeout, CancellationToken cancellationToken)
     {
         EngineRequest request = files is null
-            ? new EngineRequest.CheckChanges(waitForLoad)
+            ? new EngineRequest.CheckChanges(waitForLoad) { Session = session, IsStopping = session is not null }
             : new EngineRequest.CheckFiles(files, waitForLoad) { Session = session, LeaveOutCompilationWide = !compilationWideAnalyzers };
         var response = await EngineClient.SendAsync(root, request, timeout, cancellationToken).ConfigureAwait(false);
         if (response is not EngineResponse.CheckAnswered answered)
@@ -62,15 +63,23 @@ internal static class CheckOperation
         return (resolved, null);
     }
 
+    /// <summary>The line under an error about something a file the build generates declares.</summary>
+    internal static string GeneratedLine(string file) =>
+        $"generated: {file} declares it, and Fuse reads that file as the last build wrote it; if it is generated from changed code, run fuse build to write it again";
+
     internal static OperationResult Render(CheckReport report)
     {
         var text = new StringBuilder();
+        var generatedShown = new HashSet<string>(StringComparer.Ordinal);
         foreach (var reported in report.Errors.Take(MaxShown))
         {
             text.Append(reported.Error).Append('\n');
             // The line under an error in a file the agent did not edit names the declaration change that made the file a candidate.
             if (reported.Cause is { } cause)
                 text.Append("  ").Append(cause.Kind == CauseKind.Removed ? "removed" : "changed").Append(": ").Append(cause.Declaration).Append('\n');
+            // Said once per file: the file may be older than the code it is generated from.
+            if (reported.GeneratedFile is { } generated && generatedShown.Add(generated))
+                text.Append("  ").Append(GeneratedLine(generated)).Append('\n');
         }
 
         var summaryParts = new List<string>();

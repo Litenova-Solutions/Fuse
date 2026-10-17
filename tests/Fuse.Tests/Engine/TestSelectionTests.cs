@@ -181,6 +181,27 @@ public class TestSelectionTests
     }
 
     [Fact]
+    public async Task A_plan_for_one_session_leaves_out_the_changes_only_other_sessions_wrote()
+    {
+        await using var engine = await InProcessEngine.StartAsync();
+        // This session changed Multiply; another session changed Format, which App.Tests reaches.
+        engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
+        engine.Repo.Replace("Lib/Formatter.cs", "value.ToString(", "(value + 0).ToString(");
+        await Task.Delay(400, TestContext.Current.CancellationToken);
+        var scope = new TestScope.Affected { LeftOut = new HashSet<Fuse.Paths.RepoPath> { engine.Repo.PathOf("Lib/Formatter.cs") } };
+
+        var plan = await engine.Planner.PlanAsync(scope, PhaseTimes.None, TestContext.Current.CancellationToken);
+
+        Assert.Equal(["Lib.Tests"], plan.Runs.Select(r => r.Name));
+        Assert.EndsWith("; left out 1 changed file(s) only other sessions wrote; fuse test --all runs everything", plan.Summary, StringComparison.Ordinal);
+
+        var onlyOthers = new TestScope.Affected { LeftOut = new HashSet<Fuse.Paths.RepoPath> { engine.Repo.PathOf("Lib/Formatter.cs"), engine.Repo.PathOf("Lib/Calc.cs") } };
+        var none = await engine.Planner.PlanAsync(onlyOthers, PhaseTimes.None, TestContext.Current.CancellationToken);
+        Assert.Empty(none.Runs);
+        Assert.StartsWith("no C# changes by this session since HEAD", none.Summary, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Plan_carries_the_runsettings_file_a_project_names()
     {
         var repo = FixtureRepo.CreateStandard();

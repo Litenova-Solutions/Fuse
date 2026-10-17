@@ -2,7 +2,7 @@
   "suite": "attribution",
   "repo": "NodaTime",
   "commit": "fcd80e11216ba403ccce0abbcedc41ba37bb352e",
-  "fuseBuild": "5.2.4/e17d90a7ab6b4fdb961f0b6c0a40f005",
+  "fuseBuild": "5.4.0/2056ae4ab3ff4defae22d1da83fff501",
   "pairs": [
     {
       "renamedIn": "src/NodaTime/CalendarSystem.cs",
@@ -13,8 +13,8 @@
       "ownWithSessions": 12,
       "otherWithSessions": 0,
       "leftToOtherSessions": 3,
-      "msWithoutSessions": 116.9595,
-      "msWithSessions": 968.798
+      "msWithoutSessions": 107.73580000000001,
+      "msWithSessions": 1038.146
     },
     {
       "renamedIn": "src/NodaTime/CalendarSystem.cs",
@@ -25,8 +25,8 @@
       "ownWithSessions": 21,
       "otherWithSessions": 0,
       "leftToOtherSessions": 4,
-      "msWithoutSessions": 80.2632,
-      "msWithSessions": 1483.5489
+      "msWithoutSessions": 76.4114,
+      "msWithSessions": 1309.4164999999998
     }
   ],
   "ownWithoutSessions": 32,
@@ -35,15 +35,15 @@
   "otherWithSessions": 0,
   "leftToOtherSessions": 7,
   "msWithoutSessions": {
-    "p50": 80.3,
-    "p95": 117,
-    "max": 117,
+    "p50": 76.4,
+    "p95": 107.7,
+    "max": 107.7,
     "n": 2
   },
   "msWithSessions": {
-    "p50": 968.8,
-    "p95": 1483.5,
-    "max": 1483.5,
+    "p50": 1038.1,
+    "p95": 1309.4,
+    "max": 1309.4,
     "n": 2
   },
   "treeCleanAfter": true

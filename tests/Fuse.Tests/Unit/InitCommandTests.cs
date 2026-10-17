@@ -28,6 +28,8 @@ public class InitCommandTests
         Assert.Equal("Bash", hooks["PreToolUse"]![0]!["matcher"]!.GetValue<string>());
         Assert.Equal("fuse hook claude pre-shell", hooks["PreToolUse"]![0]!["hooks"]![0]!["command"]!.GetValue<string>());
         Assert.Equal("fuse hook claude stop", hooks["Stop"]![0]!["hooks"]![0]!["command"]!.GetValue<string>());
+        // A subagent stops through SubagentStop, so it is held to its own errors before it hands its work back.
+        Assert.Equal("fuse hook claude stop", hooks["SubagentStop"]![0]!["hooks"]![0]!["command"]!.GetValue<string>());
         Assert.False(File.Exists(repo.Full(".cursor/hooks.json")));
     }
 

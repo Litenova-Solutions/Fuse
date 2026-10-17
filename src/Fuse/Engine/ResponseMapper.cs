@@ -23,7 +23,7 @@ internal static class ResponseMapper
 
     /// <summary>A check result as the client receives it, each error carrying the cause to print under it.</summary>
     public static CheckReport Report(CheckResult result) => new(
-        [.. result.Errors.Select(e => new ReportedError(e.Error, Reported(e.Cause), e.IsCauseLeftOut))],
+        [.. result.Errors.Select(e => new ReportedError(e.Error, Reported(e.Cause), e.IsCauseLeftOut) { GeneratedFile = e.GeneratedFile })],
         result.FilesChecked,
         [.. result.Projects],
         [.. result.DeclarationsChangedIn],

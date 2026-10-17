@@ -43,6 +43,19 @@ internal abstract class Harness
     /// </summary>
     public virtual bool ApprovesRewrittenCommand => false;
 
+    /// <summary>
+    ///     Whether a post-edit event about <paramref name="toolName"/> can mean a file was written. A harness whose hook
+    ///     registration has a tool matcher only sends such events, so the default is true; one that runs the hook after
+    ///     every tool names its tools that write, so a tool that only reads a file never checks or credits it.
+    /// </summary>
+    public virtual bool WritesFiles(string? toolName) => true;
+
+    /// <summary>
+    ///     What the user runs once after <c>fuse init</c> before the harness runs the hooks, which <c>fuse init</c> prints,
+    ///     or null when the registration is all it needs.
+    /// </summary>
+    public virtual string? NextStep => null;
+
     /// <summary>Whether the repository shows that it uses this harness, from the harness's settings directory or instructions file.</summary>
     public abstract bool IsUsedIn(RepoRoot root);
 

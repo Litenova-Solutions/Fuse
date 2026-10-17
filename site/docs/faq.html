@@ -43,7 +43,7 @@
       "url": "https://fuse.codes/docs/faq",
       "mainEntityOfPage": "https://fuse.codes/docs/faq",
       "inLanguage": "en",
-      "dateModified": "2026-09-30",
+      "dateModified": "2026-10-17",
       "image": "https://fuse.codes/assets/og.png",
       "isPartOf": {
         "@type": "WebSite",
@@ -106,7 +106,7 @@
           "name": "Why does Fuse exist?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Agents check their work by running dotnet build and dotnet test, often dozens of times in one task. Each run is slow, lists old errors next to new ones, and prints far more than the agent needs. With several subagents, the builds also use a lot of memory and fail on each other's locked files. Fuse removes that wait. On the benchmark repositories a check took 0.24 to 0.69 seconds at the median where dotnet build took 2.30 to 15.0 seconds, and fuse test was 1.3x to 3.7x faster than dotnet test (Benchmarks). All agents in a repository share one Fuse process, and their builds take turns."
+            "text": "Agents check their work by running dotnet build and dotnet test, often dozens of times in one task. Each run is slow, lists old errors next to new ones, and prints far more than the agent needs. With several subagents, the builds also use a lot of memory and fail on each other's locked files. Fuse removes that wait. On the benchmark repositories a check took 0.19 to 0.60 seconds at the median where dotnet build took 2.38 to 20.4 seconds, and fuse test was 1.1x to 4.9x faster than dotnet test (Benchmarks). All agents in a repository share one Fuse process, and their builds take turns."
           }
         },
         {
@@ -122,7 +122,7 @@
           "name": "What does Fuse cost?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Mainly memory. Fuse keeps the loaded projects in memory until it has been idle for 10 minutes: 356 MB to 947 MB once idle in the benchmarks, up to 1,640 MB while it checks, and more on a machine with more memory. Each git worktree runs its own copy. The first edit that affects other projects has to load them, which took up to 92.2 s on Jellyfin, and agents in one repository wait for each other's checks. What Fuse costs lists every cost."
+            "text": "Mainly memory. Fuse keeps the loaded projects in memory until it has been idle for 10 minutes: 339 MB to 1,019 MB once idle in the benchmarks, up to 1,763 MB while it checks, and more on a machine with more memory. Each git worktree runs its own copy. The first edit that affects other projects has to load them, which took up to 131.4 s on Jellyfin, and agents in one repository wait for each other's checks. What Fuse costs lists every cost."
           }
         },
         {
@@ -130,7 +130,7 @@
           "name": "Which harnesses does Fuse support?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Fuse supports Claude Code, Cursor, Gemini CLI, Codex, GitHub Copilot CLI and OpenCode through hooks, and VS Code agent mode and any other MCP host through fuse mcp. Claude Code and OpenCode are tested end to end. The others follow each harness's documented hook format and are covered by payload tests. Connect your agent lists what fuse init writes for each one."
+            "text": "Fuse supports Claude Code, Cursor, Gemini CLI, Codex, GitHub Copilot CLI, OpenCode and Muse Code through hooks, and VS Code agent mode and any other MCP host through fuse mcp. Claude Code, OpenCode and Muse Code are tested end to end. The others follow each harness's documented hook format and are covered by payload tests. Connect your agent lists what fuse init writes for each one."
           }
         },
         {
@@ -146,7 +146,7 @@
           "name": "Does Fuse send my code or data anywhere?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "No. Everything runs locally, and Fuse has no telemetry and makes no network calls of its own. It never edits your code; the only files it writes in your repository are the hook settings and the .gitignore line from fuse init. Commands Fuse runs for you, such as dotnet build, act as they normally would."
+            "text": "No. Everything runs locally, and Fuse has no telemetry and makes no network calls of its own. It never edits your code; the only files it writes in your repository are the hook settings and the .gitignore line from fuse init, and with fuse init --instructions its section in AGENTS.md and the other instruction files your agents read. Commands Fuse runs for you, such as dotnet build, act as they normally would."
           }
         },
         {
@@ -287,22 +287,22 @@
 
     <h3 id="why-does-fuse-exist">Why does Fuse exist? <a class="anchor" href="#why-does-fuse-exist" aria-label="Link to this section">#</a></h3>
     <p>Agents check their work by running <code>dotnet build</code> and <code>dotnet test</code>, often dozens of times in one task. Each run is slow, lists old errors next to new ones, and prints far more than the agent needs. With several subagents, the builds also use a lot of memory and fail on each other's locked files.</p>
-    <p>Fuse removes that wait. On the benchmark repositories a check took 0.24 to 0.69 seconds at the median where <code>dotnet build</code> took 2.30 to 15.0 seconds, and <code>fuse test</code> was 1.3x to 3.7x faster than <code>dotnet test</code> (<a href="benchmarks.html">Benchmarks</a>). All agents in a repository share one Fuse process, and their builds take turns.</p>
+    <p>Fuse removes that wait. On the benchmark repositories a check took 0.19 to 0.60 seconds at the median where <code>dotnet build</code> took 2.38 to 20.4 seconds, and <code>fuse test</code> was 1.1x to 4.9x faster than <code>dotnet test</code> (<a href="benchmarks.html">Benchmarks</a>). All agents in a repository share one Fuse process, and their builds take turns.</p>
 
     <h3 id="is-fuse-for-people-or-for-agents">Is Fuse for people or for agents? <a class="anchor" href="#is-fuse-for-people-or-for-agents" aria-label="Link to this section">#</a></h3>
     <p>Agents. The hooks run Fuse without the agent asking, and the output is only what an agent needs to act on. You run <code>fuse init</code> once, and can use the commands to try Fuse or see what the agent gets. For your own editing, your IDE is the better tool.</p>
 
     <h3 id="what-does-fuse-cost">What does Fuse cost? <a class="anchor" href="#what-does-fuse-cost" aria-label="Link to this section">#</a></h3>
-    <p>Mainly memory. Fuse keeps the loaded projects in memory until it has been idle for 10 minutes: 356 MB to 947 MB once idle in the <a href="benchmarks.html">benchmarks</a>, up to 1,640 MB while it checks, and more on a machine with more memory. Each git worktree runs its own copy. The first edit that affects other projects has to load them, which took up to 92.2 s on Jellyfin, and agents in one repository wait for each other's checks. <a href="index.html#what-fuse-costs">What Fuse costs</a> lists every cost.</p>
+    <p>Mainly memory. Fuse keeps the loaded projects in memory until it has been idle for 10 minutes: 339 MB to 1,019 MB once idle in the <a href="benchmarks.html">benchmarks</a>, up to 1,763 MB while it checks, and more on a machine with more memory. Each git worktree runs its own copy. The first edit that affects other projects has to load them, which took up to 131.4 s on Jellyfin, and agents in one repository wait for each other's checks. <a href="index.html#what-fuse-costs">What Fuse costs</a> lists every cost.</p>
 
     <h3 id="which-harnesses-does-fuse-support">Which harnesses does Fuse support? <a class="anchor" href="#which-harnesses-does-fuse-support" aria-label="Link to this section">#</a></h3>
-    <p>Fuse supports Claude Code, Cursor, Gemini CLI, Codex, GitHub Copilot CLI and OpenCode through hooks, and VS Code agent mode and any other MCP host through <code>fuse mcp</code>. Claude Code and OpenCode are tested end to end. The others follow each harness's documented hook format and are covered by payload tests. <a href="harnesses.html">Connect your agent</a> lists what <code>fuse init</code> writes for each one.</p>
+    <p>Fuse supports Claude Code, Cursor, Gemini CLI, Codex, GitHub Copilot CLI, OpenCode and Muse Code through hooks, and VS Code agent mode and any other MCP host through <code>fuse mcp</code>. Claude Code, OpenCode and Muse Code are tested end to end. The others follow each harness's documented hook format and are covered by payload tests. <a href="harnesses.html">Connect your agent</a> lists what <code>fuse init</code> writes for each one.</p>
 
     <h3 id="does-fuse-need-configuration">Does Fuse need configuration? <a class="anchor" href="#does-fuse-need-configuration" aria-label="Link to this section">#</a></h3>
     <p>No. Run <code>fuse init</code> once in the repository and it writes the hook settings for each harness it finds. Fuse has no configuration file and no environment variables of its own. It needs the .NET 10 SDK and restored projects; if a restore is missing, it says so and names the <code>dotnet restore</code> command to run.</p>
 
     <h3 id="does-fuse-send-my-code-or-data-anywhere">Does Fuse send my code or data anywhere? <a class="anchor" href="#does-fuse-send-my-code-or-data-anywhere" aria-label="Link to this section">#</a></h3>
-    <p>No. Everything runs locally, and Fuse has no telemetry and makes no network calls of its own. It never edits your code; the only files it writes in your repository are the hook settings and the <code>.gitignore</code> line from <code>fuse init</code>. Commands Fuse runs for you, such as <code>dotnet build</code>, act as they normally would.</p>
+    <p>No. Everything runs locally, and Fuse has no telemetry and makes no network calls of its own. It never edits your code; the only files it writes in your repository are the hook settings and the <code>.gitignore</code> line from <code>fuse init</code>, and with <code>fuse init --instructions</code> its section in <code>AGENTS.md</code> and the other instruction files your agents read. Commands Fuse runs for you, such as <code>dotnet build</code>, act as they normally would.</p>
 
     <h3 id="which-platforms-does-fuse-run-on">Which platforms does Fuse run on? <a class="anchor" href="#which-platforms-does-fuse-run-on" aria-label="Link to this section">#</a></h3>
     <p>Windows, Linux and macOS, with the .NET 10 SDK. CI builds and tests Fuse on all three; the <a href="benchmarks.html">benchmarks</a> come from GitHub Actions windows-latest runners.</p>
@@ -340,7 +340,7 @@
     <ul>
       <li><strong>Compared with HEAD.</strong> A language server reports the errors a file has now. It has no notion of HEAD, the commit you have checked out, so an error that was already committed looks the same as one the edit caused. Fuse reports only the errors HEAD does not have.</li>
       <li><strong>Across projects.</strong> An edit that renames a public method breaks its callers in other files and other projects, which the agent has not opened, so it hears of them at the next build. Fuse finds the files that use each changed declaration, checks them, and names the change that broke each one.</li>
-      <li><strong>Before the agent finishes.</strong> Fuse's stop hook checks every change once more before the agent ends its turn, and sends it back once if errors remain.</li>
+      <li><strong>Before the agent finishes.</strong> Fuse's stop hook checks every change once more before the agent ends its turn, and sends it back once if errors its own edits cause remain.</li>
       <li><strong>Tests and builds.</strong> A language server does not run tests or builds. Fuse runs the affected tests and prints only the errors of a build.</li>
     </ul>
     <p>A language server does things Fuse does not: completion, go to definition, find references, hover, rename and warnings. Fuse reports errors only and has no navigation. <a href="how-it-works.html#check">What a check does</a> describes Fuse's side in full.</p>
@@ -376,6 +376,7 @@
         <li><a href="index.html">Overview</a></li>
         <li><a href="getting-started.html">Getting started</a></li>
         <li><a href="harnesses.html">Connect your agent</a></li>
+        <li><a href="parallel-agents.html">Subagents and parallel agents</a></li>
       </ul>
       <h2>Understand</h2>
       <ul>

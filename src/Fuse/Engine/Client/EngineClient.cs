@@ -121,7 +121,7 @@ internal static class EngineClient
     }
 
     /// <summary>True when an engine's pipe exists, checked without connecting (a connection attempt waits for a timeout).</summary>
-    private static bool PipeExists(string name)
+    internal static bool PipeExists(string name)
     {
         try
         {

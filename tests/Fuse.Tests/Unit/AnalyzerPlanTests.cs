@@ -82,7 +82,7 @@ public class AnalyzerPlanTests
         var collector = new DiagnosticCollector(repo.Root, () => 0, _ => { });
         var path = repo.Root.PathOf(repo.Full("C1.cs"));
 
-        collector.Begin(new AnalyzerRun(CompilationWide: false, CancellationToken.None));
+        collector.Begin(new AnalyzerRun(CompilationWide: false, CancellationToken.None), reuse: false);
         var current = await collector.ForFileAsync(solution, path, TestContext.Current.CancellationToken);
         // HEAD's errors must all be known, or an error HEAD has would be reported as introduced.
         var head = await collector.ForBaselineFileAsync(solution, 0, path, TestContext.Current.CancellationToken);
@@ -106,7 +106,7 @@ public class AnalyzerPlanTests
         using var passed = new CancellationTokenSource();
         await passed.CancelAsync();
 
-        collector.Begin(new AnalyzerRun(CompilationWide: true, passed.Token));
+        collector.Begin(new AnalyzerRun(CompilationWide: true, passed.Token), reuse: false);
         var errors = await collector.ForFileAsync(solution, repo.Root.PathOf(repo.Full("C2.cs")), TestContext.Current.CancellationToken);
 
         Assert.Equal(["CS0103"], errors.Select(e => e.Id));

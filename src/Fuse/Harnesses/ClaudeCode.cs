@@ -29,6 +29,9 @@ internal sealed class ClaudeCode : Harness
         SetNestedHook(hooks, "PostToolUse", "Edit|Write|MultiEdit", new JsonObject { ["type"] = "command", ["command"] = Command(HookEvent.PostEdit), ["asyncRewake"] = true, ["timeout"] = 300 });
         SetNestedHook(hooks, "PreToolUse", "Bash", new JsonObject { ["type"] = "command", ["command"] = Command(HookEvent.PreShell), ["timeout"] = 10 });
         SetNestedHook(hooks, "Stop", null, new JsonObject { ["type"] = "command", ["command"] = Command(HookEvent.Stop), ["timeout"] = 300 });
+        // A subagent stops through SubagentStop, with its own agent_id, so it is held to the errors its own edits cause
+        // before it hands its work back.
+        SetNestedHook(hooks, "SubagentStop", null, new JsonObject { ["type"] = "command", ["command"] = Command(HookEvent.Stop), ["timeout"] = 300 });
 
         // A user who already lets the agent run dotnet build/test without asking gets the same for the rewritten commands.
         if (settings["permissions"]?["allow"] is JsonArray allow)

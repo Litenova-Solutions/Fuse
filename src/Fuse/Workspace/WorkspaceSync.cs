@@ -65,6 +65,9 @@ internal sealed class WorkspaceSync
                 _unfinished = null;
                 break;
         }
+
+        // A build writes generated files in obj, which the watcher skips.
+        await _views.RefreshGeneratedAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Loads <paramref name="projects"/> and everything they reference, and makes them part of both views.</summary>

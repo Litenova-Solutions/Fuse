@@ -11,10 +11,23 @@ namespace Fuse.Harnesses;
 /// </summary>
 internal static class InitCommand
 {
-    public static int Run() => Run(Environment.CurrentDirectory, Console.Out, Console.Error);
+    /// <param name="args">The arguments after <c>init</c>: none, or <c>--instructions</c>.</param>
+    public static int Run(string[] args)
+    {
+        if (args is not ([] or ["--instructions"]))
+        {
+            Console.Error.WriteLine("usage: fuse init [--instructions]");
+            return 2;
+        }
+
+        return Run(Environment.CurrentDirectory, Console.Out, Console.Error, instructions: args.Length == 1);
+    }
 
     /// <summary>Registers hooks for the repository containing <paramref name="startDirectory"/>.</summary>
-    internal static int Run(string startDirectory, TextWriter output, TextWriter error)
+    /// <param name="instructions">
+    ///     True to also write Fuse's section into the instruction files agents read (<see cref="InstructionsFile"/>).
+    /// </param>
+    internal static int Run(string startDirectory, TextWriter output, TextWriter error, bool instructions = false)
     {
         var root = RepoRoot.Find(startDirectory);
         if (root is null)
@@ -40,6 +53,8 @@ internal static class InitCommand
         if (vsCode)
             registrations.Add(() => RegisterMcpServer(root));
         registrations.Add(() => GitIgnore.AddFuseFolder(root));
+        if (instructions)
+            registrations.AddRange(InstructionsFile.FilesFor(root).Select<string, Func<WrittenFile?>>(file => () => InstructionsFile.Write(root, file)));
         foreach (var register in registrations)
         {
             try
@@ -59,6 +74,8 @@ internal static class InitCommand
         output.WriteLine(harnesses.Count > 0
             ? "fuse: hooks registered; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors"
             : "fuse: MCP server registered in .vscode/mcp.json; VS Code's agent can call fuse_check, fuse_test and fuse_build");
+        foreach (var step in harnesses.Select(h => h.NextStep).OfType<string>())
+            output.WriteLine($"fuse: {step}");
         return 0;
     }
 

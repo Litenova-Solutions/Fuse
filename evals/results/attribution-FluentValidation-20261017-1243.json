@@ -2,7 +2,7 @@
   "suite": "attribution",
   "repo": "FluentValidation",
   "commit": "fa3c160b17796ff67d6aa5ae6c4b05b471f1a791",
-  "fuseBuild": "5.2.4/e17d90a7ab6b4fdb961f0b6c0a40f005",
+  "fuseBuild": "5.4.0/2056ae4ab3ff4defae22d1da83fff501",
   "pairs": [
     {
       "renamedIn": "src/FluentValidation/AssemblyScanner.cs",
@@ -13,8 +13,8 @@
       "ownWithSessions": 6,
       "otherWithSessions": 0,
       "leftToOtherSessions": 2,
-      "msWithoutSessions": 94.5975,
-      "msWithSessions": 449.40469999999993
+      "msWithoutSessions": 108.2399,
+      "msWithSessions": 549.4449999999999
     },
     {
       "renamedIn": "src/FluentValidation/Internal/AccessorCache.cs",
@@ -25,8 +25,8 @@
       "ownWithSessions": 19,
       "otherWithSessions": 0,
       "leftToOtherSessions": 3,
-      "msWithoutSessions": 55.5415,
-      "msWithSessions": 305.8579
+      "msWithoutSessions": 75.41480000000001,
+      "msWithSessions": 507.4692
     }
   ],
   "ownWithoutSessions": 25,
@@ -35,15 +35,15 @@
   "otherWithSessions": 0,
   "leftToOtherSessions": 5,
   "msWithoutSessions": {
-    "p50": 55.5,
-    "p95": 94.6,
-    "max": 94.6,
+    "p50": 75.4,
+    "p95": 108.2,
+    "max": 108.2,
     "n": 2
   },
   "msWithSessions": {
-    "p50": 305.9,
-    "p95": 449.4,
-    "max": 449.4,
+    "p50": 507.5,
+    "p95": 549.4,
+    "max": 549.4,
     "n": 2
   },
   "treeCleanAfter": true

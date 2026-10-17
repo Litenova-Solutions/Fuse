@@ -11,7 +11,9 @@ namespace Fuse.Check;
 /// </summary>
 /// <remarks>
 ///     <para>
-///         The files that differ from HEAD fall into three groups for session S: files only S wrote, files only other
+///         S's own edits are its own and those of its subagents that have stopped (<see cref="SessionEdits.IsOwnEdit"/>);
+///         a subagent that is still running counts as another session. The files that differ from HEAD fall into three
+///         groups for session S: files only S wrote, files only other
 ///         sessions wrote, and the rest, which are files several sessions wrote and files no session is credited with
 ///         because a shell command, a generator or a tool Fuse never saw changed them. The rest stay in every view, so an
 ///         error they cause is everyone's.
@@ -60,11 +62,11 @@ internal sealed class SessionAttribution
     public async Task<List<CompilerError>?> ToldAsync(IReadOnlyList<CompilerError> errors, string session, CancellationToken cancellationToken)
     {
         var writers = _edits.WritersOf(_workspace.Tracker.Changed);
-        var onlyOthers = writers.Where(w => !w.Value.Contains(session)).Select(w => w.Key).ToList();
+        var onlyOthers = writers.Where(w => !w.Value.Any(s => _edits.IsOwnEdit(s, session))).Select(w => w.Key).ToList();
         // With no file that only other sessions wrote, every error is this session's or everyone's.
         if (errors.Count == 0 || onlyOthers.Count == 0)
             return null;
-        var onlyThis = writers.Where(w => w.Value.Count == 1 && w.Value.Contains(session)).Select(w => w.Key).ToList();
+        var onlyThis = writers.Where(w => w.Value.All(s => _edits.IsOwnEdit(s, session))).Select(w => w.Key).ToList();
 
         Solution? withoutOthers = null;
         Solution? withoutThis = null;
@@ -74,7 +76,7 @@ internal sealed class SessionAttribution
         foreach (var file in errors.GroupBy(e => e.Path, StringComparer.Ordinal))
         {
             var path = root.PathOf(file.Key);
-            if (writers.TryGetValue(path, out var sessions) && sessions.Count > 1 && sessions.Contains(session))
+            if (writers.TryGetValue(path, out var sessions) && sessions.Any(s => _edits.IsOwnEdit(s, session)) && !sessions.All(s => _edits.IsOwnEdit(s, session)))
                 continue;
             if (decided++ >= MaxDecidedFiles)
                 continue;

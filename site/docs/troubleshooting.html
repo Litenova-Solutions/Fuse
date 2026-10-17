@@ -43,7 +43,7 @@
       "url": "https://fuse.codes/docs/troubleshooting",
       "mainEntityOfPage": "https://fuse.codes/docs/troubleshooting",
       "inLanguage": "en",
-      "dateModified": "2026-09-29",
+      "dateModified": "2026-10-17",
       "image": "https://fuse.codes/assets/og.png",
       "isPartOf": {
         "@type": "WebSite",
@@ -130,6 +130,9 @@
         <li><a href="#a-slow-analyzer">A slow analyzer</a></li>
         <li><a href="#internal-errors">Internal errors</a></li>
         <li><a href="#a-build-waits">A build waits</a></li>
+        <li><a href="#a-slow-build">A slow build</a></li>
+        <li><a href="#a-command-in-the-build-fails">A command in the build fails</a></li>
+        <li><a href="#an-error-about-generated-code">An error about generated code</a></li>
         <li><a href="#where-the-logs-are">Where the logs are</a></li>
         <li><a href="#reading-engine-log">Reading engine.log</a></li>
         <li><a href="#stopping-or-restarting-the-engine">Stopping or restarting the engine</a></li>
@@ -150,6 +153,7 @@
       <li><strong>The harness cannot find <code>fuse</code>.</strong> Every hook runs the command <code>fuse</code>, so the tools directory (<code>~/.dotnet/tools</code>, or <code>%USERPROFILE%\.dotnet\tools</code> on Windows) has to be on the <code>PATH</code> of the process that starts the harness, not only in your terminal.</li>
       <li><strong>Cursor with only Claude Code settings.</strong> Cursor also runs Claude Code's hooks, and Fuse ignores those in a Cursor session so that the Cursor hooks answer. Create <code>.cursor/</code> and run <code>fuse init</code> again.</li>
       <li><strong>Cursor or GitHub Copilot CLI and <code>dotnet test</code>.</strong> These two harnesses have no pre-shell hook, so their <code>dotnet build</code> and <code>dotnet test</code> run unchanged. Have the agent run <code>fuse test</code> and <code>fuse build</code> instead.</li>
+      <li><strong>Muse Code runs no Fuse hook.</strong> Muse loads hooks only from an installed and approved plugin, so writing the bundle is not enough. Run <code>muse plugins install .muse/plugins/fuse --scope project</code> and <code>muse plugins approve fuse</code> in the repository, after trusting the workspace in Muse, and <code>muse plugins update fuse</code> after a later <code>fuse init</code>. <code>muse plugins list</code> shows <code>fuse</code> with <code>active=true</code> once it runs (<a href="harnesses.html#muse-code">Muse Code</a>).</li>
     </ul>
 
     <h2 id="after-updating-from-5-0-0">dotnet build and dotnet test run unchanged after updating from 5.0.0 <a class="anchor" href="#after-updating-from-5-0-0" aria-label="Link to this section">#</a></h2>
@@ -185,6 +189,24 @@
     <h2 id="a-build-waits">A build waits <a class="anchor" href="#a-build-waits" aria-label="Link to this section">#</a></h2>
     <pre class="out" data-label="Message"><code>fuse: waiting for another build or test in this repository</code></pre>
     <p>Another <code>fuse build</code> or <code>fuse test</code> in the same repository holds the <a href="how-it-works.html#builds-and-the-build-lock">build lock</a>, and this one waits until it finishes, which is what the lock is for. If nothing else is running, a <code>fuse</code> process is still alive; the lock is released when that process exits. <code>fuse: running without the per-repository build lock: &lt;reason&gt;</code> means the state directory cannot be written, and the build runs without that protection.</p>
+    <p>A <code>fuse test</code> whose runs all run without MSBuild holds the lock only while it gets its plan, so a build waits for it only that long. A <code>fuse test</code> that builds with MSBuild holds it until its last test run ends.</p>
+
+    <h2 id="a-slow-build">A slow build <a class="anchor" href="#a-slow-build" aria-label="Link to this section">#</a></h2>
+    <p>A <code>fuse build</code> of 10 seconds or more ends its last line with the slowest tasks and projects (<a href="commands.html#fuse-build">fuse build</a> shows the format). Read it this way:</p>
+    <ul>
+      <li><strong><code>Csc</code> leads.</strong> The compiler, with the analyzers and source generators it runs, takes the time. To see which analyzer or generator costs it, build with <code>-p:ReportAnalyzer=true -bl</code> and open the binary log's Analyzer Summary.</li>
+      <li><strong><code>Exec</code> or a tool's own task leads.</strong> A command a target runs, such as a code generator, takes the time. The slowest projects say which project runs it.</li>
+      <li><strong><code>ResolvePackageAssets</code>, <code>RestoreTask</code> or <code>Copy</code> lead.</strong> Restoring packages or copying output takes the time. A build that restores every time can pass <code>--no-restore</code> once packages are restored.</li>
+    </ul>
+    <p>Task times are summed over every project, and projects build in parallel, so they can add up to more than the build took. When the same build is fast one time and slow the next, compare the line of both runs. Builds that wait for each other print <code>fuse: waiting for another build or test in this repository</code> first (<a href="#a-build-waits">A build waits</a>), and the waiting is not part of the times.</p>
+
+    <h2 id="a-command-in-the-build-fails">A command in the build fails <a class="anchor" href="#a-command-in-the-build-fails" aria-label="Link to this section">#</a></h2>
+    <pre class="out" data-label="Output"><code>Api/Api.csproj(40,5): error MSB3073: The command "dotnet getdocument --assembly Api.dll" exited with code 11.</code></pre>
+    <p>A target ran a command, such as a code generator, and it exited with a code other than 0. The lines under the error, indented by two spaces, are the last lines the command printed: an exception's type and message and its first stack frame usually say what to fix. When no line follows the error, the command printed nothing, or its target runs on a node whose lines Fuse could not match to the command; run the command the error quotes yourself to see its output.</p>
+
+    <h2 id="an-error-about-generated-code">An error about generated code <a class="anchor" href="#an-error-about-generated-code" aria-label="Link to this section">#</a></h2>
+    <pre class="out" data-label="Output"><code>  generated: Api.Client/obj/Contract/Client.cs declares it, and Fuse reads that file as the last build wrote it; if it is generated from changed code, run fuse build to write it again</code></pre>
+    <p>The error is about a type or member a file the build generates declares, and Fuse reads that file as the last build wrote it (<a href="how-it-works.html#check">errors about generated code</a>). When you changed the code the file is generated from, such as an API's controllers, run <code>fuse build</code>, which writes the file again; the next check reads the new file. When the error remains after the build, it is a real error in the code that uses the generated file.</p>
 
     <h2 id="where-the-logs-are">Where the logs are <a class="anchor" href="#where-the-logs-are" aria-label="Link to this section">#</a></h2>
     <p>Fuse keeps its files for a repository in a state directory in the user's local application data, never in the repository:</p>
@@ -204,7 +226,8 @@
       <li><code>engine.log</code>: one line per event the engine records, each with a timestamp. The engine moves a log larger than 4 MB to <code>engine.log.1</code> when it starts.</li>
       <li><code>hook.log</code>: the failures of hooks run in this repository.</li>
       <li><code>build.lock</code>: the <a href="how-it-works.html#builds-and-the-build-lock">build lock</a>.</li>
-      <li><code>results</code>, <code>shadow</code> and <code>analyzers</code>: test results while a run lasts, the copies used for test runs without MSBuild, and the copies of the repository's own analyzers.</li>
+      <li><code>results</code>, <code>shadow</code> and <code>analyzers</code>: test results while a run lasts, the copies used for test runs without MSBuild (<code>shadow/&lt;project&gt;/g1</code> and so on, one per run that runs at the same time), and the copies of the repository's own analyzers.</li>
+      <li><code>build-*.log</code>: the <a href="how-it-works.html#build-log">file log</a> of a build that is running, deleted once the build ends.</li>
       <li><code>root</code>: the repository's path. Once a day a starting engine deletes the state directories whose repository no longer exists and that nothing wrote to for a day.</li>
     </ul>
     <p>The engine itself runs from a copy of the tool in <code>fuse/engine/&lt;version&gt;-&lt;module id&gt;</code> in the same local application data. A starting engine deletes the copies of other builds that no running engine holds.</p>
@@ -232,7 +255,7 @@
 2026-10-02 12:24:08.962 test plan: Services.Tests [Services.Tests] runs from C:\...\shadow\Services.Tests\Services.Tests.dll after 35 ms
 2026-10-02 12:24:08.962 PlanAffectedTests took 47 ms
 2026-10-02 12:24:08.963 phases id=34228-1 kind=PlanAffectedTests gate=0.0 sync=5.1 selection=12.0 mirror=13.1 emit=22.9 total=47.0</code></pre>
-    <p>The first check after the rename loaded all three projects and took 10,157 ms; the post-edit hook's check of the same edit, a few seconds later, took 15 ms, because everything it needed was already loaded. That difference is what the engine is for. A check logs a <code>check:</code> line with its compile and analyzer time, and a test plan logs its selection per test project and whether each runs from the copy (<code>runs from ...</code>) or <code>builds with MSBuild</code>, with the reason when it does not run from the copy.</p>
+    <p>The first check after the rename loaded all three projects and took 10,157 ms; the post-edit hook's check of the same edit, a few seconds later, took 15 ms, because everything it needed was already loaded. That difference is what the engine is for. A check logs a <code>check:</code> line with its compile and analyzer time and, when it kept the errors of files no change could affect since an earlier check, how many (<code>(N with errors reused from an earlier check)</code>, <a href="how-it-works.html#check">errors kept from an earlier check</a>), and a test plan logs its selection per test project and whether each runs from the copy (<code>runs from ...</code>) or <code>builds with MSBuild</code>, with the reason when it does not run from the copy.</p>
 
     <h3 id="reading-a-phase-line">Reading a phase line <a class="anchor" href="#reading-a-phase-line" aria-label="Link to this section">#</a></h3>
     <p>Every request ends with a request line, <code>&lt;request&gt; took &lt;ms&gt; ms</code>, and a phase line:</p>
@@ -260,7 +283,8 @@
 
     <h2 id="stopping-or-restarting-the-engine">Stopping or restarting the engine <a class="anchor" href="#stopping-or-restarting-the-engine" aria-label="Link to this section">#</a></h2>
     <p>The engine exits on its own after 10 minutes without a request, when its repository directory is deleted, and when a client of another build connects. Ending the engine's process is safe: it holds no lock and writes nothing into the repository, and the next command or hook starts a fresh engine.</p>
-    <p>The engine is a <code>dotnet</code> process whose command line holds <code>fuse.dll engine</code> and the repository's root path. On Windows, this lists the running engines:</p>
+    <p>To stop it yourself, run <code>fuse stop</code> in the repository. It asks the engine to stop, and kills its process when it has not exited within 10 seconds. <code>fuse stop --all</code> does the same for the engine of every repository Fuse keeps state for (<a href="commands.html#fuse-stop">fuse stop</a>). Stop the engine after changing an analyzer the repository builds itself, to give memory back at once, or when it stops answering.</p>
+    <p>When <code>fuse stop</code> cannot end it, end the process by hand. The engine is a <code>dotnet</code> process whose command line holds <code>fuse.dll engine</code> and the repository's root path. On Windows, this lists the running engines:</p>
     <pre data-label="PowerShell"><code>Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" | Where-Object CommandLine -like '*fuse.dll engine *' | Select-Object ProcessId, CommandLine</code></pre>
     <p>and this stops the engine of <code>C:\src\my-repo</code>:</p>
     <pre data-label="PowerShell"><code>Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" | Where-Object CommandLine -like '*fuse.dll engine C:\src\my-repo' | ForEach-Object { Stop-Process -Id $_.ProcessId }</code></pre>
@@ -278,6 +302,7 @@
         <li><a href="index.html">Overview</a></li>
         <li><a href="getting-started.html">Getting started</a></li>
         <li><a href="harnesses.html">Connect your agent</a></li>
+        <li><a href="parallel-agents.html">Subagents and parallel agents</a></li>
       </ul>
       <h2>Understand</h2>
       <ul>

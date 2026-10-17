@@ -29,14 +29,29 @@ internal sealed record MultiAgentBuilds(int Clients, int Rounds, double WallMs, 
 /// <summary>One verify round: the project the edit was in, how long the test run took, and the test projects it ran.</summary>
 internal sealed record MultiAgentRound(int Index, string Project, string Edit, double Ms, List<string> TestProjects, int FailingTests);
 
-/// <summary>All four scenarios, the last from <see cref="AttributionSuite"/>, as the latency result file's <c>multiAgent</c> object.</summary>
-internal sealed record MultiAgentResult(MultiAgentWriters Writers, MultiAgentBuilds Builds, List<MultiAgentRound> Rounds, AttributionPair? Attribution);
+/// <summary>
+///     An agent's stop hook checking every change again after each small fix: how many files differ from HEAD, the first
+///     check of them, the repeats, each after a body edit in one of them, and the most files a repeat reused the errors of.
+/// </summary>
+internal sealed record MultiAgentStops(int ChangedFiles, double FirstMs, LatencyStats Repeat, int MostReused);
+
+/// <summary>One agent's <c>fuse test</c> on its own, and two agents' started together: the pair's wall time and each run's time.</summary>
+internal sealed record MultiAgentTests(string Edit, double AloneMs, double PairWallMs, LatencyStats PairEach, int NotPassed);
+
+/// <summary>The multi-agent scenarios, the attribution pair from <see cref="AttributionSuite"/>, as the latency result file's <c>multiAgent</c> object.</summary>
+internal sealed record MultiAgentResult(MultiAgentWriters Writers, MultiAgentBuilds Builds, List<MultiAgentRound> Rounds, AttributionPair? Attribution)
+{
+    public MultiAgentStops? Stops { get; init; }
+
+    public MultiAgentTests? Tests { get; init; }
+}
 
 /// <summary>
-///     The four multi-agent scenarios: several agents checking at once, several builds at once, three verify rounds over
-///     two projects, and two writers whose breaking changes reach each other. They answer whether a check queue is worth
-///     coalescing, whether a test project is rerun for an edit that cannot reach it, and whether a writer is told about
-///     another writer's errors.
+///     The six multi-agent scenarios: several agents checking at once, several builds at once, three verify rounds over
+///     two projects, two writers whose breaking changes reach each other, a stop hook that checks every change again after
+///     each small fix, and two agents running the tests at once. They answer whether a check queue is worth coalescing,
+///     whether a test project is rerun for an edit that cannot reach it, whether a writer is told about another writer's
+///     errors, whether a repeated check costs only what changed, and whether two test runs overlap.
 /// </summary>
 internal static partial class MultiAgentScenario
 {
@@ -44,10 +59,12 @@ internal static partial class MultiAgentScenario
     private const int EditsPerWriter = 10;
     private const int Builders = 3;
     private const int BuildRounds = 5;
+    private const int StopFiles = 20;
+    private const int StopRepeats = 5;
 
     private static readonly string[] CollisionIds = ["MSB3021", "MSB3026", "MSB3027", "CS2012"];
 
-    /// <summary>Runs the four scenarios against <paramref name="repo"/> and restores every file it edits.</summary>
+    /// <summary>Runs the six scenarios against <paramref name="repo"/> and restores every file it edits.</summary>
     public static async Task<MultiAgentResult> RunAsync(EvalRepo repo, SolutionInfo solution, double singleClientTotalP50)
     {
         var targets = EditablePerProject(solution, text => TextEdit(text, "1")).Take(Writers).Select(t => t.File).ToList();
@@ -55,7 +72,90 @@ internal static partial class MultiAgentScenario
         var builds = await BuildsAsync(repo);
         var rounds = await RoundsAsync(repo, solution);
         var attribution = (await AttributionSuite.PairsAsync(repo, solution, 1)).FirstOrDefault();
-        return new MultiAgentResult(writers, builds, rounds, attribution);
+        var stops = await StopsAsync(repo, solution);
+        var tests = await TestsAsync(repo, solution);
+        return new MultiAgentResult(writers, builds, rounds, attribution) { Stops = stops, Tests = tests };
+    }
+
+    /// <summary>
+    ///     A body edit in one file of each code project, up to <see cref="StopFiles"/>, then a check of every change, as a
+    ///     stop hook makes, and <see cref="StopRepeats"/> more, each after another body edit in the first file. A repeat
+    ///     binds the file that changed again and can reuse the errors of the others.
+    /// </summary>
+    private static async Task<MultiAgentStops> StopsAsync(EvalRepo repo, SolutionInfo solution)
+    {
+        var targets = EditablePerProject(solution, text => TextEdit(text, "1")).Take(StopFiles).Select(t => t.File).ToList();
+        var originals = targets.ToDictionary(f => f, File.ReadAllBytes, StringComparer.OrdinalIgnoreCase);
+        var texts = targets.ToDictionary(f => f, f => File.ReadAllText(f), StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            foreach (var file in targets)
+                await File.WriteAllTextAsync(file, BodyEdit(texts[file], 1));
+            await Task.Delay(500);
+            var first = await repo.FuseTimedAsync("check");
+            var seen = repo.EngineLogLines().Count;
+            var repeats = new List<double>();
+            var mostReused = 0;
+            for (var i = 2; i <= StopRepeats + 1; i++)
+            {
+                await File.WriteAllTextAsync(targets[0], BodyEdit(texts[targets[0]], i));
+                var run = await repo.FuseTimedAsync("check");
+                repeats.Add(run.Milliseconds);
+                var lines = repo.EngineLogLines();
+                foreach (var line in lines.Skip(seen))
+                {
+                    if (Reused().Match(line) is { Success: true } match)
+                        mostReused = Math.Max(mostReused, int.Parse(match.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture));
+                }
+
+                seen = lines.Count;
+            }
+
+            var stops = new MultiAgentStops(targets.Count, first.Milliseconds, LatencyStats.Of(repeats), mostReused);
+            Console.WriteLine($"[multiAgent] stops: {targets.Count} changed file(s), first check {first.Milliseconds:0} ms, repeat P50 {stops.Repeat.P50:0} ms, at most {mostReused} file(s) reused");
+            return stops;
+        }
+        finally
+        {
+            foreach (var (file, bytes) in originals)
+                File.WriteAllBytes(file, bytes);
+        }
+    }
+
+    /// <summary>
+    ///     A body edit in a file a test project uses, then <c>fuse test</c> on its own and two <c>fuse test</c> clients
+    ///     started together, each after another body edit, with one unmeasured run first so both start from the same
+    ///     engine. Two runs that only take turns take twice as long as one; runs without MSBuild from their own copies
+    ///     overlap.
+    /// </summary>
+    private static async Task<MultiAgentTests> TestsAsync(EvalRepo repo, SolutionInfo solution)
+    {
+        var testSources = solution.TestProjects.ToDictionary(t => t, t => SourcesUnder(Path.GetDirectoryName(t)!).Select(File.ReadAllText).ToList(), StringComparer.OrdinalIgnoreCase);
+        var file = EditablePerProject(solution, text => TextEdit(text, "1"))
+            .Select(c => c.File)
+            .FirstOrDefault(f => TestProjectsUsing(f, testSources).Count > 0)
+            ?? throw new InvalidOperationException($"the tests scenario needs a file a test project uses; found none in {solution.Root}");
+        var bytes = File.ReadAllBytes(file);
+        var original = File.ReadAllText(file);
+        try
+        {
+            await File.WriteAllTextAsync(file, BodyEdit(original, 1));
+            await repo.FuseTimedAsync("test");
+            await File.WriteAllTextAsync(file, BodyEdit(original, 2));
+            var alone = await repo.FuseTimedAsync("test");
+            await File.WriteAllTextAsync(file, BodyEdit(original, 3));
+            var watch = Stopwatch.StartNew();
+            var pair = await Task.WhenAll(repo.FuseTimedAsync("test"), repo.FuseTimedAsync("test"));
+            var wall = watch.Elapsed.TotalMilliseconds;
+            var notPassed = new[] { alone }.Concat(pair).Count(r => r.ExitCode != 0);
+            var tests = new MultiAgentTests(Path.GetRelativePath(repo.Root, file).Replace('\\', '/'), alone.Milliseconds, wall, LatencyStats.Of([.. pair.Select(r => r.Milliseconds)]), notPassed);
+            Console.WriteLine($"[multiAgent] tests: one client {alone.Milliseconds:0} ms; two at once {wall:0} ms, each P50 {tests.PairEach.P50:0} ms; {notPassed} run(s) did not pass");
+            return tests;
+        }
+        finally
+        {
+            File.WriteAllBytes(file, bytes);
+        }
     }
 
 
@@ -333,4 +433,7 @@ internal static partial class MultiAgentScenario
 
     [GeneratedRegex(@"fuse: (\d+) failed", RegexOptions.CultureInvariant)]
     private static partial Regex Failing();
+
+    [GeneratedRegex(@"check: .*\((\d+) with errors reused from an earlier check\)", RegexOptions.CultureInvariant)]
+    private static partial Regex Reused();
 }

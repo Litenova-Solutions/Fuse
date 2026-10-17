@@ -2,29 +2,29 @@
   "suite": "latency",
   "repo": "Jellyfin",
   "commit": "1d7c6af520da5c84ceac1c21a1d2da34837540ac",
-  "fuseBuild": "5.3.0/49b8127acfa4414384e5e76efb312bc0",
+  "fuseBuild": "5.4.0/54a77ed259254010b8af1839212eaa35",
   "target": "MediaBrowser.Controller/Entities/LinkedChildComparer.cs",
   "method": "Equals",
   "referencingFilesInOtherProjects": 210,
-  "coldCleanMs": 4331.5918,
-  "coldBodyEditMs": 11889.3632,
+  "coldCleanMs": 4982.6126,
+  "coldBodyEditMs": 15538.4556,
   "bodyEdit": {
-    "p50": 309.7,
-    "p95": 546.4,
-    "max": 546.4,
+    "p50": 396.5,
+    "p95": 722.6,
+    "max": 722.6,
     "n": 15
   },
   "signatureEdit": {
-    "p50": 199,
-    "p95": 124224.5,
-    "max": 124224.5,
+    "p50": 279.8,
+    "p95": 117234.6,
+    "max": 117234.6,
     "n": 10
   },
   "signatureEditSample": "fuse: 1 error(s) introduced in 1 file(s) (MediaBrowser.Controller); MediaBrowser.Controller declarations changed, 27 dependent project(s) checked",
   "warmUnchanged": {
-    "p50": 168,
-    "p95": 174,
-    "max": 174,
+    "p50": 218.7,
+    "p95": 235.3,
+    "max": 235.3,
     "n": 10
   },
   "part": "checks",
@@ -32,9 +32,9 @@
   "bodyEditPhases": {
     "phases": {
       "bindTargets": {
-        "p50": 104,
-        "p95": 282.6,
-        "max": 282.6,
+        "p50": 125.1,
+        "p95": 476.1,
+        "max": 476.1,
         "n": 15
       },
       "gate": {
@@ -50,28 +50,28 @@
         "n": 15
       },
       "surfaceDiff": {
-        "p50": 0.9,
-        "p95": 1.8,
-        "max": 1.8,
+        "p50": 1,
+        "p95": 1.5,
+        "max": 1.5,
         "n": 15
       },
       "sync": {
-        "p50": 1.2,
-        "p95": 4.2,
-        "max": 4.2,
+        "p50": 1.9,
+        "p95": 13.3,
+        "max": 13.3,
         "n": 15
       },
       "total": {
-        "p50": 110,
-        "p95": 281,
-        "max": 281,
+        "p50": 125,
+        "p95": 484,
+        "max": 484,
         "n": 15
       }
     },
     "outsideEngine": {
-      "p50": 192.8,
-      "p95": 265.4,
-      "max": 265.4,
+      "p50": 267.6,
+      "p95": 292.6,
+      "max": 292.6,
       "n": 15
     },
     "n": 15
@@ -79,15 +79,15 @@
   "signatureEditPhases": {
     "phases": {
       "bindCandidates": {
-        "p50": 0.1,
-        "p95": 4,
-        "max": 4,
+        "p50": 0.2,
+        "p95": 5.2,
+        "max": 5.2,
         "n": 10
       },
       "bindTargets": {
-        "p50": 34,
-        "p95": 260.9,
-        "max": 260.9,
+        "p50": 40.6,
+        "p95": 332.2,
+        "max": 332.2,
         "n": 10
       },
       "gate": {
@@ -104,39 +104,39 @@
       },
       "loadDependents": {
         "p50": 0,
-        "p95": 26327.9,
-        "max": 26327.9,
+        "p95": 33447.5,
+        "max": 33447.5,
         "n": 10
       },
       "referenceSearch": {
         "p50": 1.2,
-        "p95": 97447.6,
-        "max": 97447.6,
+        "p95": 83127.2,
+        "max": 83127.2,
         "n": 10
       },
       "surfaceDiff": {
-        "p50": 0.6,
-        "p95": 2.1,
-        "max": 2.1,
+        "p50": 0.7,
+        "p95": 3.4,
+        "max": 3.4,
         "n": 10
       },
       "sync": {
-        "p50": 0.9,
-        "p95": 4.2,
-        "max": 4.2,
+        "p50": 3.2,
+        "p95": 19.3,
+        "max": 19.3,
         "n": 10
       },
       "total": {
-        "p50": 31,
-        "p95": 124047,
-        "max": 124047,
+        "p50": 47,
+        "p95": 117000,
+        "max": 117000,
         "n": 10
       }
     },
     "outsideEngine": {
-      "p50": 166.7,
-      "p95": 177.5,
-      "max": 177.5,
+      "p50": 225.3,
+      "p95": 243.6,
+      "max": 243.6,
       "n": 10
     },
     "n": 10
@@ -150,9 +150,9 @@
         "n": 10
       },
       "sync": {
-        "p50": 0.1,
-        "p95": 0.2,
-        "max": 0.2,
+        "p50": 2.2,
+        "p95": 2.7,
+        "max": 2.7,
         "n": 10
       },
       "total": {
@@ -163,17 +163,17 @@
       }
     },
     "outsideEngine": {
-      "p50": 168,
-      "p95": 174,
-      "max": 174,
+      "p50": 218.7,
+      "p95": 235.3,
+      "max": 235.3,
       "n": 10
     },
     "n": 10
   },
   "testRoundPhases": null,
   "multiAgent": null,
-  "engineWorkingSetMb": 592.8,
-  "enginePeakWorkingSetMb": 592.8,
-  "engineIdleWorkingSetMb": 478.4,
+  "engineWorkingSetMb": 586.2,
+  "enginePeakWorkingSetMb": 586.2,
+  "engineIdleWorkingSetMb": 479.2,
   "treeCleanAfter": true
 }

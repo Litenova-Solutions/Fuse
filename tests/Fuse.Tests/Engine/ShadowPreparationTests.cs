@@ -70,6 +70,34 @@ public class ShadowPreparationTests
         Assert.False(HoldsString(lib, "first"), "the shadow Lib.dll still holds the first edit");
     }
 
+    [Fact]
+    public async Task A_plan_does_not_write_a_copy_a_test_run_holds_and_deletes_it_once_released()
+    {
+        await using var engine = await InProcessEngine.StartAsync();
+        engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + \"first\".Length;");
+        await Task.Delay(400, TestContext.Current.CancellationToken);
+        var first = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
+        var firstLib = ShadowFile(first, "Lib.dll");
+        var held = Fuse.Paths.LocalState.HoldTestCopy(Path.GetDirectoryName(firstLib)!);
+
+        // Another client plans while the first run still runs from its copy.
+        engine.Repo.Replace("Lib/Calc.cs", "\"first\"", "\"second\"");
+        await Task.Delay(400, TestContext.Current.CancellationToken);
+        var second = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
+        var secondLib = ShadowFile(second, "Lib.dll");
+
+        Assert.NotEqual(Path.GetDirectoryName(firstLib), Path.GetDirectoryName(secondLib));
+        Assert.True(HoldsString(File.ReadAllBytes(firstLib), "first"), "the held copy was written");
+        Assert.True(HoldsString(File.ReadAllBytes(secondLib), "second"), "the new copy does not hold the edit");
+        Assert.True(File.Exists(ShadowFile(second, "Lib.Tests.dll")), "the new copy is missing the test assembly");
+
+        // Released, the older copy goes at the next plan, and the newest copy is used again.
+        held.Dispose();
+        var third = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
+        Assert.Equal(secondLib, ShadowFile(third, "Lib.dll"));
+        Assert.False(Directory.Exists(Path.GetDirectoryName(firstLib)), "the released copy was not deleted");
+    }
+
     /// <summary>The file named <paramref name="name"/> next to the single shadow run's test assembly.</summary>
     private static string ShadowFile(TestPlanResult plan, string name)
     {

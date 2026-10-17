@@ -21,6 +21,16 @@ internal sealed class DiagnosticCollector
     private readonly ConcurrentDictionary<ProjectId, IReadOnlyList<CompilerError>> _baselineProjects = new();
     private readonly ConditionalWeakTable<CompilationWithAnalyzers, Task<ImmutableArray<Diagnostic>>> _compilationWide = new();
     private int _cachedGeneration = -1;
+    private readonly Func<int> _configurationGeneration;
+
+    /// <summary>The compiler and per-file analyzer errors of each working-tree file at the last check that bound it, by the key they were found under.</summary>
+    private readonly ConcurrentDictionary<DocumentId, CachedFile> _currentFiles = new();
+
+    private int _currentFilesGeneration = -1;
+    private int _reused;
+
+    /// <summary>Whether the current check reuses and keeps working-tree errors (<see cref="Begin"/>).</summary>
+    private bool _reuse;
 
     private long _compilerTicks;
     private long _analyzerTicks;
@@ -31,12 +41,30 @@ internal sealed class DiagnosticCollector
     private int _unfinished;
     private readonly ConcurrentDictionary<string, byte> _leftOut = new(StringComparer.Ordinal);
 
-    /// <summary>Starts a check that runs analyzers on the working tree as <paramref name="run"/> says.</summary>
-    public void Begin(AnalyzerRun run)
+    /// <summary>
+    ///     Starts a check that runs analyzers on the working tree as <paramref name="run"/> says, and reuses working-tree
+    ///     errors from an earlier check when <paramref name="reuse"/> is true.
+    /// </summary>
+    /// <param name="reuse">
+    ///     True for a check of every change, which binds many files again after a small edit. The key needs Roslyn's
+    ///     dependent semantic version, which costs more than it saves in a check of the files an edit just wrote, so a check
+    ///     of named files neither reads nor fills the cache.
+    /// </param>
+    public void Begin(AnalyzerRun run, bool reuse)
     {
         _run = run;
+        _reuse = reuse;
+        // Projects that loaded again have new document ids, so what was kept for the old ones is dropped with them.
+        var generation = _configurationGeneration();
+        if (generation != _currentFilesGeneration)
+        {
+            _currentFiles.Clear();
+            _currentFilesGeneration = generation;
+        }
+
         Interlocked.Exchange(ref _unfinished, 0);
         _leftOut.Clear();
+        TakeReused();
         TakeTimings();
     }
 
@@ -53,8 +81,12 @@ internal sealed class DiagnosticCollector
     public DiagnosticCollector(RepoRoot root, Func<int> configurationGeneration, Action<string> log)
     {
         _root = root;
+        _configurationGeneration = configurationGeneration;
         _analyzers = new AnalyzerSelector(configurationGeneration, log);
     }
+
+    /// <summary>How many working-tree files had their errors reused since the last call, for the engine log.</summary>
+    public int TakeReused() => Interlocked.Exchange(ref _reused, 0);
 
     /// <summary>Time spent binding and running analyzers since the last call, for the engine log.</summary>
     public (long CompilerMs, long AnalyzerMs) TakeTimings()
@@ -158,29 +190,61 @@ internal sealed class DiagnosticCollector
 
     private async Task<IEnumerable<CompilerError>> ForDocumentAsync(Document document, bool baseline, CancellationToken cancellationToken)
     {
-        var model = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
-        if (model is null)
+        // A working-tree file whose text and whose project's declarations are as they were at an earlier check has the same
+        // compiler and per-file analyzer errors, so they are reused; the compilation-wide analyzers read every file's
+        // bodies, so their part is never reused this way.
+        var key = baseline || !_reuse || document is SourceGeneratedDocument ? null : await KeyAsync(document, cancellationToken).ConfigureAwait(false);
+        if (key is not null && _currentFiles.TryGetValue(document.Id, out var cached) && cached.Key == key)
+        {
+            Interlocked.Increment(ref _reused);
+            var model = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
+            if (model is null)
+                return cached.Errors;
+            var (compilationWide, _) = await RunAnalyzersAsync(document.Project, model, _run, perFile: false, cancellationToken).ConfigureAwait(false);
+            return [.. cached.Errors, .. compilationWide.Select(d => ToCompilerError(d.Diagnostic, fromAnalyzer: true)).OfType<CompilerError>()];
+        }
+
+        var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
+        if (semanticModel is null)
             return [];
 
         var started = System.Diagnostics.Stopwatch.GetTimestamp();
-        var diagnostics = model.GetDiagnostics(cancellationToken: cancellationToken).Where(IsError).Select(d => (Roslyn: d, FromAnalyzer: false)).ToList();
+        var compiler = semanticModel.GetDiagnostics(cancellationToken: cancellationToken).Where(IsError).Select(d => ToCompilerError(d, fromAnalyzer: false)).OfType<CompilerError>().ToList();
         Interlocked.Add(ref _compilerTicks, System.Diagnostics.Stopwatch.GetTimestamp() - started);
-        diagnostics.AddRange((await RunAnalyzersAsync(document.Project, model, baseline ? AnalyzerRun.Full : _run, cancellationToken).ConfigureAwait(false)).Select(d => (Roslyn: d, FromAnalyzer: true)));
-
-        return diagnostics.Select(d => ToCompilerError(d.Roslyn, d.FromAnalyzer)).OfType<CompilerError>();
+        var (fromAnalyzers, perFileFinished) = await RunAnalyzersAsync(document.Project, semanticModel, baseline ? AnalyzerRun.Full : _run, perFile: true, cancellationToken).ConfigureAwait(false);
+        var analyzerErrors = fromAnalyzers.Select(d => (Error: ToCompilerError(d.Diagnostic, fromAnalyzer: true), d.PerFile)).Where(d => d.Error is not null).ToList();
+        if (key is not null && perFileFinished)
+            _currentFiles[document.Id] = new CachedFile(key, [.. compiler, .. analyzerErrors.Where(d => d.PerFile).Select(d => d.Error!)]);
+        return [.. compiler, .. analyzerErrors.Select(d => d.Error!)];
     }
 
     /// <summary>
-    ///     The analyzer errors in the file of <paramref name="model"/>: the per-file analyzers run on that file, and the
-    ///     compilation-wide ones once over the whole compilation, whose result every file of the check shares. Past
-    ///     <paramref name="run"/>'s deadline, the file keeps the analyzer errors found so far and counts as unfinished.
+    ///     What a working-tree file's compiler and per-file analyzer errors depend on: its text, the declarations of its
+    ///     project and of the projects it references (Roslyn's dependent semantic version, which a change inside a method
+    ///     body leaves as it is), and the project configuration.
     /// </summary>
-    private async Task<IEnumerable<Diagnostic>> RunAnalyzersAsync(Project project, SemanticModel model, AnalyzerRun run, CancellationToken cancellationToken)
+    private async Task<FileKey> KeyAsync(Document document, CancellationToken cancellationToken)
+    {
+        var text = await document.GetTextAsync(cancellationToken).ConfigureAwait(false);
+        var declarations = await document.Project.GetDependentSemanticVersionAsync(cancellationToken).ConfigureAwait(false);
+        return new FileKey(Convert.ToHexString(text.GetChecksum().AsSpan()), declarations, _configurationGeneration());
+    }
+
+    /// <summary>
+    ///     The analyzer errors in the file of <paramref name="model"/>: the per-file analyzers run on that file when
+    ///     <paramref name="perFile"/> is true, and the compilation-wide ones once over the whole compilation, whose result
+    ///     every file of the check shares. Past <paramref name="run"/>'s deadline, the file keeps the analyzer errors found
+    ///     so far and counts as unfinished.
+    /// </summary>
+    /// <returns>Each error with whether a per-file analyzer reported it, and whether the per-file analyzers finished.</returns>
+    private async Task<(List<(Diagnostic Diagnostic, bool PerFile)> Errors, bool PerFileFinished)> RunAnalyzersAsync(
+        Project project, SemanticModel model, AnalyzerRun run, bool perFile, CancellationToken cancellationToken)
     {
         var withAnalyzers = _analyzers.For(project, model.Compilation);
         if (withAnalyzers is null)
-            return [];
-        var result = new List<Diagnostic>();
+            return ([], true);
+        var result = new List<(Diagnostic Diagnostic, bool PerFile)>();
+        var perFileFinished = false;
         using var analyzing = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, run.Deadline);
         try
         {
@@ -190,13 +254,15 @@ internal sealed class DiagnosticCollector
             try
             {
                 plan = await _analyzers.PlanAsync(project, withAnalyzers, model, analyzing.Token).ConfigureAwait(false);
-                if (!plan.PerFile.IsEmpty)
+                if (perFile && !plan.PerFile.IsEmpty)
                 {
                     var syntax = withAnalyzers.GetAnalyzerSyntaxDiagnosticsAsync(model.SyntaxTree, plan.PerFile, analyzing.Token);
                     var semantic = withAnalyzers.GetAnalyzerSemanticDiagnosticsAsync(model, filterSpan: null, plan.PerFile, analyzing.Token);
-                    result.AddRange(await syntax.ConfigureAwait(false));
-                    result.AddRange(await semantic.ConfigureAwait(false));
+                    result.AddRange((await syntax.ConfigureAwait(false)).Select(d => (d, true)));
+                    result.AddRange((await semantic.ConfigureAwait(false)).Select(d => (d, true)));
                 }
+
+                perFileFinished = true;
             }
             finally
             {
@@ -211,7 +277,7 @@ internal sealed class DiagnosticCollector
             else if (!plan.CompilationWide.IsEmpty)
             {
                 var all = await CompilationWideAsync(withAnalyzers, plan, analyzing.Token).ConfigureAwait(false);
-                result.AddRange(all.Where(d => d.Location.SourceTree == model.SyntaxTree));
+                result.AddRange(all.Where(d => d.Location.SourceTree == model.SyntaxTree).Select(d => (d, false)));
             }
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
@@ -219,7 +285,7 @@ internal sealed class DiagnosticCollector
             Interlocked.Increment(ref _unfinished);
         }
 
-        return result.Where(IsError);
+        return ([.. result.Where(d => IsError(d.Diagnostic))], perFileFinished);
     }
 
     /// <summary>
@@ -297,4 +363,10 @@ internal sealed class DiagnosticCollector
     /// <summary>Removes duplicates that come from compiling one file for several target frameworks.</summary>
     private static List<CompilerError> Distinct(IEnumerable<CompilerError> diagnostics) =>
         diagnostics.Distinct().OrderBy(d => d.Path, StringComparer.Ordinal).ThenBy(d => d.Line).ThenBy(d => d.Column).ToList();
+
+    /// <summary>What a working-tree file's errors were found under: its text's checksum, its dependent semantic version and the configuration generation.</summary>
+    private sealed record FileKey(string Checksum, VersionStamp Declarations, int Configuration);
+
+    /// <summary>A working-tree file's compiler and per-file analyzer errors, and the key they were found under.</summary>
+    private sealed record CachedFile(FileKey Key, IReadOnlyList<CompilerError> Errors);
 }

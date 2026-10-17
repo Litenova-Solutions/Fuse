@@ -11,4 +11,11 @@ namespace Fuse.Check.Model;
 ///     True when the error had a cause and the cap on causes per answer left it out. The client counts these among the
 ///     errors it prints, so the summary's "cause(s) left out" counts only lines the reader could have seen.
 /// </param>
-internal sealed record IntroducedError(CompilerError Error, Cause? Cause = null, bool IsCauseLeftOut = false);
+internal sealed record IntroducedError(CompilerError Error, Cause? Cause = null, bool IsCauseLeftOut = false)
+{
+    /// <summary>
+    ///     The repository-relative path of the file a build generates that declares what the error is about, or null. Fuse
+    ///     reads that file as the last build left it, so the error may only mean the build has not written it again.
+    /// </summary>
+    public string? GeneratedFile { get; init; }
+}

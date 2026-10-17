@@ -8,9 +8,17 @@ namespace Fuse.Check;
 ///     state directory, so an engine that restarts still knows who wrote what; it is never written into the repository.
 /// </summary>
 /// <remarks>
-///     The file holds one line per file and session, the repository-relative path and the session separated by a tab. A
-///     session id that holds a tab, a line break or another control character is refused by <see cref="IsValid"/>, so
-///     every line reads back the way it was written. A line that does not read back is skipped.
+///     <para>
+///         The file holds one line per file and session, the repository-relative path and the session separated by a tab,
+///         and one line per stopped session, a tab followed by the session. A session id that holds a tab, a line break
+///         or another control character is refused by <see cref="IsValid"/>, so every line reads back the way it was
+///         written. A line that does not read back is skipped.
+///     </para>
+///     <para>
+///         A session has stopped once its stop hook asked for a check (<see cref="MarkStopped"/>). A subagent that has
+///         stopped writes no more, so its parent session counts its edits as its own (<see cref="IsOwnEdit"/>), while a
+///         subagent that is still running is left to finish its own work.
+///     </para>
 /// </remarks>
 internal sealed class SessionEdits
 {
@@ -21,6 +29,7 @@ internal sealed class SessionEdits
     private readonly string? _file;
     private readonly Lock _lock = new();
     private readonly Dictionary<RepoPath, HashSet<string>> _writers = [];
+    private readonly HashSet<string> _stopped = new(StringComparer.Ordinal);
 
     /// <param name="root">The repository, which turns a recorded path back into a <see cref="RepoPath"/>.</param>
     /// <param name="file">The file the record is kept in, or null to keep it in memory only.</param>
@@ -53,6 +62,30 @@ internal sealed class SessionEdits
         }
     }
 
+    /// <summary>Records that <paramref name="session"/> has stopped, so its parent session counts its edits as its own.</summary>
+    public void MarkStopped(string session)
+    {
+        lock (_lock)
+        {
+            if (_stopped.Add(session))
+                Write();
+        }
+    }
+
+    /// <summary>
+    ///     True when <paramref name="writer"/>'s edits count as <paramref name="session"/>'s own: it is the session, or a
+    ///     subagent of it that has stopped. A subagent's id is its parent's followed by a slash and the subagent's own.
+    /// </summary>
+    public bool IsOwnEdit(string writer, string session)
+    {
+        if (string.Equals(writer, session, StringComparison.Ordinal))
+            return true;
+        if (writer.Length <= session.Length + 1 || writer[session.Length] != '/' || !writer.StartsWith(session, StringComparison.Ordinal))
+            return false;
+        lock (_lock)
+            return _stopped.Contains(writer);
+    }
+
     /// <summary>
     ///     Drops the record of every file not in <paramref name="changed"/>: such a file matches HEAD again, so the sessions
     ///     that wrote it are not credited with it when it changes again.
@@ -81,7 +114,9 @@ internal sealed class SessionEdits
         var stale = _writers.Keys.Where(p => !current.Contains(p)).ToList();
         foreach (var path in stale)
             _writers.Remove(path);
-        if (stale.Count > 0)
+        // A stopped session that no file is credited to any more has nothing left to count.
+        var gone = _stopped.RemoveWhere(s => !_writers.Values.Any(w => w.Contains(s)));
+        if (stale.Count > 0 || gone > 0)
             Write();
     }
 
@@ -94,11 +129,17 @@ internal sealed class SessionEdits
             foreach (var line in File.ReadAllLines(_file))
             {
                 var tab = line.IndexOf('\t', StringComparison.Ordinal);
-                if (tab <= 0)
+                if (tab < 0)
                     continue;
                 var session = line[(tab + 1)..];
                 if (!IsValid(session))
                     continue;
+                if (tab == 0)
+                {
+                    _stopped.Add(session);
+                    continue;
+                }
+
                 var path = _root.PathOf(line[..tab]);
                 if (!_writers.TryGetValue(path, out var sessions))
                     _writers[path] = sessions = new HashSet<string>(StringComparer.Ordinal);
@@ -110,6 +151,7 @@ internal sealed class SessionEdits
             // A record that cannot be read leaves every file unattributed, which reports what a check reported before
             // sessions were recorded.
             _writers.Clear();
+            _stopped.Clear();
         }
     }
 
@@ -121,7 +163,8 @@ internal sealed class SessionEdits
         try
         {
             var lines = _writers.OrderBy(w => w.Key.Relative, StringComparer.Ordinal)
-                .SelectMany(w => w.Value.Order(StringComparer.Ordinal).Select(session => $"{w.Key.Relative}\t{session}"));
+                .SelectMany(w => w.Value.Order(StringComparer.Ordinal).Select(session => $"{w.Key.Relative}\t{session}"))
+                .Concat(_stopped.Order(StringComparer.Ordinal).Select(session => $"\t{session}"));
             var temporary = _file + ".tmp";
             File.WriteAllLines(temporary, lines);
             File.Move(temporary, _file, overwrite: true);

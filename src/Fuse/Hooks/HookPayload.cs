@@ -62,8 +62,10 @@ internal sealed partial class HookPayload
     public bool FromCursor => _root.TryGetProperty("cursor_version", out _);
 
     /// <summary>True when the harness is already continuing because of an earlier Stop hook block.</summary>
+    /// <remarks>Muse Code sends <c>stop_hook_active</c> as the string <c>"true"</c> or <c>"false"</c>.</remarks>
     public bool StopHookActive =>
-        (_root.TryGetProperty("stop_hook_active", out var active) && active.ValueKind == JsonValueKind.True)
+        (_root.TryGetProperty("stop_hook_active", out var active)
+         && (active.ValueKind == JsonValueKind.True || (active.ValueKind == JsonValueKind.String && active.GetString() == "true")))
         || (_root.TryGetProperty("loop_count", out var loops) && loops.ValueKind == JsonValueKind.Number && (!loops.TryGetDouble(out var count) || count > 0));
 
     /// <summary>The tool input object (<c>tool_input</c>, or Copilot's <c>toolArgs</c>, which may be a JSON string).</summary>
@@ -95,6 +97,9 @@ internal sealed partial class HookPayload
         }
     }
 
+    /// <summary>The name of the tool the event is about (<c>tool_name</c>, or <c>toolName</c>), or null.</summary>
+    public string? ToolName => NonBlank(StringProperty("tool_name")) ?? NonBlank(StringProperty("toolName"));
+
     /// <summary>The shell command of a Bash-like tool call.</summary>
     public string? Command => ToolInput is { } input && input.TryGetProperty("command", out var c) && c.ValueKind == JsonValueKind.String ? c.GetString() : StringProperty("command");
 
@@ -114,10 +119,12 @@ internal sealed partial class HookPayload
                     paths.Add(value.GetString()!);
             }
 
-            foreach (var name in new[] { "command", "patchText" })
+            // A patch arrives in a field each harness names differently (command, patchText, input), so every string field
+            // is read; only patch headers match.
+            foreach (var property in input.EnumerateObject())
             {
-                if (input.TryGetProperty(name, out var patch) && patch.ValueKind == JsonValueKind.String)
-                    paths.AddRange(PatchFiles(patch.GetString()!));
+                if (property.Value.ValueKind == JsonValueKind.String)
+                    paths.AddRange(PatchFiles(property.Value.GetString()!));
             }
         }
 

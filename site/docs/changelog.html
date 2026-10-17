@@ -171,7 +171,6 @@
       <li>The stop hook blocks only on the errors the stopping session's edits cause, alone or with other sessions' edits, and on those in changes no session is credited with; it counts the rest. A subagent's edits count as its parent's once the subagent has stopped. Previously the stop hook blocked on every error in the working tree. <a href="how-it-works.html#check">How it works</a> describes it.</li>
       <li>Test runs without MSBuild from several agents run at the same time, each from its own copy, and <code>fuse test</code> gives up the build lock while they run. Previously every <code>fuse test</code> waited for the one before it. <a href="how-it-works.html#without-msbuild">How it works</a> describes it, and <a href="limits.html#test-runs-without-msbuild">Limits</a> lists the integration tests that can collide.</li>
       <li>A check keeps a file's errors from an earlier check when nothing it depends on changed since, so a stop hook that checks many files again after a small fix takes the time of that fix. <a href="how-it-works.html#check">How it works</a> describes it.</li>
-      <li>The engine runs below normal priority, so a build or test run that competes with a check for the processor gets it first. <a href="how-it-works.html#process-model">How it works</a> describes it.</li>
     </ul>
 
     <h3 id="v5-4-0-fixed">Fixed <a class="anchor" href="#v5-4-0-fixed" aria-label="Link to this section">#</a></h3>

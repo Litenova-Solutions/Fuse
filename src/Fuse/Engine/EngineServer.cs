@@ -46,7 +46,6 @@ internal static class EngineServer
 
         var state = new IdleClock(TimeProvider.System);
         var watchdog = WatchIdleAsync(root, router, state, shutdown, log);
-        var lowered = false;
         try
         {
             while (!shutdown.IsCancellationRequested)
@@ -73,13 +72,6 @@ internal static class EngineServer
                     continue;
                 }
 
-                // Lowered once the pipe is up: the client that started the engine waits only so long for it to accept.
-                if (!lowered)
-                {
-                    lowered = true;
-                    LowerPriority(log);
-                }
-
                 _ = ServeAsync(pipe, router, state, shutdown, log);
             }
         }
@@ -93,24 +85,6 @@ internal static class EngineServer
         }
 
         return 0;
-    }
-
-    /// <summary>
-    ///     Runs the engine below normal priority, so a build or test run that competes with a check for the processor gets
-    ///     it first: a check binds on every core, and several agents' builds in one repository slowed while it did. With
-    ///     nothing else running, the engine runs as fast as before.
-    /// </summary>
-    private static void LowerPriority(EngineLog log)
-    {
-        try
-        {
-            using var process = System.Diagnostics.Process.GetCurrentProcess();
-            process.PriorityClass = System.Diagnostics.ProcessPriorityClass.BelowNormal;
-        }
-        catch (Exception e) when (e is System.ComponentModel.Win32Exception or InvalidOperationException or PlatformNotSupportedException)
-        {
-            log.Write($"engine priority unchanged: {e.Message}");
-        }
     }
 
     /// <summary>

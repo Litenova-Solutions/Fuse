@@ -146,7 +146,7 @@
           "name": "Does Fuse send my code or data anywhere?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "No. Everything runs locally, and Fuse has no telemetry and makes no network calls of its own. It never edits your code; the only files it writes in your repository are the hook settings and the .gitignore line from fuse init. Commands Fuse runs for you, such as dotnet build, act as they normally would."
+            "text": "No. Everything runs locally, and Fuse has no telemetry and makes no network calls of its own. It never edits your code; the only files it writes in your repository are the hook settings and the .gitignore line from fuse init, and with fuse init --instructions its section in AGENTS.md and the other instruction files your agents read. Commands Fuse runs for you, such as dotnet build, act as they normally would."
           }
         },
         {
@@ -302,7 +302,7 @@
     <p>No. Run <code>fuse init</code> once in the repository and it writes the hook settings for each harness it finds. Fuse has no configuration file and no environment variables of its own. It needs the .NET 10 SDK and restored projects; if a restore is missing, it says so and names the <code>dotnet restore</code> command to run.</p>
 
     <h3 id="does-fuse-send-my-code-or-data-anywhere">Does Fuse send my code or data anywhere? <a class="anchor" href="#does-fuse-send-my-code-or-data-anywhere" aria-label="Link to this section">#</a></h3>
-    <p>No. Everything runs locally, and Fuse has no telemetry and makes no network calls of its own. It never edits your code; the only files it writes in your repository are the hook settings and the <code>.gitignore</code> line from <code>fuse init</code>. Commands Fuse runs for you, such as <code>dotnet build</code>, act as they normally would.</p>
+    <p>No. Everything runs locally, and Fuse has no telemetry and makes no network calls of its own. It never edits your code; the only files it writes in your repository are the hook settings and the <code>.gitignore</code> line from <code>fuse init</code>, and with <code>fuse init --instructions</code> its section in <code>AGENTS.md</code> and the other instruction files your agents read. Commands Fuse runs for you, such as <code>dotnet build</code>, act as they normally would.</p>
 
     <h3 id="which-platforms-does-fuse-run-on">Which platforms does Fuse run on? <a class="anchor" href="#which-platforms-does-fuse-run-on" aria-label="Link to this section">#</a></h3>
     <p>Windows, Linux and macOS, with the .NET 10 SDK. CI builds and tests Fuse on all three; the <a href="benchmarks.html">benchmarks</a> come from GitHub Actions windows-latest runners.</p>
@@ -376,6 +376,7 @@
         <li><a href="index.html">Overview</a></li>
         <li><a href="getting-started.html">Getting started</a></li>
         <li><a href="harnesses.html">Connect your agent</a></li>
+        <li><a href="parallel-agents.html">Subagents and parallel agents</a></li>
       </ul>
       <h2>Understand</h2>
       <ul>

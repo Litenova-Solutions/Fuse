@@ -267,14 +267,14 @@
     <ul>
       <li>Everything runs locally. Fuse has no telemetry and makes no network calls of its own.</li>
       <li>Fuse never edits your code and never runs <code>dotnet restore</code> on its own.</li>
-      <li>The only files Fuse writes in your repository are the hook settings from <code>fuse init</code>. Its logs and other state are stored in your local application data folder.</li>
+      <li>The only files Fuse writes in your repository are the hook settings from <code>fuse init</code>, and with <code>fuse init --instructions</code> its section in <code>AGENTS.md</code> and the other instruction files your agents read. Its logs and other state are stored in your local application data folder.</li>
       <li>In a repository without a <code>.csproj</code> file, hooks return at once and no engine starts.</li>
       <li>Fuse has no configuration file and no environment variables of its own.</li>
     </ul>
     <p>Common questions, and how Fuse differs from language servers and other tools, are answered in the <a href="faq.html">FAQ</a>.</p>
 
     <nav class="pager" aria-label="Previous and next page">
-      <a href="harnesses.html"><span>Previous</span>Connect your agent</a>
+      <a href="parallel-agents.html"><span>Previous</span>Subagents and parallel agents</a>
       <a class="next-page" href="limits.html"><span>Next</span>Limits</a>
     </nav>
     </main>
@@ -285,6 +285,7 @@
         <li><a href="index.html">Overview</a></li>
         <li><a href="getting-started.html">Getting started</a></li>
         <li><a href="harnesses.html">Connect your agent</a></li>
+        <li><a href="parallel-agents.html">Subagents and parallel agents</a></li>
       </ul>
       <h2>Understand</h2>
       <ul>

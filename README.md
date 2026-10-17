@@ -100,11 +100,12 @@ fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations chan
 
 | Command | What it does |
 | --- | --- |
-| `fuse init` | Registers Fuse's hooks with the harnesses this repository uses |
+| `fuse init [--instructions]` | Registers Fuse's hooks with the harnesses this repository uses; `--instructions` also adds a Fuse section to `AGENTS.md` |
 | `fuse check [files...]` | Reports the errors your changes caused since the last commit, in every project |
 | `fuse test [args...]` | Runs the tests affected by your changes |
 | `fuse test --all` | Runs every test |
 | `fuse build [args...]` | Runs `dotnet build` and prints its errors |
+| `fuse stop [--all]` | Stops this repository's engine, or every engine; the next command starts a new one |
 | `fuse mcp` | Serves `fuse_check`, `fuse_test` and `fuse_build` over stdio to an MCP host |
 
 [Getting started](https://fuse.codes/docs/getting-started) shows each command's output and what the hooks send the agent.
@@ -115,6 +116,7 @@ fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations chan
 - [Commands](https://fuse.codes/docs/commands): every command, its output and its exit codes.
 - [Messages and fixes](https://fuse.codes/docs/messages): what each message means when Fuse cannot answer, and the fix.
 - [Connect your agent](https://fuse.codes/docs/harnesses): what `fuse init` sets up for each harness, and how an MCP host runs Fuse.
+- [Subagents and parallel agents](https://fuse.codes/docs/parallel-agents): several agents in one repository, and what each is told.
 - [How it works](https://fuse.codes/docs/how-it-works): how Fuse checks an edit, selects tests and runs them.
 - [Limits](https://fuse.codes/docs/limits): what a check cannot see, and what to do about it.
 - [Troubleshooting](https://fuse.codes/docs/troubleshooting): why Fuse is silent, slow or failing, and where its logs are.

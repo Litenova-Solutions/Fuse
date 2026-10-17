@@ -165,6 +165,8 @@
       <li>Under an <code>error MSB3073</code>, where a command a build target ran exited with a code other than 0, <code>fuse build</code> and a failed test build print the last lines the command printed, such as a code generator's exception. Previously only the exit code was shown. <a href="commands.html#fuse-build">Commands</a> shows the output.</li>
       <li>A build of 10 seconds or more ends its summary line with its slowest tasks and projects. <a href="troubleshooting.html#a-slow-build">Troubleshooting</a> says how to read it.</li>
       <li>An error about a type or member that a file the build generates declares, such as a generated API client, names that file and says to run <code>fuse build</code> when it is generated from changed code. <a href="how-it-works.html#check">How it works</a> describes it.</li>
+      <li><code>fuse stop</code> stops the repository's engine, killing it when it has not exited within 10 seconds of being asked, and <code>fuse stop --all</code> stops every engine; the next command starts a new one. <a href="commands.html#fuse-stop">Commands</a> describes it.</li>
+      <li><code>fuse init --instructions</code> also writes a Fuse section into <code>AGENTS.md</code>, and into <code>CLAUDE.md</code> and <code>GEMINI.md</code> when they exist, between markers it replaces on a later run. <a href="commands.html#fuse-init-instructions">Commands</a> shows the section.</li>
       <li>The latency suite's multi-agent scenarios add <code>stops</code>, repeated checks of every change, and <code>tests</code>, two <code>fuse test</code> clients at once. <a href="evals.html#multi-agent-scenario">Evals</a> describes the fields.</li>
     </ul>
 
@@ -184,7 +186,7 @@
 
     <h3 id="v5-4-0-documentation">Documentation <a class="anchor" href="#v5-4-0-documentation" aria-label="Link to this section">#</a></h3>
     <ul>
-      <li><a href="how-it-works.html">How it works</a>, <a href="limits.html">Limits</a>, <a href="commands.html">Commands</a>, <a href="harnesses.html#claude-code">Connect your agent</a>, <a href="troubleshooting.html#a-slow-build">Troubleshooting</a> (new sections A slow build, A command in the build fails and An error about generated code), <a href="architecture.html#steps-fuse-check">Architecture</a>, <a href="evals.html#multi-agent-scenario">Evals</a> and the <a href="faq.html">FAQ</a> describe sessions at the stop hook, concurrent test runs, generated files and the build's file log, and Connect your agent and Troubleshooting describe Muse Code.</li>
+      <li>A new page, <a href="parallel-agents.html">Subagents and parallel agents</a>, covers several agents in one repository; <a href="how-it-works.html">How it works</a>, <a href="limits.html">Limits</a>, <a href="commands.html">Commands</a>, <a href="harnesses.html#claude-code">Connect your agent</a>, <a href="troubleshooting.html#a-slow-build">Troubleshooting</a> (new sections A slow build, A command in the build fails and An error about generated code), <a href="architecture.html#steps-fuse-check">Architecture</a>, <a href="evals.html#multi-agent-scenario">Evals</a> and the <a href="faq.html">FAQ</a> describe sessions at the stop hook, concurrent test runs, generated files and the build's file log, and Connect your agent and Troubleshooting describe Muse Code.</li>
     </ul>
 
     <h2 id="v5-3-0">5.3.0 <a class="anchor" href="#v5-3-0" aria-label="Link to this section">#</a></h2>
@@ -486,6 +488,7 @@
         <li><a href="index.html">Overview</a></li>
         <li><a href="getting-started.html">Getting started</a></li>
         <li><a href="harnesses.html">Connect your agent</a></li>
+        <li><a href="parallel-agents.html">Subagents and parallel agents</a></li>
       </ul>
       <h2>Understand</h2>
       <ul>

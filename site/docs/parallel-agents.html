@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Subagents and parallel agents | Fuse</title>
+<meta name="description" content="How Fuse works when several agents share one repository: subagents, background and parallel agents, fan-out work, git worktrees, the instructions section, and stopping the engine.">
+<link rel="canonical" href="https://fuse.codes/docs/parallel-agents">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+<meta name="author" content="Litenova Solutions">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#fcfcfb">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Fuse">
+<meta property="og:locale" content="en_US">
+<meta property="og:title" content="Subagents and parallel agents">
+<meta property="og:description" content="How Fuse works when several agents share one repository: subagents, background and parallel agents, fan-out work, git worktrees, the instructions section, and stopping the engine.">
+<meta property="og:url" content="https://fuse.codes/docs/parallel-agents">
+<meta property="og:image" content="https://fuse.codes/assets/og.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 7.0x to 31.0x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Subagents and parallel agents">
+<meta name="twitter:description" content="How Fuse works when several agents share one repository: subagents, background and parallel agents, fan-out work, git worktrees, the instructions section, and stopping the engine.">
+<meta name="twitter:image" content="https://fuse.codes/assets/og.png">
+<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 7.0x to 31.0x faster than dotnet build. dotnet tool install -g Fuse.">
+<link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
+<link rel="icon" href="../assets/fuse-icon.svg" type="image/svg+xml" sizes="any">
+<link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<link rel="sitemap" type="application/xml" href="../sitemap.xml">
+<link rel="stylesheet" href="../assets/style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "@id": "https://fuse.codes/docs/parallel-agents#article",
+      "headline": "Subagents and parallel agents",
+      "description": "How Fuse works when several agents share one repository: subagents, background and parallel agents, fan-out work, git worktrees, the instructions section, and stopping the engine.",
+      "url": "https://fuse.codes/docs/parallel-agents",
+      "mainEntityOfPage": "https://fuse.codes/docs/parallel-agents",
+      "inLanguage": "en",
+      "dateModified": "2026-10-17",
+      "image": "https://fuse.codes/assets/og.png",
+      "isPartOf": {
+        "@type": "WebSite",
+        "name": "Fuse",
+        "url": "https://fuse.codes/"
+      },
+      "about": {
+        "@type": "SoftwareApplication",
+        "name": "Fuse",
+        "url": "https://fuse.codes/"
+      },
+      "author": {
+        "@type": "Organization",
+        "name": "Litenova Solutions",
+        "url": "https://github.com/Litenova-Solutions"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "Litenova Solutions",
+        "url": "https://github.com/Litenova-Solutions"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Fuse",
+          "item": "https://fuse.codes/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Documentation",
+          "item": "https://fuse.codes/docs/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Subagents and parallel agents",
+          "item": "https://fuse.codes/docs/parallel-agents"
+        }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to main content</a>
+<div class="wrap wide">
+  <header class="site-header">
+    <a class="brand" href="../index.html"><img src="../assets/fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
+    <nav aria-label="Main">
+      <a href="index.html" aria-current="page">Docs</a>
+      <a href="benchmarks.html">Benchmarks</a>
+      <a class="gh" href="https://github.com/Litenova-Solutions/Fuse" aria-label="Fuse on GitHub"><svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg></a>
+    </nav>
+  </header>
+
+  <div class="docs">
+    <main id="main" class="page" tabindex="-1">
+    <p class="crumbs"><a href="index.html">Docs</a> / Start here</p>
+    <h1>Subagents and parallel agents</h1>
+    <p class="jump"><a href="#docs-nav">All documentation pages</a></p>
+    <p class="intro">An agent can hand work to subagents, run in the background, or share a repository with other agents. This page shows what Fuse tells each of them, how their test runs and builds share the machine, and how to check work that several agents wrote.</p>
+    <div class="audience">
+      <p><b>This page is for</b> a developer who runs more than one agent in a repository: subagents an agent starts, background agents, several agent sessions in one working tree, or agents in separate git worktrees.</p>
+      <p><b>After reading it</b> you can set up a repository for them with <code>fuse init</code>, know which errors each agent is told about, and check fanned-out work before you merge it.</p>
+    </div>
+    <nav class="toc" aria-label="On this page">
+      <p>On this page</p>
+      <ol>
+        <li><a href="#what-each-agent-is-told">What each agent is told</a></li>
+        <li><a href="#subagents-per-harness">Subagents in each harness</a></li>
+        <li><a href="#fan-out">Fanning work out</a></li>
+        <li><a href="#tests-and-builds-at-once">Tests and builds at once</a></li>
+        <li><a href="#worktrees">Agents in separate worktrees</a></li>
+        <li><a href="#telling-agents-about-fuse">Telling agents about Fuse</a></li>
+        <li><a href="#stopping-the-engine">Stopping the engine</a></li>
+      </ol>
+    </nav>
+
+    <h2 id="what-each-agent-is-told">What each agent is told <a class="anchor" href="#what-each-agent-is-told" aria-label="Link to this section">#</a></h2>
+    <p>Every agent in one working tree (the files on disk) talks to the same engine, the background process that keeps the repository's projects compiled. Each agent runs as a session: its run as its harness identifies it in a hook's payload. Fuse remembers which sessions wrote each changed file, and answers each session for itself:</p>
+    <ul>
+      <li>The <b>post-edit hook</b> tells a session the errors its own edits cause, alone or together with another session's edits.</li>
+      <li>The <b>stop hook</b> blocks a session's finish on the same errors, and on errors in changes no session is credited with. Errors another session's edits cause on their own are left to that session, and the summary counts them.</li>
+      <li>An edit no post-edit hook reported, such as one a shell command, a code generator or a tool without a hook made, is credited to no session, so its errors go to every agent whose check finds them.</li>
+    </ul>
+    <p><a href="how-it-works.html#check">How it works</a> explains how Fuse decides whose an error is, and <a href="limits.html#what-a-check-does-not-see">Limits</a> lists the cases it cannot separate.</p>
+
+    <h2 id="subagents-per-harness">Subagents in each harness <a class="anchor" href="#subagents-per-harness" aria-label="Link to this section">#</a></h2>
+    <p>Whether a subagent is a session of its own depends on what its harness sends. When it is, its parent is not told about its errors while it runs, so a half-written file of a working subagent does not interrupt its parent. When the harness also runs Fuse's stop hook as the subagent finishes, the subagent is sent back to fix its own errors first, and from then on its edits count as its parent's.</p>
+    <div class="table-scroll" role="region" aria-label="Subagents per harness" tabindex="0">
+      <table>
+        <thead><tr><th scope="col">Harness</th><th scope="col">A subagent is</th><th scope="col">Its stop is checked</th><th scope="col">Its edits count as its parent's</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Claude Code</th><td>A session of its own: the parent's session id and its <code>agent_id</code></td><td>Yes, through <code>SubagentStop</code></td><td>Once it has stopped</td></tr>
+          <tr><th scope="row">Codex</th><td>A session of its own: the parent's session id and its <code>agent_id</code></td><td>No; Fuse registers no subagent stop hook for Codex</td><td>Never</td></tr>
+          <tr><th scope="row">Cursor</th><td>A session of its own: a conversation of its own</td><td>No</td><td>Never</td></tr>
+          <tr><th scope="row">OpenCode</th><td>A session of its own: a child session with its own id</td><td>No</td><td>Never</td></tr>
+          <tr><th scope="row">Muse Code</th><td>A session of its own, whose id does not name its parent</td><td>No; Muse fires <code>SubagentStop</code> for its own helper agents, so Fuse does not register it</td><td>Never</td></tr>
+          <tr><th scope="row">Gemini CLI</th><td>Part of its parent's session: the payload has nothing that tells them apart</td><td>Through its parent's stop</td><td>Always</td></tr>
+          <tr><th scope="row">GitHub Copilot CLI</th><td>Part of its parent's session: the payload has nothing that tells them apart</td><td>Through its parent's stop</td><td>Always</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Where a subagent's stop is not checked and its edits never count as its parent's, nothing holds it to the errors only its edits cause. In those harnesses, have the subagent run <code>fuse check</code> before it finishes, and have the parent run it once every subagent is done. <a href="harnesses.html#sessions">Connect your agent</a> lists the id each harness sends.</p>
+
+    <h2 id="fan-out">Fanning work out <a class="anchor" href="#fan-out" aria-label="Link to this section">#</a></h2>
+    <p>Fanning out means one agent, the orchestrator, splits a task among several workers that run at once. These habits keep each worker's answers its own and the result checked:</p>
+    <ol>
+      <li><b>Give workers separate files.</b> An error in a file two sessions wrote is told to both, so workers that share files get each other's errors.</li>
+      <li><b>Have each worker check its own work.</b> A worker runs <code>fuse test</code> before it hands its work back. The pre-shell hook rewrites its <code>dotnet test</code> to <code>fuse test --session &lt;its session&gt;</code>, which runs the tests its own edits can break and leaves out the changes only other sessions wrote (<a href="how-it-works.html#test-selection">a session's own tests</a>). It runs <code>fuse check</code> too where its harness does not check its stop.</li>
+      <li><b>Write through edit tools, not shell commands.</b> A file a worker writes with a shell command is credited to no session, so its errors reach every agent.</li>
+      <li><b>Check the whole result at the end.</b> Once the workers are done, the orchestrator runs <code>fuse check</code>, which reports every error the changes since HEAD (the commit checked out) introduced, whoever wrote them, and <code>fuse test</code>, or <code>fuse test --all</code> for every test. In Claude Code its own stop hook also covers the edits of the subagents that have stopped.</li>
+    </ol>
+
+    <h2 id="tests-and-builds-at-once">Tests and builds at once <a class="anchor" href="#tests-and-builds-at-once" aria-label="Link to this section">#</a></h2>
+    <p>Several agents' <code>fuse test</code> runs overlap. A run without MSBuild runs from a copy of the test project's build output that it holds until it ends, and <code>fuse test</code> gives up the per-repository build lock once its runs hold their copies, so another agent's test run or build does not wait for it. A run that has to build with MSBuild takes the build lock, so those runs take turns (<a href="how-it-works.html#without-msbuild">How Fuse runs tests without MSBuild</a>).</p>
+    <p>Integration tests that each start their own server or containers run side by side safely. Tests that bind a fixed port, or use one database by a fixed name, can collide with the same tests in another agent's run (<a href="limits.html#test-runs-without-msbuild">Limits</a>).</p>
+    <p><code>fuse build</code> takes the build lock, so agents' builds take turns instead of failing on each other's files. When a build fails because another agent moved a source file while it ran, it runs once more (<a href="commands.html#fuse-build">fuse build</a>). Agents in Cursor and GitHub Copilot CLI get no pre-shell hook, so ask them to run <code>fuse build</code> and <code>fuse test</code> instead of <code>dotnet build</code> and <code>dotnet test</code>.</p>
+
+    <h2 id="worktrees">Agents in separate worktrees <a class="anchor" href="#worktrees" aria-label="Link to this section">#</a></h2>
+    <p>A git worktree is a second working tree of the same repository, in its own folder. To Fuse each worktree is a repository root of its own, with its own engine, state directory and build lock, so agents in different worktrees never share an engine, never see each other's errors, and never wait for each other's builds.</p>
+    <ul>
+      <li>Each engine keeps the projects it loaded in memory until it has been idle for 10 minutes (<a href="limits.html#the-engine">Limits</a>), so several worktrees with warm engines hold several times that memory. <code>fuse stop</code> in a worktree you are done with gives its memory back at once.</li>
+      <li>Fuse never runs <code>dotnet restore</code>, so a new worktree needs one before its first check; until then a check answers with the command to run.</li>
+      <li>Run <code>fuse init</code> in a worktree only when its settings files differ from the main working tree's; committed settings are already there.</li>
+    </ul>
+
+    <h2 id="telling-agents-about-fuse">Telling agents about Fuse <a class="anchor" href="#telling-agents-about-fuse" aria-label="Link to this section">#</a></h2>
+    <p>The hooks work without any instructions, but an agent uses the commands better when it knows them, and a subagent starts with only the instructions files. <code>fuse init --instructions</code> writes a Fuse section into <code>AGENTS.md</code>, creating the file when the repository has none, into <code>CLAUDE.md</code> when that file exists and does not import <code>@AGENTS.md</code>, and into <code>GEMINI.md</code> when that file exists. The section sits between <code>&lt;!-- fuse:begin --&gt;</code> and <code>&lt;!-- fuse:end --&gt;</code>; running the command again replaces only what is between them and keeps the rest of the file (<a href="commands.html#fuse-init-instructions">fuse init --instructions</a>).</p>
+    <pre data-label="AGENTS.md"><code>&lt;!-- fuse:begin --&gt;
+## Fuse
+
+This repository uses [Fuse](https://fuse.codes) to check .NET changes. Its hooks run on their own; these commands are for when you need them.
+
+- After each edit, Fuse tells you the compiler errors that edit introduced. Fix them before you go on.
+- Run `fuse test` to run the tests your changes can break; `fuse test --all` runs every test. `dotnet test` is rewritten to `fuse test`.
+- Run `fuse build` instead of `dotnet build`: it prints only the errors, and waits for another agent's build instead of colliding with it.
+- Run `fuse check` before you finish: it reports the errors every change since HEAD (the commit checked out) introduced.
+- When several agents work in this working tree, each is told the errors its own edits cause. A subagent checks its own work with `fuse test` before it hands it back.
+- If Fuse stops answering, `fuse stop` stops its engine; the next command starts a new one.
+&lt;!-- fuse:end --&gt;</code></pre>
+
+    <h2 id="stopping-the-engine">Stopping the engine <a class="anchor" href="#stopping-the-engine" aria-label="Link to this section">#</a></h2>
+    <p><code>fuse stop</code> asks the repository's engine to stop, and kills its process when it has not exited within 10 seconds. <code>fuse stop --all</code> does the same for the engine of every repository Fuse keeps state for. The next command or hook starts a new engine. Stop it after changing an analyzer the repository builds itself, to give memory back when you are done with a worktree, or when it stops answering (<a href="commands.html#fuse-stop">fuse stop</a>).</p>
+
+    <nav class="pager" aria-label="Previous and next page">
+      <a href="harnesses.html"><span>Previous</span>Connect your agent</a>
+      <a class="next-page" href="how-it-works.html"><span>Next</span>How it works</a>
+    </nav>
+    </main>
+
+    <nav class="sidebar" id="docs-nav" aria-label="Documentation">
+      <h2>Start here</h2>
+      <ul>
+        <li><a href="index.html">Overview</a></li>
+        <li><a href="getting-started.html">Getting started</a></li>
+        <li><a href="harnesses.html">Connect your agent</a></li>
+        <li><a href="parallel-agents.html" aria-current="page">Subagents and parallel agents</a></li>
+      </ul>
+      <h2>Understand</h2>
+      <ul>
+        <li><a href="how-it-works.html">How it works</a></li>
+        <li><a href="limits.html">Limits</a></li>
+        <li><a href="benchmarks.html">Benchmarks</a></li>
+        <li><a href="faq.html">FAQ</a></li>
+      </ul>
+      <h2>Reference</h2>
+      <ul>
+        <li><a href="commands.html">Commands</a></li>
+        <li><a href="messages.html">Messages and fixes</a></li>
+        <li><a href="troubleshooting.html">Troubleshooting</a></li>
+        <li><a href="changelog.html">Changelog</a></li>
+      </ul>
+      <h2>Contribute</h2>
+      <ul>
+        <li><a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/main/CONTRIBUTING.md">Contributing</a></li>
+        <li><a href="architecture.html">Architecture</a></li>
+        <li><a href="evals.html">Evals</a></li>
+        <li><a href="ai-policy.html">AI policy</a></li>
+        <li><a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/main/SECURITY.md">Security</a></li>
+      </ul>
+    </nav>
+  </div>
+
+  <footer class="site-footer">
+    <a class="maker" href="https://www.litenova.solutions"><img src="../assets/litenova-mark.svg" alt="" width="20" height="20">Built by Litenova Solutions</a>
+    <nav aria-label="Footer"><a href="index.html">Docs</a><a href="changelog.html">Changelog</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
+  </footer>
+</div>
+</body>
+</html>

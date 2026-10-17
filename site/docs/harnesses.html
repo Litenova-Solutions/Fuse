@@ -184,6 +184,7 @@ wrote .gitignore
 fuse: hooks registered; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors
 fuse: Muse Code loads hooks from an installed plugin: run `muse plugins install .muse/plugins/fuse --scope project` and `muse plugins approve fuse` once, and `muse plugins update fuse` after a later fuse init</code></pre>
     <p>The settings blocks below are the files that run wrote, and current builds write them as shown.</p>
+    <p><code>fuse init --instructions</code> also writes a Fuse section into <code>AGENTS.md</code>, and into <code>CLAUDE.md</code> and <code>GEMINI.md</code> when they exist, so each agent knows the commands from the start (<a href="commands.html#fuse-init-instructions">fuse init --instructions</a>).</p>
 
     <h2 id="claude-code">Claude Code <a class="anchor" href="#claude-code" aria-label="Link to this section">#</a></h2>
     <pre data-label=".claude/settings.json"><code>{
@@ -490,6 +491,7 @@ muse plugins approve fuse</code></pre>
       </table>
     </div>
     <p>A payload without an id, a blank one, or one longer than 256 characters or holding a control character counts as no session, and the hook reports every error, as it does for a harness that sends none.</p>
+    <p><a href="parallel-agents.html">Subagents and parallel agents</a> shows how to set up and check work that several agents share.</p>
 
     <h2 id="vs-code-agent-mode">VS Code agent mode <a class="anchor" href="#vs-code-agent-mode" aria-label="Link to this section">#</a></h2>
     <p>VS Code runs no hooks, so <code>fuse init</code> registers Fuse's MCP server instead. The agent then has three tools, <code>fuse_check</code>, <code>fuse_test</code> and <code>fuse_build</code>, and calls them when it decides to, rather than after every edit.</p>
@@ -613,7 +615,7 @@ muse plugins approve fuse</code></pre>
 
     <nav class="pager" aria-label="Previous and next page">
       <a href="getting-started.html"><span>Previous</span>Getting started</a>
-      <a class="next-page" href="how-it-works.html"><span>Next</span>How it works</a>
+      <a class="next-page" href="parallel-agents.html"><span>Next</span>Subagents and parallel agents</a>
     </nav>
     </main>
 
@@ -623,6 +625,7 @@ muse plugins approve fuse</code></pre>
         <li><a href="index.html">Overview</a></li>
         <li><a href="getting-started.html">Getting started</a></li>
         <li><a href="harnesses.html" aria-current="page">Connect your agent</a></li>
+        <li><a href="parallel-agents.html">Subagents and parallel agents</a></li>
       </ul>
       <h2>Understand</h2>
       <ul>

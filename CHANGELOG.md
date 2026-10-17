@@ -16,6 +16,8 @@ Update with `dotnet tool update -g Fuse`. If you use Claude Code, run `fuse init
 - Under an `error MSB3073`, where a command a build target ran exited with a code other than 0, `fuse build` and a failed test build print the last lines the command printed, such as a code generator's exception. Previously only the exit code was shown. [Commands](https://fuse.codes/docs/commands#fuse-build) shows the output.
 - A build of 10 seconds or more ends its summary line with its slowest tasks and projects. [Troubleshooting](https://fuse.codes/docs/troubleshooting#a-slow-build) says how to read it.
 - An error about a type or member that a file the build generates declares, such as a generated API client, names that file and says to run `fuse build` when it is generated from changed code. [How it works](https://fuse.codes/docs/how-it-works#check) describes it.
+- `fuse stop` stops the repository's engine, killing it when it has not exited within 10 seconds of being asked, and `fuse stop --all` stops every engine; the next command starts a new one. [Commands](https://fuse.codes/docs/commands#fuse-stop) describes it.
+- `fuse init --instructions` also writes a Fuse section into `AGENTS.md`, and into `CLAUDE.md` and `GEMINI.md` when they exist, between markers it replaces on a later run. [Commands](https://fuse.codes/docs/commands#fuse-init-instructions) shows the section.
 - The latency suite's multi-agent scenarios add `stops`, repeated checks of every change, and `tests`, two `fuse test` clients at once. [Evals](https://fuse.codes/docs/evals#multi-agent-scenario) describes the fields.
 
 ### Changed
@@ -32,7 +34,7 @@ Update with `dotnet tool update -g Fuse`. If you use Claude Code, run `fuse init
 
 ### Documentation
 
-- How it works, Limits, Commands, Connect your agent, Troubleshooting (new sections A slow build, A command in the build fails and An error about generated code), Architecture, Evals and the FAQ describe sessions at the stop hook, concurrent test runs, generated files and the build's file log, and Connect your agent and Troubleshooting describe Muse Code.
+- A new page, [Subagents and parallel agents](https://fuse.codes/docs/parallel-agents), covers several agents in one repository; How it works, Limits, Commands, Connect your agent, Troubleshooting (new sections A slow build, A command in the build fails and An error about generated code), Architecture, Evals and the FAQ describe sessions at the stop hook, concurrent test runs, generated files and the build's file log, and Connect your agent and Troubleshooting describe Muse Code.
 
 ## 5.3.0
 

@@ -171,6 +171,34 @@ internal static partial class LocalState
         }
     }
 
-    [GeneratedRegex(@" started for (?<root>.+) \(pid \d+\)$")]
+    /// <summary>
+    ///     The process id of the last engine that started for the state directory <paramref name="state"/>, from the engine
+    ///     log's start line, or null when the log names none.
+    /// </summary>
+    public static int? LastEnginePid(string state)
+    {
+        var log = Path.Combine(state, "engine.log");
+        if (!File.Exists(log))
+            return null;
+        int? pid = null;
+        try
+        {
+            using var stream = new FileStream(log, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            using var reader = new StreamReader(stream);
+            while (reader.ReadLine() is { } line)
+            {
+                if (StartLine().Match(line) is { Success: true } match)
+                    pid = int.Parse(match.Groups["pid"].Value, System.Globalization.CultureInfo.InvariantCulture);
+            }
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+
+        return pid;
+    }
+
+    [GeneratedRegex(@" started for (?<root>.+) \(pid (?<pid>\d+)\)$")]
     private static partial Regex StartLine();
 }

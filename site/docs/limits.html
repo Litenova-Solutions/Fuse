@@ -176,7 +176,7 @@
 
     <h2 id="the-engine">The engine <a class="anchor" href="#the-engine" aria-label="Link to this section">#</a></h2>
     <ul>
-      <li><strong>Analyzers the repository builds.</strong> The engine loads an analyzer the repository builds itself as it was when its project loaded. A rebuilt analyzer takes effect when projects next reload: after a project file change, a commit or branch switch, more than 300 changed files at once, or an engine restart. What to do: after changing an analyzer, <a href="troubleshooting.html#stopping-or-restarting-the-engine">restart the engine</a>.</li>
+      <li><strong>Analyzers the repository builds.</strong> The engine loads an analyzer the repository builds itself as it was when its project loaded. A rebuilt analyzer takes effect when projects next reload: after a project file change, a commit or branch switch, more than 300 changed files at once, or an engine restart. What to do: after changing an analyzer, run <code>fuse stop</code> (<a href="troubleshooting.html#stopping-or-restarting-the-engine">stopping the engine</a>); the next command starts an engine that loads the new analyzer.</li>
       <li><strong>Memory.</strong> The engine keeps every project it has loaded in memory until it exits after 10 idle minutes, and never unloads one while it runs. A check on a large project can briefly take several times that; 30 seconds after its last request the engine compacts its memory and returns what the check freed to the operating system. In the <a href="benchmarks.html">benchmarks</a> its working set once idle was 356 MB on the 15-project NodaTime and 947 MB on the 26-project Community Toolkit, and it peaked at 1,640 MB during checks, on runners with 16 GB of memory; the engine uses more on a machine with more memory. Each git worktree runs its own engine. What to do: on a machine short of memory, stop the engines you no longer need, as <a href="troubleshooting.html#stopping-or-restarting-the-engine">Stopping or restarting the engine</a> describes.</li>
       <li><strong>Loading.</strong> The first request that reaches a project loads it; <a href="benchmarks.html">Benchmarks</a> gives the load times. A post-edit hook in a harness other than Claude Code does not wait for loading, so the stop hook reports the first edits after the engine starts.</li>
     </ul>
@@ -193,6 +193,7 @@
         <li><a href="index.html">Overview</a></li>
         <li><a href="getting-started.html">Getting started</a></li>
         <li><a href="harnesses.html">Connect your agent</a></li>
+        <li><a href="parallel-agents.html">Subagents and parallel agents</a></li>
       </ul>
       <h2>Understand</h2>
       <ul>

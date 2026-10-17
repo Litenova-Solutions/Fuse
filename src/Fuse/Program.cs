@@ -16,11 +16,13 @@ internal static class Program
     private const string Usage = """
         fuse - faster .NET build and test loop for AI coding agents
 
-          fuse init                 register Fuse's hooks with the agent harnesses this repository uses
+          fuse init [--instructions]  register Fuse's hooks with the agent harnesses this repository uses
+                                    (--instructions: also add a Fuse section to AGENTS.md)
           fuse check [files...]     errors the working tree has that HEAD does not, across dependent projects
           fuse test [args...]       run the tests affected by your changes (with args: the tests those dotnet test arguments name)
           fuse test --all           run every test
           fuse build [args...]      dotnet build, printing its errors
+          fuse stop [--all]         stop this repository's engine (--all: every engine); the next command starts one
           fuse mcp                  stdio MCP server (fuse_check, fuse_test, fuse_build) for MCP hosts that run no hooks
           fuse hook <harness> <event>   the command registered hooks run
         """;
@@ -41,10 +43,11 @@ internal static class Program
         {
             return command switch
             {
-                "init" => InitCommand.Run(),
+                "init" => InitCommand.Run(rest),
                 "check" => await CheckAsync(rest, cancel.Token).ConfigureAwait(false),
                 "test" => await TestAsync(rest, cancel.Token).ConfigureAwait(false),
                 "build" => await BuildAsync(rest, cancel.Token).ConfigureAwait(false),
+                "stop" => await StopAsync(rest, cancel.Token).ConfigureAwait(false),
                 "hook" => await HookCommand.RunAsync(rest, cancel.Token).ConfigureAwait(false),
                 "mcp" => await McpCommand.RunAsync(cancel.Token).ConfigureAwait(false),
                 "engine" when rest.Length == 1 => await EngineAsync(rest[0]).ConfigureAwait(false),
@@ -117,6 +120,18 @@ internal static class Program
         var root = RepoRoot.Find(Environment.CurrentDirectory);
         var result = await BuildOperation.RunAsync(root, Environment.CurrentDirectory, args, cancellationToken).ConfigureAwait(false);
         return Print(result);
+    }
+
+    /// <summary><c>fuse stop</c>, or <c>fuse stop --all</c>; any other argument is a usage failure.</summary>
+    private static async Task<int> StopAsync(string[] args, CancellationToken cancellationToken)
+    {
+        var all = args is ["--all"];
+        if (args.Length > 0 && !all)
+            return PrintUsage(2);
+        var root = all ? null : RequireRoot();
+        if (!all && root is null)
+            return 2;
+        return Print(await StopOperation.RunAsync(root, all, cancellationToken).ConfigureAwait(false));
     }
 
     private static RepoRoot? RequireRoot()

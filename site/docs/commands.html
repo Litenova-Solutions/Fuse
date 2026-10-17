@@ -125,6 +125,7 @@
         <li><a href="#fuse-check">fuse check</a></li>
         <li><a href="#fuse-test">fuse test</a></li>
         <li><a href="#fuse-build">fuse build</a></li>
+        <li><a href="#fuse-stop">fuse stop</a></li>
         <li><a href="#fuse-mcp">fuse mcp</a></li>
         <li><a href="#fuse-hook">fuse hook</a></li>
         <li><a href="#version-and-help">fuse --version and fuse help</a></li>
@@ -133,16 +134,18 @@
     </nav>
 
     <h2 id="overview">Overview <a class="anchor" href="#overview" aria-label="Link to this section">#</a></h2>
-    <p><code>fuse</code> is one executable. <code>check</code>, <code>test</code> and <code>build</code> are its three operations. <code>hook</code> runs them for a harness and <code>mcp</code> serves them to an MCP host; both give the same text the command line prints, so what you see in a terminal is what the agent reads.</p>
+    <p><code>fuse</code> is one executable. <code>check</code>, <code>test</code> and <code>build</code> are its three operations; <code>init</code> sets a repository up and <code>stop</code> stops its engine. <code>hook</code> runs them for a harness and <code>mcp</code> serves them to an MCP host; both give the same text the command line prints, so what you see in a terminal is what the agent reads.</p>
     <p>Every command works on the git repository that contains the current directory (a hook, on the repository of the files its payload names), compares the working tree (the files on disk) with HEAD (the commit you have checked out), and reads no configuration.</p>
     <pre data-label="Output"><code>$ fuse help
 fuse - faster .NET build and test loop for AI coding agents
 
-  fuse init                 register Fuse's hooks with the agent harnesses this repository uses
+  fuse init [--instructions]  register Fuse's hooks with the agent harnesses this repository uses
+                                    (--instructions: also add a Fuse section to AGENTS.md)
   fuse check [files...]     errors the working tree has that HEAD does not, across dependent projects
   fuse test [args...]       run the tests affected by your changes (with args: the tests those dotnet test arguments name)
   fuse test --all           run every test
   fuse build [args...]      dotnet build, printing its errors
+  fuse stop [--all]         stop this repository's engine (--all: every engine); the next command starts one
   fuse mcp                  stdio MCP server (fuse_check, fuse_test, fuse_build) for MCP hosts that run no hooks
   fuse hook &lt;harness&gt; &lt;event&gt;   the command registered hooks run</code></pre>
 
@@ -166,6 +169,15 @@ wrote .claude/settings.json
 wrote .gitignore
 fuse: hooks registered; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors</code></pre>
     <p>It exits with 2 outside a git repository and in a repository where git knows no <code>.csproj</code> file. It also exits with 2, after the <code>wrote</code> lines of the files it wrote before, when a settings file it has to change is not valid JSON (<code>fuse: &lt;file&gt; is not valid JSON (&lt;reason&gt;); fix or remove it</code>, leaving the file as it was) or cannot be written (<code>fuse: could not write &lt;file&gt; (&lt;reason&gt;)</code>, leaving no temporary file). An empty settings file, or one that holds only comments, counts as an empty object.</p>
+    <h3 id="fuse-init-instructions">fuse init --instructions <a class="anchor" href="#fuse-init-instructions" aria-label="Link to this section">#</a></h3>
+    <p>Also writes a Fuse section into the instruction files your agents read, so an agent knows the commands before a hook first answers it. The section goes into <code>AGENTS.md</code>, which it creates when the repository has none, into <code>CLAUDE.md</code> when that file exists and does not import <code>@AGENTS.md</code>, because Claude Code reads <code>CLAUDE.md</code>, and into <code>GEMINI.md</code> when that file exists. It sits between the lines <code>&lt;!-- fuse:begin --&gt;</code> and <code>&lt;!-- fuse:end --&gt;</code>: a file without them gets the section at its end, and running the command again replaces only what is between them and keeps the file's line endings. <a href="parallel-agents.html#telling-agents-about-fuse">Subagents and parallel agents</a> shows the section.</p>
+    <pre class="out" data-label="Output"><code>$ fuse init --instructions
+wrote .claude/settings.json
+unchanged .gitignore
+wrote AGENTS.md
+wrote CLAUDE.md
+fuse: hooks registered; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors</code></pre>
+    <p>A file whose section is already current prints <code>unchanged</code>, as a settings file does. Any other argument prints <code>usage: fuse init [--instructions]</code> and exits with 2.</p>
 
     <h2 id="fuse-check">fuse check <a class="anchor" href="#fuse-check" aria-label="Link to this section">#</a></h2>
     <pre data-label="Usage"><code>fuse check [files...]</code></pre>
@@ -282,6 +294,13 @@ fuse: build failed with 1 error(s) in 14.2 s</code></pre>
     <p>When the build fails with CS2001 on a source file that no longer exists, because another agent moved it while the build ran, it runs the build once more and prints <code>fuse: a source file moved while the build ran, so it ran again</code> above the answer. <a href="how-it-works.html#build-log">How it works</a> describes the file log.</p>
     <p>Warnings are not printed. The exit code is 0 when the build succeeded and 1 when it failed.</p>
 
+    <h2 id="fuse-stop">fuse stop <a class="anchor" href="#fuse-stop" aria-label="Link to this section">#</a></h2>
+    <p>Stops the engine of the repository that contains the current directory. It asks the engine to stop, as a client of another build does, waits up to 10 seconds for it to exit, and when it has not, kills the process the engine log names as the last engine that started, if that process is still a <code>dotnet</code> or <code>fuse</code> process. It never starts an engine; the next command or hook starts a new one. Stop the engine after changing an analyzer the repository builds itself, to give its memory back at once, or when it stops answering (<a href="troubleshooting.html#stopping-or-restarting-the-engine">Stopping or restarting the engine</a>).</p>
+    <pre class="out" data-label="Output"><code>$ fuse stop
+fuse: stopped the engine for /home/me/src/my-repo</code></pre>
+    <p>When no engine runs it prints <code>fuse: no engine runs for &lt;root&gt;</code>, and when the engine had to be killed, <code>fuse: the engine for &lt;root&gt; did not stop within 10 s of being asked, so its process &lt;pid&gt; was killed</code>. Both exit with 0.</p>
+    <p><code>fuse stop --all</code> does the same for every repository Fuse keeps a state directory for and that still exists, prints one line for each engine it stopped, and prints <code>fuse: no engine runs</code> when there was none. Any other argument prints the usage and exits with 2.</p>
+
     <h2 id="fuse-mcp">fuse mcp <a class="anchor" href="#fuse-mcp" aria-label="Link to this section">#</a></h2>
     <p>Runs an MCP server over standard input and output, for an MCP host without hooks. The server finds the repository from its working directory on every call, so the host has to start it inside the repository. <a href="harnesses.html#other-mcp-hosts">Connect your agent</a> shows how to register it.</p>
     <table>
@@ -337,7 +356,7 @@ fuse: build failed with 1 error(s) in 14.2 s</code></pre>
 
     <h2 id="environment">Environment <a class="anchor" href="#environment" aria-label="Link to this section">#</a></h2>
     <p>Fuse has no configuration file and no environment variables of its own. When a client starts the engine, it looks for the <code>dotnet</code> host in <code>DOTNET_HOST_PATH</code> and <code>DOTNET_ROOT</code>, the variables the .NET SDK sets, then in the runtime's own directory, then on the <code>PATH</code>. The native client has no runtime directory, so it uses the variables or the <code>PATH</code>. Every child process Fuse starts gets <code>DOTNET_CLI_TELEMETRY_OPTOUT=1</code>, <code>DOTNET_NOLOGO=1</code> and <code>DOTNET_CLI_UI_LANGUAGE=en</code>, so its output is in English and Fuse can parse it.</p>
-    <p>Fuse needs the .NET 10 SDK, git on the <code>PATH</code>, and restored projects. It writes the harness settings <code>fuse init</code> creates and the state directory in the user's local application data, and nothing else.</p>
+    <p>Fuse needs the .NET 10 SDK, git on the <code>PATH</code>, and restored projects. It writes the harness settings <code>fuse init</code> creates, the instruction files <code>fuse init --instructions</code> updates, and the state directory in the user's local application data, and nothing else.</p>
 
     <nav class="pager" aria-label="Previous and next page">
       <a href="faq.html"><span>Previous</span>FAQ</a>
@@ -351,6 +370,7 @@ fuse: build failed with 1 error(s) in 14.2 s</code></pre>
         <li><a href="index.html">Overview</a></li>
         <li><a href="getting-started.html">Getting started</a></li>
         <li><a href="harnesses.html">Connect your agent</a></li>
+        <li><a href="parallel-agents.html">Subagents and parallel agents</a></li>
       </ul>
       <h2>Understand</h2>
       <ul>

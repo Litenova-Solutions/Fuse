@@ -283,7 +283,8 @@
 
     <h2 id="stopping-or-restarting-the-engine">Stopping or restarting the engine <a class="anchor" href="#stopping-or-restarting-the-engine" aria-label="Link to this section">#</a></h2>
     <p>The engine exits on its own after 10 minutes without a request, when its repository directory is deleted, and when a client of another build connects. Ending the engine's process is safe: it holds no lock and writes nothing into the repository, and the next command or hook starts a fresh engine.</p>
-    <p>The engine is a <code>dotnet</code> process whose command line holds <code>fuse.dll engine</code> and the repository's root path. On Windows, this lists the running engines:</p>
+    <p>To stop it yourself, run <code>fuse stop</code> in the repository. It asks the engine to stop, and kills its process when it has not exited within 10 seconds. <code>fuse stop --all</code> does the same for the engine of every repository Fuse keeps state for (<a href="commands.html#fuse-stop">fuse stop</a>). Stop the engine after changing an analyzer the repository builds itself, to give memory back at once, or when it stops answering.</p>
+    <p>When <code>fuse stop</code> cannot end it, end the process by hand. The engine is a <code>dotnet</code> process whose command line holds <code>fuse.dll engine</code> and the repository's root path. On Windows, this lists the running engines:</p>
     <pre data-label="PowerShell"><code>Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" | Where-Object CommandLine -like '*fuse.dll engine *' | Select-Object ProcessId, CommandLine</code></pre>
     <p>and this stops the engine of <code>C:\src\my-repo</code>:</p>
     <pre data-label="PowerShell"><code>Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" | Where-Object CommandLine -like '*fuse.dll engine C:\src\my-repo' | ForEach-Object { Stop-Process -Id $_.ProcessId }</code></pre>
@@ -301,6 +302,7 @@
         <li><a href="index.html">Overview</a></li>
         <li><a href="getting-started.html">Getting started</a></li>
         <li><a href="harnesses.html">Connect your agent</a></li>
+        <li><a href="parallel-agents.html">Subagents and parallel agents</a></li>
       </ul>
       <h2>Understand</h2>
       <ul>

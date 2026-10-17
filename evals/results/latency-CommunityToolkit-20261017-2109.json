@@ -1,0 +1,343 @@
+{
+  "suite": "latency",
+  "repo": "CommunityToolkit",
+  "commit": "b135626dd54d33b8f05f2ff31591592c004aa848",
+  "fuseBuild": "5.5.0/5cab995ea1de48359974118a2ad4c5e5",
+  "target": "src/CommunityToolkit.Mvvm/Messaging/Internals/System/Collections.Generic/Dictionary2.cs",
+  "method": "Clear",
+  "referencingFilesInOtherProjects": 21,
+  "coldCleanMs": 7520.48,
+  "coldBodyEditMs": 20585.1401,
+  "bodyEdit": {
+    "p50": 947,
+    "p95": 1614.8,
+    "max": 1614.8,
+    "n": 15
+  },
+  "signatureEdit": {
+    "p50": 488.9,
+    "p95": 33591.9,
+    "max": 33591.9,
+    "n": 10
+  },
+  "signatureEditSample": "fuse: 5 error(s) introduced in 4 file(s) (CommunityToolkit.Mvvm, CommunityToolkit.Mvvm.Internals.UnitTests); CommunityToolkit.Mvvm declarations changed, 12 dependent project(s) checked",
+  "warmUnchanged": {
+    "p50": 31.6,
+    "p95": 43.9,
+    "max": 43.9,
+    "n": 10
+  },
+  "part": "all",
+  "testRound": {
+    "p50": 131902.7,
+    "p95": 145195.9,
+    "max": 145195.9,
+    "n": 5
+  },
+  "bodyEditPhases": {
+    "phases": {
+      "bindTargets": {
+        "p50": 894.8,
+        "p95": 1531.4,
+        "max": 1531.4,
+        "n": 15
+      },
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 15
+      },
+      "load": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 15
+      },
+      "surfaceDiff": {
+        "p50": 6.1,
+        "p95": 31.6,
+        "max": 31.6,
+        "n": 15
+      },
+      "sync": {
+        "p50": 5,
+        "p95": 38.7,
+        "max": 38.7,
+        "n": 15
+      },
+      "total": {
+        "p50": 906,
+        "p95": 1578,
+        "max": 1578,
+        "n": 15
+      }
+    },
+    "outsideEngine": {
+      "p50": 41,
+      "p95": 57.8,
+      "max": 57.8,
+      "n": 15
+    },
+    "n": 15
+  },
+  "signatureEditPhases": {
+    "phases": {
+      "bindCandidates": {
+        "p50": 174.9,
+        "p95": 706.5,
+        "max": 706.5,
+        "n": 10
+      },
+      "bindTargets": {
+        "p50": 263.7,
+        "p95": 1059.1,
+        "max": 1059.1,
+        "n": 10
+      },
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 10
+      },
+      "load": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 10
+      },
+      "loadDependents": {
+        "p50": 0,
+        "p95": 12306.2,
+        "max": 12306.2,
+        "n": 10
+      },
+      "referenceSearch": {
+        "p50": 2,
+        "p95": 19449.9,
+        "max": 19449.9,
+        "n": 10
+      },
+      "surfaceDiff": {
+        "p50": 1.5,
+        "p95": 6.3,
+        "max": 6.3,
+        "n": 10
+      },
+      "sync": {
+        "p50": 4.3,
+        "p95": 18,
+        "max": 18,
+        "n": 10
+      },
+      "total": {
+        "p50": 453,
+        "p95": 33546,
+        "max": 33546,
+        "n": 10
+      }
+    },
+    "outsideEngine": {
+      "p50": 31.5,
+      "p95": 51.9,
+      "max": 51.9,
+      "n": 10
+    },
+    "n": 10
+  },
+  "warmUnchangedPhases": {
+    "phases": {
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 10
+      },
+      "sync": {
+        "p50": 3.4,
+        "p95": 6,
+        "max": 6,
+        "n": 10
+      },
+      "total": {
+        "p50": 0,
+        "p95": 16,
+        "max": 16,
+        "n": 10
+      }
+    },
+    "outsideEngine": {
+      "p50": 30.6,
+      "p95": 39.6,
+      "max": 39.6,
+      "n": 10
+    },
+    "n": 10
+  },
+  "testRoundPhases": {
+    "phases": {
+      "emit": {
+        "p50": 11449.3,
+        "p95": 19128.3,
+        "max": 19128.3,
+        "n": 5
+      },
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 5
+      },
+      "mirror": {
+        "p50": 362.8,
+        "p95": 3698,
+        "max": 3698,
+        "n": 5
+      },
+      "selection": {
+        "p50": 342.8,
+        "p95": 793.9,
+        "max": 793.9,
+        "n": 5
+      },
+      "sync": {
+        "p50": 4.8,
+        "p95": 6.8,
+        "max": 6.8,
+        "n": 5
+      },
+      "total": {
+        "p50": 12219,
+        "p95": 23797,
+        "max": 23797,
+        "n": 5
+      }
+    },
+    "outsideEngine": {
+      "p50": 119589.7,
+      "p95": 123925.4,
+      "max": 123925.4,
+      "n": 5
+    },
+    "n": 5
+  },
+  "multiAgent": {
+    "writers": {
+      "clients": 4,
+      "editsPerClient": 10,
+      "wallMs": 696004.0673,
+      "checks": 40,
+      "unanswered": 0,
+      "notRun": 0,
+      "gate": {
+        "p50": 597.8,
+        "p95": 8574.6,
+        "max": 8644.1,
+        "n": 40
+      },
+      "gateByHolder": {
+        "CheckChanges": {
+          "p50": 2088.8,
+          "p95": 6186.6,
+          "max": 6186.6,
+          "n": 4
+        },
+        "CheckFiles": {
+          "p50": 550.8,
+          "p95": 666.9,
+          "max": 686.8,
+          "n": 31
+        },
+        "PlanAffectedTests": {
+          "p50": 8574.6,
+          "p95": 8644.1,
+          "max": 8644.1,
+          "n": 4
+        }
+      },
+      "engineTotal": {
+        "p50": 63,
+        "p95": 641,
+        "max": 1953,
+        "n": 40
+      },
+      "singleClientTotalP50": 906
+    },
+    "builds": {
+      "clients": 3,
+      "rounds": 5,
+      "wallMs": 326367.7319,
+      "each": {
+        "p50": 30160.2,
+        "p95": 147806.4,
+        "max": 147806.4,
+        "n": 15
+      },
+      "collisions": 0,
+      "collisionSamples": []
+    },
+    "rounds": [
+      {
+        "index": 1,
+        "project": "CommunityToolkit.Common.csproj",
+        "edit": "src\\CommunityToolkit.Common\\Converters.cs",
+        "ms": 3922.2051,
+        "testProjects": [
+          "CommunityToolkit.Common.UnitTests"
+        ],
+        "failingTests": 0
+      },
+      {
+        "index": 2,
+        "project": "CommunityToolkit.HighPerformance.csproj",
+        "edit": "src\\CommunityToolkit.HighPerformance\\Box{T}.cs",
+        "ms": 202106.9821,
+        "testProjects": [
+          "CommunityToolkit.Common.UnitTests",
+          "CommunityToolkit.HighPerformance.UnitTests"
+        ],
+        "failingTests": 0
+      },
+      {
+        "index": 3,
+        "project": "CommunityToolkit.HighPerformance.csproj",
+        "edit": "src\\CommunityToolkit.HighPerformance\\Box{T}.cs",
+        "ms": 200630.3562,
+        "testProjects": [
+          "CommunityToolkit.Common.UnitTests",
+          "CommunityToolkit.HighPerformance.UnitTests"
+        ],
+        "failingTests": 0
+      }
+    ],
+    "attribution": null,
+    "stops": {
+      "changedFiles": 4,
+      "firstMs": 506.3242,
+      "repeat": {
+        "p50": 393.1,
+        "p95": 418.1,
+        "max": 418.1,
+        "n": 5
+      },
+      "mostReused": 9
+    },
+    "tests": {
+      "edit": "src/CommunityToolkit.Common/Converters.cs",
+      "aloneMs": 3164.016,
+      "pairWallMs": 5678.2108,
+      "pairEach": {
+        "p50": 4862.2,
+        "p95": 5678,
+        "max": 5678,
+        "n": 2
+      },
+      "notPassed": 0
+    }
+  },
+  "engineWorkingSetMb": 1028,
+  "enginePeakWorkingSetMb": 1730.9,
+  "engineIdleWorkingSetMb": 941.4,
+  "treeCleanAfter": true
+}

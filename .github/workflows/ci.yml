@@ -21,9 +21,9 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
         shard:
           - name: checker
-            filter: --filter-class Fuse.Tests.Engine.CheckerTests --filter-class Fuse.Tests.Engine.CauseLinesTests
+            filter: --filter-class Fuse.Tests.Engine.CheckerTests
           - name: selection
-            filter: --filter-class Fuse.Tests.Engine.TestSelectionTests --filter-class Fuse.Tests.Engine.ShadowPreparationTests --filter-class Fuse.Tests.Engine.PhaseTimingTests --filter-class Fuse.Tests.Engine.EngineClientTests
+            filter: --filter-class Fuse.Tests.Engine.CauseLinesTests --filter-class Fuse.Tests.Engine.TestSelectionTests --filter-class Fuse.Tests.Engine.ShadowPreparationTests --filter-class Fuse.Tests.Engine.PhaseTimingTests --filter-class Fuse.Tests.Engine.EngineClientTests
           - name: router
             filter: --filter-class Fuse.Tests.Engine.RequestRouterTests --filter-class Fuse.Tests.Engine.SessionAttributionTests --filter-class Fuse.Tests.Engine.ReusedErrorsTests --filter-class Fuse.Tests.Engine.ChangeReachTests
           - name: processes

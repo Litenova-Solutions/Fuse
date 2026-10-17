@@ -38,6 +38,12 @@ internal sealed class SolutionViews
     private List<RepoPath> _generatedFiles = [];
 
     /// <summary>
+    ///     The content of each generated file that differed from what the loader read for it, as last applied, so a view
+    ///     derived again from the loader gets it back without reading the file again.
+    /// </summary>
+    private readonly Dictionary<RepoPath, SourceText> _rewritten = [];
+
+    /// <summary>
     ///     The loader's solution both views were last derived from, or null after <see cref="Clear"/>. It is set only
     ///     once a <see cref="RebuildAsync"/> has finished, so a rebuild that was cut short is done again.
     /// </summary>
@@ -88,6 +94,7 @@ internal sealed class SolutionViews
         _derivedFrom = null;
         _generatedFiles = [];
         _generated.Clear();
+        _rewritten.Clear();
         _baselineHead = _tracker.Head;
         BaselineGeneration++;
     }
@@ -131,9 +138,21 @@ internal sealed class SolutionViews
             BaselineGeneration++;
         }
 
-        // The loader read the generated files when it opened their projects; a build may have written them since.
+        // The loader read the generated files when it opened their projects. A file a build wrote again since then holds
+        // the content applied after that build, which the views derived again from the loader no longer have; the others
+        // are read once, when they first appear, and only compared by length and write time after that.
         _generatedFiles = GeneratedFiles(current);
-        _generated.Clear();
+        foreach (var path in _generatedFiles)
+        {
+            if (_rewritten.TryGetValue(path, out var text))
+            {
+                current = await WithContentAsync(current, path, text, cancellationToken).ConfigureAwait(false);
+                baseline = await WithContentAsync(baseline, path, text, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        Current = current;
+        Baseline = baseline;
         await RefreshGeneratedAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -173,8 +192,11 @@ internal sealed class SolutionViews
             }
 
             _generated[path] = stamp;
+            var before = current;
             current = await WithContentAsync(current, path, text, cancellationToken).ConfigureAwait(false);
             baseline = await WithContentAsync(baseline, path, text, cancellationToken).ConfigureAwait(false);
+            if (!ReferenceEquals(before, current))
+                _rewritten[path] = text;
         }
 
         Current = current;

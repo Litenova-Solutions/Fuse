@@ -31,6 +31,12 @@ public class GeneratedSourceTests
         repo.Write("Lib/obj/Gen/Client.cs", NewClient);
         var fresh = await engine.CheckAsync("App/Report.cs");
         Assert.Empty(fresh.Errors);
+
+        // A project that loads later derives both views again; the client the build wrote stays in them.
+        repo.Replace("Lib.Tests/CalcTests.cs", "namespace Lib.Tests;", "namespace Lib.Tests;\n\n// loads Lib.Tests");
+        await engine.CheckAsync("Lib.Tests/CalcTests.cs");
+        var afterLoad = await engine.CheckAsync("App/Report.cs");
+        Assert.Empty(afterLoad.Errors);
     }
 
     [Fact]

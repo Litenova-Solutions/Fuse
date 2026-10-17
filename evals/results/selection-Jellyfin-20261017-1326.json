@@ -2,7 +2,7 @@
   "suite": "selection",
   "repo": "Jellyfin",
   "commit": "1d7c6af520da5c84ceac1c21a1d2da34837540ac",
-  "fuseBuild": "5.2.2/a655e25734bd41ec8ac1a86d91c8f940",
+  "fuseBuild": "5.4.0/2056ae4ab3ff4defae22d1da83fff501",
   "seed": 1,
   "requested": 10,
   "cases": 10,
@@ -13,27 +13,27 @@
   "unverifiedTests": 0,
   "totalTests": 2535,
   "meanSelectedFraction": 0.22272189349112428,
-  "fuseMedianSeconds": 110.98458965,
-  "dotnetMedianSeconds": 143.21697964999998,
+  "fuseMedianSeconds": 99.44622580000001,
+  "dotnetMedianSeconds": 163.46698355,
   "fuseStats": {
     "n": 10,
-    "fastest": 7.1748438,
-    "median": 110.98458965,
-    "mean": 107.03545144999998,
-    "standardDeviation": 38.84683478801409,
-    "p95": 144.263031,
-    "slowest": 144.263031,
-    "total": 1070.3545144999998
+    "fastest": 4.3907526,
+    "median": 99.44622580000001,
+    "mean": 95.14391716,
+    "standardDeviation": 34.096329699841384,
+    "p95": 130.6296957,
+    "slowest": 130.6296957,
+    "total": 951.4391716
   },
   "dotnetStats": {
     "n": 10,
-    "fastest": 123.60273,
-    "median": 143.21697964999998,
-    "mean": 150.5098629,
-    "standardDeviation": 22.212959069729077,
-    "p95": 188.9827254,
-    "slowest": 188.9827254,
-    "total": 1505.098629
+    "fastest": 144.5108173,
+    "median": 163.46698355,
+    "mean": 162.83408714,
+    "standardDeviation": 11.080664651733542,
+    "p95": 175.8714806,
+    "slowest": 175.8714806,
+    "total": 1628.3408714
   },
   "skippedNonCompiling": [
     "drop-statement src/Jellyfin.Database/Jellyfin.Database.Implementations/Entities/Libraries/MusicAlbumMetadata.cs: dropped \u0060Labels = new HashSet\u003CCompany\u003E();\u0060 at line 18 (does not compile)",
@@ -42,12 +42,14 @@
     "drop-statement src/Jellyfin.Database/Jellyfin.Database.Implementations/Entities/Libraries/Release.cs: dropped \u0060Name = name;\u0060 at line 22 (does not compile)"
   ],
   "projectsWithoutResults": [],
-  "truthKey": "truth-v1-selection-Jellyfin-52973a6c32ba-s1-n10-sdk10.0.401-g11118dd7ae08",
+  "truthKey": "truth-v1-selection-Jellyfin-52973a6c32ba-s1-n10-sdk10.0.402-g11118dd7ae08",
   "truthOrigins": [
-    "GitHub Actions run 36995535254, job truth, shard 0",
-    "GitHub Actions run 36995535254, job truth, shard 1",
-    "GitHub Actions run 36995535254, job truth, shard 2",
-    "GitHub Actions run 36995535254, job truth, shard 3"
+    "GitHub Actions run 39033310022, job truth, shard 0",
+    "GitHub Actions run 39033310022, job truth, shard 1",
+    "GitHub Actions run 39033310022, job truth, shard 2",
+    "GitHub Actions run 39033310022, job truth, shard 3",
+    "GitHub Actions run 39033310022, job truth, shard 4",
+    "GitHub Actions run 39033310022, job truth, shard 5"
   ],
   "treeCleanAfter": true,
   "details": [
@@ -63,10 +65,10 @@
       "fuseFailing": [],
       "fuseFailed": 0,
       "fusePassed": 521,
-      "fuseSummary": "fuse: 0 failed, 521 passed, 9 skipped in 143.7 s; ran 181 test(s) affected by your changes out of 663 (whole projects where Jellyfin.Server\u0027s entry point calls the changed code); fuse test --all runs everything; without MSBuild",
+      "fuseSummary": "fuse: 0 failed, 521 passed, 9 skipped in 115.5 s; ran 181 test(s) affected by your changes out of 663 (whole projects where Jellyfin.Server\u0027s entry point calls the changed code); fuse test --all runs everything; without MSBuild",
       "missed": [],
-      "fuseSeconds": 143.7821201,
-      "dotnetSeconds": 177.7959848,
+      "fuseSeconds": 115.5124978,
+      "dotnetSeconds": 169.6588851,
       "verdict": "no-failure"
     },
     {
@@ -81,10 +83,10 @@
       "fuseFailing": [],
       "fuseFailed": 0,
       "fusePassed": 626,
-      "fuseSummary": "fuse: 0 failed, 626 passed, 9 skipped in 144.2 s; ran 202 test(s) affected by your changes out of 663 (whole projects where Jellyfin.Server uses the changed code and runs behind an application host); fuse test --all runs everything; without MSBuild",
+      "fuseSummary": "fuse: 0 failed, 626 passed, 9 skipped in 130.6 s; ran 202 test(s) affected by your changes out of 663 (whole projects where Jellyfin.Server uses the changed code and runs behind an application host); fuse test --all runs everything; without MSBuild",
       "missed": [],
-      "fuseSeconds": 144.263031,
-      "dotnetSeconds": 131.5608684,
+      "fuseSeconds": 130.6296957,
+      "dotnetSeconds": 175.8714806,
       "verdict": "no-failure"
     },
     {
@@ -96,27 +98,27 @@
         "newText": null
       },
       "truthFailing": [
-        "Jellyfin.XbmcMetadata.Tests.Parsers.SeriesNfoParserTests.Fetch_Valid_Success",
-        "Jellyfin.XbmcMetadata.Tests.Parsers.EpisodeNfoProviderTests.Fetch_Valid_Success",
         "Jellyfin.XbmcMetadata.Tests.Parsers.EpisodeNfoProviderTests.Fetch_Valid_MultiEpisode_With_Missing_Tags_Success",
-        "Jellyfin.XbmcMetadata.Tests.Parsers.EpisodeNfoProviderTests.Fetch_Valid_MultiEpisode_Success",
         "Jellyfin.XbmcMetadata.Tests.Parsers.MovieNfoParserTests.Fetch_Valid_Success",
-        "Jellyfin.XbmcMetadata.Tests.Parsers.SeasonNfoProviderTests.Fetch_Valid_Success"
+        "Jellyfin.XbmcMetadata.Tests.Parsers.EpisodeNfoProviderTests.Fetch_Valid_Success",
+        "Jellyfin.XbmcMetadata.Tests.Parsers.SeasonNfoProviderTests.Fetch_Valid_Success",
+        "Jellyfin.XbmcMetadata.Tests.Parsers.EpisodeNfoProviderTests.Fetch_Valid_MultiEpisode_Success",
+        "Jellyfin.XbmcMetadata.Tests.Parsers.SeriesNfoParserTests.Fetch_Valid_Success"
       ],
       "fuseFailing": [
-        "Jellyfin.XbmcMetadata.Tests.Parsers.EpisodeNfoProviderTests.Fetch_Valid_Success",
-        "Jellyfin.XbmcMetadata.Tests.Parsers.MovieNfoParserTests.Fetch_Valid_Success",
         "Jellyfin.XbmcMetadata.Tests.Parsers.EpisodeNfoProviderTests.Fetch_Valid_MultiEpisode_With_Missing_Tags_Success",
-        "Jellyfin.XbmcMetadata.Tests.Parsers.SeriesNfoParserTests.Fetch_Valid_Success",
         "Jellyfin.XbmcMetadata.Tests.Parsers.EpisodeNfoProviderTests.Fetch_Valid_MultiEpisode_Success",
-        "Jellyfin.XbmcMetadata.Tests.Parsers.SeasonNfoProviderTests.Fetch_Valid_Success"
+        "Jellyfin.XbmcMetadata.Tests.Parsers.SeriesNfoParserTests.Fetch_Valid_Success",
+        "Jellyfin.XbmcMetadata.Tests.Parsers.SeasonNfoProviderTests.Fetch_Valid_Success",
+        "Jellyfin.XbmcMetadata.Tests.Parsers.EpisodeNfoProviderTests.Fetch_Valid_Success",
+        "Jellyfin.XbmcMetadata.Tests.Parsers.MovieNfoParserTests.Fetch_Valid_Success"
       ],
       "fuseFailed": 6,
       "fusePassed": 568,
-      "fuseSummary": "fuse: 6 failed, 568 passed, 9 skipped in 116.6 s; ran 225 test(s) affected by your changes out of 663 (whole projects where Jellyfin.Server uses the changed code and runs behind an application host); fuse test --all runs everything; without MSBuild",
+      "fuseSummary": "fuse: 6 failed, 568 passed, 9 skipped in 113.3 s; ran 225 test(s) affected by your changes out of 663 (whole projects where Jellyfin.Server uses the changed code and runs behind an application host); fuse test --all runs everything; without MSBuild",
       "missed": [],
-      "fuseSeconds": 116.6656673,
-      "dotnetSeconds": 188.9827254,
+      "fuseSeconds": 113.3413636,
+      "dotnetSeconds": 164.3566124,
       "verdict": "caught"
     },
     {
@@ -131,10 +133,10 @@
       "fuseFailing": [],
       "fuseFailed": 0,
       "fusePassed": 521,
-      "fuseSummary": "fuse: 0 failed, 521 passed, 9 skipped in 97.4 s; ran 181 test(s) affected by your changes out of 663 (whole projects where Jellyfin.Server\u0027s entry point calls the changed code); fuse test --all runs everything; without MSBuild",
+      "fuseSummary": "fuse: 0 failed, 521 passed, 9 skipped in 91.9 s; ran 181 test(s) affected by your changes out of 663 (whole projects where Jellyfin.Server\u0027s entry point calls the changed code); fuse test --all runs everything; without MSBuild",
       "missed": [],
-      "fuseSeconds": 97.4821468,
-      "dotnetSeconds": 144.019434,
+      "fuseSeconds": 91.9603226,
+      "dotnetSeconds": 152.0296772,
       "verdict": "no-failure"
     },
     {
@@ -149,10 +151,10 @@
       "fuseFailing": [],
       "fuseFailed": 0,
       "fusePassed": 522,
-      "fuseSummary": "fuse: 0 failed, 522 passed, 9 skipped in 102.8 s; ran 182 test(s) affected by your changes out of 663 (whole projects where Jellyfin.Server\u0027s entry point calls the changed code); fuse test --all runs everything; without MSBuild",
+      "fuseSummary": "fuse: 0 failed, 522 passed, 9 skipped in 97.7 s; ran 182 test(s) affected by your changes out of 663 (whole projects where Jellyfin.Server\u0027s entry point calls the changed code); fuse test --all runs everything; without MSBuild",
       "missed": [],
-      "fuseSeconds": 102.8067008,
-      "dotnetSeconds": 127.4883478,
+      "fuseSeconds": 97.6902917,
+      "dotnetSeconds": 162.5773547,
       "verdict": "no-failure"
     },
     {
@@ -167,10 +169,10 @@
       "fuseFailing": [],
       "fuseFailed": 0,
       "fusePassed": 1069,
-      "fuseSummary": "fuse: 0 failed, 1069 passed, 9 skipped in 119.4 s; ran 387 test(s) affected by your changes out of 663 (whole projects where Jellyfin.Server uses the changed code and runs behind an application host); fuse test --all runs everything; without MSBuild",
+      "fuseSummary": "fuse: 0 failed, 1069 passed, 9 skipped in 99.4 s; ran 387 test(s) affected by your changes out of 663 (whole projects where Jellyfin.Server uses the changed code and runs behind an application host); fuse test --all runs everything; without MSBuild",
       "missed": [],
-      "fuseSeconds": 119.4667972,
-      "dotnetSeconds": 167.3627082,
+      "fuseSeconds": 99.3851397,
+      "dotnetSeconds": 172.9749258,
       "verdict": "no-failure"
     },
     {
@@ -189,10 +191,10 @@
       ],
       "fuseFailed": 1,
       "fusePassed": 756,
-      "fuseSummary": "fuse: 1 failed, 756 passed, 9 skipped in 129.5 s; ran 194 test(s) affected by your changes out of 663 (whole projects where Jellyfin.Server uses the changed code and runs behind an application host); fuse test --all runs everything; without MSBuild",
+      "fuseSummary": "fuse: 1 failed, 756 passed, 9 skipped in 107.5 s; ran 194 test(s) affected by your changes out of 663 (whole projects where Jellyfin.Server uses the changed code and runs behind an application host); fuse test --all runs everything; without MSBuild",
       "missed": [],
-      "fuseSeconds": 129.4899254,
-      "dotnetSeconds": 142.4145253,
+      "fuseSeconds": 107.5683876,
+      "dotnetSeconds": 162.1936572,
       "verdict": "caught"
     },
     {
@@ -207,10 +209,10 @@
       "fuseFailing": [],
       "fuseFailed": 0,
       "fusePassed": 521,
-      "fuseSummary": "fuse: 0 failed, 521 passed, 9 skipped in 105.3 s; ran 181 test(s) affected by your changes out of 663 (whole projects where Jellyfin.Server\u0027s entry point calls the changed code); fuse test --all runs everything; without MSBuild",
+      "fuseSummary": "fuse: 0 failed, 521 passed, 9 skipped in 91.4 s; ran 181 test(s) affected by your changes out of 663 (whole projects where Jellyfin.Server\u0027s entry point calls the changed code); fuse test --all runs everything; without MSBuild",
       "missed": [],
-      "fuseSeconds": 105.303512,
-      "dotnetSeconds": 123.60273,
+      "fuseSeconds": 91.4534084,
+      "dotnetSeconds": 174.9142479,
       "verdict": "no-failure"
     },
     {
@@ -225,10 +227,10 @@
       "fuseFailing": [],
       "fuseFailed": 0,
       "fusePassed": 14,
-      "fuseSummary": "fuse: 0 failed, 14 passed in 7.1 s; ran 2 test(s) affected by your changes out of 663; fuse test --all runs everything; without MSBuild",
+      "fuseSummary": "fuse: 0 failed, 14 passed in 4.4 s; ran 2 test(s) affected by your changes out of 663; fuse test --all runs everything; without MSBuild",
       "missed": [],
-      "fuseSeconds": 7.1748438,
-      "dotnetSeconds": 161.2059218,
+      "fuseSeconds": 4.3907526,
+      "dotnetSeconds": 149.2532132,
       "verdict": "no-failure"
     },
     {
@@ -243,10 +245,10 @@
       "fuseFailing": [],
       "fuseFailed": 0,
       "fusePassed": 521,
-      "fuseSummary": "fuse: 0 failed, 521 passed, 9 skipped in 103.9 s; ran 181 test(s) affected by your changes out of 663 (whole projects where IgnoreEnumSchemaFilter.Apply(OpenApiSchema, SchemaFilterContext) is called by an application host or a framework); fuse test --all runs everything; without MSBuild",
+      "fuseSummary": "fuse: 0 failed, 521 passed, 9 skipped in 99.5 s; ran 181 test(s) affected by your changes out of 663 (whole projects where IgnoreEnumSchemaFilter.Apply(OpenApiSchema, SchemaFilterContext) is called by an application host or a framework); fuse test --all runs everything; without MSBuild",
       "missed": [],
-      "fuseSeconds": 103.9197701,
-      "dotnetSeconds": 140.6653833,
+      "fuseSeconds": 99.5073119,
+      "dotnetSeconds": 144.5108173,
       "verdict": "no-failure"
     }
   ]

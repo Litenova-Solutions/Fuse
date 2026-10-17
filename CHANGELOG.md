@@ -34,7 +34,7 @@ Update with `dotnet tool update -g Fuse`. If you use Claude Code, run `fuse init
 
 ### Documentation
 
-- A new page, [Subagents and parallel agents](https://fuse.codes/docs/parallel-agents), covers several agents in one repository; How it works, Limits, Commands, Connect your agent, Troubleshooting (new sections A slow build, A command in the build fails and An error about generated code), Architecture, Evals and the FAQ describe sessions at the stop hook, concurrent test runs, generated files and the build's file log, and Connect your agent and Troubleshooting describe Muse Code.
+- A new page, [Subagents and parallel agents](https://fuse.codes/docs/parallel-agents), covers several agents in one repository; How it works, Limits, Commands, Connect your agent, Troubleshooting (new sections A slow build, A command in the build fails and An error about generated code), Architecture, Evals and the FAQ describe sessions at the stop hook, concurrent test runs, generated files and the build's file log, and Connect your agent and Troubleshooting describe Muse Code. [Benchmarks](https://fuse.codes/docs/benchmarks), the home page and the README quote the 5.4.0 eval runs, and Benchmarks adds repeated checks and tests at once.
 
 ## 5.3.0
 

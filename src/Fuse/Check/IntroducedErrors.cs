@@ -29,6 +29,9 @@ internal sealed class IntroducedErrors
     /// <summary>Starts a check that runs analyzers on the working tree as <paramref name="run"/> says.</summary>
     public void Begin(AnalyzerRun run) => _collector.Begin(run);
 
+    /// <inheritdoc cref="DiagnosticCollector.TakeReused"/>
+    public int TakeReused() => _collector.TakeReused();
+
     /// <inheritdoc cref="DiagnosticCollector.TakeAnalyzerReport"/>
     public (int Unfinished, IReadOnlyList<string> LeftOut) TakeAnalyzerReport() => _collector.TakeAnalyzerReport();
 

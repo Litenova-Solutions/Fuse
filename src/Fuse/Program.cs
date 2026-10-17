@@ -82,6 +82,21 @@ internal static class Program
     /// </summary>
     private static async Task<int> TestAsync(string[] args, CancellationToken cancellationToken)
     {
+        // --session is the pre-shell hook's, which names the session whose command it rewrote; it is never passed on.
+        string? session = null;
+        var index = Array.IndexOf(args, "--session");
+        if (index >= 0)
+        {
+            if (index + 1 >= args.Length)
+            {
+                Console.Error.WriteLine("fuse: --session takes the session's id");
+                return 2;
+            }
+
+            session = args[index + 1];
+            args = [.. args[..index], .. args[(index + 2)..]];
+        }
+
         var all = args.Contains("--all");
         var passthrough = args.Where(a => a != "--all").ToList();
         if (all && passthrough.Count > 0)
@@ -93,7 +108,7 @@ internal static class Program
         var root = RequireRoot();
         if (root is null)
             return 2;
-        var result = await TestOperation.RunAsync(root, Environment.CurrentDirectory, passthrough, all, cancellationToken).ConfigureAwait(false);
+        var result = await TestOperation.RunAsync(root, Environment.CurrentDirectory, passthrough, all, cancellationToken, session).ConfigureAwait(false);
         return Print(result);
     }
 

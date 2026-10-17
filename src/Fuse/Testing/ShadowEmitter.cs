@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using Fuse.Graph;
 using Fuse.Paths;
 using Fuse.Testing.Model;
@@ -23,6 +24,11 @@ namespace Fuse.Testing;
 ///         remembers each shadow file it wrote, so an image that is already in place is not written again and the copy
 ///         from build output never overwrites a file it is about to emit. It runs after the request lock is released,
 ///         against the snapshot the plan took under it; <see cref="TestPlanner"/> prepares one plan at a time.
+///     </para>
+///     <para>
+///         A test run holds the copy it runs from until it ends, and a plan never writes a copy a run holds: it prepares a
+///         new one instead (<see cref="CopyFolder"/>). So the runs of several clients run at once, each from its own copy,
+///         and none of them holds a file in the repository's build output open.
 ///     </para>
 /// </remarks>
 internal sealed class ShadowEmitter
@@ -103,7 +109,7 @@ internal sealed class ShadowEmitter
         }
         while (grew);
 
-        var shadow = Path.Combine(_root.StateDirectory, "shadow", $"{testProject.Name.Replace('(', '-').Replace(")", "")}");
+        var shadow = CopyFolder(Path.Combine(_root.StateDirectory, "shadow", $"{testProject.Name.Replace('(', '-').Replace(")", "")}"), log);
         var targets = emit.Select(id => Path.Combine(shadow, Path.GetFileName(solution.GetProject(id)!.OutputFilePath!))).ToList();
         // The files about to be emitted are not copied first: the copy would only be overwritten, and when the emitted
         // image is already in place, it would make the image be written again.
@@ -149,6 +155,65 @@ internal sealed class ShadowEmitter
         await File.WriteAllBytesAsync(path, bytes, cancellationToken).ConfigureAwait(false);
         file.Refresh();
         _written[path] = new Written(bytes, file.Length, file.LastWriteTimeUtc);
+    }
+
+    /// <summary>
+    ///     The folder a plan prepares a test project's shadow run in, under <paramref name="project"/>: the newest copy when
+    ///     no test run holds it, so the files already in place are not written again, or a new copy when a run still runs
+    ///     from it (<see cref="LocalState.HoldTestCopy"/>), so the run keeps the files it started with. Every older copy no
+    ///     run holds is deleted.
+    /// </summary>
+    /// <remarks>
+    ///     Copies are numbered folders, <c>g1</c>, <c>g2</c> and so on, the newest with the highest number. Anything else in
+    ///     <paramref name="project"/> is left from a version of Fuse that kept one copy per test project, and is deleted.
+    ///     The client holds <c>build.lock</c> from before it asks for a plan until it holds the copies the plan names, so
+    ///     no run takes a copy between this choice and the plan's answer.
+    /// </remarks>
+    private static string CopyFolder(string project, Action<string> log)
+    {
+        Directory.CreateDirectory(project);
+        var copies = new List<(int Number, string Path)>();
+        foreach (var entry in Directory.EnumerateFileSystemEntries(project))
+        {
+            var name = Path.GetFileName(entry);
+            if (name.Length > 1 && name[0] == 'g' && int.TryParse(name.AsSpan(1), NumberStyles.None, CultureInfo.InvariantCulture, out var number) && Directory.Exists(entry))
+                copies.Add((number, entry));
+            else
+                TryDelete(entry);
+        }
+
+        var newest = copies.Count == 0 ? (Number: 0, Path: null) : copies.MaxBy(c => c.Number);
+        var chosen = newest.Path;
+        if (chosen is null || LocalState.IsInUse(chosen))
+        {
+            chosen = Path.Combine(project, $"g{newest.Number + 1}");
+            Directory.CreateDirectory(chosen);
+            if (newest.Path is not null)
+                log($"{Path.GetFileName(project)}: a test run still runs from {Path.GetFileName(newest.Path)}, so this plan copies into {Path.GetFileName(chosen)}");
+        }
+
+        foreach (var (_, path) in copies)
+        {
+            if (path != chosen && !LocalState.IsInUse(path))
+                TryDelete(path);
+        }
+
+        return chosen;
+    }
+
+    /// <summary>Deletes a file or folder left in a shadow folder; one a process still holds stays until a later plan.</summary>
+    private static void TryDelete(string entry)
+    {
+        try
+        {
+            if (Directory.Exists(entry))
+                Directory.Delete(entry, recursive: true);
+            else
+                File.Delete(entry);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+        }
     }
 
     private static IEnumerable<Project> Closure(Project project)

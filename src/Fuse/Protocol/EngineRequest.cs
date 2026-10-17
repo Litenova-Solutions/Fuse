@@ -71,7 +71,21 @@ internal abstract record EngineRequest
     ///     True to wait for the engine to finish loading the repository; false to be answered at once with
     ///     <see cref="ErrorCode.Loading"/> while it loads.
     /// </param>
-    public sealed record CheckChanges(bool WaitForLoad) : EngineRequest;
+    public sealed record CheckChanges(bool WaitForLoad) : EngineRequest
+    {
+        /// <summary>
+        ///     The session the answer is for, as its harness identifies it, or null to answer with every error. The stop
+        ///     hook sends the session that is stopping, which is told the errors its own edits cause and those no session's
+        ///     edits are credited with, and not those other sessions' edits cause without it.
+        /// </summary>
+        public string? Session { get; init; }
+
+        /// <summary>
+        ///     True when <see cref="Session"/> is stopping, which the stop hook sends. A subagent that has stopped writes no
+        ///     more, so from then on its parent session counts its edits as its own. A line without it reads as false.
+        /// </summary>
+        public bool IsStopping { get; init; }
+    }
 
     /// <summary>The errors that the changes to the named files introduced, in those files and in the files they reach.</summary>
     /// <param name="Files">
@@ -107,7 +121,15 @@ internal abstract record EngineRequest
     ///     the engine to finish loading: <c>fuse test</c> runs nothing until it has the plan, so an answer that says the
     ///     engine is loading would only fail the command.
     /// </summary>
-    public sealed record PlanAffectedTests : EngineRequest;
+    public sealed record PlanAffectedTests : EngineRequest
+    {
+        /// <summary>
+        ///     The session the plan is for, as its harness identifies it, or null to cover every change. With one, the plan
+        ///     leaves out the changes only other sessions wrote, so a subagent runs the tests its own edits affect. The
+        ///     pre-shell hook passes it to <c>fuse test</c>.
+        /// </summary>
+        public string? Session { get; init; }
+    }
 
     /// <summary>Every test project, run whole. Like <see cref="PlanAffectedTests"/>, it always waits for the engine to finish loading.</summary>
     public sealed record PlanAllTests : EngineRequest;

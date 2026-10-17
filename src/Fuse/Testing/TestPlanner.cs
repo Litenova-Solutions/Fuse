@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 using Fuse.Graph;
+using Fuse.Paths;
 using Fuse.Telemetry;
 using Fuse.Testing.Model;
 using Fuse.Workspace;
@@ -76,7 +77,15 @@ internal sealed class TestPlanner
             return PendingPlan.Of(new TestPlanResult(everything, total, total, $"ran every test in {testProjects.Count} test project(s)"), graph);
         }
 
-        var changed = _workspace.Tracker.Changed.Where(p => graph.OwnersOf(p).Count > 0).ToList();
+        // A plan for one session leaves out the files only other sessions wrote: the tests their changes affect are
+        // theirs to run.
+        var leftOut = scope is TestScope.Affected affected ? affected.LeftOut : new HashSet<RepoPath>();
+        var owned = _workspace.Tracker.Changed.Where(p => graph.OwnersOf(p).Count > 0).ToList();
+        var changed = owned.Where(p => !leftOut.Contains(p)).ToList();
+        var others = owned.Count - changed.Count;
+        var othersNote = others > 0 ? $"; left out {others} changed file(s) only other sessions wrote" : "";
+        if (changed.Count == 0 && others > 0)
+            return PendingPlan.Of(new TestPlanResult([], 0, total, $"no C# changes by this session since HEAD, so no test is affected{othersNote} (fuse test --all runs everything)"), graph);
         if (changed.Count == 0)
             return PendingPlan.Of(new TestPlanResult([], 0, total, "no C# changes since HEAD, so no test is affected (fuse test --all runs everything)"), graph);
 
@@ -128,6 +137,7 @@ internal sealed class TestPlanner
             summary.Append(" (whole projects where ").Append(string.Join("; ", reasons)).Append(')');
         if (collapsed.Count > 0)
             summary.Append("; ran ").Append(string.Join(", ", collapsed)).Append(", because a test filter holds at most ").Append(TestFilter.MaxPatterns).Append(" names");
+        summary.Append(othersNote);
         summary.Append("; fuse test --all runs everything");
         return PendingPlan.ToPrepare(graph, projects, selected, total, summary.ToString());
     }

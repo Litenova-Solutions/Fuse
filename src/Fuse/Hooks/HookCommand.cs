@@ -72,11 +72,15 @@ internal static class HookCommand
     ///     gets no answer. A harness whose answer approves the command gets one only for a command that is one plain
     ///     invocation, rewritten whole (<see cref="Harness.ApprovesRewrittenCommand"/>).
     /// </summary>
-    internal static HookAnswer PreShell(Harness harness, HookPayload payload) =>
-        payload.Command is { } command
-        && (harness.ApprovesRewrittenCommand ? CommandRewriter.RewriteWhole(command) : CommandRewriter.Rewrite(command)) is { } rewritten
-            ? harness.ReplaceShellCommand(payload.ToolInput, rewritten)
-            : HookAnswer.None;
+    internal static HookAnswer PreShell(Harness harness, HookPayload payload)
+    {
+        if (payload.Command is not { } command)
+            return HookAnswer.None;
+        // fuse test runs the tests the session's own edits affect, so a subagent verifies its own work.
+        var session = payload.Session is { } id ? $"{harness.Name}:{id}" : null;
+        var rewritten = harness.ApprovesRewrittenCommand ? CommandRewriter.RewriteWhole(command, session) : CommandRewriter.Rewrite(command, session);
+        return rewritten is null ? HookAnswer.None : harness.ReplaceShellCommand(payload.ToolInput, rewritten);
+    }
 
     private static async Task<HookAnswer> PostEditAsync(Harness harness, HookPayload payload, CancellationToken cancellationToken)
     {
@@ -107,22 +111,31 @@ internal static class HookCommand
         var root = RepoRoot.Find(payload.Cwd);
         if (root is null)
             return harness.AllowStop();
-        // The stop hook checks every change in the working tree, whoever wrote it: the agent that stops is the one that has
-        // to be sure the tree builds, so the check is not answered to a session.
-        var (result, response) = await CheckOperation.RunAsync(root, null, session: null, waitForLoad: true, compilationWideAnalyzers: true, TimeSpan.FromMinutes(5), cancellationToken).ConfigureAwait(false);
+        // The stop hook checks every change in the working tree. Answered to the stopping session, it blocks on the errors
+        // that session's edits cause, alone or with other sessions' edits, and on those no session's edits are credited
+        // with; an error another session's edits cause without it is left to that session, which may still be writing.
+        var session = payload.Session is { } id ? $"{harness.Name}:{id}" : null;
+        var (result, response) = await CheckOperation.RunAsync(root, null, session, waitForLoad: true, compilationWideAnalyzers: true, TimeSpan.FromMinutes(5), cancellationToken).ConfigureAwait(false);
         if (!ShouldReport(result, response))
             return harness.AllowStop();
         // A missing restore is not an error the changes introduced; its message already names the command to run.
-        return result.Outcome == Outcome.ProblemsFound
-            ? harness.BlockStop(result.Text + "\n" + StopReason)
-            : harness.BlockStop(result.Text);
+        if (result.Outcome != Outcome.ProblemsFound)
+            return harness.BlockStop(result.Text);
+        return harness.BlockStop(result.Text + "\n" + (session is null ? StopReasonWithoutSession : StopReason));
     }
 
     /// <summary>
-    ///     The line under the errors that block a stop. It says what is true of every error, that the working tree has it
-    ///     and HEAD does not, and not that this agent caused it, because another agent editing the same working tree may have.
+    ///     The line under the errors that block a session's stop. It says what is true of every error told to the session:
+    ///     the working tree has it and HEAD does not, and no other session's edits cause it on their own.
     /// </summary>
     internal const string StopReason =
+        "Fix these errors before finishing. The working tree has them and HEAD does not, and no other session's edits cause them on their own.";
+
+    /// <summary>
+    ///     The line under the errors that block a stop whose harness names no session, so every error is told. It does not
+    ///     say this agent caused them, because another agent editing the same working tree may have.
+    /// </summary>
+    internal const string StopReasonWithoutSession =
         "Fix these errors before finishing. The working tree has them and HEAD does not; another agent editing this working tree may have caused some of them.";
 
     /// <summary>

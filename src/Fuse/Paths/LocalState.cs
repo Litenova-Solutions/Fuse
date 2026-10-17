@@ -38,6 +38,17 @@ internal static partial class LocalState
         new FileStream(Path.Combine(copy, InUsePrefix + Environment.ProcessId), FileMode.Create, FileAccess.Write, FileShare.None, 1, FileOptions.DeleteOnClose);
 
     /// <summary>
+    ///     Marks <paramref name="folder"/>, a copy of build output that a test run runs from, as used by that run until the
+    ///     returned handle is disposed, so the engine neither changes nor deletes it meanwhile. Each run holds a lock file of
+    ///     its own, so runs in one process do not share one.
+    /// </summary>
+    public static IDisposable HoldTestCopy(string folder) =>
+        new FileStream(Path.Combine(folder, $"{InUsePrefix}{Environment.ProcessId}-{Guid.NewGuid():N}"), FileMode.CreateNew, FileAccess.Write, FileShare.None, 1, FileOptions.DeleteOnClose);
+
+    /// <summary>True while a process holds <paramref name="folder"/> through <see cref="HoldEngineCopy"/> or <see cref="HoldTestCopy"/>.</summary>
+    public static bool IsInUse(string folder) => System.IO.Directory.Exists(folder) && IsHeld(folder);
+
+    /// <summary>
     ///     Deletes each engine copy in <paramref name="engineCopies"/> other than <paramref name="keep"/> that no engine
     ///     holds and that is older than <see cref="NewCopyGrace"/>. A copy whose files cannot be deleted stays.
     /// </summary>

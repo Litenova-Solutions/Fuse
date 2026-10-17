@@ -43,7 +43,7 @@
       "url": "https://fuse.codes/docs/harnesses",
       "mainEntityOfPage": "https://fuse.codes/docs/harnesses",
       "inLanguage": "en",
-      "dateModified": "2026-09-29",
+      "dateModified": "2026-10-17",
       "image": "https://fuse.codes/assets/og.png",
       "isPartOf": {
         "@type": "WebSite",
@@ -155,7 +155,7 @@
       <table>
         <thead><tr><th scope="col">Harness</th><th scope="col">Detected by</th><th scope="col">File written</th><th scope="col">Events</th></tr></thead>
         <tbody>
-          <tr><th scope="row">Claude Code</th><td><code>.claude/</code> or <code>CLAUDE.md</code>, or neither another harness nor <code>.vscode/</code></td><td><code>.claude/settings.json</code></td><td>post-edit, pre-shell, stop</td></tr>
+          <tr><th scope="row">Claude Code</th><td><code>.claude/</code> or <code>CLAUDE.md</code>, or neither another harness nor <code>.vscode/</code></td><td><code>.claude/settings.json</code></td><td>post-edit, pre-shell, stop (also for subagents)</td></tr>
           <tr><th scope="row">Cursor</th><td><code>.cursor/</code></td><td><code>.cursor/hooks.json</code></td><td>post-edit, stop</td></tr>
           <tr><th scope="row">Gemini CLI</th><td><code>.gemini/</code> or <code>GEMINI.md</code></td><td><code>.gemini/settings.json</code></td><td>post-edit, pre-shell, stop</td></tr>
           <tr><th scope="row">Codex</th><td><code>.codex/</code></td><td><code>.codex/hooks.json</code></td><td>post-edit, pre-shell, stop</td></tr>
@@ -219,13 +219,24 @@ fuse: hooks registered; after each edit your agent gets the compiler errors the 
           }
         ]
       }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "fuse hook claude stop",
+            "timeout": 300
+          }
+        ]
+      }
     ]
   }
 }</code></pre>
     <ul>
       <li><strong>post-edit</strong> runs in the background (<code>asyncRewake</code>), so the agent keeps working while the check runs, and the hook can wait for the engine to finish loading. When the edit introduced errors, the hook writes them to standard error and exits with 2, which wakes the agent and shows it the text.</li>
       <li><strong>pre-shell</strong> answers <code>{"hookSpecificOutput":{"hookEventName":"PreToolUse","updatedInput":{...}}}</code>, with every field of the original tool input and the rewritten <code>command</code>. It sets no permission decision, so the rewritten command goes through your normal permission rules.</li>
-      <li><strong>stop</strong> answers <code>{"decision":"block","reason":"..."}</code> with the errors, and prints nothing when there are none.</li>
+      <li><strong>stop</strong> answers <code>{"decision":"block","reason":"..."}</code> with the errors, and prints nothing when there are none. It runs for the <code>Stop</code> event and, since Fuse 5.4.0, for <code>SubagentStop</code>, so a subagent is sent back for the errors its own edits cause before it hands its work back, and its parent counts its edits as its own once it has stopped (<a href="how-it-works.html#check">the stop hook and subagents</a>). Run <code>fuse init</code> again to add <code>SubagentStop</code> to settings an earlier version wrote.</li>
     </ul>
     <p>If the settings' <code>permissions.allow</code> list lets the agent run <code>dotnet build</code> or <code>dotnet test</code> without asking (<code>Bash(dotnet:*)</code>, <code>Bash(dotnet *)</code>, or a rule that starts with <code>Bash(dotnet build</code> or <code>Bash(dotnet test</code>), <code>fuse init</code> adds <code>Bash(fuse build:*)</code>, <code>Bash(fuse test:*)</code> or both. Otherwise the rewritten command would ask for permission where the original did not. A narrower rule, such as one for <code>dotnet test</code> on one project, still adds the rule for every <code>fuse test</code>.</p>
     <p>Cursor also runs the hooks in Claude Code's settings. A Claude Code hook whose payload comes from Cursor does nothing, so that the Cursor hooks answer in a Cursor session; create <code>.cursor/</code> and run <code>fuse init</code> again to get them.</p>
@@ -392,7 +403,7 @@ fuse: hooks registered; after each edit your agent gets the compiler errors the 
     <p>The plugin allows 10 seconds for pre-shell, 60 for post-edit and 300 for stop, and treats a failure or a timeout as no answer.</p>
 
     <h2 id="sessions">Sessions: several agents in one working tree <a class="anchor" href="#sessions" aria-label="Link to this section">#</a></h2>
-    <p>A session is one agent's run as its harness identifies it in a hook's payload. When the post-edit payload names one, the post-edit hook tells that agent only the errors its own edits cause, and leaves out, with a count, the errors other agents' edits in the same working tree caused without it (<a href="how-it-works.html#check">how an error is attributed</a>). Fuse prefixes each id with the harness's name, so two harnesses never share a session. The stop hook checks every change whatever the payload says.</p>
+    <p>A session is one agent's run as its harness identifies it in a hook's payload. When the post-edit payload names one, the post-edit hook tells that agent only the errors its own edits cause, and leaves out, with a count, the errors other agents' edits in the same working tree caused without it (<a href="how-it-works.html#check">how an error is attributed</a>). Fuse prefixes each id with the harness's name, so two harnesses never share a session. The stop hook checks every change and, when the payload names a session, blocks only on the errors that session's edits cause and those in changes no session is credited with. The pre-shell hook passes the session to <code>fuse test</code>, which then runs the tests that session's edits affect (<a href="how-it-works.html#test-selection">a session's own tests</a>).</p>
     <div class="table-scroll" role="region" aria-label="Session id per harness" tabindex="0">
       <table>
         <thead><tr><th scope="col">Harness</th><th scope="col">Session id Fuse reads</th><th scope="col">A subagent</th></tr></thead>
@@ -493,6 +504,17 @@ fuse: hooks registered; after each edit your agent gets the compiler errors the 
       }
     ],
     "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "fuse hook claude stop",
+            "timeout": 300
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
       {
         "hooks": [
           {

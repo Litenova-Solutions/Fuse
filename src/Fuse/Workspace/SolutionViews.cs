@@ -25,6 +25,19 @@ internal sealed class SolutionViews
     private readonly HashSet<RepoPath> _touched = [];
 
     /// <summary>
+    ///     Each generated file of the views (<see cref="GeneratedFiles"/>), with the length and last write time it had when
+    ///     its content was last applied to both views.
+    /// </summary>
+    private readonly Dictionary<RepoPath, (long Length, DateTime WrittenUtc)> _generated = [];
+
+    /// <summary>
+    ///     The documents of the views that lie in a <c>bin</c> or <c>obj</c> folder of their project: files a build
+    ///     generates, such as an API client or <c>GlobalUsings.g.cs</c>. They are found again whenever the views are
+    ///     derived.
+    /// </summary>
+    private List<RepoPath> _generatedFiles = [];
+
+    /// <summary>
     ///     The loader's solution both views were last derived from, or null after <see cref="Clear"/>. It is set only
     ///     once a <see cref="RebuildAsync"/> has finished, so a rebuild that was cut short is done again.
     /// </summary>
@@ -73,6 +86,8 @@ internal sealed class SolutionViews
         Current = new AdhocWorkspace().CurrentSolution;
         Baseline = Current;
         _derivedFrom = null;
+        _generatedFiles = [];
+        _generated.Clear();
         _baselineHead = _tracker.Head;
         BaselineGeneration++;
     }
@@ -115,6 +130,77 @@ internal sealed class SolutionViews
             _baselineHead = head;
             BaselineGeneration++;
         }
+
+        // The loader read the generated files when it opened their projects; a build may have written them since.
+        _generatedFiles = GeneratedFiles(current);
+        _generated.Clear();
+        await RefreshGeneratedAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    ///     Applies the content of each generated file that a build wrote since its content was last applied to both views,
+    ///     and increments <see cref="BaselineGeneration"/> when the baseline changed. A generated file is not in git, so
+    ///     HEAD has no content of its own for it; both views hold the file as the last build wrote it.
+    /// </summary>
+    /// <remarks>
+    ///     The watcher skips <c>bin</c> and <c>obj</c> folders, so these files are compared by length and write time on
+    ///     every request instead. A file that is missing or being written stays as it was, and the next request reads it.
+    /// </remarks>
+    /// <param name="cancellationToken">Cancels reading file contents.</param>
+    public async Task RefreshGeneratedAsync(CancellationToken cancellationToken)
+    {
+        if (_generatedFiles.Count == 0)
+            return;
+        var current = Current;
+        var baseline = Baseline;
+        foreach (var path in _generatedFiles)
+        {
+            SourceText text;
+            (long, DateTime) stamp;
+            try
+            {
+                var file = new FileInfo(path.Absolute);
+                if (!file.Exists)
+                    continue;
+                stamp = (file.Length, file.LastWriteTimeUtc);
+                if (_generated.TryGetValue(path, out var known) && known == stamp)
+                    continue;
+                text = Decode(File.ReadAllBytes(path.Absolute));
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                continue;
+            }
+
+            _generated[path] = stamp;
+            current = await WithContentAsync(current, path, text, cancellationToken).ConfigureAwait(false);
+            baseline = await WithContentAsync(baseline, path, text, cancellationToken).ConfigureAwait(false);
+        }
+
+        Current = current;
+        if (!ReferenceEquals(baseline, Baseline))
+        {
+            Baseline = baseline;
+            BaselineGeneration++;
+        }
+    }
+
+    /// <summary>The documents of <paramref name="solution"/> that lie in a <c>bin</c> or <c>obj</c> folder of their project.</summary>
+    private List<RepoPath> GeneratedFiles(Solution solution)
+    {
+        var result = new HashSet<RepoPath>();
+        foreach (var project in solution.Projects)
+        {
+            if (Path.GetDirectoryName(project.FilePath) is not { } directory)
+                continue;
+            foreach (var document in project.Documents)
+            {
+                if (document.FilePath is { } file && Path.IsPathRooted(file) && PathRules.IsBuildOutput(directory, file))
+                    result.Add(_root.PathOf(file));
+            }
+        }
+
+        return [.. result];
     }
 
     /// <summary>

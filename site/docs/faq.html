@@ -43,7 +43,7 @@
       "url": "https://fuse.codes/docs/faq",
       "mainEntityOfPage": "https://fuse.codes/docs/faq",
       "inLanguage": "en",
-      "dateModified": "2026-09-30",
+      "dateModified": "2026-10-17",
       "image": "https://fuse.codes/assets/og.png",
       "isPartOf": {
         "@type": "WebSite",
@@ -340,7 +340,7 @@
     <ul>
       <li><strong>Compared with HEAD.</strong> A language server reports the errors a file has now. It has no notion of HEAD, the commit you have checked out, so an error that was already committed looks the same as one the edit caused. Fuse reports only the errors HEAD does not have.</li>
       <li><strong>Across projects.</strong> An edit that renames a public method breaks its callers in other files and other projects, which the agent has not opened, so it hears of them at the next build. Fuse finds the files that use each changed declaration, checks them, and names the change that broke each one.</li>
-      <li><strong>Before the agent finishes.</strong> Fuse's stop hook checks every change once more before the agent ends its turn, and sends it back once if errors remain.</li>
+      <li><strong>Before the agent finishes.</strong> Fuse's stop hook checks every change once more before the agent ends its turn, and sends it back once if errors its own edits cause remain.</li>
       <li><strong>Tests and builds.</strong> A language server does not run tests or builds. Fuse runs the affected tests and prints only the errors of a build.</li>
     </ul>
     <p>A language server does things Fuse does not: completion, go to definition, find references, hover, rename and warnings. Fuse reports errors only and has no navigation. <a href="how-it-works.html#check">What a check does</a> describes Fuse's side in full.</p>

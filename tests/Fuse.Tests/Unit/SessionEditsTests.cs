@@ -54,6 +54,23 @@ public class SessionEditsTests
             Assert.False(new SessionEdits(Root, file).WritersOf([Calc, Report]).ContainsKey(Calc));
         });
 
+    [Fact]
+    public void A_stopped_subagent_survives_a_restart_until_no_file_is_credited_to_it() =>
+        InTempFile(file =>
+        {
+            var edits = new SessionEdits(Root, file);
+            edits.Record("claude:a/agent-1", [Calc]);
+            Assert.False(edits.IsOwnEdit("claude:a/agent-1", "claude:a"));
+
+            edits.MarkStopped("claude:a/agent-1");
+
+            Assert.True(new SessionEdits(Root, file).IsOwnEdit("claude:a/agent-1", "claude:a"));
+            Assert.Contains("\tclaude:a/agent-1", File.ReadAllLines(file));
+            // Calc matches HEAD again, so the subagent is credited with nothing and its stop is forgotten too.
+            edits.Forget([Report]);
+            Assert.False(new SessionEdits(Root, file).IsOwnEdit("claude:a/agent-1", "claude:a"));
+        });
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]

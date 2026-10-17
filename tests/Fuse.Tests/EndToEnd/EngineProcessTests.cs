@@ -154,7 +154,7 @@ public class EngineProcessTests
     }
 
     [Fact]
-    public async Task Two_claude_sessions_are_each_told_their_own_errors_and_the_stop_hook_reports_all()
+    public async Task Two_claude_sessions_are_each_told_their_own_errors_after_an_edit_and_at_their_stop()
     {
         using var repo = FixtureRepo.CreateStandard();
         try
@@ -180,12 +180,18 @@ public class EngineProcessTests
             Assert.DoesNotContain("'Greet'", a.Stderr, StringComparison.Ordinal);
             Assert.Contains("1 error(s) from other sessions' edits left out", a.Stderr, StringComparison.Ordinal);
 
-            var stop = await FuseProcess.RunAsync(repo.Path, $$"""{"session_id":"a","hook_event_name":"Stop","stop_hook_active":false,"cwd":{{System.Text.Json.JsonSerializer.Serialize(repo.Path)}}}""", "hook", "claude", "stop");
+            // Each session's stop is blocked on its own errors only; the other session's are left to it.
+            string Stop(string session) => $$"""{"session_id":"{{session}}","hook_event_name":"Stop","stop_hook_active":false,"cwd":{{System.Text.Json.JsonSerializer.Serialize(repo.Path)}}}""";
+            var stop = await FuseProcess.RunAsync(repo.Path, Stop("a"), "hook", "claude", "stop");
             Assert.Contains("\"decision\":\"block\"", stop.Stdout, StringComparison.Ordinal);
-            Assert.Contains("'Greet'", stop.Stdout, StringComparison.Ordinal);
             Assert.Contains("'Add'", stop.Stdout, StringComparison.Ordinal);
-            Assert.Contains("The working tree has them and HEAD does not", stop.Stdout, StringComparison.Ordinal);
-            Assert.DoesNotContain("your changes introduced them", stop.Stdout, StringComparison.Ordinal);
+            Assert.DoesNotContain("'Greet'", stop.Stdout, StringComparison.Ordinal);
+            Assert.Contains("3 error(s) from other sessions' edits left out", stop.Stdout, StringComparison.Ordinal);
+            Assert.Contains("no other session's edits cause them on their own", stop.Stdout, StringComparison.Ordinal);
+
+            var stopB = await FuseProcess.RunAsync(repo.Path, Stop("b"), "hook", "claude", "stop");
+            Assert.Contains("'Greet'", stopB.Stdout, StringComparison.Ordinal);
+            Assert.DoesNotContain("'Add'", stopB.Stdout, StringComparison.Ordinal);
         }
         finally
         {

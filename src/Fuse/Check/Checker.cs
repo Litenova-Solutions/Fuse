@@ -32,6 +32,10 @@ namespace Fuse.Check;
 ///             sessions' edits caused without it.
 ///         </item>
 ///         <item><see cref="CauseLines"/> gives each error in a candidate the declaration change that reached it.</item>
+///         <item>
+///             <see cref="GeneratedSource"/> names the file a build generates that declares what an error is about, which
+///             may only be older than its source.
+///         </item>
 ///     </list>
 /// </remarks>
 internal sealed class Checker
@@ -47,6 +51,7 @@ internal sealed class Checker
     private readonly CandidateBinding _candidates;
     private readonly SessionEdits _sessions;
     private readonly SessionAttribution _attribution;
+    private readonly GeneratedSource _generated;
 
     /// <param name="workspace">The repository's projects and views.</param>
     /// <param name="sessions">Which sessions wrote each changed file; a check answered to a session reads it.</param>
@@ -59,6 +64,7 @@ internal sealed class Checker
         _candidates = new CandidateBinding(workspace, _introduced);
         _sessions = sessions;
         _attribution = new SessionAttribution(workspace, _introduced, sessions);
+        _generated = new GeneratedSource(workspace.Root);
     }
 
     /// <param name="scope">The files to check, or every change since HEAD.</param>
@@ -169,8 +175,10 @@ internal sealed class Checker
             .ToArray();
         var (compilerMs, analyzerMs) = _introduced.TakeTimings();
         var (unfinished, leftOut) = _introduced.TakeAnalyzerReport();
-        _workspace.Log($"check: binding {compilerMs} ms, analyzers {analyzerMs} ms (summed over files); {targets.Count} target(s) in {targetsMs} ms, {changedTargets.Count} with declaration changes, {filesChecked} file(s) bound, {timer.ElapsedMilliseconds} ms total{(wholeProjects ? ", whole projects" : "")}{(leftToOthers > 0 ? $", {leftToOthers} error(s) left to other sessions" : "")}{(unfinished > 0 ? $", analyzers unfinished in {unfinished}" : "")}{(leftOut.Count > 0 ? $", left out {string.Join(", ", leftOut)}" : "")}");
+        var reused = _introduced.TakeReused();
+        _workspace.Log($"check: binding {compilerMs} ms, analyzers {analyzerMs} ms (summed over files); {targets.Count} target(s) in {targetsMs} ms, {changedTargets.Count} with declaration changes, {filesChecked} file(s) bound{(reused > 0 ? $" ({reused} with errors reused from an earlier check)" : "")}, {timer.ElapsedMilliseconds} ms total{(wholeProjects ? ", whole projects" : "")}{(leftToOthers > 0 ? $", {leftToOthers} error(s) left to other sessions" : "")}{(unfinished > 0 ? $", analyzers unfinished in {unfinished}" : "")}{(leftOut.Count > 0 ? $", left out {string.Join(", ", leftOut)}" : "")}");
         var reported = CauseLines.Attach([.. ordered.Take(MaxReported)], reach, root, targets);
+        reported = await _generated.AttachAsync(_workspace.Current, reported, cancellationToken).ConfigureAwait(false);
         return new CheckResult(
             reported,
             filesChecked,

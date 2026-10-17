@@ -332,6 +332,50 @@ public class RequestRouterTests
     }
 
     [Fact]
+    public async Task A_stopping_session_is_answered_for_itself_and_marks_its_subagent_stopped()
+    {
+        using var repo = FixtureRepo.CreateStandard();
+        await using var engine = await InProcessRequestRouter.StartAsync(repo);
+        repo.Replace("Lib/Calc.cs", "public int Add(", "public int Plus(");
+        repo.Replace("Lib/Greeting.cs", "string Greet(string name);", "string Hail(string name);");
+        await engine.SendAsync(new EngineRequest.CheckFiles([repo.Full("Lib/Calc.cs")], WaitForLoad: true) { Session = "claude:a" });
+        await engine.SendAsync(new EngineRequest.CheckFiles([repo.Full("Lib/Greeting.cs")], WaitForLoad: true) { Session = "claude:a/w1" });
+
+        // The subagent is still running, so the parent's stop leaves its error to it.
+        var parentFirst = await engine.SendAsync(new EngineRequest.CheckChanges(WaitForLoad: true) { Session = "claude:a", IsStopping = true });
+        Assert.DoesNotContain(Assert.IsType<EngineResponse.CheckAnswered>(parentFirst).Report.Errors, e => e.Error.Message.Contains("'Greet'", StringComparison.Ordinal));
+
+        // The subagent's own stop is answered with its own error, and marks it stopped.
+        var subagent = await engine.SendAsync(new EngineRequest.CheckChanges(WaitForLoad: true) { Session = "claude:a/w1", IsStopping = true });
+        var own = Assert.IsType<EngineResponse.CheckAnswered>(subagent).Report;
+        Assert.Contains(own.Errors, e => e.Error.Message.Contains("'Greet'", StringComparison.Ordinal));
+        Assert.DoesNotContain(own.Errors, e => e.Error.Message.Contains("'Add'", StringComparison.Ordinal));
+
+        var parentAfter = await engine.SendAsync(new EngineRequest.CheckChanges(WaitForLoad: true) { Session = "claude:a", IsStopping = true });
+        var after = Assert.IsType<EngineResponse.CheckAnswered>(parentAfter).Report;
+        Assert.Contains(after.Errors, e => e.Error.Message.Contains("'Greet'", StringComparison.Ordinal));
+        Assert.Equal(0, after.LeftToOtherSessions);
+        Assert.Contains("\tclaude:a/w1", File.ReadAllLines(Path.Combine(repo.Root.StateDirectory, "sessions.tsv")));
+    }
+
+    [Fact]
+    public async Task A_test_plan_for_a_session_leaves_out_the_files_only_other_sessions_wrote()
+    {
+        using var repo = FixtureRepo.CreateStandard();
+        await using var engine = await InProcessRequestRouter.StartAsync(repo);
+        repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
+        repo.Replace("Lib/Formatter.cs", "value.ToString(", "(value + 0).ToString(");
+        await engine.SendAsync(new EngineRequest.CheckFiles([repo.Full("Lib/Calc.cs")], WaitForLoad: true) { Session = "claude:a" });
+        await engine.SendAsync(new EngineRequest.CheckFiles([repo.Full("Lib/Formatter.cs")], WaitForLoad: true) { Session = "claude:b" });
+
+        var answer = await engine.SendAsync(new EngineRequest.PlanAffectedTests { Session = "claude:a" });
+
+        var plan = Assert.IsType<EngineResponse.PlanAnswered>(answer).Plan;
+        Assert.Equal(["Lib.Tests"], plan.Runs.Select(r => r.Name).Distinct());
+        Assert.Contains("left out 1 changed file(s) only other sessions wrote", plan.Summary, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task A_session_id_that_cannot_be_recorded_is_answered_as_no_session()
     {
         using var repo = FixtureRepo.CreateStandard();

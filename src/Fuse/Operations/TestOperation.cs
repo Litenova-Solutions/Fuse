@@ -15,36 +15,47 @@ internal static class TestOperation
     private const int MaxFailuresShown = 10;
     private const int MaxNamesShown = 100;
 
-    public static async Task<OperationResult> RunAsync(RepoRoot root, string workingDirectory, IReadOnlyList<string> arguments, bool all, CancellationToken cancellationToken)
-    {
-        // Held from before the plan request until the last child has exited: the plan makes the engine mirror and emit into
-        // the shadow folder, and the runs below write build output, so no other build or test in this repository may run in between.
-        using var buildLock = BuildLock.AcquireForClient(root);
-        return await RunLockedAsync(root, workingDirectory, arguments, all, cancellationToken).ConfigureAwait(false);
-    }
-
-    private static async Task<OperationResult> RunLockedAsync(RepoRoot root, string workingDirectory, IReadOnlyList<string> arguments, bool all, CancellationToken cancellationToken)
+    /// <param name="session">
+    ///     The session the run is for, as its harness identifies it, or null. With one, the affected tests leave out the
+    ///     changes only other sessions wrote. The pre-shell hook passes it to <c>fuse test</c>.
+    /// </param>
+    public static async Task<OperationResult> RunAsync(RepoRoot root, string workingDirectory, IReadOnlyList<string> arguments, bool all, CancellationToken cancellationToken, string? session = null)
     {
         var started = Environment.TickCount64;
         if (arguments.Count > 0)
         {
+            // dotnet test with the caller's arguments builds with MSBuild, so it holds the lock until it exits.
+            using var argumentsLock = BuildLock.AcquireForClient(root);
             // On Microsoft.Testing.Platform the arguments go to the test application, which rejects VSTest's logger options.
             var testingPlatform = GlobalJson.UsesTestingPlatform(workingDirectory, root.Path);
-            var (outcome, process) = await RunDotnetTestAsync(root, workingDirectory, [.. arguments], cancellationToken, testingPlatform).ConfigureAwait(false);
+            var (outcome, process, log) = await RunDotnetTestAsync(root, workingDirectory, [.. arguments], cancellationToken, testingPlatform).ConfigureAwait(false);
             const string summary = "ran the tests your dotnet test arguments name";
             return outcome is null
-                ? WithoutResults(process, root, ArgumentsRun, summary, Seconds(started))
+                ? WithoutResults(process, root, ArgumentsRun, summary, Seconds(started), log)
                 : Render(outcome, summary, Seconds(started));
         }
 
-        EngineRequest request = all ? new EngineRequest.PlanAllTests() : new EngineRequest.PlanAffectedTests();
-        var response = await EngineClient.SendAsync(root, request, TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
-        if (response is not EngineResponse.PlanAnswered answered)
-            return OperationResult.Unanswered(response, "test plan");
-        var plan = answered.Plan;
-        if (plan.Runs.Length == 0)
-            return new OperationResult(Outcome.Clean, $"fuse: {plan.Summary}");
-        return await RunPlanAsync(root, plan, started, cancellationToken).ConfigureAwait(false);
+        // Held from before the plan request: preparing the plan makes the engine mirror and emit into the copies the runs
+        // start from, which no other build or test in this repository may do at the same time. RunPlanAsync gives it up
+        // once its runs hold their copies.
+        var buildLock = BuildLock.AcquireForClient(root);
+        try
+        {
+            EngineRequest request = all ? new EngineRequest.PlanAllTests() : new EngineRequest.PlanAffectedTests { Session = session };
+            var response = await EngineClient.SendAsync(root, request, TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
+            if (response is not EngineResponse.PlanAnswered answered)
+                return OperationResult.Unanswered(response, "test plan");
+            var plan = answered.Plan;
+            if (plan.Runs.Length == 0)
+                return new OperationResult(Outcome.Clean, $"fuse: {plan.Summary}");
+            var held = buildLock;
+            buildLock = null;
+            return await RunPlanAsync(root, plan, started, cancellationToken, held).ConfigureAwait(false);
+        }
+        finally
+        {
+            buildLock?.Dispose();
+        }
     }
 
     /// <summary>Runs every run of <paramref name="plan"/> and answers for all of them together.</summary>
@@ -52,12 +63,59 @@ internal static class TestOperation
     /// <param name="plan">The engine's plan, with at least one run.</param>
     /// <param name="started">When the operation started, in <see cref="Environment.TickCount64"/> milliseconds, for the times the answer prints.</param>
     /// <param name="cancellationToken">Kills the running <c>dotnet test</c> processes.</param>
-    internal static async Task<OperationResult> RunPlanAsync(RepoRoot root, TestPlan plan, long started, CancellationToken cancellationToken)
+    /// <param name="held">
+    ///     The build lock the caller took before it asked for the plan, which this call owns and releases, or null when
+    ///     the caller holds none.
+    /// </param>
+    /// <remarks>
+    ///     Shadow runs write no build output: each holds the copy it runs from (<see cref="LocalState.HoldTestCopy"/>),
+    ///     and the build lock is released while they run, so another client's build or test plan does not wait for them.
+    ///     MSBuild runs share obj and bin folders across projects, so they run one after another, holding the lock.
+    /// </remarks>
+    internal static async Task<OperationResult> RunPlanAsync(RepoRoot root, TestPlan plan, long started, CancellationToken cancellationToken, BuildLock? held = null)
     {
-        // Shadow runs touch no build output, so they run in parallel. MSBuild runs share obj and bin folders across
-        // projects, so they run one after another.
+        var buildLock = held;
+        var copies = new List<IDisposable>();
+        try
+        {
+            return await RunPlanHoldingAsync(root, plan, started, copies, () =>
+            {
+                buildLock?.Dispose();
+                buildLock = null;
+            }, () => buildLock ??= BuildLock.AcquireForClient(root), cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            foreach (var copy in copies)
+                copy.Dispose();
+            buildLock?.Dispose();
+        }
+    }
+
+    private static async Task<OperationResult> RunPlanHoldingAsync(
+        RepoRoot root, TestPlan plan, long started, List<IDisposable> copies, Action releaseLock, Func<BuildLock> takeLock, CancellationToken cancellationToken)
+    {
         var groups = plan.Runs.GroupBy(r => root.PathOf(r.Project)).ToList();
         var shadowGroups = groups.Where(g => g.All(r => r.Mode is TestRunMode.Shadow && !r.UsesTestingPlatform)).ToList();
+        if (shadowGroups.Count > 0)
+        {
+            // Every copy is held before the lock goes, so no plan prepared after it writes a copy these runs start from.
+            foreach (var run in shadowGroups.SelectMany(g => g))
+            {
+                var folder = Path.GetDirectoryName(((TestRunMode.Shadow)run.Mode).Assembly)!;
+                try
+                {
+                    copies.Add(LocalState.HoldTestCopy(folder));
+                }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+                {
+                    // A copy that cannot be held still runs; only a later plan could change it under the run.
+                }
+            }
+
+            releaseLock();
+        }
+
         var outcomes = new System.Collections.Concurrent.ConcurrentDictionary<RepoPath, TrxResults>();
         await Parallel.ForEachAsync(
             shadowGroups,
@@ -87,8 +145,10 @@ internal static class TestOperation
                 continue;
             }
 
+            // A run with MSBuild writes build output, so it waits for the build lock.
+            takeLock();
             var run = group.First();
-            var (outcome, process) = run.UsesTestingPlatform
+            var (outcome, process, log) = run.UsesTestingPlatform
                 ? await RunDotnetTestAsync(root, root.Path, ["--project", run.Project, "--no-restore"], cancellationToken, testingPlatform: true).ConfigureAwait(false)
                 : await RunDotnetTestAsync(root, root.Path, [run.Project, "--no-restore"], cancellationToken, run: run).ConfigureAwait(false);
             if (outcome is not null)
@@ -97,7 +157,7 @@ internal static class TestOperation
                 continue;
             }
 
-            var answer = WithoutResults(process, root, $"the test run of {run.Name}", plan.Summary, Seconds(started));
+            var answer = WithoutResults(process, root, $"the test run of {run.Name}", plan.Summary, Seconds(started), log);
             if (answer.Outcome == Outcome.Clean)
                 passedWithoutResults ??= answer;
             else
@@ -133,7 +193,8 @@ internal static class TestOperation
     /// </summary>
     /// <param name="assembly">True when <paramref name="arguments"/> name a test assembly: <c>dotnet test</c> then hands them to VSTest, which rejects MSBuild switches.</param>
     /// <param name="run">The planned VSTest run, whose filter and project runsettings go into a runsettings file; null for none.</param>
-    private static async Task<(TrxResults? Outcome, ProcessResult? Process)> RunDotnetTestAsync(
+    /// <returns>The results, or the process without them, and the build's file log (<see cref="BuildLog"/>) for a VSTest run that builds with MSBuild, or empty.</returns>
+    private static async Task<(TrxResults? Outcome, ProcessResult? Process, string Log)> RunDotnetTestAsync(
         RepoRoot root, string workingDirectory, string[] arguments, CancellationToken cancellationToken, bool testingPlatform = false, bool assembly = false, TestRun? run = null)
     {
         var results = Path.Combine(root.StateDirectory, "results", Guid.NewGuid().ToString("N")[..8]);
@@ -144,16 +205,22 @@ internal static class TestOperation
                 : assembly
                     ? ["--logger", "trx;LogFilePrefix=fuse", "--results-directory", results]
                     : ["--logger", "trx;LogFilePrefix=fuse", "--results-directory", results, "-nologo", "-tl:off"];
-            var result = await ProcessRunner.RunAsync("dotnet", ["test", .. arguments, .. Settings(run, results, assembly), .. reporting], workingDirectory, cancellationToken).ConfigureAwait(false);
+            string[] command = ["test", .. arguments, .. Settings(run, results, assembly), .. reporting];
+            // A VSTest run on a project builds it with MSBuild first, so its file log can say what a failed command printed.
+            // Arguments that name an assembly go to VSTest, which rejects MSBuild's switches.
+            var builds = !testingPlatform && !assembly && !arguments.Any(a => a.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) || a.EndsWith(".exe", StringComparison.OrdinalIgnoreCase));
+            var (result, log) = builds
+                ? await BuildOperation.RunLoggedAsync(command, workingDirectory, results, cancellationToken).ConfigureAwait(false)
+                : (await ProcessRunner.RunAsync("dotnet", command, workingDirectory, cancellationToken).ConfigureAwait(false), "");
             var outcome = TrxReader.ReadDirectory(results, root.Path) ?? (testingPlatform ? TestingPlatformOutput.Read(result.Output, root.Path) : null);
             // Counts that say nothing failed from a run that exited with a code other than 0 do not explain its exit code.
             if (testingPlatform && outcome is { Failed: 0 } && result.ExitCode != 0)
                 outcome = null;
             if (outcome is null && testingPlatform)
-                return (null, result.ExitCode == 0 ? null : result);
+                return (null, result.ExitCode == 0 ? null : result, log);
             if (outcome is null)
-                return (null, result);
-            return (outcome, null);
+                return (null, result, log);
+            return (outcome, null, log);
         }
         finally
         {
@@ -199,7 +266,8 @@ internal static class TestOperation
     /// <param name="run">What ran, as the answer names it: "the test run of" a project, or <see cref="ArgumentsRun"/> for the user's arguments.</param>
     /// <param name="summary">What ran and why, for a run that passed.</param>
     /// <param name="seconds">How long the operation has taken.</param>
-    internal static OperationResult WithoutResults(ProcessResult? result, RepoRoot root, string run, string summary, double seconds)
+    /// <param name="log">The build's file log, or empty, so a failed test build shows what a failed command printed.</param>
+    internal static OperationResult WithoutResults(ProcessResult? result, RepoRoot root, string run, string summary, double seconds, string log = "")
     {
         // A Microsoft.Testing.Platform run that passed without printing a run summary, so there are no counts to show.
         if (result is null)
@@ -217,7 +285,7 @@ internal static class TestOperation
             return new OperationResult(Outcome.ProblemsFound, tail.Length == 0 ? line : $"{tail}\n{line}");
         }
 
-        var build = BuildOperation.Render(result, root.Path, seconds, "test build");
+        var build = BuildOperation.Render(result, root.Path, seconds, "test build", log);
         return build with { Outcome = result.ExitCode == 0 ? Outcome.Clean : Outcome.ProblemsFound };
     }
 

@@ -12,7 +12,11 @@ internal sealed class InProcessEngine : IAsyncDisposable
     private InProcessEngine(FixtureRepo repo)
     {
         Repo = repo;
-        Workspace = new RepoWorkspace(repo.Root, _ => { });
+        Workspace = new RepoWorkspace(repo.Root, line =>
+        {
+            lock (Log)
+                Log.Add(line);
+        });
         Sessions = new SessionEdits(repo.Root, null);
         Checker = new Checker(Workspace, Sessions);
         Planner = new TestPlanner(Workspace);
@@ -20,6 +24,9 @@ internal sealed class InProcessEngine : IAsyncDisposable
     }
 
     public FixtureRepo Repo { get; }
+
+    /// <summary>The lines the engine log would hold, in order.</summary>
+    public List<string> Log { get; } = [];
 
     public RepoWorkspace Workspace { get; }
 
@@ -74,6 +81,13 @@ internal sealed class InProcessEngine : IAsyncDisposable
     {
         await Task.Delay(400, TestContext.Current.CancellationToken);
         return await Checker.CheckAsync(new CheckScope.AllChanges(), PhaseTimes.None, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Checks every change since HEAD answered to <paramref name="session"/>, the way the stop hook of a harness that names the session does.</summary>
+    public async Task<CheckResult> CheckAllAsSessionAsync(string session)
+    {
+        await Task.Delay(400, TestContext.Current.CancellationToken);
+        return await Checker.CheckAsync(new CheckScope.AllChanges(), session, PhaseTimes.None, TestContext.Current.CancellationToken);
     }
 
     /// <summary>The scope of the given repository-relative files, as the engine has it once it has read a hook's request.</summary>

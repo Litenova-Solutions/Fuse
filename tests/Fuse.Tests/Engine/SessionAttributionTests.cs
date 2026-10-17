@@ -169,6 +169,48 @@ public class SessionAttributionTests
         Assert.Equal(0, a.LeftToOtherSessions);
     }
 
+    [Fact]
+    public async Task A_stop_check_answered_to_a_session_leaves_out_the_errors_only_other_sessions_cause()
+    {
+        await using var engine = await InProcessEngine.StartAsync();
+        await BreakAddAndGreetAsync(engine);
+
+        var a = await engine.CheckAllAsSessionAsync("A");
+
+        Assert.Equal(["App/Program.cs", "Lib.Tests/CalcTests.cs"], Paths(a, AddMissing));
+        Assert.Empty(Paths(a, GreetMissing));
+        Assert.DoesNotContain(a.Errors, e => e.Error is { Path: "Lib/Greeting.cs", Id: "CS0535" });
+        Assert.Equal(3, a.LeftToOtherSessions);
+    }
+
+    [Fact]
+    public async Task A_subagents_errors_count_as_its_parents_once_the_subagent_has_stopped()
+    {
+        await using var engine = await InProcessEngine.StartAsync();
+        engine.Repo.Replace("Lib/Greeting.cs", "string Greet(string name);", "string Hail(string name);");
+        engine.Repo.Replace("Lib/Calc.cs", "public int Add(", "public int Plus(");
+        await engine.SyncAsync("Lib/Greeting.cs", "Lib/Calc.cs");
+        engine.Sessions.Record("A", [engine.Repo.PathOf("Lib/Calc.cs")]);
+        engine.Sessions.Record("A/worker", [engine.Repo.PathOf("Lib/Greeting.cs")]);
+
+        // While the subagent runs, its half-written work is its own.
+        var running = await engine.CheckAllAsSessionAsync("A");
+        Assert.Empty(Paths(running, GreetMissing));
+        Assert.Equal(["App/Program.cs", "Lib.Tests/CalcTests.cs"], Paths(running, AddMissing));
+
+        // Once it has stopped, it writes no more, and what it left is its parent's to fix.
+        engine.Sessions.MarkStopped("A/worker");
+        var stopped = await engine.CheckAllAsSessionAsync("A");
+        Assert.Equal(["App/Program.cs", "Lib.Tests/GreeterTests.cs"], Paths(stopped, GreetMissing));
+        Assert.Equal(0, stopped.LeftToOtherSessions);
+
+        // A session with a longer id that only starts with the parent's is not its subagent.
+        engine.Sessions.MarkStopped("AB");
+        Assert.False(engine.Sessions.IsOwnEdit("AB", "A"));
+        Assert.True(engine.Sessions.IsOwnEdit("A/worker", "A"));
+        Assert.False(engine.Sessions.IsOwnEdit("A", "A/worker"));
+    }
+
     /// <summary>
     ///     A renames <c>Calc.Add</c>; B renames the interface's <c>Greet</c>. <c>App/Program.cs</c> calls both. Both files
     ///     are synced, as each session's own post-edit hook would have synced them, so a check that names only one still

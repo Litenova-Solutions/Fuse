@@ -2,6 +2,38 @@
 
 The list of changes in each release, which the release workflow publishes as the release notes. The [changelog page](https://fuse.codes/docs/changelog) explains each release with its upgrade steps and says which versions are supported. Each release groups its changes as Added, Changed, Removed, Fixed, Security and Documentation, listing only the groups it has. Versions before 5.0.0 are deprecated.
 
+## 5.4.0
+
+Compared with 5.3.0. Several agents in one working tree now get in each other's way less: the stop hook holds each agent to its own errors, subagents can run their own affected tests at the same time, and a build that fails or runs slowly says why.
+
+Update with `dotnet tool update -g Fuse`. If you use Claude Code, run `fuse init` again so a subagent's stop runs Fuse's stop hook too.
+
+### Added
+
+- In Claude Code, `fuse init` registers the stop hook for `SubagentStop`, so a subagent is sent back for the errors its own edits cause before it hands its work back. [Connect your agent](https://fuse.codes/docs/harnesses#claude-code) shows the settings.
+- `fuse test` run through the pre-shell hook runs the tests the agent's own session affects, and its summary says how many changed files only other sessions wrote. [How it works](https://fuse.codes/docs/how-it-works#test-selection) describes it.
+- Under an `error MSB3073`, where a command a build target ran exited with a code other than 0, `fuse build` and a failed test build print the last lines the command printed, such as a code generator's exception. Previously only the exit code was shown. [Commands](https://fuse.codes/docs/commands#fuse-build) shows the output.
+- A build of 10 seconds or more ends its summary line with its slowest tasks and projects. [Troubleshooting](https://fuse.codes/docs/troubleshooting#a-slow-build) says how to read it.
+- An error about a type or member that a file the build generates declares, such as a generated API client, names that file and says to run `fuse build` when it is generated from changed code. [How it works](https://fuse.codes/docs/how-it-works#check) describes it.
+- The latency suite's multi-agent scenarios add `stops`, repeated checks of every change, and `tests`, two `fuse test` clients at once. [Evals](https://fuse.codes/docs/evals#multi-agent-scenario) describes the fields.
+
+### Changed
+
+- The stop hook blocks only on the errors the stopping session's edits cause, alone or with other sessions' edits, and on those in changes no session is credited with; it counts the rest. A subagent's edits count as its parent's once the subagent has stopped. Previously the stop hook blocked on every error in the working tree. [How it works](https://fuse.codes/docs/how-it-works#check) describes it.
+- Test runs without MSBuild from several agents run at the same time, each from its own copy, and `fuse test` gives up the build lock while they run. Previously every `fuse test` waited for the one before it. [How it works](https://fuse.codes/docs/how-it-works#without-msbuild) describes it, and [Limits](https://fuse.codes/docs/limits#test-runs-without-msbuild) lists the integration tests that can collide.
+- A check keeps a file's errors from an earlier check when nothing it depends on changed since, so a stop hook that checks many files again after a small fix takes the time of that fix. [How it works](https://fuse.codes/docs/how-it-works#check) describes it.
+- The engine runs below normal priority, so a build or test run that competes with a check for the processor gets it first. [How it works](https://fuse.codes/docs/how-it-works#process-model) describes it.
+
+### Fixed
+
+- After a build writes a generated file again, the next check reads it. Previously the engine kept the file as it was when its project loaded, and reported errors the build had already fixed. [How it works](https://fuse.codes/docs/how-it-works#projects-and-compilations) describes it.
+- When another agent moves a source file while `fuse build` runs, and the build fails because the file is gone, the build runs once more and says so. [Commands](https://fuse.codes/docs/commands#fuse-build) describes it.
+- A test run without MSBuild no longer holds files in the repository's `bin` folder open, so a build that runs meanwhile does not fail on them. [How it works](https://fuse.codes/docs/how-it-works#without-msbuild) describes it.
+
+### Documentation
+
+- How it works, Limits, Commands, Connect your agent, Troubleshooting (new sections A slow build, A command in the build fails and An error about generated code), Architecture, Evals and the FAQ describe sessions at the stop hook, concurrent test runs, generated files and the build's file log.
+
 ## 5.3.0
 
 Compared with 5.2.4. A repository whose analyzers read the whole project no longer makes every check slow: the post-edit hook answers in seconds, checks of many files take a fraction of the time and memory, and a slow analyzer can no longer leave a check with no answer. The engine also gives memory back once idle and exits sooner.

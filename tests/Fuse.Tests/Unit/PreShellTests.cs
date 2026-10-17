@@ -42,6 +42,18 @@ public class PreShellTests
     }
 
     [Fact]
+    public void A_subagents_fuse_test_names_its_session()
+    {
+        var payload = HookPayload.Parse(JsonSerializer.Serialize(new { session_id = "s1", agent_id = "w2", tool_input = new { command = "dotnet test" } }));
+
+        var answer = HookCommand.PreShell(SupportedHarnesses.Find("claude")!, payload);
+
+        Assert.Equal(
+            """{"hookSpecificOutput":{"hookEventName":"PreToolUse","updatedInput":{"command":"fuse test --session claude:s1/w2"}}}""",
+            answer.StandardOutput);
+    }
+
+    [Fact]
     public void A_command_without_dotnet_build_or_test_gets_no_answer()
     {
         Assert.All(SupportedHarnesses.All, h => Assert.Equal(HookAnswer.None, PreShell(h.Name, "git status")));

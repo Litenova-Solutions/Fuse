@@ -38,6 +38,7 @@ internal static class EngineServer
 
         var log = new EngineLog(root.StateDirectory);
         log.Write($"engine {EngineVersion.Build} started for {root.Path} (pid {Environment.ProcessId})");
+        LowerPriority(log);
         using var copy = HoldEngineCopy(log);
         _ = Task.Run(() => CleanUpLocalState(root, log));
         using var shutdown = new CancellationTokenSource();
@@ -85,6 +86,24 @@ internal static class EngineServer
         }
 
         return 0;
+    }
+
+    /// <summary>
+    ///     Runs the engine below normal priority, so a build or test run that competes with a check for the processor gets
+    ///     it first: a check binds on every core, and several agents' builds in one repository slowed while it did. With
+    ///     nothing else running, the engine runs as fast as before.
+    /// </summary>
+    private static void LowerPriority(EngineLog log)
+    {
+        try
+        {
+            using var process = System.Diagnostics.Process.GetCurrentProcess();
+            process.PriorityClass = System.Diagnostics.ProcessPriorityClass.BelowNormal;
+        }
+        catch (Exception e) when (e is System.ComponentModel.Win32Exception or InvalidOperationException or PlatformNotSupportedException)
+        {
+            log.Write($"engine priority unchanged: {e.Message}");
+        }
     }
 
     /// <summary>

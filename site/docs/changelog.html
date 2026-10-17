@@ -150,7 +150,7 @@
     <pre data-label="Shell"><code>dotnet tool update -g Fuse</code></pre>
 
     <h2 id="v5-4-0">5.4.0 <a class="anchor" href="#v5-4-0" aria-label="Link to this section">#</a></h2>
-    <p>Compared with 5.3.0.</p>
+    <p>Released 2026-10-17. Compared with 5.3.0.</p>
     <p>Several agents in one working tree now get in each other's way less: the stop hook holds each agent to its own errors, subagents can run their own affected tests at the same time, and a build that fails or runs slowly says why.</p>
     <h3 id="upgrading-to-5-4-0">Upgrading to 5.4.0 <a class="anchor" href="#upgrading-to-5-4-0" aria-label="Link to this section">#</a></h3>
     <p>Update the tool with <code>dotnet tool update -g Fuse</code>. If you use Claude Code, run <code>fuse init</code> again, so <code>.claude/settings.json</code> also runs the stop hook for <code>SubagentStop</code>; until you do, a subagent's stop is not checked, and its edits never count as its parent's. The other harnesses need nothing, and the pre-shell hook passes the session to <code>fuse test</code> without running <code>fuse init</code> again.</p>

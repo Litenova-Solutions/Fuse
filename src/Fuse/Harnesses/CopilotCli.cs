@@ -30,6 +30,9 @@ internal sealed class CopilotCli : Harness
         return SettingsFile.Write(root, path, settings);
     }
 
+    /// <summary>The file belongs to Fuse, so it is deleted whole.</summary>
+    public override WrittenFile? RemoveHooks(RepoRoot root) => SettingsFile.Delete(root, Path.Combine(root.Path, ".github", "hooks", "fuse.json"));
+
     /// <summary>Only a pre-shell hook the user registered by hand reaches this, and it gets no answer.</summary>
     public override HookAnswer ReplaceShellCommand(JsonElement? toolInput, string command) => HookAnswer.None;
 

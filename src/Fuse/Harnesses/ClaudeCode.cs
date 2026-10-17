@@ -49,6 +49,23 @@ internal sealed class ClaudeCode : Harness
         return SettingsFile.Write(root, path, settings);
     }
 
+    /// <summary>Also removes the <c>fuse build</c> and <c>fuse test</c> permissions, which name commands that are gone with Fuse.</summary>
+    public override WrittenFile? RemoveHooks(RepoRoot root) =>
+        RemoveFromSettings(root, Path.Combine(".claude", "settings.json"), settings =>
+        {
+            var removed = RemoveNestedHooks(settings);
+            if (settings["permissions"]?["allow"] is JsonArray allow)
+            {
+                foreach (var rule in allow.Where(r => r is JsonValue value && value.TryGetValue<string>(out var text) && text is "Bash(fuse build:*)" or "Bash(fuse test:*)").ToList())
+                {
+                    allow.Remove(rule);
+                    removed = true;
+                }
+            }
+
+            return removed;
+        });
+
     /// <summary>
     ///     <c>updatedInput</c> replaces the whole tool input, so every field the harness sent is carried over. The answer
     ///     makes no permission decision: the rewritten command goes through the user's normal permission rules.

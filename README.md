@@ -101,6 +101,7 @@ fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations chan
 | Command | What it does |
 | --- | --- |
 | `fuse init [--instructions]` | Registers Fuse's hooks with the harnesses this repository uses; `--instructions` also adds a Fuse section to `AGENTS.md` |
+| `fuse uninit` | Removes what `fuse init` wrote, keeping every other entry, then stops this repository's engine and deletes its state |
 | `fuse check [files...]` | Reports the errors your changes caused since the last commit, in every project |
 | `fuse test [args...]` | Runs the tests affected by your changes |
 | `fuse test --all` | Runs every test |

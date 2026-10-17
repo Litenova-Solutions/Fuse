@@ -122,6 +122,7 @@
         <li><a href="#overview">Overview</a></li>
         <li><a href="#exit-codes">Exit codes</a></li>
         <li><a href="#fuse-init">fuse init</a></li>
+        <li><a href="#fuse-uninit">fuse uninit</a></li>
         <li><a href="#fuse-check">fuse check</a></li>
         <li><a href="#fuse-test">fuse test</a></li>
         <li><a href="#fuse-build">fuse build</a></li>
@@ -134,13 +135,14 @@
     </nav>
 
     <h2 id="overview">Overview <a class="anchor" href="#overview" aria-label="Link to this section">#</a></h2>
-    <p><code>fuse</code> is one executable. <code>check</code>, <code>test</code> and <code>build</code> are its three operations; <code>init</code> sets a repository up and <code>stop</code> stops its engine. <code>hook</code> runs them for a harness and <code>mcp</code> serves them to an MCP host; both give the same text the command line prints, so what you see in a terminal is what the agent reads.</p>
+    <p><code>fuse</code> is one executable. <code>check</code>, <code>test</code> and <code>build</code> are its three operations; <code>init</code> sets a repository up, <code>uninit</code> takes Fuse out of it again, and <code>stop</code> stops its engine. <code>hook</code> runs them for a harness and <code>mcp</code> serves them to an MCP host; both give the same text the command line prints, so what you see in a terminal is what the agent reads.</p>
     <p>Every command works on the git repository that contains the current directory (a hook, on the repository of the files its payload names), compares the working tree (the files on disk) with HEAD (the commit you have checked out), and reads no configuration.</p>
     <pre data-label="Output"><code>$ fuse help
 fuse - faster .NET build and test loop for AI coding agents
 
   fuse init [--instructions]  register Fuse's hooks with the agent harnesses this repository uses
                                     (--instructions: also add a Fuse section to AGENTS.md)
+  fuse uninit               remove what fuse init wrote, stop this repository's engine and delete its state
   fuse check [files...]     errors the working tree has that HEAD does not, across dependent projects
   fuse test [args...]       run the tests affected by your changes (with args: the tests those dotnet test arguments name)
   fuse test --all           run every test
@@ -178,6 +180,17 @@ wrote AGENTS.md
 wrote CLAUDE.md
 fuse: hooks registered; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors</code></pre>
     <p>A file whose section is already current prints <code>unchanged</code>, as a settings file does. Any other argument prints <code>usage: fuse init [--instructions]</code> and exits with 2.</p>
+
+    <h2 id="fuse-uninit">fuse uninit <a class="anchor" href="#fuse-uninit" aria-label="Link to this section">#</a></h2>
+    <p>Removes what <code>fuse init</code> and <code>fuse init --instructions</code> wrote, for every harness whether the repository still uses it or not, then stops the repository's engine and deletes its state directory (<a href="troubleshooting.html#where-the-logs-are">where it is</a>). In a shared settings file it takes out only the handlers that run <code>fuse hook</code>, and in Claude Code's settings also the <code>Bash(fuse build:*)</code> and <code>Bash(fuse test:*)</code> permissions; every other entry stays, and a file left with nothing in it is deleted. The files that belong to Fuse are deleted whole: <code>.github/hooks/fuse.json</code>, <code>.opencode/plugins/fuse.js</code> and the Muse Code bundle <code>.muse/plugins/fuse</code>. It also takes the <code>fuse</code> server out of <code>.vscode/mcp.json</code>, the <code>.fuse/</code> line out of <code>.gitignore</code>, and the section between <code>&lt;!-- fuse:begin --&gt;</code> and <code>&lt;!-- fuse:end --&gt;</code> out of <code>AGENTS.md</code>, <code>CLAUDE.md</code> and <code>GEMINI.md</code>, deleting a file that held nothing else. A folder the deletions leave empty is deleted too.</p>
+    <pre class="out" data-label="Output"><code>$ fuse uninit
+wrote .claude/settings.json
+deleted .gitignore
+deleted AGENTS.md
+fuse: stopped the engine for /home/you/shop
+fuse: deleted the engine's state in /home/you/.local/share/fuse/repos/3f2a9c1d7e5b8a60
+fuse: removed Fuse from this repository; `dotnet tool uninstall -g Fuse` removes the tool itself</code></pre>
+    <p>Muse Code keeps its own copy of a plugin it installed, so after removing the bundle the command also prints <code>fuse: Muse Code keeps the plugin it installed: run `muse plugins remove fuse` once</code>. In a repository with nothing <code>fuse init</code> wrote, it changes no file and prints <code>fuse: this repository has nothing fuse init wrote</code>. It exits with 2 outside a git repository, and when a settings file it has to change is not valid JSON or cannot be written, with the same messages as <code>fuse init</code>. Any argument prints <code>usage: fuse uninit</code> and exits with 2. The fuse tool stays installed; <code>dotnet tool uninstall -g Fuse</code> removes it.</p>
 
     <h2 id="fuse-check">fuse check <a class="anchor" href="#fuse-check" aria-label="Link to this section">#</a></h2>
     <pre data-label="Usage"><code>fuse check [files...]</code></pre>

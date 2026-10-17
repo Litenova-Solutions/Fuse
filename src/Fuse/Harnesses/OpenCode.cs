@@ -25,6 +25,9 @@ internal sealed class OpenCode : Harness
         return SettingsFile.WriteText(root, path, reader.ReadToEnd());
     }
 
+    /// <summary>The plugin belongs to Fuse, so it is deleted whole.</summary>
+    public override WrittenFile? RemoveHooks(RepoRoot root) => SettingsFile.Delete(root, Path.Combine(root.Path, ".opencode", "plugins", "fuse.js"));
+
     /// <summary>The plugin sets the command on the tool's arguments itself.</summary>
     public override HookAnswer ReplaceShellCommand(JsonElement? toolInput, string command) => HookAnswer.Json(new JsonObject { ["command"] = command });
 

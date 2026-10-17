@@ -4,9 +4,13 @@ The list of changes in each release, which the release workflow publishes as the
 
 ## 5.5.0
 
-Compared with 5.4.0. The stop hook answers within its time on repositories with slow analyzers, instead of being ended by the harness with no answer, and a repeated check of unchanged code reuses the analyzers' work.
+Compared with 5.4.0. The stop hook answers within its time on repositories with slow analyzers, instead of being ended by the harness with no answer, and a repeated check of unchanged code reuses the analyzers' work. `fuse uninit` takes Fuse out of a repository again.
 
 Update with `dotnet tool update -g Fuse`. To change the Fuse section `fuse init --instructions` wrote into `AGENTS.md`, `CLAUDE.md` or `GEMINI.md`, run `fuse init --instructions` again.
+
+### Added
+
+- `fuse uninit` removes what `fuse init` and `fuse init --instructions` wrote, for every harness, keeping every entry that is not Fuse's, then stops the repository's engine and deletes its state. [Commands](https://fuse.codes/docs/commands#fuse-uninit) lists what it removes.
 
 ### Changed
 
@@ -19,7 +23,7 @@ Update with `dotnet tool update -g Fuse`. To change the Fuse section `fuse init 
 
 ### Documentation
 
-- How it works, Limits, Troubleshooting, Commands, Messages, Subagents and parallel agents, Connect your agent, Architecture, the FAQ and the README describe the analyzer deadline at HEAD, the hook waits and the idle time.
+- How it works, Limits, Troubleshooting, Commands, Messages, Subagents and parallel agents, Connect your agent, Getting started, Architecture, the docs overview, the FAQ and the README describe the analyzer deadline at HEAD, the hook waits, the idle time and `fuse uninit`.
 
 ## 5.4.0
 

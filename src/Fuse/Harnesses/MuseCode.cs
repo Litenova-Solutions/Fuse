@@ -65,6 +65,12 @@ internal sealed class MuseCode : Harness
         return SettingsFile.Write(root, path, manifest);
     }
 
+    /// <summary>The bundle belongs to Fuse, so its folder is deleted whole; Muse keeps its installed copy until it is removed there (<see cref="RemovalStep"/>).</summary>
+    public override WrittenFile? RemoveHooks(RepoRoot root) => SettingsFile.DeleteFolder(root, Path.Combine(root.Path, BundleFolder));
+
+    /// <summary>What to run once after <c>fuse uninit</c>, so Muse drops the copy of the bundle it installed.</summary>
+    public override string? RemovalStep => "Muse Code keeps the plugin it installed: run `muse plugins remove fuse` once";
+
     private JsonObject Hook(string id, string museEvent, string hookEvent, int timeoutMs, string? status)
     {
         var hook = new JsonObject

@@ -83,4 +83,30 @@ internal static class InstructionsFile
 
         return SettingsFile.WriteText(root, path, content);
     }
+
+    /// <summary>The instruction files, relative to the root, that <c>fuse uninit</c> looks for the section in.</summary>
+    public static readonly IReadOnlyList<string> AllFiles = ["AGENTS.md", "CLAUDE.md", "GEMINI.md"];
+
+    /// <summary>
+    ///     Takes the section, markers included, out of <paramref name="relative"/>, with the blank lines <see cref="Write"/>
+    ///     put before it, and keeps the rest of the file. A file left with nothing but whitespace is deleted, as the one
+    ///     <see cref="Write"/> created. Returns the file, or null when it has no section.
+    /// </summary>
+    internal static WrittenFile? Remove(RepoRoot root, string relative)
+    {
+        var path = Path.Combine(root.Path, relative);
+        if (!File.Exists(path))
+            return null;
+        var existing = File.ReadAllText(path);
+        var start = existing.IndexOf(Begin, StringComparison.Ordinal);
+        var end = start < 0 ? -1 : existing.IndexOf(End, start, StringComparison.Ordinal);
+        if (start < 0 || end < 0)
+            return null;
+
+        var newline = existing.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
+        var before = existing[..start].TrimEnd('\r', '\n');
+        var after = existing[(end + End.Length)..].TrimStart('\r', '\n');
+        var content = before.Length == 0 ? after : after.Length == 0 ? before + newline : before + newline + newline + after;
+        return string.IsNullOrWhiteSpace(content) ? SettingsFile.Delete(root, path) : SettingsFile.WriteText(root, path, content);
+    }
 }

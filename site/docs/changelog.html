@@ -153,10 +153,15 @@
 
     <h2 id="v5-5-0">5.5.0 <a class="anchor" href="#v5-5-0" aria-label="Link to this section">#</a></h2>
     <p>Released 2026-10-17. Compared with 5.4.0.</p>
-    <p>The stop hook answers within its time on repositories with slow analyzers, instead of being ended by the harness with no answer, and a repeated check of unchanged code reuses the analyzers' work.</p>
+    <p>The stop hook answers within its time on repositories with slow analyzers, instead of being ended by the harness with no answer, and a repeated check of unchanged code reuses the analyzers' work. <code>fuse uninit</code> takes Fuse out of a repository again.</p>
     <h3 id="upgrading-to-5-5-0">Upgrading to 5.5.0 <a class="anchor" href="#upgrading-to-5-5-0" aria-label="Link to this section">#</a></h3>
     <p>Update the tool with <code>dotnet tool update -g Fuse</code>. The hook settings <code>fuse init</code> wrote need no change. If you ran <code>fuse init --instructions</code>, run it again to replace the Fuse section in <code>AGENTS.md</code>, <code>CLAUDE.md</code> and <code>GEMINI.md</code>; until you do, the old section tells agents to run <code>fuse check</code> before they finish, which repeats the stop hook's check.</p>
     <p>What behaves differently: on a repository whose analyzers are slow, a check can leave out analyzer errors in a file whose HEAD analyzers did not finish, and its summary counts that file among those whose analyzers did not finish in time; <code>fuse build</code> runs every analyzer. An engine stays up for 30 minutes without a request, so it keeps its memory longer; <code>fuse stop</code> gives it back at once (<a href="limits.html#the-engine">Limits</a>).</p>
+
+    <h3 id="v5-5-0-added">Added <a class="anchor" href="#v5-5-0-added" aria-label="Link to this section">#</a></h3>
+    <ul>
+      <li><code>fuse uninit</code> removes what <code>fuse init</code> and <code>fuse init --instructions</code> wrote, for every harness, keeping every entry that is not Fuse's, then stops the repository's engine and deletes its state. <a href="commands.html#fuse-uninit">Commands</a> lists what it removes.</li>
+    </ul>
 
     <h3 id="v5-5-0-changed">Changed <a class="anchor" href="#v5-5-0-changed" aria-label="Link to this section">#</a></h3>
     <ul>
@@ -170,7 +175,7 @@
 
     <h3 id="v5-5-0-documentation">Documentation <a class="anchor" href="#v5-5-0-documentation" aria-label="Link to this section">#</a></h3>
     <ul>
-      <li><a href="how-it-works.html#check">How it works</a>, <a href="limits.html">Limits</a>, <a href="troubleshooting.html#a-slow-analyzer">Troubleshooting</a>, <a href="commands.html">Commands</a>, <a href="messages.html#timeout">Messages</a>, <a href="parallel-agents.html">Subagents and parallel agents</a>, <a href="harnesses.html">Connect your agent</a>, <a href="architecture.html#vocabulary">Architecture</a>, the <a href="faq.html">FAQ</a> and the README describe the analyzer deadline at HEAD, the hook waits and the idle time.</li>
+      <li><a href="how-it-works.html#check">How it works</a>, <a href="limits.html">Limits</a>, <a href="troubleshooting.html#a-slow-analyzer">Troubleshooting</a>, <a href="commands.html">Commands</a>, <a href="messages.html#timeout">Messages</a>, <a href="parallel-agents.html">Subagents and parallel agents</a>, <a href="harnesses.html">Connect your agent</a>, <a href="getting-started.html">Getting started</a>, <a href="architecture.html#vocabulary">Architecture</a>, the <a href="index.html">docs overview</a>, the <a href="faq.html">FAQ</a> and the README describe the analyzer deadline at HEAD, the hook waits, the idle time and <code>fuse uninit</code>.</li>
     </ul>
 
     <h2 id="v5-4-0">5.4.0 <a class="anchor" href="#v5-4-0" aria-label="Link to this section">#</a></h2>

@@ -22,6 +22,8 @@ internal sealed class GeminiCli : Harness
         return SettingsFile.Write(root, path, settings);
     }
 
+    public override WrittenFile? RemoveHooks(RepoRoot root) => RemoveFromSettings(root, Path.Combine(".gemini", "settings.json"), RemoveNestedHooks);
+
     /// <summary>Gemini CLI merges <c>tool_input</c> over the model's arguments, so the answer carries only the command.</summary>
     public override HookAnswer ReplaceShellCommand(JsonElement? toolInput, string command) =>
         HookAnswer.Json(new JsonObject

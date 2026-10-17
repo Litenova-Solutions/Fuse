@@ -152,7 +152,7 @@
 
     <h2 id="what-fuse-costs">What Fuse costs <a class="anchor" href="#what-fuse-costs" aria-label="Link to this section">#</a></h2>
     <ul>
-      <li><strong>Memory.</strong> The engine keeps loaded projects in memory until it has been idle for 10 minutes: once idle, 339 MB on the 40-project Jellyfin and 1,019 MB on the 26-project Community Toolkit, and up to 1,763 MB while it checks, on runners with 16 GB of memory; the engine uses more on a machine with more memory (<a href="benchmarks.html">Benchmarks</a>). Each git worktree runs its own engine.</li>
+      <li><strong>Memory.</strong> The engine keeps loaded projects in memory until it has been idle for 30 minutes: once idle, 339 MB on the 40-project Jellyfin and 1,019 MB on the 26-project Community Toolkit, and up to 1,763 MB while it checks, on runners with 16 GB of memory; the engine uses more on a machine with more memory (<a href="benchmarks.html">Benchmarks</a>). Each git worktree runs its own engine.</li>
       <li><strong>A slow first check across projects.</strong> The first edit that affects other projects has to load them. On Jellyfin (40 projects) that took up to 131.4 s; the median signature edit took 86 ms.</li>
       <li><strong>One check at a time.</strong> Agents in the same repository wait for each other's checks.</li>
       <li><strong>Not a full build.</strong> Fuse checks C# only and picks tests by reading the code, so a few cases still need <code>fuse build</code> or <code>fuse test --all</code>. <a href="limits.html">Limits</a> lists them.</li>

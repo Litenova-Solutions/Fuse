@@ -25,6 +25,8 @@ internal sealed class Codex : Harness
         return SettingsFile.Write(root, path, settings);
     }
 
+    public override WrittenFile? RemoveHooks(RepoRoot root) => RemoveFromSettings(root, Path.Combine(".codex", "hooks.json"), RemoveNestedHooks);
+
     /// <summary>
     ///     Codex honours <c>updatedInput</c> only together with an allow decision, so this answer approves
     ///     <paramref name="command"/>; <see cref="ApprovesRewrittenCommand"/> keeps it to a command Fuse rewrote whole.

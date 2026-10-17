@@ -84,6 +84,8 @@ internal static class HookCommand
 
     private static async Task<HookAnswer> PostEditAsync(Harness harness, HookPayload payload, CancellationToken cancellationToken)
     {
+        if (!harness.WritesFiles(payload.ToolName))
+            return HookAnswer.None;
         var edited = payload.EditedFiles().Where(PathRules.IsSource).ToList();
         if (edited.Count == 0)
             return HookAnswer.None;

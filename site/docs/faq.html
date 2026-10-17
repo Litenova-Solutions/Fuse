@@ -130,7 +130,7 @@
           "name": "Which harnesses does Fuse support?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Fuse supports Claude Code, Cursor, Gemini CLI, Codex, GitHub Copilot CLI and OpenCode through hooks, and VS Code agent mode and any other MCP host through fuse mcp. Claude Code and OpenCode are tested end to end. The others follow each harness's documented hook format and are covered by payload tests. Connect your agent lists what fuse init writes for each one."
+            "text": "Fuse supports Claude Code, Cursor, Gemini CLI, Codex, GitHub Copilot CLI, OpenCode and Muse Code through hooks, and VS Code agent mode and any other MCP host through fuse mcp. Claude Code, OpenCode and Muse Code are tested end to end. The others follow each harness's documented hook format and are covered by payload tests. Connect your agent lists what fuse init writes for each one."
           }
         },
         {
@@ -296,7 +296,7 @@
     <p>Mainly memory. Fuse keeps the loaded projects in memory until it has been idle for 10 minutes: 356 MB to 947 MB once idle in the <a href="benchmarks.html">benchmarks</a>, up to 1,640 MB while it checks, and more on a machine with more memory. Each git worktree runs its own copy. The first edit that affects other projects has to load them, which took up to 92.2 s on Jellyfin, and agents in one repository wait for each other's checks. <a href="index.html#what-fuse-costs">What Fuse costs</a> lists every cost.</p>
 
     <h3 id="which-harnesses-does-fuse-support">Which harnesses does Fuse support? <a class="anchor" href="#which-harnesses-does-fuse-support" aria-label="Link to this section">#</a></h3>
-    <p>Fuse supports Claude Code, Cursor, Gemini CLI, Codex, GitHub Copilot CLI and OpenCode through hooks, and VS Code agent mode and any other MCP host through <code>fuse mcp</code>. Claude Code and OpenCode are tested end to end. The others follow each harness's documented hook format and are covered by payload tests. <a href="harnesses.html">Connect your agent</a> lists what <code>fuse init</code> writes for each one.</p>
+    <p>Fuse supports Claude Code, Cursor, Gemini CLI, Codex, GitHub Copilot CLI, OpenCode and Muse Code through hooks, and VS Code agent mode and any other MCP host through <code>fuse mcp</code>. Claude Code, OpenCode and Muse Code are tested end to end. The others follow each harness's documented hook format and are covered by payload tests. <a href="harnesses.html">Connect your agent</a> lists what <code>fuse init</code> writes for each one.</p>
 
     <h3 id="does-fuse-need-configuration">Does Fuse need configuration? <a class="anchor" href="#does-fuse-need-configuration" aria-label="Link to this section">#</a></h3>
     <p>No. Run <code>fuse init</code> once in the repository and it writes the hook settings for each harness it finds. Fuse has no configuration file and no environment variables of its own. It needs the .NET 10 SDK and restored projects; if a restore is missing, it says so and names the <code>dotnet restore</code> command to run.</p>

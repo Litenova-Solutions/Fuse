@@ -284,7 +284,7 @@ public class EngineProcessTests
         var result = await FuseProcess.RunAsync(repo.Path, """{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"dotnet test --no-build"}}""", "hook", "claude", "pre-bash");
         Assert.Equal(0, result.ExitCode);
         Assert.Equal("", result.Stdout);
-        Assert.Equal("usage: fuse hook <claude|cursor|gemini|codex|copilot|opencode> <post-edit|pre-shell|stop>", result.Stderr.TrimEnd());
+        Assert.Equal("usage: fuse hook <claude|cursor|gemini|codex|copilot|opencode|muse> <post-edit|pre-shell|stop>", result.Stderr.TrimEnd());
     }
 
     [Fact]
@@ -294,7 +294,7 @@ public class EngineProcessTests
         var result = await FuseProcess.RunAsync(repo.Path, """{"tool_input":{"command":"dotnet test"}}""", "hook", "vscode", "pre-shell");
         Assert.Equal(0, result.ExitCode);
         Assert.Equal("", result.Stdout);
-        Assert.Equal("usage: fuse hook <claude|cursor|gemini|codex|copilot|opencode> <post-edit|pre-shell|stop>", result.Stderr.TrimEnd());
+        Assert.Equal("usage: fuse hook <claude|cursor|gemini|codex|copilot|opencode|muse> <post-edit|pre-shell|stop>", result.Stderr.TrimEnd());
     }
 
     [Theory]

@@ -20,13 +20,14 @@ public class HarnessTests
     [Fact]
     public void Every_harness_is_found_by_its_command_line_name_and_by_nothing_else()
     {
-        Assert.Equal(["claude", "cursor", "gemini", "codex", "copilot", "opencode"], SupportedHarnesses.All.Select(h => h.Name));
+        Assert.Equal(["claude", "cursor", "gemini", "codex", "copilot", "opencode", "muse"], SupportedHarnesses.All.Select(h => h.Name));
         Assert.IsType<ClaudeCode>(SupportedHarnesses.Find("claude"));
         Assert.IsType<Cursor>(SupportedHarnesses.Find("cursor"));
         Assert.IsType<GeminiCli>(SupportedHarnesses.Find("gemini"));
         Assert.IsType<Codex>(SupportedHarnesses.Find("codex"));
         Assert.IsType<CopilotCli>(SupportedHarnesses.Find("copilot"));
         Assert.IsType<OpenCode>(SupportedHarnesses.Find("opencode"));
+        Assert.IsType<MuseCode>(SupportedHarnesses.Find("muse"));
         Assert.Null(SupportedHarnesses.Find("Claude"));
         Assert.Null(SupportedHarnesses.Find("vscode"));
         Assert.Null(SupportedHarnesses.Find(""));
@@ -40,9 +41,9 @@ public class HarnessTests
     }
 
     [Fact]
-    public void Only_Codex_approves_the_command_it_is_given_instead()
+    public void Only_Codex_and_Muse_Code_approve_the_command_they_are_given_instead()
     {
-        Assert.Equal(["codex"], SupportedHarnesses.All.Where(h => h.ApprovesRewrittenCommand).Select(h => h.Name));
+        Assert.Equal(["codex", "muse"], SupportedHarnesses.All.Where(h => h.ApprovesRewrittenCommand).Select(h => h.Name));
     }
 
     [Theory]

@@ -6,10 +6,11 @@ The list of changes in each release, which the release workflow publishes as the
 
 Compared with 5.3.0. Several agents in one working tree now get in each other's way less: the stop hook holds each agent to its own errors, subagents can run their own affected tests at the same time, and a build that fails or runs slowly says why.
 
-Update with `dotnet tool update -g Fuse`. If you use Claude Code, run `fuse init` again so a subagent's stop runs Fuse's stop hook too.
+Update with `dotnet tool update -g Fuse`. If you use Claude Code, run `fuse init` again so a subagent's stop runs Fuse's stop hook too. To use Muse Code, run `fuse init`, then `muse plugins install .muse/plugins/fuse --scope project` and `muse plugins approve fuse` once.
 
 ### Added
 
+- Muse Code is supported: `fuse init` writes a plugin bundle with the post-edit, pre-shell and stop hooks, which you install and approve once in Muse. [Connect your agent](https://fuse.codes/docs/harnesses#muse-code) shows the bundle and the commands.
 - In Claude Code, `fuse init` registers the stop hook for `SubagentStop`, so a subagent is sent back for the errors its own edits cause before it hands its work back. [Connect your agent](https://fuse.codes/docs/harnesses#claude-code) shows the settings.
 - `fuse test` run through the pre-shell hook runs the tests the agent's own session affects, and its summary says how many changed files only other sessions wrote. [How it works](https://fuse.codes/docs/how-it-works#test-selection) describes it.
 - Under an `error MSB3073`, where a command a build target ran exited with a code other than 0, `fuse build` and a failed test build print the last lines the command printed, such as a code generator's exception. Previously only the exit code was shown. [Commands](https://fuse.codes/docs/commands#fuse-build) shows the output.
@@ -31,7 +32,7 @@ Update with `dotnet tool update -g Fuse`. If you use Claude Code, run `fuse init
 
 ### Documentation
 
-- How it works, Limits, Commands, Connect your agent, Troubleshooting (new sections A slow build, A command in the build fails and An error about generated code), Architecture, Evals and the FAQ describe sessions at the stop hook, concurrent test runs, generated files and the build's file log.
+- How it works, Limits, Commands, Connect your agent, Troubleshooting (new sections A slow build, A command in the build fails and An error about generated code), Architecture, Evals and the FAQ describe sessions at the stop hook, concurrent test runs, generated files and the build's file log, and Connect your agent and Troubleshooting describe Muse Code.
 
 ## 5.3.0
 

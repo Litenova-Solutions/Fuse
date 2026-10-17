@@ -48,6 +48,7 @@ Run `fuse init` once. After that, the agent's tool (Claude Code, Cursor, Codex a
 | Codex | Hooks |
 | GitHub Copilot CLI | Hooks |
 | OpenCode | Plugin |
+| Muse Code | Plugin bundle, which you install and approve once |
 | VS Code agent mode | MCP server, since VS Code runs no hooks |
 
 `fuse init` detects each one by its folder or file in the repository root and sets up Claude Code when it finds none. [Connect your agent](https://fuse.codes/docs/harnesses) lists what it writes for each one.

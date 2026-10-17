@@ -18,6 +18,7 @@ internal static class Program
 
           fuse init [--instructions]  register Fuse's hooks with the agent harnesses this repository uses
                                     (--instructions: also add a Fuse section to AGENTS.md)
+          fuse uninit               remove what fuse init wrote, stop this repository's engine and delete its state
           fuse check [files...]     errors the working tree has that HEAD does not, across dependent projects
           fuse test [args...]       run the tests affected by your changes (with args: the tests those dotnet test arguments name)
           fuse test --all           run every test
@@ -44,6 +45,7 @@ internal static class Program
             return command switch
             {
                 "init" => InitCommand.Run(rest),
+                "uninit" => await UninitCommand.RunAsync(rest, cancel.Token).ConfigureAwait(false),
                 "check" => await CheckAsync(rest, cancel.Token).ConfigureAwait(false),
                 "test" => await TestAsync(rest, cancel.Token).ConfigureAwait(false),
                 "build" => await BuildAsync(rest, cancel.Token).ConfigureAwait(false),

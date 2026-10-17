@@ -18,9 +18,11 @@ internal sealed class GeminiCli : Harness
         var hooks = SettingsFile.GetOrAddObject(settings, "hooks");
         SetNestedHook(hooks, "AfterTool", "write_file|replace", new JsonObject { ["name"] = "fuse-check", ["type"] = "command", ["command"] = Command(HookEvent.PostEdit), ["timeout"] = 60000 });
         SetNestedHook(hooks, "BeforeTool", "run_shell_command", new JsonObject { ["name"] = "fuse-dotnet", ["type"] = "command", ["command"] = Command(HookEvent.PreShell), ["timeout"] = 10000 });
-        SetNestedHook(hooks, "AfterAgent", null, new JsonObject { ["name"] = "fuse-stop", ["type"] = "command", ["command"] = Command(HookEvent.Stop), ["timeout"] = 300000 });
+        SetNestedHook(hooks, "AfterAgent", null, new JsonObject { ["name"] = "fuse-stop", ["type"] = "command", ["command"] = Command(HookEvent.Stop), ["timeout"] = LongHookMilliseconds });
         return SettingsFile.Write(root, path, settings);
     }
+
+    public override WrittenFile? RemoveHooks(RepoRoot root) => RemoveFromSettings(root, Path.Combine(".gemini", "settings.json"), RemoveNestedHooks);
 
     /// <summary>Gemini CLI merges <c>tool_input</c> over the model's arguments, so the answer carries only the command.</summary>
     public override HookAnswer ReplaceShellCommand(JsonElement? toolInput, string command) =>

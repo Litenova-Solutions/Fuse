@@ -26,12 +26,12 @@ internal sealed class ClaudeCode : Harness
         var path = Path.Combine(root.Path, ".claude", "settings.json");
         var settings = SettingsFile.Read(root, path);
         var hooks = SettingsFile.GetOrAddObject(settings, "hooks");
-        SetNestedHook(hooks, "PostToolUse", "Edit|Write|MultiEdit", new JsonObject { ["type"] = "command", ["command"] = Command(HookEvent.PostEdit), ["asyncRewake"] = true, ["timeout"] = 300 });
+        SetNestedHook(hooks, "PostToolUse", "Edit|Write|MultiEdit", new JsonObject { ["type"] = "command", ["command"] = Command(HookEvent.PostEdit), ["asyncRewake"] = true, ["timeout"] = LongHookSeconds });
         SetNestedHook(hooks, "PreToolUse", "Bash", new JsonObject { ["type"] = "command", ["command"] = Command(HookEvent.PreShell), ["timeout"] = 10 });
-        SetNestedHook(hooks, "Stop", null, new JsonObject { ["type"] = "command", ["command"] = Command(HookEvent.Stop), ["timeout"] = 300 });
+        SetNestedHook(hooks, "Stop", null, new JsonObject { ["type"] = "command", ["command"] = Command(HookEvent.Stop), ["timeout"] = LongHookSeconds });
         // A subagent stops through SubagentStop, with its own agent_id, so it is held to the errors its own edits cause
         // before it hands its work back.
-        SetNestedHook(hooks, "SubagentStop", null, new JsonObject { ["type"] = "command", ["command"] = Command(HookEvent.Stop), ["timeout"] = 300 });
+        SetNestedHook(hooks, "SubagentStop", null, new JsonObject { ["type"] = "command", ["command"] = Command(HookEvent.Stop), ["timeout"] = LongHookSeconds });
 
         // A user who already lets the agent run dotnet build/test without asking gets the same for the rewritten commands.
         if (settings["permissions"]?["allow"] is JsonArray allow)
@@ -48,6 +48,23 @@ internal sealed class ClaudeCode : Harness
 
         return SettingsFile.Write(root, path, settings);
     }
+
+    /// <summary>Also removes the <c>fuse build</c> and <c>fuse test</c> permissions, which name commands that are gone with Fuse.</summary>
+    public override WrittenFile? RemoveHooks(RepoRoot root) =>
+        RemoveFromSettings(root, Path.Combine(".claude", "settings.json"), settings =>
+        {
+            var removed = RemoveNestedHooks(settings);
+            if (settings["permissions"]?["allow"] is JsonArray allow)
+            {
+                foreach (var rule in allow.Where(r => r is JsonValue value && value.TryGetValue<string>(out var text) && text is "Bash(fuse build:*)" or "Bash(fuse test:*)").ToList())
+                {
+                    allow.Remove(rule);
+                    removed = true;
+                }
+            }
+
+            return removed;
+        });
 
     /// <summary>
     ///     <c>updatedInput</c> replaces the whole tool input, so every field the harness sent is carried over. The answer

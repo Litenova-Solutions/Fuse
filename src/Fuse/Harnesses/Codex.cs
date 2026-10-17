@@ -21,9 +21,11 @@ internal sealed class Codex : Harness
         var hooks = SettingsFile.GetOrAddObject(settings, "hooks");
         SetNestedHook(hooks, "PostToolUse", "^apply_patch$", new JsonObject { ["type"] = "command", ["command"] = Command(HookEvent.PostEdit), ["timeout"] = 60 });
         SetNestedHook(hooks, "PreToolUse", "^Bash$", new JsonObject { ["type"] = "command", ["command"] = Command(HookEvent.PreShell), ["timeout"] = 10 });
-        SetNestedHook(hooks, "Stop", null, new JsonObject { ["type"] = "command", ["command"] = Command(HookEvent.Stop), ["timeout"] = 300 });
+        SetNestedHook(hooks, "Stop", null, new JsonObject { ["type"] = "command", ["command"] = Command(HookEvent.Stop), ["timeout"] = LongHookSeconds });
         return SettingsFile.Write(root, path, settings);
     }
+
+    public override WrittenFile? RemoveHooks(RepoRoot root) => RemoveFromSettings(root, Path.Combine(".codex", "hooks.json"), RemoveNestedHooks);
 
     /// <summary>
     ///     Codex honours <c>updatedInput</c> only together with an allow decision, so this answer approves

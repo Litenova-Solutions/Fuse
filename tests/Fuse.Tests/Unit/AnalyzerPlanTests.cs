@@ -75,7 +75,7 @@ public class AnalyzerPlanTests
     }
 
     [Fact]
-    public async Task A_check_that_leaves_out_compilation_wide_analyzers_names_them_and_still_runs_them_at_HEAD()
+    public async Task A_check_that_leaves_out_compilation_wide_analyzers_names_them_and_leaves_them_out_at_HEAD_too()
     {
         using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });
         var solution = SolutionWith(repo, new SlowStartAnalyzer(), new CheapAnalyzer());
@@ -84,14 +84,44 @@ public class AnalyzerPlanTests
 
         collector.Begin(new AnalyzerRun(CompilationWide: false, CancellationToken.None), reuse: false);
         var current = await collector.ForFileAsync(solution, path, TestContext.Current.CancellationToken);
-        // HEAD's errors must all be known, or an error HEAD has would be reported as introduced.
+        // The working tree has no compilation-wide errors to compare, so HEAD needs none.
         var head = await collector.ForBaselineFileAsync(solution, 0, path, TestContext.Current.CancellationToken);
 
         Assert.Equal(["CHEAP1"], current.Select(e => e.Id));
-        Assert.Equal(["CHEAP1", "SLOW1"], head.Select(e => e.Id).Order());
+        Assert.Equal(["CHEAP1"], head.Errors.Select(e => e.Id));
+        Assert.True(head.AnalyzersFinished);
         var (unfinished, leftOut) = collector.TakeAnalyzerReport();
         Assert.Equal(0, unfinished);
         Assert.Equal($"{typeof(SlowStartAnalyzer).Assembly.GetName().Name}/{nameof(SlowStartAnalyzer)}", Assert.Single(leftOut));
+
+        // A later check that runs them does not take HEAD's errors from the one that left them out, or an error HEAD has
+        // would be reported as introduced.
+        collector.Begin(AnalyzerRun.Full, reuse: false);
+        var full = await collector.ForBaselineFileAsync(solution, 0, path, TestContext.Current.CancellationToken);
+        Assert.Equal(["CHEAP1", "SLOW1"], full.Errors.Select(e => e.Id).Order());
+    }
+
+    [Fact]
+    public async Task HEAD_analyzers_past_the_deadline_are_not_kept_for_the_next_check()
+    {
+        using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });
+        var solution = SolutionWith(repo, new CheapAnalyzer());
+        var collector = new DiagnosticCollector(repo.Root, () => 0, _ => { });
+        var path = repo.Root.PathOf(repo.Full("C1.cs"));
+        using var passed = new CancellationTokenSource();
+        await passed.CancelAsync();
+
+        collector.Begin(new AnalyzerRun(CompilationWide: true, passed.Token), reuse: false);
+        var late = await collector.ForBaselineFileAsync(solution, 0, path, TestContext.Current.CancellationToken);
+        collector.Begin(AnalyzerRun.Full, reuse: false);
+        var next = await collector.ForBaselineFileAsync(solution, 0, path, TestContext.Current.CancellationToken);
+
+        Assert.False(late.AnalyzersFinished);
+        Assert.Empty(late.Errors);
+        Assert.True(next.AnalyzersFinished);
+        Assert.Equal(["CHEAP1"], next.Errors.Select(e => e.Id));
+        // Only the working tree's files count as unfinished; HEAD's leave out the working tree's analyzer errors instead.
+        Assert.Equal(0, collector.TakeAnalyzerReport().Unfinished);
     }
 
     [Fact]

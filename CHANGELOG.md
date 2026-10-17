@@ -2,6 +2,29 @@
 
 The list of changes in each release, which the release workflow publishes as the release notes. The [changelog page](https://fuse.codes/docs/changelog) explains each release with its upgrade steps and says which versions are supported. Each release groups its changes as Added, Changed, Removed, Fixed, Security and Documentation, listing only the groups it has. Versions before 5.0.0 are deprecated.
 
+## 5.5.0
+
+Compared with 5.4.0. The stop hook answers within its time on repositories with slow analyzers, instead of being ended by the harness with no answer, and a repeated check of unchanged code reuses the analyzers' work. `fuse uninit` takes Fuse out of a repository again.
+
+Update with `dotnet tool update -g Fuse`. To change the Fuse section `fuse init --instructions` wrote into `AGENTS.md`, `CLAUDE.md` or `GEMINI.md`, run `fuse init --instructions` again.
+
+### Added
+
+- `fuse uninit` removes what `fuse init` and `fuse init --instructions` wrote, for every harness, keeping every entry that is not Fuse's, then stops the repository's engine and deletes its state. [Commands](https://fuse.codes/docs/commands#fuse-uninit) lists what it removes ([#94](https://github.com/Litenova-Solutions/Fuse/issues/94)).
+
+### Changed
+
+- The stop hook and the Claude Code post-edit hook wait 280 seconds for their answer, leaving 20 of the harness's 300 to deliver it. Previously they waited all 300, and the harness could end the hook before the answer arrived. [How it works](https://fuse.codes/docs/how-it-works#check) describes the waits ([#93](https://github.com/Litenova-Solutions/Fuse/issues/93)).
+- The HEAD side of a check runs the same analyzers as the working tree, under the same deadline. When HEAD's analyzers do not finish in a file, the working tree's analyzer errors there are left out and counted among the files whose analyzers did not finish. Previously HEAD always ran every analyzer to the end, which could keep a check past its client's wait so that it answered nothing. [How it works](https://fuse.codes/docs/how-it-works#check) describes it ([#93](https://github.com/Litenova-Solutions/Fuse/issues/93)).
+- Analyzers that read the whole project keep running after a check stops waiting for them, so the next check of the same code takes their errors instead of running them again. [How it works](https://fuse.codes/docs/how-it-works#check) describes it ([#93](https://github.com/Litenova-Solutions/Fuse/issues/93)).
+- The engine exits after 30 minutes without a request. Previously it exited after 10, and the next check loaded the projects and ran HEAD's analyzers again. [Limits](https://fuse.codes/docs/limits#the-engine) describes the memory it keeps ([#93](https://github.com/Litenova-Solutions/Fuse/issues/93)).
+- The Fuse section `fuse init --instructions` writes says the stop hook checks every change when the agent finishes, and that `fuse check` runs the same check sooner. Previously it told every agent to run `fuse check` before finishing, and every subagent to run `fuse test` before handing back its work. [Subagents and parallel agents](https://fuse.codes/docs/parallel-agents#telling-agents-about-fuse) shows the section ([#93](https://github.com/Litenova-Solutions/Fuse/issues/93)).
+- When more than 40 files with errors need deciding which session caused them, the summary counts the files whose errors were told without deciding. Previously it said nothing about them. [How it works](https://fuse.codes/docs/how-it-works#check) describes it ([#93](https://github.com/Litenova-Solutions/Fuse/issues/93)).
+
+### Documentation
+
+- How it works, Limits, Troubleshooting, Commands, Messages, Subagents and parallel agents, Connect your agent, Getting started, Architecture, the docs overview, the FAQ and the README describe the analyzer deadline at HEAD, the hook waits, the idle time and `fuse uninit`.
+
 ## 5.4.0
 
 Compared with 5.3.0. Several agents in one working tree now get in each other's way less: the stop hook holds each agent to its own errors, subagents can run their own affected tests at the same time, and a build that fails or runs slowly says why.

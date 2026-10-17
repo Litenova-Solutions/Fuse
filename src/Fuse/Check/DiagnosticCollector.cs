@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
-using System.Runtime.CompilerServices;
 using Fuse.Check.Model;
 using Fuse.Paths;
 using Microsoft.CodeAnalysis;
@@ -10,16 +9,16 @@ namespace Fuse.Check;
 
 /// <summary>
 ///     Computes the errors of one file (in every target framework it compiles for) or of whole projects, including
-///     errors from analyzers that can report errors. Baseline results are cached until the baseline's content changes,
-///     because it does not change between edits.
+///     errors from analyzers that can report errors. Baseline results whose analyzers finished are cached until the
+///     baseline's content changes, because it does not change between edits.
 /// </summary>
 internal sealed class DiagnosticCollector
 {
     private readonly RepoRoot _root;
     private readonly AnalyzerSelector _analyzers;
-    private readonly ConcurrentDictionary<RepoPath, IReadOnlyList<CompilerError>> _baselineFiles = new();
+    private readonly ConcurrentDictionary<RepoPath, BaselineFile> _baselineFiles = new();
     private readonly ConcurrentDictionary<ProjectId, IReadOnlyList<CompilerError>> _baselineProjects = new();
-    private readonly ConditionalWeakTable<CompilationWithAnalyzers, Task<ImmutableArray<Diagnostic>>> _compilationWide = new();
+    private readonly CompilationAnalyses _analyses = new();
     private int _cachedGeneration = -1;
     private readonly Func<int> _configurationGeneration;
 
@@ -35,15 +34,17 @@ internal sealed class DiagnosticCollector
     private long _compilerTicks;
     private long _analyzerTicks;
 
-    /// <summary>How the current check runs analyzers on the working tree; checks run one at a time.</summary>
+    /// <summary>How the current check runs analyzers, on the working tree and the baseline alike; checks run one at a time.</summary>
     private AnalyzerRun _run = AnalyzerRun.Full;
 
-    private int _unfinished;
+    /// <summary>The working-tree files and projects whose analyzer errors the current check may be missing.</summary>
+    private readonly ConcurrentDictionary<string, byte> _unfinished = new(StringComparer.Ordinal);
+
     private readonly ConcurrentDictionary<string, byte> _leftOut = new(StringComparer.Ordinal);
 
     /// <summary>
-    ///     Starts a check that runs analyzers on the working tree as <paramref name="run"/> says, and reuses working-tree
-    ///     errors from an earlier check when <paramref name="reuse"/> is true.
+    ///     Starts a check that runs analyzers as <paramref name="run"/> says, and reuses working-tree errors from an earlier
+    ///     check when <paramref name="reuse"/> is true.
     /// </summary>
     /// <param name="reuse">
     ///     True for a check of every change, which binds many files again after a small edit. The key needs Roslyn's
@@ -54,15 +55,18 @@ internal sealed class DiagnosticCollector
     {
         _run = run;
         _reuse = reuse;
-        // Projects that loaded again have new document ids, so what was kept for the old ones is dropped with them.
+        // Projects that loaded again have new document ids, so what was kept for the old ones is dropped with them, and
+        // the analyzer runs over their old compilations stop.
         var generation = _configurationGeneration();
         if (generation != _currentFilesGeneration)
         {
             _currentFiles.Clear();
             _currentFilesGeneration = generation;
+            _analyses.StopAll(baseline: false);
+            _analyses.StopAll(baseline: true);
         }
 
-        Interlocked.Exchange(ref _unfinished, 0);
+        _unfinished.Clear();
         _leftOut.Clear();
         TakeReused();
         TakeTimings();
@@ -72,8 +76,18 @@ internal sealed class DiagnosticCollector
     ///     What the check's analyzers did not do: how many files or projects their analyzers did not finish before the
     ///     deadline, and the compilation-wide analyzers the check left out.
     /// </summary>
-    public (int Unfinished, IReadOnlyList<string> LeftOut) TakeAnalyzerReport() =>
-        (Interlocked.Exchange(ref _unfinished, 0), [.. _leftOut.Keys.Order(StringComparer.Ordinal)]);
+    public (int Unfinished, IReadOnlyList<string> LeftOut) TakeAnalyzerReport()
+    {
+        var unfinished = _unfinished.Count;
+        _unfinished.Clear();
+        return (unfinished, [.. _leftOut.Keys.Order(StringComparer.Ordinal)]);
+    }
+
+    /// <summary>
+    ///     Counts a file, by its relative path, or a project, by its name, among those whose analyzer errors the current
+    ///     check may be missing.
+    /// </summary>
+    public void MarkUnfinished(string fileOrProject) => _unfinished.TryAdd(fileOrProject, 0);
 
     /// <param name="root">The repository, for relative paths.</param>
     /// <param name="configurationGeneration">Changes whenever project configuration may have changed.</param>
@@ -97,98 +111,127 @@ internal sealed class DiagnosticCollector
     }
 
     /// <summary>Errors reported in <paramref name="path"/>, from the regular documents and from Razor-generated code mapped back to it.</summary>
-    public Task<IReadOnlyList<CompilerError>> ForFileAsync(Solution solution, RepoPath path, CancellationToken cancellationToken) =>
-        ForFileAsync(solution, path, baseline: false, cancellationToken);
+    public async Task<IReadOnlyList<CompilerError>> ForFileAsync(Solution solution, RepoPath path, CancellationToken cancellationToken) =>
+        (await ForFileAsync(solution, path, baseline: false, cancellationToken).ConfigureAwait(false)).Errors;
 
-    private async Task<IReadOnlyList<CompilerError>> ForFileAsync(Solution solution, RepoPath path, bool baseline, CancellationToken cancellationToken)
+    /// <returns>The errors, and whether the analyzers the check runs all finished on the file.</returns>
+    private async Task<(List<CompilerError> Errors, bool AnalyzersFinished)> ForFileAsync(Solution solution, RepoPath path, bool baseline, CancellationToken cancellationToken)
     {
         var result = new List<CompilerError>();
+        var finished = true;
         foreach (var id in solution.GetDocumentIdsWithFilePath(path.Absolute))
         {
             var document = solution.GetDocument(id);
             if (document is not null)
             {
-                result.AddRange(await ForDocumentAsync(document, baseline, cancellationToken).ConfigureAwait(false));
+                var (errors, documentFinished) = await ForDocumentAsync(document, baseline, cancellationToken).ConfigureAwait(false);
+                result.AddRange(errors);
+                finished &= documentFinished;
                 continue;
             }
 
             if (solution.GetAdditionalDocument(id) is { } additional)
-                result.AddRange(await ForGeneratedFromAsync(solution.GetProject(additional.Project.Id)!, path, baseline, cancellationToken).ConfigureAwait(false));
+            {
+                var (errors, generatedFinished) = await ForGeneratedFromAsync(solution.GetProject(additional.Project.Id)!, path, baseline, cancellationToken).ConfigureAwait(false);
+                result.AddRange(errors);
+                finished &= generatedFinished;
+            }
         }
 
-        return Distinct(result);
+        return (Distinct(result), finished);
     }
 
-    /// <summary>Same as <see cref="ForFileAsync(Solution, RepoPath, CancellationToken)"/> against the baseline, cached until the baseline changes.</summary>
-    public async Task<IReadOnlyList<CompilerError>> ForBaselineFileAsync(Solution baseline, int generation, RepoPath path, CancellationToken cancellationToken)
+    /// <summary>
+    ///     Same as <see cref="ForFileAsync(Solution, RepoPath, CancellationToken)"/> against the baseline, with the analyzers
+    ///     and the deadline the check runs on the working tree. A result whose analyzers finished is cached until the
+    ///     baseline changes; one that ran the compilation-wide analyzers also serves a check that leaves them out.
+    /// </summary>
+    /// <returns>
+    ///     HEAD's errors in the file, and whether its analyzers finished. When they did not, an analyzer error the working
+    ///     tree has there cannot be told from one HEAD has.
+    /// </returns>
+    public async Task<(IReadOnlyList<CompilerError> Errors, bool AnalyzersFinished)> ForBaselineFileAsync(Solution baseline, int generation, RepoPath path, CancellationToken cancellationToken)
     {
         ForgetOlderBaseline(generation);
-        if (_baselineFiles.TryGetValue(path, out var cached))
-            return cached;
-        var computed = await ForFileAsync(baseline, path, baseline: true, cancellationToken).ConfigureAwait(false);
-        _baselineFiles[path] = computed;
-        return computed;
+        var compilationWide = _run.CompilationWide;
+        if (_baselineFiles.TryGetValue(path, out var cached) && (cached.CompilationWide || !compilationWide))
+            return (cached.Errors, true);
+        var (errors, finished) = await ForFileAsync(baseline, path, baseline: true, cancellationToken).ConfigureAwait(false);
+        if (finished)
+            _baselineFiles[path] = new BaselineFile(errors, compilationWide);
+        return (errors, finished);
     }
 
-    /// <summary>Same as <see cref="ForProjectAsync(Project, CancellationToken)"/> against the baseline, cached until the baseline changes.</summary>
-    public async Task<IReadOnlyList<CompilerError>> ForBaselineProjectAsync(Project project, int generation, CancellationToken cancellationToken)
+    /// <summary>
+    ///     Same as <see cref="ForProjectAsync(Project, CancellationToken)"/> against the baseline, under the check's
+    ///     deadline. A result whose analyzers finished is cached until the baseline changes.
+    /// </summary>
+    /// <returns>HEAD's errors in the project, and whether its analyzers finished.</returns>
+    public async Task<(IReadOnlyList<CompilerError> Errors, bool AnalyzersFinished)> ForBaselineProjectAsync(Project project, int generation, CancellationToken cancellationToken)
     {
         ForgetOlderBaseline(generation);
         if (_baselineProjects.TryGetValue(project.Id, out var cached))
-            return cached;
-        var computed = await ForProjectAsync(project, baseline: true, cancellationToken).ConfigureAwait(false);
-        _baselineProjects[project.Id] = computed;
-        return computed;
+            return (cached, true);
+        var (errors, finished) = await ForProjectAsync(project, baseline: true, cancellationToken).ConfigureAwait(false);
+        if (finished)
+            _baselineProjects[project.Id] = errors;
+        return (errors, finished);
     }
 
-    /// <summary>Empties both baseline caches when <paramref name="generation"/> is not the baseline they were filled from.</summary>
+    /// <summary>
+    ///     Empties both baseline caches, and stops the analyzer runs over the baseline, when <paramref name="generation"/>
+    ///     is not the baseline they were made for.
+    /// </summary>
     private void ForgetOlderBaseline(int generation)
     {
         if (generation == _cachedGeneration)
             return;
         _baselineFiles.Clear();
         _baselineProjects.Clear();
+        _analyses.StopAll(baseline: true);
         _cachedGeneration = generation;
     }
 
     /// <summary>Every error in the project, bound whole. Used when the set of files a change can reach is too large to enumerate.</summary>
-    public Task<IReadOnlyList<CompilerError>> ForProjectAsync(Project project, CancellationToken cancellationToken) =>
-        ForProjectAsync(project, baseline: false, cancellationToken);
+    public async Task<IReadOnlyList<CompilerError>> ForProjectAsync(Project project, CancellationToken cancellationToken) =>
+        (await ForProjectAsync(project, baseline: false, cancellationToken).ConfigureAwait(false)).Errors;
 
     /// <remarks>
-    ///     A working-tree project whose analyzers pass the deadline is answered with its compiler errors alone. Bound whole,
-    ///     every analyzer runs, compilation-wide or not: the pass reads the whole compilation anyway.
+    ///     A project whose analyzers pass the deadline is answered with its compiler errors alone. Bound whole, every
+    ///     analyzer runs, compilation-wide or not: the run reads the whole compilation anyway.
     /// </remarks>
-    private async Task<IReadOnlyList<CompilerError>> ForProjectAsync(Project project, bool baseline, CancellationToken cancellationToken)
+    /// <returns>The project's errors, and whether its analyzers finished.</returns>
+    private async Task<(IReadOnlyList<CompilerError> Errors, bool AnalyzersFinished)> ForProjectAsync(Project project, bool baseline, CancellationToken cancellationToken)
     {
         var compilation = await project.GetCompilationAsync(cancellationToken).ConfigureAwait(false);
         if (compilation is null)
-            return [];
-        // With analyzers, one pass produces compiler and analyzer diagnostics together. An analyzer's error is marked as
+            return ([], true);
+        // With analyzers, one run produces compiler and analyzer diagnostics together. An analyzer's error is marked as
         // one by its id, so it equals the same error found when its file is bound alone, which a check of the targets
         // also reports.
         var withAnalyzers = _analyzers.For(project, compilation);
         if (withAnalyzers is null)
-            return CompilerErrors(compilation, cancellationToken);
+            return (CompilerErrors(compilation, cancellationToken), true);
         var analyzerIds = withAnalyzers.Analyzers.SelectMany(a => a.SupportedDiagnostics).Select(d => d.Id).ToHashSet(StringComparer.Ordinal);
-        var deadline = baseline ? CancellationToken.None : _run.Deadline;
-        using var analyzing = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, deadline);
+        using var analyzing = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _run.Deadline);
         try
         {
-            var diagnostics = await withAnalyzers.GetAllDiagnosticsAsync(analyzing.Token).ConfigureAwait(false);
-            return Distinct(diagnostics.Where(IsError).Select(d => ToCompilerError(d, fromAnalyzer: analyzerIds.Contains(d.Id))).OfType<CompilerError>());
+            var diagnostics = await _analyses.RunAsync(project.Id, baseline, withAnalyzers, everyAnalyzer: true, withAnalyzers.GetAllDiagnosticsAsync, analyzing.Token).ConfigureAwait(false);
+            return (Distinct(diagnostics.Where(IsError).Select(d => ToCompilerError(d, fromAnalyzer: analyzerIds.Contains(d.Id))).OfType<CompilerError>()), true);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            Interlocked.Increment(ref _unfinished);
-            return CompilerErrors(compilation, cancellationToken);
+            if (!baseline)
+                _unfinished.TryAdd(project.Name, 0);
+            return (CompilerErrors(compilation, cancellationToken), false);
         }
     }
 
     private List<CompilerError> CompilerErrors(Compilation compilation, CancellationToken cancellationToken) =>
         Distinct(compilation.GetDiagnostics(cancellationToken).Where(IsError).Select(d => ToCompilerError(d, fromAnalyzer: false)).OfType<CompilerError>());
 
-    private async Task<IEnumerable<CompilerError>> ForDocumentAsync(Document document, bool baseline, CancellationToken cancellationToken)
+    /// <returns>The document's errors, and whether the analyzers the check runs all finished on it.</returns>
+    private async Task<(IReadOnlyList<CompilerError> Errors, bool AnalyzersFinished)> ForDocumentAsync(Document document, bool baseline, CancellationToken cancellationToken)
     {
         // A working-tree file whose text and whose project's declarations are as they were at an earlier check has the same
         // compiler and per-file analyzer errors, so they are reused; the compilation-wide analyzers read every file's
@@ -199,23 +242,23 @@ internal sealed class DiagnosticCollector
             Interlocked.Increment(ref _reused);
             var model = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
             if (model is null)
-                return cached.Errors;
-            var (compilationWide, _) = await RunAnalyzersAsync(document.Project, model, _run, perFile: false, cancellationToken).ConfigureAwait(false);
-            return [.. cached.Errors, .. compilationWide.Select(d => ToCompilerError(d.Diagnostic, fromAnalyzer: true)).OfType<CompilerError>()];
+                return (cached.Errors, true);
+            var (compilationWide, _, compilationWideFinished) = await RunAnalyzersAsync(document.Project, model, baseline, perFile: false, cancellationToken).ConfigureAwait(false);
+            return ([.. cached.Errors, .. compilationWide.Select(d => ToCompilerError(d.Diagnostic, fromAnalyzer: true)).OfType<CompilerError>()], compilationWideFinished);
         }
 
         var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
         if (semanticModel is null)
-            return [];
+            return ([], true);
 
         var started = System.Diagnostics.Stopwatch.GetTimestamp();
         var compiler = semanticModel.GetDiagnostics(cancellationToken: cancellationToken).Where(IsError).Select(d => ToCompilerError(d, fromAnalyzer: false)).OfType<CompilerError>().ToList();
         Interlocked.Add(ref _compilerTicks, System.Diagnostics.Stopwatch.GetTimestamp() - started);
-        var (fromAnalyzers, perFileFinished) = await RunAnalyzersAsync(document.Project, semanticModel, baseline ? AnalyzerRun.Full : _run, perFile: true, cancellationToken).ConfigureAwait(false);
+        var (fromAnalyzers, perFileFinished, finished) = await RunAnalyzersAsync(document.Project, semanticModel, baseline, perFile: true, cancellationToken).ConfigureAwait(false);
         var analyzerErrors = fromAnalyzers.Select(d => (Error: ToCompilerError(d.Diagnostic, fromAnalyzer: true), d.PerFile)).Where(d => d.Error is not null).ToList();
         if (key is not null && perFileFinished)
             _currentFiles[document.Id] = new CachedFile(key, [.. compiler, .. analyzerErrors.Where(d => d.PerFile).Select(d => d.Error!)]);
-        return [.. compiler, .. analyzerErrors.Select(d => d.Error!)];
+        return ([.. compiler, .. analyzerErrors.Select(d => d.Error!)], finished);
     }
 
     /// <summary>
@@ -233,18 +276,23 @@ internal sealed class DiagnosticCollector
     /// <summary>
     ///     The analyzer errors in the file of <paramref name="model"/>: the per-file analyzers run on that file when
     ///     <paramref name="perFile"/> is true, and the compilation-wide ones once over the whole compilation, whose result
-    ///     every file of the check shares. Past <paramref name="run"/>'s deadline, the file keeps the analyzer errors found
-    ///     so far and counts as unfinished.
+    ///     every file of the check shares. The baseline runs the same analyzers as the working tree. Past the check's
+    ///     deadline, the file keeps the analyzer errors found so far, and a working-tree file counts as unfinished.
     /// </summary>
-    /// <returns>Each error with whether a per-file analyzer reported it, and whether the per-file analyzers finished.</returns>
-    private async Task<(List<(Diagnostic Diagnostic, bool PerFile)> Errors, bool PerFileFinished)> RunAnalyzersAsync(
-        Project project, SemanticModel model, AnalyzerRun run, bool perFile, CancellationToken cancellationToken)
+    /// <returns>
+    ///     Each error with whether a per-file analyzer reported it, whether the per-file analyzers finished, and whether
+    ///     every analyzer the check runs finished.
+    /// </returns>
+    private async Task<(List<(Diagnostic Diagnostic, bool PerFile)> Errors, bool PerFileFinished, bool Finished)> RunAnalyzersAsync(
+        Project project, SemanticModel model, bool baseline, bool perFile, CancellationToken cancellationToken)
     {
         var withAnalyzers = _analyzers.For(project, model.Compilation);
         if (withAnalyzers is null)
-            return ([], true);
+            return ([], true, true);
+        var run = _run;
         var result = new List<(Diagnostic Diagnostic, bool PerFile)>();
         var perFileFinished = false;
+        var finished = false;
         using var analyzing = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, run.Deadline);
         try
         {
@@ -273,57 +321,58 @@ internal sealed class DiagnosticCollector
             {
                 foreach (var (analyzer, _) in plan.CompilationWide)
                     _leftOut.TryAdd(AnalyzerSelector.Name(analyzer), 0);
+                // This compilation is the project's newest, so a run an earlier check left going over an older one stops.
+                _analyses.StopOlder(project.Id, baseline, withAnalyzers);
             }
             else if (!plan.CompilationWide.IsEmpty)
             {
-                var all = await CompilationWideAsync(withAnalyzers, plan, analyzing.Token).ConfigureAwait(false);
+                var all = await CompilationWideAsync(project, baseline, withAnalyzers, plan, analyzing.Token).ConfigureAwait(false);
                 result.AddRange(all.Where(d => d.Location.SourceTree == model.SyntaxTree).Select(d => (d, false)));
             }
+
+            finished = true;
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            Interlocked.Increment(ref _unfinished);
+            if (!baseline)
+                _unfinished.TryAdd(_root.PathOf(model.SyntaxTree.FilePath).Relative, 0);
         }
 
-        return ([.. result.Where(d => IsError(d.Diagnostic))], perFileFinished);
+        return ([.. result.Where(d => IsError(d.Diagnostic))], perFileFinished, finished);
     }
 
     /// <summary>
     ///     The diagnostics the compilation-wide analyzers report anywhere in the compilation, computed once per compilation:
-    ///     the files of a check, and every later check until an edit makes a new compilation, share it. A run that was
-    ///     cancelled or failed is not kept.
+    ///     the files of a check, and every later check until an edit makes a new compilation, share it, and it runs on past
+    ///     the deadline of the check that started it (<see cref="CompilationAnalyses"/>).
     /// </summary>
-    private Task<ImmutableArray<Diagnostic>> CompilationWideAsync(CompilationWithAnalyzers analyzers, AnalyzerPlan plan, CancellationToken cancellationToken)
-    {
-        lock (_compilationWide)
-        {
-            if (_compilationWide.TryGetValue(analyzers, out var running) && !running.IsCanceled && !running.IsFaulted)
-                return running;
-            // Task.Run, so the analyzers' synchronous initialization runs outside the lock.
-            var started = Task.Run(
-                async () =>
+    private Task<ImmutableArray<Diagnostic>> CompilationWideAsync(Project project, bool baseline, CompilationWithAnalyzers analyzers, AnalyzerPlan plan, CancellationToken wait) =>
+        _analyses.RunAsync(
+            project.Id,
+            baseline,
+            analyzers,
+            everyAnalyzer: false,
+            async stop =>
+            {
+                var timer = System.Diagnostics.Stopwatch.GetTimestamp();
+                try
                 {
-                    var timer = System.Diagnostics.Stopwatch.GetTimestamp();
-                    try
-                    {
-                        return (await analyzers.GetAnalysisResultAsync(plan.CompilationWideAnalyzers, cancellationToken).ConfigureAwait(false)).GetAllDiagnostics();
-                    }
-                    finally
-                    {
-                        Interlocked.Add(ref _analyzerTicks, System.Diagnostics.Stopwatch.GetTimestamp() - timer);
-                    }
-                },
-                cancellationToken);
-            _compilationWide.AddOrUpdate(analyzers, started);
-            return started;
-        }
-    }
+                    return (await analyzers.GetAnalysisResultAsync(plan.CompilationWideAnalyzers, stop).ConfigureAwait(false)).GetAllDiagnostics();
+                }
+                finally
+                {
+                    Interlocked.Add(ref _analyzerTicks, System.Diagnostics.Stopwatch.GetTimestamp() - timer);
+                }
+            },
+            wait);
 
     /// <summary>Errors in source-generated documents whose <c>#line</c> mappings point at <paramref name="path"/> (Razor components and views).</summary>
-    private async Task<IEnumerable<CompilerError>> ForGeneratedFromAsync(Project project, RepoPath path, bool baseline, CancellationToken cancellationToken)
+    /// <returns>The errors, and whether the analyzers the check runs all finished on the documents.</returns>
+    private async Task<(List<CompilerError> Errors, bool AnalyzersFinished)> ForGeneratedFromAsync(Project project, RepoPath path, bool baseline, CancellationToken cancellationToken)
     {
         var fileName = path.FileName;
         var result = new List<CompilerError>();
+        var finished = true;
         foreach (var generated in await project.GetSourceGeneratedDocumentsAsync(cancellationToken).ConfigureAwait(false))
         {
             // A quick search of the generated text for the file's name, in any case, so a document that cannot map to
@@ -331,14 +380,16 @@ internal sealed class DiagnosticCollector
             var text = await generated.GetTextAsync(cancellationToken).ConfigureAwait(false);
             if (!text.ToString().Contains(fileName, StringComparison.OrdinalIgnoreCase))
                 continue;
-            foreach (var diagnostic in await ForDocumentAsync(generated, baseline, cancellationToken).ConfigureAwait(false))
+            var (errors, generatedFinished) = await ForDocumentAsync(generated, baseline, cancellationToken).ConfigureAwait(false);
+            finished &= generatedFinished;
+            foreach (var diagnostic in errors)
             {
                 if (_root.PathOf(diagnostic.Path) == path)
                     result.Add(diagnostic);
             }
         }
 
-        return result;
+        return (result, finished);
     }
 
     private static bool IsError(Diagnostic diagnostic) =>
@@ -363,6 +414,9 @@ internal sealed class DiagnosticCollector
     /// <summary>Removes duplicates that come from compiling one file for several target frameworks.</summary>
     private static List<CompilerError> Distinct(IEnumerable<CompilerError> diagnostics) =>
         diagnostics.Distinct().OrderBy(d => d.Path, StringComparer.Ordinal).ThenBy(d => d.Line).ThenBy(d => d.Column).ToList();
+
+    /// <summary>HEAD's errors in one file from a run whose analyzers finished, and whether that run included the compilation-wide analyzers.</summary>
+    private sealed record BaselineFile(IReadOnlyList<CompilerError> Errors, bool CompilationWide);
 
     /// <summary>What a working-tree file's errors were found under: its text's checksum, its dependent semantic version and the configuration generation.</summary>
     private sealed record FileKey(string Checksum, VersionStamp Declarations, int Configuration);

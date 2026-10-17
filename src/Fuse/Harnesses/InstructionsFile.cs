@@ -31,8 +31,8 @@ internal static class InstructionsFile
         - After each edit, Fuse tells you the compiler errors that edit introduced. Fix them before you go on.
         - Run `fuse test` to run the tests your changes can break; `fuse test --all` runs every test. `dotnet test` is rewritten to `fuse test`.
         - Run `fuse build` instead of `dotnet build`: it prints only the errors, and waits for another agent's build instead of colliding with it.
-        - Run `fuse check` before you finish: it reports the errors every change since HEAD (the commit checked out) introduced.
-        - When several agents work in this working tree, each is told the errors its own edits cause. A subagent checks its own work with `fuse test` before it hands it back.
+        - When you finish, Fuse checks every change since HEAD (the commit checked out) and sends you back for the errors your edits introduced. `fuse check` runs the same check when you want it sooner.
+        - When several agents work in this working tree, each is told the errors its own edits cause, and `fuse test` runs the tests its own edits affect.
         - If Fuse stops answering, `fuse stop` stops its engine; the next command starts a new one.
         """;
 
@@ -82,5 +82,31 @@ internal static class InstructionsFile
         }
 
         return SettingsFile.WriteText(root, path, content);
+    }
+
+    /// <summary>The instruction files, relative to the root, that <c>fuse uninit</c> looks for the section in.</summary>
+    public static readonly IReadOnlyList<string> AllFiles = ["AGENTS.md", "CLAUDE.md", "GEMINI.md"];
+
+    /// <summary>
+    ///     Takes the section, markers included, out of <paramref name="relative"/>, with the blank lines <see cref="Write"/>
+    ///     put before it, and keeps the rest of the file. A file left with nothing but whitespace is deleted, as the one
+    ///     <see cref="Write"/> created. Returns the file, or null when it has no section.
+    /// </summary>
+    internal static WrittenFile? Remove(RepoRoot root, string relative)
+    {
+        var path = Path.Combine(root.Path, relative);
+        if (!File.Exists(path))
+            return null;
+        var existing = File.ReadAllText(path);
+        var start = existing.IndexOf(Begin, StringComparison.Ordinal);
+        var end = start < 0 ? -1 : existing.IndexOf(End, start, StringComparison.Ordinal);
+        if (start < 0 || end < 0)
+            return null;
+
+        var newline = existing.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
+        var before = existing[..start].TrimEnd('\r', '\n');
+        var after = existing[(end + End.Length)..].TrimStart('\r', '\n');
+        var content = before.Length == 0 ? after : after.Length == 0 ? before + newline : before + newline + newline + after;
+        return string.IsNullOrWhiteSpace(content) ? SettingsFile.Delete(root, path) : SettingsFile.WriteText(root, path, content);
     }
 }

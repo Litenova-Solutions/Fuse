@@ -65,6 +65,16 @@ internal abstract class Harness
     /// </summary>
     public abstract WrittenFile RegisterHooks(RepoRoot root);
 
+    /// <summary>
+    ///     Removes what <see cref="RegisterHooks"/> wrote in <paramref name="root"/>, keeping every other entry: a file that
+    ///     belongs to Fuse is deleted, and so is a shared settings file left with nothing else. Returns the file, or null
+    ///     when Fuse was not registered there.
+    /// </summary>
+    public abstract WrittenFile? RemoveHooks(RepoRoot root);
+
+    /// <summary>What the user runs after <c>fuse uninit</c> so the harness forgets Fuse, which it prints, or null when removing the files is enough.</summary>
+    public virtual string? RemovalStep => null;
+
     /// <summary>The answer to a pre-shell event whose shell command Fuse rewrote.</summary>
     /// <param name="toolInput">The tool input the harness sent, for a harness whose answer replaces all of it.</param>
     /// <param name="command">The command the agent runs instead.</param>
@@ -84,6 +94,18 @@ internal abstract class Harness
     /// <param name="reason">The errors and the instruction to fix them, which the agent reads.</param>
     /// <remarks>Most harnesses read <c>{"decision":"block","reason":...}</c> as that.</remarks>
     public virtual HookAnswer BlockStop(string reason) => HookAnswer.Json(new JsonObject { ["decision"] = "block", ["reason"] = reason });
+
+    /// <summary>
+    ///     How long <c>fuse init</c> lets a harness run a stop hook, and a post-edit hook it runs in the background, before
+    ///     the harness ends it.
+    /// </summary>
+    public static readonly TimeSpan LongHookTimeout = TimeSpan.FromSeconds(300);
+
+    /// <summary><see cref="LongHookTimeout"/> in whole seconds, as most harnesses' settings take it.</summary>
+    protected static int LongHookSeconds => (int)LongHookTimeout.TotalSeconds;
+
+    /// <summary><see cref="LongHookTimeout"/> in milliseconds, as Gemini CLI and Muse Code take it.</summary>
+    protected static int LongHookMilliseconds => (int)LongHookTimeout.TotalMilliseconds;
 
     /// <summary>The hook command this harness runs for <paramref name="hookEvent"/>, one of the <see cref="HookEvent"/> names.</summary>
     protected string Command(string hookEvent) => $"fuse hook {Name} {hookEvent}";
@@ -121,6 +143,58 @@ internal abstract class Harness
         if (matcher is not null)
             entry.Insert(0, "matcher", matcher);
         groups.Add((JsonNode)entry);
+    }
+
+    /// <summary>
+    ///     Removes Fuse from the settings file at <paramref name="relativePath"/>: <paramref name="remove"/> takes Fuse's
+    ///     entries out of the settings and says whether it found any. The file is written back, or deleted when nothing
+    ///     else is left in it, and returned; null when the file is missing or holds no Fuse entry.
+    /// </summary>
+    protected static WrittenFile? RemoveFromSettings(RepoRoot root, string relativePath, Func<JsonObject, bool> remove)
+    {
+        var path = Path.Combine(root.Path, relativePath);
+        if (!File.Exists(path))
+            return null;
+        var settings = SettingsFile.Read(root, path);
+        return remove(settings) ? SettingsFile.WriteOrDelete(root, path, settings) : null;
+    }
+
+    /// <summary>
+    ///     Removes Fuse's handlers from every event of the nested format (<see cref="SetNestedHook"/>), and every group and
+    ///     event, and the <c>hooks</c> object itself, that is left empty by it. Returns whether any handler was removed.
+    /// </summary>
+    /// <param name="settings">The whole settings object, which holds <c>hooks</c>.</param>
+    protected static bool RemoveNestedHooks(JsonObject settings)
+    {
+        if (settings["hooks"] is not JsonObject hooks)
+            return false;
+        var removed = false;
+        foreach (var (harnessEvent, value) in hooks.ToList())
+        {
+            if (value is not JsonArray groups)
+                continue;
+            var removedHere = false;
+            foreach (var group in groups.OfType<JsonObject>().ToList())
+            {
+                if (group["hooks"] is not JsonArray handlers)
+                    continue;
+                var fuse = handlers.OfType<JsonObject>().Where(IsFuse).ToList();
+                foreach (var handler in fuse)
+                    handlers.Remove(handler);
+                // Only a group or an event Fuse's removal emptied goes; one the user left empty is theirs.
+                if (fuse.Count > 0 && handlers.Count == 0)
+                    groups.Remove(group);
+                removedHere |= fuse.Count > 0;
+            }
+
+            if (removedHere && groups.Count == 0)
+                hooks.Remove(harnessEvent);
+            removed |= removedHere;
+        }
+
+        if (removed && hooks.Count == 0)
+            settings.Remove("hooks");
+        return removed;
     }
 
     /// <summary>

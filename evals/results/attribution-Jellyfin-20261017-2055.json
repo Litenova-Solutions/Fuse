@@ -1,0 +1,62 @@
+{
+  "suite": "attribution",
+  "repo": "Jellyfin",
+  "commit": "1d7c6af520da5c84ceac1c21a1d2da34837540ac",
+  "fuseBuild": "5.5.0/5cab995ea1de48359974118a2ad4c5e5",
+  "pairs": [
+    {
+      "renamedIn": "MediaBrowser.Model/Configuration/LibraryOptions.cs",
+      "method": "GetTypeOptions",
+      "brokenIn": "MediaBrowser.Providers/Manager/ItemImageProvider.cs",
+      "ownWithoutSessions": 4,
+      "otherWithoutSessions": 2,
+      "ownWithSessions": 4,
+      "otherWithSessions": 0,
+      "leftToOtherSessions": 8,
+      "msWithoutSessions": 214.7184,
+      "msWithSessions": 2618.7768
+    },
+    {
+      "renamedIn": "MediaBrowser.Model/Configuration/LibraryOptions.cs",
+      "method": "GetTypeOptions",
+      "brokenIn": "MediaBrowser.Providers/Manager/ProviderManager.cs",
+      "ownWithoutSessions": 4,
+      "otherWithoutSessions": 3,
+      "ownWithSessions": 4,
+      "otherWithSessions": 0,
+      "leftToOtherSessions": 9,
+      "msWithoutSessions": 65.7962,
+      "msWithSessions": 3045.7859
+    },
+    {
+      "renamedIn": "MediaBrowser.Model/Dlna/StreamBuilder.cs",
+      "method": "GetOptimalVideoStream",
+      "brokenIn": "Jellyfin.Api/Helpers/MediaInfoHelper.cs",
+      "ownWithoutSessions": 3,
+      "otherWithoutSessions": 2,
+      "ownWithSessions": 3,
+      "otherWithSessions": 0,
+      "leftToOtherSessions": 7,
+      "msWithoutSessions": 71.3697,
+      "msWithSessions": 948.6784
+    }
+  ],
+  "ownWithoutSessions": 11,
+  "otherWithoutSessions": 7,
+  "ownWithSessions": 11,
+  "otherWithSessions": 0,
+  "leftToOtherSessions": 24,
+  "msWithoutSessions": {
+    "p50": 71.4,
+    "p95": 214.7,
+    "max": 214.7,
+    "n": 3
+  },
+  "msWithSessions": {
+    "p50": 2618.8,
+    "p95": 3045.8,
+    "max": 3045.8,
+    "n": 3
+  },
+  "treeCleanAfter": true
+}

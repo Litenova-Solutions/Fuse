@@ -47,4 +47,33 @@ internal static class GitIgnore
         var separator = text.Length == 0 || text.EndsWith('\n') ? "" : newline;
         return SettingsFile.WriteText(root, path, text + separator + FuseFolder + newline);
     }
+
+    /// <summary>
+    ///     Removes the <see cref="FuseFolder"/> line <see cref="AddFuseFolder"/> adds from the root <c>.gitignore</c>, and
+    ///     returns the file; returns null when it has no such line. Other lines about the folder are the repository's own and
+    ///     stay. A file left empty is deleted.
+    /// </summary>
+    /// <exception cref="IOException">The file could not be read or written. The message names the file.</exception>
+    public static WrittenFile? RemoveFuseFolder(RepoRoot root)
+    {
+        var path = Path.Combine(root.Path, ".gitignore");
+        if (!File.Exists(path))
+            return null;
+        string text;
+        try
+        {
+            text = Encoding.UTF8.GetString(File.ReadAllBytes(path));
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            throw new IOException($"could not read .gitignore ({e.Message})", e);
+        }
+
+        var lines = text.Split('\n').ToList();
+        var removed = lines.RemoveAll(l => l.TrimEnd('\r') == FuseFolder);
+        if (removed == 0)
+            return null;
+        var content = string.Join('\n', lines);
+        return content.Trim().Length == 0 ? SettingsFile.Delete(root, path) : SettingsFile.WriteText(root, path, content);
+    }
 }

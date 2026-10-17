@@ -34,6 +34,21 @@ public class InitCommandTests
     }
 
     [Fact]
+    public void A_stop_hook_waits_less_than_the_harness_lets_it_run_so_its_answer_arrives()
+    {
+        using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["App/App.csproj"] = "<Project />" });
+        Assert.Equal(0, Init(repo));
+        var hooks = Json(repo, ".claude/settings.json")["hooks"]!;
+
+        foreach (var hook in new[] { hooks["Stop"]![0]!["hooks"]![0]!, hooks["SubagentStop"]![0]!["hooks"]![0]!, hooks["PostToolUse"]![0]!["hooks"]![0]! })
+        {
+            var timeout = TimeSpan.FromSeconds(hook["timeout"]!.GetValue<int>());
+            Assert.Equal(Harness.LongHookTimeout, timeout);
+            Assert.True(Fuse.Hooks.HookCommand.LongWait <= timeout - TimeSpan.FromSeconds(10), $"waits {Fuse.Hooks.HookCommand.LongWait} of {timeout}");
+        }
+    }
+
+    [Fact]
     public void Preserves_existing_settings_and_is_idempotent()
     {
         using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string>

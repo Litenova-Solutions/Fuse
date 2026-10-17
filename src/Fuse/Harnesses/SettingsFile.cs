@@ -110,6 +110,73 @@ internal static class SettingsFile
     }
 
     /// <summary>
+    ///     Writes <paramref name="content"/> as <see cref="Write"/> does, or deletes the file when <paramref name="content"/>
+    ///     holds nothing, so a file <c>fuse init</c> created for Fuse alone is gone once Fuse is removed from it.
+    /// </summary>
+    public static WrittenFile WriteOrDelete(RepoRoot root, string path, JsonObject content) =>
+        content.Count == 0 ? Delete(root, path) ?? new WrittenFile(root.PathOf(path).Relative, Changed: false) : Write(root, path, content);
+
+    /// <summary>
+    ///     Deletes the file at <paramref name="path"/>, then each folder above it that the deletion left empty, up to the
+    ///     repository root, and returns the file; returns null when there is no file.
+    /// </summary>
+    /// <exception cref="IOException">The file could not be deleted. The message names the file.</exception>
+    public static WrittenFile? Delete(RepoRoot root, string path)
+    {
+        if (!File.Exists(path))
+            return null;
+        var relative = root.PathOf(path).Relative;
+        try
+        {
+            File.Delete(path);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            throw new IOException($"could not delete {relative} ({e.Message})", e);
+        }
+
+        DeleteEmptyFolders(root, Path.GetDirectoryName(path)!);
+        return new WrittenFile(relative, Changed: true, Deleted: true);
+    }
+
+    /// <summary>
+    ///     Deletes the folder at <paramref name="path"/> with everything in it, then each folder above it left empty, and
+    ///     returns the folder; returns null when there is no folder.
+    /// </summary>
+    /// <exception cref="IOException">The folder could not be deleted. The message names it.</exception>
+    public static WrittenFile? DeleteFolder(RepoRoot root, string path)
+    {
+        if (!Directory.Exists(path))
+            return null;
+        var relative = root.PathOf(path).Relative;
+        try
+        {
+            Directory.Delete(path, recursive: true);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            throw new IOException($"could not delete {relative} ({e.Message})", e);
+        }
+
+        DeleteEmptyFolders(root, Path.GetDirectoryName(path)!);
+        return new WrittenFile(relative, Changed: true, Deleted: true);
+    }
+
+    /// <summary>Deletes <paramref name="folder"/> and the folders above it while each is empty, stopping below the root.</summary>
+    private static void DeleteEmptyFolders(RepoRoot root, string folder)
+    {
+        var rootPath = Path.TrimEndingDirectorySeparator(root.Path);
+        while (!string.Equals(Path.TrimEndingDirectorySeparator(folder), rootPath, StringComparison.OrdinalIgnoreCase)
+               && folder.StartsWith(rootPath, StringComparison.OrdinalIgnoreCase)
+               && Directory.Exists(folder)
+               && !Directory.EnumerateFileSystemEntries(folder).Any())
+        {
+            Directory.Delete(folder);
+            folder = Path.GetDirectoryName(folder)!;
+        }
+    }
+
+    /// <summary>
     ///     Runs <paramref name="move"/>, and runs it again after <see cref="MoveRetryDelay"/> while it throws
     ///     <see cref="IOException"/> or <see cref="UnauthorizedAccessException"/>, up to <see cref="MoveAttempts"/> times in
     ///     all; the last failure is thrown. On Windows a virus scanner or the search indexer can hold a file for a moment

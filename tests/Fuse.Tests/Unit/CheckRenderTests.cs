@@ -93,6 +93,19 @@ public class CheckRenderTests
     }
 
     [Fact]
+    public void Files_past_the_ones_attribution_decides_are_counted_in_the_summary()
+    {
+        ReportedError[] errors = [new(new CompilerError("App/Program.cs", 2, 28, "CS1061", "no Add"))];
+
+        var result = CheckOperation.Render(new CheckReport(errors, 60, ["App"], [], 0, false, 1, 1, 0) { FilesNotAttributed = 3 });
+
+        Assert.EndsWith(
+            "; errors in 3 file(s) not compared with other sessions' edits, so some of them may be other sessions'",
+            result.Text.Split('\n')[^1],
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Analyzers_left_out_or_unfinished_are_named_in_the_summary()
     {
         var report = new CheckReport([], 1, [], [], 0, false, 0, 0, 0)

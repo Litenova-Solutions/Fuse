@@ -1,0 +1,34 @@
+{
+  "suite": "analyzers",
+  "repo": "analyzer-fixture",
+  "commit": "10fd57912b8ebd9cebcf402a4e924dffd097c090",
+  "fuseBuild": "5.5.0/5cab995ea1de48359974118a2ad4c5e5",
+  "files": 300,
+  "compilationWide": true,
+  "planLine": "analyzers of App: 5 per file, 1 compilation-wide (Slow.Analyzers/WholeProjectAnalyzer 4001 ms on one file)",
+  "coldCheckMs": 13910.3045,
+  "postEditHook": {
+    "p50": 35.5,
+    "p95": 111.5,
+    "max": 111.5,
+    "n": 5
+  },
+  "checkOneFile": {
+    "p50": 2073.1,
+    "p95": 2100,
+    "max": 2100,
+    "n": 5
+  },
+  "checkManyFiles": {
+    "p50": 2109.2,
+    "p95": 2112.6,
+    "max": 2112.6,
+    "n": 2
+  },
+  "manyFiles": 20,
+  "reportedByCheck": true,
+  "leftOutByHook": true,
+  "enginePeakWorkingSetMb": 277.1,
+  "engineIdleWorkingSetMb": 207.4,
+  "treeCleanAfter": true
+}

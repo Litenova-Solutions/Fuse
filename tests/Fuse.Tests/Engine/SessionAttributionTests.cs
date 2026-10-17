@@ -1,3 +1,4 @@
+using Fuse.Check;
 using Fuse.Check.Model;
 using Fuse.Tests.Fixtures;
 
@@ -209,6 +210,27 @@ public class SessionAttributionTests
         Assert.False(engine.Sessions.IsOwnEdit("AB", "A"));
         Assert.True(engine.Sessions.IsOwnEdit("A/worker", "A"));
         Assert.False(engine.Sessions.IsOwnEdit("A", "A/worker"));
+    }
+
+    [Fact]
+    public async Task Errors_in_files_past_the_ones_attribution_decides_are_told_and_counted()
+    {
+        await using var engine = await InProcessEngine.StartAsync();
+        // 42 files no session is credited with call Add, which B renames: with App/Program.cs and Lib.Tests/CalcTests.cs,
+        // 44 files have an error that B's edit causes on its own.
+        var callers = Enumerable.Range(0, 42).Select(i => $"App/Use{i}.cs").ToArray();
+        foreach (var (caller, i) in callers.Select((c, i) => (c, i)))
+            engine.Repo.Write(caller, $"public static class Use{i} {{ public static int Run() => new Lib.Calc().Add(1, 2); }}\n");
+        engine.Repo.Replace("Lib/Calc.cs", "public int Add(", "public int Plus(");
+        await engine.SyncAsync([.. callers, "Lib/Calc.cs"]);
+        engine.Sessions.Record("B", [engine.Repo.PathOf("Lib/Calc.cs")]);
+        engine.Sessions.Record("A", [engine.Repo.PathOf("Lib/Greeting.cs")]);
+
+        var a = await engine.CheckAllAsSessionAsync("A");
+
+        Assert.Equal(SessionAttribution.MaxDecidedFiles, a.LeftToOtherSessions);
+        Assert.Equal(44 - SessionAttribution.MaxDecidedFiles, a.FilesNotAttributed);
+        Assert.Equal(44 - SessionAttribution.MaxDecidedFiles, Paths(a, AddMissing).Length);
     }
 
     /// <summary>

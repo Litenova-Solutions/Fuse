@@ -21,9 +21,38 @@ internal sealed class Cursor : Harness
         settings["version"] ??= 1;
         var hooks = SettingsFile.GetOrAddObject(settings, "hooks");
         SetFlatHook(hooks, "postToolUse", new JsonObject { ["command"] = Command(HookEvent.PostEdit), ["matcher"] = "Write", ["timeout"] = 60 });
-        SetFlatHook(hooks, "stop", new JsonObject { ["command"] = Command(HookEvent.Stop), ["timeout"] = 300 });
+        SetFlatHook(hooks, "stop", new JsonObject { ["command"] = Command(HookEvent.Stop), ["timeout"] = LongHookSeconds });
         return SettingsFile.Write(root, path, settings);
     }
+
+    /// <summary>A file left with only the <c>version</c> that <see cref="RegisterHooks"/> adds holds nothing else, so it is deleted.</summary>
+    public override WrittenFile? RemoveHooks(RepoRoot root) =>
+        RemoveFromSettings(root, Path.Combine(".cursor", "hooks.json"), settings =>
+        {
+            if (settings["hooks"] is not JsonObject hooks)
+                return false;
+            var removed = false;
+            foreach (var (harnessEvent, value) in hooks.ToList())
+            {
+                if (value is not JsonArray handlers)
+                    continue;
+                var fuse = handlers.OfType<JsonObject>().Where(IsFuse).ToList();
+                foreach (var handler in fuse)
+                    handlers.Remove(handler);
+                if (fuse.Count > 0 && handlers.Count == 0)
+                    hooks.Remove(harnessEvent);
+                removed |= fuse.Count > 0;
+            }
+
+            if (removed && hooks.Count == 0)
+            {
+                settings.Remove("hooks");
+                if (settings.Count == 1 && settings.ContainsKey("version"))
+                    settings.Remove("version");
+            }
+
+            return removed;
+        });
 
     /// <summary>Only a pre-shell hook the user registered by hand reaches this, and it gets no answer.</summary>
     public override HookAnswer ReplaceShellCommand(JsonElement? toolInput, string command) => HookAnswer.None;

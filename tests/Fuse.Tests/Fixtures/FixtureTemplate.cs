@@ -157,6 +157,164 @@ internal static class FixtureTemplate
             """,
     };
 
+    public const string PlatformSolutionFile = "Platform.slnx";
+
+    private const string XUnitV3Packages = """
+        <ItemGroup>
+          <PackageReference Include="xunit.v3" Version="3.2.2" />
+        </ItemGroup>
+        <ItemGroup>
+          <Using Include="Xunit" />
+        </ItemGroup>
+        """;
+
+    private const string MSTestPackages = """
+        <ItemGroup>
+          <PackageReference Include="MSTest" Version="4.4.0" />
+        </ItemGroup>
+        """;
+
+    private const string NUnitPackages = """
+        <ItemGroup>
+          <PackageReference Include="NUnit" Version="4.6.0" />
+          <PackageReference Include="NUnit3TestAdapter" Version="6.3.0" />
+        </ItemGroup>
+        """;
+
+    private const string TUnitPackages = """
+        <ItemGroup>
+          <PackageReference Include="TUnit" Version="1.0.0" />
+        </ItemGroup>
+        """;
+
+    private const string XUnitV3Tests = """
+        using Lib;
+
+        namespace Platform.Tests;
+
+        public class CalcTests
+        {
+            [Fact]
+            public void Adds() => Assert.Equal(3, new Calc().Add(1, 2));
+
+            [Fact]
+            public void Multiplies() => Assert.Equal(6, new Calc().Mul(2, 3));
+        }
+        """;
+
+    private const string MSTestTests = """
+        using Microsoft.VisualStudio.TestTools.UnitTesting;
+
+        namespace Platform.Tests;
+
+        [TestClass]
+        public class CalcTests
+        {
+            [TestMethod]
+            public void Adds() => Assert.AreEqual(3, new Lib.Calc().Add(1, 2));
+
+            [TestMethod]
+            public void Multiplies() => Assert.AreEqual(6, new Lib.Calc().Mul(2, 3));
+        }
+        """;
+
+    private const string NUnitTests = """
+        using NUnit.Framework;
+
+        namespace Platform.Tests;
+
+        public class CalcTests
+        {
+            [Test]
+            public void Adds() => Assert.That(new Lib.Calc().Add(1, 2), Is.EqualTo(3));
+
+            [Test]
+            public void Multiplies() => Assert.That(new Lib.Calc().Mul(2, 3), Is.EqualTo(6));
+        }
+        """;
+
+    private const string TUnitTests = """
+        using TUnit.Assertions;
+        using TUnit.Assertions.Extensions;
+        using TUnit.Core;
+
+        namespace Platform.Tests;
+
+        public class CalcTests
+        {
+            [Test]
+            public async Task Adds() => await Assert.That(new Lib.Calc().Add(1, 2)).IsEqualTo(3);
+
+            [Test]
+            public async Task Multiplies() => await Assert.That(new Lib.Calc().Mul(2, 3)).IsEqualTo(6);
+        }
+        """;
+
+    /// <summary>
+    ///     A minimal repository with <c>Lib</c> and one Microsoft.Testing.Platform test project for
+    ///     <paramref name="framework"/> (<c>xunit-v3</c>, <c>mstest</c>, <c>nunit</c> or <c>tunit</c>), with the
+    ///     <c>global.json</c> opt-in only when <paramref name="optIn"/> is true.
+    /// </summary>
+    public static IReadOnlyDictionary<string, string> PlatformRepo(string framework, bool optIn)
+    {
+        var files = new Dictionary<string, string>
+        {
+            [".gitignore"] = "bin/\nobj/\n",
+            [PlatformSolutionFile] = """
+                <Solution>
+                  <Project Path="Lib/Lib.csproj" />
+                  <Project Path="Tests/Tests.csproj" />
+                </Solution>
+                """,
+            ["Lib/Lib.csproj"] = Project("<TargetFramework>net10.0</TargetFramework>"),
+            ["Lib/Calc.cs"] = """
+                namespace Lib;
+
+                public class Calc
+                {
+                    public int Add(int a, int b) => a + b;
+
+                    public int Mul(int a, int b) => a * b;
+                }
+                """,
+            ["Tests/Tests.csproj"] = PlatformTestProject(framework),
+            ["Tests/CalcTests.cs"] = PlatformTests(framework),
+        };
+        if (optIn)
+            files["global.json"] = """{ "test": { "runner": "Microsoft.Testing.Platform" } }""";
+        return files;
+    }
+
+    private static string PlatformTestProject(string framework) => framework switch
+    {
+        "xunit-v3" => Project(
+            "<OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><IsPackable>false</IsPackable>",
+            "<ProjectReference Include=\"../Lib/Lib.csproj\" />",
+            XUnitV3Packages),
+        "mstest" => Project(
+            "<OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><IsPackable>false</IsPackable><EnableMSTestRunner>true</EnableMSTestRunner>",
+            "<ProjectReference Include=\"../Lib/Lib.csproj\" />",
+            MSTestPackages),
+        "nunit" => Project(
+            "<OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><IsPackable>false</IsPackable><EnableNUnitRunner>true</EnableNUnitRunner>",
+            "<ProjectReference Include=\"../Lib/Lib.csproj\" />",
+            NUnitPackages),
+        "tunit" => Project(
+            "<OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><IsPackable>false</IsPackable>",
+            "<ProjectReference Include=\"../Lib/Lib.csproj\" />",
+            TUnitPackages),
+        _ => throw new ArgumentOutOfRangeException(nameof(framework), framework, null),
+    };
+
+    private static string PlatformTests(string framework) => framework switch
+    {
+        "xunit-v3" => XUnitV3Tests,
+        "mstest" => MSTestTests,
+        "nunit" => NUnitTests,
+        "tunit" => TUnitTests,
+        _ => throw new ArgumentOutOfRangeException(nameof(framework), framework, null),
+    };
+
     private static string Project(string properties, string references = "", string extra = "") => $"""
         <Project Sdk="Microsoft.NET.Sdk">
           <PropertyGroup>

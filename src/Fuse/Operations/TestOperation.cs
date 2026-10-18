@@ -32,7 +32,7 @@ internal static class TestOperation
             const string summary = "ran the tests your dotnet test arguments name";
             return outcome is null
                 ? WithoutResults(process, root, ArgumentsRun, summary, Seconds(started), log, resultsDirectory)
-                : Render(outcome, summary, Seconds(started));
+                : Render(outcome, summary, Seconds(started), ResultsFile.WriteTests(root, [("", outcome)]));
         }
 
         // Held from before the plan request: preparing the plan makes the engine mirror and emit into the copies the runs
@@ -132,6 +132,7 @@ internal static class TestOperation
             }).ConfigureAwait(false);
 
         var aggregate = TrxResults.Empty;
+        var perProject = new List<(string Project, TrxResults Outcome)>();
         // A project that did not build, or whose run ended without results, is part of the answer whatever the other
         // projects did. A Microsoft.Testing.Platform run that passed without printing a run summary is kept apart: it has
         // no counts to add.
@@ -142,6 +143,7 @@ internal static class TestOperation
             if (outcomes.TryGetValue(group.Key, out var shadowOutcome))
             {
                 aggregate = aggregate.Add(shadowOutcome);
+                perProject.Add((group.First().Name, shadowOutcome));
                 continue;
             }
 
@@ -154,6 +156,7 @@ internal static class TestOperation
             if (outcome is not null)
             {
                 aggregate = aggregate.Add(outcome);
+                perProject.Add((run.Name, outcome));
                 continue;
             }
 
@@ -171,7 +174,8 @@ internal static class TestOperation
 
         var shadowRuns = outcomes.Count;
         var mode = shadowRuns == groups.Count ? "without MSBuild" : shadowRuns > 0 ? $"without MSBuild for {shadowRuns} of {groups.Count} project(s)" : "built with MSBuild";
-        var tests = Render(aggregate, $"{plan.Summary}; {mode}", Seconds(started));
+        var resultsPath = aggregate.Total > 0 ? ResultsFile.WriteTests(root, perProject) : null;
+        var tests = Render(aggregate, $"{plan.Summary}; {mode}", Seconds(started), resultsPath);
         // The tests' answer comes first, so the last line is a failed build or run whenever there is one.
         return problems.Count == 0 ? tests : Join([tests, .. problems]);
     }
@@ -370,18 +374,22 @@ internal static class TestOperation
         return build with { Outcome = result.ExitCode == 0 ? Outcome.Clean : Outcome.ProblemsFound };
     }
 
+    /// <summary>One failure as the answer prints it: its name, its message, and its frames.</summary>
+    internal static void AppendFailure(StringBuilder text, TestFailure failure)
+    {
+        text.Append("FAILED ").Append(failure.Name).Append('\n');
+        foreach (var line in failure.Message.Split('\n'))
+            text.Append("  ").Append(line).Append('\n');
+        foreach (var frame in failure.Frames)
+            text.Append("  ").Append(frame).Append('\n');
+    }
+
     /// <summary>The answer for runs that wrote TRX results: the failures, then the counts and <paramref name="summary"/>.</summary>
-    private static OperationResult Render(TrxResults outcome, string summary, double seconds)
+    private static OperationResult Render(TrxResults outcome, string summary, double seconds, string? resultsPath = null)
     {
         var text = new StringBuilder();
         foreach (var failure in outcome.Failures.Take(MaxFailuresShown))
-        {
-            text.Append("FAILED ").Append(failure.Name).Append('\n');
-            foreach (var line in failure.Message.Split('\n'))
-                text.Append("  ").Append(line).Append('\n');
-            foreach (var frame in failure.Frames)
-                text.Append("  ").Append(frame).Append('\n');
-        }
+            AppendFailure(text, failure);
 
         if (outcome.Failures.Count > MaxFailuresShown)
         {
@@ -394,7 +402,13 @@ internal static class TestOperation
                 text.Append($"  ... and {rest.Count - MaxNamesShown} more\n");
         }
         var skipped = outcome.Skipped > 0 ? $", {outcome.Skipped} skipped" : "";
-        text.Append($"fuse: {outcome.Failed} failed, {outcome.Passed} passed{skipped} in {seconds:0.0} s; {summary}");
+        // The file holds every failure; the answer names it only when it left failures or names out.
+        var namesCapped = outcome.Failures.Count > MaxFailuresShown
+            && outcome.Failures.Skip(MaxFailuresShown).Select(f => f.Name).Distinct().Count() > MaxNamesShown;
+        var file = resultsPath is not null && (outcome.Failed > Math.Min(MaxFailuresShown, outcome.Failures.Count) || namesCapped)
+            ? $"; all {outcome.Failed} in {resultsPath}"
+            : "";
+        text.Append($"fuse: {outcome.Failed} failed, {outcome.Passed} passed{skipped} in {seconds:0.0} s; {summary}{file}");
         return new OperationResult(outcome.Failed > 0 ? Outcome.ProblemsFound : Outcome.Clean, text.ToString());
     }
 }

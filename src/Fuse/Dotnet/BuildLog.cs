@@ -5,8 +5,8 @@ namespace Fuse.Dotnet;
 
 /// <summary>
 ///     The file log Fuse adds to a build it runs: MSBuild's normal verbosity with its performance summary, in a file the
-///     printed output never shows. It holds two things the console output with errors only leaves out: what a command
-///     that exited with a code other than 0 printed, and where the build's time went.
+///     printed output never shows. It holds three things the console output with errors only leaves out: what a command
+///     that exited with a code other than 0 printed, where the build's time went, and how many warnings it produced.
 /// </summary>
 /// <remarks>
 ///     The log is MSBuild's file logger number 9, so a file logger the caller adds with <c>-fl</c> stays the caller's. In a
@@ -87,6 +87,15 @@ internal static partial class BuildLog
             parts.Add($"slowest projects: {string.Join(", ", projects)}");
         return string.Join("; ", parts);
     }
+
+    /// <summary>
+    ///     How many warnings the build produced, from the count MSBuild writes in the summary at the end of the log.
+    ///     Zero when the log has no summary, as for a command line MSBuild refused.
+    /// </summary>
+    public static int Warnings(string log) =>
+        WarningCount().Matches(log) is { Count: > 0 } matches
+            ? int.Parse(matches[^1].Groups["count"].Value, CultureInfo.InvariantCulture)
+            : 0;
 
     private static string Seconds(long ms) => (ms / 1000.0).ToString("0.0", CultureInfo.InvariantCulture) + " s";
 
@@ -179,4 +188,7 @@ internal static partial class BuildLog
 
     [GeneratedRegex(@"^\s+(?<ms>\d+) ms  (?<name>.+?)\s+\d+ calls$")]
     private static partial Regex SummaryLine();
+
+    [GeneratedRegex(@"^\s*(?<count>\d+) Warning\(s\)\s*$", RegexOptions.Multiline)]
+    private static partial Regex WarningCount();
 }

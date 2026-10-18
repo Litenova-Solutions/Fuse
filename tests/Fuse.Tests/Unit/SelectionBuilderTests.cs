@@ -59,5 +59,7 @@ public class SelectionBuilderTests
         IsTest = true,
         IsExecutable = false,
         UsesTestingPlatform = false,
+        Framework = TestFramework.Unknown,
+        TargetPaths = [],
     };
 }

@@ -129,6 +129,25 @@ internal abstract record EngineRequest
         ///     pre-shell hook passes it to <c>fuse test</c>.
         /// </summary>
         public string? Session { get; init; }
+
+        private readonly string[] _projects = [];
+
+        /// <summary>
+        ///     Absolute paths the plan is limited to: test project files, solution files, or directories holding test
+        ///     projects, from <c>dotnet test</c> arguments that only said where the tests are. Empty names every test
+        ///     project. A line without the list reads as one that names none.
+        /// </summary>
+        public string[] Projects
+        {
+            get => _projects;
+            init => _projects = value ?? [];
+        }
+
+        /// <summary>
+        ///     True when the arguments named a configuration or a framework, so every run builds with MSBuild and no
+        ///     shadow run serves a build the command did not make. A line without it reads as false.
+        /// </summary>
+        public bool BuildOnly { get; init; }
     }
 
     /// <summary>Every test project, run whole. Like <see cref="PlanAffectedTests"/>, it always waits for the engine to finish loading.</summary>

@@ -26,6 +26,9 @@ internal sealed class IntroducedErrors
     /// <summary>Time spent binding and running analyzers since the last call, summed over files, for the engine log.</summary>
     public (long CompilerMs, long AnalyzerMs) TakeTimings() => _collector.TakeTimings();
 
+    /// <summary>Time spent updating the compilation, binding and running analyzers since the last call, and how many documents were bound, for the engine log.</summary>
+    public (long UpdateMs, long CompilerMs, long AnalyzerMs, int Documents) TakeBindParts() => _collector.TakeBindParts();
+
     /// <inheritdoc cref="DiagnosticCollector.Begin"/>
     public void Begin(AnalyzerRun run, bool reuse) => _collector.Begin(run, reuse);
 

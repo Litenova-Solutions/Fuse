@@ -41,17 +41,17 @@ public class HarnessTests
     }
 
     [Fact]
-    public void Only_Codex_and_Muse_Code_approve_the_command_they_are_given_instead()
+    public void Only_Codex_Cursor_and_Muse_Code_approve_the_command_they_are_given_instead()
     {
-        Assert.Equal(["codex", "muse"], SupportedHarnesses.All.Where(h => h.ApprovesRewrittenCommand).Select(h => h.Name));
+        Assert.Equal(["codex", "copilot", "cursor", "muse"], SupportedHarnesses.All.Where(h => h.ApprovesRewrittenCommand).Select(h => h.Name).Order());
     }
 
     [Theory]
     [InlineData("claude", """{"hookSpecificOutput":{"hookEventName":"PreToolUse","updatedInput":{"command":"fuse test --no-build","description":"tests"}}}""")]
-    [InlineData("cursor", "")]
+    [InlineData("cursor", """{"permission":"allow","updated_input":{"command":"fuse test --no-build","description":"tests"}}""")]
     [InlineData("gemini", """{"hookSpecificOutput":{"hookEventName":"BeforeTool","tool_input":{"command":"fuse test --no-build"}}}""")]
     [InlineData("codex", """{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow","updatedInput":{"command":"fuse test --no-build"}}}""")]
-    [InlineData("copilot", "")]
+    [InlineData("copilot", """{"permissionDecision":"allow","modifiedArgs":{"command":"fuse test --no-build","description":"tests"}}""")]
     [InlineData("opencode", """{"command":"fuse test --no-build"}""")]
     public void A_rewritten_shell_command_is_answered_in_the_harness_format(string harness, string output)
     {

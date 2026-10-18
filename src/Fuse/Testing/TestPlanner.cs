@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using Fuse.Dotnet;
 using Fuse.Graph;
 using Fuse.Paths;
 using Fuse.Telemetry;
@@ -67,13 +68,20 @@ internal sealed class TestPlanner
         phases.Add(Phase.Sync, syncing);
         var graph = _workspace.Graph;
         var testProjects = graph.Projects.Where(p => p.IsTest).ToList();
+        // Paths the command named limit the plan to the test projects they name; the summary says which.
+        var named = scope is TestScope.Affected { NamedPaths.Length: > 0 } namedScope
+            ? NamedTestProjects.Resolve(graph, namedScope.NamedPaths)
+            : null;
+        if (named is not null)
+            testProjects = testProjects.Where(named.Contains).ToList();
+        var namedNote = named is null ? "" : $"; in {string.Join(", ", testProjects.Select(p => p.Name))}";
         var total = testProjects.Sum(p => _counter.TestsIn(p).Count);
         if (testProjects.Count == 0)
             return PendingPlan.Of(new TestPlanResult([], 0, 0, "no test projects in this repository"), graph);
 
         if (scope is TestScope.All)
         {
-            var everything = testProjects.Select(p => new PlannedRun(p.Path, p.Name, new RunMode.Build(), null, p.UsesTestingPlatform, p.UsesTestingPlatform ? null : p.RunSettings)).ToArray();
+            var everything = testProjects.Select(p => new PlannedRun(p.Path, p.Name, new RunMode.Build(), null, p.UsesTestingPlatform, RunSettingsOf(p), [], p.UsesTestingPlatform ? [.. p.TargetPaths] : [])).ToArray();
             return PendingPlan.Of(new TestPlanResult(everything, total, total, $"ran every test in {testProjects.Count} test project(s)"), graph);
         }
 
@@ -85,27 +93,32 @@ internal sealed class TestPlanner
         var others = owned.Count - changed.Count;
         var othersNote = others > 0 ? $"; left out {others} changed file(s) only other sessions wrote" : "";
         if (changed.Count == 0 && others > 0)
-            return PendingPlan.Of(new TestPlanResult([], 0, total, $"no C# changes by this session since HEAD, so no test is affected{othersNote} (fuse test --all runs everything)"), graph);
+            return PendingPlan.Of(new TestPlanResult([], 0, total, $"no C# changes by this session since HEAD, so no test is affected{othersNote}{namedNote} (fuse test --all runs everything)"), graph);
         if (changed.Count == 0)
-            return PendingPlan.Of(new TestPlanResult([], 0, total, "no C# changes since HEAD, so no test is affected (fuse test --all runs everything)"), graph);
+            return PendingPlan.Of(new TestPlanResult([], 0, total, $"no C# changes since HEAD, so no test is affected{namedNote} (fuse test --all runs everything)"), graph);
 
         var timer = Stopwatch.StartNew();
         var selections = await _selector.SelectAsync(changed, cancellationToken).ConfigureAwait(false);
         phases.Add(Phase.Selection, timer);
         _workspace.Log($"test plan: selection in {timer.ElapsedMilliseconds} ms: {string.Join("; ", selections.Select(s => $"{Path.GetFileNameWithoutExtension(s.Key.Absolute)} {Describe(s.Value)}"))}");
-        var projects = new List<(ProjectNode Node, string? Filter, IReadOnlyList<Project> Variants)>();
+        var projects = new List<(ProjectNode Node, string? Filter, string[] FilterArguments, IReadOnlyList<Project> Variants)>();
+        // How dotnet test reaches a platform project decides how xUnit v3 spells its filter options.
+        var runner = GlobalJson.UsesTestingPlatform(_workspace.Root.Path, _workspace.Root.Path);
         var selected = 0;
         var reasons = new HashSet<string>(StringComparer.Ordinal);
         var collapsed = new List<string>();
+        var platformCollapsed = new List<string>();
         var snapshot = _workspace.Current;
         foreach (var (path, selection) in selections.OrderBy(s => s.Key.Absolute, StringComparer.Ordinal))
         {
             var node = graph.Find(path);
-            if (node is null)
+            if (node is null || (named is not null && !named.Contains(node)))
                 continue;
             var tests = _counter.TestsIn(node);
-            // A Microsoft.Testing.Platform project runs whole (below), so every test in it counts as run.
-            var count = node.UsesTestingPlatform ? tests.Count : TestCounter.Count(tests, selection);
+            // A platform project whose framework Fuse cannot filter runs whole (below), so every test in it counts as run.
+            var count = node.UsesTestingPlatform && node.Framework == TestFramework.Unknown && selection is TestSelection.Methods
+                ? tests.Count
+                : TestCounter.Count(tests, selection);
             // A static count of zero is not proof nothing matches (inherited test methods run under the derived class's name), so only an empty selection is skipped.
             if (selection is TestSelection.Methods { Patterns.Count: 0 })
                 continue;
@@ -115,8 +128,9 @@ internal sealed class TestPlanner
 
             if (node.UsesTestingPlatform)
             {
-                // Microsoft.Testing.Platform filters differ per framework, so such a project runs whole and has no shadow run.
-                projects.Add((node, null, []));
+                // A platform project has no shadow run; its filter is its framework's, from PlatformRun below.
+                var (platformFilter, arguments) = PlatformRun(node, selection, runner, collapsed, platformCollapsed, reasons);
+                projects.Add((node, platformFilter, arguments, []));
                 continue;
             }
 
@@ -126,10 +140,10 @@ internal sealed class TestPlanner
                 var patterns = ((TestSelection.Methods)selection).Patterns.Count;
                 var form = filter.Collapse == FilterCollapse.ToClasses ? $"{filter.Patterns} class prefix(es)" : "no filter, so the project runs whole";
                 _workspace.Log($"test plan: {node.Name} filter of {patterns} pattern(s) is above {TestFilter.MaxPatterns}, collapsed to {form}");
-                collapsed.Add(filter.Collapse == FilterCollapse.ToClasses ? $"whole test classes in {node.Name}" : $"all of {node.Name}");
+                NoteCollapse(node, filter.Collapse, collapsed);
             }
 
-            projects.Add((node, filter.Expression, RepoWorkspace.ProjectsFor(snapshot, node).ToList()));
+            projects.Add((node, filter.Expression, [], RepoWorkspace.ProjectsFor(snapshot, node).ToList()));
         }
 
         var summary = new StringBuilder($"ran {selected} test(s) affected by your changes out of {total}");
@@ -137,9 +151,12 @@ internal sealed class TestPlanner
             summary.Append(" (whole projects where ").Append(string.Join("; ", reasons)).Append(')');
         if (collapsed.Count > 0)
             summary.Append("; ran ").Append(string.Join(", ", collapsed)).Append(", because a test filter holds at most ").Append(TestFilter.MaxPatterns).Append(" names");
+        if (platformCollapsed.Count > 0)
+            summary.Append("; ran ").Append(string.Join(", ", platformCollapsed)).Append(", because a platform filter holds at most ").Append(PlatformFilter.MaxNames).Append(" names");
         summary.Append(othersNote);
+        summary.Append(namedNote);
         summary.Append("; fuse test --all runs everything");
-        return PendingPlan.ToPrepare(graph, projects, selected, total, summary.ToString());
+        return PendingPlan.ToPrepare(graph, projects, selected, total, summary.ToString(), scope is TestScope.Affected { BuildOnly: true });
     }
 
     /// <summary>
@@ -160,12 +177,12 @@ internal sealed class TestPlanner
             var preparing = Stopwatch.StartNew();
             var emitting = new Stopwatch();
             var runs = new List<PlannedRun>();
-            foreach (var (node, filter, variants) in pending.Projects)
+            foreach (var (node, filter, filterArguments, variants) in pending.Projects)
             {
                 if (node.UsesTestingPlatform)
-                    runs.Add(new PlannedRun(node.Path, node.Name, new RunMode.Build(), null, true, null));
+                    runs.Add(new PlannedRun(node.Path, node.Name, new RunMode.Build(), filter, true, RunSettingsOf(node), filterArguments, [.. node.TargetPaths]));
                 else
-                    runs.AddRange(await RunsOfAsync(node, filter, variants, pending.Graph, emitting, preparing, cancellationToken).ConfigureAwait(false));
+                    runs.AddRange(await RunsOfAsync(node, filter, variants, pending.Graph, emitting, preparing, pending.BuildOnly, cancellationToken).ConfigureAwait(false));
             }
 
             // Everything in the preparation but the emit is the mirror: judging which assemblies are stale, and the copy.
@@ -185,8 +202,12 @@ internal sealed class TestPlanner
     ///     The runs of one VSTest project: a shadow run per target framework when every one of them can have one, and
     ///     otherwise one build with MSBuild for the project, which runs every target framework.
     /// </summary>
-    private async Task<IReadOnlyList<PlannedRun>> RunsOfAsync(ProjectNode node, string? filter, IReadOnlyList<Project> variants, RepoGraph graph, Stopwatch emitting, Stopwatch timer, CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<PlannedRun>> RunsOfAsync(ProjectNode node, string? filter, IReadOnlyList<Project> variants, RepoGraph graph, Stopwatch emitting, Stopwatch timer, bool buildOnly, CancellationToken cancellationToken)
     {
+        // A configuration or framework was named: only a build with MSBuild honors it, so no shadow run is prepared.
+        if (buildOnly)
+            return [new PlannedRun(node.Path, node.Name, new RunMode.Build(), filter, false, node.RunSettings, [], [])];
+
         var shadows = new List<RunMode.Shadow>();
         foreach (var variant in variants)
         {
@@ -201,9 +222,70 @@ internal sealed class TestPlanner
 
         _workspace.Log($"test plan: {node.Name} [{string.Join(", ", variants.Select(v => v.Name))}] {(shadows.Count == 0 ? "builds with MSBuild" : $"runs from {string.Join(", ", shadows.Select(s => s.Assembly))}")} after {timer.ElapsedMilliseconds} ms");
         if (shadows.Count == 0)
-            return [new PlannedRun(node.Path, node.Name, new RunMode.Build(), filter, false, node.RunSettings)];
-        return [.. shadows.Select(s => new PlannedRun(node.Path, node.Name, s, filter, false, node.RunSettings))];
+            return [new PlannedRun(node.Path, node.Name, new RunMode.Build(), filter, false, node.RunSettings, [], [])];
+        return [.. shadows.Select(s => new PlannedRun(node.Path, node.Name, s, filter, false, node.RunSettings, [], []))];
     }
+
+    /// <summary>
+    ///     The filter of one project on Microsoft.Testing.Platform: the VSTest expression for MSTest and NUnit, which
+    ///     accept it there, the framework's own arguments for xUnit v3 and TUnit, and none for a framework Fuse does
+    ///     not know, whose project then runs whole with its reason in <paramref name="reasons"/>. A filter that
+    ///     collapsed to fit its bound is logged and noted in the list its bound belongs to.
+    /// </summary>
+    private (string? Filter, string[] Arguments) PlatformRun(ProjectNode node, TestSelection selection, bool runner, List<string> collapsed, List<string> platformCollapsed, HashSet<string> reasons)
+    {
+        switch (node.Framework)
+        {
+            case TestFramework.MSTest or TestFramework.NUnit:
+                {
+                    var filter = TestFilter.For(selection);
+                    if (filter.Collapse != FilterCollapse.None)
+                    {
+                        var form = filter.Collapse == FilterCollapse.ToClasses ? $"{filter.Patterns} class prefix(es)" : "no filter, so the project runs whole";
+                        _workspace.Log($"test plan: {node.Name} filter of {((TestSelection.Methods)selection).Patterns.Count} pattern(s) is above {TestFilter.MaxPatterns}, collapsed to {form}");
+                        NoteCollapse(node, filter.Collapse, collapsed);
+                    }
+
+                    return (filter.Expression, []);
+                }
+            case TestFramework.XUnit or TestFramework.TUnit:
+                {
+                    var (arguments, collapse) = PlatformFilter.For(node.Framework, selection, runner);
+                    if (collapse != FilterCollapse.None)
+                    {
+                        var form = collapse == FilterCollapse.ToClasses ? "whole test classes" : "no filter, so the project runs whole";
+                        _workspace.Log($"test plan: {node.Name} filter of {((TestSelection.Methods)selection).Patterns.Count} pattern(s) does not fit {PlatformFilter.MaxNames} names, collapsed to {form}");
+                        NoteCollapse(node, collapse, platformCollapsed);
+                    }
+
+                    return (null, arguments);
+                }
+            default:
+                if (selection is TestSelection.Methods)
+                {
+                    _workspace.Log($"test plan: {node.Name} runs whole: its test framework is not one Fuse filters");
+                    reasons.Add($"{node.Name} runs on a test framework Fuse cannot filter");
+                }
+
+                return (null, []);
+        }
+    }
+
+    /// <summary>Notes what a collapsed filter ran instead, for the summary, in the list its bound belongs to.</summary>
+    private static void NoteCollapse(ProjectNode node, FilterCollapse collapse, List<string> collapsed)
+    {
+        if (collapse == FilterCollapse.ToClasses)
+            collapsed.Add($"whole test classes in {node.Name}");
+        else if (collapse == FilterCollapse.ToWholeProject)
+            collapsed.Add($"all of {node.Name}");
+    }
+
+    /// <summary>
+    ///     The runsettings file a run of <paramref name="node"/> carries: its own, except on Microsoft.Testing.Platform
+    ///     under a framework that does not read one, which is told none.
+    /// </summary>
+    private static string? RunSettingsOf(ProjectNode node) =>
+        node.UsesTestingPlatform && node.Framework is not (TestFramework.MSTest or TestFramework.NUnit) ? null : node.RunSettings;
 
     /// <summary>A selection as the engine log gives it: "all", or how many patterns it has.</summary>
     private static string Describe(TestSelection selection) =>

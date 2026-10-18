@@ -44,6 +44,9 @@ internal sealed record MultiAgentResult(MultiAgentWriters Writers, MultiAgentBui
     public MultiAgentStops? Stops { get; init; }
 
     public MultiAgentTests? Tests { get; init; }
+
+    /// <summary>The wall times of the checks of every change repeated with no edit in between, in milliseconds.</summary>
+    public List<double>? StopsUnchangedRepeat { get; init; }
 }
 
 /// <summary>
@@ -61,6 +64,7 @@ internal static partial class MultiAgentScenario
     private const int BuildRounds = 5;
     private const int StopFiles = 20;
     private const int StopRepeats = 5;
+    private const int StopUnchangedRepeats = 3;
 
     private static readonly string[] CollisionIds = ["MSB3021", "MSB3026", "MSB3027", "CS2012"];
 
@@ -72,9 +76,9 @@ internal static partial class MultiAgentScenario
         var builds = await BuildsAsync(repo);
         var rounds = await RoundsAsync(repo, solution);
         var attribution = (await AttributionSuite.PairsAsync(repo, solution, 1)).FirstOrDefault();
-        var stops = await StopsAsync(repo, solution);
+        var (stops, stopsUnchangedRepeat) = await StopsAsync(repo, solution);
         var tests = await TestsAsync(repo, solution);
-        return new MultiAgentResult(writers, builds, rounds, attribution) { Stops = stops, Tests = tests };
+        return new MultiAgentResult(writers, builds, rounds, attribution) { Stops = stops, Tests = tests, StopsUnchangedRepeat = stopsUnchangedRepeat };
     }
 
     /// <summary>
@@ -82,7 +86,7 @@ internal static partial class MultiAgentScenario
     ///     stop hook makes, and <see cref="StopRepeats"/> more, each after another body edit in the first file. A repeat
     ///     binds the file that changed again and can reuse the errors of the others.
     /// </summary>
-    private static async Task<MultiAgentStops> StopsAsync(EvalRepo repo, SolutionInfo solution)
+    private static async Task<(MultiAgentStops Stops, List<double> UnchangedRepeat)> StopsAsync(EvalRepo repo, SolutionInfo solution)
     {
         var targets = EditablePerProject(solution, text => TextEdit(text, "1")).Take(StopFiles).Select(t => t.File).ToList();
         var originals = targets.ToDictionary(f => f, File.ReadAllBytes, StringComparer.OrdinalIgnoreCase);
@@ -93,6 +97,10 @@ internal static partial class MultiAgentScenario
                 await File.WriteAllTextAsync(file, BodyEdit(texts[file], 1));
             await Task.Delay(500);
             var first = await repo.FuseTimedAsync("check");
+            // The same tree checked again with no edit in between: the engine answers from the answer it kept.
+            var unchangedRepeat = new List<double>();
+            for (var i = 0; i < StopUnchangedRepeats; i++)
+                unchangedRepeat.Add((await repo.FuseTimedAsync("check")).Milliseconds);
             var seen = repo.EngineLogLines().Count;
             var repeats = new List<double>();
             var mostReused = 0;
@@ -112,8 +120,8 @@ internal static partial class MultiAgentScenario
             }
 
             var stops = new MultiAgentStops(targets.Count, first.Milliseconds, LatencyStats.Of(repeats), mostReused);
-            Console.WriteLine($"[multiAgent] stops: {targets.Count} changed file(s), first check {first.Milliseconds:0} ms, repeat P50 {stops.Repeat.P50:0} ms, at most {mostReused} file(s) reused");
-            return stops;
+            Console.WriteLine($"[multiAgent] stops: {targets.Count} changed file(s), first check {first.Milliseconds:0} ms, repeat P50 {stops.Repeat.P50:0} ms, unchanged repeat P50 {LatencyStats.Of(unchangedRepeat).P50:0} ms, at most {mostReused} file(s) reused");
+            return (stops, unchangedRepeat);
         }
         finally
         {

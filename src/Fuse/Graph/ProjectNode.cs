@@ -30,8 +30,21 @@ internal sealed class ProjectNode
     /// <summary>True for an application (console, web, worker) rather than a library: a framework, not source code, calls into it.</summary>
     public required bool IsExecutable { get; init; }
 
-    /// <summary>True when the tests run on Microsoft.Testing.Platform rather than VSTest.</summary>
+    /// <summary>
+    ///     True when the project is a Microsoft.Testing.Platform test application rather than a VSTest project, from
+    ///     what its packages set, whether or not the repository's <c>global.json</c> opts <c>dotnet test</c> into the
+    ///     platform.
+    /// </summary>
     public required bool UsesTestingPlatform { get; init; }
+
+    /// <summary>The test framework its packages name, which spells a platform run's filter.</summary>
+    public required TestFramework Framework { get; init; }
+
+    /// <summary>
+    ///     The absolute path of what a build of the project writes, one per target framework: the test application a
+    ///     platform run without the <c>global.json</c> opt-in runs directly.
+    /// </summary>
+    public required IReadOnlyList<string> TargetPaths { get; init; }
 
     /// <summary>
     ///     The absolute path of the runsettings file the project names in <c>RunSettingsFilePath</c>, which

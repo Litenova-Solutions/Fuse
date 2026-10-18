@@ -33,7 +33,7 @@ internal static class CheckOperation
         var response = await EngineClient.SendAsync(root, request, timeout, cancellationToken).ConfigureAwait(false);
         if (response is not EngineResponse.CheckAnswered answered)
             return (OperationResult.Unanswered(response, "check result"), response);
-        return (Render(answered.Report), response);
+        return (Render(answered.Report, ResultsFile.WriteCheck(root, answered.Report)), response);
     }
 
     /// <summary>
@@ -67,20 +67,24 @@ internal static class CheckOperation
     internal static string GeneratedLine(string file) =>
         $"generated: {file} declares it, and Fuse reads that file as the last build wrote it; if it is generated from changed code, run fuse build to write it again";
 
-    internal static OperationResult Render(CheckReport report)
+    /// <summary>One error as the answer prints it: its canonical line, its cause, and the generated-code line once per file.</summary>
+    internal static void AppendError(StringBuilder text, ReportedError reported, HashSet<string> generatedShown)
+    {
+        text.Append(reported.Error).Append('\n');
+        // The line under an error in a file the agent did not edit names the declaration change that made the file a candidate.
+        if (reported.Cause is { } cause)
+            text.Append("  ").Append(cause.Kind == CauseKind.Removed ? "removed" : "changed").Append(": ").Append(cause.Declaration).Append('\n');
+        // Said once per file: the file may be older than the code it is generated from.
+        if (reported.GeneratedFile is { } generated && generatedShown.Add(generated))
+            text.Append("  ").Append(GeneratedLine(generated)).Append('\n');
+    }
+
+    internal static OperationResult Render(CheckReport report, string? resultsPath = null)
     {
         var text = new StringBuilder();
         var generatedShown = new HashSet<string>(StringComparer.Ordinal);
         foreach (var reported in report.Errors.Take(MaxShown))
-        {
-            text.Append(reported.Error).Append('\n');
-            // The line under an error in a file the agent did not edit names the declaration change that made the file a candidate.
-            if (reported.Cause is { } cause)
-                text.Append("  ").Append(cause.Kind == CauseKind.Removed ? "removed" : "changed").Append(": ").Append(cause.Declaration).Append('\n');
-            // Said once per file: the file may be older than the code it is generated from.
-            if (reported.GeneratedFile is { } generated && generatedShown.Add(generated))
-                text.Append("  ").Append(GeneratedLine(generated)).Append('\n');
-        }
+            AppendError(text, reported, generatedShown);
 
         var summaryParts = new List<string>();
         if (report.DeclarationsChangedIn.Length > 0)
@@ -113,7 +117,9 @@ internal static class CheckOperation
         // The counts are the engine's, over every error it found; the errors it sends are capped, and so are those printed.
         var shown = Math.Min(MaxShown, report.Errors.Length);
         var more = report.ErrorCount > shown ? $", first {shown} shown" : "";
-        text.Append($"fuse: {report.ErrorCount} error(s) introduced in {report.ErrorFileCount} file(s){more} ({string.Join(", ", report.Projects)}){summaryTail}");
+        // The file holds every error the engine sent; the answer names it only when it left errors out.
+        var file = report.ErrorCount > shown && resultsPath is not null ? $"; all {report.ErrorCount} in {resultsPath}" : "";
+        text.Append($"fuse: {report.ErrorCount} error(s) introduced in {report.ErrorFileCount} file(s){more} ({string.Join(", ", report.Projects)}){summaryTail}{file}");
         return new OperationResult(Outcome.ProblemsFound, text.ToString());
     }
 }

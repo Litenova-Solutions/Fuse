@@ -99,6 +99,26 @@ public class BuildLogTests
     }
 
     [Fact]
+    public void The_warning_count_comes_from_the_summary_at_the_end_of_the_log()
+    {
+        Assert.Equal(42, BuildLog.Warnings("Build succeeded.\n    42 Warning(s)\n    0 Error(s)\n"));
+        Assert.Equal(0, BuildLog.Warnings("Build succeeded.\n    0 Warning(s)\n    0 Error(s)\n"));
+        Assert.Equal(0, BuildLog.Warnings("Build succeeded.\n"));
+    }
+
+    [Fact]
+    public void A_succeeded_build_with_warnings_says_how_many_and_a_failed_one_does_too()
+    {
+        const string log = "Build succeeded.\n    42 Warning(s)\n    0 Error(s)\n";
+
+        var succeeded = BuildOperation.Render(new ProcessResult(0, ""), "/repo", 3, "build", log);
+        var failed = BuildOperation.Render(new ProcessResult(1, "Lib/Lib.cs(1,1): error CS1002: ; expected"), "/repo", 3, "build", log);
+
+        Assert.Equal("fuse: build succeeded in 3.0 s; 42 warning(s)", succeeded.Text);
+        Assert.EndsWith("fuse: build failed with 1 error(s) in 3.0 s; 42 warning(s)", failed.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void A_source_file_the_compiler_could_not_find_is_read_from_its_error()
     {
         var path = OperatingSystem.IsWindows() ? @"C:\repo\Lib\Moved.cs" : "/repo/Lib/Moved.cs";

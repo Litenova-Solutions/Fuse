@@ -122,9 +122,11 @@ internal static partial class BuildOperation
 
         var times = seconds >= TimesFromSeconds && log.Length > 0 ? BuildLog.Times(log) : null;
         var timesTail = times is null ? "" : $" ({times})";
+        var warnings = log.Length == 0 ? 0 : BuildLog.Warnings(log);
+        var warningsTail = warnings > 0 ? $"; {warnings} warning(s)" : "";
         if (result.ExitCode == 0)
         {
-            text.Append($"fuse: {operation} succeeded in {seconds:0.0} s{timesTail}");
+            text.Append($"fuse: {operation} succeeded in {seconds:0.0} s{warningsTail}{timesTail}");
             return new OperationResult(Outcome.Clean, text.ToString());
         }
 
@@ -132,12 +134,12 @@ internal static partial class BuildOperation
         {
             // Nothing matched the diagnostic format: show the tail, which is where MSBuild puts the failure.
             text.Append(Tail(result.Output)).Append('\n');
-            text.Append($"fuse: {operation} failed (exit code {result.ExitCode}) in {seconds:0.0} s{timesTail}");
+            text.Append($"fuse: {operation} failed (exit code {result.ExitCode}) in {seconds:0.0} s{warningsTail}{timesTail}");
             return new OperationResult(Outcome.ProblemsFound, text.ToString());
         }
 
         var more = errors.Count > MaxShown ? $", first {MaxShown} shown" : "";
-        text.Append($"fuse: {operation} failed with {errors.Count} error(s){more} in {seconds:0.0} s{timesTail}");
+        text.Append($"fuse: {operation} failed with {errors.Count} error(s){more} in {seconds:0.0} s{warningsTail}{timesTail}");
         return new OperationResult(Outcome.ProblemsFound, text.ToString());
     }
 

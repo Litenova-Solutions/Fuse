@@ -25,6 +25,23 @@ public class PhaseLineTests
     }
 
     [Fact]
+    public void Round_trips_the_bind_target_parts()
+    {
+        var line = PhaseLine.Format("1234-10", "CheckFiles", [("bindTargets", 40.0), ("bindUpdate", 10.0), ("bindCompiler", 20.0), ("bindAnalyzers", 5.0), ("bindFrameworks", 3.0), ("total", 400.0)]);
+        Assert.Equal("phases id=1234-10 kind=CheckFiles bindTargets=40.0 bindUpdate=10.0 bindCompiler=20.0 bindAnalyzers=5.0 bindFrameworks=3.0 total=400.0", line);
+
+        Assert.True(PhaseLine.TryParse(line, out var id, out var kind, out var phases));
+        Assert.Equal("1234-10", id);
+        Assert.Equal("CheckFiles", kind);
+        Assert.Equal(40.0, phases["bindTargets"]);
+        Assert.Equal(10.0, phases["bindUpdate"]);
+        Assert.Equal(20.0, phases["bindCompiler"]);
+        Assert.Equal(5.0, phases["bindAnalyzers"]);
+        Assert.Equal(3.0, phases["bindFrameworks"]);
+        Assert.Equal(400.0, phases["total"]);
+    }
+
+    [Fact]
     public void Round_trips_what_held_the_request_lock_during_the_wait()
     {
         var line = PhaseLine.Format("1234-8", "CheckFiles", [("gate", 900.0), ("total", 20.0)], "PlanAffectedTests");

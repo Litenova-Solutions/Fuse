@@ -337,6 +337,24 @@ public class EngineProcessTests
         Assert.Equal("fuse: --all runs every test and cannot be combined with other arguments; pass the arguments without --all to choose the scope", result.Stderr);
     }
 
+
+    [Fact]
+    public async Task Test_with_only_a_project_directory_runs_the_affected_tests_there()
+    {
+        using var repo = FixtureRepo.CreateStandard();
+        try
+        {
+            repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 0;");
+            var result = await FuseProcess.RunAsync(repo.Path, null, "test", "Lib.Tests");
+            Assert.Equal(0, result.ExitCode);
+            Assert.Contains("0 failed, 1 passed", result.Stdout, StringComparison.Ordinal);
+            Assert.Contains("; in Lib.Tests", result.Stdout, StringComparison.Ordinal);
+        }
+        finally
+        {
+            await FuseProcess.StopEngineAsync(repo.Root);
+        }
+    }
     [Theory]
     [InlineData("claude", "post-edit", "[]")]
     [InlineData("claude", "stop", "null")]

@@ -18,7 +18,7 @@ public class PlanRunTests
         using var repo = FixtureRepo.CreateStandard();
         // App.Tests loses a closing parenthesis and no longer compiles; Lib.Tests builds and its three tests pass.
         repo.Replace("App.Tests/ReportTests.cs", "App.Report.Line(5));", "App.Report.Line(5);");
-        TestRun Build(string project) => new(repo.Full($"{project}/{project}.csproj"), project, new TestRunMode.Build(), null, false, null);
+        TestRun Build(string project) => new(repo.Full($"{project}/{project}.csproj"), project, new TestRunMode.Build(), null, false, null, [], []);
         var plan = new TestPlan([Build("Lib.Tests"), Build("App.Tests")], 4, 4, "ran 4 test(s) affected by your changes out of 4");
 
         var result = await TestOperation.RunPlanAsync(repo.Root, plan, Environment.TickCount64, TestContext.Current.CancellationToken);
@@ -38,7 +38,7 @@ public class PlanRunTests
         var filter = LongFilter();
         var project = repo.Full("Lib.Tests/Lib.Tests.csproj");
         // The standard fixture is built, so its test assembly can run the way a shadow run's copy does.
-        var shadow = new TestRun(project, "Lib.Tests", new TestRunMode.Shadow(repo.Full("Lib.Tests/bin/Debug/net10.0/Lib.Tests.dll")), filter, false, null);
+        var shadow = new TestRun(project, "Lib.Tests", new TestRunMode.Shadow(repo.Full("Lib.Tests/bin/Debug/net10.0/Lib.Tests.dll")), filter, false, null, [], []);
         var build = shadow with { Mode = new TestRunMode.Build() };
 
         foreach (var (run, mode) in new[] { (shadow, "without MSBuild"), (build, "built with MSBuild") })
@@ -56,7 +56,7 @@ public class PlanRunTests
         // The project's own settings narrow every run to Greets, as dotnet test on the project would.
         repo.Write("Lib.Tests/probe.runsettings", "<RunSettings><RunConfiguration><TestCaseFilter>FullyQualifiedName~Greets</TestCaseFilter></RunConfiguration></RunSettings>");
         var shadow = new TestRun(
-            repo.Full("Lib.Tests/Lib.Tests.csproj"), "Lib.Tests", new TestRunMode.Shadow(repo.Full("Lib.Tests/bin/Debug/net10.0/Lib.Tests.dll")), null, false, repo.Full("Lib.Tests/probe.runsettings"));
+            repo.Full("Lib.Tests/Lib.Tests.csproj"), "Lib.Tests", new TestRunMode.Shadow(repo.Full("Lib.Tests/bin/Debug/net10.0/Lib.Tests.dll")), null, false, repo.Full("Lib.Tests/probe.runsettings"), [], []);
 
         // A whole selection and one with a filter: the project's filter applies to both.
         foreach (var run in new[] { shadow, shadow with { Filter = "FullyQualifiedName~Lib.Tests." } })

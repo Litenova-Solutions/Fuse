@@ -1,4 +1,5 @@
 using System.Xml.Linq;
+using Fuse.Paths;
 
 namespace Fuse.Dotnet;
 
@@ -77,11 +78,9 @@ internal static class TrxReader
             var at = line.IndexOf(" in ", StringComparison.Ordinal);
             if (at < 0)
                 continue;
-            var location = line[(at + 4)..];
-            var relative = Path.GetRelativePath(root, location);
-            if (relative.StartsWith("..", StringComparison.Ordinal) || Path.IsPathRooted(relative))
+            if (PathRules.UnderRoot(root, line[(at + 4)..]) is not { } relative)
                 continue;
-            frames.Add(line[..at] + " in " + relative.Replace('\\', '/'));
+            frames.Add(line[..at] + " in " + relative);
             if (frames.Count == 5)
                 break;
         }

@@ -1,0 +1,227 @@
+{
+  "suite": "latency",
+  "repo": "Jellyfin",
+  "commit": "1d7c6af520da5c84ceac1c21a1d2da34837540ac",
+  "fuseBuild": "5.6.0/37e6ccb998ae4dbf978c04b2a6df7be1",
+  "target": "MediaBrowser.Controller/Entities/LinkedChildComparer.cs",
+  "method": "Equals",
+  "referencingFilesInOtherProjects": 210,
+  "coldCleanMs": 4490.4669,
+  "coldBodyEditMs": 14867.5608,
+  "bodyEdit": {
+    "p50": 408.1,
+    "p95": 651,
+    "max": 651,
+    "n": 15
+  },
+  "signatureEdit": {
+    "p50": 306.8,
+    "p95": 103235.5,
+    "max": 103235.5,
+    "n": 10
+  },
+  "signatureEditSample": "fuse: 1 error(s) introduced in 1 file(s) (MediaBrowser.Controller); MediaBrowser.Controller declarations changed, 27 dependent project(s) checked",
+  "warmUnchanged": {
+    "p50": 265.2,
+    "p95": 281,
+    "max": 281,
+    "n": 10
+  },
+  "part": "checks",
+  "testRound": null,
+  "bodyEditPhases": {
+    "phases": {
+      "bindAnalyzers": {
+        "p50": 86,
+        "p95": 123,
+        "max": 123,
+        "n": 15
+      },
+      "bindCompiler": {
+        "p50": 16,
+        "p95": 20,
+        "max": 20,
+        "n": 15
+      },
+      "bindFrameworks": {
+        "p50": 1,
+        "p95": 1,
+        "max": 1,
+        "n": 15
+      },
+      "bindTargets": {
+        "p50": 130.2,
+        "p95": 406.3,
+        "max": 406.3,
+        "n": 15
+      },
+      "bindUpdate": {
+        "p50": 23,
+        "p95": 303,
+        "max": 303,
+        "n": 15
+      },
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 15
+      },
+      "load": {
+        "p50": 0,
+        "p95": 0.1,
+        "max": 0.1,
+        "n": 15
+      },
+      "surfaceDiff": {
+        "p50": 0.8,
+        "p95": 1.6,
+        "max": 1.6,
+        "n": 15
+      },
+      "sync": {
+        "p50": 1.8,
+        "p95": 19.8,
+        "max": 19.8,
+        "n": 15
+      },
+      "total": {
+        "p50": 140,
+        "p95": 422,
+        "max": 422,
+        "n": 15
+      }
+    },
+    "outsideEngine": {
+      "p50": 262.3,
+      "p95": 310.1,
+      "max": 310.1,
+      "n": 15
+    },
+    "n": 15
+  },
+  "signatureEditPhases": {
+    "phases": {
+      "bindAnalyzers": {
+        "p50": 35,
+        "p95": 81,
+        "max": 81,
+        "n": 10
+      },
+      "bindCandidates": {
+        "p50": 0.2,
+        "p95": 5,
+        "max": 5,
+        "n": 10
+      },
+      "bindCompiler": {
+        "p50": 5,
+        "p95": 25,
+        "max": 25,
+        "n": 10
+      },
+      "bindFrameworks": {
+        "p50": 1,
+        "p95": 1,
+        "max": 1,
+        "n": 10
+      },
+      "bindTargets": {
+        "p50": 48,
+        "p95": 129.9,
+        "max": 129.9,
+        "n": 10
+      },
+      "bindUpdate": {
+        "p50": 6,
+        "p95": 22,
+        "max": 22,
+        "n": 10
+      },
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 10
+      },
+      "load": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 10
+      },
+      "loadDependents": {
+        "p50": 0,
+        "p95": 30924.8,
+        "max": 30924.8,
+        "n": 10
+      },
+      "referenceSearch": {
+        "p50": 1.1,
+        "p95": 71845.1,
+        "max": 71845.1,
+        "n": 10
+      },
+      "surfaceDiff": {
+        "p50": 0.6,
+        "p95": 2.4,
+        "max": 2.4,
+        "n": 10
+      },
+      "sync": {
+        "p50": 3.1,
+        "p95": 3.8,
+        "max": 3.8,
+        "n": 10
+      },
+      "total": {
+        "p50": 62,
+        "p95": 102984,
+        "max": 102984,
+        "n": 10
+      }
+    },
+    "outsideEngine": {
+      "p50": 251.5,
+      "p95": 295,
+      "max": 295,
+      "n": 10
+    },
+    "n": 10
+  },
+  "warmUnchangedPhases": {
+    "phases": {
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 10
+      },
+      "sync": {
+        "p50": 1.9,
+        "p95": 2.5,
+        "max": 2.5,
+        "n": 10
+      },
+      "total": {
+        "p50": 0,
+        "p95": 16,
+        "max": 16,
+        "n": 10
+      }
+    },
+    "outsideEngine": {
+      "p50": 265.2,
+      "p95": 281,
+      "max": 281,
+      "n": 10
+    },
+    "n": 10
+  },
+  "testRoundPhases": null,
+  "multiAgent": null,
+  "engineWorkingSetMb": 580,
+  "enginePeakWorkingSetMb": 580,
+  "engineIdleWorkingSetMb": 471.1,
+  "treeCleanAfter": true
+}

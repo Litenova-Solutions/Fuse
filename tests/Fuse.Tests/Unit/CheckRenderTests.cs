@@ -123,6 +123,26 @@ public class CheckRenderTests
     }
 
     [Fact]
+    public void A_capped_answer_names_the_file_holding_every_error()
+    {
+        var errors = Enumerable.Range(1, 25)
+            .Select(i => new ReportedError(new CompilerError($"src/F{i}.cs", i, 2, "CS0103", "The name 'x' does not exist in the current context")))
+            .ToArray();
+        var result = CheckOperation.Render(new CheckReport(errors, 25, ["App"], [], 0, false, 25, 25, 0), "/state/last-check-results.txt");
+
+        Assert.Equal("fuse: 25 error(s) introduced in 25 file(s), first 20 shown (App); all 25 in /state/last-check-results.txt", result.Text.Split('\n')[^1]);
+    }
+
+    [Fact]
+    public void An_answer_with_every_error_shown_names_no_file()
+    {
+        ReportedError[] errors = [new(new CompilerError("App/Program.cs", 2, 28, "CS1061", "no Add"))];
+        var result = CheckOperation.Render(new CheckReport(errors, 3, ["App"], [], 0, false, 1, 1, 0), "/state/last-check-results.txt");
+
+        Assert.Equal("fuse: 1 error(s) introduced in 1 file(s) (App)", result.Text.Split('\n')[^1]);
+    }
+
+    [Fact]
     public void A_session_whose_edits_introduced_nothing_is_answered_clean()
     {
         var result = CheckOperation.Render(new CheckReport([], 3, [], [], 0, false, 0, 0, 2));

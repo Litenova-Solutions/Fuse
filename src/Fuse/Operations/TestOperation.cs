@@ -22,17 +22,20 @@ internal static class TestOperation
     public static async Task<OperationResult> RunAsync(RepoRoot root, string workingDirectory, IReadOnlyList<string> arguments, bool all, CancellationToken cancellationToken, string? session = null)
     {
         var started = Environment.TickCount64;
-        if (arguments.Count > 0)
+        // Arguments that only say where the tests are and how to build them plan the affected tests in that scope;
+        // any other argument chooses the tests itself and passes to dotnet test as it is.
+        var scope = arguments.Count > 0 ? TestScopeArguments.Parse(workingDirectory, arguments) : null;
+        if (arguments.Count > 0 && scope is null)
         {
             // dotnet test with the caller's arguments builds with MSBuild, so it holds the lock until it exits.
             using var argumentsLock = BuildLock.AcquireForClient(root);
             // On Microsoft.Testing.Platform the arguments go to the test application, which rejects VSTest's logger options.
             var testingPlatform = GlobalJson.UsesTestingPlatform(workingDirectory, root.Path);
-            var (outcome, process, log) = await RunDotnetTestAsync(root, workingDirectory, [.. arguments], cancellationToken, testingPlatform).ConfigureAwait(false);
+            var (outcome, process, log, resultsDirectory) = await RunDotnetTestAsync(root, workingDirectory, NormalizeArguments(workingDirectory, arguments), cancellationToken, testingPlatform).ConfigureAwait(false);
             const string summary = "ran the tests your dotnet test arguments name";
             return outcome is null
-                ? WithoutResults(process, root, ArgumentsRun, summary, Seconds(started), log)
-                : Render(outcome, summary, Seconds(started));
+                ? WithoutResults(process, root, ArgumentsRun, summary, Seconds(started), log, resultsDirectory)
+                : Render(outcome, summary, Seconds(started), ResultsFile.WriteTests(root, [("", outcome)]));
         }
 
         // Held from before the plan request: preparing the plan makes the engine mirror and emit into the copies the runs
@@ -41,7 +44,7 @@ internal static class TestOperation
         var buildLock = BuildLock.AcquireForClient(root);
         try
         {
-            EngineRequest request = all ? new EngineRequest.PlanAllTests() : new EngineRequest.PlanAffectedTests { Session = session };
+            EngineRequest request = all ? new EngineRequest.PlanAllTests() : new EngineRequest.PlanAffectedTests { Session = session, Projects = scope?.Paths ?? [], BuildOnly = scope?.BuildOnly ?? false };
             var response = await EngineClient.SendAsync(root, request, TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
             if (response is not EngineResponse.PlanAnswered answered)
                 return OperationResult.Unanswered(response, "test plan");
@@ -50,7 +53,7 @@ internal static class TestOperation
                 return new OperationResult(Outcome.Clean, $"fuse: {plan.Summary}");
             var held = buildLock;
             buildLock = null;
-            return await RunPlanAsync(root, plan, started, cancellationToken, held).ConfigureAwait(false);
+            return await RunPlanAsync(root, plan, started, cancellationToken, held, scope).ConfigureAwait(false);
         }
         finally
         {
@@ -72,7 +75,7 @@ internal static class TestOperation
     ///     and the build lock is released while they run, so another client's build or test plan does not wait for them.
     ///     MSBuild runs share obj and bin folders across projects, so they run one after another, holding the lock.
     /// </remarks>
-    internal static async Task<OperationResult> RunPlanAsync(RepoRoot root, TestPlan plan, long started, CancellationToken cancellationToken, BuildLock? held = null)
+    internal static async Task<OperationResult> RunPlanAsync(RepoRoot root, TestPlan plan, long started, CancellationToken cancellationToken, BuildLock? held = null, TestScopeArguments? scope = null)
     {
         var buildLock = held;
         var copies = new List<IDisposable>();
@@ -82,7 +85,7 @@ internal static class TestOperation
             {
                 buildLock?.Dispose();
                 buildLock = null;
-            }, () => buildLock ??= BuildLock.AcquireForClient(root), cancellationToken).ConfigureAwait(false);
+            }, () => buildLock ??= BuildLock.AcquireForClient(root), scope, cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -93,9 +96,12 @@ internal static class TestOperation
     }
 
     private static async Task<OperationResult> RunPlanHoldingAsync(
-        RepoRoot root, TestPlan plan, long started, List<IDisposable> copies, Action releaseLock, Func<BuildLock> takeLock, CancellationToken cancellationToken)
+        RepoRoot root, TestPlan plan, long started, List<IDisposable> copies, Action releaseLock, Func<BuildLock> takeLock, TestScopeArguments? scope, CancellationToken cancellationToken)
     {
         var groups = plan.Runs.GroupBy(r => root.PathOf(r.Project)).ToList();
+        // Whether dotnet test runs the platform in this repository decides how a platform run is started.
+        var runner = GlobalJson.UsesTestingPlatform(root.Path, root.Path);
+        string[] buildSwitches = scope?.BuildSwitches ?? [];
         var shadowGroups = groups.Where(g => g.All(r => r.Mode is TestRunMode.Shadow && !r.UsesTestingPlatform)).ToList();
         if (shadowGroups.Count > 0)
         {
@@ -132,6 +138,7 @@ internal static class TestOperation
             }).ConfigureAwait(false);
 
         var aggregate = TrxResults.Empty;
+        var perProject = new List<(string Project, TrxResults Outcome)>();
         // A project that did not build, or whose run ended without results, is part of the answer whatever the other
         // projects did. A Microsoft.Testing.Platform run that passed without printing a run summary is kept apart: it has
         // no counts to add.
@@ -142,18 +149,20 @@ internal static class TestOperation
             if (outcomes.TryGetValue(group.Key, out var shadowOutcome))
             {
                 aggregate = aggregate.Add(shadowOutcome);
+                perProject.Add((group.First().Name, shadowOutcome));
                 continue;
             }
 
             // A run with MSBuild writes build output, so it waits for the build lock.
             takeLock();
             var run = group.First();
-            var (outcome, process, log) = run.UsesTestingPlatform
-                ? await RunDotnetTestAsync(root, root.Path, ["--project", run.Project, "--no-restore"], cancellationToken, testingPlatform: true).ConfigureAwait(false)
-                : await RunDotnetTestAsync(root, root.Path, [run.Project, "--no-restore"], cancellationToken, run: run).ConfigureAwait(false);
+            var (outcome, process, log, _) = run.UsesTestingPlatform
+                ? await RunPlatformAsync(root, run, runner, scope, cancellationToken).ConfigureAwait(false)
+                : await RunDotnetTestAsync(root, root.Path, [run.Project, "--no-restore", .. buildSwitches], cancellationToken, run: run).ConfigureAwait(false);
             if (outcome is not null)
             {
                 aggregate = aggregate.Add(outcome);
+                perProject.Add((run.Name, outcome));
                 continue;
             }
 
@@ -171,7 +180,8 @@ internal static class TestOperation
 
         var shadowRuns = outcomes.Count;
         var mode = shadowRuns == groups.Count ? "without MSBuild" : shadowRuns > 0 ? $"without MSBuild for {shadowRuns} of {groups.Count} project(s)" : "built with MSBuild";
-        var tests = Render(aggregate, $"{plan.Summary}; {mode}", Seconds(started));
+        var resultsPath = aggregate.Total > 0 ? ResultsFile.WriteTests(root, perProject) : null;
+        var tests = Render(aggregate, $"{plan.Summary}; {mode}", Seconds(started), resultsPath);
         // The tests' answer comes first, so the last line is a failed build or run whenever there is one.
         return problems.Count == 0 ? tests : Join([tests, .. problems]);
     }
@@ -187,6 +197,121 @@ internal static class TestOperation
     private static double Seconds(long started) => (Environment.TickCount64 - started) / 1000.0;
 
     /// <summary>
+    ///     Runs one project on Microsoft.Testing.Platform, with its framework's filter. With the repository's
+    ///     <c>global.json</c> opt-in, <c>dotnet test</c> runs it. Without one, <c>dotnet test</c> cannot reach it: the
+    ///     project has no VSTest target to run (it exits 0 having run nothing, or its targets refuse), and
+    ///     <c>--project</c> is not a switch of that command. The project then builds and its test application runs
+    ///     directly from what the build wrote, once per target framework, with the output folder as its working
+    ///     directory, as a test host runs it. A filtered run that ran no test is answered as the platform's own
+    ///     no-test run, never as a pass.
+    /// </summary>
+    private static async Task<(TrxResults? Outcome, ProcessResult? Process, string Log, string ResultsDirectory)> RunPlatformAsync(
+        RepoRoot root, TestRun run, bool runner, TestScopeArguments? scope, CancellationToken cancellationToken)
+    {
+        string[] switches = scope?.BuildSwitches ?? [];
+        if (runner || run.TargetPaths.Length == 0)
+        {
+            var ran = await RunDotnetTestAsync(root, root.Path, ["--project", run.Project, "--no-restore", .. switches, .. run.FilterArguments], cancellationToken, testingPlatform: true, run: run).ConfigureAwait(false);
+            return FilteredNoTest(run, ran);
+        }
+
+        var results = Path.Combine(root.StateDirectory, "results", Guid.NewGuid().ToString("N")[..8]);
+        try
+        {
+            // --no-build runs what an earlier build wrote, as dotnet test --no-build does.
+            var (built, log) = switches.Contains("--no-build")
+                ? (new ProcessResult(0, ""), "")
+                : await BuildOperation.RunLoggedAsync(["build", run.Project, "--no-restore", "-nologo", "-tl:off", .. switches.Where(s => s != "--no-build")], root.Path, results, cancellationToken).ConfigureAwait(false);
+            if (built.ExitCode != 0)
+                return (null, built, log, results);
+            var targets = run.TargetPaths
+                .Select(t => scope?.Configuration is { } configuration ? ForConfiguration(t, configuration) : t)
+                .Where(t => scope?.Framework is not { } framework || HasSegment(t, framework))
+                .Where(File.Exists)
+                .ToList();
+            if (targets.Count == 0)
+            {
+                // The build wrote none of the applications evaluation named; dotnet test says so in its own words.
+                var ran = await RunDotnetTestAsync(root, root.Path, ["--project", run.Project, "--no-restore", .. switches, .. run.FilterArguments], cancellationToken, testingPlatform: true, run: run).ConfigureAwait(false);
+                return FilteredNoTest(run, ran);
+            }
+
+            string[] settings = run.Filter is not null || run.RunSettings is not null
+                ? ["--settings", RunSettingsFile.Write(results, run.Filter, run.RunSettings)]
+                : [];
+            var aggregate = TrxResults.Empty;
+            ProcessResult? last = null;
+            foreach (var target in targets)
+            {
+                var arguments = new List<string>();
+                string file;
+                if (target.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+                {
+                    file = "dotnet";
+                    arguments.Add("exec");
+                    arguments.Add(target);
+                }
+                else
+                {
+                    file = target;
+                }
+
+                arguments.AddRange(run.FilterArguments);
+                arguments.AddRange(settings);
+                var process = await ProcessRunner.RunAsync(file, [.. arguments], Path.GetDirectoryName(target)!, cancellationToken).ConfigureAwait(false);
+                var outcome = TestingPlatformOutput.Read(process.Output, root.Path) ?? XUnitOutput.Read(process.Output, root.Path);
+                // Counts that say nothing failed from a run that exited with a code other than 0 do not explain its exit code.
+                if (outcome is { Failed: 0 } && process.ExitCode != 0)
+                    outcome = null;
+                if (outcome is null)
+                    return (null, process.ExitCode == 0 ? null : process, log, results);
+                aggregate = aggregate.Add(outcome);
+                last = process;
+            }
+
+            if (aggregate.Total == 0 && (run.Filter is not null || run.FilterArguments.Length > 0))
+                return (null, new ProcessResult(NoTestRanExitCode, last?.Output ?? ""), log, results);
+            return (aggregate, null, log, results);
+        }
+        finally
+        {
+            try
+            {
+                if (Directory.Exists(results))
+                    Directory.Delete(results, recursive: true);
+            }
+            catch (IOException)
+            {
+            }
+        }
+    }
+
+    /// <summary>
+    ///     A built test application's path under <paramref name="configuration"/>: evaluation names the default
+    ///     configuration's output, so the segment a build writes the named one to takes its place.
+    /// </summary>
+    private static string ForConfiguration(string target, string configuration)
+    {
+        var parts = target.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var bin = Array.FindIndex(parts, p => p.Equals("bin", StringComparison.OrdinalIgnoreCase));
+        if (bin < 0 || bin + 1 >= parts.Length)
+            return target;
+        parts[bin + 1] = configuration;
+        return string.Join(Path.DirectorySeparatorChar, parts);
+    }
+
+    /// <summary>Whether <paramref name="path"/> has a segment that is exactly <paramref name="segment"/>.</summary>
+    private static bool HasSegment(string path, string segment) =>
+        path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Any(p => p.Equals(segment, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>A filtered platform run that ran no test, answered as the platform's own no-test run; any other run unchanged.</summary>
+    private static (TrxResults? Outcome, ProcessResult? Process, string Log, string ResultsDirectory) FilteredNoTest(
+        TestRun run, (TrxResults? Outcome, ProcessResult? Process, string Log, string ResultsDirectory) ran) =>
+        ran.Outcome is { Total: 0 } && (run.Filter is not null || run.FilterArguments.Length > 0)
+            ? (null, new ProcessResult(NoTestRanExitCode, ""), ran.Log, ran.ResultsDirectory)
+            : ran;
+
+    /// <summary>
     ///     Runs <c>dotnet test</c> and reads its results: from its TRX files, or for a Microsoft.Testing.Platform run from
     ///     the summary and failures it prints. Without results it returns the process, which is null for a
     ///     Microsoft.Testing.Platform run that exited with 0.
@@ -194,7 +319,7 @@ internal static class TestOperation
     /// <param name="assembly">True when <paramref name="arguments"/> name a test assembly: <c>dotnet test</c> then hands them to VSTest, which rejects MSBuild switches.</param>
     /// <param name="run">The planned VSTest run, whose filter and project runsettings go into a runsettings file; null for none.</param>
     /// <returns>The results, or the process without them, and the build's file log (<see cref="BuildLog"/>) for a VSTest run that builds with MSBuild, or empty.</returns>
-    private static async Task<(TrxResults? Outcome, ProcessResult? Process, string Log)> RunDotnetTestAsync(
+    private static async Task<(TrxResults? Outcome, ProcessResult? Process, string Log, string ResultsDirectory)> RunDotnetTestAsync(
         RepoRoot root, string workingDirectory, string[] arguments, CancellationToken cancellationToken, bool testingPlatform = false, bool assembly = false, TestRun? run = null)
     {
         var results = Path.Combine(root.StateDirectory, "results", Guid.NewGuid().ToString("N")[..8]);
@@ -217,10 +342,10 @@ internal static class TestOperation
             if (testingPlatform && outcome is { Failed: 0 } && result.ExitCode != 0)
                 outcome = null;
             if (outcome is null && testingPlatform)
-                return (null, result.ExitCode == 0 ? null : result, log);
+                return (null, result.ExitCode == 0 ? null : result, log, results);
             if (outcome is null)
-                return (null, result, log);
-            return (outcome, null, log);
+                return (null, result, log, results);
+            return (outcome, null, log, results);
         }
         finally
         {
@@ -235,6 +360,86 @@ internal static class TestOperation
         }
     }
 
+    /// <summary>
+    ///     The caller's <c>dotnet test</c> arguments with a positional path spelled the way the runner requires:
+    ///     Microsoft.Testing.Platform refuses a directory, project or solution given positionally, so a first argument
+    ///     naming one becomes <c>--project</c> or <c>--solution</c> with the path. An assembly stays positional, and
+    ///     arguments that already name a project or solution pass unchanged.
+    /// </summary>
+    internal static string[] NormalizeArguments(string workingDirectory, IReadOnlyList<string> arguments)
+    {
+        string[] normalized = [.. arguments];
+        for (var i = 0; i < normalized.Length; i++)
+        {
+            if (normalized[i] == "--results-directory" && i + 1 < normalized.Length)
+                normalized[i + 1] = NormalizeResultsDirectory(workingDirectory, normalized[i + 1]);
+            else if (normalized[i].StartsWith("--results-directory=", StringComparison.OrdinalIgnoreCase))
+                normalized[i] = "--results-directory=" + NormalizeResultsDirectory(workingDirectory, normalized[i]["--results-directory=".Length..]);
+        }
+
+        arguments = normalized;
+        if (arguments.Count == 0
+            || arguments.Any(a => a.StartsWith("--project", StringComparison.OrdinalIgnoreCase) || a.StartsWith("--solution", StringComparison.OrdinalIgnoreCase)))
+            return [.. arguments];
+        var first = arguments[0];
+        if (first.StartsWith('-')
+            || first.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
+            || first.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+            return [.. arguments];
+        var option = first.EndsWith(".sln", StringComparison.OrdinalIgnoreCase) || first.EndsWith(".slnx", StringComparison.OrdinalIgnoreCase)
+            ? "--solution"
+            : first.EndsWith("proj", StringComparison.OrdinalIgnoreCase)
+                ? "--project"
+                : IsDirectory(workingDirectory, first) ? "--project" : null;
+        return option is null ? [.. arguments] : [option, first, .. arguments.Skip(1)];
+    }
+
+    /// <summary>
+    ///     A caller-named results directory as a full path `dotnet test` can use: relative paths are read from the
+    ///     working directory, and on Windows a Git Bash spelling (`/c/Users/...` or `/cygdrive/c/...`) becomes its
+    ///     Windows path, which the runner would otherwise write nowhere Fuse reads. A path that cannot be resolved
+    ///     keeps its given form.
+    /// </summary>
+    private static string NormalizeResultsDirectory(string workingDirectory, string path)
+    {
+        var value = OperatingSystem.IsWindows() && FromGitBashPath(path) is { } windows ? windows : path;
+
+        try
+        {
+            return Path.GetFullPath(value, workingDirectory);
+        }
+        catch (Exception e) when (e is ArgumentException or NotSupportedException or IOException)
+        {
+            return value;
+        }
+    }
+
+    /// <summary>
+    ///     The Windows path a Git Bash spelling names: <c>/c/Users/...</c> and <c>/cygdrive/c/Users/...</c> both become
+    ///     <c>C:\Users\...</c>. Null for any other form.
+    /// </summary>
+    private static string? FromGitBashPath(string path)
+    {
+        var rest = path.StartsWith("/cygdrive/", StringComparison.OrdinalIgnoreCase) ? path[10..]
+            : path.Length > 2 && path[0] == '/' ? path[1..] : null;
+        return rest is { Length: > 2 } && char.IsLetter(rest[0]) && rest[1] == '/'
+            ? $"{char.ToUpperInvariant(rest[0])}:\\" + rest[2..].Replace('/', '\\')
+            : null;
+    }
+
+    /// <summary>Whether <paramref name="path"/>, read from <paramref name="workingDirectory"/>, is a directory; a path that cannot be read as one is not.</summary>
+    private static bool IsDirectory(string workingDirectory, string path)
+    {
+        try
+        {
+            return Directory.Exists(Path.GetFullPath(path, workingDirectory));
+        }
+        catch (Exception e) when (e is ArgumentException or NotSupportedException or IOException)
+        {
+            return false;
+        }
+    }
+
     /// <summary>How <see cref="WithoutResults"/> names a run of the user's own <c>dotnet test</c> arguments.</summary>
     internal const string ArgumentsRun = "dotnet test";
 
@@ -242,14 +447,15 @@ internal static class TestOperation
     internal const int NoTestRanExitCode = 8;
 
     /// <summary>
-    ///     The <c>--settings</c> argument of a VSTest run: a runsettings file in its results folder that carries its filter,
+    ///     The <c>--settings</c> argument of a run whose filter is a VSTest expression (a VSTest run, or MSTest and NUnit
+    ///     on Microsoft.Testing.Platform): a runsettings file in its results folder that carries its filter,
     ///     so a filter of any length leaves the command line short. A shadow run gets one for the project's runsettings
     ///     too, because <c>dotnet test</c> on an assembly does not read the project; a build with MSBuild without a filter
     ///     reads them itself.
     /// </summary>
     private static string[] Settings(TestRun? run, string results, bool assembly)
     {
-        if (run is null || run.UsesTestingPlatform || (run.Filter is null && !(assembly && run.RunSettings is not null)))
+        if (run is null || (run.Filter is null && !(assembly && run.RunSettings is not null)))
             return [];
         return ["--settings", RunSettingsFile.Write(results, run.Filter, run.RunSettings)];
     }
@@ -267,7 +473,7 @@ internal static class TestOperation
     /// <param name="summary">What ran and why, for a run that passed.</param>
     /// <param name="seconds">How long the operation has taken.</param>
     /// <param name="log">The build's file log, or empty, so a failed test build shows what a failed command printed.</param>
-    internal static OperationResult WithoutResults(ProcessResult? result, RepoRoot root, string run, string summary, double seconds, string log = "")
+    internal static OperationResult WithoutResults(ProcessResult? result, RepoRoot root, string run, string summary, double seconds, string log = "", string? resultsDirectory = null)
     {
         // A Microsoft.Testing.Platform run that passed without printing a run summary, so there are no counts to show.
         if (result is null)
@@ -281,7 +487,8 @@ internal static class TestOperation
         if (result.ExitCode != 0 && BuildOutputParser.Errors(result.Output, root.Path).Count == 0)
         {
             var tail = BuildOperation.Tail(result.Output);
-            var line = $"fuse: {run} exited with code {result.ExitCode} and produced no results in {seconds:0.0} s";
+            var where = resultsDirectory is null ? "" : $" (no result file in {resultsDirectory})";
+            var line = $"fuse: {run} exited with code {result.ExitCode} and produced no results in {seconds:0.0} s{where}";
             return new OperationResult(Outcome.ProblemsFound, tail.Length == 0 ? line : $"{tail}\n{line}");
         }
 
@@ -289,18 +496,22 @@ internal static class TestOperation
         return build with { Outcome = result.ExitCode == 0 ? Outcome.Clean : Outcome.ProblemsFound };
     }
 
+    /// <summary>One failure as the answer prints it: its name, its message, and its frames.</summary>
+    internal static void AppendFailure(StringBuilder text, TestFailure failure)
+    {
+        text.Append("FAILED ").Append(failure.Name).Append('\n');
+        foreach (var line in failure.Message.Split('\n'))
+            text.Append("  ").Append(line).Append('\n');
+        foreach (var frame in failure.Frames)
+            text.Append("  ").Append(frame).Append('\n');
+    }
+
     /// <summary>The answer for runs that wrote TRX results: the failures, then the counts and <paramref name="summary"/>.</summary>
-    private static OperationResult Render(TrxResults outcome, string summary, double seconds)
+    private static OperationResult Render(TrxResults outcome, string summary, double seconds, string? resultsPath = null)
     {
         var text = new StringBuilder();
         foreach (var failure in outcome.Failures.Take(MaxFailuresShown))
-        {
-            text.Append("FAILED ").Append(failure.Name).Append('\n');
-            foreach (var line in failure.Message.Split('\n'))
-                text.Append("  ").Append(line).Append('\n');
-            foreach (var frame in failure.Frames)
-                text.Append("  ").Append(frame).Append('\n');
-        }
+            AppendFailure(text, failure);
 
         if (outcome.Failures.Count > MaxFailuresShown)
         {
@@ -313,7 +524,13 @@ internal static class TestOperation
                 text.Append($"  ... and {rest.Count - MaxNamesShown} more\n");
         }
         var skipped = outcome.Skipped > 0 ? $", {outcome.Skipped} skipped" : "";
-        text.Append($"fuse: {outcome.Failed} failed, {outcome.Passed} passed{skipped} in {seconds:0.0} s; {summary}");
+        // The file holds every failure; the answer names it only when it left failures or names out.
+        var namesCapped = outcome.Failures.Count > MaxFailuresShown
+            && outcome.Failures.Skip(MaxFailuresShown).Select(f => f.Name).Distinct().Count() > MaxNamesShown;
+        var file = resultsPath is not null && (outcome.Failed > Math.Min(MaxFailuresShown, outcome.Failures.Count) || namesCapped)
+            ? $"; all {outcome.Failed} in {resultsPath}"
+            : "";
+        text.Append($"fuse: {outcome.Failed} failed, {outcome.Passed} passed{skipped} in {seconds:0.0} s; {summary}{file}");
         return new OperationResult(outcome.Failed > 0 ? Outcome.ProblemsFound : Outcome.Clean, text.ToString());
     }
 }

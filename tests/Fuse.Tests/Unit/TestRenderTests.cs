@@ -23,6 +23,17 @@ public class TestRenderTests
     }
 
     [Fact]
+    public void A_run_without_results_names_the_directory_results_were_read_from()
+    {
+        var result = TestOperation.WithoutResults(
+            new ProcessResult(1, "Specifying a directory for 'dotnet test' should be via '--project' or '--solution'.\n"),
+            FixtureRepo.CheckoutRoot, TestOperation.ArgumentsRun, "ran the tests your dotnet test arguments name", 0.3, resultsDirectory: @"C:\state\results\a1b2c3d4");
+
+        Assert.Equal(Outcome.ProblemsFound, result.Outcome);
+        Assert.EndsWith(@"fuse: dotnet test exited with code 1 and produced no results in 0.3 s (no result file in C:\state\results\a1b2c3d4)", result.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void A_testing_platform_run_of_the_arguments_that_ran_no_test_says_no_test_matched()
     {
         var output = "Zero tests ran\nTest run summary: Zero tests ran\n  total: 0\n";

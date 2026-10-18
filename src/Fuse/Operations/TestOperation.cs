@@ -28,10 +28,10 @@ internal static class TestOperation
             using var argumentsLock = BuildLock.AcquireForClient(root);
             // On Microsoft.Testing.Platform the arguments go to the test application, which rejects VSTest's logger options.
             var testingPlatform = GlobalJson.UsesTestingPlatform(workingDirectory, root.Path);
-            var (outcome, process, log) = await RunDotnetTestAsync(root, workingDirectory, [.. arguments], cancellationToken, testingPlatform).ConfigureAwait(false);
+            var (outcome, process, log, resultsDirectory) = await RunDotnetTestAsync(root, workingDirectory, NormalizeArguments(workingDirectory, arguments), cancellationToken, testingPlatform).ConfigureAwait(false);
             const string summary = "ran the tests your dotnet test arguments name";
             return outcome is null
-                ? WithoutResults(process, root, ArgumentsRun, summary, Seconds(started), log)
+                ? WithoutResults(process, root, ArgumentsRun, summary, Seconds(started), log, resultsDirectory)
                 : Render(outcome, summary, Seconds(started));
         }
 
@@ -148,7 +148,7 @@ internal static class TestOperation
             // A run with MSBuild writes build output, so it waits for the build lock.
             takeLock();
             var run = group.First();
-            var (outcome, process, log) = run.UsesTestingPlatform
+            var (outcome, process, log, _) = run.UsesTestingPlatform
                 ? await RunDotnetTestAsync(root, root.Path, ["--project", run.Project, "--no-restore"], cancellationToken, testingPlatform: true).ConfigureAwait(false)
                 : await RunDotnetTestAsync(root, root.Path, [run.Project, "--no-restore"], cancellationToken, run: run).ConfigureAwait(false);
             if (outcome is not null)
@@ -194,7 +194,7 @@ internal static class TestOperation
     /// <param name="assembly">True when <paramref name="arguments"/> name a test assembly: <c>dotnet test</c> then hands them to VSTest, which rejects MSBuild switches.</param>
     /// <param name="run">The planned VSTest run, whose filter and project runsettings go into a runsettings file; null for none.</param>
     /// <returns>The results, or the process without them, and the build's file log (<see cref="BuildLog"/>) for a VSTest run that builds with MSBuild, or empty.</returns>
-    private static async Task<(TrxResults? Outcome, ProcessResult? Process, string Log)> RunDotnetTestAsync(
+    private static async Task<(TrxResults? Outcome, ProcessResult? Process, string Log, string ResultsDirectory)> RunDotnetTestAsync(
         RepoRoot root, string workingDirectory, string[] arguments, CancellationToken cancellationToken, bool testingPlatform = false, bool assembly = false, TestRun? run = null)
     {
         var results = Path.Combine(root.StateDirectory, "results", Guid.NewGuid().ToString("N")[..8]);
@@ -217,10 +217,10 @@ internal static class TestOperation
             if (testingPlatform && outcome is { Failed: 0 } && result.ExitCode != 0)
                 outcome = null;
             if (outcome is null && testingPlatform)
-                return (null, result.ExitCode == 0 ? null : result, log);
+                return (null, result.ExitCode == 0 ? null : result, log, results);
             if (outcome is null)
-                return (null, result, log);
-            return (outcome, null, log);
+                return (null, result, log, results);
+            return (outcome, null, log, results);
         }
         finally
         {
@@ -232,6 +232,86 @@ internal static class TestOperation
             catch (IOException)
             {
             }
+        }
+    }
+
+    /// <summary>
+    ///     The caller's <c>dotnet test</c> arguments with a positional path spelled the way the runner requires:
+    ///     Microsoft.Testing.Platform refuses a directory, project or solution given positionally, so a first argument
+    ///     naming one becomes <c>--project</c> or <c>--solution</c> with the path. An assembly stays positional, and
+    ///     arguments that already name a project or solution pass unchanged.
+    /// </summary>
+    internal static string[] NormalizeArguments(string workingDirectory, IReadOnlyList<string> arguments)
+    {
+        string[] normalized = [.. arguments];
+        for (var i = 0; i < normalized.Length; i++)
+        {
+            if (normalized[i] == "--results-directory" && i + 1 < normalized.Length)
+                normalized[i + 1] = NormalizeResultsDirectory(workingDirectory, normalized[i + 1]);
+            else if (normalized[i].StartsWith("--results-directory=", StringComparison.OrdinalIgnoreCase))
+                normalized[i] = "--results-directory=" + NormalizeResultsDirectory(workingDirectory, normalized[i]["--results-directory=".Length..]);
+        }
+
+        arguments = normalized;
+        if (arguments.Count == 0
+            || arguments.Any(a => a.StartsWith("--project", StringComparison.OrdinalIgnoreCase) || a.StartsWith("--solution", StringComparison.OrdinalIgnoreCase)))
+            return [.. arguments];
+        var first = arguments[0];
+        if (first.StartsWith('-')
+            || first.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
+            || first.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+            return [.. arguments];
+        var option = first.EndsWith(".sln", StringComparison.OrdinalIgnoreCase) || first.EndsWith(".slnx", StringComparison.OrdinalIgnoreCase)
+            ? "--solution"
+            : first.EndsWith("proj", StringComparison.OrdinalIgnoreCase)
+                ? "--project"
+                : IsDirectory(workingDirectory, first) ? "--project" : null;
+        return option is null ? [.. arguments] : [option, first, .. arguments.Skip(1)];
+    }
+
+    /// <summary>
+    ///     A caller-named results directory as a full path `dotnet test` can use: relative paths are read from the
+    ///     working directory, and on Windows a Git Bash spelling (`/c/Users/...` or `/cygdrive/c/...`) becomes its
+    ///     Windows path, which the runner would otherwise write nowhere Fuse reads. A path that cannot be resolved
+    ///     keeps its given form.
+    /// </summary>
+    private static string NormalizeResultsDirectory(string workingDirectory, string path)
+    {
+        var value = OperatingSystem.IsWindows() && FromGitBashPath(path) is { } windows ? windows : path;
+
+        try
+        {
+            return Path.GetFullPath(value, workingDirectory);
+        }
+        catch (Exception e) when (e is ArgumentException or NotSupportedException or IOException)
+        {
+            return value;
+        }
+    }
+
+    /// <summary>
+    ///     The Windows path a Git Bash spelling names: <c>/c/Users/...</c> and <c>/cygdrive/c/Users/...</c> both become
+    ///     <c>C:\Users\...</c>. Null for any other form.
+    /// </summary>
+    private static string? FromGitBashPath(string path)
+    {
+        var rest = path.StartsWith("/cygdrive/", StringComparison.OrdinalIgnoreCase) ? path[10..]
+            : path.Length > 2 && path[0] == '/' ? path[1..] : null;
+        return rest is { Length: > 2 } && char.IsLetter(rest[0]) && rest[1] == '/'
+            ? $"{char.ToUpperInvariant(rest[0])}:\\" + rest[2..].Replace('/', '\\')
+            : null;
+    }
+
+    /// <summary>Whether <paramref name="path"/>, read from <paramref name="workingDirectory"/>, is a directory; a path that cannot be read as one is not.</summary>
+    private static bool IsDirectory(string workingDirectory, string path)
+    {
+        try
+        {
+            return Directory.Exists(Path.GetFullPath(path, workingDirectory));
+        }
+        catch (Exception e) when (e is ArgumentException or NotSupportedException or IOException)
+        {
+            return false;
         }
     }
 
@@ -267,7 +347,7 @@ internal static class TestOperation
     /// <param name="summary">What ran and why, for a run that passed.</param>
     /// <param name="seconds">How long the operation has taken.</param>
     /// <param name="log">The build's file log, or empty, so a failed test build shows what a failed command printed.</param>
-    internal static OperationResult WithoutResults(ProcessResult? result, RepoRoot root, string run, string summary, double seconds, string log = "")
+    internal static OperationResult WithoutResults(ProcessResult? result, RepoRoot root, string run, string summary, double seconds, string log = "", string? resultsDirectory = null)
     {
         // A Microsoft.Testing.Platform run that passed without printing a run summary, so there are no counts to show.
         if (result is null)
@@ -281,7 +361,8 @@ internal static class TestOperation
         if (result.ExitCode != 0 && BuildOutputParser.Errors(result.Output, root.Path).Count == 0)
         {
             var tail = BuildOperation.Tail(result.Output);
-            var line = $"fuse: {run} exited with code {result.ExitCode} and produced no results in {seconds:0.0} s";
+            var where = resultsDirectory is null ? "" : $" (no result file in {resultsDirectory})";
+            var line = $"fuse: {run} exited with code {result.ExitCode} and produced no results in {seconds:0.0} s{where}";
             return new OperationResult(Outcome.ProblemsFound, tail.Length == 0 ? line : $"{tail}\n{line}");
         }
 

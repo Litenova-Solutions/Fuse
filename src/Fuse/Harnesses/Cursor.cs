@@ -6,11 +6,14 @@ namespace Fuse.Harnesses;
 
 /// <summary>
 ///     Cursor. Its hooks go in <c>.cursor/hooks.json</c>, in a flat format where each event holds a list of handlers
-///     with no matcher groups. Fuse registers a post-edit and a stop hook with it, and no pre-shell hook.
+///     with no matcher groups. Fuse registers a post-edit, a pre-shell and a stop hook with it.
 /// </summary>
 internal sealed class Cursor : Harness
 {
     public override string Name => "cursor";
+
+    /// <summary>Cursor replaces a tool's input only in an answer that allows the call, which runs the command it names.</summary>
+    public override bool ApprovesRewrittenCommand => true;
 
     public override bool IsUsedIn(RepoRoot root) => HasAny(root, ".cursor");
 
@@ -21,6 +24,7 @@ internal sealed class Cursor : Harness
         settings["version"] ??= 1;
         var hooks = SettingsFile.GetOrAddObject(settings, "hooks");
         SetFlatHook(hooks, "postToolUse", new JsonObject { ["command"] = Command(HookEvent.PostEdit), ["matcher"] = "Write", ["timeout"] = 60 });
+        SetFlatHook(hooks, "preToolUse", new JsonObject { ["command"] = Command(HookEvent.PreShell), ["matcher"] = "Shell", ["timeout"] = 10 });
         SetFlatHook(hooks, "stop", new JsonObject { ["command"] = Command(HookEvent.Stop), ["timeout"] = LongHookSeconds });
         return SettingsFile.Write(root, path, settings);
     }
@@ -54,8 +58,20 @@ internal sealed class Cursor : Harness
             return removed;
         });
 
-    /// <summary>Only a pre-shell hook the user registered by hand reaches this, and it gets no answer.</summary>
-    public override HookAnswer ReplaceShellCommand(JsonElement? toolInput, string command) => HookAnswer.None;
+    /// <summary>Cursor takes <c>updated_input</c> only with an allow answer, so this approves the rewritten command; <see cref="ApprovesRewrittenCommand"/> keeps it to a command Fuse rewrote whole. Every field the harness sent is carried over. A command Fuse does not rewrite gets no answer, which lets it through unapproved.</summary>
+    public override HookAnswer ReplaceShellCommand(JsonElement? toolInput, string command) =>
+        HookAnswer.Json(new JsonObject
+        {
+            ["permission"] = "allow",
+            ["updated_input"] = WithCommand(toolInput, command),
+        });
+
+    private static JsonObject WithCommand(JsonElement? input, string command)
+    {
+        var result = input is { } element ? JsonNode.Parse(element.GetRawText())!.AsObject() : [];
+        result["command"] = command;
+        return result;
+    }
 
     public override HookAnswer ReportAfterEdit(string report) => HookAnswer.Json(new JsonObject { ["additional_context"] = report });
 

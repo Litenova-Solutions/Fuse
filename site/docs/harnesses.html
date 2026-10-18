@@ -157,10 +157,10 @@
         <thead><tr><th scope="col">Harness</th><th scope="col">Detected by</th><th scope="col">File written</th><th scope="col">Events</th></tr></thead>
         <tbody>
           <tr><th scope="row">Claude Code</th><td><code>.claude/</code> or <code>CLAUDE.md</code>, or neither another harness nor <code>.vscode/</code></td><td><code>.claude/settings.json</code></td><td>post-edit, pre-shell, stop (also for subagents)</td></tr>
-          <tr><th scope="row">Cursor</th><td><code>.cursor/</code></td><td><code>.cursor/hooks.json</code></td><td>post-edit, stop</td></tr>
+          <tr><th scope="row">Cursor</th><td><code>.cursor/</code></td><td><code>.cursor/hooks.json</code></td><td>post-edit, pre-shell, stop</td></tr>
           <tr><th scope="row">Gemini CLI</th><td><code>.gemini/</code> or <code>GEMINI.md</code></td><td><code>.gemini/settings.json</code></td><td>post-edit, pre-shell, stop</td></tr>
           <tr><th scope="row">Codex</th><td><code>.codex/</code></td><td><code>.codex/hooks.json</code></td><td>post-edit, pre-shell, stop</td></tr>
-          <tr><th scope="row">GitHub Copilot CLI</th><td><code>.github/copilot-instructions.md</code> or <code>.github/hooks/</code></td><td><code>.github/hooks/fuse.json</code></td><td>post-edit, stop</td></tr>
+          <tr><th scope="row">GitHub Copilot CLI</th><td><code>.github/copilot-instructions.md</code> or <code>.github/hooks/</code></td><td><code>.github/hooks/fuse.json</code></td><td>post-edit, pre-shell, stop</td></tr>
           <tr><th scope="row">OpenCode</th><td><code>.opencode/</code>, <code>opencode.json</code> or <code>opencode.jsonc</code></td><td><code>.opencode/plugins/fuse.js</code></td><td>post-edit, pre-shell, stop</td></tr>
           <tr><th scope="row">Muse Code</th><td><code>.muse/</code></td><td><code>.muse/plugins/fuse/.muse-plugin/plugin.json</code>, which you then install and approve</td><td>post-edit, pre-shell, stop</td></tr>
           <tr><th scope="row">VS Code agent mode</th><td><code>.vscode/</code></td><td><code>.vscode/mcp.json</code></td><td>none; the MCP server</td></tr>
@@ -168,7 +168,7 @@
       </table>
     </div>
     <div class="callout warn">
-      <p><b>Cursor and GitHub Copilot CLI have no pre-shell hook.</b> In those two harnesses an agent's <code>dotnet build</code> and <code>dotnet test</code> run as the agent wrote them: every test runs, and the build does not take Fuse's build lock. Ask the agent to run <code>fuse test</code> and <code>fuse build</code> instead.</p>
+      <p><b>Four harnesses rewrite fewer commands.</b> Cursor, GitHub Copilot CLI, Codex and Muse Code apply a rewritten command only together with an allow answer, which runs it without asking you. Fuse approves only a command it rewrote whole, so in those harnesses only one plain <code>dotnet build</code> or <code>dotnet test</code> is rewritten, as the Codex note below describes. Every other command runs as the agent wrote it, without the build lock or test selection.</p>
     </div>
     <p>A repository with only <code>.vscode/</code> gets only <code>.vscode/mcp.json</code>, and no Claude Code settings. In a repository with every harness's folder and <code>.vscode/</code>, <code>fuse init</code> writes eight settings files and <code>.gitignore</code>, and prints the step Muse Code still needs:</p>
     <pre class="out" data-label="Output"><code>$ fuse init
@@ -257,6 +257,13 @@ fuse: Muse Code loads hooks from an installed plugin: run `muse plugins install 
         "timeout": 60
       }
     ],
+    "preToolUse": [
+      {
+        "command": "fuse hook cursor pre-shell",
+        "matcher": "Shell",
+        "timeout": 10
+      }
+    ],
     "stop": [
       {
         "command": "fuse hook cursor stop",
@@ -267,6 +274,7 @@ fuse: Muse Code loads hooks from an installed plugin: run `muse plugins install 
 }</code></pre>
     <ul>
       <li><strong>post-edit</strong> answers <code>{"additional_context":"..."}</code>. Cursor runs it inline, so the agent waits for it. It therefore does not wait for an engine that is still loading, and waits up to 50 seconds for the answer. The stop hook reports the edits it skipped.</li>
+      <li><strong>pre-shell</strong> answers <code>{"permission":"allow","updated_input":{...}}</code> with the rewritten command and every other field of the tool input carried over. Cursor takes the replacement only with an allow answer, so only one plain <code>dotnet build</code> or <code>dotnet test</code> is rewritten (see the note above). A command Fuse does not rewrite gets no answer and runs as written.</li>
       <li><strong>stop</strong> answers <code>{"followup_message":"..."}</code>, and <code>{}</code> when there are no errors.</li>
     </ul>
 
@@ -383,6 +391,15 @@ fuse: Muse Code loads hooks from an installed plugin: run `muse plugins install 
         "timeoutSec": 60
       }
     ],
+    "preToolUse": [
+      {
+        "type": "command",
+        "matcher": "bash|powershell",
+        "bash": "fuse hook copilot pre-shell",
+        "powershell": "fuse hook copilot pre-shell",
+        "timeoutSec": 10
+      }
+    ],
     "agentStop": [
       {
         "type": "command",
@@ -395,6 +412,7 @@ fuse: Muse Code loads hooks from an installed plugin: run `muse plugins install 
 }</code></pre>
     <ul>
       <li><strong>post-edit</strong> reads the tool arguments, which Copilot CLI may send as a JSON string, and answers <code>{"additionalContext":"..."}</code>, inline.</li>
+      <li><strong>pre-shell</strong> answers <code>{"permissionDecision":"allow","modifiedArgs":{...}}</code> with the rewritten command and every other argument carried over. Copilot CLI substitutes arguments only with an allow answer, so only one plain <code>dotnet build</code> or <code>dotnet test</code> is rewritten (see the note above). A command Fuse does not rewrite gets no answer, which uses Copilot's default behavior.</li>
       <li><strong>stop</strong> answers <code>{"decision":"block","reason":"..."}</code>, and <code>{}</code> when there are no errors.</li>
     </ul>
 

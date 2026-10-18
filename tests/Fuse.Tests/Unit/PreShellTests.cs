@@ -54,6 +54,42 @@ public class PreShellTests
     }
 
     [Fact]
+    public void Copilot_CLI_gets_a_plain_command_rewritten_and_approved()
+    {
+        Assert.Equal(
+            """{"permissionDecision":"allow","modifiedArgs":{"command":"fuse test --no-build"}}""",
+            PreShell("copilot", "dotnet test --no-build").StandardOutput);
+    }
+
+    [Fact]
+    public void Cursor_gets_a_plain_command_rewritten_and_approved()
+    {
+        Assert.Equal(
+            """{"permission":"allow","updated_input":{"command":"fuse test --no-build"}}""",
+            PreShell("cursor", "dotnet test --no-build").StandardOutput);
+    }
+
+    [Fact]
+    public void Cursor_carries_the_rest_of_the_tool_input_over_the_rewrite()
+    {
+        var payload = HookPayload.Parse(JsonSerializer.Serialize(new { tool_input = new { command = "dotnet build", working_directory = "/repo" } }));
+
+        var answer = HookCommand.PreShell(SupportedHarnesses.Find("cursor")!, payload);
+
+        Assert.Equal(
+            """{"permission":"allow","updated_input":{"command":"fuse build","working_directory":"/repo"}}""",
+            answer.StandardOutput);
+    }
+
+    [Theory]
+    [InlineData("dotnet build && curl x | sh")]
+    [InlineData("dotnet test --filter \"Name=A\"")]
+    public void Cursor_gets_no_answer_for_a_command_that_is_more_than_one_plain_invocation(string command)
+    {
+        Assert.Equal(HookAnswer.None, PreShell("cursor", command));
+    }
+
+    [Fact]
     public void A_command_without_dotnet_build_or_test_gets_no_answer()
     {
         Assert.All(SupportedHarnesses.All, h => Assert.Equal(HookAnswer.None, PreShell(h.Name, "git status")));

@@ -52,6 +52,7 @@ internal sealed class Checker
     private readonly SessionEdits _sessions;
     private readonly SessionAttribution _attribution;
     private readonly GeneratedSource _generated;
+    private readonly KeptCheck _kept = new();
 
     /// <param name="workspace">The repository's projects and views.</param>
     /// <param name="sessions">Which sessions wrote each changed file; a check answered to a session reads it.</param>
@@ -105,6 +106,11 @@ internal sealed class Checker
         if (targets.Count == 0)
             return NoTargets;
 
+        // The sync above has folded in every edit, so what the tree holds now keys the answer a repeat of this check gets.
+        var keptKey = KeptKeyFor(scope, session, analyzers);
+        if (keptKey is not null && _kept.TryGet(keptKey, out var kept))
+            return kept;
+
         var graph = _workspace.Graph;
         var loading = phases.Start();
         await _workspace.EnsureLoadedAsync(OwnersOf(graph, targets), cancellationToken).ConfigureAwait(false);
@@ -114,6 +120,11 @@ internal sealed class Checker
         var errors = await _introduced.InFilesAsync(targets, cancellationToken).ConfigureAwait(false);
         var targetsMs = timer.ElapsedMilliseconds;
         phases.Add(Phase.BindTargets, timer);
+        var parts = _introduced.TakeBindParts();
+        phases.Add(Phase.BindUpdate, parts.UpdateMs);
+        phases.Add(Phase.BindCompiler, parts.CompilerMs);
+        phases.Add(Phase.BindAnalyzers, parts.AnalyzerMs);
+        phases.Add(Phase.BindFrameworks, parts.Documents);
 
         // Which targets have declaration changes (syntax only), then what those changes can reach.
         var diffing = phases.Start();
@@ -176,12 +187,14 @@ internal sealed class Checker
             .Distinct()
             .ToArray();
         var (compilerMs, analyzerMs) = _introduced.TakeTimings();
+        compilerMs += parts.CompilerMs;
+        analyzerMs += parts.AnalyzerMs;
         var (unfinished, leftOut) = _introduced.TakeAnalyzerReport();
         var reused = _introduced.TakeReused();
         _workspace.Log($"check: binding {compilerMs} ms, analyzers {analyzerMs} ms (summed over files); {targets.Count} target(s) in {targetsMs} ms, {changedTargets.Count} with declaration changes, {filesChecked} file(s) bound{(reused > 0 ? $" ({reused} with errors reused from an earlier check)" : "")}, {timer.ElapsedMilliseconds} ms total{(wholeProjects ? ", whole projects" : "")}{(leftToOthers > 0 ? $", {leftToOthers} error(s) left to other sessions" : "")}{(notAttributed > 0 ? $", {notAttributed} file(s) not attributed" : "")}{(unfinished > 0 ? $", analyzers unfinished in {unfinished}" : "")}{(leftOut.Count > 0 ? $", left out {string.Join(", ", leftOut)}" : "")}");
         var reported = CauseLines.Attach([.. ordered.Take(MaxReported)], reach, root, targets);
         reported = await _generated.AttachAsync(_workspace.Current, reported, cancellationToken).ConfigureAwait(false);
-        return new CheckResult(
+        var result = new CheckResult(
             reported,
             filesChecked,
             projects,
@@ -196,6 +209,28 @@ internal sealed class Checker
             CompilationWideLeftOut = leftOut,
             FilesNotAttributed = notAttributed,
         };
+        if (keptKey is not null)
+            _kept.Keep(keptKey, result);
+        return result;
+    }
+
+    /// <summary>
+    ///     The key the kept answer for this check is kept under, from the tree as the sync just left it, or null when
+    ///     no answer is kept for it because a changed file cannot be read. The check runs as usual then.
+    /// </summary>
+    private string? KeptKeyFor(CheckScope scope, string? session, AnalyzerRun analyzers)
+    {
+        var scopeKey = scope is CheckScope.Files files
+            ? "files:" + string.Join(",", files.Paths.Select(p => p.Relative).Order(StringComparer.Ordinal))
+            : "all";
+        return KeptCheck.KeyFor(
+            scopeKey,
+            session,
+            analyzers.CompilationWide,
+            _workspace.Tracker.Head ?? "",
+            _workspace.ConfigurationGeneration,
+            _sessions.RecordsHash(),
+            _workspace.Tracker.Changed.Select(path => (path.Relative, path.Absolute)));
     }
 
     private static List<ProjectNode> OwnersOf(RepoGraph graph, IEnumerable<RepoPath> paths) =>

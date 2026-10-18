@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using Fuse.Paths;
 
 namespace Fuse.Check;
@@ -95,6 +97,18 @@ internal sealed class SessionEdits
     {
         lock (_lock)
             ForgetUnchanged(changed);
+    }
+
+    /// <summary>A hash of the record as it is now, in the order the file keeps it, so a kept answer is answered again only while the record reads the same.</summary>
+    internal string RecordsHash()
+    {
+        lock (_lock)
+        {
+            var lines = _writers.OrderBy(w => w.Key.Relative, StringComparer.Ordinal)
+                .SelectMany(w => w.Value.Order(StringComparer.Ordinal).Select(session => $"{w.Key.Relative}\t{session}"))
+                .Concat(_stopped.Order(StringComparer.Ordinal).Select(session => $"\t{session}"));
+            return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join("\n", lines))));
+        }
     }
 
     /// <summary>The sessions that wrote each of <paramref name="changed"/>, for the files any session wrote, after <see cref="Forget"/> drops the others.</summary>

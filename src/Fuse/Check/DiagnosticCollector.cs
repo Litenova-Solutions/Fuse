@@ -33,6 +33,8 @@ internal sealed class DiagnosticCollector
 
     private long _compilerTicks;
     private long _analyzerTicks;
+    private long _updateTicks;
+    private int _documentsBound;
 
     /// <summary>How the current check runs analyzers, on the working tree and the baseline alike; checks run one at a time.</summary>
     private AnalyzerRun _run = AnalyzerRun.Full;
@@ -69,7 +71,7 @@ internal sealed class DiagnosticCollector
         _unfinished.Clear();
         _leftOut.Clear();
         TakeReused();
-        TakeTimings();
+        TakeBindParts();
     }
 
     /// <summary>
@@ -108,6 +110,15 @@ internal sealed class DiagnosticCollector
         var compiler = Interlocked.Exchange(ref _compilerTicks, 0);
         var analyzer = Interlocked.Exchange(ref _analyzerTicks, 0);
         return (compiler * 1000 / System.Diagnostics.Stopwatch.Frequency, analyzer * 1000 / System.Diagnostics.Stopwatch.Frequency);
+    }
+
+    /// <summary>Time spent updating the compilation, binding and running analyzers since the last call, and how many documents were bound, for the engine log.</summary>
+    public (long UpdateMs, long CompilerMs, long AnalyzerMs, int Documents) TakeBindParts()
+    {
+        var update = Interlocked.Exchange(ref _updateTicks, 0);
+        var (compilerMs, analyzerMs) = TakeTimings();
+        var documents = Interlocked.Exchange(ref _documentsBound, 0);
+        return (update * 1000 / System.Diagnostics.Stopwatch.Frequency, compilerMs, analyzerMs, documents);
     }
 
     /// <summary>Errors reported in <paramref name="path"/>, from the regular documents and from Razor-generated code mapped back to it.</summary>
@@ -203,7 +214,9 @@ internal sealed class DiagnosticCollector
     /// <returns>The project's errors, and whether its analyzers finished.</returns>
     private async Task<(IReadOnlyList<CompilerError> Errors, bool AnalyzersFinished)> ForProjectAsync(Project project, bool baseline, CancellationToken cancellationToken)
     {
+        var updated = System.Diagnostics.Stopwatch.GetTimestamp();
         var compilation = await project.GetCompilationAsync(cancellationToken).ConfigureAwait(false);
+        Interlocked.Add(ref _updateTicks, System.Diagnostics.Stopwatch.GetTimestamp() - updated);
         if (compilation is null)
             return ([], true);
         // With analyzers, one run produces compiler and analyzer diagnostics together. An analyzer's error is marked as
@@ -236,18 +249,23 @@ internal sealed class DiagnosticCollector
         // A working-tree file whose text and whose project's declarations are as they were at an earlier check has the same
         // compiler and per-file analyzer errors, so they are reused; the compilation-wide analyzers read every file's
         // bodies, so their part is never reused this way.
+        Interlocked.Increment(ref _documentsBound);
         var key = baseline || !_reuse || document is SourceGeneratedDocument ? null : await KeyAsync(document, cancellationToken).ConfigureAwait(false);
         if (key is not null && _currentFiles.TryGetValue(document.Id, out var cached) && cached.Key == key)
         {
             Interlocked.Increment(ref _reused);
+            var updating = System.Diagnostics.Stopwatch.GetTimestamp();
             var model = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
+            Interlocked.Add(ref _updateTicks, System.Diagnostics.Stopwatch.GetTimestamp() - updating);
             if (model is null)
                 return (cached.Errors, true);
             var (compilationWide, _, compilationWideFinished) = await RunAnalyzersAsync(document.Project, model, baseline, perFile: false, cancellationToken).ConfigureAwait(false);
             return ([.. cached.Errors, .. compilationWide.Select(d => ToCompilerError(d.Diagnostic, fromAnalyzer: true)).OfType<CompilerError>()], compilationWideFinished);
         }
 
+        var updated = System.Diagnostics.Stopwatch.GetTimestamp();
         var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
+        Interlocked.Add(ref _updateTicks, System.Diagnostics.Stopwatch.GetTimestamp() - updated);
         if (semanticModel is null)
             return ([], true);
 
@@ -373,7 +391,10 @@ internal sealed class DiagnosticCollector
         var fileName = path.FileName;
         var result = new List<CompilerError>();
         var finished = true;
-        foreach (var generated in await project.GetSourceGeneratedDocumentsAsync(cancellationToken).ConfigureAwait(false))
+        var updated = System.Diagnostics.Stopwatch.GetTimestamp();
+        var generatedDocuments = await project.GetSourceGeneratedDocumentsAsync(cancellationToken).ConfigureAwait(false);
+        Interlocked.Add(ref _updateTicks, System.Diagnostics.Stopwatch.GetTimestamp() - updated);
+        foreach (var generated in generatedDocuments)
         {
             // A quick search of the generated text for the file's name, in any case, so a document that cannot map to
             // the file is not bound; the errors it maps are compared as paths below.

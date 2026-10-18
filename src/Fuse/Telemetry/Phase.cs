@@ -22,6 +22,18 @@ internal static class Phase
     /// <summary>Binding the targets and keeping the errors HEAD does not have.</summary>
     public const string BindTargets = "bindTargets";
 
+    /// <summary>Updating the compilation while binding the targets: getting each semantic model, compilation and generated documents.</summary>
+    public const string BindUpdate = "bindUpdate";
+
+    /// <summary>Reading the compiler errors while binding the targets.</summary>
+    public const string BindCompiler = "bindCompiler";
+
+    /// <summary>Running the analyzers while binding the targets.</summary>
+    public const string BindAnalyzers = "bindAnalyzers";
+
+    /// <summary>How many documents binding the targets bound, one per target framework, recorded like a phase.</summary>
+    public const string BindFrameworks = "bindFrameworks";
+
     /// <summary>Comparing each target's declarations with HEAD, from syntax, to find the declaration changes.</summary>
     public const string SurfaceDiff = "surfaceDiff";
 

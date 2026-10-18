@@ -229,6 +229,7 @@ internal sealed class Checker
             analyzers.CompilationWide,
             _workspace.Tracker.Head ?? "",
             _workspace.ConfigurationGeneration,
+            _workspace.BaselineGeneration,
             _sessions.RecordsHash(),
             _workspace.Tracker.Changed.Select(path => (path.Relative, path.Absolute)));
     }

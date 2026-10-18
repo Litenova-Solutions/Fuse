@@ -23,8 +23,8 @@ public class KeptCheckTests
             File.WriteAllText(file, "class Calc {}\n");
             var keyed = new[] { ("Calc.cs", file) };
 
-            var first = KeptCheck.KeyFor("all", null, true, "head", 1, "records", keyed);
-            var second = KeptCheck.KeyFor("all", null, true, "head", 1, "records", keyed);
+            var first = KeptCheck.KeyFor("all", null, true, "head", 1, 1, "records", keyed);
+            var second = KeptCheck.KeyFor("all", null, true, "head", 1, 1, "records", keyed);
 
             Assert.False(string.IsNullOrEmpty(first));
             Assert.Equal(first, second);
@@ -38,9 +38,9 @@ public class KeptCheckTests
             File.WriteAllText(file, "class Calc {}\n");
             var keyed = new[] { ("Calc.cs", file) };
 
-            var before = KeptCheck.KeyFor("all", null, true, "head", 1, "records", keyed);
+            var before = KeptCheck.KeyFor("all", null, true, "head", 1, 1, "records", keyed);
             File.AppendAllText(file, "// edited\n");
-            var after = KeptCheck.KeyFor("all", null, true, "head", 1, "records", keyed);
+            var after = KeptCheck.KeyFor("all", null, true, "head", 1, 1, "records", keyed);
 
             Assert.NotEqual(before, after);
         });
@@ -53,7 +53,7 @@ public class KeptCheckTests
             File.WriteAllText(file, "class Missing {}\n");
             File.Delete(file);
 
-            Assert.Null(KeptCheck.KeyFor("all", null, true, "head", 1, "records", [("Missing.cs", file)]));
+            Assert.Null(KeptCheck.KeyFor("all", null, true, "head", 1, 1, "records", [("Missing.cs", file)]));
         });
 
     [Fact]
@@ -63,14 +63,15 @@ public class KeptCheckTests
             var file = Path.Combine(directory, "Calc.cs");
             File.WriteAllText(file, "class Calc {}\n");
             var keyed = new[] { ("Calc.cs", file) };
-            var key = KeptCheck.KeyFor("all", null, true, "head", 1, "records", keyed);
+            var key = KeptCheck.KeyFor("all", null, true, "head", 1, 1, "records", keyed);
 
-            Assert.NotEqual(key, KeptCheck.KeyFor("files:Calc.cs", null, true, "head", 1, "records", keyed));
-            Assert.NotEqual(key, KeptCheck.KeyFor("all", "claude:a", true, "head", 1, "records", keyed));
-            Assert.NotEqual(key, KeptCheck.KeyFor("all", null, false, "head", 1, "records", keyed));
-            Assert.NotEqual(key, KeptCheck.KeyFor("all", null, true, "moved", 1, "records", keyed));
-            Assert.NotEqual(key, KeptCheck.KeyFor("all", null, true, "head", 2, "records", keyed));
-            Assert.NotEqual(key, KeptCheck.KeyFor("all", null, true, "head", 1, "changed", keyed));
+            Assert.NotEqual(key, KeptCheck.KeyFor("files:Calc.cs", null, true, "head", 1, 1, "records", keyed));
+            Assert.NotEqual(key, KeptCheck.KeyFor("all", "claude:a", true, "head", 1, 1, "records", keyed));
+            Assert.NotEqual(key, KeptCheck.KeyFor("all", null, false, "head", 1, 1, "records", keyed));
+            Assert.NotEqual(key, KeptCheck.KeyFor("all", null, true, "moved", 1, 1, "records", keyed));
+            Assert.NotEqual(key, KeptCheck.KeyFor("all", null, true, "head", 2, 1, "records", keyed));
+            Assert.NotEqual(key, KeptCheck.KeyFor("all", null, true, "head", 1, 2, "records", keyed));
+            Assert.NotEqual(key, KeptCheck.KeyFor("all", null, true, "head", 1, 1, "changed", keyed));
         });
 
     [Fact]

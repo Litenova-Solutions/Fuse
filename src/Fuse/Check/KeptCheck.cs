@@ -61,6 +61,10 @@ internal sealed class KeptCheck
     /// <param name="compilationWide">Whether the check runs the analyzers that read the whole compilation.</param>
     /// <param name="headIdentity">The commit the baseline is taken from.</param>
     /// <param name="configurationGeneration">The workspace generation, which moves when projects are evaluated again.</param>
+    /// <param name="baselineGeneration">
+    ///     The baseline generation, which moves when the baseline's content does: a generated file a build wrote again
+    ///     changes what HEAD is compared with, without HEAD moving.
+    /// </param>
     /// <param name="sessionRecordsHash">A hash of which sessions wrote each changed file.</param>
     /// <param name="changedFiles">Every file that differs from HEAD, with its absolute path to read.</param>
     public static string? KeyFor(
@@ -69,6 +73,7 @@ internal sealed class KeptCheck
         bool compilationWide,
         string headIdentity,
         int configurationGeneration,
+        int baselineGeneration,
         string sessionRecordsHash,
         IEnumerable<(string Relative, string Absolute)> changedFiles)
     {
@@ -85,13 +90,14 @@ internal sealed class KeptCheck
             return null;
         }
 
-        var parts = new List<string>(lines.Count + 6)
+        var parts = new List<string>(lines.Count + 7)
         {
             scopeKey,
             session ?? "",
             compilationWide ? "1" : "0",
             headIdentity,
             configurationGeneration.ToString(CultureInfo.InvariantCulture),
+            baselineGeneration.ToString(CultureInfo.InvariantCulture),
             sessionRecordsHash,
         };
         parts.AddRange(lines);

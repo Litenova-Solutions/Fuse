@@ -19,7 +19,7 @@ public class PhaseTimingTests
         var (result, phases) = await engine.CheckWithPhasesAsync("Lib/Calc.cs");
 
         // A body-only edit reaches no other file, so the check ends after the declaration diff and binds no candidates.
-        Assert.Equal(["sync", "load", "bindTargets", "surfaceDiff"], phases.Select(p => p.Phase));
+        Assert.Equal(["sync", "load", "bindTargets", "bindUpdate", "bindCompiler", "bindAnalyzers", "bindFrameworks", "surfaceDiff"], phases.Select(p => p.Phase));
         Assert.All(phases, p => Assert.True(p.Ms >= 0, $"{p.Phase} was {p.Ms}"));
         Assert.NotEmpty(result.Errors);
     }
@@ -33,7 +33,7 @@ public class PhaseTimingTests
 
         var (result, phases) = await engine.CheckWithPhasesAsync("Lib/Calc.cs");
 
-        Assert.Equal(["sync", "load", "bindTargets", "surfaceDiff", "loadDependents", "referenceSearch", "bindCandidates"], phases.Select(p => p.Phase));
+        Assert.Equal(["sync", "load", "bindTargets", "bindUpdate", "bindCompiler", "bindAnalyzers", "bindFrameworks", "surfaceDiff", "loadDependents", "referenceSearch", "bindCandidates"], phases.Select(p => p.Phase));
         Assert.All(phases, p => Assert.True(p.Ms >= 0, $"{p.Phase} was {p.Ms}"));
         Assert.True(result.DependentProjectsChecked > 0, $"checked {result.DependentProjectsChecked} dependent project(s)");
     }

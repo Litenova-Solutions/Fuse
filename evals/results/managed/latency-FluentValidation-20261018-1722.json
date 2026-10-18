@@ -1,0 +1,227 @@
+{
+  "suite": "latency",
+  "repo": "FluentValidation",
+  "commit": "fa3c160b17796ff67d6aa5ae6c4b05b471f1a791",
+  "fuseBuild": "5.6.0/37e6ccb998ae4dbf978c04b2a6df7be1",
+  "target": "src/FluentValidation/AbstractValidator.cs",
+  "method": "RuleFor",
+  "referencingFilesInOtherProjects": 56,
+  "coldCleanMs": 3101.6536,
+  "coldBodyEditMs": 8463.4965,
+  "bodyEdit": {
+    "p50": 578.5,
+    "p95": 964.3,
+    "max": 964.3,
+    "n": 15
+  },
+  "signatureEdit": {
+    "p50": 4062.1,
+    "p95": 27898.1,
+    "max": 27898.1,
+    "n": 10
+  },
+  "signatureEditSample": "fuse: 883 error(s) introduced in 55 file(s), first 20 shown (FluentValidation.Tests.Benchmarks, FluentValidation.Tests); FluentValidation declarations changed, 3 dependent project(s) checked; 10 cause(s) left out; all 883 in C:\\Users\\runneradmin\\AppData\\Local\\fuse\\repos\\737e362cd978cd34\\last-check-results.txt",
+  "warmUnchanged": {
+    "p50": 231.6,
+    "p95": 253.7,
+    "max": 253.7,
+    "n": 10
+  },
+  "part": "checks",
+  "testRound": null,
+  "bodyEditPhases": {
+    "phases": {
+      "bindAnalyzers": {
+        "p50": 99,
+        "p95": 180,
+        "max": 180,
+        "n": 15
+      },
+      "bindCompiler": {
+        "p50": 75,
+        "p95": 109,
+        "max": 109,
+        "n": 15
+      },
+      "bindFrameworks": {
+        "p50": 1,
+        "p95": 1,
+        "max": 1,
+        "n": 15
+      },
+      "bindTargets": {
+        "p50": 334.7,
+        "p95": 676.8,
+        "max": 676.8,
+        "n": 15
+      },
+      "bindUpdate": {
+        "p50": 162,
+        "p95": 386,
+        "max": 386,
+        "n": 15
+      },
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 15
+      },
+      "load": {
+        "p50": 0,
+        "p95": 0.1,
+        "max": 0.1,
+        "n": 15
+      },
+      "surfaceDiff": {
+        "p50": 3,
+        "p95": 10.4,
+        "max": 10.4,
+        "n": 15
+      },
+      "sync": {
+        "p50": 1.9,
+        "p95": 10.5,
+        "max": 10.5,
+        "n": 15
+      },
+      "total": {
+        "p50": 344,
+        "p95": 687,
+        "max": 687,
+        "n": 15
+      }
+    },
+    "outsideEngine": {
+      "p50": 249.5,
+      "p95": 288.2,
+      "max": 288.2,
+      "n": 15
+    },
+    "n": 15
+  },
+  "signatureEditPhases": {
+    "phases": {
+      "bindAnalyzers": {
+        "p50": 23,
+        "p95": 99,
+        "max": 99,
+        "n": 10
+      },
+      "bindCandidates": {
+        "p50": 3622.9,
+        "p95": 18857.3,
+        "max": 18857.3,
+        "n": 10
+      },
+      "bindCompiler": {
+        "p50": 17,
+        "p95": 100,
+        "max": 100,
+        "n": 10
+      },
+      "bindFrameworks": {
+        "p50": 1,
+        "p95": 1,
+        "max": 1,
+        "n": 10
+      },
+      "bindTargets": {
+        "p50": 87.4,
+        "p95": 349,
+        "max": 349,
+        "n": 10
+      },
+      "bindUpdate": {
+        "p50": 33,
+        "p95": 149,
+        "max": 149,
+        "n": 10
+      },
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 10
+      },
+      "load": {
+        "p50": 0,
+        "p95": 0.1,
+        "max": 0.1,
+        "n": 10
+      },
+      "loadDependents": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 10
+      },
+      "referenceSearch": {
+        "p50": 6.3,
+        "p95": 8294.2,
+        "max": 8294.2,
+        "n": 10
+      },
+      "surfaceDiff": {
+        "p50": 1.6,
+        "p95": 4.7,
+        "max": 4.7,
+        "n": 10
+      },
+      "sync": {
+        "p50": 1.9,
+        "p95": 2.5,
+        "max": 2.5,
+        "n": 10
+      },
+      "total": {
+        "p50": 3828,
+        "p95": 27672,
+        "max": 27672,
+        "n": 10
+      }
+    },
+    "outsideEngine": {
+      "p50": 234.1,
+      "p95": 275.4,
+      "max": 275.4,
+      "n": 10
+    },
+    "n": 10
+  },
+  "warmUnchangedPhases": {
+    "phases": {
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 10
+      },
+      "sync": {
+        "p50": 0.8,
+        "p95": 0.9,
+        "max": 0.9,
+        "n": 10
+      },
+      "total": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 10
+      }
+    },
+    "outsideEngine": {
+      "p50": 231.6,
+      "p95": 253.7,
+      "max": 253.7,
+      "n": 10
+    },
+    "n": 10
+  },
+  "testRoundPhases": null,
+  "multiAgent": null,
+  "engineWorkingSetMb": 648.3,
+  "enginePeakWorkingSetMb": 648.3,
+  "engineIdleWorkingSetMb": 455.4,
+  "treeCleanAfter": true
+}

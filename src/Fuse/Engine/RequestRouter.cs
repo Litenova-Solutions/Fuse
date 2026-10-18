@@ -142,9 +142,9 @@ internal sealed class RequestRouter : IDisposable
 
             TestScope scope = request switch
             {
-                EngineRequest.PlanAffectedTests { Session: { } session } when SessionEdits.IsValid(session) =>
-                    new TestScope.Affected { LeftOut = await OnlyOtherSessionsWroteAsync(session, cancellationToken).ConfigureAwait(false) },
-                EngineRequest.PlanAffectedTests => new TestScope.Affected(),
+                EngineRequest.PlanAffectedTests { Session: { } session } sessioned when SessionEdits.IsValid(session) =>
+                    new TestScope.Affected { LeftOut = await OnlyOtherSessionsWroteAsync(session, cancellationToken).ConfigureAwait(false), NamedPaths = sessioned.Projects, BuildOnly = sessioned.BuildOnly },
+                EngineRequest.PlanAffectedTests plan => new TestScope.Affected { NamedPaths = plan.Projects, BuildOnly = plan.BuildOnly },
                 EngineRequest.PlanAllTests => new TestScope.All(),
                 _ => throw new UnreachableException($"{request.GetType().Name} is answered before the request lock"),
             };

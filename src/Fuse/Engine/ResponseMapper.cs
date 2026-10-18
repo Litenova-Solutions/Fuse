@@ -40,7 +40,7 @@ internal static class ResponseMapper
 
     /// <summary>A test plan as the client receives it, each run with the mode the client starts it in and its project file's absolute path.</summary>
     public static TestPlan Plan(TestPlanResult result) => new(
-        [.. result.Runs.Select(r => new TestRun(r.Project.Absolute, r.Name, Mode(r.Mode), r.Filter, r.UsesTestingPlatform, r.RunSettings))],
+        [.. result.Runs.Select(r => new TestRun(r.Project.Absolute, r.Name, Mode(r.Mode), r.Filter, r.UsesTestingPlatform, r.RunSettings, r.FilterArguments, r.TargetPaths))],
         result.SelectedTests,
         result.TotalTests,
         result.Summary);

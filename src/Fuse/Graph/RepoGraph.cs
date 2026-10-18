@@ -236,7 +236,15 @@ internal sealed class RepoGraph
         }
 
         var isTest = isTestProperty || packages.Any(p => TestFrameworkPackages.Contains(p, StringComparer.OrdinalIgnoreCase));
-        var isTestingPlatform = isTestingPlatformApplication && GlobalJson.UsesTestingPlatform(root.Path, root.Path);
+        // The project itself says whether it is a platform test application; global.json only decides how dotnet test
+        // reaches it, which the client reads when it runs the plan.
+        var isTestingPlatform = isTestingPlatformApplication;
+        var framework = FrameworkOf(packages);
+        var targetPaths = evaluations.Select(e => e.GetPropertyValue("TargetPath").Trim())
+            .Where(t => t.Length > 0)
+            .Select(t => System.IO.Path.GetFullPath(System.IO.Path.Combine(dir, t)))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
         var outputType = evaluations.Select(e => e.GetPropertyValue("OutputType")).FirstOrDefault(o => o.Length > 0) ?? "";
         var isWeb = evaluations.Any(e => e.GetPropertyValue("UsingMicrosoftNETSdkWeb").Equals("true", StringComparison.OrdinalIgnoreCase));
 
@@ -253,9 +261,23 @@ internal sealed class RepoGraph
             AssetsFile = Full(string.IsNullOrEmpty(assets) ? System.IO.Path.Combine("obj", "project.assets.json") : assets),
             IsTest = isTest,
             UsesTestingPlatform = isTestingPlatform,
+            Framework = framework,
+            TargetPaths = targetPaths,
             RunSettings = runSettings is null ? null : System.IO.Path.GetFullPath(System.IO.Path.Combine(dir, runSettings)),
             IsExecutable = !isTest && (outputType.Equals("Exe", StringComparison.OrdinalIgnoreCase) || outputType.Equals("WinExe", StringComparison.OrdinalIgnoreCase) || isWeb),
         };
+    }
+
+    /// <summary>The test framework <paramref name="packages"/> name, or <see cref="TestFramework.Unknown"/> when none of them is one Fuse knows.</summary>
+    private static TestFramework FrameworkOf(HashSet<string> packages)
+    {
+        if (packages.Any(p => p.Equals("xunit.v3", StringComparison.OrdinalIgnoreCase) || p.StartsWith("xunit.v3.", StringComparison.OrdinalIgnoreCase)))
+            return TestFramework.XUnit;
+        if (packages.Any(p => p.Equals("TUnit", StringComparison.OrdinalIgnoreCase) || p.StartsWith("TUnit.", StringComparison.OrdinalIgnoreCase)))
+            return TestFramework.TUnit;
+        if (packages.Contains("MSTest") || packages.Contains("MSTest.Sdk") || packages.Contains("MSTest.TestFramework") || packages.Contains("MSTest.TestAdapter"))
+            return TestFramework.MSTest;
+        return packages.Contains("NUnit") || packages.Contains("NUnit3TestAdapter") ? TestFramework.NUnit : TestFramework.Unknown;
     }
 
 }

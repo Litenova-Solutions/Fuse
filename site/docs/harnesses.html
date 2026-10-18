@@ -143,7 +143,7 @@
       <thead><tr><th scope="col">Event</th><th scope="col">When it runs</th><th scope="col">What Fuse does</th></tr></thead>
       <tbody>
         <tr><th scope="row"><code>post-edit</code></th><td>After the agent edits or writes a file</td><td>Checks the edited C# files and tells the agent about any error the edit introduced.</td></tr>
-        <tr><th scope="row"><code>pre-shell</code></th><td>Before the agent runs a shell command</td><td>Rewrites <code>dotnet build</code> and <code>dotnet test</code> to <code>fuse build</code> and <code>fuse test</code>, so the agent gets short output and only the affected tests.</td></tr>
+        <tr><th scope="row"><code>pre-shell</code></th><td>Before the agent runs a shell command</td><td>Rewrites <code>dotnet build</code> and <code>dotnet test</code> to <code>fuse build</code> and <code>fuse test</code>, so the agent gets short output and only the affected tests, in the projects the command names.</td></tr>
         <tr><th scope="row"><code>stop</code></th><td>When the agent tries to finish</td><td>Checks every change, and sends the agent back once if errors remain.</td></tr>
       </tbody>
     </table>

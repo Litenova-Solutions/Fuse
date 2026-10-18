@@ -33,6 +33,13 @@ internal static class ErrorMessages
     ///     a project, such as a path with a typo or a file of another language. The engine answers with it instead of
     ///     checking nothing, which would read as no errors introduced.
     /// </summary>
+    /// <summary>
+    ///     The message for <see cref="ErrorCode.InvalidPath"/> when none of the paths a test command names is a test
+    ///     project, or holds one. The engine answers with it instead of running no test, which would read as a pass.
+    /// </summary>
+    public static string NoTestProjectNamed(IReadOnlyList<string> paths) =>
+        $"none of the paths given names a test project in this repository: {string.Join(", ", paths.Take(5))}{(paths.Count > 5 ? $" and {paths.Count - 5} more" : "")}";
+
     public static string NothingToCheck(IReadOnlyList<string> files) =>
         $"none of the files named in the check is a C# source file of a project in this repository: {string.Join(", ", files.Take(5))}{(files.Count > 5 ? $" and {files.Count - 5} more" : "")}";
 }

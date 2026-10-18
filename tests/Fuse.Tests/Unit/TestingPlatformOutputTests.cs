@@ -69,6 +69,29 @@ public class TestingPlatformOutputTests
     }
 
     [Fact]
+    public void Colored_output_reads_as_the_plain_output_it_colors()
+    {
+        var output =
+            "\u001b[31mfailed\u001b[m T.Tests.Fails \u001b[90m(4ms)\u001b[m\n" +
+            "\u001b[31m  Assert.Equal() Failure: Values differ\u001b[m\n" +
+            $"    at T.Tests.Fails() in {Path.Combine(Root, "Tests.cs")}:6\n" +
+            "Test run summary: Failed!\n" +
+            "  total: 1\n" +
+            "\u001b[31m  failed: 1\u001b[m\n" +
+            "  succeeded: 0\n" +
+            "  skipped: 0\n";
+
+        var results = TestingPlatformOutput.Read(output, Root);
+
+        Assert.NotNull(results);
+        Assert.Equal((0, 1, 0), (results.Passed, results.Failed, results.Skipped));
+        var failure = Assert.Single(results.Failures);
+        Assert.Equal("T.Tests.Fails", failure.Name);
+        Assert.Equal("Assert.Equal() Failure: Values differ", failure.Message);
+        Assert.Equal(["at T.Tests.Fails() in Tests.cs:6"], failure.Frames);
+    }
+
+    [Fact]
     public void A_run_whose_summary_counts_an_error_has_no_results()
     {
         const string output = "Fuse.Tests.dll (net10.0) Zero tests ran\nExit code: 5\nTest run summary: Zero tests ran\n  error: 1\n  total: 0\n  failed: 0\n  succeeded: 0\n  skipped: 0\n  duration: 761ms\n";

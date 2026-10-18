@@ -19,7 +19,7 @@ internal static partial class XUnitOutput
     /// <param name="root">The repository, which frames are printed relative to.</param>
     public static TrxResults? Read(string output, string root)
     {
-        var lines = output.Replace("\r", "").Split('\n');
+        var lines = AnsiSequences.Strip(output).Replace("\r", "").Split('\n');
         var summary = Array.FindLastIndex(lines, l => l.StartsWith("=== TEST EXECUTION SUMMARY ===", StringComparison.Ordinal));
         if (summary < 0)
             return null;

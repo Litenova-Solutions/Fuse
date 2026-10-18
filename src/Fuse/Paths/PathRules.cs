@@ -31,4 +31,17 @@ internal static class PathRules
         return relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
             .Any(s => s.Equals("bin", StringComparison.OrdinalIgnoreCase) || s.Equals("obj", StringComparison.OrdinalIgnoreCase));
     }
+
+    /// <summary>
+    ///     The part of <paramref name="location"/> under <paramref name="root"/> with forward slashes, or null when it
+    ///     is not under the root. Either separator spells the paths, because output Fuse reads, such as a stack frame,
+    ///     names them in the spelling of the operating system that produced it, with text such as <c>:line 8</c> after
+    ///     the path, which stays in the result.
+    /// </summary>
+    public static string? UnderRoot(string root, string location)
+    {
+        var prefix = root.Replace('\\', '/').TrimEnd('/') + "/";
+        var normalized = location.Replace('\\', '/');
+        return normalized.StartsWith(prefix, RepoPath.Comparison) ? normalized[prefix.Length..] : null;
+    }
 }

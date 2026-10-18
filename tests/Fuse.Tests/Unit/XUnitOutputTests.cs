@@ -54,6 +54,26 @@ public class XUnitOutputTests
     }
 
     [Fact]
+    public void Colored_output_reads_as_the_plain_output_it_colors()
+    {
+        var output = XUnitOutput.Read(string.Join('\n',
+            "  Starting:    Tests",
+            "    Platform.Tests.CalcTests.Adds \u001b[31m[FAIL]\u001b[m",
+            "      Assert.Equal() Failure: Values differ",
+            "      Stack Trace:",
+            "        C:\\repo\\Tests\\CalcTests.cs(8,0): at Platform.Tests.CalcTests.Adds()",
+            "  Finished:    Tests (ID = 'abc')",
+            "=== TEST EXECUTION SUMMARY ===",
+            "\u001b[31m   Tests  Total: 1, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 0.120s\u001b[m"), Root);
+
+        Assert.NotNull(output);
+        Assert.Equal((0, 1, 0), (output.Passed, output.Failed, output.Skipped));
+        var failure = Assert.Single(output.Failures);
+        Assert.Equal("Platform.Tests.CalcTests.Adds", failure.Name);
+        Assert.Equal(["at Platform.Tests.CalcTests.Adds() in Tests/CalcTests.cs:line 8"], failure.Frames);
+    }
+
+    [Fact]
     public void A_run_that_matched_no_test_reads_zero_counts()
     {
         var output = XUnitOutput.Read("""

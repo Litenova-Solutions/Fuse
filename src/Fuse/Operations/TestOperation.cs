@@ -461,38 +461,48 @@ internal static class TestOperation
                 .Where(File.Exists)
                 .ToList();
             // A .NET Framework target builds an assembly with no runtimeconfig.json, which dotnet exec cannot start
-            // (hostpolicy.dll is not found), so it runs through dotnet test for its framework alone, which starts it the
-            // right way. The other targets start directly, at the same time.
-            var framework = targets.Where(IsFrameworkTarget).ToList();
-            var frameworkNames = framework.Select(FrameworkOf).ToList();
-            if (targets.Count == 0 || frameworkNames.Any(f => f is null))
+            // (hostpolicy.dll is not found), so a project with one runs through dotnet test, which starts it the right way.
+            if (targets.Count == 0 || targets.Any(t => t.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) && !File.Exists(Path.ChangeExtension(t, ".runtimeconfig.json"))))
             {
-                // dotnet test starts such a target itself, and says in its own words when the build wrote none. A target
-                // whose framework its path does not name runs this way too, with the rest of its project.
+                // dotnet test starts such a target itself, and says in its own words when the build wrote none.
                 return await ThroughDotnetTestAsync(root, run, runner, switches, cancellationToken).ConfigureAwait(false);
             }
 
             string[] settings = run.Filter is not null || run.RunSettings is not null
                 ? ["--settings", RunSettingsFile.Write(results, run.Filter, run.RunSettings)]
                 : [];
-            var direct = targets.Except(framework).Select(target => StartTargetAsync(root, run, target, settings, cancellationToken));
-            string[] testSwitches = [.. switches.Where(s => s != "--no-build")];
-            var throughDotnetTest = frameworkNames.Select(async name =>
-            {
-                var ran = await RunDotnetTestAsync(root, root.Path, [run.Project, "--no-restore", "--no-build", "--framework", name!, .. testSwitches], cancellationToken, run: run).ConfigureAwait(false);
-                return (ran.Outcome, ran.Process);
-            });
-            var ranAll = await Task.WhenAll(direct.Concat(throughDotnetTest)).ConfigureAwait(false);
             var aggregate = TrxResults.Empty;
-            foreach (var (outcome, process) in ranAll)
+            ProcessResult? last = null;
+            foreach (var target in targets)
             {
+                var arguments = new List<string>();
+                string file;
+                if (target.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+                {
+                    file = "dotnet";
+                    arguments.Add("exec");
+                    arguments.Add(target);
+                }
+                else
+                {
+                    file = target;
+                }
+
+                arguments.AddRange(run.FilterArguments);
+                arguments.AddRange(settings);
+                var process = await ProcessRunner.RunAsync(file, [.. arguments], Path.GetDirectoryName(target)!, cancellationToken).ConfigureAwait(false);
+                var outcome = TestingPlatformOutput.Read(process.Output, root.Path) ?? XUnitOutput.Read(process.Output, root.Path);
+                // Counts that say nothing failed from a run that exited with a code other than 0 do not explain its exit code.
+                if (outcome is { Failed: 0 } && process.ExitCode != 0)
+                    outcome = null;
                 if (outcome is null)
-                    return (null, process, log, results);
+                    return (null, process.ExitCode == 0 ? null : process, log, results);
                 aggregate = aggregate.Add(outcome);
+                last = process;
             }
 
             if (aggregate.Total == 0 && (run.Filter is not null || run.FilterArguments.Length > 0))
-                return (null, new ProcessResult(NoTestRanExitCode, ranAll.LastOrDefault().Process?.Output ?? ""), log, results);
+                return (null, new ProcessResult(NoTestRanExitCode, last?.Output ?? ""), log, results);
             return (aggregate, null, log, results);
         }
         finally
@@ -506,56 +516,6 @@ internal static class TestOperation
             {
             }
         }
-    }
-
-    /// <summary>
-    ///     Starts one built test application of a platform project and reads its results. Without results it returns the
-    ///     process, or null for one that exited with 0.
-    /// </summary>
-    private static async Task<(TrxResults? Outcome, ProcessResult? Process)> StartTargetAsync(
-        RepoRoot root, TestRun run, string target, string[] settings, CancellationToken cancellationToken)
-    {
-        var arguments = new List<string>();
-        string file;
-        if (target.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
-        {
-            file = "dotnet";
-            arguments.Add("exec");
-            arguments.Add(target);
-        }
-        else
-        {
-            file = target;
-        }
-
-        arguments.AddRange(run.FilterArguments);
-        arguments.AddRange(settings);
-        var process = await ProcessRunner.RunAsync(file, [.. arguments], Path.GetDirectoryName(target)!, cancellationToken).ConfigureAwait(false);
-        var outcome = TestingPlatformOutput.Read(process.Output, root.Path) ?? XUnitOutput.Read(process.Output, root.Path);
-        // Counts that say nothing failed from a run that exited with a code other than 0 do not explain its exit code.
-        if (outcome is { Failed: 0 } && process.ExitCode != 0)
-            outcome = null;
-        if (outcome is null)
-            return (null, process.ExitCode == 0 ? null : process);
-        return (outcome, process);
-    }
-
-    /// <summary>True for a .NET Framework target: an assembly the build wrote no runtimeconfig.json beside.</summary>
-    private static bool IsFrameworkTarget(string target) =>
-        target.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) && !File.Exists(Path.ChangeExtension(target, ".runtimeconfig.json"));
-
-    /// <summary>
-    ///     The target framework a build output path names, as the default output layout <c>bin/&lt;configuration&gt;/&lt;framework&gt;</c>
-    ///     writes it, or null when the segment after the configuration does not read as a framework.
-    /// </summary>
-    internal static string? FrameworkOf(string target)
-    {
-        var parts = target.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        var bin = Array.FindLastIndex(parts, p => p.Equals("bin", StringComparison.OrdinalIgnoreCase));
-        if (bin < 0 || bin + 3 >= parts.Length)
-            return null;
-        var name = parts[bin + 2];
-        return name.StartsWith("net", StringComparison.OrdinalIgnoreCase) && name.Length > 3 && char.IsAsciiDigit(name[3]) ? name : null;
     }
 
     /// <summary>

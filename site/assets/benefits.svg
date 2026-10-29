@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 962" width="800" height="962" role="img" aria-labelledby="t d">
 <title id="t">Fuse compared with dotnet build and dotnet test (fuse.codes)</title>
-<desc id="d">Fuse, a faster .NET build and test loop for AI coding agents (fuse.codes, github.com/Litenova-Solutions/Fuse). Check an edit, fuse check against dotnet build. FluentValidation (4 projects): 0.19 seconds with Fuse, 2.38 seconds with dotnet, 12.7x faster at the median; Fuse 0.08 to 13.3 s, mean 0.88 s, P95 1.98 s; dotnet 1.57 to 10.8 s, mean 3.02 s, P95 6.25 s; NodaTime (15 projects): 0.60 seconds with Fuse, 4.20 seconds with dotnet, 7.0x faster at the median; Fuse 0.05 to 18.2 s, mean 1.99 s, P95 10.8 s; dotnet 2.08 to 15.5 s, mean 5.88 s, P95 14.7 s; Jellyfin (40 projects): 0.47 seconds with Fuse, 20.4 seconds with dotnet, 43.7x faster at the median; Fuse 0.07 to 34.8 s, mean 3.23 s, P95 19.5 s; dotnet 3.90 to 94.2 s, mean 27.2 s, P95 75.5 s; Community Toolkit (26 projects): 0.51 seconds with Fuse, 17.4 seconds with dotnet, 33.8x faster at the median; Fuse 0.14 to 52.2 s, mean 4.61 s, P95 13.6 s; dotnet 8.58 to 115.0 s, mean 27.8 s, P95 88.3 s. Run the affected tests, fuse test against dotnet test. FluentValidation (2,664 tests): 8.31 seconds with Fuse, 8.87 seconds with dotnet, 1.1x faster at the median; Fuse 7.76 to 24.5 s, mean 11.1 s, P95 24.5 s; dotnet 8.42 to 12.7 s, mean 9.57 s, P95 12.7 s; NodaTime (42,700 tests): 38.8 seconds with Fuse, 60.4 seconds with dotnet, 1.6x faster at the median; Fuse 0.04 to 58.1 s, mean 35.6 s, P95 58.1 s; dotnet 42.8 to 70.2 s, mean 58.1 s, P95 70.2 s; Jellyfin (2,535 tests): 99.4 seconds with Fuse, 163.5 seconds with dotnet, 1.6x faster at the median; Fuse 4.39 to 130.6 s, mean 95.1 s, P95 130.6 s; dotnet 144.5 to 175.9 s, mean 162.8 s, P95 175.9 s; Community Toolkit (12,449 tests): 156.0 seconds with Fuse, 758.6 seconds with dotnet, 4.9x faster at the median; Fuse 8.66 to 180.3 s, mean 118.9 s, P95 180.3 s; dotnet 687.1 to 822.3 s, mean 759.1 s, P95 822.3 s. Median times over the eval cases, each with the range from the fastest to the slowest case, the mean and P95, on GitHub Actions windows-latest runners.</desc>
+<desc id="d">Fuse, a faster .NET build and test loop for AI coding agents (fuse.codes, github.com/Litenova-Solutions/Fuse). Check an edit, fuse check against dotnet build. FluentValidation (4 projects): 0.15 seconds with Fuse, 1.66 seconds with dotnet, 11.2x faster at the median; Fuse 0.07 to 7.90 s, mean 0.53 s, P95 1.06 s; dotnet 1.10 to 8.05 s, mean 2.24 s, P95 5.37 s; NodaTime (15 projects): 0.70 seconds with Fuse, 5.55 seconds with dotnet, 8.0x faster at the median; Fuse 0.08 to 17.4 s, mean 1.96 s, P95 10.1 s; dotnet 2.22 to 13.0 s, mean 6.13 s, P95 12.0 s; Jellyfin (40 projects): 0.83 seconds with Fuse, 23.0 seconds with dotnet, 27.7x faster at the median; Fuse 0.16 to 68.9 s, mean 6.68 s, P95 35.2 s; dotnet 3.73 to 93.1 s, mean 29.1 s, P95 85.1 s; Polly (15 projects): 2.58 seconds with Fuse, 28.7 seconds with dotnet, 11.1x faster at the median; Fuse 0.61 to 49.7 s, mean 6.89 s, P95 28.4 s; dotnet 4.25 to 116.4 s, mean 42.1 s, P95 114.4 s. Run the affected tests, fuse test against dotnet test. FluentValidation (2,664 tests): 9.66 seconds with Fuse, 11.9 seconds with dotnet, 1.2x faster at the median; Fuse 7.93 to 34.1 s, mean 13.8 s, P95 34.1 s; dotnet 11.3 to 18.3 s, mean 13.1 s, P95 18.3 s; NodaTime (42,736 tests): 61.5 seconds with Fuse, 41.7 seconds with dotnet, 1.5x slower at the median; Fuse 0.06 to 83.8 s, mean 55.7 s, P95 83.8 s; dotnet 32.6 to 68.1 s, mean 45.2 s, P95 68.1 s; Jellyfin (2,535 tests): 101.6 seconds with Fuse, 166.2 seconds with dotnet, 1.6x faster at the median; Fuse 4.64 to 144.5 s, mean 100.4 s, P95 144.5 s; dotnet 132.5 to 177.1 s, mean 164.0 s, P95 177.1 s; Polly (12,329 tests): 33.1 seconds with Fuse, 95.5 seconds with dotnet, 2.9x faster at the median; Fuse 0.05 to 109.5 s, mean 37.0 s, P95 109.5 s; dotnet 86.3 to 115.6 s, mean 99.7 s, P95 115.6 s. Median times over the eval cases, each with the range from the fastest to the slowest case, the mean and P95, on GitHub Actions windows-latest runners.</desc>
 <style>
   .bg { fill: #fcfcfb; stroke: #e4e3de; }
   .brand { font-size: 24px; font-weight: 700; letter-spacing: -0.3px; }
@@ -51,50 +51,50 @@
 <text class="meta" x="372" y="198" text-anchor="end">4 projects</text>
 <text class="cmd mono fuse-text" x="36" y="227.5">fuse check</text>
 <path class="track" d="M144,218h156a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-156z"/>
-<path class="fill-fuse" d="M144,218h8.63a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-8.63z"/>
-<text class="t fuse-text" x="372" y="227.5" text-anchor="end">0.19 s</text>
+<path class="fill-fuse" d="M144,218h10.32a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-10.32z"/>
+<text class="t fuse-text" x="372" y="227.5" text-anchor="end">0.15 s</text>
 <text class="cmd mono" x="36" y="249.5">dotnet build</text>
 <path class="fill-slow" d="M144,240h156a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-156z"/>
-<text class="t" x="372" y="249.5" text-anchor="end">2.38 s</text>
-<text class="speed" x="36" y="275"><tspan>12.7x</tspan> faster at the median</text>
-<text class="stats" x="36" y="295">Fuse: 0.08 to 13.3 s, mean 0.88 s, P95 1.98 s</text>
-<text class="stats" x="36" y="312">dotnet: 1.57 to 10.8 s, mean 3.02 s, P95 6.25 s</text>
+<text class="t" x="372" y="249.5" text-anchor="end">1.66 s</text>
+<text class="speed" x="36" y="275"><tspan>11.2x</tspan> faster at the median</text>
+<text class="stats" x="36" y="295">Fuse: 0.07 to 7.90 s, mean 0.53 s, P95 1.06 s</text>
+<text class="stats" x="36" y="312">dotnet: 1.10 to 8.05 s, mean 2.24 s, P95 5.37 s</text>
 <text class="repo" x="428" y="198">NodaTime</text>
 <text class="meta" x="764" y="198" text-anchor="end">15 projects</text>
 <text class="cmd mono fuse-text" x="428" y="227.5">fuse check</text>
 <path class="track" d="M536,218h156a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-156z"/>
-<path class="fill-fuse" d="M536,218h18.75a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-18.75z"/>
-<text class="t fuse-text" x="764" y="227.5" text-anchor="end">0.60 s</text>
+<path class="fill-fuse" d="M536,218h16.06a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-16.06z"/>
+<text class="t fuse-text" x="764" y="227.5" text-anchor="end">0.70 s</text>
 <text class="cmd mono" x="428" y="249.5">dotnet build</text>
 <path class="fill-slow" d="M536,240h156a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-156z"/>
-<text class="t" x="764" y="249.5" text-anchor="end">4.20 s</text>
-<text class="speed" x="428" y="275"><tspan>7.0x</tspan> faster at the median</text>
-<text class="stats" x="428" y="295">Fuse: 0.05 to 18.2 s, mean 1.99 s, P95 10.8 s</text>
-<text class="stats" x="428" y="312">dotnet: 2.08 to 15.5 s, mean 5.88 s, P95 14.7 s</text>
+<text class="t" x="764" y="249.5" text-anchor="end">5.55 s</text>
+<text class="speed" x="428" y="275"><tspan>8.0x</tspan> faster at the median</text>
+<text class="stats" x="428" y="295">Fuse: 0.08 to 17.4 s, mean 1.96 s, P95 10.1 s</text>
+<text class="stats" x="428" y="312">dotnet: 2.22 to 13.0 s, mean 6.13 s, P95 12.0 s</text>
 <text class="repo" x="36" y="344">Jellyfin</text>
 <text class="meta" x="372" y="344" text-anchor="end">40 projects</text>
 <text class="cmd mono fuse-text" x="36" y="373.5">fuse check</text>
 <path class="track" d="M144,364h156a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-156z"/>
-<path class="fill-fuse" d="M144,364h1.83a1.83,1.83 0 0 1 1.83,1.83v6.34a1.83,1.83 0 0 1 -1.83,1.83h-1.83z"/>
-<text class="t fuse-text" x="372" y="373.5" text-anchor="end">0.47 s</text>
+<path class="fill-fuse" d="M144,364h2.89a2.89,2.89 0 0 1 2.89,2.89v4.21a2.89,2.89 0 0 1 -2.89,2.89h-2.89z"/>
+<text class="t fuse-text" x="372" y="373.5" text-anchor="end">0.83 s</text>
 <text class="cmd mono" x="36" y="395.5">dotnet build</text>
 <path class="fill-slow" d="M144,386h156a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-156z"/>
-<text class="t" x="372" y="395.5" text-anchor="end">20.4 s</text>
-<text class="speed" x="36" y="421"><tspan>43.7x</tspan> faster at the median</text>
-<text class="stats" x="36" y="441">Fuse: 0.07 to 34.8 s, mean 3.23 s, P95 19.5 s</text>
-<text class="stats" x="36" y="458">dotnet: 3.90 to 94.2 s, mean 27.2 s, P95 75.5 s</text>
-<text class="repo" x="428" y="344">Community Toolkit</text>
-<text class="meta" x="764" y="344" text-anchor="end">26 projects</text>
+<text class="t" x="372" y="395.5" text-anchor="end">23.0 s</text>
+<text class="speed" x="36" y="421"><tspan>27.7x</tspan> faster at the median</text>
+<text class="stats" x="36" y="441">Fuse: 0.16 to 68.9 s, mean 6.68 s, P95 35.2 s</text>
+<text class="stats" x="36" y="458">dotnet: 3.73 to 93.1 s, mean 29.1 s, P95 85.1 s</text>
+<text class="repo" x="428" y="344">Polly</text>
+<text class="meta" x="764" y="344" text-anchor="end">15 projects</text>
 <text class="cmd mono fuse-text" x="428" y="373.5">fuse check</text>
 <path class="track" d="M536,364h156a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-156z"/>
-<path class="fill-fuse" d="M536,364h2.36a2.36,2.36 0 0 1 2.36,2.36v5.27a2.36,2.36 0 0 1 -2.36,2.36h-2.36z"/>
-<text class="t fuse-text" x="764" y="373.5" text-anchor="end">0.51 s</text>
+<path class="fill-fuse" d="M536,364h10.43a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-10.43z"/>
+<text class="t fuse-text" x="764" y="373.5" text-anchor="end">2.58 s</text>
 <text class="cmd mono" x="428" y="395.5">dotnet build</text>
 <path class="fill-slow" d="M536,386h156a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-156z"/>
-<text class="t" x="764" y="395.5" text-anchor="end">17.4 s</text>
-<text class="speed" x="428" y="421"><tspan>33.8x</tspan> faster at the median</text>
-<text class="stats" x="428" y="441">Fuse: 0.14 to 52.2 s, mean 4.61 s, P95 13.6 s</text>
-<text class="stats" x="428" y="458">dotnet: 8.58 to 115.0 s, mean 27.8 s, P95 88.3 s</text>
+<text class="t" x="764" y="395.5" text-anchor="end">28.7 s</text>
+<text class="speed" x="428" y="421"><tspan>11.1x</tspan> faster at the median</text>
+<text class="stats" x="428" y="441">Fuse: 0.61 to 49.7 s, mean 6.89 s, P95 28.4 s</text>
+<text class="stats" x="428" y="458">dotnet: 4.25 to 116.4 s, mean 42.1 s, P95 114.4 s</text>
 <line class="rule" x1="36" y1="488" x2="764" y2="488"/>
 <text class="panel" x="36" y="536">Run the affected tests</text>
 <text class="sub" x="36" y="560"><tspan class="mono">fuse test</tspan> vs <tspan class="mono">dotnet test</tspan></text>
@@ -102,51 +102,51 @@
 <text class="meta" x="372" y="594" text-anchor="end">2,664 tests</text>
 <text class="cmd mono fuse-text" x="36" y="623.5">fuse test</text>
 <path class="track" d="M144,614h156a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-156z"/>
-<path class="fill-fuse" d="M144,614h145.85a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-145.85z"/>
-<text class="t fuse-text" x="372" y="623.5" text-anchor="end">8.31 s</text>
+<path class="fill-fuse" d="M144,614h125.69a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-125.69z"/>
+<text class="t fuse-text" x="372" y="623.5" text-anchor="end">9.66 s</text>
 <text class="cmd mono" x="36" y="645.5">dotnet test</text>
 <path class="fill-slow" d="M144,636h156a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-156z"/>
-<text class="t" x="372" y="645.5" text-anchor="end">8.87 s</text>
-<text class="speed" x="36" y="671"><tspan>1.1x</tspan> faster at the median</text>
-<text class="stats" x="36" y="691">Fuse: 7.76 to 24.5 s, mean 11.1 s, P95 24.5 s</text>
-<text class="stats" x="36" y="708">dotnet: 8.42 to 12.7 s, mean 9.57 s, P95 12.7 s</text>
+<text class="t" x="372" y="645.5" text-anchor="end">11.9 s</text>
+<text class="speed" x="36" y="671"><tspan>1.2x</tspan> faster at the median</text>
+<text class="stats" x="36" y="691">Fuse: 7.93 to 34.1 s, mean 13.8 s, P95 34.1 s</text>
+<text class="stats" x="36" y="708">dotnet: 11.3 to 18.3 s, mean 13.1 s, P95 18.3 s</text>
 <text class="repo" x="428" y="594">NodaTime</text>
-<text class="meta" x="764" y="594" text-anchor="end">42,700 tests</text>
+<text class="meta" x="764" y="594" text-anchor="end">42,736 tests</text>
 <text class="cmd mono fuse-text" x="428" y="623.5">fuse test</text>
 <path class="track" d="M536,614h156a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-156z"/>
-<path class="fill-fuse" d="M536,614h98.92a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-98.92z"/>
-<text class="t fuse-text" x="764" y="623.5" text-anchor="end">38.8 s</text>
+<path class="fill-fuse" d="M536,614h156a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-156z"/>
+<text class="t fuse-text" x="764" y="623.5" text-anchor="end">61.5 s</text>
 <text class="cmd mono" x="428" y="645.5">dotnet test</text>
 <path class="fill-slow" d="M536,636h156a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-156z"/>
-<text class="t" x="764" y="645.5" text-anchor="end">60.4 s</text>
-<text class="speed" x="428" y="671"><tspan>1.6x</tspan> faster at the median</text>
-<text class="stats" x="428" y="691">Fuse: 0.04 to 58.1 s, mean 35.6 s, P95 58.1 s</text>
-<text class="stats" x="428" y="708">dotnet: 42.8 to 70.2 s, mean 58.1 s, P95 70.2 s</text>
+<text class="t" x="764" y="645.5" text-anchor="end">41.7 s</text>
+<text class="speed" x="428" y="671"><tspan>1.5x</tspan> slower at the median</text>
+<text class="stats" x="428" y="691">Fuse: 0.06 to 83.8 s, mean 55.7 s, P95 83.8 s</text>
+<text class="stats" x="428" y="708">dotnet: 32.6 to 68.1 s, mean 45.2 s, P95 68.1 s</text>
 <text class="repo" x="36" y="740">Jellyfin</text>
 <text class="meta" x="372" y="740" text-anchor="end">2,535 tests</text>
 <text class="cmd mono fuse-text" x="36" y="769.5">fuse test</text>
 <path class="track" d="M144,760h156a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-156z"/>
-<path class="fill-fuse" d="M144,760h93.34a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-93.34z"/>
-<text class="t fuse-text" x="372" y="769.5" text-anchor="end">99.4 s</text>
+<path class="fill-fuse" d="M144,760h93.76a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-93.76z"/>
+<text class="t fuse-text" x="372" y="769.5" text-anchor="end">101.6 s</text>
 <text class="cmd mono" x="36" y="791.5">dotnet test</text>
 <path class="fill-slow" d="M144,782h156a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-156z"/>
-<text class="t" x="372" y="791.5" text-anchor="end">163.5 s</text>
+<text class="t" x="372" y="791.5" text-anchor="end">166.2 s</text>
 <text class="speed" x="36" y="817"><tspan>1.6x</tspan> faster at the median</text>
-<text class="stats" x="36" y="837">Fuse: 4.39 to 130.6 s, mean 95.1 s, P95 130.6 s</text>
-<text class="stats" x="36" y="854">dotnet: 144.5 to 175.9 s, mean 162.8 s, P95 175.9 s</text>
-<text class="repo" x="428" y="740">Community Toolkit</text>
-<text class="meta" x="764" y="740" text-anchor="end">12,449 tests</text>
+<text class="stats" x="36" y="837">Fuse: 4.64 to 144.5 s, mean 100.4 s, P95 144.5 s</text>
+<text class="stats" x="36" y="854">dotnet: 132.5 to 177.1 s, mean 164.0 s, P95 177.1 s</text>
+<text class="repo" x="428" y="740">Polly</text>
+<text class="meta" x="764" y="740" text-anchor="end">12,329 tests</text>
 <text class="cmd mono fuse-text" x="428" y="769.5">fuse test</text>
 <path class="track" d="M536,760h156a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-156z"/>
-<path class="fill-fuse" d="M536,760h28.89a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-28.89z"/>
-<text class="t fuse-text" x="764" y="769.5" text-anchor="end">156.0 s</text>
+<path class="fill-fuse" d="M536,760h51.46a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-51.46z"/>
+<text class="t fuse-text" x="764" y="769.5" text-anchor="end">33.1 s</text>
 <text class="cmd mono" x="428" y="791.5">dotnet test</text>
 <path class="fill-slow" d="M536,782h156a4,4 0 0 1 4,4v2a4,4 0 0 1 -4,4h-156z"/>
-<text class="t" x="764" y="791.5" text-anchor="end">758.6 s</text>
-<text class="speed" x="428" y="817"><tspan>4.9x</tspan> faster at the median</text>
-<text class="stats" x="428" y="837">Fuse: 8.66 to 180.3 s, mean 118.9 s, P95 180.3 s</text>
-<text class="stats" x="428" y="854">dotnet: 687.1 to 822.3 s, mean 759.1 s, P95 822.3 s</text>
+<text class="t" x="764" y="791.5" text-anchor="end">95.5 s</text>
+<text class="speed" x="428" y="817"><tspan>2.9x</tspan> faster at the median</text>
+<text class="stats" x="428" y="837">Fuse: 0.05 to 109.5 s, mean 37.0 s, P95 109.5 s</text>
+<text class="stats" x="428" y="854">dotnet: 86.3 to 115.6 s, mean 99.7 s, P95 115.6 s</text>
 <text class="note" x="36" y="900">Bars are medians over the eval cases: each dotnet bar is 100 percent, each Fuse bar its share of it.</text>
 <text class="note" x="36" y="918">Under them: fastest to slowest case, mean and P95. On GitHub Actions windows-latest runners.</text>
-<text class="note" x="36" y="936">Fuse 5.4.0, measured 2026-10-17. Every number and how it was measured: fuse.codes/docs/benchmarks</text>
+<text class="note" x="36" y="936">Fuse 5.7.0, measured 2026-10-29. Every number and how it was measured: fuse.codes/docs/benchmarks</text>
 </svg>

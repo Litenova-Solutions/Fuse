@@ -1,0 +1,365 @@
+{
+  "suite": "latency",
+  "repo": "Polly",
+  "commit": "31d7ac300743b10163d00ef72fccea88f3acabad",
+  "fuseBuild": "5.7.0/f0c4d92bf6e840c6820ae7fa1f3a312e",
+  "target": "src/Polly.Core/Utils/CancellationTokenSourcePool.cs",
+  "method": "Get",
+  "referencingFilesInOtherProjects": 109,
+  "coldCleanMs": 6614.4385,
+  "coldBodyEditMs": 14972.2377,
+  "bodyEdit": {
+    "p50": 466.7,
+    "p95": 550.3,
+    "max": 550.3,
+    "n": 15
+  },
+  "signatureEdit": {
+    "p50": 971.2,
+    "p95": 35970.8,
+    "max": 35970.8,
+    "n": 10
+  },
+  "signatureEditSample": "fuse: 14 error(s) introduced in 3 file(s) (Polly.Core, Polly.Core.Tests); Polly.Core declarations changed, 14 dependent project(s) checked; tree 0240eab2bc99 over 1 changed file(s)",
+  "warmUnchanged": {
+    "p50": 243.3,
+    "p95": 259.6,
+    "max": 259.6,
+    "n": 10
+  },
+  "part": "checks",
+  "testRound": null,
+  "bodyEditPhases": {
+    "phases": {
+      "bindAnalyzers": {
+        "p50": 79,
+        "p95": 98,
+        "max": 98,
+        "n": 15
+      },
+      "bindCompiler": {
+        "p50": 60,
+        "p95": 79,
+        "max": 79,
+        "n": 15
+      },
+      "bindFrameworks": {
+        "p50": 6,
+        "p95": 6,
+        "max": 6,
+        "n": 15
+      },
+      "bindTargets": {
+        "p50": 159.6,
+        "p95": 194.7,
+        "max": 194.7,
+        "n": 15
+      },
+      "bindUpdate": {
+        "p50": 14,
+        "p95": 26,
+        "max": 26,
+        "n": 15
+      },
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 15
+      },
+      "load": {
+        "p50": 0,
+        "p95": 0.1,
+        "max": 0.1,
+        "n": 15
+      },
+      "surfaceDiff": {
+        "p50": 1.9,
+        "p95": 2.4,
+        "max": 2.4,
+        "n": 15
+      },
+      "sync": {
+        "p50": 2.3,
+        "p95": 6.2,
+        "max": 6.2,
+        "n": 15
+      },
+      "total": {
+        "p50": 172,
+        "p95": 203,
+        "max": 203,
+        "n": 15
+      }
+    },
+    "outsideEngine": {
+      "p50": 309.8,
+      "p95": 355.2,
+      "max": 355.2,
+      "n": 15
+    },
+    "n": 15
+  },
+  "signatureEditPhases": {
+    "phases": {
+      "bindAnalyzers": {
+        "p50": 30,
+        "p95": 92,
+        "max": 92,
+        "n": 10
+      },
+      "bindCandidates": {
+        "p50": 571,
+        "p95": 1530.2,
+        "max": 1530.2,
+        "n": 10
+      },
+      "bindCompiler": {
+        "p50": 26,
+        "p95": 76,
+        "max": 76,
+        "n": 10
+      },
+      "bindFrameworks": {
+        "p50": 6,
+        "p95": 6,
+        "max": 6,
+        "n": 10
+      },
+      "bindTargets": {
+        "p50": 69.2,
+        "p95": 186.6,
+        "max": 186.6,
+        "n": 10
+      },
+      "bindUpdate": {
+        "p50": 5,
+        "p95": 15,
+        "max": 15,
+        "n": 10
+      },
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 10
+      },
+      "load": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 10
+      },
+      "loadDependents": {
+        "p50": 0,
+        "p95": 26096.8,
+        "max": 26096.8,
+        "n": 10
+      },
+      "referenceSearch": {
+        "p50": 3.4,
+        "p95": 7740.8,
+        "max": 7740.8,
+        "n": 10
+      },
+      "surfaceDiff": {
+        "p50": 0.8,
+        "p95": 3.7,
+        "max": 3.7,
+        "n": 10
+      },
+      "sync": {
+        "p50": 7.8,
+        "p95": 21.1,
+        "max": 21.1,
+        "n": 10
+      },
+      "total": {
+        "p50": 687,
+        "p95": 35610,
+        "max": 35610,
+        "n": 10
+      }
+    },
+    "outsideEngine": {
+      "p50": 271.2,
+      "p95": 360.8,
+      "max": 360.8,
+      "n": 10
+    },
+    "n": 10
+  },
+  "warmUnchangedPhases": {
+    "phases": {
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 10
+      },
+      "sync": {
+        "p50": 6.5,
+        "p95": 8.5,
+        "max": 8.5,
+        "n": 10
+      },
+      "total": {
+        "p50": 0,
+        "p95": 16,
+        "max": 16,
+        "n": 10
+      }
+    },
+    "outsideEngine": {
+      "p50": 234.5,
+      "p95": 250.8,
+      "max": 250.8,
+      "n": 10
+    },
+    "n": 10
+  },
+  "testRoundPhases": null,
+  "noCodeChange": {
+    "edits": [
+      {
+        "kind": "comment",
+        "checkMs": 528.6168,
+        "filesChecked": 1,
+        "checkErrors": 0,
+        "testMs": null,
+        "testsSelected": null,
+        "testsRun": null,
+        "noCodeChange": null,
+        "note": null
+      },
+      {
+        "kind": "local-rename",
+        "checkMs": null,
+        "filesChecked": null,
+        "checkErrors": null,
+        "testMs": null,
+        "testsSelected": null,
+        "testsRun": null,
+        "noCodeChange": null,
+        "note": "no method in the target file declares a local variable"
+      },
+      {
+        "kind": "reformat",
+        "checkMs": 486.1257,
+        "filesChecked": 1,
+        "checkErrors": 0,
+        "testMs": null,
+        "testsSelected": null,
+        "testsRun": null,
+        "noCodeChange": null,
+        "note": null
+      },
+      {
+        "kind": "using-sort",
+        "checkMs": null,
+        "filesChecked": null,
+        "checkErrors": null,
+        "testMs": null,
+        "testsSelected": null,
+        "testsRun": null,
+        "noCodeChange": null,
+        "note": "the target file has fewer than two using directives"
+      },
+      {
+        "kind": "whitespace",
+        "checkMs": 542.545,
+        "filesChecked": 1,
+        "checkErrors": 0,
+        "testMs": null,
+        "testsSelected": null,
+        "testsRun": null,
+        "noCodeChange": null,
+        "note": null
+      }
+    ],
+    "check": {
+      "p50": 528.6,
+      "p95": 542.5,
+      "max": 542.5,
+      "n": 3
+    },
+    "testRound": null,
+    "checkPhases": {
+      "phases": {
+        "bindAnalyzers": {
+          "p50": 119,
+          "p95": 125,
+          "max": 125,
+          "n": 3
+        },
+        "bindCompiler": {
+          "p50": 69,
+          "p95": 95,
+          "max": 95,
+          "n": 3
+        },
+        "bindFrameworks": {
+          "p50": 6,
+          "p95": 6,
+          "max": 6,
+          "n": 3
+        },
+        "bindTargets": {
+          "p50": 206.4,
+          "p95": 231.7,
+          "max": 231.7,
+          "n": 3
+        },
+        "bindUpdate": {
+          "p50": 14,
+          "p95": 15,
+          "max": 15,
+          "n": 3
+        },
+        "gate": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 3
+        },
+        "load": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 3
+        },
+        "surfaceDiff": {
+          "p50": 2.3,
+          "p95": 4.2,
+          "max": 4.2,
+          "n": 3
+        },
+        "sync": {
+          "p50": 4.7,
+          "p95": 45.5,
+          "max": 45.5,
+          "n": 3
+        },
+        "total": {
+          "p50": 234,
+          "p95": 266,
+          "max": 266,
+          "n": 3
+        }
+      },
+      "outsideEngine": {
+        "p50": 308.5,
+        "p95": 314.1,
+        "max": 314.1,
+        "n": 3
+      },
+      "n": 3
+    },
+    "testRoundPhases": null
+  },
+  "multiAgent": null,
+  "engineWorkingSetMb": 993,
+  "enginePeakWorkingSetMb": 993.1,
+  "engineIdleWorkingSetMb": 679.6,
+  "treeCleanAfter": true
+}

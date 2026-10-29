@@ -1,0 +1,77 @@
+{
+  "suite": "attribution",
+  "repo": "Jellyfin",
+  "commit": "1d7c6af520da5c84ceac1c21a1d2da34837540ac",
+  "fuseBuild": "5.7.0/e61235320b09466ba67a805c5c71bfb0",
+  "pairs": [
+    {
+      "renamedIn": "MediaBrowser.Model/Configuration/LibraryOptions.cs",
+      "method": "GetTypeOptions",
+      "brokenIn": "MediaBrowser.Providers/Manager/ItemImageProvider.cs",
+      "ownWithoutSessions": 4,
+      "otherWithoutSessions": 2,
+      "ownWithSessions": 4,
+      "otherWithSessions": 0,
+      "leftToOtherSessions": 8,
+      "msWithoutSessions": 325.77410000000003,
+      "msWithSessions": 3339.6674000000003
+    },
+    {
+      "renamedIn": "MediaBrowser.Model/Configuration/LibraryOptions.cs",
+      "method": "GetTypeOptions",
+      "brokenIn": "MediaBrowser.Providers/Manager/ProviderManager.cs",
+      "ownWithoutSessions": 4,
+      "otherWithoutSessions": 3,
+      "ownWithSessions": 4,
+      "otherWithSessions": 0,
+      "leftToOtherSessions": 9,
+      "msWithoutSessions": 121.0587,
+      "msWithSessions": 3786.513
+    },
+    {
+      "renamedIn": "MediaBrowser.Model/Dlna/ResolutionNormalizer.cs",
+      "method": "Normalize",
+      "brokenIn": "Jellyfin.Api/Helpers/StreamingHelpers.cs",
+      "ownWithoutSessions": 2,
+      "otherWithoutSessions": 1,
+      "ownWithSessions": 2,
+      "otherWithSessions": 0,
+      "leftToOtherSessions": 36,
+      "msWithoutSessions": 172.0643,
+      "msWithSessions": 1319.9642
+    }
+  ],
+  "external": [
+    {
+      "renamedIn": "MediaBrowser.Model/Configuration/LibraryOptions.cs",
+      "method": "GetTypeOptions",
+      "brokenIn": "MediaBrowser.Providers/Manager/ItemImageProvider.cs",
+      "otherWithRegistration": 0,
+      "blockedWhileRegistered": true,
+      "blockedAfterEnd": true,
+      "expiredShielding": null,
+      "msWithRegistration": 1308.0964,
+      "msAfterEnd": 54.2821,
+      "note": null
+    }
+  ],
+  "externalSkipped": null,
+  "ownWithoutSessions": 10,
+  "otherWithoutSessions": 6,
+  "ownWithSessions": 10,
+  "otherWithSessions": 0,
+  "leftToOtherSessions": 53,
+  "msWithoutSessions": {
+    "p50": 172.1,
+    "p95": 325.8,
+    "max": 325.8,
+    "n": 3
+  },
+  "msWithSessions": {
+    "p50": 3339.7,
+    "p95": 3786.5,
+    "max": 3786.5,
+    "n": 3
+  },
+  "treeCleanAfter": true
+}

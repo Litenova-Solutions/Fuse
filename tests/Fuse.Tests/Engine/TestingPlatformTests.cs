@@ -47,8 +47,7 @@ public class TestingPlatformTests
     {
         await using var engine = await InProcessEngine.StartAsync(CreatePlatformRepo(framework, optIn));
         engine.Repo.Replace("Lib/Calc.cs", "=> a + b;", "=> a + b + 0;");
-        // The file watcher reports the edit a moment later.
-        await Task.Delay(400, TestContext.Current.CancellationToken);
+        await engine.SyncAsync("Lib/Calc.cs");
         var plan = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
 
         var run = Assert.Single(plan.Runs);
@@ -106,7 +105,7 @@ public class TestingPlatformTests
         using var repo = CreatePlatformRepo(framework, optIn);
         await using var engine = await InProcessEngine.StartAsync(repo);
         repo.Replace("Lib/Calc.cs", "=> a + b;", "=> a + b + 0;");
-        await Task.Delay(400, TestContext.Current.CancellationToken);
+        await engine.SyncAsync("Lib/Calc.cs");
         var plan = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
 
         var result = await TestOperation.RunPlanAsync(repo.Root, ResponseMapper.Plan(plan), Environment.TickCount64, TestContext.Current.CancellationToken);
@@ -126,7 +125,7 @@ public class TestingPlatformTests
         await using var engine = await InProcessEngine.StartAsync(repo);
         // Adds now fails; Multiplies still passes, and only Adds is affected.
         repo.Replace("Lib/Calc.cs", "=> a + b;", "=> a + b + 1;");
-        await Task.Delay(400, TestContext.Current.CancellationToken);
+        await engine.SyncAsync("Lib/Calc.cs");
         var plan = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
 
         var result = await TestOperation.RunPlanAsync(repo.Root, ResponseMapper.Plan(plan), Environment.TickCount64, TestContext.Current.CancellationToken);

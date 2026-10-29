@@ -44,7 +44,7 @@ public class StatusProcessTests
             Assert.Equal(500, root.GetProperty("wholeProjectAt").GetInt32());
 
             repo.Replace("Lib/Calc.cs", "public int Add(int a, int b) => a + b;", "public int Add(int a, int b) => a - b;");
-            var edited = await FuseProcess.RunAsync(repo.Path, null, "status");
+            var edited = await FuseProcess.WaitForStatusAsync(repo.Path, stdout => TreeOf(stdout) != cleanTree, "fuse status never reported the edit");
             var editedTree = TreeOf(edited.Stdout);
             Assert.NotEqual(cleanTree, editedTree);
             Assert.Contains("fuse: 1 changed file(s) since HEAD", edited.Stdout, StringComparison.Ordinal);

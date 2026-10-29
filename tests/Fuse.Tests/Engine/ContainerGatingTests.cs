@@ -24,7 +24,7 @@ public class ContainerGatingTests
     {
         await using var engine = await InProcessEngine.StartAsync(WithGatedTests());
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
-        await Task.Delay(400, TestContext.Current.CancellationToken);
+        await engine.SyncAsync("Lib/Calc.cs");
         var planner = new TestPlanner(engine.Workspace, containerProbe: () => false);
 
         var plan = await planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
@@ -42,7 +42,7 @@ public class ContainerGatingTests
     {
         await using var engine = await InProcessEngine.StartAsync(WithGatedTests());
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
-        await Task.Delay(400, TestContext.Current.CancellationToken);
+        await engine.SyncAsync("Lib/Calc.cs");
         var planner = new TestPlanner(engine.Workspace, containerProbe: () => true);
 
         var plan = await planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
@@ -74,7 +74,7 @@ public class ContainerGatingTests
     {
         await using var engine = await InProcessEngine.StartAsync(WithGatedTests());
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
-        await Task.Delay(400, TestContext.Current.CancellationToken);
+        await engine.SyncAsync("Lib/Calc.cs");
         var time = new FakeTimeProvider();
         var probes = 0;
         var planner = new TestPlanner(engine.Workspace, time: time, containerProbe: () => { probes++; return false; });

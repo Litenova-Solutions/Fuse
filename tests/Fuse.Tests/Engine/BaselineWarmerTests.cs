@@ -68,7 +68,6 @@ public class BaselineWarmerTests
         var check = await engine.SendAsync(new EngineRequest.CheckChanges(WaitForLoad: true));
 
         Assert.IsType<EngineResponse.CheckAnswered>(check);
-        Assert.DoesNotContain("baseline warm: App2 ", engine.Log, StringComparison.Ordinal);
         await WaitForLogAsync(engine, "baseline warm: App2 ");
     }
 

@@ -17,14 +17,14 @@ public class UnchangedDependentEmitTests
     {
         await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + \"first\".Length;");
-        await Task.Delay(400, TestContext.Current.CancellationToken);
+        await engine.SyncAsync("Lib/Calc.cs");
         var first = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
         var emits = engine.Planner.Emitter.Emits;
         var tested = ShadowFile(first, "Lib.Tests.dll");
         var written = File.GetLastWriteTimeUtc(tested);
 
         engine.Repo.Replace("Lib/Calc.cs", "\"first\"", "\"second\"");
-        await Task.Delay(400, TestContext.Current.CancellationToken);
+        await engine.SyncAsync("Lib/Calc.cs");
         var second = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, emits);
@@ -50,13 +50,13 @@ public class UnchangedDependentEmitTests
         repo.Commit("add an uncalled member to Lib");
         await using var engine = await InProcessEngine.StartAsync(repo);
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
-        await Task.Delay(400, TestContext.Current.CancellationToken);
+        await engine.SyncAsync("Lib/Calc.cs");
         var first = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
         var emits = engine.Planner.Emitter.Emits;
         Assert.NotEmpty(first.Runs);
 
         engine.Repo.Replace("Lib/Calc.cs", "public int Unused(", "public int UnusedRenamed(");
-        await Task.Delay(400, TestContext.Current.CancellationToken);
+        await engine.SyncAsync("Lib/Calc.cs");
         var second = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, emits);

@@ -1,3 +1,4 @@
+using Fuse.Testing;
 using Fuse.Testing.Model;
 using Fuse.Tests.Fixtures;
 
@@ -9,10 +10,13 @@ namespace Fuse.Tests.Engine;
 /// </summary>
 public class MemberWalkStatisticsTests
 {
-    private static async Task<Dictionary<string, TestSelection>> SelectAsync(InProcessEngine engine, params string[] files)
+    private static Task<Dictionary<string, TestSelection>> SelectAsync(InProcessEngine engine, params string[] files) =>
+        SelectAsync(engine, new TestSelector(engine.Workspace, new SteppingClock()), files);
+
+    private static async Task<Dictionary<string, TestSelection>> SelectAsync(InProcessEngine engine, TestSelector selector, params string[] files)
     {
         await engine.Workspace.SyncAsync(files.Select(engine.Repo.PathOf), TestContext.Current.CancellationToken);
-        var result = await engine.Selector.SelectAsync(files.Select(engine.Repo.PathOf).ToList(), TestContext.Current.CancellationToken);
+        var result = await selector.SelectAsync(files.Select(engine.Repo.PathOf).ToList(), TestContext.Current.CancellationToken);
         return result.Selections.ToDictionary(kv => Path.GetFileNameWithoutExtension(kv.Key.Absolute), kv => kv.Value);
     }
 
@@ -56,5 +60,13 @@ public class MemberWalkStatisticsTests
 
         repo.Commit("add forty-five callers of Calc.Mul");
         return repo;
+    }
+
+    /// <summary>A clock that advances a millisecond per reading, so the walk never reaches its 8 second budget.</summary>
+    private sealed class SteppingClock : TimeProvider
+    {
+        private long _now;
+
+        public override long GetTimestamp() => _now += TimestampFrequency / 1000;
     }
 }

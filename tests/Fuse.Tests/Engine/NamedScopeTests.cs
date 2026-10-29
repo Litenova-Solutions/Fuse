@@ -19,8 +19,7 @@ public class NamedScopeTests
         // The greeting reaches Lib.Tests and the report line reaches App.Tests; the plan names only App.Tests.
         engine.Repo.Replace("App/Report.cs", "\"value=\" + Lib.Formatter.Format(value)", "\"value: \" + Lib.Formatter.Format(value)");
         engine.Repo.Replace("Lib/Greeting.cs", "\"Hello \" + name", "\"Hello, \" + name");
-        // The file watcher reports the edit a moment later.
-        await Task.Delay(400, TestContext.Current.CancellationToken);
+        await engine.SyncAsync("App/Report.cs", "Lib/Greeting.cs");
         var scope = new TestScope.Affected { NamedPaths = [engine.Repo.Full("App.Tests")] };
 
         var plan = await engine.Planner.PlanAsync(scope, PhaseTimes.None, TestContext.Current.CancellationToken);
@@ -37,12 +36,10 @@ public class NamedScopeTests
     {
         await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Greeting.cs", "\"Hello \" + name", "\"Hello, \" + name");
-        // The file watcher reports the edit a moment later.
-        await Task.Delay(400, TestContext.Current.CancellationToken);
+        await engine.SyncAsync("Lib/Greeting.cs");
 
         engine.Repo.Replace("App/Report.cs", "\"value=\" + Lib.Formatter.Format(value)", "\"value: \" + Lib.Formatter.Format(value)");
-        // The file watcher reports the edit a moment later.
-        await Task.Delay(400, TestContext.Current.CancellationToken);
+        await engine.SyncAsync("App/Report.cs");
 
         var one = await engine.Planner.PlanAsync(
             new TestScope.Affected { NamedPaths = [engine.Repo.Full("Lib.Tests/Lib.Tests.csproj")] },
@@ -75,7 +72,7 @@ public class NamedScopeTests
     {
         await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 0;");
-        await Task.Delay(400, TestContext.Current.CancellationToken);
+        await engine.SyncAsync("Lib/Calc.cs");
         var scope = new TestScope.Affected { BuildOnly = true };
 
         var plan = await engine.Planner.PlanAsync(scope, PhaseTimes.None, TestContext.Current.CancellationToken);

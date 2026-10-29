@@ -113,6 +113,26 @@ internal static class FuseProcess
         await WaitForExitAsync(root, TimeSpan.FromSeconds(15));
     }
 
+    /// <summary>
+    ///     Waits until <c>fuse status</c> answers with the edit folded, polling the engine's own answer so a test does
+    ///     not race the file watcher, and returns that answer.
+    /// </summary>
+    public static async Task<(int ExitCode, string Stdout, string Stderr)> WaitForStatusAsync(string workingDirectory, Func<string, bool> matches, string failureMessage)
+    {
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(30);
+        (int ExitCode, string Stdout, string Stderr) status = (0, "", "");
+        while (DateTime.UtcNow < deadline)
+        {
+            status = await RunAsync(workingDirectory, null, "status");
+            if (matches(status.Stdout))
+                return status;
+            await Task.Delay(200);
+        }
+
+        Assert.Fail(failureMessage);
+        return status;
+    }
+
     /// <summary>A started client, whose output can be read as it arrives and whose lifetime the test controls.</summary>
     internal sealed class Client : IAsyncDisposable
     {

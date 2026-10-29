@@ -23,12 +23,12 @@ public class ShadowDefaultValueTests
         repo.Commit("a method with a default and its test");
         await using var engine = await InProcessEngine.StartAsync(repo);
         engine.Repo.Replace("Lib/Calc.cs", "public int Get(int v = 1)", "public int Get(int v = 2)");
-        await Task.Delay(400, TestContext.Current.CancellationToken);
+        await engine.SyncAsync("Lib/Calc.cs");
         var first = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
         Assert.NotEmpty(first.Runs);
 
         engine.Repo.Replace("Lib/Calc.cs", "public int Get(int v = 2) => v;", "public int Get(int v = 1) => v + 0;");
-        await Task.Delay(400, TestContext.Current.CancellationToken);
+        await engine.SyncAsync("Lib/Calc.cs");
         var second = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
 
         // The test image inlines the default it was compiled against, so a kept image from the intermediate state fails.

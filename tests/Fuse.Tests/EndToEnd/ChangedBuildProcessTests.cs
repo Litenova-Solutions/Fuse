@@ -15,6 +15,7 @@ public class ChangedBuildProcessTests
             Assert.Contains("fuse: no C# changes since HEAD; nothing to build (tree ", clean.Stdout, StringComparison.Ordinal);
 
             repo.Replace("Lib/Calc.cs", "public int Add(int a, int b) => a + b;", "public int Add(int a, int b) => a - b;");
+            await FuseProcess.WaitForStatusAsync(repo.Path, stdout => stdout.Contains("1 changed file(s)", StringComparison.Ordinal), "fuse status never reported the edit");
             var changed = await FuseProcess.RunAsync(repo.Path, null, "build", "--changed");
             Assert.Equal(0, changed.ExitCode);
             var first = changed.Stdout.Split('\n')[0];

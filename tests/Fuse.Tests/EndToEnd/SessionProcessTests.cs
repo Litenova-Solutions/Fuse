@@ -55,6 +55,7 @@ public class SessionProcessTests
 
             // The engine reads the registrations when it starts, so the expiry is written while none runs.
             await FuseProcess.StopEngineAsync(repo.Root);
+            Assert.True(await FuseProcess.WaitForExitAsync(repo.Root, TimeSpan.FromSeconds(60)));
             var file = Path.Combine(repo.Root.StateDirectory, "registered-sessions.tsv");
             var lines = File.ReadAllLines(file).Select(l => "0" + l[l.IndexOf('\t')..]).ToArray();
             File.WriteAllLines(file, lines);

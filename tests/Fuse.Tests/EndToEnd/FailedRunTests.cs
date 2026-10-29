@@ -22,6 +22,7 @@ public class FailedRunTests
             Assert.Contains("reran 1 test(s) that failed last time in 1 test project(s)", rerun.Stdout, StringComparison.Ordinal);
 
             repo.Replace("Lib/Calc.cs", "a - b", "a * b");
+            await FuseProcess.WaitForStatusAsync(repo.Path, stdout => stdout.Contains("0 changed file(s)", StringComparison.Ordinal), "fuse status never reported the revert");
             var fixedRerun = await FuseProcess.RunAsync(repo.Path, null, "test", "--failed");
             Assert.Equal(0, fixedRerun.ExitCode);
             Assert.Contains("0 failed, 1 passed", fixedRerun.Stdout, StringComparison.Ordinal);

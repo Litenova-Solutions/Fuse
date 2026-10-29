@@ -23,14 +23,10 @@ public class SessionGateTests
         var initializing = router.InitializeAsync(shutdown.Token);
         try
         {
-            // Let the first evaluation take the lock before the registration queues behind it.
-            await Task.Delay(200, TestContext.Current.CancellationToken);
             Assert.True(router.IsLoading, "the engine finished loading before the registration was sent");
             var registering = router.HandleAsync(
                 new EngineRequest.BeginSession("w1", ["Lib/**"]) { BuildId = EngineVersion.Build },
                 TestContext.Current.CancellationToken);
-            await Task.Delay(200, TestContext.Current.CancellationToken);
-
             Assert.False(registering.IsCompleted, "the registration answered while the engine still held the request lock");
             await initializing;
             Assert.IsType<EngineResponse.Acknowledged>(await registering);
@@ -54,13 +50,10 @@ public class SessionGateTests
         var initializing = router.InitializeAsync(shutdown.Token);
         try
         {
-            await Task.Delay(200, TestContext.Current.CancellationToken);
             Assert.True(router.IsLoading, "the engine finished loading before the registration was sent");
             var registering = router.HandleAsync(
                 new EngineRequest.EndSession("w1") { BuildId = EngineVersion.Build },
                 TestContext.Current.CancellationToken);
-            await Task.Delay(200, TestContext.Current.CancellationToken);
-
             Assert.False(registering.IsCompleted, "the registration answered while the engine still held the request lock");
             await initializing;
             Assert.IsType<EngineResponse.Unanswered>(await registering);

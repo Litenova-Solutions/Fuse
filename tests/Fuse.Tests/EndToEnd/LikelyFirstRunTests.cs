@@ -62,7 +62,9 @@ public class LikelyFirstRunTests
             Assert.True(found, $"the first stage's failure printed while the round still ran; the answer was: {finished.Text}");
         }
 
-        Assert.False(task.IsCompleted);
+        // The rest still runs a second after the first stage's failure printed; the delay winning the race proves it.
+        var grace = Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+        Assert.Same(grace, await Task.WhenAny(task, grace));
         var staged = await task;
         Assert.Equal(Outcome.ProblemsFound, staged.Outcome);
         Assert.DoesNotContain("FAILED", staged.Text, StringComparison.Ordinal);

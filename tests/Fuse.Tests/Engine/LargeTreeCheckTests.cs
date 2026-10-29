@@ -9,9 +9,14 @@ public class LargeTreeCheckTests
     public async Task Past_500_changed_files_both_checks_bind_and_the_log_says_the_kept_answer_was_skipped()
     {
         await using var engine = await InProcessEngine.StartAsync();
+        var fillers = new string[501];
         for (var i = 0; i < 501; i++)
-            engine.Repo.Write($"Lib/Filler{i}.cs", $"// filler {i}\n");
+        {
+            fillers[i] = $"Lib/Filler{i}.cs";
+            engine.Repo.Write(fillers[i], $"// filler {i}\n");
+        }
 
+        await engine.SyncAsync(fillers);
         await engine.CheckAllAsync();
         await engine.CheckAllAsync();
 

@@ -35,6 +35,7 @@ code { font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", m
 .hero code, .section-head code, .proof code, .page p code, .page li code, .page td code, .page th code {
   background: var(--chip-bg); color: var(--text); border: 1px solid var(--chip-line);
   padding: 0.08em 0.4em; border-radius: 0.35em; font-size: 0.86em;
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
 }
 .wrap { max-width: 56rem; margin: 0 auto; padding: 0 1rem; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -180,6 +181,10 @@ th:first-child { position: sticky; left: 0; background: var(--bg); }
 /* On wide screens the results table uses the full width of the page frame, wider than the text column. */
 @media (min-width: 62rem) { .page .table-scroll { margin-left: -6rem; margin-right: -6rem; } }
 td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* Code in a table cell wraps, so a long output line does not force its column wide and crush the others. */
+.page td code, .page th code { white-space: normal; overflow-wrap: anywhere; }
+/* On a phone a long inline command wraps instead of widening the page. */
+@media (max-width: 40rem) { .page p code, .page li code { white-space: normal; overflow-wrap: anywhere; } }
 
 /* Footer */
 .site-footer { margin-top: 7rem; border-top: 1px solid var(--line); padding: 1.8rem 0 2.5rem; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.8rem 1.5rem; font-size: 0.85rem; color: var(--muted); }

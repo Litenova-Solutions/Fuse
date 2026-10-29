@@ -241,6 +241,7 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
       <li>The suite builds HEAD, then for each case makes the edits, runs <code>fuse check</code> on the edited files, resets the tree, and matches Fuse's errors with the truth by position (file, line and column).</li>
     </ol>
     <p>A Fuse error at a truth position with a different id or message is a message mismatch. A Fuse error with no truth at its position is unverifiable when it is in a project MSBuild skipped because a project it references failed, deferred when the compiler skipped it (see <a href="benchmarks.html#reading-the-numbers">Benchmarks</a>), which includes the flow analysis errors the compiler places on a declaration (CS0161, CS0171, CS0177 and CS0843), and contradicted otherwise. A truth error without a Fuse error at its position is missed. Each case gets a verdict:</p>
+    <div class="table-scroll" role="region" aria-label="Correctness verdicts" tabindex="0">
     <table>
       <thead><tr><th scope="col">Verdict</th><th scope="col">Meaning</th></tr></thead>
       <tbody>
@@ -254,6 +255,7 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
         <tr><th scope="row"><code>unmeasured</code></th><td>Fuse answered but the engine logged no <code>check:</code> line or no phase line for the check, so its counts are missing.</td></tr>
       </tbody>
     </table>
+    </div>
 
     <p>Each case also records what the check cost: how many files it checked, how many documents binding them bound, whether it bound whole projects, whether it answered from the answer it kept, and for how many files it reused the errors of an earlier check. A capped answer proves its completeness with its results file: the file holds every error the summary counts, and a missing file or a short count is a <code>results-incomplete</code> verdict rather than a silent gap. When the file is complete, the case is classified on the file's errors, not on the ones the answer printed, so an error the answer left out of its printed list is not counted as missed.</p>
 
@@ -343,6 +345,7 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
     <p>Medians are over the cases, and the average of the two middle values for an even count. Percentiles use the nearest-rank method: P95 of 10 or 15 samples is the slowest one.</p>
 
     <h2 id="what-to-run">What to run <a class="anchor" href="#what-to-run" aria-label="Link to this section">#</a></h2>
+    <div class="table-scroll" role="region" aria-label="What to run" tabindex="0">
     <table>
       <thead><tr><th scope="col">Change</th><th scope="col">Run</th></tr></thead>
       <tbody>
@@ -351,6 +354,7 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
         <tr><td>The engine, the protocol, the client, the build lock, or anything on a request's path</td><td><code>latency</code></td></tr>
       </tbody>
     </table>
+    </div>
     <p>Attach the result to the pull request, as <a href="https://github.com/Litenova-Solutions/Fuse/blob/main/CONTRIBUTING.md">Contributing</a> asks. The published set in <a href="benchmarks.html">Benchmarks</a> is <code>all</code> on each of the four open-source repositories: twelve files.</p>
 
     <h2 id="quoting-the-numbers">Quoting the numbers <a class="anchor" href="#quoting-the-numbers" aria-label="Link to this section">#</a></h2>

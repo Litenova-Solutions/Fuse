@@ -233,7 +233,8 @@
 
     <h2 id="where-the-logs-are">Where the logs are <a class="anchor" href="#where-the-logs-are" aria-label="Link to this section">#</a></h2>
     <p>Fuse keeps its files for a repository in a state directory in the user's local application data, never in the repository:</p>
-    <table>
+    <div class="table-scroll" role="region" aria-label="Log files" tabindex="0">
+      <table>
       <thead><tr><th scope="col">Operating system</th><th scope="col">State directory</th></tr></thead>
       <tbody>
         <tr><th scope="row">Windows</th><td><code>%LOCALAPPDATA%\fuse\repos\&lt;id&gt;</code></td></tr>
@@ -241,6 +242,7 @@
         <tr><th scope="row">macOS</th><td><code>~/Library/Application Support/fuse/repos/&lt;id&gt;</code></td></tr>
       </tbody>
     </table>
+    </div>
     <p><code>&lt;id&gt;</code> is the first 16 hexadecimal digits of the SHA-256 of the repository's root path. The first line of each <code>engine.log</code> names the repository its engine served, so on Windows this finds the directory of <code>C:\src\my-repo</code>:</p>
     <pre data-label="PowerShell"><code>Select-String -Path "$env:LOCALAPPDATA\fuse\repos\*\engine.log" -SimpleMatch "started for C:\src\my-repo (" -List | Select-Object -ExpandProperty Path</code></pre>
     <p>On Linux and macOS, search the <code>engine.log</code> files under the directory in the table for <code>started for</code> followed by the repository's path.</p>
@@ -292,7 +294,8 @@
       <li><code>gateHolder</code>, when the request waited for the request lock, names what held the lock longest during the wait: another request's <code>kind</code>, <code>Preload</code> (the background load or the baseline warm choosing its next project), or <code>Initialization</code>. It is left out when nothing held the lock.</li>
       <li>The phases follow in the order they ran, in milliseconds.</li>
     </ul>
-    <table>
+    <div class="table-scroll" role="region" aria-label="Phase line fields" tabindex="0">
+      <table>
       <thead><tr><th scope="col">Phase</th><th scope="col">Time spent</th></tr></thead>
       <tbody>
         <tr><th scope="row"><code>gate</code></th><td>Waiting for the requests ahead of it.</td></tr>
@@ -307,6 +310,7 @@
         <tr><th scope="row"><code>total</code></th><td>The whole request from the moment it held the request lock, including a test plan's <code>mirror</code> and <code>emit</code>. It is counted in system clock ticks, so on Windows a request that took less than about 16 ms shows <code>total=0.0</code>.</td></tr>
       </tbody>
     </table>
+    </div>
 
     <h3 id="kept-answers-and-background-work">Kept answers and background work <a class="anchor" href="#kept-answers-and-background-work" aria-label="Link to this section">#</a></h3>
     <p>These lines record what a check reused and what the engine did between requests. Each links to the mechanism it comes from.</p>

@@ -139,6 +139,7 @@
 
     <h2 id="how-it-fits-together">How Fuse connects to an agent <a class="anchor" href="#how-it-fits-together" aria-label="Link to this section">#</a></h2>
     <p>An AI agent runs inside a <strong>harness</strong>: Claude Code, Cursor, Gemini CLI, Codex, GitHub Copilot CLI, OpenCode or Muse Code. Each harness can run a command when something happens in the agent's session, which it calls a hook. Fuse uses three moments, and every hook it registers runs the command <code>fuse hook &lt;harness&gt; &lt;event&gt;</code>:</p>
+    <div class="table-scroll" role="region" aria-label="How Fuse connects to an agent" tabindex="0">
     <table>
       <thead><tr><th scope="col">Event</th><th scope="col">When it runs</th><th scope="col">What Fuse does</th></tr></thead>
       <tbody>
@@ -147,6 +148,7 @@
         <tr><th scope="row"><code>stop</code></th><td>When the agent tries to finish</td><td>Checks every change, and sends the agent back once if errors remain.</td></tr>
       </tbody>
     </table>
+    </div>
     <p>Because the harness runs these, the agent does not have to know Fuse exists or remember to call it. It hears from Fuse only when an edit introduced an error or a project needs a restore. <a href="commands.html#fuse-hook">Commands</a> describes each event in detail.</p>
     <p>A command the pre-shell hook rewrote says so on standard error before it runs:</p>
     <pre class="out" data-label="Output"><code>fuse: dotnet test routed to fuse test (tests affected by your changes; fuse test --all runs every test)

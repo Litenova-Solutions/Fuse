@@ -171,6 +171,7 @@ fuse: git cannot list the repository's files (&lt;git's message&gt;); see `git s
     <pre class="out" data-label="Message"><code>fuse: the Fuse engine did not answer within &lt;seconds&gt; s
 fuse: the request is cancelled</code></pre>
     <p><strong>Cause.</strong> The engine did not answer within the command's limit:</p>
+    <div class="table-scroll" role="region" aria-label="Timeout" tabindex="0">
     <table>
       <thead><tr><th scope="col">Caller</th><th scope="col">Limit</th></tr></thead>
       <tbody>
@@ -179,6 +180,7 @@ fuse: the request is cancelled</code></pre>
         <tr><td>The other post-edit hooks</td><td class="num">50 s</td></tr>
       </tbody>
     </table>
+    </div>
     <p>A request that reaches projects the engine has not loaded waits for them to load. The second line is the engine's answer when a request is cancelled while it runs.</p>
     <p><strong>Fix.</strong> Run the command again; the engine keeps loading in between. <a href="troubleshooting.html#a-command-times-out">Troubleshooting</a> shows how to see what it is doing.</p>
 

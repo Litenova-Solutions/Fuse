@@ -162,7 +162,8 @@ fuse - faster .NET build and test loop for AI coding agents
 
     <h2 id="exit-codes">Exit codes <a class="anchor" href="#exit-codes" aria-label="Link to this section">#</a></h2>
     <p>The exit code tells a script, or a harness, which of three things happened: Fuse answered and all is well, Fuse answered and something needs fixing, or Fuse could not answer.</p>
-    <table>
+    <div class="table-scroll" role="region" aria-label="Exit codes" tabindex="0">
+      <table>
       <thead><tr><th scope="col">Code</th><th scope="col">Meaning</th></tr></thead>
       <tbody>
         <tr><th scope="row">0</th><td>Fuse answered and found nothing to fix: no errors introduced, the tests passed, or the build succeeded.</td></tr>
@@ -171,6 +172,7 @@ fuse - faster .NET build and test loop for AI coding agents
         <tr><th scope="row">130</th><td>Ctrl+C stopped the command.</td></tr>
       </tbody>
     </table>
+    </div>
     <p><code>fuse hook</code> exits with 0 in every case except one: the Claude Code post-edit hook exits with 2 to wake the agent, as <a href="#fuse-hook">fuse hook</a> describes.</p>
 
     <h2 id="fuse-init">fuse init <a class="anchor" href="#fuse-init" aria-label="Link to this section">#</a></h2>
@@ -230,7 +232,8 @@ fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations chan
       </li>
     </ul>
     <p>The summary ends with any of these parts, separated by semicolons. In the second form they go inside the parentheses, after <code>F file(s) checked</code>, as in <code>fuse: no errors introduced (3 file(s) checked; Lib declarations changed, 2 dependent project(s) checked; tree 9f2c41aa07b3 over 3 changed file(s))</code>.</p>
-    <table>
+    <div class="table-scroll" role="region" aria-label="Parts of a check summary" tabindex="0">
+      <table>
       <thead><tr><th scope="col">Part</th><th scope="col">Meaning</th></tr></thead>
       <tbody>
         <tr><th scope="row"><code>P declarations changed, K dependent project(s) checked</code></th><td>The projects in which a checked file changed a declaration, and how many projects that depend on them the check searched.</td></tr>
@@ -242,6 +245,7 @@ fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations chan
         <tr><th scope="row"><code>N non-C# file(s) changed, which Fuse does not check: &lt;paths&gt;</code></th><td>The changed files Fuse does not check, last among the parts on clean and error answers alike: the first 5 paths, counting the rest as <code>... and M more</code>. With named files it still covers the whole tree, not the named scope.</td></tr>
       </tbody>
     </table>
+    </div>
     <p>After the parts, every <code>fuse check</code> summary names the tree the command ended on: <code>; tree &lt;12 hex&gt; over N changed file(s)</code>. On a clean answer it sits inside the parentheses. Hook and MCP answers carry no stamp.</p>
     <p>With <code>--json</code> each error prints as one JSON object with <code>file</code>, <code>line</code>, <code>column</code>, <code>code</code> and <code>message</code>, plus <code>cause</code> when the error has one and <code>generated</code> when a generated file declares what the error is about. <code>line</code> and <code>column</code> are left out for a general error, and the results file is still written:</p>
     <pre class="out" data-label="Output"><code>$ fuse check --json
@@ -274,7 +278,8 @@ fuse: 1 failed, 0 passed in 2.8 s; ran 1 test(s) affected by your changes out of
     <h3 id="reading-the-output">Reading the output <a class="anchor" href="#reading-the-output" aria-label="Link to this section">#</a></h3>
     <p>Each failed test prints <code>FAILED</code> and its name, then its message (up to 12 lines) and up to five stack frames inside the repository, indented by two spaces. Failures that share their message's first line print under one <code>N failure(s) with the same first message line: ...</code> header, which cuts the line at 160 characters; members keep their full text. The first 10 failures print in detail. The next 100 print by name only, under <code>also failed (N):</code>, and a line <code>... and N more</code> counts the rest. Every test run also writes all its failures, grouped by project, to <code>last-test-results.txt</code> in the state directory, replaced each time, flat and without group headers, and when failures or names were left out the summary ends with <code>; all F in &lt;path&gt;</code> naming it. Beside it, <code>last-test-results.json</code> holds the run projects with their absolute paths and each test's verdict and duration, failures first, at most 20,000 tests, for <code>fuse test --failed</code> and for running failures first; a file that cannot be read counts as no record.</p>
     <p>The summary line is <code>fuse: F failed, P passed in X.X s</code> (with <code>, S skipped</code> when tests were skipped), then what ran, then how it ran.</p>
-    <table>
+    <div class="table-scroll" role="region" aria-label="What a test summary says ran" tabindex="0">
+      <table>
       <thead><tr><th scope="col">What ran</th><th scope="col">When</th></tr></thead>
       <tbody>
         <tr><td><code>ran N test(s) affected by your changes out of T; fuse test --all runs everything</code></td><td><code>fuse test</code></td></tr>
@@ -283,6 +288,7 @@ fuse: 1 failed, 0 passed in 2.8 s; ran 1 test(s) affected by your changes out of
         <tr><td><code>ran the tests your dotnet test arguments name</code></td><td><code>fuse test</code> with arguments</td></tr>
       </tbody>
     </table>
+    </div>
     <p>When the pre-shell hook rewrote the command, it passed the agent's session with <code>--session</code>, and the plan leaves out the changes only other sessions wrote (<a href="how-it-works.html#test-selection">a session's own tests</a>). The first form then adds <code>; left out N changed file(s) only other sessions wrote</code> before <code>; fuse test --all runs everything</code>, and when nothing is left, prints <code>fuse: no C# changes by this session since HEAD, so no test is affected; left out N changed file(s) only other sessions wrote (fuse test --all runs everything)</code>. You do not pass <code>--session</code> yourself; without it the plan covers every change.</p>
     <p>Test projects that need a container runtime are left out of the affected and <code>--all</code> plans when none answers, and the summary names them: <code>; skipped N test(s) in P1, P2 (no container runtime)</code>. A project needs a container runtime when any of its package references is <code>Testcontainers</code> or starts with <code>Testcontainers.</code>; runs from your own <code>dotnet test</code> arguments pass to <code>dotnet test</code> verbatim, with no pre-flight.</p>
     <p>On the command line, when the last recorded run left 1 to 100 failures inside a VSTest method selection, those tests run first as their own stage and their failures print before the rest runs; the final summary counts each test once. A project whose recorded failures name theory rows, a platform run and a whole-project run stay one stage.</p>
@@ -351,7 +357,8 @@ fuse: 3 changed file(s) since HEAD; tree 9f2c41aa07b3; HEAD 1a2b3c4d5e6f
 fuse: large-tree limits: past 300 changed files a sync reloads projects; past 500 files in reach a check binds whole projects; commit or run fuse stop and let the next check reload when checks feel slow</code></pre>
     <p>The first line says whether an engine runs: <code>fuse: engine running for &lt;root&gt; (pid &lt;pid&gt;), &lt;MB&gt; MB; idle exits after 30 min</code>, <code>fuse: engine for &lt;root&gt; did not answer in 2 s</code>, or <code>fuse: no engine runs for &lt;root&gt;; the next check starts one</code>. The second line counts the changed files and stamps the tree: <code>fuse: N changed file(s) since HEAD; tree &lt;hash&gt;; HEAD &lt;12 hex&gt;</code>. When more than 300 files changed, a warning line comes before the limits line: <code>fuse: warning: N changed files is past the 300-file reload point; checks reseed from git and reload projects, so they slow down - commit soon</code>.</p>
     <p>With <code>--json</code> the command prints one object with these fields:</p>
-    <table>
+    <div class="table-scroll" role="region" aria-label="fuse status fields" tabindex="0">
+      <table>
       <thead><tr><th scope="col">Field</th><th scope="col">Meaning</th></tr></thead>
       <tbody>
         <tr><th scope="row"><code>engine</code></th><td><code>running</code>, <code>stopped</code>, or <code>unknown</code> when an engine exists but did not answer in time.</td></tr>
@@ -364,6 +371,7 @@ fuse: large-tree limits: past 300 changed files a sync reloads projects; past 50
         <tr><th scope="row"><code>wholeProjectAt</code></th><td>500: past this many files in reach a check compiles whole projects.</td></tr>
       </tbody>
     </table>
+    </div>
     <p>It exits with 0 in a repository and 2 outside one. Any other argument prints <code>fuse: status takes [--json]; '&lt;token&gt;' is not one</code> with the usage and exits with 2.</p>
 
     <h2 id="fuse-session">fuse session <a class="anchor" href="#fuse-session" aria-label="Link to this section">#</a></h2>
@@ -385,7 +393,8 @@ fuse: stopped the engine for /home/me/src/my-repo</code></pre>
 
     <h2 id="fuse-mcp">fuse mcp <a class="anchor" href="#fuse-mcp" aria-label="Link to this section">#</a></h2>
     <p>Runs an MCP server over standard input and output, for an MCP host without hooks. The server finds the repository from its working directory on every call, so the host has to start it inside the repository. <a href="harnesses.html#other-mcp-hosts">Connect your agent</a> shows how to register it.</p>
-    <table>
+    <div class="table-scroll" role="region" aria-label="MCP tools" tabindex="0">
+      <table>
       <thead><tr><th scope="col">Tool</th><th scope="col">Arguments</th><th scope="col">Runs</th></tr></thead>
       <tbody>
         <tr><th scope="row"><code>fuse_check</code></th><td><code>files</code>: array of paths, relative to the repository root or absolute; omit to check every change. <code>max_errors</code>: integer from 1 to 100000; omit for the first 20</td><td><code>fuse check</code></td></tr>
@@ -393,6 +402,7 @@ fuse: stopped the engine for /home/me/src/my-repo</code></pre>
         <tr><th scope="row"><code>fuse_build</code></th><td><code>target</code>: project or solution; omit to build what <code>dotnet build</code> picks in the repository root</td><td><code>fuse build</code></td></tr>
       </tbody>
     </table>
+    </div>
     <p>Each tool returns one text block with the same text the command prints. The result's <code>isError</code> is <code>true</code> only when Fuse could not answer, including outside a repository and for an unknown tool name. Errors introduced, failed tests and a failed build are answers, so their <code>isError</code> is <code>false</code>. <code>fuse_check</code> is marked read-only and idempotent; <code>fuse_test</code> and <code>fuse_build</code> are not read-only. <code>fuse_check</code> takes files; the directory and pattern forms live on the command line only. A <code>max_errors</code> that is no count of 1 to 100000 is refused with <code>fuse: max_errors takes a count of 1 to 100000</code>, and <code>all</code> with <code>failed</code> with <code>fuse: failed reruns the tests that failed last time and cannot be combined with all; set only one of them</code>, both as error results.</p>
     <p>This transcript sends an <code>initialize</code> request, the <code>initialized</code> notification, <code>tools/list</code>, one <code>fuse_check</code> call and one call to a tool that does not exist, one JSON message per line:</p>
     <pre class="out" data-label="Sent"><code>{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"example","version":"1.0"}}}
@@ -410,7 +420,8 @@ fuse: stopped the engine for /home/me/src/my-repo</code></pre>
     <h2 id="fuse-hook">fuse hook <a class="anchor" href="#fuse-hook" aria-label="Link to this section">#</a></h2>
     <pre data-label="Usage"><code>usage: fuse hook &lt;claude|cursor|gemini|codex|copilot|opencode|muse&gt; &lt;post-edit|pre-shell|stop&gt;</code></pre>
     <p>The command every installed hook runs. You do not run it yourself, except to see what a hook would answer, as <a href="getting-started.html#what-the-agent-gets">Getting started</a> does. It reads the harness's JSON payload from standard input as UTF-8 and answers in that harness's format, which <a href="harnesses.html">Connect your agent</a> shows for each one. The harness is <code>claude</code>, <code>cursor</code>, <code>gemini</code>, <code>codex</code>, <code>copilot</code>, <code>opencode</code> or <code>muse</code>. Any other harness or event prints the usage line on standard error and exits with 0, as does <code>--help</code> before or after the harness and event, without reading standard input.</p>
-    <table>
+    <div class="table-scroll" role="region" aria-label="Hook events" tabindex="0">
+      <table>
       <thead><tr><th scope="col">Event</th><th scope="col">What it does</th></tr></thead>
       <tbody>
         <tr><th scope="row"><code>post-edit</code></th><td>Checks the source files the edit wrote and reports introduced errors.</td></tr>
@@ -418,6 +429,7 @@ fuse: stopped the engine for /home/me/src/my-repo</code></pre>
         <tr><th scope="row"><code>stop</code></th><td>Checks every change when the agent tries to finish, and sends it back once while its own edits introduce errors or a project needs a restore.</td></tr>
       </tbody>
     </table>
+    </div>
     <h3 id="post-edit">post-edit <a class="anchor" href="#post-edit" aria-label="Link to this section">#</a></h3>
     <p>Reads the edited paths from the payload's tool input (<code>file_path</code>, <code>filePath</code>, <code>path</code> or <code>notebook_path</code>, and the files an <code>apply_patch</code> patch adds, updates, deletes or moves to), keeps the <code>.cs</code>, <code>.razor</code> and <code>.cshtml</code> files, and runs <code>fuse check</code> on them. Relative paths resolve against the payload's <code>cwd</code> (or the first of its <code>workspace_roots</code>), or the hook's own working directory when the payload names neither.</p>
     <p>For Claude Code, which runs the hook in the background, it waits for the engine to finish loading for up to 280 seconds, covering at most two checks: the first answer, and one confirmation against the tree as it stands before an answer with errors is delivered. It writes the check's output to standard error, and exits with 2, which wakes the agent. Every other harness runs the hook inline, so the agent waits for it: there it answers only once the engine has loaded, waits up to 50 seconds, and writes its answer as JSON to standard output.</p>

@@ -35,6 +35,23 @@ internal sealed class TestClassKey
     private static readonly string[] OutsideMarkers =
         ["..", "GetTempPath", "GetFolderPath", "SpecialFolder", "C:\\", "C:/", "/tmp/", "/etc/", "\\\\", "~/"];
 
+    /// <summary>
+    ///     What a file names when it finds types by reflection, so code the closure never names can run: assembly scanning,
+    ///     activation by name, and the assembly a type lives in.
+    /// </summary>
+    private static readonly string[] DiscoveryMarkers =
+        ["GetTypes(", "GetExportedTypes(", "DefinedTypes", ".Assembly", "Assembly.Load", "Activator.", "Type.GetType(", "AppDomain"];
+
+    /// <summary>
+    ///     What a test file names when the test framework runs it without any test class naming it: fixtures, assembly
+    ///     and module setup, and assembly-level attributes. Such a file seeds every class's closure.
+    /// </summary>
+    private static readonly string[] FrameworkMarkers =
+    [
+        "[assembly:", "[module:", "ModuleInitializer", "CollectionDefinition", "AssemblyFixture", "TestFramework",
+        "SetUpFixture", "AssemblyInitialize", "AssemblyCleanup", "GlobalSetup", "BeforeAssembly", "AfterAssembly",
+    ];
+
     /// <summary>The repository files whose content a shadow run of any class reads: the SDK and build defaults.</summary>
     private static readonly string[] RepoInputs = ["global.json", "Directory.Build.props", "Directory.Build.targets", "Directory.Packages.props"];
 
@@ -74,6 +91,10 @@ internal sealed class TestClassKey
             if (shared is null)
                 return classes.ToDictionary(c => c, _ => (string?)null, StringComparer.Ordinal);
 
+            if (GeneratedLines(root, files, variants.Values) is not { } generated)
+                return classes.ToDictionary(c => c, _ => (string?)null, StringComparer.Ordinal);
+            shared.UnionWith(generated);
+
             var edges = EdgesOf(files);
             var visible = Visible(projects);
             var result = new Dictionary<string, string?>(StringComparer.Ordinal);
@@ -101,12 +122,19 @@ internal sealed class TestClassKey
         string className,
         HashSet<string> shared)
     {
-        var own = files.Where(f => f.Value.Node.Path == test.Path && Declares(f.Value.Facts, className)).Select(f => f.Key).ToList();
+        var testFiles = files.Where(f => f.Value.Node.Path == test.Path).ToList();
+        var own = testFiles.Where(f => Declares(f.Value.Facts, className)).Select(f => f.Key).ToList();
         if (own.Count == 0)
             return null;
+
+        // The framework runs fixtures and assembly setup that no class names, so they seed every class's closure.
+        own.AddRange(testFiles.Where(f => !own.Contains(f.Key) && RunByFramework(f.Value.Text)).Select(f => f.Key));
         var closure = Closure(files, edges, visible, own);
-        if (closure.Any(f => ReadsEnvironment(files[f].Text) || ReadsOutside(files[f].Text)))
+        if (closure.Any(f => ReadsEnvironment(files[f].Text) || ReadsOutside(files[f].Text) || Discovers(files[f].Text)))
             return null;
+
+        // Every file of the test project is in the key, so a test-side edit the closure does not reach still reruns.
+        closure.UnionWith(testFiles.Select(f => f.Key));
         var lines = new HashSet<string>(shared, StringComparer.Ordinal);
         foreach (var file in closure)
             lines.Add($"src:{root.PathOf(file).Relative}={HashOf(files[file].Text)}");
@@ -197,6 +225,46 @@ internal sealed class TestClassKey
             lines.Add($"variant:{name}");
         lines.Add($"head:{head ?? ""}");
         return lines;
+    }
+
+    /// <summary>
+    ///     The key lines for source generators: every C# source of a project that runs a generator from outside the SDK,
+    ///     since the generator's output can depend on any of them. Null when a project runs an analyzer built in the
+    ///     repository, whose own sources no key covers.
+    /// </summary>
+    private static HashSet<string>? GeneratedLines(RepoRoot root, Dictionary<string, SourceFile> files, IEnumerable<(ProjectNode Node, Project Project)> variants)
+    {
+        var lines = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var (_, project) in variants)
+        {
+            var generates = false;
+            foreach (var reference in project.AnalyzerReferences)
+            {
+                if (reference.FullPath is not { } path || root.Contains(path))
+                    return null;
+                if (FromSdk(path))
+                    continue;
+                if (reference.GetGeneratorsForAllLanguages().Length > 0)
+                    generates = true;
+            }
+
+            if (!generates)
+                continue;
+            foreach (var (file, source) in files)
+            {
+                if (source.Project == project.Id)
+                    lines.Add($"gen:{root.PathOf(file).Relative}={HashOf(source.Text)}");
+            }
+        }
+
+        return lines;
+    }
+
+    /// <summary>True when an analyzer ships with the .NET SDK or a targeting pack, whose generators read only what code names.</summary>
+    private static bool FromSdk(string path)
+    {
+        var normalized = path.Replace('\\', '/');
+        return normalized.Contains("/packs/", StringComparison.OrdinalIgnoreCase) || normalized.Contains("/sdk/", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -372,6 +440,14 @@ internal sealed class TestClassKey
     /// <summary>True when the file's facts declare the class.</summary>
     private static bool Declares(TypeGraph.FileFacts facts, string className) =>
         facts.Declared.Any(d => d.Name == className);
+
+    /// <summary>True when the text finds types by reflection.</summary>
+    private static bool Discovers(string text) =>
+        DiscoveryMarkers.Any(m => text.Contains(m, StringComparison.Ordinal));
+
+    /// <summary>True when the test framework runs code in the text that no test class names.</summary>
+    private static bool RunByFramework(string text) =>
+        FrameworkMarkers.Any(m => text.Contains(m, StringComparison.Ordinal));
 
     /// <summary>True when the text reads the clock, the environment, randomness or the network.</summary>
     private static bool ReadsEnvironment(string text) =>

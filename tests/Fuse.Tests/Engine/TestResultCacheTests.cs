@@ -88,6 +88,58 @@ public class TestResultCacheTests
     }
 
     [Fact]
+    public async Task An_edit_reached_only_through_assembly_setup_reruns_the_class()
+    {
+        // No test class names the attribute, but the framework constructs it, so what it reaches is in every key.
+        using var repo = FixtureRepo.CreateStandard();
+        repo.Write("Lib.Tests/Warmup.cs", """
+            [assembly: Lib.Tests.Warmup]
+
+            namespace Lib.Tests;
+
+            [System.AttributeUsage(System.AttributeTargets.Assembly)]
+            public sealed class WarmupAttribute : System.Attribute
+            {
+                public WarmupAttribute() => _ = Lib.Formatter.Format(1);
+            }
+            """);
+        repo.Commit("add assembly setup");
+        await using var engine = await InProcessEngine.StartAsync(repo);
+        repo.Replace("Lib/Calc.cs", "a * b;", "b * a;");
+        await Task.Delay(400, TestContext.Current.CancellationToken);
+        var first = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
+        ReportPassed(engine, first, "Lib.Tests.CalcTests.Multiplies");
+
+        repo.Replace("Lib/Formatter.cs", "InvariantCulture);", "InvariantCulture) + \"\";");
+        await Task.Delay(400, TestContext.Current.CancellationToken);
+        var second = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
+
+        Assert.NotEmpty(second.Runs);
+        Assert.DoesNotContain("from cache", second.Summary, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_closure_that_finds_types_by_reflection_never_reads_the_cache()
+    {
+        // Calc scans its assembly, so code no test names can run: the class gets no key and runs every time.
+        using var repo = FixtureRepo.CreateStandard();
+        repo.Replace("Lib/Calc.cs", "public int Add(int a, int b) => a + b;", "public int Add(int a, int b) => a + b + typeof(Calc).Assembly.GetTypes().Length * 0;");
+        repo.Commit("scan the assembly");
+        await using var engine = await InProcessEngine.StartAsync(repo);
+        repo.Replace("Lib/Calc.cs", "a * b;", "b * a;");
+        await Task.Delay(400, TestContext.Current.CancellationToken);
+        var first = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
+        ReportPassed(engine, first, "Lib.Tests.CalcTests.Multiplies");
+
+        repo.Replace("Strict/Thing.cs", "=> 1;", "=> 2;");
+        await Task.Delay(400, TestContext.Current.CancellationToken);
+        var second = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
+
+        Assert.NotEmpty(second.Runs);
+        Assert.DoesNotContain("from cache", second.Summary, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task A_class_that_failed_is_rerun()
     {
         await using var engine = await InProcessEngine.StartAsync();

@@ -47,7 +47,7 @@ internal sealed record SelectionCase(
     /// <summary>The filter collapse notes, verbatim from the engine log.</summary>
     public List<string> FilterCollapses { get; init; } = [];
 
-    /// <summary>How many test processes the plan implies: one per shadow assembly and per MSBuild run, one per platform project.</summary>
+    /// <summary>How many test processes the plan implies: one per shadow assembly, one per MSBuild run, and one per planned project with no mode line.</summary>
     public int TestProcesses { get; init; }
 
     /// <summary>How many failing tests the answer named.</summary>
@@ -143,10 +143,11 @@ internal static partial class SelectionSuite
             var plan = TestPlanCounts.Parse(fuse.Result.Output, logLines);
             await repo.ResetAsync();
 
-            // The full run writes one TRX file per test project and target framework, as HEAD's did; fewer means a project
-            // wrote no results, and its failures are missing from the truth side.
+            // The full run produces one result unit per test project and target framework, a TRX file or an executed
+            // test assembly on Microsoft.Testing.Platform, as HEAD's did; fewer means a project wrote no results, and
+            // its failures are missing from the truth side.
             if (item.ResultFiles < head.ResultFiles)
-                withoutResults.Add($"case {planned.Index}: {item.ResultFiles} of {head.ResultFiles} result files");
+                withoutResults.Add($"case {planned.Index}: {item.ResultFiles} of {head.ResultFiles} result units");
             var truthFailing = item.Names.Where(n => !baselineFailing.Contains(n)).ToList();
             var fuseFailing = FailingNames(fuse.Result.Output);
             var counts = Counts().Match(fuse.Result.Output);

@@ -72,10 +72,12 @@ internal sealed partial record TestPlanCounts(
             : new List<string>();
         var shadow = modes.Count(m => !m.Msbuild);
         var msbuild = modes.Count(m => m.Msbuild);
-        // A project on Microsoft.Testing.Platform logs no mode line; it runs one process per planned project. The target
-        // multiplicity of a direct run is not in the log, so this counts the processes the plan implies, not OS-observed forks.
-        var platform = planned.Except(modes.Select(m => m.Name), StringComparer.Ordinal).Count();
-        return new TestPlanCounts(planned.Count, shadow, msbuild, whole, reasons, collapses, modes.Sum(m => m.Assemblies) + msbuild + platform);
+        // A project on Microsoft.Testing.Platform logs a mode line that builds with MSBuild, so MsbuildRuns counts it
+        // with the VSTest projects that build the same way; what is left here is a planned project with no mode line,
+        // counted as one process. The target multiplicity of a direct run is not in the log, so this counts the
+        // processes the plan implies, not OS-observed forks.
+        var withoutMode = planned.Except(modes.Select(m => m.Name), StringComparer.Ordinal).Count();
+        return new TestPlanCounts(planned.Count, shadow, msbuild, whole, reasons, collapses, modes.Sum(m => m.Assemblies) + msbuild + withoutMode);
     }
 
     /// <summary>

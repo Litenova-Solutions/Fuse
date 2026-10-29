@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using Fuse.Graph;
 using Fuse.Paths;
 using Fuse.Workspace;
@@ -13,7 +14,7 @@ namespace Fuse.Testing;
 ///     any input cannot be proven unchanged: an unreadable file, or a test that reads the clock, the environment, the
 ///     network, or a file outside its project.
 /// </summary>
-internal sealed class TestClassKey
+internal sealed partial class TestClassKey
 {
     /// <summary>What a test file names when the test reads the clock, the environment, randomness or the network.</summary>
     private static readonly string[] EnvironmentMarkers =
@@ -39,8 +40,9 @@ internal sealed class TestClassKey
     ///     What a file names when it finds types by reflection, so code the closure never names can run: assembly scanning,
     ///     activation by name, and the assembly a type lives in.
     /// </summary>
-    private static readonly string[] DiscoveryMarkers =
-        ["GetTypes(", "GetExportedTypes(", "DefinedTypes", ".Assembly", "Assembly.Load", "Activator.", "Type.GetType(", "AppDomain"];
+    /// <remarks>Whole words only: the attributes in a generated AssemblyInfo file, such as <c>AssemblyCompanyAttribute</c>, are not reflection.</remarks>
+    [GeneratedRegex(@"GetTypes\(|GetExportedTypes\(|\bDefinedTypes\b|\.Assembly\b|\bAssembly\.Load|\bActivator\.|\bType\.GetType\(|\bAppDomain\b", RegexOptions.CultureInvariant)]
+    private static partial Regex DiscoveryPattern();
 
     /// <summary>
     ///     What a test file names when the test framework runs it without any test class naming it: fixtures, assembly
@@ -443,7 +445,7 @@ internal sealed class TestClassKey
 
     /// <summary>True when the text finds types by reflection.</summary>
     private static bool Discovers(string text) =>
-        DiscoveryMarkers.Any(m => text.Contains(m, StringComparison.Ordinal));
+        DiscoveryPattern().IsMatch(text);
 
     /// <summary>True when the test framework runs code in the text that no test class names.</summary>
     private static bool RunByFramework(string text) =>

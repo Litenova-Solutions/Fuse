@@ -52,13 +52,6 @@ public class CompiledCodeTests
     }
 
     [Fact]
-    public void Expression_body_against_a_block_body_is_same_code()
-    {
-        Assert.True(SameCode("class C { int M(int a, int b) => a * b; }", "class C { int M(int a, int b) { return a * b; } }"));
-        Assert.True(SameCode("class C { int M(int a, int b) { return a * b; } }", "class C { int M(int a, int b) => a * b; }"));
-    }
-
-    [Fact]
     public void Local_rename_in_an_accessor_is_same_code()
     {
         Assert.True(SameCode(

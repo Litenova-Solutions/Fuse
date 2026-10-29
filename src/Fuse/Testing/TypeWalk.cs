@@ -1,4 +1,3 @@
-using Fuse.Graph;
 using Fuse.Paths;
 using Fuse.Testing.Model;
 using Fuse.Workspace;
@@ -12,10 +11,9 @@ namespace Fuse.Testing;
 ///     solution where the <see cref="MemberWalk"/> would run out of budget.
 /// </summary>
 /// <remarks>
-///     A reached test file that declares no class selects its whole project. A reached application records every test
+///     A reached test file that declares no class selects its whole project. A reached application selects every test
 ///     project that depends on it (<see cref="HostRule"/>), because tests reach an application through its application host, not by
-///     naming its types; the selector resolves each record to the test classes that start the application. When several
-///     reasons select one project whole, the last one reached is the one reported.
+///     naming its types. When several reasons select one project whole, the last one reached is the one reported.
 /// </remarks>
 internal sealed class TypeWalk
 {
@@ -26,11 +24,11 @@ internal sealed class TypeWalk
 
     public TypeWalk(RepoWorkspace workspace) => _workspace = workspace;
 
-    /// <summary>Selects the tests the types of <paramref name="seeds"/> reach, keyed by test project file, and records each reached application per dependent test project.</summary>
+    /// <summary>Selects the tests the types of <paramref name="seeds"/> reach, keyed by test project file.</summary>
     /// <param name="reachedProjects">The Roslyn projects of the changed projects and their dependents; the graph covers only these.</param>
     /// <param name="seeds">The changed declarations, each with its document, as <see cref="MemberWalk.SeedAsync"/> found them.</param>
     /// <param name="cancellationToken">Cancels building the graph.</param>
-    public async Task<(IReadOnlyDictionary<RepoPath, TestSelection> Selections, IReadOnlyDictionary<RepoPath, List<(ProjectNode Application, string Reason)>> Reaches)> SelectAsync(
+    public async Task<IReadOnlyDictionary<RepoPath, TestSelection>> SelectAsync(
         IReadOnlyList<Project> reachedProjects,
         IReadOnlyList<(Document Document, SyntaxNode Node)> seeds,
         CancellationToken cancellationToken)
@@ -42,7 +40,6 @@ internal sealed class TypeWalk
             .Where(typeGraph.Types.ContainsKey)
             .ToList();
         var selections = new SelectionBuilder();
-        var reaches = new Dictionary<RepoPath, List<(ProjectNode Application, string Reason)>>();
         foreach (var key in typeGraph.ReverseClosure(start))
         {
             var entry = typeGraph.Types[key];
@@ -58,14 +55,10 @@ internal sealed class TypeWalk
             else if (entry.Node.IsExecutable)
             {
                 foreach (var dependent in HostRule.DependentTestProjects(graph, entry.Node))
-                {
-                    if (!reaches.TryGetValue(dependent.Path, out var reached))
-                        reaches[dependent.Path] = reached = [];
-                    reached.Add((entry.Node, $"{entry.Node.Name} uses the changed code and runs behind an application host"));
-                }
+                    selections.SelectWhole(dependent, $"{entry.Node.Name} uses the changed code and runs behind an application host");
             }
         }
 
-        return (selections.Selections, reaches);
+        return selections.Selections;
     }
 }

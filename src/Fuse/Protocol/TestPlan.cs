@@ -13,5 +13,5 @@ internal sealed record TestPlan(TestRun[] Runs, int SelectedTests, int TotalTest
     public int ContainerGatedTests { get; init; }
 
     /// <summary>The projects those tests are in, in ordinal order. A line without the list reads as one that names none.</summary>
-    public string[] ContainerGatedProjects { get; init; } = [];
+    public string[] ContainerGatedProjects { get => field ?? []; init; } = [];
 }

@@ -8,8 +8,7 @@ namespace Fuse.Testing;
 /// <summary>
 ///     Selects the tests that can observe the working-tree changes. It takes the <see cref="TypeWalk"/>'s class-level
 ///     answer, and refines it to test methods with the <see cref="MemberWalk"/> when few classes are reachable and the
-///     walk finishes within its budget. An application either walk reaches is resolved to the test classes that start
-///     it (see <see cref="ApplicationStart"/>).
+///     walk finishes within its budget.
 /// </summary>
 /// <remarks>
 ///     A missed failing test is the one outcome selection must not produce; running extra tests only costs time. So when
@@ -54,16 +53,10 @@ internal sealed class TestSelector
         {
             if (!path.Absolute.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
             {
-                // A Razor file (.razor, .cshtml) has no declaration either walk can start from. In a library every
-                // test project that depends on its project runs whole; in an application the test classes that start
-                // it run whole and the rest are selected by name.
+                // A Razor file (.razor, .cshtml) has no declaration either walk can start from, so every test project
+                // that depends on its project runs whole.
                 foreach (var owner in graph.OwnersOf(path))
-                {
-                    if (owner.IsExecutable)
-                        await walk.SelectApplicationDependentsAsync(owner, $"{path.FileName} changed", cancellationToken).ConfigureAwait(false);
-                    else
-                        walk.SelectDependentsWhole(owner, $"{path.FileName} changed");
-                }
+                    walk.SelectDependentsWhole(owner, $"{path.FileName} changed");
                 continue;
             }
 
@@ -77,8 +70,7 @@ internal sealed class TestSelector
         // replaces theirs. The type walk's methods add nothing to a whole project.
         var seededWhole = walk.Selections.Where(s => s.Value is TestSelection.Whole).ToList();
         var classLevel = new Dictionary<RepoPath, TestSelection>(seededWhole);
-        var (typeSelections, typeReaches) = await _types.SelectAsync(reachedRoslynProjects, seeds, cancellationToken).ConfigureAwait(false);
-        foreach (var (path, selection) in typeSelections)
+        foreach (var (path, selection) in await _types.SelectAsync(reachedRoslynProjects, seeds, cancellationToken).ConfigureAwait(false))
         {
             if (selection is TestSelection.Whole || !classLevel.ContainsKey(path))
                 classLevel[path] = selection;
@@ -88,25 +80,6 @@ internal sealed class TestSelector
         // when the class-level answer is small enough for the refinement to matter and the walk to finish.
         var classes = classLevel.Values.OfType<TestSelection.Methods>().Sum(m => m.Patterns.Count);
         var allSameCode = walk.DroppedSameCode == walk.ChangedDeclarations;
-
-        // An application the type walk reached is resolved to the test classes that start it, on both answers. The
-        // gate above counts the walks' answer, so resolved prefixes never flip it.
-        var resolved = new SelectionBuilder();
-        var noted = new HashSet<(RepoPath Path, RepoPath Application)>();
-        foreach (var (path, reaches) in typeReaches)
-        {
-            var test = graph.Find(path);
-            if (test is null)
-                continue;
-            foreach (var (application, reason) in reaches)
-            {
-                if (!noted.Add((path, application.Path)))
-                    continue;
-                await ApplicationStart.ResolveAsync(solution, test, application, reason, resolved, _workspace.Log, cancellationToken).ConfigureAwait(false);
-            }
-        }
-
-        ApplicationStart.MergeInto(resolved.Selections, classLevel);
         if (classes > RefineThreshold)
         {
             _workspace.Log($"test selection: {classes} test classes reachable; selecting at class level");
@@ -125,7 +98,6 @@ internal sealed class TestSelector
         var memberLevel = new Dictionary<RepoPath, TestSelection>(walk.Selections);
         foreach (var (path, _) in seededWhole)
             memberLevel[path] = classLevel[path];
-        ApplicationStart.MergeInto(resolved.Selections, memberLevel);
         _workspace.Log($"test selection: member walk completed in {outcome.Milliseconds} ms, {outcome.Symbols} symbol(s), {classes} test class(es) reachable, {PatternsOf(memberLevel)} pattern(s) selected; selecting at member level");
         return new SelectionResult(memberLevel, walk.DroppedSameCode, allSameCode);
     }

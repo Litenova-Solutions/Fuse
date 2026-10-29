@@ -58,7 +58,7 @@ internal sealed class FixtureRepo : IDisposable
         return new FixtureRepo(target);
     }
 
-    public string Full(string relative) => System.IO.Path.Combine(Root.Path, relative);
+    public string Full(string relative) => System.IO.Path.GetFullPath(System.IO.Path.Combine(Root.Path, relative));
 
     /// <summary>The repository path of a repository-relative file, as the engine names it.</summary>
     public RepoPath PathOf(string relative) => Root.PathOf(relative);

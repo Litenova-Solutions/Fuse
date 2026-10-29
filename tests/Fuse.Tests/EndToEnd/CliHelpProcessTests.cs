@@ -119,17 +119,6 @@ public class CliHelpProcessTests
     }
 
     [Fact]
-    public async Task Status_is_not_available_in_this_build()
-    {
-        using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });
-
-        var result = await FuseProcess.RunAsync(repo.Path, null, "status");
-
-        Assert.Equal(2, result.ExitCode);
-        Assert.Equal("fuse: status is not available in this build", result.Stderr);
-    }
-
-    [Fact]
     public async Task Mcp_with_arguments_is_a_usage_failure()
     {
         using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });

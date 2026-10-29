@@ -359,9 +359,31 @@ pre .tk-summary { color: #d9cfff; }
 .stat-cards { list-style: none; padding: 0; margin: 0 auto; max-width: 52rem; display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.1rem; }
 .stat-cards a { display: flex; flex-direction: column; height: 100%; border: 1px solid var(--line); border-radius: 0.9rem; padding: 1.1rem 1.2rem 1rem; background: var(--bg); color: var(--text); box-shadow: 0 1px 2px rgba(11, 11, 11, 0.04); }
 .stat-cards a:hover { border-color: var(--accent); text-decoration: none; }
-.stat-cards b { font-size: 1.9rem; letter-spacing: -0.03em; line-height: 1.15; color: var(--tag-text); margin-bottom: 0.35rem; }
 .stat-cards span { color: var(--muted); font-size: 0.9rem; line-height: 1.5; flex: 1; }
 .stat-cards span code { font-size: 0.88em; }
 .stat-cards i { font-style: normal; color: var(--accent); font-size: 0.85rem; margin-top: 0.7rem; }
 @media (max-width: 720px) { .stat-cards { grid-template-columns: 1fr; } }
 .stat-cards em { font-style: normal; font-weight: 600; font-size: 0.92rem; color: var(--text); margin-bottom: 0.5rem; }
+
+/* Small bar charts inside the newer-measurement cards: purple is Fuse's answer, gray the comparison, red what an
+   agent should not see. */
+.mbars { margin: 0.2rem 0 0.9rem; display: grid; gap: 0.45rem; }
+.mb-key { display: flex; flex-wrap: wrap; gap: 0.3rem 1rem; font-size: 0.72rem; color: var(--muted); margin-bottom: 0.1rem; }
+.mb-key span::before { content: ""; display: inline-block; width: 0.6rem; height: 0.6rem; border-radius: 2px; margin-right: 0.35rem; vertical-align: -0.05em; }
+.mb-key .k1::before { background: var(--accent); }
+.mb-key .k2::before { background: var(--slow); }
+.mb-key .k3::before { background: #e8a39b; }
+.mb { display: grid; grid-template-columns: 6.8rem 1fr 5.6rem; align-items: center; gap: 0.6rem; font-size: 0.76rem; }
+.mb-l { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mb-l code { font-size: 0.95em; }
+.mb-v { text-align: right; font-variant-numeric: tabular-nums; color: var(--text); white-space: nowrap; }
+.mb-t { position: relative; height: 0.7rem; background: var(--track); border-radius: 0.3rem; overflow: hidden; }
+.mb-t i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); border-radius: 0.3rem; z-index: 2; }
+.mb-t i.alt { background: var(--slow); z-index: 1; }
+.mb-t i.rest { border-radius: 0 0.3rem 0.3rem 0; }
+.mb-t.stack { display: flex; }
+.mb-t.stack i { position: static; border-radius: 0; }
+.mb-t.stack i:first-child { border-radius: 0.3rem 0 0 0.3rem; }
+.mb-t.stack i.bad { background: #e8a39b; }
+.stat-cards em + .mbars { margin-top: 0.1rem; }
+.stat-cards .mb-t i { margin: 0; font-size: 0; }

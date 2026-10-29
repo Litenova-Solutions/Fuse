@@ -232,10 +232,35 @@
         <p>An agent checks again and again, shares the tree with other agents, piles up large changes and runs slow analyzers. Four evals measure each case.</p>
       </div>
       <ul class="stat-cards">
-        <li><a href="docs/benchmarks.html#speed-and-accuracy"><em>The agent checks again before it stops</em><b>27 to 44 ms</b><span>A second <code>fuse check</code> with nothing changed answers in 27 to 44 ms on the four repositories, so checking after every step costs the agent almost nothing.</span><i>Benchmarks -&gt;</i></a></li>
-        <li><a href="docs/benchmarks.html#another-writers-errors"><em>Two agents edit the same tree</em><b>0 of 20</b><span>Across 9 pairs of agents, 20 errors the other agent caused showed up without sessions, errors an agent might try to fix. With sessions, none of the 20 showed up, and all 64 of each agent's own errors still did.</span><i>Another writer's errors -&gt;</i></a></li>
-        <li><a href="docs/benchmarks.html#a-large-tree"><em>A large change is not committed yet</em><b>39.2 s</b><span>With 1,500 changed files in a tree of 6,002 files and 31 projects, the first check after the engine started covered every changed file in 39.2 s.</span><i>A large tree -&gt;</i></a></li>
-        <li><a href="docs/benchmarks.html#slow-analyzer"><em>An analyzer reads the whole project</em><b>46 ms</b><span>The hook after each edit leaves that slow analyzer out and answers in 46 ms. <code>fuse check</code> runs it, takes 2.14 s, and still reports its error.</span><i>A slow analyzer -&gt;</i></a></li>
+        <li><a href="docs/benchmarks.html#speed-and-accuracy"><em>The agent checks again before it stops</em>
+          <div class="mbars" aria-hidden="true">
+            <div class="mb-key"><span class="k1">nothing changed</span><span class="k2">after a body edit</span></div>
+            <div class="mb"><span class="mb-l">FluentValidation</span><span class="mb-t"><i style="width:8%"></i><i class="alt" style="width:76.8%"></i></span><span class="mb-v">37 / 355 ms</span></div>
+            <div class="mb"><span class="mb-l">NodaTime</span><span class="mb-t"><i style="width:6.1%"></i><i class="alt" style="width:100%"></i></span><span class="mb-v">28 / 462 ms</span></div>
+            <div class="mb"><span class="mb-l">Jellyfin</span><span class="mb-t"><i style="width:5.8%"></i><i class="alt" style="width:27.5%"></i></span><span class="mb-v">27 / 127 ms</span></div>
+            <div class="mb"><span class="mb-l">Polly</span><span class="mb-t"><i style="width:9.5%"></i><i class="alt" style="width:44.6%"></i></span><span class="mb-v">44 / 206 ms</span></div>
+          </div>
+          <span>A second <code>fuse check</code> with nothing changed answers in 27 to 44 ms, a fraction of a check after an edit, so checking after every step costs the agent almost nothing.</span><i>Benchmarks -&gt;</i></a></li>
+        <li><a href="docs/benchmarks.html#another-writers-errors"><em>Two agents edit the same tree</em>
+          <div class="mbars" aria-hidden="true">
+            <div class="mb-key"><span class="k1">its own errors</span><span class="k3">the other agent's errors</span></div>
+            <div class="mb"><span class="mb-l">Without sessions</span><span class="mb-t stack"><i style="width:75%"></i><i class="bad" style="width:23.8%"></i></span><span class="mb-v">63 + 20</span></div>
+            <div class="mb"><span class="mb-l">With sessions</span><span class="mb-t stack"><i style="width:76.2%"></i></span><span class="mb-v">64 + 0</span></div>
+          </div>
+          <span>Across 9 pairs of agents, 20 errors the other agent caused showed up without sessions, errors an agent might try to fix. With sessions none did, and every agent still got all its own.</span><i>Another writer's errors -&gt;</i></a></li>
+        <li><a href="docs/benchmarks.html#a-large-tree"><em>A large change is not committed yet</em>
+          <div class="mbars" aria-hidden="true">
+            <div class="mb-key"><span class="k1">changed and checked</span><span class="k2">unchanged</span></div>
+            <div class="mb"><span class="mb-l">6,002 files</span><span class="mb-t"><i style="width:25%"></i><i class="alt rest" style="left:25%;width:75%"></i></span><span class="mb-v">1,500 checked</span></div>
+          </div>
+          <span>With 1,500 changed files in a tree of 31 projects, the first check after the engine started covered every one of them in 39.2 s, at a peak of 294 MB.</span><i>A large tree -&gt;</i></a></li>
+        <li><a href="docs/benchmarks.html#slow-analyzer"><em>An analyzer reads the whole project</em>
+          <div class="mbars" aria-hidden="true">
+            <div class="mb"><span class="mb-l">The analyzer</span><span class="mb-t"><i class="alt" style="width:100%"></i></span><span class="mb-v">4,001 ms</span></div>
+            <div class="mb"><span class="mb-l"><code>fuse check</code></span><span class="mb-t"><i class="alt" style="width:53.5%"></i></span><span class="mb-v">2,139 ms</span></div>
+            <div class="mb"><span class="mb-l">Post-edit hook</span><span class="mb-t"><i style="width:1.5%"></i></span><span class="mb-v">46 ms</span></div>
+          </div>
+          <span>The hook after each edit leaves the slow analyzer out and answers in 46 ms. <code>fuse check</code> runs it and still reports its error.</span><i>A slow analyzer -&gt;</i></a></li>
       </ul>
     </section>
 

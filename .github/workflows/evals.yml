@@ -47,6 +47,10 @@ on:
         description: Ignore the cached truth and run the real dotnet build and dotnet test again, as after a flaky test.
         type: boolean
         default: false
+      latency_parts:
+        description: Latency parts to run, as a JSON array (main, agents). One part alone skips the merge, for a quicker look at one scenario.
+        default: '["main", "agents"]'
+        required: false
 
 permissions:
   contents: read
@@ -140,7 +144,7 @@ jobs:
       fail-fast: false
       matrix:
         repo: ${{ fromJSON(needs.plan.outputs.latency) }}
-        part: [main, agents]
+        part: ${{ fromJSON(inputs.latency_parts || '["main", "agents"]') }}
     defaults:
       run:
         shell: bash
@@ -193,6 +197,17 @@ jobs:
           New-Item -ItemType Directory -Force out | Out-Null
           "runner: $env:ImageOS $env:ImageVersion`ncpu: $cpu, $cores logical processors`nmemory: $memory GB`nsdk: $(dotnet --version)`ncommit: $env:GITHUB_SHA" | Set-Content out/runner.txt
           Get-Content out/runner.txt
+      - name: Keep the engine logs
+        if: always()
+        # The engine log and hook log of every repository the run used, so a failed or slow scenario can be read
+        # without running it again.
+        run: |
+          mkdir -p out/engine-logs
+          for d in "$(cygpath -u "$LOCALAPPDATA")"/fuse/repos/*/; do
+            [ -d "$d" ] || continue
+            n=$(basename "$d"); mkdir -p "out/engine-logs/$n"
+            cp "$d"engine.log "$d"hook.log "$d"root "out/engine-logs/$n/" 2>/dev/null || true
+          done
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -306,7 +321,7 @@ jobs:
   latency-merge:
     name: merge latency on ${{ matrix.repo }}
     needs: [plan, latency]
-    if: ${{ !cancelled() && needs.plan.outputs.latency != '[]' }}
+    if: ${{ !cancelled() && needs.plan.outputs.latency != '[]' && (!inputs.latency_parts || (contains(inputs.latency_parts, 'main') && contains(inputs.latency_parts, 'agents'))) }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

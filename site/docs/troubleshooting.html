@@ -20,12 +20,12 @@
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 8.0x to 27.7x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 8.1x to 27.7x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Troubleshooting">
 <meta name="twitter:description" content="Why Fuse is silent, slow or failing, where its logs are, how to read them, and how to stop the engine.">
 <meta name="twitter:image" content="https://fuse.codes/assets/og.png">
-<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 8.0x to 27.7x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 8.1x to 27.7x faster than dotnet build. dotnet tool install -g Fuse.">
 <link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
 <link rel="icon" href="../assets/fuse-icon.svg" type="image/svg+xml" sizes="any">
 <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -116,6 +116,15 @@
       <p><b>This page is for</b> someone whose hooks are silent, whose checks are slow, or whose commands fail, and who wants to find out why.</p>
       <p><b>If you have a message</b> starting with <code>fuse:</code>, look it up first in <a href="messages.html">Messages and fixes</a>, which lists every one.</p>
     </div>
+    <div class="key">
+      <p>In short</p>
+      <ul>
+        <li>A hook stays silent when the edit is clean, so run <code>fuse check</code> to tell a clean edit from a hook that never ran.</li>
+        <li>Each section below names one symptom, its cause, and what to do.</li>
+        <li>Most problems show in <code>engine.log</code> or <code>hook.log</code> in the state directory.</li>
+        <li>Ending the engine is safe: <code>fuse stop</code> stops it, and the next command starts a fresh one.</li>
+      </ul>
+    </div>
     <p>Most problems show in one of two logs in the repository's state directory: <code>engine.log</code>, which the engine writes for every request it serves, and <code>hook.log</code>, which a hook writes when it fails. <a href="#where-the-logs-are">Where the logs are</a> gives the path.</p>
 
     <nav class="toc" aria-label="On this page">
@@ -144,16 +153,20 @@
     </nav>
 
     <h2 id="a-hook-prints-nothing">A hook prints nothing <a class="anchor" href="#a-hook-prints-nothing" aria-label="Link to this section">#</a></h2>
-    <p>Silence is usually correct. A hook tells the agent something only when the edit introduced errors or a project needs a restore. A clean edit, an engine that is still loading, a timeout and an internal failure give the agent nothing to read (a stop hook still prints the empty answer its harness expects, such as <code>{}</code>), so that a hook never breaks the agent's session. To tell these cases apart:</p>
-    <ol>
+    <p>Silence is usually correct. A hook tells the agent something only when the edit introduced errors or a project needs a restore.</p>
+    <p>A clean edit, an engine that is still loading, a timeout and an internal failure give the agent nothing to read (a stop hook still prints the empty answer its harness expects, such as <code>{}</code>), so that a hook never breaks the agent's session.</p>
+    <p>To tell these cases apart:</p>
+    <ol class="flow">
       <li>Run <code>fuse check</code> in the repository. If it reports errors that the hook did not, the hook did not run or did not reach the engine; see <a href="#the-agent-does-not-see-the-hooks">The agent does not see the hooks</a>.</li>
       <li>Read <code>hook.log</code>. It holds only a payload that is not valid JSON and an exception inside the hook, with the harness and the event. A timeout or an answer the engine could not give is not written there; <code>fuse check</code> in the same repository shows it.</li>
       <li>Read the end of <code>engine.log</code>. A post-edit check appears as a <code>CheckFiles</code> request with the edited file names, and a stop check as <code>CheckChanges</code> (<a href="#reading-a-phase-line">reading a phase line</a>).</li>
     </ol>
 
     <h2 id="a-stale-looking-answer">A stale-looking answer <a class="anchor" href="#a-stale-looking-answer" aria-label="Link to this section">#</a></h2>
-    <p>An answer that names an error you already fixed is usually not stale: it was true when it was computed. A harness that runs the post-edit hook in the background delivers its answer late, after you made more edits, so the hook checks the tree again before it returns errors, and drops the answer when the current tree no longer reports it (<a href="how-it-works.html#check">confirmed before it is delivered</a>). To tell the cases apart:</p>
-    <ol>
+    <p>An answer that names an error you already fixed is usually not stale: it was true when it was computed.</p>
+    <p>A harness that runs the post-edit hook in the background delivers its answer late, after you made more edits, so the hook checks the tree again before it returns errors, and drops the answer when the current tree no longer reports it (<a href="how-it-works.html#check">confirmed before it is delivered</a>).</p>
+    <p>To tell the cases apart:</p>
+    <ol class="flow">
       <li>Run <code>fuse check</code>. When it no longer reports the error, the tree moved after the answer was computed; nothing is wrong.</li>
       <li>Read <code>hook.log</code>. A background post-edit delivery is logged as <code>&lt;harness&gt; post-edit delivered: ...</code> and a drop as <code>&lt;harness&gt; post-edit dropped: ... (a check of the current tree did not report it)</code>, each with the answer's summary line. A stop that blocked is logged as <code>&lt;harness&gt; stop blocked: ...</code>, which tells it apart from a late post-edit delivery.</li>
       <li>Read the end of <code>engine.log</code>. <code>check: kept answer</code> means the answer was reused because nothing it depends on changed; when the tree had moved, the check would have bound again instead.</li>
@@ -168,15 +181,20 @@
     </ul>
 
     <h2 id="after-updating-from-5-0-0">dotnet build and dotnet test run unchanged after updating from 5.0.0 <a class="anchor" href="#after-updating-from-5-0-0" aria-label="Link to this section">#</a></h2>
-    <p>Fuse 5.1.0 names the shell event <code>pre-shell</code>. Settings written by 5.0.0 call <code>fuse hook &lt;harness&gt; pre-bash</code>, which 5.1.0 answers with a usage line on standard error and exit code 0, so the harness runs the command unchanged. Run <code>fuse init</code> again in each repository after updating; it replaces Fuse's hook entries and the OpenCode plugin and keeps everything else (<a href="harnesses.html#running-fuse-init-again">Running fuse init again</a>).</p>
-    <p>The engine needs no action after an update. The first request from the updated client reaches the running engine of the earlier build, which answers <code>Restart</code> and exits; the client then starts an engine of its own build and sends the request again. <code>engine.log</code> records it as <code>client build &lt;build&gt; differs; exiting so the client can start a matching engine</code>, with the client's build id in place of <code>&lt;build&gt;</code>. A 5.0.0 engine cannot read the build id of a 5.1.0 request and leaves the place empty; a 5.1.0 engine writes <code>(none)</code> there for a request that carries no build id, such as one from a 5.0.0 client.</p>
+    <p>Fuse 5.1.0 names the shell event <code>pre-shell</code>. Settings written by 5.0.0 call <code>fuse hook &lt;harness&gt; pre-bash</code>, which 5.1.0 answers with a usage line on standard error and exit code 0, so the harness runs the command unchanged.</p>
+    <p>Run <code>fuse init</code> again in each repository after updating; it replaces Fuse's hook entries and the OpenCode plugin and keeps everything else (<a href="harnesses.html#running-fuse-init-again">Running fuse init again</a>).</p>
+    <p>The engine needs no action after an update. The first request from the updated client reaches the running engine of the earlier build, which answers <code>Restart</code> and exits; the client then starts an engine of its own build and sends the request again.</p>
+    <p><code>engine.log</code> records it as <code>client build &lt;build&gt; differs; exiting so the client can start a matching engine</code>, with the client's build id in place of <code>&lt;build&gt;</code>. A 5.0.0 engine cannot read the build id of a 5.1.0 request and leaves the place empty; a 5.1.0 engine writes <code>(none)</code> there for a request that carries no build id, such as one from a 5.0.0 client.</p>
 
     <h2 id="restore-needed">Restore needed <a class="anchor" href="#restore-needed" aria-label="Link to this section">#</a></h2>
     <pre class="out" data-label="Message"><code>fuse: restore needed: run `dotnet restore Lib/Lib.csproj` (Lib/Lib.csproj not restored)</code></pre>
     <p>A project the request needs has no <code>project.assets.json</code>, and Fuse never restores on its own. Run the command the message names, for each project it lists (<a href="messages.html#restoreneeded">RestoreNeeded</a>). Every hook reports this message too, so an agent sees it and can run the command.</p>
 
     <h2 id="not-a-repository-or-no-projects">Not a repository, or no projects <a class="anchor" href="#not-a-repository-or-no-projects" aria-label="Link to this section">#</a></h2>
-    <p><code>fuse: not inside a git repository</code> means the working directory, or for an MCP server the directory it was started in, is in no git repository. <code>fuse: no C# projects (.csproj) in this repository</code> means git knows no <code>.csproj</code> file there, tracked or untracked and not ignored. In such a repository every hook returns at once without starting an engine, by design. Fix: run Fuse inside a git repository with a C# project, and commit once.</p>
+    <p><code>fuse: not inside a git repository</code> means the working directory, or for an MCP server the directory it was started in, is in no git repository.</p>
+    <p><code>fuse: no C# projects (.csproj) in this repository</code> means git knows no <code>.csproj</code> file there, tracked or untracked and not ignored.</p>
+    <p>In such a repository every hook returns at once without starting an engine, by design.</p>
+    <p>Fix: run Fuse inside a git repository with a C# project, and commit once.</p>
 
     <h2 id="the-first-answer-is-slow">The first answer after the engine starts is slow <a class="anchor" href="#the-first-answer-is-slow" aria-label="Link to this section">#</a></h2>
     <p>The engine loads projects when a request first needs them, and a declaration change needs every dependent project loaded. The first check after the engine starts, and the first declaration change in a large repository, wait for that load; later requests reuse it. <code>engine.log</code> shows each load as <code>loaded &lt;project&gt; in &lt;ms&gt; ms</code>.</p>
@@ -184,13 +202,25 @@
 
     <h2 id="a-command-times-out">A command times out <a class="anchor" href="#a-command-times-out" aria-label="Link to this section">#</a></h2>
     <pre class="out" data-label="Message"><code>fuse: the Fuse engine did not answer within 600 s</code></pre>
-    <p>The request waited longer than the command allows: 600 s for <code>fuse check</code>, <code>fuse test</code> and the MCP tools, 280 s for the Claude Code post-edit hook and every stop hook, 50 s for the other post-edit hooks. Read the end of <code>engine.log</code>: <code>loaded &lt;project&gt;</code> lines mean the engine is still loading, and the <code>phases</code> line of the request, when it finishes, shows where the time went. Run the command again; the engine keeps its progress between requests.</p>
+    <p>The request waited longer than the command allows:</p>
+    <ul>
+      <li>600 s for <code>fuse check</code>, <code>fuse test</code> and the MCP tools.</li>
+      <li>280 s for the Claude Code post-edit hook and every stop hook.</li>
+      <li>50 s for the other post-edit hooks.</li>
+    </ul>
+    <p>Read the end of <code>engine.log</code>: <code>loaded &lt;project&gt;</code> lines mean the engine is still loading, and the <code>phases</code> line of the request, when it finishes, shows where the time went.</p>
+    <p>Run the command again; the engine keeps its progress between requests.</p>
 
     <h2 id="a-slow-analyzer">A slow analyzer <a class="anchor" href="#a-slow-analyzer" aria-label="Link to this section">#</a></h2>
     <pre class="out" data-label="Summary"><code>left out 1 analyzer(s) that read the whole project, which the stop hook and fuse check run: Vendor.Analyzers/RegistrationAnalyzer</code></pre>
     <p>An analyzer package can make every check slow when it reads the whole project in its compilation start or compilation actions, for example by calling <code>Compilation.GetSemanticModel</code> on every file, which the Roslyn rule <a href="https://github.com/dotnet/roslyn/blob/main/src/RoslynAnalyzers/Microsoft.CodeAnalysis.Analyzers/Microsoft.CodeAnalysis.Analyzers.md">RS1030</a> warns analyzer authors against. Fuse runs such an analyzer once per compilation instead of once per file (<a href="how-it-works.html#check">compilation-wide analyzers</a>), and the post-edit hook leaves it out. The engine log names it when it first decides:</p>
     <pre class="out" data-label="engine.log"><code>analyzers of Shop.Application: 212 per file, 3 compilation-wide (Vendor.Analyzers/RegistrationAnalyzer 21480 ms on one file, ...)</code></pre>
-    <p>A check line that ends in <code>analyzers unfinished in N</code>, and a summary that says the analyzers did not finish in time, mean an analyzer was still running when the check had to answer. To see which analyzer costs the time in a real build, build with <code>-p:ReportAnalyzer=true -bl</code> and open the binary log's Analyzer Summary, which lists each analyzer's time. Report a slow analyzer to its authors with that summary; until it is fixed, <code>fuse build</code> runs it. The engine goes on running the compilation-wide analyzers after the check answers, so a check of the same compilation soon after takes their errors (<a href="how-it-works.html#check">How it works</a>).</p>
+    <p>A check line that ends in <code>analyzers unfinished in N</code>, and a summary that says the analyzers did not finish in time, mean an analyzer was still running when the check had to answer.</p>
+    <p>To see which analyzer costs the time in a real build, build with <code>-p:ReportAnalyzer=true -bl</code> and open the binary log's Analyzer Summary, which lists each analyzer's time.</p>
+    <div class="callout tip">
+      <p>Report a slow analyzer to its authors with that summary; until it is fixed, <code>fuse build</code> runs it.</p>
+    </div>
+    <p>The engine goes on running the compilation-wide analyzers after the check answers, so a check of the same compilation soon after takes their errors (<a href="how-it-works.html#check">How it works</a>).</p>
 
     <h2 id="internal-errors">Internal errors <a class="anchor" href="#internal-errors" aria-label="Link to this section">#</a></h2>
     <pre class="out" data-label="Message"><code>fuse: internal error: &lt;message&gt; (details in &lt;state directory&gt;/engine.log)</code></pre>
@@ -199,7 +229,9 @@
 
     <h2 id="a-build-waits">A build waits <a class="anchor" href="#a-build-waits" aria-label="Link to this section">#</a></h2>
     <pre class="out" data-label="Message"><code>fuse: waiting for another build or test in this repository</code></pre>
-    <p>Another <code>fuse build</code> or <code>fuse test</code> in the same repository holds the <a href="how-it-works.html#builds-and-the-build-lock">build lock</a>, and this one waits until it finishes, which is what the lock is for. If nothing else is running, a <code>fuse</code> process is still alive; the lock is released when that process exits. <code>fuse: running without the per-repository build lock: &lt;reason&gt;</code> means the state directory cannot be written, and the build runs without that protection.</p>
+    <p>Another <code>fuse build</code> or <code>fuse test</code> in the same repository holds the <a href="how-it-works.html#builds-and-the-build-lock">build lock</a>, and this one waits until it finishes, which is what the lock is for.</p>
+    <p>If nothing else is running, a <code>fuse</code> process is still alive; the lock is released when that process exits.</p>
+    <p><code>fuse: running without the per-repository build lock: &lt;reason&gt;</code> means the state directory cannot be written, and the build runs without that protection.</p>
     <p>A <code>fuse test</code> whose runs all run without MSBuild holds the lock only while it gets its plan, so a build waits for it only that long. A <code>fuse test</code> that builds with MSBuild holds it until its last test run ends.</p>
 
     <h2 id="a-slow-build">A slow build <a class="anchor" href="#a-slow-build" aria-label="Link to this section">#</a></h2>
@@ -209,24 +241,39 @@
       <li><strong><code>Exec</code> or a tool's own task leads.</strong> A command a target runs, such as a code generator, takes the time. The slowest projects say which project runs it.</li>
       <li><strong><code>ResolvePackageAssets</code>, <code>RestoreTask</code> or <code>Copy</code> lead.</strong> Restoring packages or copying output takes the time. A build that restores every time can pass <code>--no-restore</code> once packages are restored.</li>
     </ul>
-    <p>Task times are summed over every project, and projects build in parallel, so they can add up to more than the build took. When the same build is fast one time and slow the next, compare the line of both runs. Builds that wait for each other print <code>fuse: waiting for another build or test in this repository</code> first (<a href="#a-build-waits">A build waits</a>), and the waiting is not part of the times.</p>
+    <p>Task times are summed over every project, and projects build in parallel, so they can add up to more than the build took.</p>
+    <p>When the same build is fast one time and slow the next, compare the line of both runs.</p>
+    <p>Builds that wait for each other print <code>fuse: waiting for another build or test in this repository</code> first (<a href="#a-build-waits">A build waits</a>), and the waiting is not part of the times.</p>
 
     <h2 id="a-command-in-the-build-fails">A command in the build fails <a class="anchor" href="#a-command-in-the-build-fails" aria-label="Link to this section">#</a></h2>
     <pre class="out" data-label="Output"><code>Api/Api.csproj(40,5): error MSB3073: The command "dotnet getdocument --assembly Api.dll" exited with code 11.</code></pre>
-    <p>A target ran a command, such as a code generator, and it exited with a code other than 0. The lines under the error, indented by two spaces, are the last lines the command printed: an exception's type and message and its first stack frame usually say what to fix. When no line follows the error, the command printed nothing, or its target runs on a node whose lines Fuse could not match to the command; run the command the error quotes yourself to see its output.</p>
+    <p>A target ran a command, such as a code generator, and it exited with a code other than 0.</p>
+    <p>The lines under the error, indented by two spaces, are the last lines the command printed: an exception's type and message and its first stack frame usually say what to fix.</p>
+    <p>When no line follows the error, the command printed nothing, or its target runs on a node whose lines Fuse could not match to the command; run the command the error quotes yourself to see its output.</p>
 
     <h2 id="a-locked-file">A locked file <a class="anchor" href="#a-locked-file" aria-label="Link to this section">#</a></h2>
     <pre class="out" data-label="Output"><code>  locked: Lib/bin/Debug/net10.0/Lib.dll is held by MyApp (pid 1234); stop that process, then run the build again</code></pre>
-    <p>The build failed with MSB3021, MSB3026 or MSB3027 because another process holds a file it writes. The indented line under the error names the file and the holder MSBuild reported, with what unblocks it: stop that process and run the build again, or <code>dotnet build-server shutdown</code> when the holder is a build server. When MSBuild names no holder, the line reads <code>locked: &lt;file&gt; is being used by another process; stop the running application or build that holds it, then run the build again</code>. The fix is the same when two builds overlap: run builds and tests through <code>fuse build</code> and <code>fuse test</code>, which take the <a href="how-it-works.html#builds-and-the-build-lock">build lock</a>.</p>
+    <p>The build failed with MSB3021, MSB3026 or MSB3027 because another process holds a file it writes.</p>
+    <p>The indented line under the error names the file and the holder MSBuild reported, with what unblocks it: stop that process and run the build again, or <code>dotnet build-server shutdown</code> when the holder is a build server.</p>
+    <p>When MSBuild names no holder, the line reads <code>locked: &lt;file&gt; is being used by another process; stop the running application or build that holds it, then run the build again</code>.</p>
+    <p>The fix is the same when two builds overlap: run builds and tests through <code>fuse build</code> and <code>fuse test</code>, which take the <a href="how-it-works.html#builds-and-the-build-lock">build lock</a>.</p>
 
     <h2 id="an-error-about-generated-code">An error about generated code <a class="anchor" href="#an-error-about-generated-code" aria-label="Link to this section">#</a></h2>
     <pre class="out" data-label="Output"><code>  generated: Api.Client/obj/Contract/Client.cs declares it, and Fuse reads that file as the last build wrote it; if it is generated from changed code, run fuse build to write it again</code></pre>
-    <p>The error is about a type or member a file the build generates declares, and Fuse reads that file as the last build wrote it (<a href="how-it-works.html#check">errors about generated code</a>). When you changed the code the file is generated from, such as an API's controllers, run <code>fuse build</code>, which writes the file again; the next check reads the new file. When the error remains after the build, it is a real error in the code that uses the generated file.</p>
+    <p>The error is about a type or member a file the build generates declares, and Fuse reads that file as the last build wrote it (<a href="how-it-works.html#check">errors about generated code</a>).</p>
+    <p>When you changed the code the file is generated from, such as an API's controllers, run <code>fuse build</code>, which writes the file again; the next check reads the new file.</p>
+    <p>When the error remains after the build, it is a real error in the code that uses the generated file.</p>
 
     <h2 id="reading-fuse-status">Reading fuse status <a class="anchor" href="#reading-fuse-status" aria-label="Link to this section">#</a></h2>
     <p><code>fuse status</code> reports whether an engine runs for the repository and how many files differ from HEAD, without starting an engine. It prints three lines: the engine, the tree, and the large-tree limits. Read them this way:</p>
     <ul>
-      <li><strong>The engine line.</strong> <code>fuse: engine running for &lt;root&gt; (pid &lt;n&gt;), &lt;m&gt; MB; idle exits after 30 min</code> names the running engine. <code>fuse: no engine runs for &lt;root&gt;; the next check starts one</code> means none runs, which is normal after 30 idle minutes. <code>fuse: engine for &lt;root&gt; did not answer in 2 s</code> means a pipe exists but no answer arrived in time, so the tree below was read from git instead; run <code>fuse stop</code> and let the next command start a fresh engine.</li>
+      <li><strong>The engine line.</strong>
+        <ul>
+          <li><code>fuse: engine running for &lt;root&gt; (pid &lt;n&gt;), &lt;m&gt; MB; idle exits after 30 min</code> names the running engine.</li>
+          <li><code>fuse: no engine runs for &lt;root&gt;; the next check starts one</code> means none runs, which is normal after 30 idle minutes.</li>
+          <li><code>fuse: engine for &lt;root&gt; did not answer in 2 s</code> means a pipe exists but no answer arrived in time, so the tree below was read from git instead; run <code>fuse stop</code> and let the next command start a fresh engine.</li>
+        </ul>
+      </li>
       <li><strong>The tree line.</strong> <code>fuse: N changed file(s) since HEAD; tree &lt;12 hex&gt;; HEAD &lt;12 hex&gt;</code> counts what differs from HEAD with the tree stamp. Past 300 changed files a warning line follows: checks reseed from git and reload projects, so commit soon.</li>
       <li><strong>The limits line.</strong> <code>fuse: large-tree limits: past 300 changed files a sync reloads projects; past 500 files in reach a check binds whole projects; ...</code> names the two points where a large tree slows checks down. When checks feel slow and the count is past either, commit or run <code>fuse stop</code> and let the next check reload.</li>
     </ul>
@@ -284,7 +331,8 @@
 2026-10-02 12:24:08.962 test plan: Services.Tests [Services.Tests] runs from C:\...\shadow\Services.Tests\Services.Tests.dll after 35 ms
 2026-10-02 12:24:08.962 PlanAffectedTests took 47 ms
 2026-10-02 12:24:08.963 phases id=34228-1 kind=PlanAffectedTests gate=0.0 sync=5.1 selection=12.0 mirror=13.1 emit=22.9 total=47.0</code></pre>
-    <p>The first check after the rename loaded all three projects and took 10,157 ms; the post-edit hook's check of the same edit, a few seconds later, took 15 ms, because everything it needed was already loaded. That difference is what the engine is for. A check logs a <code>check:</code> line with its compile and analyzer time and, when it kept the errors of files no change could affect since an earlier check, how many (<code>(N with errors reused from an earlier check)</code>, <a href="how-it-works.html#check">errors kept from an earlier check</a>), and a test plan logs its selection per test project and whether each runs from the copy (<code>runs from ...</code>) or <code>builds with MSBuild</code>, with the reason when it does not run from the copy.</p>
+    <p>The first check after the rename loaded all three projects and took 10,157 ms; the post-edit hook's check of the same edit, a few seconds later, took 15 ms, because everything it needed was already loaded. That difference is what the engine is for.</p>
+    <p>A check logs a <code>check:</code> line with its compile and analyzer time and, when it kept the errors of files no change could affect since an earlier check, how many (<code>(N with errors reused from an earlier check)</code>, <a href="how-it-works.html#check">errors kept from an earlier check</a>), and a test plan logs its selection per test project and whether each runs from the copy (<code>runs from ...</code>) or <code>builds with MSBuild</code>, with the reason when it does not run from the copy.</p>
 
     <h3 id="reading-a-phase-line">Reading a phase line <a class="anchor" href="#reading-a-phase-line" aria-label="Link to this section">#</a></h3>
     <p>Every request ends with a request line, <code>&lt;request&gt; took &lt;ms&gt; ms</code>, and a phase line:</p>
@@ -333,8 +381,12 @@
     </ul>
 
     <h2 id="stopping-or-restarting-the-engine">Stopping or restarting the engine <a class="anchor" href="#stopping-or-restarting-the-engine" aria-label="Link to this section">#</a></h2>
-    <p>The engine exits on its own after 30 minutes without a request, when its repository directory is deleted, and when a client of another build connects. Ending the engine's process is safe: it holds no lock and writes nothing into the repository, and the next command or hook starts a fresh engine.</p>
-    <p>To stop it yourself, run <code>fuse stop</code> in the repository. It asks the engine to stop, and kills its process when it has not exited within 10 seconds. <code>fuse stop --all</code> does the same for the engine of every repository Fuse keeps state for (<a href="commands.html#fuse-stop">fuse stop</a>). Stop the engine after changing an analyzer the repository builds itself, to give memory back at once, or when it stops answering.</p>
+    <p>The engine exits on its own after 30 minutes without a request, when its repository directory is deleted, and when a client of another build connects.</p>
+    <div class="callout tip">
+      <p>Ending the engine's process is safe: it holds no lock and writes nothing into the repository, and the next command or hook starts a fresh engine.</p>
+    </div>
+    <p>To stop it yourself, run <code>fuse stop</code> in the repository. It asks the engine to stop, and kills its process when it has not exited within 10 seconds. <code>fuse stop --all</code> does the same for the engine of every repository Fuse keeps state for (<a href="commands.html#fuse-stop">fuse stop</a>).</p>
+    <p>Stop the engine after changing an analyzer the repository builds itself, to give memory back at once, or when it stops answering.</p>
     <p>When <code>fuse stop</code> cannot end it, end the process by hand. The engine is a <code>dotnet</code> process whose command line holds <code>fuse.dll engine</code> and the repository's root path. On Windows, this lists the running engines:</p>
     <pre data-label="PowerShell"><code>Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" | Where-Object CommandLine -like '*fuse.dll engine *' | Select-Object ProcessId, CommandLine</code></pre>
     <p>and this stops the engine of <code>C:\src\my-repo</code>:</p>

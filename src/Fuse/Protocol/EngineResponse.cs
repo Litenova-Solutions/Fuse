@@ -26,7 +26,7 @@ internal abstract record EngineResponse
     {
     }
 
-    /// <summary>The answer to <see cref="EngineRequest.Ping"/> and <see cref="EngineRequest.ShutDown"/>.</summary>
+    /// <summary>The answer to <see cref="EngineRequest.Ping"/>, <see cref="EngineRequest.ShutDown"/> and the session requests.</summary>
     public sealed record Acknowledged : EngineResponse;
 
     /// <summary>The answer to a check: the errors the changes introduced and what the check covered.</summary>

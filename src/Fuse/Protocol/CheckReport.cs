@@ -1,7 +1,7 @@
 namespace Fuse.Protocol;
 
 /// <summary>The errors introduced by the working-tree changes, and how far the check reached, as the client receives them.</summary>
-/// <param name="Errors">Working-tree errors absent at HEAD, ordered by file and position, each with the cause to print under it.</param>
+/// <param name="Errors">Working-tree errors absent at HEAD, ordered by file and position, with the cause to print under each error that has one.</param>
 /// <param name="FilesChecked">Number of target and candidate files the check examined.</param>
 /// <param name="Projects">Names of the projects the introduced errors are in.</param>
 /// <param name="DeclarationsChangedIn">Projects whose declarations changed, which is what triggers checking dependents.</param>

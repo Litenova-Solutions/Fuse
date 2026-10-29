@@ -66,9 +66,9 @@ internal static class LastTestResults
     }
 
     /// <summary>
-    ///     Replaces the record with <paramref name="runs"/>, at most the last run's failures plus durations for at most
-    ///     <see cref="MaxTests"/> tests. The file is replaced atomically, through a temporary file beside it. It never
-    ///     throws.
+    ///     Replaces the record with <paramref name="runs"/>: per-test verdicts and durations for at most
+    ///     <see cref="MaxTests"/> tests, failures first. The file is replaced atomically, through a temporary file
+    ///     beside it. It never throws.
     /// </summary>
     internal static void Write(RepoRoot root, IEnumerable<(string Project, string Name, TrxResults Outcome)> runs)
     {

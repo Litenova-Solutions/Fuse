@@ -9,8 +9,8 @@ namespace Fuse.Operations;
 internal static class CheckGroups
 {
     /// <summary>
-    ///     The errors to print as (header, error, cause) triples, in print order, with the header set before a group's
-    ///     first member and the cause hidden for grouped members.
+    ///     The errors to print as (header, error, showCause) triples, in print order, with the header set before a
+    ///     group's first member and the cause hidden for grouped members.
     /// </summary>
     /// <param name="errors">Every error the engine sent, in report order.</param>
     /// <param name="maxShown">How many errors print.</param>

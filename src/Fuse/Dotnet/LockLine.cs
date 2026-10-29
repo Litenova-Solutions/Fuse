@@ -9,7 +9,7 @@ namespace Fuse.Dotnet;
 internal static partial class LockLine
 {
     /// <summary>The line under <paramref name="error"/>, without the indent the answer adds, or null when it is no locked file.</summary>
-    /// <param name="root">The paths the answer prints relative to.</param>
+    /// <param name="root">The root the answer prints the file relative to.</param>
     public static string? For(BuildDiagnostic error, string root)
     {
         if (!IsCopyError(error) || !IsLockedMessage(error.Message))
@@ -40,7 +40,7 @@ internal static partial class LockLine
         message.Contains("being used by another process", StringComparison.OrdinalIgnoreCase)
         || message.Contains("locked by", StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>The locked file as the answer prints it: the copy target MSBuild quotes, or the error's own file.</summary>
+    /// <summary>The locked file as the answer prints it: the copy target MSBuild quotes, the file it says is in use, or the error's own file.</summary>
     private static string LockedFile(BuildDiagnostic error, string root)
     {
         var copy = CopyTarget().Match(error.Message);

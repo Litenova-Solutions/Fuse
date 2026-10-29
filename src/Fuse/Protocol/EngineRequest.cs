@@ -93,7 +93,7 @@ internal abstract record EngineRequest
         public bool IsStopping { get; init; }
 
         /// <summary>
-        ///     How many errors the answer holds at most; 0 is the existing cap. A line without it reads as 0.
+        ///     How many errors the answer holds at most; 0 keeps the default cap. A line without it reads as 0.
         /// </summary>
         public int MaxErrors { get; init; }
 
@@ -130,7 +130,7 @@ internal abstract record EngineRequest
         public bool LeaveOutCompilationWide { get; init; }
 
         /// <summary>
-        ///     How many errors the answer holds at most; 0 is the existing cap. A line without it reads as 0.
+        ///     How many errors the answer holds at most; 0 keeps the default cap. A line without it reads as 0.
         /// </summary>
         public int MaxErrors { get; init; }
 
@@ -138,11 +138,6 @@ internal abstract record EngineRequest
         public bool StampTree { get; init; }
     }
 
-    /// <summary>
-    ///     The tests the changes since HEAD affect, and the fastest safe way to run each. A plan request always waits for
-    ///     the engine to finish loading: <c>fuse test</c> runs nothing until it has the plan, so an answer that says the
-    ///     engine is loading would only fail the command.
-    /// </summary>
     /// <summary>The errors that the changes under the named paths introduced, in those files and in the files they reach.</summary>
     /// <param name="Paths">Absolute file and directory paths and absolute glob patterns.</param>
     /// <param name="WaitForLoad">True to wait for the engine to finish loading; false to be answered at once with <see cref="ErrorCode.Loading"/> while it loads.</param>
@@ -152,7 +147,7 @@ internal abstract record EngineRequest
         public string[] Paths { get; init; } = Paths ?? [];
 
         /// <summary>
-        ///     How many errors the answer holds at most; 0 is the existing cap. A line without it reads as 0.
+        ///     How many errors the answer holds at most; 0 keeps the default cap. A line without it reads as 0.
         /// </summary>
         public int MaxErrors { get; init; }
 
@@ -180,6 +175,11 @@ internal abstract record EngineRequest
         public string Name { get; init; } = Name ?? "";
     }
 
+    /// <summary>
+    ///     The tests the changes since HEAD affect, and the fastest safe way to run each. A plan request always waits for
+    ///     the engine to finish loading: <c>fuse test</c> runs nothing until it has the plan, so an answer that says the
+    ///     engine is loading would only fail the command.
+    /// </summary>
     public sealed record PlanAffectedTests : EngineRequest
     {
         /// <summary>

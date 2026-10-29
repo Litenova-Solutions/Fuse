@@ -8,8 +8,8 @@ namespace Fuse.Testing;
 ///     Decides whether a changed declaration compiles to the same code as HEAD's, so test selection seeds nothing for
 ///     it. A declaration qualifies when its header reads the same without bodies and its bodies read the same after
 ///     every local, parameter and range variable name is replaced with the order it is first seen in and every local
-///     type with the type it names, so a local rename, <c>var</c> against the explicit type and an expression body
-///     against a block body qualify. Anything else, and anything undecidable, counts as changed.
+///     type with the type it names, so a local rename and <c>var</c> against the explicit type qualify. Anything
+///     else, and anything undecidable, counts as changed.
 /// </summary>
 internal static class CompiledCode
 {

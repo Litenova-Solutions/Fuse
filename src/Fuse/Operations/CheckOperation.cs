@@ -66,7 +66,7 @@ internal static class CheckOperation
     private static int RequestedFor(int maxErrors, bool json) =>
         json || maxErrors == int.MaxValue ? int.MaxValue : maxErrors;
 
-    /// <summary>How many errors the answer prints: every error for JSON and <c>--all-errors</c>, else the default count.</summary>
+    /// <summary>How many errors the answer prints: every error for JSON and <c>--all-errors</c>, else <paramref name="maxErrors"/>, or the default count when it is 0.</summary>
     private static int ShownFor(int maxErrors, bool json) =>
         json || maxErrors == int.MaxValue ? int.MaxValue : maxErrors > 0 ? maxErrors : MaxShown;
 

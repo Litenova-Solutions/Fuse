@@ -1,6 +1,6 @@
 namespace Fuse;
 
-/// <summary>The usage block of every subcommand except the hook, whose usage the hook command prints itself, and the top-level one. <c>--help</c> prints one to standard output and exits 0; a usage failure prints one to standard error and exits 2.</summary>
+/// <summary>The usage block of every subcommand except the hook, whose usage the hook command prints itself, and the top-level one. <c>--help</c> prints one to standard output and exits 0; a usage failure prints one to standard error and exits 2, except <c>fuse init</c>, <c>fuse uninit</c> and <c>fuse session</c>, which print their own short usage line, and combined <c>fuse test</c> scopes, which print only their refusal.</summary>
 internal static class CommandUsage
 {
     internal const string Top = """

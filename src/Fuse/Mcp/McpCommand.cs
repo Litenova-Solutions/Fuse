@@ -10,7 +10,8 @@ namespace Fuse.Mcp;
 
 /// <summary>
 ///     <c>fuse mcp</c>: a stdio MCP server with three tools for MCP hosts that cannot run hooks or shell commands. Each
-///     tool returns the same text the CLI prints; an answer Fuse could not give is marked with <c>isError</c>.
+///     tool returns the same text the CLI prints, without the tree stamp the command line carries; an answer Fuse could
+///     not give is marked with <c>isError</c>.
 /// </summary>
 internal static class McpCommand
 {

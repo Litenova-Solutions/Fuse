@@ -144,7 +144,7 @@ internal static partial class BuildOperation
     }
 
     /// <summary>Runs one <c>dotnet</c> build with the file log, running again when a source file moved mid-build.</summary>
-    /// <returns>The process, the log's text, the seconds both runs took, and whether it ran again.</returns>
+    /// <returns>The process, the log's text, the seconds it took, and whether it ran again.</returns>
     private static async Task<(ProcessResult Result, string Log, double Seconds, bool RanAgain)> RunOneAsync(string[] executableArguments, string workingDirectory, string logDirectory, CancellationToken cancellationToken)
     {
         var started = Environment.TickCount64;

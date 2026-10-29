@@ -541,7 +541,7 @@ internal static class TestOperation
     ///     runner in <c>global.json</c>, <c>dotnet test</c> takes the project by <c>--project</c> and the framework's
     ///     filter options. Without it, <c>dotnet test</c> is VSTest's: it takes the project positionally, refuses
     ///     <c>--project</c>, reports to TRX, and reads a filter from the run settings, so a framework's own filter options
-    ///     are left out and the project runs whole.
+    ///     are left out and xUnit v3 and TUnit run whole; MSTest and NUnit still read their VSTest filter there.
     /// </summary>
     private static async Task<(TrxResults? Outcome, ProcessResult? Process, string Log, string ResultsDirectory)> ThroughDotnetTestAsync(
         RepoRoot root, TestRun run, bool runner, string[] switches, CancellationToken cancellationToken)
@@ -658,8 +658,8 @@ internal static class TestOperation
     }
 
     /// <summary>
-    ///     A caller-named results directory as a full path `dotnet test` can use: relative paths are read from the
-    ///     working directory, and on Windows a Git Bash spelling (`/c/Users/...` or `/cygdrive/c/...`) becomes its
+    ///     A caller-named results directory as a full path <c>dotnet test</c> can use: relative paths are read from the
+    ///     working directory, and on Windows a Git Bash spelling (<c>/c/Users/...</c> or <c>/cygdrive/c/...</c>) becomes its
     ///     Windows path, which the runner would otherwise write nowhere Fuse reads. A path that cannot be resolved
     ///     keeps its given form.
     /// </summary>

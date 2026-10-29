@@ -7,8 +7,9 @@ namespace Fuse.Engine;
 
 /// <summary>
 ///     Warms, in the background and one project at a time, the baseline compilation-wide analyzer results after HEAD
-///     moved, so the first check that needs them finds them running or done instead of starting them. Only projects the
-///     reload already reopened are warmed. Requests take precedence: the request lock admits them between projects.
+///     moved, so the first check that needs them finds them running or done instead of starting them. Only loaded
+///     projects are warmed; the warm loads none itself. Requests take precedence: the request lock admits them between
+///     projects.
 /// </summary>
 internal sealed class BaselineWarmer
 {

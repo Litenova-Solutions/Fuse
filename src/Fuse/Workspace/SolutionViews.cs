@@ -24,7 +24,7 @@ internal sealed class SolutionViews
     private readonly AnalyzerShadow _analyzers;
     private readonly HashSet<RepoPath> _touched = [];
 
-    /// <summary>The most paths the touched set holds. Past it the next sync re-evaluates the projects and resets the set, so a long session's set stops growing with its lifetime.</summary>
+    /// <summary>The most paths the touched set holds. Past it the next sync re-evaluates the projects and resets the set, so it stays bounded however long the engine runs.</summary>
     internal const int MaxTouchedPaths = 2000;
 
     /// <summary>

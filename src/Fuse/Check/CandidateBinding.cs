@@ -7,7 +7,7 @@ namespace Fuse.Check;
 
 /// <summary>
 ///     Binds the candidates a reach names and keeps their introduced errors. Past <see cref="WholeProjectThreshold"/>
-///     candidates it binds every reached project whole instead, the targets' owners included.
+///     candidates it binds every reached project whole instead.
 /// </summary>
 internal sealed class CandidateBinding
 {

@@ -33,8 +33,8 @@ internal sealed partial class BaselineStore
     ///     The key the baseline results for <paramref name="head"/> are kept under, or null when nothing is kept for it:
     ///     the repository has no commit, or anything the results depend on cannot be read. The key covers HEAD, the
     ///     Roslyn build, and per loaded project its evaluation inputs, its restore output, its analyzer assemblies, its
-    ///     additional files and its global analyzer options, plus every editorconfig and globalconfig file, so a result
-    ///     is read only when all of those are as they were.
+    ///     additional files and its analyzer configuration options, plus every editorconfig and globalconfig file, so a
+    ///     result is read only when all of those are as they were.
     /// </summary>
     public static string? KeyFor(string? head, Solution baseline, RepoGraph graph, RepoRoot root)
     {

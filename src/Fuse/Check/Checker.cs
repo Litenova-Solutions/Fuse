@@ -99,7 +99,7 @@ internal sealed class Checker
     /// <param name="analyzers">How analyzers run on the working tree.</param>
     /// <param name="phases">Collects how long each phase of this check took; <see cref="PhaseTimes.None"/> collects nothing.</param>
     /// <param name="cancellationToken">Cancels the check.</param>
-    /// <param name="maxReported">How many errors the answer holds at most; 0 is the existing cap.</param>
+    /// <param name="maxReported">How many errors the answer holds at most; 0 keeps the default cap.</param>
     public async Task<CheckResult> CheckAsync(CheckScope scope, string? session, AnalyzerRun analyzers, PhaseTimes phases, CancellationToken cancellationToken, int maxReported = 0)
     {
         // Also drops what a cancelled check left behind: its binding times and its analyzer report are not this check's.
@@ -472,8 +472,8 @@ internal sealed class Checker
     {
         if (causes.Count == 0)
             return ", whole projects";
-        return ", whole projects: " + string.Join("; ", causes.Select(WholeCause));
         // The log holds every project and file.
+        return ", whole projects: " + string.Join("; ", causes.Select(WholeCause));
     }
 
     /// <summary>How many changed files each session wrote, most files first; empty when no session wrote any.</summary>

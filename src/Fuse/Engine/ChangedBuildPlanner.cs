@@ -17,7 +17,10 @@ internal static class ChangedBuildPlanner
 
     /// <param name="graph">The evaluated projects.</param>
     /// <param name="changed">The sources that differ from HEAD.</param>
-    /// <param name="projectFilesChanged">The project files git reports as changed, whose owners are stale by definition.</param>
+    /// <param name="projectFilesChanged">
+    ///     The project files git reports as changed. When any changed, the selection cannot be trusted and names the whole
+    ///     solution instead.
+    /// </param>
     public static ChangedBuildPlan Plan(RepoGraph graph, IReadOnlyCollection<RepoPath> changed, IReadOnlyCollection<RepoPath> projectFilesChanged)
     {
         var tree = TreeStamp.Of(ChangedPairs(changed));

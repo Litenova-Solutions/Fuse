@@ -19,7 +19,7 @@ internal abstract record CheckScope
     /// </param>
     public sealed record Files(IReadOnlyList<RepoPath> Paths) : CheckScope;
 
-    /// <summary>The directories, files and glob patterns a scoped check names, exactly as the caller named them.</summary>
+    /// <summary>The directories, files and glob patterns a scoped check names, exactly as the client named them.</summary>
     /// <param name="Named">
     ///     Absolute file and directory paths and absolute glob patterns, in the order named. The check expands them
     ///     against the files that differ from HEAD after the sync.

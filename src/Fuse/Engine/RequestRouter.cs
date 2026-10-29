@@ -87,9 +87,9 @@ internal sealed class RequestRouter : IDisposable
     /// <summary>
     ///     Answers one request. A ping or a shutdown is answered at once; a session registration waits for the request
     ///     lock; a check or a test plan waits for initialization (a check that does not wait for the load is refused while
-    ///     loading), then for the request lock, then runs. A check
-    ///     holds the lock until it is answered; a test plan holds it through the sync and the selection, and releases it
-    ///     before it mirrors and emits into the shadow folders from the snapshot it took.
+    ///     loading), then for the request lock, then runs. A check holds the lock until it is answered; a test plan holds
+    ///     it through the sync and the selection, and releases it before it mirrors and emits into the shadow folders from
+    ///     the snapshot it took. A status answer and a changed-build plan sync under the lock without loading a project.
     /// </summary>
     public async Task<EngineResponse> HandleAsync(EngineRequest request, CancellationToken cancellationToken)
     {
@@ -249,10 +249,8 @@ internal sealed class RequestRouter : IDisposable
     private async Task<IReadOnlySet<RepoPath>> OnlyOtherSessionsWroteAsync(string session, CancellationToken cancellationToken)
     {
         await _workspace.SyncAsync([], cancellationToken).ConfigureAwait(false);
+        // Scoping lives in SessionEdits, so a plan and a stop check leave out the same files.
         return _sessions.OnlyOtherSessionsWrote(_workspace.Tracker.Changed, session);
-        // Scoping lives in SessionEdits now,
-        // so a plan and a stop check
-        // leave out the same files.
     }
 
     /// <summary>Releases the request lock and lets the background load and warm continue.</summary>
@@ -374,10 +372,7 @@ internal sealed class RequestRouter : IDisposable
     private static IEnumerable<(string Relative, string Absolute)> ChangedPairs(IReadOnlyCollection<RepoPath> changed) =>
         changed.Select(path => (path.Relative, path.Absolute));
 
-    /// <summary>
-    ///     Waits for a background load to stop, after the shutdown token has been cancelled, so the workspace is never
-    ///     disposed under a project that is still loading.
-    /// </summary>
+    /// <summary>Registers the session that <paramref name="begin"/> names.</summary>
     private EngineResponse BeginSession(EngineRequest.BeginSession begin)
     {
         try
@@ -396,6 +391,7 @@ internal sealed class RequestRouter : IDisposable
         }
     }
 
+    /// <summary>Ends the registration that <paramref name="end"/> names.</summary>
     private EngineResponse EndSession(EngineRequest.EndSession end)
     {
         try
@@ -453,6 +449,10 @@ internal sealed class RequestRouter : IDisposable
         return Stamped(ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.NamedPaths(check.Paths), session: null, analyzers, phases, cancellationToken, maxReported: check.MaxErrors).ConfigureAwait(false)), check.StampTree);
     }
 
+    /// <summary>
+    ///     Waits for the background load and warm to stop, after the shutdown token has been cancelled, so the workspace
+    ///     is never disposed under a project that is still loading or warming.
+    /// </summary>
     public Task WaitForPreloadAsync() => Task.WhenAll(_preloader.WaitAsync(), _warmer.WaitAsync());
 
     public void Dispose()

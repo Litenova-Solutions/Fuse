@@ -11,7 +11,7 @@ namespace Fuse.Check;
 /// </summary>
 internal static class ScopeExpansion
 {
-    /// <summary>The most sources one scoped check covers; past it the caller names a smaller folder or pattern.</summary>
+    /// <summary>The most sources one scoped check covers; past it the check is refused.</summary>
     public const int MaxExpandedFiles = 2000;
 
     /// <summary>

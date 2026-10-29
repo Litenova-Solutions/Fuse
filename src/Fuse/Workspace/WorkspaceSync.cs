@@ -53,8 +53,8 @@ internal sealed class WorkspaceSync
             result = unfinished.Then(result);
         if (result is SyncResult.Patch overflowing && _views.TouchedOverflows)
         {
-            // The same re-evaluation the over-limit and project-file paths take, so the touched set stops
-            // growing with the session's lifetime; the log names why this sync took the expensive path.
+            // Re-evaluates the projects as a project-file change does, so the touched set stays bounded however
+            // long the engine runs; the log names why this sync took the expensive path.
             _log($"touched set passed {SolutionViews.MaxTouchedPaths} paths; re-evaluating projects and resetting it");
             var paths = new HashSet<RepoPath>(result.Paths);
             paths.UnionWith(_tracker.Changed);

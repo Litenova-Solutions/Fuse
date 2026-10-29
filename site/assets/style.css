@@ -129,7 +129,6 @@ main:focus { outline: none; }
 @media (max-width: 720px) { .race { grid-template-columns: 1fr; } }
 
 /* Features: one wide block for the strongest feature, then a list of the rest, each a link to its page. */
-.spot-links { margin: 0; display: flex; flex-wrap: wrap; gap: 0.4rem 1.4rem; font-size: 0.9rem; }
 .features { list-style: none; padding: 0; margin: 0 auto; max-width: 52rem; display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem; }
 .features a { display: flex; flex-direction: column; height: 100%; border: 1px solid var(--line); border-radius: 0.7rem; padding: 0.9rem 1rem; color: var(--text); background: var(--bg); }
 .features a:hover { border-color: var(--accent); text-decoration: none; }
@@ -351,24 +350,4 @@ pre .tk-id { color: #e5c07b; }
 pre .tk-cause { color: #9a9890; }
 pre .tk-summary { color: #d9cfff; }
 
-/* Parallel agents on the landing page: the problem, then what Fuse changes, then the measured numbers. */
-.pa { max-width: 52rem; margin: 0 auto 2.6rem; border: 1px solid var(--line); border-radius: 1rem; padding: 1.8rem 2rem 1.4rem; background: var(--bg); }
-.pa h3 { font-size: 1.3rem; letter-spacing: -0.01em; margin: 0 0 1.2rem; }
-.pa-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
-.pa-label { font-size: 0.74rem; letter-spacing: 0.07em; text-transform: uppercase; font-weight: 700; margin: 0 0 0.6rem; }
-.pa-problem .pa-label { color: #b23b30; }
-.pa-fix .pa-label { color: var(--tag-text); }
-.pa ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.7rem; }
-.pa li { position: relative; padding-left: 1.2rem; font-size: 0.93rem; line-height: 1.5; }
-.pa li::before { content: ""; position: absolute; left: 0; top: 0.5em; width: 0.5rem; height: 0.5rem; border-radius: 999px; }
-.pa-problem li { color: var(--muted); }
-.pa-problem li::before { background: #e8a39b; }
-.pa-fix li::before { background: var(--accent); }
-.pa-fix { border-left: 1px solid var(--line); padding-left: 2rem; }
-.pa-proof { margin: 1.4rem 0 0; padding-top: 1rem; border-top: 1px solid var(--line); font-size: 0.88rem; color: var(--muted); }
-.pa-proof b { color: var(--tag-text); font-size: 1rem; }
-@media (max-width: 720px) {
-  .pa { padding: 1.4rem 1.2rem 1.2rem; }
-  .pa-cols { grid-template-columns: 1fr; gap: 1.4rem; }
-  .pa-fix { border-left: 0; padding-left: 0; border-top: 1px solid var(--line); padding-top: 1.2rem; }
-}
+.features li.wide { grid-column: 1 / -1; }

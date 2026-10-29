@@ -230,29 +230,8 @@
         <p class="kicker">Built for Agents</p>
         <h2 id="features-heading">Features</h2>
       </div>
-      <div class="pa" id="parallel">
-        <h3>Parallel agents in one working tree</h3>
-        <div class="pa-cols">
-          <div class="pa-col pa-problem">
-            <p class="pa-label">The problem</p>
-            <ul>
-              <li>Several agents that run <code>dotnet build</code> at once write the same <code>obj</code> and <code>bin</code> folders, so builds fail with a file in use.</li>
-              <li>The usual way out is a git worktree per agent: another copy to restore, build and keep in sync.</li>
-              <li>Each build loads the whole solution again.</li>
-            </ul>
-          </div>
-          <div class="pa-col pa-fix">
-            <p class="pa-label">With Fuse</p>
-            <ul>
-              <li>All agents share one working tree and one engine, which loads the solution once.</li>
-              <li>Builds and test runs through Fuse take turns, so none fails on another agent's files.</li>
-              <li>Checks answer from the engine while a build runs.</li>
-            </ul>
-          </div>
-        </div>
-        <p class="pa-proof"><b>0</b> locked-file errors in 60 builds run 3 at a time, and <b>150 of 150</b> checks answered with 3 or 4 agents editing at once. <a href="docs/parallel-agents.html">Subagents and parallel agents -&gt;</a></p>
-      </div>
       <ul class="features">
+        <li class="wide" id="parallel"><a href="docs/parallel-agents.html"><b>Parallel agents in one working tree</b><span>Agents that build at once fail on each other's files in <code>obj</code> and <code>bin</code>, so each usually gets its own git worktree. With Fuse they share one working tree and one engine, and their builds take turns: 0 locked-file errors in 60 builds run 3 at a time, and 150 of 150 checks answered with 3 or 4 agents editing at once.</span><i>Subagents and parallel agents -&gt;</i></a></li>
         <li><a href="docs/how-it-works.html#test-selection"><b>Affected tests</b><span>Runs only the tests the changed code can reach, and skips the rebuild when only <code>.cs</code> files changed.</span><i>How tests are selected -&gt;</i></a></li>
         <li><a href="docs/harnesses.html"><b>Supported agents</b><span>Claude Code, Cursor, Codex, Gemini CLI, GitHub Copilot CLI, OpenCode and Muse Code. One <code>fuse init</code> sets up the hooks that check every edit.</span><i>Connect your agent -&gt;</i></a></li>
         <li><a href="docs/how-it-works.html#privacy"><b>Runs locally</b><span>Fuse sends no telemetry, makes no network calls of its own, and has no settings to maintain.</span><i>Privacy and footprint -&gt;</i></a></li>

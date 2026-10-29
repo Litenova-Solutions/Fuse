@@ -10,10 +10,10 @@ public class LockLineTests
     [Fact]
     public void A_lock_naming_its_holder_names_the_file_the_process_and_what_to_do()
     {
-        var error = CopyError("""Could not copy "Lib/bin/Debug/Lib.dll" to "App/bin/Debug/Lib.dll". Exceeded retry count of 10. Failed. The file is locked by: "NightHall.WebApi (4212)".""");
+        var error = CopyError("""Could not copy "Lib/bin/Debug/Lib.dll" to "App/bin/Debug/Lib.dll". Exceeded retry count of 10. Failed. The file is locked by: "Shop.WebApi (4212)".""");
 
         Assert.Equal(
-            "locked: App/bin/Debug/Lib.dll is held by NightHall.WebApi (pid 4212); stop that process, then run the build again",
+            "locked: App/bin/Debug/Lib.dll is held by Shop.WebApi (pid 4212); stop that process, then run the build again",
             LockLine.For(error, "/repo"));
     }
 

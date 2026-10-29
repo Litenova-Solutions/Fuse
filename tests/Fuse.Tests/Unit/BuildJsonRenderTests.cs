@@ -11,7 +11,7 @@ public class BuildJsonRenderTests
     [Fact]
     public void Json_emits_lockedBy_on_a_locked_file_diagnostic()
     {
-        const string output = """App/App.csproj : error MSB3027: Could not copy "Lib/bin/Debug/Lib.dll" to "App/bin/Debug/Lib.dll". Exceeded retry count of 10. Failed. The file is locked by: "NightHall.WebApi (4212)".""";
+        const string output = """App/App.csproj : error MSB3027: Could not copy "Lib/bin/Debug/Lib.dll" to "App/bin/Debug/Lib.dll". Exceeded retry count of 10. Failed. The file is locked by: "Shop.WebApi (4212)".""";
 
         var answer = BuildOperation.Render(Failed(output), "/repo", 3, "build", new BuildOptions(int.MaxValue, true, false));
 
@@ -19,7 +19,7 @@ public class BuildJsonRenderTests
         var lines = answer.Text.Split('\n');
         Assert.Equal(2, lines.Length);
         using var parsed = JsonDocument.Parse(lines[0]);
-        Assert.Equal("NightHall.WebApi (pid 4212)", parsed.RootElement.GetProperty("lockedBy").GetString());
+        Assert.Equal("Shop.WebApi (pid 4212)", parsed.RootElement.GetProperty("lockedBy").GetString());
         Assert.Equal("fuse: build failed with 1 error(s) in 3.0 s", lines[^1]);
     }
 

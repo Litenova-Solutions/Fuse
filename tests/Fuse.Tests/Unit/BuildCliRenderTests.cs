@@ -122,14 +122,14 @@ public class BuildCliRenderTests
     [Fact]
     public void A_locked_file_names_its_holder_under_the_error()
     {
-        const string output = """App/App.csproj : error MSB3027: Could not copy "Lib/bin/Debug/Lib.dll" to "App/bin/Debug/Lib.dll". Exceeded retry count of 10. Failed. The file is locked by: "NightHall.WebApi (4212)".""";
+        const string output = """App/App.csproj : error MSB3027: Could not copy "Lib/bin/Debug/Lib.dll" to "App/bin/Debug/Lib.dll". Exceeded retry count of 10. Failed. The file is locked by: "Shop.WebApi (4212)".""";
 
         var answer = BuildOperation.Render(Failed(output), "/repo", 3, "build", new BuildOptions(20, false, false));
 
         Assert.Equal(
             [
-                """App/App.csproj: error MSB3027: Could not copy "Lib/bin/Debug/Lib.dll" to "App/bin/Debug/Lib.dll". Exceeded retry count of 10. Failed. The file is locked by: "NightHall.WebApi (4212)".""",
-                "  locked: App/bin/Debug/Lib.dll is held by NightHall.WebApi (pid 4212); stop that process, then run the build again",
+                """App/App.csproj: error MSB3027: Could not copy "Lib/bin/Debug/Lib.dll" to "App/bin/Debug/Lib.dll". Exceeded retry count of 10. Failed. The file is locked by: "Shop.WebApi (4212)".""",
+                "  locked: App/bin/Debug/Lib.dll is held by Shop.WebApi (pid 4212); stop that process, then run the build again",
                 "fuse: build failed with 1 error(s) in 3.0 s",
             ],
             answer.Text.Split('\n'));

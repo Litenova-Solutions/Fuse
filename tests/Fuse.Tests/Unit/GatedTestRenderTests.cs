@@ -10,16 +10,16 @@ public class GatedTestRenderTests
     [Fact]
     public void Every_test_gated_is_no_test_ran_not_a_pass()
     {
-        var plan = new TestPlan([], 0, 40, "ran 0 test(s) affected by your changes out of 40; skipped 5 test(s) in NightHall.Acceptance.Tests (no container runtime); fuse test --all runs everything")
+        var plan = new TestPlan([], 0, 40, "ran 0 test(s) affected by your changes out of 40; skipped 5 test(s) in Shop.Acceptance.Tests (no container runtime); fuse test --all runs everything")
         {
             ContainerGatedTests = 5,
-            ContainerGatedProjects = ["NightHall.Acceptance.Tests"],
+            ContainerGatedProjects = ["Shop.Acceptance.Tests"],
         };
 
         var result = TestOperation.WithoutRuntime(plan);
 
         Assert.Equal(Outcome.ProblemsFound, result.Outcome);
-        Assert.Equal("fuse: no test ran: 5 test(s) selected in NightHall.Acceptance.Tests need a container runtime, and none is running; start Docker or Podman and run fuse test again", result.Text);
+        Assert.Equal("fuse: no test ran: 5 test(s) selected in Shop.Acceptance.Tests need a container runtime, and none is running; start Docker or Podman and run fuse test again", result.Text);
     }
 
     [Fact]
@@ -41,9 +41,9 @@ public class GatedTestRenderTests
     {
         var outcome = new TrxResults(12, 0, 3, []);
 
-        var result = TestOperation.Render(outcome, "ran 12 test(s) affected by your changes out of 40; skipped 5 test(s) in NightHall.Acceptance.Tests (no container runtime); fuse test --all runs everything; without MSBuild", 2.1);
+        var result = TestOperation.Render(outcome, "ran 12 test(s) affected by your changes out of 40; skipped 5 test(s) in Shop.Acceptance.Tests (no container runtime); fuse test --all runs everything; without MSBuild", 2.1);
 
         Assert.Equal(Outcome.Clean, result.Outcome);
-        Assert.Equal("fuse: 0 failed, 12 passed, 3 skipped in 2.1 s; ran 12 test(s) affected by your changes out of 40; skipped 5 test(s) in NightHall.Acceptance.Tests (no container runtime); fuse test --all runs everything; without MSBuild", result.Text);
+        Assert.Equal("fuse: 0 failed, 12 passed, 3 skipped in 2.1 s; ran 12 test(s) affected by your changes out of 40; skipped 5 test(s) in Shop.Acceptance.Tests (no container runtime); fuse test --all runs everything; without MSBuild", result.Text);
     }
 }

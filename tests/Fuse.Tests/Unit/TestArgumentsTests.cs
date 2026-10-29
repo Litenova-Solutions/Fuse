@@ -15,8 +15,8 @@ public class TestArgumentsTests
             ["--project", "tests/Lib.Tests/Lib.Tests.csproj", "--no-restore"],
             TestOperation.NormalizeArguments(Path.GetTempPath(), ["tests/Lib.Tests/Lib.Tests.csproj", "--no-restore"]));
         Assert.Equal(
-            ["--solution", "NightHall.slnx"],
-            TestOperation.NormalizeArguments(Path.GetTempPath(), ["NightHall.slnx"]));
+            ["--solution", "Shop.slnx"],
+            TestOperation.NormalizeArguments(Path.GetTempPath(), ["Shop.slnx"]));
     }
 
     [Fact]

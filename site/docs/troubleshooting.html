@@ -290,7 +290,7 @@
     <ul>
       <li><code>id</code> names the client process and its request count, so a line can be matched to the command that sent it.</li>
       <li><code>kind</code> is the request: <code>CheckChanges</code> (every change), <code>CheckFiles</code> (named files, which is what a post-edit hook sends), <code>CheckPaths</code> (a scoped check over folders or patterns), <code>PlanAffectedTests</code> (<code>fuse test</code>), <code>PlanAllTests</code> (<code>fuse test --all</code>) or <code>PlanFailedTests</code> (<code>fuse test --failed</code>), plus the session, build-plan, report and status requests, which are short.</li>
-      <li><code>gateHolder</code>, when the request waited for the request lock, names what held the lock longest during the wait: another request's <code>kind</code>, <code>Preload</code> (the background load or the baseline warm choosing its next project), <code>SettledPoll</code> or <code>SettledPlan</code> (the settled planner syncing or selecting), or <code>Initialization</code>. It is left out when nothing held the lock.</li>
+      <li><code>gateHolder</code>, when the request waited for the request lock, names what held the lock longest during the wait: another request's <code>kind</code>, <code>Preload</code> (the background load or the baseline warm choosing its next project), or <code>Initialization</code>. It is left out when nothing held the lock.</li>
       <li>The phases follow in the order they ran, in milliseconds.</li>
     </ul>
     <table>
@@ -317,7 +317,6 @@
       <li><code>baseline: N stored result(s) read for HEAD &lt;12 hex&gt;; M computed</code> — per check that read the store: how many HEAD results came from disk and how many were bound again.</li>
       <li><code>baseline warm: &lt;project&gt; compilation-wide analyzers done in &lt;ms&gt; ms</code> and <code>baseline warm: skipped, HEAD moved again</code> — the background warm after HEAD moved, per project warmed and when a newer commit cut it short.</li>
       <li><code>preloaded &lt;project&gt; compilation in &lt;ms&gt; ms</code> — the background load built a dependent's compilation after loading it.</li>
-      <li><code>settled plan: prepared shadow runs for N test project(s) in M ms</code> — the tree stayed quiet for 5 seconds, so the engine selected the affected tests and emitted them ahead of the next <code>fuse test</code>. <code>settled plan skipped: ...</code> names why a preparation did not run. When neither line appears, the tree never settled.</li>
       <li><code>check coverage: reached &lt;names&gt;; current holds &lt;names&gt;; baseline holds &lt;names&gt;</code> — which reached projects each view held, written only when a view missed one (with <code>; recovered after rebuilding the views</code> when the rebuild fixed it) or when the reach named a file on disk with no document (<code>; candidates without a document: &lt;paths&gt;</code>).</li>
       <li><code>touched set passed 2000 paths; re-evaluating projects and resetting it</code> — the next sync re-evaluates the projects, because the applied-paths set grew past its bound.</li>
       <li><code>; sessions: &lt;id&gt; N file(s), ...</code> — the tail of a <code>check:</code> line: how many changed files each session wrote, most files first, at most 10 sessions before <code>, and M more</code>.</li>

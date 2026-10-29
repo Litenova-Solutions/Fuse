@@ -201,7 +201,6 @@
       <li><strong>Tests still run in plan order.</strong> Slow tests are not split into their own runs, and no answer arrives in stages: one request gets one answer.</li>
       <li><strong>No executed-code record.</strong> Fuse records no per-test coverage, so the cache key is static inputs, not the code each test executed, and the application rule is decided from source, not from the handlers each test ran.</li>
       <li><strong>Each run starts its own test host.</strong> No warm host is kept between runs, nothing is patched into a running host, and emitted images are written to the shadow copies, not served from memory.</li>
-      <li><strong>Nothing runs tests unasked.</strong> A settled tree prepares shadow runs, but no test runs until you or your agent asks.</li>
       <li><strong>Failures at HEAD are still reported.</strong> <code>fuse test</code> does not compare failures with HEAD; a test that already failed at HEAD fails the run the same as an introduced one.</li>
       <li><strong>Agents do not share runs.</strong> Two agents that select the same tests each run them in their own processes; finished verdicts are shared only through the kept passes both plans read.</li>
       <li><strong>Compilation-wide analyzers rerun per compilation.</strong> An analyzer that reads only declarations still runs again after a body edit; its result is not reused across compilations.</li>

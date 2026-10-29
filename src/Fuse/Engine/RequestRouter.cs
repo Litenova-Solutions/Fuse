@@ -26,7 +26,6 @@ internal sealed class RequestRouter : IDisposable
     private readonly RequestGate _requestLock = new();
     private readonly Preloader _preloader;
     private readonly BaselineWarmer _warmer;
-    private SettledPlanner? _settledPlanner;
     private readonly RequestLog _requestLog;
     private readonly SessionEdits _sessions;
     private Task? _initialization;
@@ -84,8 +83,6 @@ internal sealed class RequestRouter : IDisposable
 
         _preloader.Schedule(_shutdown);
         _warmer.Schedule(_shutdown);
-        _settledPlanner = new SettledPlanner(_planner, _requestLock, _workspace, _log.Write);
-        _settledPlanner.Start(_shutdown);
     }
 
     /// <summary>
@@ -478,13 +475,7 @@ internal sealed class RequestRouter : IDisposable
         return ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.NamedPaths(check.Paths), session: null, analyzers, phases, cancellationToken, maxReported: check.MaxErrors).ConfigureAwait(false));
     }
 
-    public Task WaitForPreloadAsync() => Task.WhenAll(_preloader.WaitAsync(), _warmer.WaitAsync(), WaitForSettledAsync());
-
-    /// <summary>
-    ///     Waits for the settled planner to stop, after the shutdown token has been cancelled, so the workspace is never
-    ///     disposed under a settled preparation.
-    /// </summary>
-    public Task WaitForSettledAsync() => _settledPlanner?.WaitAsync() ?? Task.CompletedTask;
+    public Task WaitForPreloadAsync() => Task.WhenAll(_preloader.WaitAsync(), _warmer.WaitAsync());
 
     public void Dispose()
     {

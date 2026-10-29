@@ -328,7 +328,9 @@ jobs:
           main_file = glob.glob("main/results/*.json")[0]
           main = json.load(open(main_file))
           agents = json.load(open(glob.glob("agents/results/*.json")[0]))
-          if agents["fuseBuild"] != main["fuseBuild"] or agents["commit"] != main["commit"]:
+          # The generated fixture is committed again in each job, so only a pinned repository's commits can match.
+          same_commit = agents["commit"] == main["commit"] or "${{ matrix.repo }}" == "fixture"
+          if agents["fuseBuild"] != main["fuseBuild"] or not same_commit:
               raise SystemExit("the two latency parts measured different builds or commits")
           main["part"] = "all"
           main["multiAgent"] = agents["multiAgent"]

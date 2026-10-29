@@ -239,6 +239,7 @@ internal sealed class TestPlanner
             {
                 // A platform project has no shadow run; its filter is its framework's, from PlatformRun below.
                 var (platformFilter, arguments) = PlatformRun(node, effective, runner, collapsed, platformCollapsed, reasons);
+                _workspace.Log($"test plan: {node.Name} [testing platform] builds with MSBuild after {timer.ElapsedMilliseconds} ms");
                 projects.Add((node, platformFilter, arguments, []));
                 continue;
             }

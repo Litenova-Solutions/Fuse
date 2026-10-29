@@ -105,6 +105,9 @@ internal sealed partial class SolutionInfo
     private static bool IsTestProject(string project)
     {
         var text = File.ReadAllText(project);
+        // A project that says it is not a test project, such as Polly's Snippets, runs no tests and prints no results.
+        if (text.Contains("<IsTestProject>false", StringComparison.OrdinalIgnoreCase))
+            return false;
         return text.Contains("Microsoft.NET.Test.Sdk", StringComparison.OrdinalIgnoreCase)
                || text.Contains("xunit", StringComparison.OrdinalIgnoreCase)
                || text.Contains("NUnit", StringComparison.OrdinalIgnoreCase)

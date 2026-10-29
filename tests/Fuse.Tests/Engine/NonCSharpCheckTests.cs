@@ -11,6 +11,7 @@ public class NonCSharpCheckTests
         await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
         engine.Repo.Write("notes/app.tsx", "export const x = 1;\n");
+        await Task.Delay(400, TestContext.Current.CancellationToken);
 
         var report = await engine.CheckAllAsync();
 
@@ -24,6 +25,7 @@ public class NonCSharpCheckTests
     {
         await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Write("notes/app.tsx", "export const x = 1;\n");
+        await Task.Delay(400, TestContext.Current.CancellationToken);
 
         var report = await engine.CheckAllAsync();
 
@@ -38,6 +40,7 @@ public class NonCSharpCheckTests
     {
         await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Write("Lib/obj/gen.ts", "export const x = 1;\n");
+        await Task.Delay(400, TestContext.Current.CancellationToken);
 
         var report = await engine.CheckAllAsync();
 

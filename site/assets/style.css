@@ -351,3 +351,31 @@ pre .dim { color: var(--code-muted); user-select: none; }
 .features a { box-shadow: 0 1px 2px rgba(11, 11, 11, 0.04); }
 .spot { background: linear-gradient(135deg, var(--surface), var(--tag-bg)); border-color: var(--tag-line); }
 .repo .x b { color: var(--tag-text); font-size: 0.95rem; }
+
+/* Syntax colors for code blocks (site/assets/highlight.js), on the dark code background. */
+pre .tk-command { color: #b9a8ff; font-weight: 600; }
+pre .tk-flag { color: #7fd1c7; }
+pre .tk-string { color: #a8d8a0; }
+pre .tk-placeholder { color: #f2c97d; font-style: italic; }
+pre .tk-path { color: #8fb8ff; }
+pre .tk-comment, pre .tk-dim, pre .tk-prompt { color: var(--code-muted); }
+pre .tk-key { color: #b9a8ff; }
+pre .tk-number { color: #f2c97d; }
+pre .tk-literal { color: #f0a0c8; }
+pre .tk-error { color: #f28b82; font-weight: 600; }
+pre .tk-warning { color: #e5c07b; font-weight: 600; }
+pre .tk-id { color: #e5c07b; }
+pre .tk-cause { color: #9a9890; }
+pre .tk-summary { color: #d9cfff; }
+
+/* The landing diagram: a stem down from each agent, a bar from the first agent's center to the last one's, and a stem
+   down to the engine. The agents share three equal columns, so the bar's ends sit at one sixth from each side. */
+.spot-diagram { width: 100%; max-width: 19rem; margin: 0 auto; }
+.spot-diagram .nodes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; width: 100%; }
+.spot-diagram .nodes span { position: relative; justify-self: center; text-align: center; white-space: nowrap; }
+.spot-diagram .nodes span::after { content: ""; position: absolute; left: 50%; top: 100%; width: 2px; height: 0.75rem; background: var(--slow); transform: translateX(-1px); }
+.spot-diagram .join { width: calc(100% * 2 / 3); height: 0; border: 0; border-top: 2px solid var(--slow); border-radius: 0; margin: 0.75rem 0 1.15rem; position: relative; }
+.spot-diagram .join::after { top: 0; height: 1.15rem; }
+.spot-diagram .join.single { width: 2px; height: 1.15rem; border: 0; background: var(--slow); margin: 0; }
+.spot-diagram .join.single::after { display: none; }
+.spot-diagram .box { max-width: none; }

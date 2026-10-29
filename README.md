@@ -12,7 +12,7 @@ AI agents check their work by running `dotnet build` and `dotnet test`, often do
 
 Fuse fixes that. It keeps your solution loaded in the background, and after each edit it tells the agent:
 
-- which compiler errors the edit caused, 8.0x to 27.7x faster than `dotnet build` at the median on four open-source repositories
+- which compiler errors the edit caused, 8.1x to 27.7x faster than `dotnet build` at the median on four open-source repositories
 - which affected tests fail, up to 2.9x faster than `dotnet test`
 
 Run `fuse init` once. After that, the agent's tool (Claude Code, Cursor, Codex and others) runs Fuse by itself.

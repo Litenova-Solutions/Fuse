@@ -36,12 +36,12 @@ internal static class CheckOperation
         RepoRoot root, IReadOnlyList<string>? files, string? session, bool waitForLoad, bool compilationWideAnalyzers, TimeSpan timeout, CancellationToken cancellationToken, int maxErrors = 0, bool json = false, bool includeTreeStamp = false, bool includeNonCSharp = true)
     {
         EngineRequest request = files is null
-            ? new EngineRequest.CheckChanges(waitForLoad) { Session = session, IsStopping = session is not null, MaxErrors = RequestedFor(maxErrors, json) }
-            : new EngineRequest.CheckFiles(files, waitForLoad) { Session = session, LeaveOutCompilationWide = !compilationWideAnalyzers, MaxErrors = RequestedFor(maxErrors, json) };
+            ? new EngineRequest.CheckChanges(waitForLoad) { Session = session, IsStopping = session is not null, MaxErrors = RequestedFor(maxErrors, json), StampTree = includeTreeStamp }
+            : new EngineRequest.CheckFiles(files, waitForLoad) { Session = session, LeaveOutCompilationWide = !compilationWideAnalyzers, MaxErrors = RequestedFor(maxErrors, json), StampTree = includeTreeStamp };
         var response = await EngineClient.SendAsync(root, request, timeout, cancellationToken).ConfigureAwait(false);
         if (response is not EngineResponse.CheckAnswered answered)
             return (OperationResult.Unanswered(response, "check result"), response);
-        var treeStamp = await StampAsync(root, includeTreeStamp, cancellationToken).ConfigureAwait(false);
+        var treeStamp = StampOf(answered.Report);
         return (Render(answered.Report, ResultsFile.WriteCheck(root, answered.Report, treeStamp), ShownFor(maxErrors, json), json, treeStamp, includeNonCSharp), response);
     }
 
@@ -54,11 +54,11 @@ internal static class CheckOperation
     public static async Task<(OperationResult Result, EngineResponse Response)> RunScopedAsync(
         RepoRoot root, IReadOnlyList<string> specs, int maxErrors, bool json, TimeSpan timeout, CancellationToken cancellationToken, bool includeTreeStamp = false)
     {
-        var request = new EngineRequest.CheckPaths([.. specs], WaitForLoad: true) { MaxErrors = RequestedFor(maxErrors, json) };
+        var request = new EngineRequest.CheckPaths([.. specs], WaitForLoad: true) { MaxErrors = RequestedFor(maxErrors, json), StampTree = includeTreeStamp };
         var response = await EngineClient.SendAsync(root, request, timeout, cancellationToken).ConfigureAwait(false);
         if (response is not EngineResponse.CheckAnswered answered)
             return (OperationResult.Unanswered(response, "check result"), response);
-        var treeStamp = await StampAsync(root, includeTreeStamp, cancellationToken).ConfigureAwait(false);
+        var treeStamp = StampOf(answered.Report);
         return (Render(answered.Report, ResultsFile.WriteCheck(root, answered.Report, treeStamp), ShownFor(maxErrors, json), json, treeStamp), response);
     }
 
@@ -70,21 +70,9 @@ internal static class CheckOperation
     private static int ShownFor(int maxErrors, bool json) =>
         json || maxErrors == int.MaxValue ? int.MaxValue : maxErrors > 0 ? maxErrors : MaxShown;
 
-    /// <summary>The stamp for a finished check the command line prints, or null for a hook or MCP answer and when git cannot say what the tree holds.</summary>
-    private static async Task<string?> StampAsync(RepoRoot root, bool include, CancellationToken cancellationToken)
-    {
-        if (!include)
-            return null;
-        try
-        {
-            var (hash, count) = await TreeStamp.ForWorkingTreeAsync(root, cancellationToken).ConfigureAwait(false);
-            return TreeStamp.SummaryPart(hash, count);
-        }
-        catch (FuseException)
-        {
-            return null;
-        }
-    }
+    /// <summary>The stamp the engine put on a finished check for the command line, or null for a hook or MCP answer, which asks for none.</summary>
+    private static string? StampOf(CheckReport report) =>
+        report.Tree is { } tree ? TreeStamp.SummaryPart(tree, report.TreeFiles) : null;
 
     /// <summary>
     ///     The absolute paths of the files a command line or an MCP call names, or the refusal to print when one is empty

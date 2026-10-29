@@ -149,7 +149,7 @@ internal sealed class RequestRouter : IDisposable
             if (request is EngineRequest.CheckChanges changes)
             {
                 var session = SessionEdits.IsValid(changes.Session) ? changes.Session : null;
-                return ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.AllChanges(), session, analyzers, phases, cancellationToken, maxReported: changes.MaxErrors).ConfigureAwait(false));
+                return Stamped(ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.AllChanges(), session, analyzers, phases, cancellationToken, maxReported: changes.MaxErrors).ConfigureAwait(false)), changes.StampTree);
             }
             if (request is EngineRequest.CheckPaths paths)
                 return await CheckPathsAsync(paths, analyzers, phases, cancellationToken).ConfigureAwait(false);
@@ -293,7 +293,7 @@ internal sealed class RequestRouter : IDisposable
         }
 
         var session = SessionEdits.IsValid(check.Session) ? check.Session : null;
-        return ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.Files(paths), session, analyzers, phases, cancellationToken, maxReported: check.MaxErrors).ConfigureAwait(false));
+        return Stamped(ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.Files(paths), session, analyzers, phases, cancellationToken, maxReported: check.MaxErrors).ConfigureAwait(false)), check.StampTree);
     }
 
     /// <summary>
@@ -356,6 +356,18 @@ internal sealed class RequestRouter : IDisposable
             .Where(path => PathRules.IsProjectFile(path.Absolute))
             .ToList();
         return new EngineResponse.ChangedBuildAnswered(ChangedBuildPlanner.Plan(_workspace.Graph, _workspace.Tracker.Changed, projectFiles));
+    }
+
+    /// <summary>
+    ///     The check answer with the tree stamp the command line prints, from the changed set the check just synced, so
+    ///     the client does not ask git again. Unchanged when the request did not ask for it or the check was not answered.
+    /// </summary>
+    private EngineResponse Stamped(EngineResponse response, bool stamp)
+    {
+        if (!stamp || response is not EngineResponse.CheckAnswered answered)
+            return response;
+        var changed = _workspace.Tracker.Changed;
+        return new EngineResponse.CheckAnswered(answered.Report with { Tree = TreeStamp.Of(ChangedPairs(changed)), TreeFiles = changed.Count });
     }
 
     /// <summary>What the tree stamp hashes: each changed file with its path relative to the root and its absolute path to read.</summary>
@@ -438,7 +450,7 @@ internal sealed class RequestRouter : IDisposable
                 return new EngineResponse.Unanswered(ErrorCode.InvalidPath, ErrorMessages.EmptyPath);
         }
 
-        return ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.NamedPaths(check.Paths), session: null, analyzers, phases, cancellationToken, maxReported: check.MaxErrors).ConfigureAwait(false));
+        return Stamped(ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.NamedPaths(check.Paths), session: null, analyzers, phases, cancellationToken, maxReported: check.MaxErrors).ConfigureAwait(false)), check.StampTree);
     }
 
     public Task WaitForPreloadAsync() => Task.WhenAll(_preloader.WaitAsync(), _warmer.WaitAsync());

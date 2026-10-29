@@ -96,6 +96,9 @@ internal abstract record EngineRequest
         ///     How many errors the answer holds at most; 0 is the existing cap. A line without it reads as 0.
         /// </summary>
         public int MaxErrors { get; init; }
+
+        /// <summary>True to stamp the answer with the tree the check ended on, which <c>fuse check</c> prints. A line without it reads as false.</summary>
+        public bool StampTree { get; init; }
     }
 
     /// <summary>The errors that the changes to the named files introduced, in those files and in the files they reach.</summary>
@@ -130,6 +133,9 @@ internal abstract record EngineRequest
         ///     How many errors the answer holds at most; 0 is the existing cap. A line without it reads as 0.
         /// </summary>
         public int MaxErrors { get; init; }
+
+        /// <summary>True to stamp the answer with the tree the check ended on, which <c>fuse check</c> prints. A line without it reads as false.</summary>
+        public bool StampTree { get; init; }
     }
 
     /// <summary>
@@ -149,6 +155,9 @@ internal abstract record EngineRequest
         ///     How many errors the answer holds at most; 0 is the existing cap. A line without it reads as 0.
         /// </summary>
         public int MaxErrors { get; init; }
+
+        /// <summary>True to stamp the answer with the tree the check ended on, which <c>fuse check</c> prints. A line without it reads as false.</summary>
+        public bool StampTree { get; init; }
     }
 
     /// <summary>Registers an external writer as a session for the path patterns it writes.</summary>

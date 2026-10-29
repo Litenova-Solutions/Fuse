@@ -164,6 +164,16 @@ jobs:
           path: truth.json
           key: ${{ steps.key.outputs.key }}
       - *runner
+      - name: Keep the engine logs
+        if: always()
+        # The engine log and hook log of the measured repository, so a failed case can be read without running it again.
+        run: |
+          mkdir -p out/engine-logs
+          for d in "$(cygpath -u "$LOCALAPPDATA")"/fuse/repos/*/; do
+            [ -d "$d" ] || continue
+            n=$(basename "$d"); mkdir -p "out/engine-logs/$n"
+            cp "$d"engine.log "$d"hook.log "$d"root "out/engine-logs/$n/" 2>/dev/null || true
+          done
       - uses: actions/upload-artifact@v7
         if: always()
         with:

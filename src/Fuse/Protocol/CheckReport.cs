@@ -41,4 +41,10 @@ internal sealed record CheckReport(
 
     /// <summary>Why each project was bound whole, in project-name order.</summary>
     public ReportedWholeProject[] WholeProjects { get; init; } = [];
+
+    /// <summary>The tree stamp the check ended on, when the request asked for it; null otherwise.</summary>
+    public string? Tree { get; init; }
+
+    /// <summary>How many changed sources <see cref="Tree"/> hashes.</summary>
+    public int TreeFiles { get; init; }
 }

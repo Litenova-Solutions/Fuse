@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Messages and Fixes | Fuse</title>
-<meta name="description" content="Every message Fuse prints when it cannot answer, what causes it, and the fix.">
+<title>Fuse Messages and Fixes: What Each One Means | Fuse</title>
+<meta name="description" content="Every message Fuse prints when it cannot answer, such as a missing restore or a project that failed to load, what each one means and the command that fixes it.">
 <link rel="canonical" href="https://fuse.codes/docs/messages">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 <meta name="author" content="Litenova Solutions">
@@ -13,8 +13,8 @@
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="Fuse">
 <meta property="og:locale" content="en_US">
-<meta property="og:title" content="Messages and Fixes">
-<meta property="og:description" content="Every message Fuse prints when it cannot answer, what causes it, and the fix.">
+<meta property="og:title" content="Fuse Messages and Fixes: What Each One Means">
+<meta property="og:description" content="Every message Fuse prints when it cannot answer, such as a missing restore or a project that failed to load, what each one means and the command that fixes it.">
 <meta property="og:url" content="https://fuse.codes/docs/messages">
 <meta property="og:image" content="https://fuse.codes/assets/og.png">
 <meta property="og:image:type" content="image/png">
@@ -22,8 +22,8 @@
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 8.1x to 27.7x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Messages and Fixes">
-<meta name="twitter:description" content="Every message Fuse prints when it cannot answer, what causes it, and the fix.">
+<meta name="twitter:title" content="Fuse Messages and Fixes: What Each One Means">
+<meta name="twitter:description" content="Every message Fuse prints when it cannot answer, such as a missing restore or a project that failed to load, what each one means and the command that fixes it.">
 <meta name="twitter:image" content="https://fuse.codes/assets/og.png">
 <meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 8.1x to 27.7x faster than dotnet build. dotnet tool install -g Fuse.">
 <link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
@@ -40,8 +40,8 @@
     {
       "@type": "TechArticle",
       "@id": "https://fuse.codes/docs/messages#article",
-      "headline": "Messages and Fixes",
-      "description": "Every message Fuse prints when it cannot answer, what causes it, and the fix.",
+      "headline": "Fuse Messages and Fixes: What Each One Means",
+      "description": "Every message Fuse prints when it cannot answer, such as a missing restore or a project that failed to load, what each one means and the command that fixes it.",
       "url": "https://fuse.codes/docs/messages",
       "mainEntityOfPage": "https://fuse.codes/docs/messages",
       "inLanguage": "en",
@@ -99,23 +99,23 @@
 <a class="skip-link" href="#main">Skip to main content</a>
 <div class="wrap wide">
   <header class="site-header">
-    <a class="brand" href="../index.html"><img src="../assets/fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
+    <a class="brand" href="../"><img src="../assets/fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
     <nav aria-label="Main">
-      <a href="index.html" aria-current="page">Docs</a>
-      <a href="benchmarks.html">Benchmarks</a>
+      <a href="./" aria-current="page">Docs</a>
+      <a href="benchmarks">Benchmarks</a>
       <a class="gh" href="https://github.com/Litenova-Solutions/Fuse" aria-label="Fuse on GitHub"><svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg></a>
     </nav>
   </header>
 
   <div class="docs">
     <main id="main" class="page" tabindex="-1">
-    <p class="crumbs"><a href="index.html">Docs</a> / Reference</p>
+    <p class="crumbs"><a href="./">Docs</a> / Reference</p>
     <h1>Messages and Fixes</h1>
     <p class="jump"><a href="#docs-nav">All documentation pages</a></p>
     <p class="intro">When Fuse cannot answer, it prints <code>fuse:</code> and one of the messages on this page. It then exits with 2. Each message names its fix. On a usage failure, the command also exits with 2. The rerun lines and the container lines at the end are answers, and each names its own exit code.</p>
     <div class="audience">
       <p><b>This page is for</b> anyone who gets one of these messages from a command, an MCP tool, or a hook, and wants to know what caused it and what to run.</p>
-      <p><b>If you see no message at all</b>, for example from a hook that says nothing, read <a href="troubleshooting.html">Troubleshooting</a> instead.</p>
+      <p><b>If you see no message at all</b>, for example from a hook that says nothing, read <a href="troubleshooting">Troubleshooting</a> instead.</p>
     </div>
     <div class="key">
       <p>In short</p>
@@ -193,7 +193,7 @@ fuse: the request is cancelled</code></pre>
     </table>
     </div>
     <p>A request that reaches projects the engine has not loaded waits for them to load. The engine answers with the second line when a request is cancelled while it runs.</p>
-    <p><strong>Fix.</strong> Run the command again. The engine keeps loading in between. <a href="troubleshooting.html#a-command-times-out">Troubleshooting</a> shows how to see what it is doing.</p>
+    <p><strong>Fix.</strong> Run the command again. The engine keeps loading in between. <a href="troubleshooting#a-command-times-out">Troubleshooting</a> shows how to see what it is doing.</p>
 
     <h2 id="invalidpath">InvalidPath <a class="anchor" href="#invalidpath" aria-label="Link to this section">#</a></h2>
     <pre class="out" data-label="Message"><code>fuse: a file named in the check is empty; name each file by its path
@@ -230,7 +230,7 @@ fuse: could not start the Fuse engine: &lt;message&gt;
 fuse: the Fuse engine sent no check result (&lt;response&gt;); run the command again
 fuse: the Fuse engine sent no test plan (&lt;response&gt;); run the command again</code></pre>
     <p><strong>Cause.</strong> Something went wrong inside Fuse. <code>could not connect to the Fuse engine: it did not start within 15 s</code> means the engine process did not open its pipe.</p>
-    <p><strong>Fix.</strong> Read the lines of <code>engine.log</code> the message names. Then run the command again. <a href="troubleshooting.html#internal-errors">Troubleshooting</a> lists the details to collect for a bug report.</p>
+    <p><strong>Fix.</strong> Read the lines of <code>engine.log</code> the message names. Then run the command again. <a href="troubleshooting#internal-errors">Troubleshooting</a> lists the details to collect for a bug report.</p>
 
     <h2 id="usage-failures">Usage failures <a class="anchor" href="#usage-failures" aria-label="Link to this section">#</a></h2>
     <pre class="out" data-label="Message"><code>fuse: check takes files and [--max-errors &lt;n&gt;|--all-errors] [--json]; '&lt;token&gt;' is not one
@@ -274,7 +274,7 @@ fuse: none of the &lt;N&gt; test(s) that failed last time ran; they may have bee
 
     <h2 id="no-container-runtime">No container runtime <a class="anchor" href="#no-container-runtime" aria-label="Link to this section">#</a></h2>
     <pre class="out" data-label="Message"><code>fuse: no test ran: &lt;N&gt; test(s) selected in &lt;P&gt; need a container runtime, and none is running; start Docker or Podman and run fuse test again</code></pre>
-    <p><strong>Cause.</strong> Every selected test needs a container runtime and neither Docker nor Podman answered, so no process started. The command exits with 1. The affected and <code>--all</code> plans leave out projects that need a container runtime and name them in the summary (<a href="commands.html#fuse-test">fuse test</a>). This line is for a plan with nothing else to run.</p>
+    <p><strong>Cause.</strong> Every selected test needs a container runtime and neither Docker nor Podman answered, so no process started. The command exits with 1. The affected and <code>--all</code> plans leave out projects that need a container runtime and name them in the summary (<a href="commands#fuse-test">fuse test</a>). This line is for a plan with nothing else to run.</p>
     <p><strong>Fix.</strong> Start Docker or Podman. Then run <code>fuse test</code> again.</p>
 
     <h2 id="other-lines">Other lines on standard error <a class="anchor" href="#other-lines" aria-label="Link to this section">#</a></h2>
@@ -283,42 +283,42 @@ fuse: none of the &lt;N&gt; test(s) that failed last time ran; they may have bee
     </div>
     <pre class="out" data-label="Message"><code>fuse: waiting for another build or test in this repository
 fuse: running without the per-repository build lock: &lt;reason&gt;</code></pre>
-    <p>When another build or test holds the <a href="how-it-works.html#builds-and-the-build-lock">build lock</a>, <code>fuse build</code> and <code>fuse test</code> print the first once and keep waiting. When the state directory cannot be written, they print the second and build without the lock.</p>
+    <p>When another build or test holds the <a href="how-it-works#builds-and-the-build-lock">build lock</a>, <code>fuse build</code> and <code>fuse test</code> print the first once and keep waiting. When the state directory cannot be written, they print the second and build without the lock.</p>
 
     <nav class="pager" aria-label="Previous and next page">
-      <a href="commands.html"><span>Previous</span>Commands</a>
-      <a class="next-page" href="troubleshooting.html"><span>Next</span>Troubleshooting</a>
+      <a href="commands"><span>Previous</span>Commands</a>
+      <a class="next-page" href="troubleshooting"><span>Next</span>Troubleshooting</a>
     </nav>
     </main>
 
     <nav class="sidebar" id="docs-nav" aria-label="Documentation">
       <h2>Start here</h2>
       <ul>
-        <li><a href="index.html">Overview</a></li>
-        <li><a href="getting-started.html">Getting started</a></li>
-        <li><a href="harnesses.html">Connect your agent</a></li>
-        <li><a href="parallel-agents.html">Subagents and parallel agents</a></li>
+        <li><a href="./">Overview</a></li>
+        <li><a href="getting-started">Getting started</a></li>
+        <li><a href="harnesses">Connect your agent</a></li>
+        <li><a href="parallel-agents">Subagents and parallel agents</a></li>
       </ul>
       <h2>Understand</h2>
       <ul>
-        <li><a href="how-it-works.html">How it works</a></li>
-        <li><a href="limits.html">Limits</a></li>
-        <li><a href="benchmarks.html">Benchmarks</a></li>
-        <li><a href="faq.html">FAQ</a></li>
+        <li><a href="how-it-works">How it works</a></li>
+        <li><a href="limits">Limits</a></li>
+        <li><a href="benchmarks">Benchmarks</a></li>
+        <li><a href="faq">FAQ</a></li>
       </ul>
       <h2>Reference</h2>
       <ul>
-        <li><a href="commands.html">Commands</a></li>
-        <li><a href="messages.html" aria-current="page">Messages and fixes</a></li>
-        <li><a href="troubleshooting.html">Troubleshooting</a></li>
-        <li><a href="changelog.html">Changelog</a></li>
+        <li><a href="commands">Commands</a></li>
+        <li><a href="messages" aria-current="page">Messages and fixes</a></li>
+        <li><a href="troubleshooting">Troubleshooting</a></li>
+        <li><a href="changelog">Changelog</a></li>
       </ul>
       <h2>Contribute</h2>
       <ul>
         <li><a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/main/CONTRIBUTING.md">Contributing</a></li>
-        <li><a href="architecture.html">Architecture</a></li>
-        <li><a href="evals.html">Evals</a></li>
-        <li><a href="ai-policy.html">AI policy</a></li>
+        <li><a href="architecture">Architecture</a></li>
+        <li><a href="evals">Evals</a></li>
+        <li><a href="ai-policy">AI policy</a></li>
         <li><a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/main/SECURITY.md">Security</a></li>
       </ul>
     </nav>
@@ -326,7 +326,7 @@ fuse: running without the per-repository build lock: &lt;reason&gt;</code></pre>
 
   <footer class="site-footer">
     <a class="maker" href="https://www.litenova.solutions"><img src="../assets/litenova-mark.svg" alt="" width="20" height="20">Built by Litenova Solutions</a>
-    <nav aria-label="Footer"><a href="index.html">Docs</a><a href="changelog.html">Changelog</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
+    <nav aria-label="Footer"><a href="./">Docs</a><a href="changelog">Changelog</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
   </footer>
 </div>
 </body>

@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Subagents and parallel agents | Fuse</title>
-<meta name="description" content="How Fuse works when several agents share one repository: subagents, background and parallel agents, fan-out work, judges and workers, scoped checks, git worktrees, the instructions section, and stopping the engine.">
+<title>Subagents and Parallel AI Agents in One .NET Repo | Fuse</title>
+<meta name="description" content="Run subagents and parallel AI agents in one .NET repository: they share one Fuse engine, their builds take turns, and each is told only its own errors.">
 <link rel="canonical" href="https://fuse.codes/docs/parallel-agents">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 <meta name="author" content="Litenova Solutions">
@@ -13,8 +13,8 @@
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="Fuse">
 <meta property="og:locale" content="en_US">
-<meta property="og:title" content="Subagents and parallel agents">
-<meta property="og:description" content="How Fuse works when several agents share one repository: subagents, background and parallel agents, fan-out work, judges and workers, scoped checks, git worktrees, the instructions section, and stopping the engine.">
+<meta property="og:title" content="Subagents and Parallel AI Agents in One .NET Repo">
+<meta property="og:description" content="Run subagents and parallel AI agents in one .NET repository: they share one Fuse engine, their builds take turns, and each is told only its own errors.">
 <meta property="og:url" content="https://fuse.codes/docs/parallel-agents">
 <meta property="og:image" content="https://fuse.codes/assets/og.png">
 <meta property="og:image:type" content="image/png">
@@ -22,8 +22,8 @@
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 8.1x to 27.7x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Subagents and parallel agents">
-<meta name="twitter:description" content="How Fuse works when several agents share one repository: subagents, background and parallel agents, fan-out work, judges and workers, scoped checks, git worktrees, the instructions section, and stopping the engine.">
+<meta name="twitter:title" content="Subagents and Parallel AI Agents in One .NET Repo">
+<meta name="twitter:description" content="Run subagents and parallel AI agents in one .NET repository: they share one Fuse engine, their builds take turns, and each is told only its own errors.">
 <meta name="twitter:image" content="https://fuse.codes/assets/og.png">
 <meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 8.1x to 27.7x faster than dotnet build. dotnet tool install -g Fuse.">
 <link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
@@ -40,8 +40,8 @@
     {
       "@type": "TechArticle",
       "@id": "https://fuse.codes/docs/parallel-agents#article",
-      "headline": "Subagents and parallel agents",
-      "description": "How Fuse works when several agents share one repository: subagents, background and parallel agents, fan-out work, judges and workers, scoped checks, git worktrees, the instructions section, and stopping the engine.",
+      "headline": "Subagents and Parallel AI Agents in One .NET Repo",
+      "description": "Run subagents and parallel AI agents in one .NET repository: they share one Fuse engine, their builds take turns, and each is told only its own errors.",
       "url": "https://fuse.codes/docs/parallel-agents",
       "mainEntityOfPage": "https://fuse.codes/docs/parallel-agents",
       "inLanguage": "en",
@@ -99,17 +99,17 @@
 <a class="skip-link" href="#main">Skip to main content</a>
 <div class="wrap wide">
   <header class="site-header">
-    <a class="brand" href="../index.html"><img src="../assets/fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
+    <a class="brand" href="../"><img src="../assets/fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
     <nav aria-label="Main">
-      <a href="index.html" aria-current="page">Docs</a>
-      <a href="benchmarks.html">Benchmarks</a>
+      <a href="./" aria-current="page">Docs</a>
+      <a href="benchmarks">Benchmarks</a>
       <a class="gh" href="https://github.com/Litenova-Solutions/Fuse" aria-label="Fuse on GitHub"><svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg></a>
     </nav>
   </header>
 
   <div class="docs">
     <main id="main" class="page" tabindex="-1">
-    <p class="crumbs"><a href="index.html">Docs</a> / Start here</p>
+    <p class="crumbs"><a href="./">Docs</a> / Start here</p>
     <h1>Subagents and parallel agents</h1>
     <p class="jump"><a href="#docs-nav">All documentation pages</a></p>
     <p class="intro">Fuse supports several agents in one repository: an agent can hand work to subagents, run in the background, or share the working tree with other agents. This page shows what Fuse tells each agent, how their test runs and builds share one machine, and how you check work several agents wrote, as a peer or as a judge that settles workers' slices.</p>
@@ -141,7 +141,7 @@
       <li>The <b>stop hook</b> checks only that session's scope: the files its own edits wrote, the files it wrote together with another session, and the files no session is credited with, plus the files they reach. It blocks that session from finishing only on the errors those files cause. Files that only another session wrote are not targets, but the check still binds them when the session's own files reach them. Errors in that reach that only another session's edits cause stay with that session, and the summary counts them.</li>
       <li>When no post-edit hook reported an edit, for example one a shell command, a code generator, or a tool without a hook made, that edit is credited to no session. Its errors then go to every agent whose check finds them.</li>
     </ul>
-    <p><a href="how-it-works.html#check">How it works</a> explains how Fuse attributes an error to a session, and <a href="limits.html#what-a-check-does-not-see">Limits</a> lists the cases Fuse cannot separate.</p>
+    <p><a href="how-it-works#check">How it works</a> explains how Fuse attributes an error to a session, and <a href="limits#what-a-check-does-not-see">Limits</a> lists the cases Fuse cannot separate.</p>
 
     <h2 id="subagents-per-harness">Subagents in each harness <a class="anchor" href="#subagents-per-harness" aria-label="Link to this section">#</a></h2>
     <p>Whether a subagent is a session of its own depends on what its harness sends. While such a subagent runs, its parent is not told about its errors, so a half-written file in the subagent's work does not interrupt the parent. When the harness also runs Fuse's stop hook as the subagent finishes, the subagent must fix its own errors before it stops. From then on, its edits count as its parent's.</p>
@@ -159,13 +159,13 @@
         </tbody>
       </table>
     </div>
-    <p>When a subagent's stop is not checked and its edits never count as its parent's, no hook asks the subagent to fix the errors only its edits cause. In those harnesses, have the subagent run <code>fuse check</code> before it finishes. Have the parent run it once every subagent is done. <a href="harnesses.html#sessions">Connect your agent</a> lists which id each harness sends.</p>
+    <p>When a subagent's stop is not checked and its edits never count as its parent's, no hook asks the subagent to fix the errors only its edits cause. In those harnesses, have the subagent run <code>fuse check</code> before it finishes. Have the parent run it once every subagent is done. <a href="harnesses#sessions">Connect your agent</a> lists which id each harness sends.</p>
 
     <h2 id="fan-out">Fanning work out <a class="anchor" href="#fan-out" aria-label="Link to this section">#</a></h2>
     <p>Fanning out means one agent, the orchestrator, splits a task among several workers that run at the same time. The following habits keep each worker's answers separate and the combined result checked:</p>
     <ol>
       <li><b>Give workers separate files.</b> When two sessions wrote a file, an error in it goes to both, so workers that share files see each other's errors.</li>
-      <li><b>Have each worker check its own work.</b> Each worker runs <code>fuse test</code> before it hands its work back. The pre-shell hook rewrites the worker's <code>dotnet test</code> into <code>fuse test --session &lt;its session&gt;</code>. That command runs the tests the worker's own edits can break and leaves out the changes only other sessions wrote (<a href="how-it-works.html#test-selection">a session's own tests</a>). The worker also runs <code>fuse check</code> when its harness does not check its stop.</li>
+      <li><b>Have each worker check its own work.</b> Each worker runs <code>fuse test</code> before it hands its work back. The pre-shell hook rewrites the worker's <code>dotnet test</code> into <code>fuse test --session &lt;its session&gt;</code>. That command runs the tests the worker's own edits can break and leaves out the changes only other sessions wrote (<a href="how-it-works#test-selection">a session's own tests</a>). The worker also runs <code>fuse check</code> when its harness does not check its stop.</li>
       <li><b>Write through edit tools, not shell commands.</b> A file a worker writes through a shell command is credited to no session, so its errors reach every agent.</li>
       <li><b>Check the whole result at the end.</b> Once the workers are done, the orchestrator runs <code>fuse check</code>, which reports every error the changes since HEAD (the commit checked out) introduced, whoever wrote them. It also runs <code>fuse test</code>, or <code>fuse test --all</code> to run every test. In Claude Code, the orchestrator's own stop hook also covers the edits of subagents that have stopped. When the workers write from outside any harness, settle them as a judge instead (<a href="#judges-and-workers">Judges and workers</a>).</li>
     </ol>
@@ -181,7 +181,7 @@
       <li><b>Keep the names and patterns small.</b> A name holds 1 to 64 letters, digits, <code>-</code>, <code>_</code> or <code>.</code>. A pattern is relative to the repository root, with <code>**</code> as a whole segment, <code>*</code> and <code>?</code> inside a segment, no <code>..</code> segment, and at most 256 characters. One session holds at most 32 patterns. At most 64 sessions can be live at once.</li>
       <li><b>Registrations live outside the repository.</b> Fuse keeps them in the state directory, so they survive an engine restart. <code>fuse stop</code> keeps them, and <code>fuse uninit</code> deletes them with the rest of the state.</li>
     </ul>
-    <p><a href="commands.html#fuse-session">Commands</a> lists the begin and end forms and every refusal.</p>
+    <p><a href="commands#fuse-session">Commands</a> lists the begin and end forms and every refusal.</p>
 
     <h2 id="checking-one-workers-paths">Checking one worker's paths <a class="anchor" href="#checking-one-workers-paths" aria-label="Link to this section">#</a></h2>
     <p>A scoped check is a worker's "my paths, my errors" query. <code>fuse check</code> with a directory or a pattern checks the changed sources under it and what they reach. Any argument that is an existing directory, or that holds <code>*</code> or <code>?</code>, scopes the whole call. Files, directories and patterns can be mixed:</p>
@@ -189,7 +189,7 @@
     <p>The answer holds the errors in the changed sources under that folder and the errors they cause in files outside it, each with the cause line that names the change. The summary names the scope. With errors, the summary carries <code>; checked src/Workers/Third and what it reaches</code> before the tree stamp. A clean scope reads <code>fuse: no errors introduced in src/Workers/Third and what it reaches (3 file(s) checked; tree 9f2c41aa07b3 over 5 changed file(s))</code>.</p>
     <p>A scope that matches no changed C# source is refused instead of answering clean, because a clean answer would read as no errors introduced:</p>
     <pre class="out" data-label="Output"><code>fuse: "docs/**" in the check matches no changed C# source file of a project in this repository</code></pre>
-    <p>Each refusal exits 2. A scope that expands past 2000 source files is refused too. Name a smaller folder or pattern instead. <a href="commands.html#fuse-check">Commands</a> lists every check form.</p>
+    <p>Each refusal exits 2. A scope that expands past 2000 source files is refused too. Name a smaller folder or pattern instead. <a href="commands#fuse-check">Commands</a> lists every check form.</p>
     <p>To split the errors into per-worker briefs, add <code>--json</code>. <code>fuse check --json</code> prints one JSON object per error, with <code>file</code>, <code>line</code>, <code>column</code>, <code>code</code> and <code>message</code>, plus <code>cause</code> and <code>generated</code> when the error has them, and the summary as the last line. The judge groups the objects by file and hands each worker its own.</p>
 
     <h2 id="building-only-what-changed">Building only what changed <a class="anchor" href="#building-only-what-changed" aria-label="Link to this section">#</a></h2>
@@ -198,30 +198,30 @@
 fuse: build (App) succeeded in 3.2 s; tree 9f2c41aa07b3 over 5 changed file(s)
 fuse: build (Lib.Tests) succeeded in 2.8 s; tree 9f2c41aa07b3 over 5 changed file(s)
 fuse: 0 of 2 project(s) failed</code></pre>
-    <p>When nothing changed, the command builds nothing and exits 0: <code>fuse: no C# changes since HEAD; nothing to build (tree 9f2c41aa07b3)</code>. When the selection cannot be trusted, the command says so first and builds the whole solution instead: <code>fuse: project files changed (Lib/Lib.csproj); building the whole solution instead</code>. The selection cannot be trusted when project files changed or when no changed file belongs to a project. <a href="commands.html#fuse-build">Commands</a> lists every build form.</p>
+    <p>When nothing changed, the command builds nothing and exits 0: <code>fuse: no C# changes since HEAD; nothing to build (tree 9f2c41aa07b3)</code>. When the selection cannot be trusted, the command says so first and builds the whole solution instead: <code>fuse: project files changed (Lib/Lib.csproj); building the whole solution instead</code>. The selection cannot be trusted when project files changed or when no changed file belongs to a project. <a href="commands#fuse-build">Commands</a> lists every build form.</p>
 
     <h2 id="checking-the-tree-before-a-large-commit">Checking the tree before a large commit <a class="anchor" href="#checking-the-tree-before-a-large-commit" aria-label="Link to this section">#</a></h2>
     <p>Before a large commit, run <code>fuse status</code> to see what the tree holds: whether an engine runs for the repository, how many files differ from HEAD, and the tree stamp that command-line checks and builds carry:</p>
     <pre class="out" data-label="Output"><code>fuse: engine running for C:/Repo (pid 1234), 512 MB; idle exits after 30 min
 fuse: 87 changed file(s) since HEAD; tree 9f2c41aa07b3; HEAD a1b2c3d4e5f6
 fuse: large-tree limits: past 300 changed files a sync reloads projects; past 500 files in reach a check binds whole projects; commit or run fuse stop and let the next check reload when checks feel slow</code></pre>
-    <p><code>fuse status</code> never starts an engine. When none answers within 2 seconds, it reads the tree from git instead. Past 300 changed files, the command also warns that checks reseed from git and slow down. It tells you to commit soon. With <code>--json</code>, it prints one object with <code>engine</code>, <code>pid</code>, <code>memoryMB</code>, <code>changedFiles</code>, <code>head</code>, <code>tree</code>, <code>reloadAt</code> and <code>wholeProjectAt</code>. <a href="commands.html#fuse-status">Commands</a> lists every status form.</p>
+    <p><code>fuse status</code> never starts an engine. When none answers within 2 seconds, it reads the tree from git instead. Past 300 changed files, the command also warns that checks reseed from git and slow down. It tells you to commit soon. With <code>--json</code>, it prints one object with <code>engine</code>, <code>pid</code>, <code>memoryMB</code>, <code>changedFiles</code>, <code>head</code>, <code>tree</code>, <code>reloadAt</code> and <code>wholeProjectAt</code>. <a href="commands#fuse-status">Commands</a> lists every status form.</p>
 
     <h2 id="tests-and-builds-at-once">Tests and builds at once <a class="anchor" href="#tests-and-builds-at-once" aria-label="Link to this section">#</a></h2>
-    <p>Several agents' <code>fuse test</code> runs overlap. A run without MSBuild works from a copy of the test project's build output, which it holds until it ends. <code>fuse test</code> gives up the per-repository build lock once its runs hold their copies, so another agent's test run or build does not wait for it. A run that has to build with MSBuild takes the build lock, so those runs take turns (<a href="how-it-works.html#without-msbuild">How Fuse runs tests without MSBuild</a>).</p>
-    <p>Integration tests that each start their own server or containers run side by side safely. Tests that bind a fixed port, or that use one database by a fixed name, can collide with the same tests in another agent's run (<a href="limits.html#test-runs-without-msbuild">Limits</a>).</p>
-    <p><code>fuse build</code> takes the build lock, so agents' builds take turns instead of failing on each other's files. When a build fails because another agent moved a source file while it ran, Fuse runs it once more (<a href="commands.html#fuse-build">fuse build</a>). To build only the changed projects and their dependents, run <code>fuse build --changed</code> (<a href="#building-only-what-changed">Building only what changed</a>).</p>
+    <p>Several agents' <code>fuse test</code> runs overlap. A run without MSBuild works from a copy of the test project's build output, which it holds until it ends. <code>fuse test</code> gives up the per-repository build lock once its runs hold their copies, so another agent's test run or build does not wait for it. A run that has to build with MSBuild takes the build lock, so those runs take turns (<a href="how-it-works#without-msbuild">How Fuse runs tests without MSBuild</a>).</p>
+    <p>Integration tests that each start their own server or containers run side by side safely. Tests that bind a fixed port, or that use one database by a fixed name, can collide with the same tests in another agent's run (<a href="limits#test-runs-without-msbuild">Limits</a>).</p>
+    <p><code>fuse build</code> takes the build lock, so agents' builds take turns instead of failing on each other's files. When a build fails because another agent moved a source file while it ran, Fuse runs it once more (<a href="commands#fuse-build">fuse build</a>). To build only the changed projects and their dependents, run <code>fuse build --changed</code> (<a href="#building-only-what-changed">Building only what changed</a>).</p>
 
     <h2 id="worktrees">Agents in separate worktrees <a class="anchor" href="#worktrees" aria-label="Link to this section">#</a></h2>
     <p>A git worktree is a second working tree of the same repository in its own folder. To Fuse, each worktree is a repository root of its own, with its own engine, state directory and build lock. Agents in different worktrees therefore never share an engine, never see each other's errors, and never wait for each other's builds.</p>
     <ul>
-      <li>Each engine keeps the projects it loaded in memory until it has been idle for 30 minutes (<a href="limits.html#the-engine">Limits</a>). Several worktrees with warm engines therefore hold several times that memory. In a worktree you are done with, run <code>fuse stop</code> to give its memory back at once.</li>
+      <li>Each engine keeps the projects it loaded in memory until it has been idle for 30 minutes (<a href="limits#the-engine">Limits</a>). Several worktrees with warm engines therefore hold several times that memory. In a worktree you are done with, run <code>fuse stop</code> to give its memory back at once.</li>
       <li>Fuse never runs <code>dotnet restore</code>, so a new worktree needs one before its first check. Until then, a check answers with the command to run.</li>
       <li>Run <code>fuse init</code> in a worktree only when its settings files differ from the main working tree's, because committed settings are already there.</li>
     </ul>
 
     <h2 id="telling-agents-about-fuse">Telling agents about Fuse <a class="anchor" href="#telling-agents-about-fuse" aria-label="Link to this section">#</a></h2>
-    <p>The hooks work without any instructions, but an agent uses the commands better when it knows them. A subagent starts with only the instructions files. <code>fuse init --instructions</code> writes a Fuse section into <code>AGENTS.md</code>, creating the file when the repository has none. It also writes into <code>CLAUDE.md</code> when that file exists and does not import <code>@AGENTS.md</code>, and into <code>GEMINI.md</code> when that file exists. The section sits between <code>&lt;!-- fuse:begin --&gt;</code> and <code>&lt;!-- fuse:end --&gt;</code>. Running the command again replaces only what is between them and keeps the rest of the file (<a href="commands.html#fuse-init-instructions">fuse init --instructions</a>).</p>
+    <p>The hooks work without any instructions, but an agent uses the commands better when it knows them. A subagent starts with only the instructions files. <code>fuse init --instructions</code> writes a Fuse section into <code>AGENTS.md</code>, creating the file when the repository has none. It also writes into <code>CLAUDE.md</code> when that file exists and does not import <code>@AGENTS.md</code>, and into <code>GEMINI.md</code> when that file exists. The section sits between <code>&lt;!-- fuse:begin --&gt;</code> and <code>&lt;!-- fuse:end --&gt;</code>. Running the command again replaces only what is between them and keeps the rest of the file (<a href="commands#fuse-init-instructions">fuse init --instructions</a>).</p>
     <pre data-label="AGENTS.md"><code>&lt;!-- fuse:begin --&gt;
 ## Fuse
 
@@ -238,42 +238,42 @@ This repository uses [Fuse](https://fuse.codes) to check .NET changes. Its hooks
 &lt;!-- fuse:end --&gt;</code></pre>
 
     <h2 id="stopping-the-engine">Stopping the engine <a class="anchor" href="#stopping-the-engine" aria-label="Link to this section">#</a></h2>
-    <p><code>fuse stop</code> asks the repository's engine to stop. It kills the engine's process when the engine has not exited within 10 seconds. <code>fuse stop --all</code> does the same for the engine of every repository Fuse keeps state for. The next command or hook starts a new engine. Stop the engine when you change an analyzer the repository builds itself, when you are done with a worktree and want its memory back, or when the engine stops answering (<a href="commands.html#fuse-stop">fuse stop</a>).</p>
+    <p><code>fuse stop</code> asks the repository's engine to stop. It kills the engine's process when the engine has not exited within 10 seconds. <code>fuse stop --all</code> does the same for the engine of every repository Fuse keeps state for. The next command or hook starts a new engine. Stop the engine when you change an analyzer the repository builds itself, when you are done with a worktree and want its memory back, or when the engine stops answering (<a href="commands#fuse-stop">fuse stop</a>).</p>
 
     <nav class="pager" aria-label="Previous and next page">
-      <a href="harnesses.html"><span>Previous</span>Connect your agent</a>
-      <a class="next-page" href="how-it-works.html"><span>Next</span>How it works</a>
+      <a href="harnesses"><span>Previous</span>Connect your agent</a>
+      <a class="next-page" href="how-it-works"><span>Next</span>How it works</a>
     </nav>
     </main>
 
     <nav class="sidebar" id="docs-nav" aria-label="Documentation">
       <h2>Start here</h2>
       <ul>
-        <li><a href="index.html">Overview</a></li>
-        <li><a href="getting-started.html">Getting started</a></li>
-        <li><a href="harnesses.html">Connect your agent</a></li>
-        <li><a href="parallel-agents.html" aria-current="page">Subagents and parallel agents</a></li>
+        <li><a href="./">Overview</a></li>
+        <li><a href="getting-started">Getting started</a></li>
+        <li><a href="harnesses">Connect your agent</a></li>
+        <li><a href="parallel-agents" aria-current="page">Subagents and parallel agents</a></li>
       </ul>
       <h2>Understand</h2>
       <ul>
-        <li><a href="how-it-works.html">How it works</a></li>
-        <li><a href="limits.html">Limits</a></li>
-        <li><a href="benchmarks.html">Benchmarks</a></li>
-        <li><a href="faq.html">FAQ</a></li>
+        <li><a href="how-it-works">How it works</a></li>
+        <li><a href="limits">Limits</a></li>
+        <li><a href="benchmarks">Benchmarks</a></li>
+        <li><a href="faq">FAQ</a></li>
       </ul>
       <h2>Reference</h2>
       <ul>
-        <li><a href="commands.html">Commands</a></li>
-        <li><a href="messages.html">Messages and fixes</a></li>
-        <li><a href="troubleshooting.html">Troubleshooting</a></li>
-        <li><a href="changelog.html">Changelog</a></li>
+        <li><a href="commands">Commands</a></li>
+        <li><a href="messages">Messages and fixes</a></li>
+        <li><a href="troubleshooting">Troubleshooting</a></li>
+        <li><a href="changelog">Changelog</a></li>
       </ul>
       <h2>Contribute</h2>
       <ul>
         <li><a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/main/CONTRIBUTING.md">Contributing</a></li>
-        <li><a href="architecture.html">Architecture</a></li>
-        <li><a href="evals.html">Evals</a></li>
-        <li><a href="ai-policy.html">AI policy</a></li>
+        <li><a href="architecture">Architecture</a></li>
+        <li><a href="evals">Evals</a></li>
+        <li><a href="ai-policy">AI policy</a></li>
         <li><a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/main/SECURITY.md">Security</a></li>
       </ul>
     </nav>
@@ -281,7 +281,7 @@ This repository uses [Fuse](https://fuse.codes) to check .NET changes. Its hooks
 
   <footer class="site-footer">
     <a class="maker" href="https://www.litenova.solutions"><img src="../assets/litenova-mark.svg" alt="" width="20" height="20">Built by Litenova Solutions</a>
-    <nav aria-label="Footer"><a href="index.html">Docs</a><a href="changelog.html">Changelog</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
+    <nav aria-label="Footer"><a href="./">Docs</a><a href="changelog">Changelog</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
   </footer>
 </div>
 </body>

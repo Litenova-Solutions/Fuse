@@ -37,7 +37,7 @@ A plain `dotnet build` runs the trim and AOT analyzers, so code the native clien
 
 The documentation is part of the website in `site/`. The site is static HTML with no build step, and it is served at fuse.codes from `main`. The pages are in `site/docs/`. The stylesheet, icons and images they share with the home page are in `site/assets/`. The root of `site/` holds only the home page, the not-found page, and the files hosts and crawlers read there (`_headers`, `_redirects`, `robots.txt`, `sitemap.xml`, `llms.txt`).
 
-Open a page in a browser straight from the checkout to see it as it will look. Each documentation page carries the same header, sidebar and footer, so a new page adds its link to the sidebar of every page, and its URL to `site/sitemap.xml` and `site/llms.txt`. A page that moves gets a line in `site/_redirects`, so links to its old address keep working.
+Serve the site with `npx wrangler dev` from the repository root to see it as it will look: it serves `site/` the way fuse.codes does, so links without `.html` resolve. Opening a file straight from the checkout does not follow those links. Each documentation page carries the same header, sidebar and footer, so a new page adds its link to the sidebar of every page, and its URL to `site/sitemap.xml` and `site/llms.txt`. A page that moves gets a line in `site/_redirects`, so links to its old address keep working.
 
 The Markdown files that remain are the ones GitHub and the release workflow read. The root `README.md` is also the package's page on nuget.org, so its links are absolute. Its images use paths under `site/`. `dotnet pack` rewrites those paths to the version's tag on GitHub, because nuget.org renders no image with a relative path.
 

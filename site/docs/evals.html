@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Evals | Fuse</title>
-<meta name="description" content="How the correctness, test selection and latency evals measure Fuse against real dotnet build and dotnet test runs, and how to run them.">
+<title>How Fuse Is Measured: Evals and Result Files | Fuse</title>
+<meta name="description" content="How the Fuse evals measure correctness, test selection and latency on GitHub Actions against a real dotnet build and dotnet test, and how to run them.">
 <link rel="canonical" href="https://fuse.codes/docs/evals">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 <meta name="author" content="Litenova Solutions">
@@ -13,8 +13,8 @@
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="Fuse">
 <meta property="og:locale" content="en_US">
-<meta property="og:title" content="Evals">
-<meta property="og:description" content="How the correctness, test selection and latency evals measure Fuse against real dotnet build and dotnet test runs, and how to run them.">
+<meta property="og:title" content="How Fuse Is Measured: Evals and Result Files">
+<meta property="og:description" content="How the Fuse evals measure correctness, test selection and latency on GitHub Actions against a real dotnet build and dotnet test, and how to run them.">
 <meta property="og:url" content="https://fuse.codes/docs/evals">
 <meta property="og:image" content="https://fuse.codes/assets/og.png">
 <meta property="og:image:type" content="image/png">
@@ -22,8 +22,8 @@
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 8.1x to 27.7x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Evals">
-<meta name="twitter:description" content="How the correctness, test selection and latency evals measure Fuse against real dotnet build and dotnet test runs, and how to run them.">
+<meta name="twitter:title" content="How Fuse Is Measured: Evals and Result Files">
+<meta name="twitter:description" content="How the Fuse evals measure correctness, test selection and latency on GitHub Actions against a real dotnet build and dotnet test, and how to run them.">
 <meta name="twitter:image" content="https://fuse.codes/assets/og.png">
 <meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 8.1x to 27.7x faster than dotnet build. dotnet tool install -g Fuse.">
 <link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
@@ -40,8 +40,8 @@
     {
       "@type": "TechArticle",
       "@id": "https://fuse.codes/docs/evals#article",
-      "headline": "Evals",
-      "description": "How the correctness, test selection and latency evals measure Fuse against real dotnet build and dotnet test runs, and how to run them.",
+      "headline": "How Fuse Is Measured: Evals and Result Files",
+      "description": "How the Fuse evals measure correctness, test selection and latency on GitHub Actions against a real dotnet build and dotnet test, and how to run them.",
       "url": "https://fuse.codes/docs/evals",
       "mainEntityOfPage": "https://fuse.codes/docs/evals",
       "inLanguage": "en",
@@ -99,23 +99,23 @@
 <a class="skip-link" href="#main">Skip to main content</a>
 <div class="wrap wide">
   <header class="site-header">
-    <a class="brand" href="../index.html"><img src="../assets/fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
+    <a class="brand" href="../"><img src="../assets/fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
     <nav aria-label="Main">
-      <a href="index.html" aria-current="page">Docs</a>
-      <a href="benchmarks.html">Benchmarks</a>
+      <a href="./" aria-current="page">Docs</a>
+      <a href="benchmarks">Benchmarks</a>
       <a class="gh" href="https://github.com/Litenova-Solutions/Fuse" aria-label="Fuse on GitHub"><svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg></a>
     </nav>
   </header>
 
   <div class="docs">
     <main id="main" class="page" tabindex="-1">
-    <p class="crumbs"><a href="index.html">Docs</a> / Contribute</p>
+    <p class="crumbs"><a href="./">Docs</a> / Contribute</p>
     <h1>Evals</h1>
     <p class="jump"><a href="#docs-nav">All documentation pages</a></p>
     <p class="intro">The evals in <code>evals/Fuse.Evals</code> check Fuse's answers against a real <code>dotnet build</code> or <code>dotnet test</code>, so every claim about accuracy and speed rests on a measured comparison. This page describes what each suite measures and how you run it.</p>
     <div class="audience">
       <p><b>This page is for</b> a contributor whose change touches checking, test selection or performance and who must show its effect, and for anyone who wants to know how the published numbers were produced.</p>
-      <p><b>After reading it</b> you can run the suite your change needs, read its result file, and update the pages that quote its numbers. <a href="benchmarks.html">Benchmarks</a> has the published numbers.</p>
+      <p><b>After reading it</b> you can run the suite your change needs, read its result file, and update the pages that quote its numbers. <a href="benchmarks">Benchmarks</a> has the published numbers.</p>
     </div>
 
     <div class="key">
@@ -265,7 +265,7 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
       <li>The truth side runs <code>dotnet build</code> on the solution with the case's edits and takes the build's errors beyond HEAD's as the truth.</li>
       <li>The suite builds HEAD. Then, for each case, it makes the edits, runs <code>fuse check</code> on the edited files, resets the tree, and matches Fuse's errors with the truth by position (file, line and column).</li>
     </ol>
-    <p>A Fuse error at a truth position with a different id or message is a message mismatch. A Fuse error with no truth at its position is unverifiable when it sits in a project MSBuild skipped because a project it references failed. It is deferred when the compiler skipped it (see <a href="benchmarks.html#reading-the-numbers">Benchmarks</a>), which covers the flow analysis errors the compiler places on a declaration (CS0161, CS0171, CS0177 and CS0843). Otherwise it is contradicted. A truth error without a Fuse error at its position is missed. Each case gets a verdict:</p>
+    <p>A Fuse error at a truth position with a different id or message is a message mismatch. A Fuse error with no truth at its position is unverifiable when it sits in a project MSBuild skipped because a project it references failed. It is deferred when the compiler skipped it (see <a href="benchmarks#reading-the-numbers">Benchmarks</a>), which covers the flow analysis errors the compiler places on a declaration (CS0161, CS0171, CS0177 and CS0843). Otherwise it is contradicted. A truth error without a Fuse error at its position is missed. Each case gets a verdict:</p>
     <div class="table-scroll" role="region" aria-label="Correctness verdicts" tabindex="0">
     <table>
       <thead><tr><th scope="col">Verdict</th><th scope="col">Meaning</th></tr></thead>
@@ -325,15 +325,15 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
       <li><strong>Attribution.</strong> One pair of writers from the <a href="#attribution-suite">attribution suite</a>, recorded here with the other scenarios.</li>
       <li><strong>Stops.</strong> The scenario makes a body edit in one file of each code project, up to 20, then runs a <code>fuse check</code> of every change, as a stop hook does, and 5 more checks, each after another body edit in the first file.
         <ul>
-          <li>A repeat compiles the file that changed and can keep the others' errors from the earlier check (<a href="how-it-works.html#check">errors kept from an earlier check</a>). The result records the most files one repeat kept, from the engine log's <code>check:</code> line.</li>
+          <li>A repeat compiles the file that changed and can keep the others' errors from the earlier check (<a href="how-it-works#check">errors kept from an earlier check</a>). The result records the most files one repeat kept, from the engine log's <code>check:</code> line.</li>
           <li>It also records 3 checks of the same tree with no edit in between (<code>stopsUnchangedRepeat</code>), which answer from the kept answer. Each records its wall time and how many documents it bound: 0 for a kept answer.</li>
         </ul>
       </li>
-      <li><strong>Tests.</strong> The scenario makes a body edit in a file a test project uses, runs one <code>fuse test</code> that is not measured so the engine and the copies are ready, then one <code>fuse test</code> on its own and 2 started together, each after another body edit. Runs that took turns would take about twice as long as one run; runs without MSBuild from their own copies (<a href="how-it-works.html#without-msbuild">each run holds its own copy</a>) overlap.</li>
+      <li><strong>Tests.</strong> The scenario makes a body edit in a file a test project uses, runs one <code>fuse test</code> that is not measured so the engine and the copies are ready, then one <code>fuse test</code> on its own and 2 started together, each after another body edit. Runs that took turns would take about twice as long as one run; runs without MSBuild from their own copies (<a href="how-it-works#without-msbuild">each run holds its own copy</a>) overlap.</li>
     </ul>
 
     <h3 id="attribution-suite">Attribution suite <a class="anchor" href="#attribution-suite" aria-label="Link to this section">#</a></h3>
-    <p>The attribution suite measures whether an agent that shares a working tree with another is told the other's errors (<a href="how-it-works.html#check">sessions</a>). It needs no truth and runs no tests, so it takes minutes on a repository.</p>
+    <p>The attribution suite measures whether an agent that shares a working tree with another is told the other's errors (<a href="how-it-works#check">sessions</a>). It needs no truth and runs no tests, so it takes minutes on a repository.</p>
     <p>Up to 3 times, writer A renames a public method in one of the 2 code projects with the most dependents, and writer B adds a statement naming an undeclared variable to a file in another project that calls the method, a different file each time. Each writer's edit then goes through the Claude Code post-edit hook twice: once without a session id and once with one per writer.</p>
     <p>The result file counts the following over the errors the answers print:</p>
     <ul>
@@ -346,7 +346,7 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
     <p>Each run ends with one pair where the second writer never sends a hook. Its directory is registered as its session with <code>fuse session begin</code> instead, and writer A's stop is measured while the registration holds and again after <code>fuse session end</code>. While registered, A's stop should leave the external writer's errors to it; after the end they count as no session's again. On a build without <code>fuse session</code> the result file records why the pair was skipped instead. Registrations expire after 4 hours, which the suite does not wait out, so expiry is never measured.</p>
 
     <h3 id="analyzers-suite">Analyzers suite <a class="anchor" href="#analyzers-suite" aria-label="Link to this section">#</a></h3>
-    <p>The analyzers suite measures what an analyzer that reads the whole project costs (<a href="how-it-works.html#check">compilation-wide analyzers</a>). It generates <code>analyzer-fixture</code> under <code>evals/.work</code>. The fixture holds an analyzer project whose compilation start binds every invocation of the project again and again until 2 seconds have passed, standing in for a package of such analyzers on any runner, and an app project of 300 files that uses it, with its rule <code>SLOW001</code> at error severity.</p>
+    <p>The analyzers suite measures what an analyzer that reads the whole project costs (<a href="how-it-works#check">compilation-wide analyzers</a>). It generates <code>analyzer-fixture</code> under <code>evals/.work</code>. The fixture holds an analyzer project whose compilation start binds every invocation of the project again and again until 2 seconds have passed, standing in for a package of such analyzers on any runner, and an app project of 300 files that uses it, with its rule <code>SLOW001</code> at error severity.</p>
     <p>It runs one cold check, then 5 post-edit hooks and 5 checks of one edited file, and 2 checks of 20 edited files. It then adds a class the analyzer forbids, with a compiler error in it, and reads the engine's peak and idle memory. It needs no truth and runs no tests, so it takes minutes.</p>
     <pre data-label="bash"><code>dotnet run --project evals/Fuse.Evals -c Release -- analyzers analyzer-fixture</code></pre>
     <p>The engine should find the analyzer compilation-wide, <code>fuse check</code> should report both errors, and the post-edit hook should report the compiler error, leave out <code>SLOW001</code> and name the analyzer. A run where any of these fails is a defect.</p>
@@ -386,7 +386,7 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
       <li><code>engine-logs/</code>, the engine and hook logs of the measured repository.</li>
       <li><code>runner.txt</code>, which names the runner image, processor, memory and SDK.</li>
     </ul>
-    <p>The merged latency artifact <code>evals-&lt;repo&gt;-latency</code> holds <code>results/</code> and <code>managed/</code>, the managed client's latency file. The managed file goes to <code>evals/results/managed</code> in the same way, and it is the comparison <a href="benchmarks.html#native-client">Benchmarks</a> quotes. The artifact also holds <code>runner.txt</code> and <code>runner-agents.txt</code>, the runner of the multi-agent scenario. The per-part latency artifacts also hold <code>engine-logs/</code>. Each truth shard's artifact holds its shard and its own <code>runner.txt</code>.</p>
+    <p>The merged latency artifact <code>evals-&lt;repo&gt;-latency</code> holds <code>results/</code> and <code>managed/</code>, the managed client's latency file. The managed file goes to <code>evals/results/managed</code> in the same way, and it is the comparison <a href="benchmarks#native-client">Benchmarks</a> quotes. The artifact also holds <code>runner.txt</code> and <code>runner-agents.txt</code>, the runner of the multi-agent scenario. The per-part latency artifacts also hold <code>engine-logs/</code>. Each truth shard's artifact holds its shard and its own <code>runner.txt</code>.</p>
     <div class="callout tip">
       <p>Runners of the same image can have different processors, so compare 2 builds within one job, as the latency jobs do, rather than across jobs.</p>
     </div>
@@ -527,7 +527,7 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
       <li><code>reportedByCheck</code> and <code>leftOutByHook</code>, the 2 answers to the forbidden class.</li>
       <li><code>enginePeakWorkingSetMb</code> and <code>engineIdleWorkingSetMb</code>.</li>
     </ul>
-    <p><code>fuseStats</code> and <code>dotnetStats</code> describe how the Fuse command's and the dotnet command's times spread over the cases, in seconds: <code>n</code>, <code>fastest</code>, <code>median</code>, <code>mean</code>, <code>standardDeviation</code> (the sample standard deviation), <code>p95</code>, <code>slowest</code> and <code>total</code>. The chart and <a href="benchmarks.html">Benchmarks</a> quote them next to each median.</p>
+    <p><code>fuseStats</code> and <code>dotnetStats</code> describe how the Fuse command's and the dotnet command's times spread over the cases, in seconds: <code>n</code>, <code>fastest</code>, <code>median</code>, <code>mean</code>, <code>standardDeviation</code> (the sample standard deviation), <code>p95</code>, <code>slowest</code> and <code>total</code>. The chart and <a href="benchmarks">Benchmarks</a> quote them next to each median.</p>
     <p>Medians are over the cases, and the average of the 2 middle values for an even count. Percentiles use the nearest-rank method: P95 of 10 or 15 samples is the slowest one.</p>
 
     <h2 id="what-to-run">What to run <a class="anchor" href="#what-to-run" aria-label="Link to this section">#</a></h2>
@@ -541,7 +541,7 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
       </tbody>
     </table>
     </div>
-    <p>Attach the result to the pull request, as <a href="https://github.com/Litenova-Solutions/Fuse/blob/main/CONTRIBUTING.md">Contributing</a> asks. The published set in <a href="benchmarks.html">Benchmarks</a> is <code>all</code> on each of the 4 open-source repositories: 12 files.</p>
+    <p>Attach the result to the pull request, as <a href="https://github.com/Litenova-Solutions/Fuse/blob/main/CONTRIBUTING.md">Contributing</a> asks. The published set in <a href="benchmarks">Benchmarks</a> is <code>all</code> on each of the 4 open-source repositories: 12 files.</p>
 
     <h2 id="quoting-the-numbers">Quoting the numbers <a class="anchor" href="#quoting-the-numbers" aria-label="Link to this section">#</a></h2>
     <p>The rule in <a href="https://github.com/Litenova-Solutions/Fuse/blob/main/AGENTS.md">AGENTS.md</a> binds every page that quotes a benchmark. Numbers come from files in <code>evals/results</code>, and each results table names the files it comes from. Counts are quoted exactly. Times, sizes and percentages are rounded half up: seconds to 2 decimals below 10 s and 1 decimal from 10 s, milliseconds and megabytes to whole numbers, percentages to at most 1 decimal. A speedup is the <code>dotnet</code> median divided by the Fuse median, to 1 decimal.</p>
@@ -554,39 +554,39 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
     </ul>
 
     <nav class="pager" aria-label="Previous and next page">
-      <a href="architecture.html"><span>Previous</span>Architecture</a>
-      <a class="next-page" href="ai-policy.html"><span>Next</span>AI policy</a>
+      <a href="architecture"><span>Previous</span>Architecture</a>
+      <a class="next-page" href="ai-policy"><span>Next</span>AI policy</a>
     </nav>
     </main>
 
     <nav class="sidebar" id="docs-nav" aria-label="Documentation">
       <h2>Start here</h2>
       <ul>
-        <li><a href="index.html">Overview</a></li>
-        <li><a href="getting-started.html">Getting started</a></li>
-        <li><a href="harnesses.html">Connect your agent</a></li>
-        <li><a href="parallel-agents.html">Subagents and parallel agents</a></li>
+        <li><a href="./">Overview</a></li>
+        <li><a href="getting-started">Getting started</a></li>
+        <li><a href="harnesses">Connect your agent</a></li>
+        <li><a href="parallel-agents">Subagents and parallel agents</a></li>
       </ul>
       <h2>Understand</h2>
       <ul>
-        <li><a href="how-it-works.html">How it works</a></li>
-        <li><a href="limits.html">Limits</a></li>
-        <li><a href="benchmarks.html">Benchmarks</a></li>
-        <li><a href="faq.html">FAQ</a></li>
+        <li><a href="how-it-works">How it works</a></li>
+        <li><a href="limits">Limits</a></li>
+        <li><a href="benchmarks">Benchmarks</a></li>
+        <li><a href="faq">FAQ</a></li>
       </ul>
       <h2>Reference</h2>
       <ul>
-        <li><a href="commands.html">Commands</a></li>
-        <li><a href="messages.html">Messages and fixes</a></li>
-        <li><a href="troubleshooting.html">Troubleshooting</a></li>
-        <li><a href="changelog.html">Changelog</a></li>
+        <li><a href="commands">Commands</a></li>
+        <li><a href="messages">Messages and fixes</a></li>
+        <li><a href="troubleshooting">Troubleshooting</a></li>
+        <li><a href="changelog">Changelog</a></li>
       </ul>
       <h2>Contribute</h2>
       <ul>
         <li><a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/main/CONTRIBUTING.md">Contributing</a></li>
-        <li><a href="architecture.html">Architecture</a></li>
-        <li><a href="evals.html" aria-current="page">Evals</a></li>
-        <li><a href="ai-policy.html">AI policy</a></li>
+        <li><a href="architecture">Architecture</a></li>
+        <li><a href="evals" aria-current="page">Evals</a></li>
+        <li><a href="ai-policy">AI policy</a></li>
         <li><a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/main/SECURITY.md">Security</a></li>
       </ul>
     </nav>
@@ -594,7 +594,7 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
 
   <footer class="site-footer">
     <a class="maker" href="https://www.litenova.solutions"><img src="../assets/litenova-mark.svg" alt="" width="20" height="20">Built by Litenova Solutions</a>
-    <nav aria-label="Footer"><a href="index.html">Docs</a><a href="changelog.html">Changelog</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
+    <nav aria-label="Footer"><a href="./">Docs</a><a href="changelog">Changelog</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
   </footer>
 </div>
 </body>

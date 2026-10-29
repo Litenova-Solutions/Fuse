@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Fuse: faster .NET build and test loop for AI coding agents</title>
-<meta name="description" content="Fuse makes dotnet build and dotnet test faster for AI coding agents: it checks each edit 8.1x to 27.7x faster than dotnet build and runs only the affected tests.">
+<title>Fuse: Faster .NET Build and Test Loop for AI Coding Agents</title>
+<meta name="description" content="Fuse speeds up dotnet build and dotnet test for AI coding agents: it checks each edit 8.1x to 27.7x faster than dotnet build and runs only the affected tests.">
 <link rel="canonical" href="https://fuse.codes/">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 <meta name="author" content="Litenova Solutions">
@@ -13,8 +13,8 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Fuse">
 <meta property="og:locale" content="en_US">
-<meta property="og:title" content="Fuse: faster .NET build and test loop for AI coding agents">
-<meta property="og:description" content="Fuse makes dotnet build and dotnet test faster for AI coding agents: it checks each edit 8.1x to 27.7x faster than dotnet build and runs only the affected tests.">
+<meta property="og:title" content="Fuse: Faster .NET Build and Test Loop for AI Coding Agents">
+<meta property="og:description" content="Fuse speeds up dotnet build and dotnet test for AI coding agents: it checks each edit 8.1x to 27.7x faster than dotnet build and runs only the affected tests.">
 <meta property="og:url" content="https://fuse.codes/">
 <meta property="og:image" content="https://fuse.codes/assets/og.png">
 <meta property="og:image:type" content="image/png">
@@ -22,14 +22,15 @@
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 8.1x to 27.7x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Fuse: faster .NET build and test loop for AI coding agents">
-<meta name="twitter:description" content="Fuse makes dotnet build and dotnet test faster for AI coding agents: it checks each edit 8.1x to 27.7x faster than dotnet build and runs only the affected tests.">
+<meta name="twitter:title" content="Fuse: Faster .NET Build and Test Loop for AI Coding Agents">
+<meta name="twitter:description" content="Fuse speeds up dotnet build and dotnet test for AI coding agents: it checks each edit 8.1x to 27.7x faster than dotnet build and runs only the affected tests.">
 <meta name="twitter:image" content="https://fuse.codes/assets/og.png">
 <meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 8.1x to 27.7x faster than dotnet build. dotnet tool install -g Fuse.">
 <link rel="icon" href="assets/favicon.png" type="image/png" sizes="48x48">
 <link rel="icon" href="assets/fuse-icon.svg" type="image/svg+xml" sizes="any">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <link rel="sitemap" type="application/xml" href="sitemap.xml">
+<link rel="alternate" type="text/plain" title="llms.txt" href="/llms.txt">
 <link rel="stylesheet" href="assets/style.css">
 <noscript><style>.cmd button { display: none; }</style></noscript>
 <script type="application/ld+json">
@@ -65,7 +66,8 @@
         "width": 1200,
         "height": 630
       },
-      "inLanguage": "en"
+      "inLanguage": "en",
+      "dateModified": "2026-10-29"
     },
     {
       "@type": "SoftwareApplication",
@@ -74,6 +76,10 @@
       "url": "https://fuse.codes/",
       "description": "Fuse makes dotnet build and dotnet test faster for AI coding agents. It keeps the solution loaded, reports the compiler errors each edit caused 8.1x to 27.7x faster than dotnet build, and runs only the affected tests.",
       "applicationCategory": "DeveloperApplication",
+      "applicationSubCategory": ".NET developer tool",
+      "softwareVersion": "5.7.0",
+      "releaseNotes": "https://fuse.codes/docs/changelog#v5-7-0",
+      "installUrl": "https://www.nuget.org/packages/Fuse",
       "operatingSystem": "Windows, Linux, macOS",
       "softwareRequirements": ".NET 10 SDK",
       "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
@@ -113,17 +119,17 @@
 <a class="skip-link" href="#main">Skip to main content</a>
 <div class="wrap">
   <header class="site-header">
-    <a class="brand" href="index.html" aria-current="page"><img src="assets/fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
+    <a class="brand" href="./" aria-current="page"><img src="assets/fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
     <nav aria-label="Main">
-      <a href="docs/index.html">Docs</a>
-      <a href="docs/benchmarks.html">Benchmarks</a>
+      <a href="docs/">Docs</a>
+      <a href="docs/benchmarks">Benchmarks</a>
       <a class="gh" href="https://github.com/Litenova-Solutions/Fuse" aria-label="Fuse on GitHub"><svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg></a>
     </nav>
   </header>
 
   <main id="main" tabindex="-1">
     <section class="hero">
-      <a class="release" href="docs/changelog.html#v5-7-0"><b>v5.7.0</b>Latest release: see what changed</a>
+      <a class="release" href="docs/changelog#v5-7-0"><b>v5.7.0</b>Latest release: see what changed</a>
       <h1>Faster .NET Build and Test Loop for AI Coding Agents</h1>
       <ul class="tags" aria-label="Requirements and license">
         <li>.NET 10 SDK</li><li>C#</li><li>Open Source</li><li>Apache-2.0</li><li>Runs Locally</li>
@@ -134,7 +140,7 @@
         <div class="cmd"><span><span class="dim">$ </span>dotnet tool install -g Fuse</span><button type="button" data-copy="dotnet tool install -g Fuse" aria-label="Copy dotnet tool install -g Fuse">Copy</button></div>
         <p class="label">In your repository:</p>
         <div class="cmd"><span><span class="dim">$ </span>fuse init</span><button type="button" data-copy="fuse init" aria-label="Copy fuse init">Copy</button></div>
-        <p class="label">New to Fuse? <a href="docs/getting-started.html">Getting started</a> shows what Fuse reports.</p>
+        <p class="label">New to Fuse? <a href="docs/getting-started">Getting started</a> shows what Fuse reports.</p>
       </div>
     </section>
 
@@ -223,7 +229,7 @@
           <p class="x"><b>2.9x</b> faster at the median</p>
         </div>
       </div>
-      <p class="proof">In 40 generated changes, 24 of which made tests fail, <code>fuse test</code> ran every failing test except 1 hedging test in a Polly case. See <a href="docs/benchmarks.html">Benchmarks</a>.</p>
+      <p class="proof">In 40 generated changes, 24 of which made tests fail, <code>fuse test</code> ran every failing test except 1 hedging test in a Polly case. See <a href="docs/benchmarks">Benchmarks</a>.</p>
     </section>
 
     <section class="section" aria-labelledby="features-heading">
@@ -232,19 +238,19 @@
         <h2 id="features-heading">Features</h2>
       </div>
       <ul class="features">
-        <li class="wide" id="parallel"><a href="docs/parallel-agents.html"><span class="ficon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="5.5" r="2.3"/><circle cx="12" cy="5.5" r="2.3"/><circle cx="19" cy="5.5" r="2.3"/><path d="M5 7.8v1.7a3 3 0 0 0 3 3h8a3 3 0 0 0 3-3V7.8M12 7.8v8.2"/><rect x="7.5" y="16" width="9" height="5.5" rx="1.5"/></svg></span><b>Parallel agents in one working tree</b><span>Agents that build at once fail on each other's files in <code>obj</code> and <code>bin</code>, so each usually gets its own git worktree. With Fuse they share one working tree and one engine, and their builds take turns: 0 locked-file errors in 60 builds run 3 at a time, and 150 of 150 checks answered with 3 or 4 agents editing at once.</span><i>Subagents and parallel agents -&gt;</i></a></li>
-        <li><a href="docs/how-it-works.html#test-selection"><span class="ficon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/></svg></span><b>Affected tests</b><span>Runs only the tests the changed code can reach, and skips the rebuild when only <code>.cs</code> files changed.</span><i>How tests are selected -&gt;</i></a></li>
-        <li><a href="docs/harnesses.html"><span class="ficon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2.5v4.5M15 2.5v4.5"/><path d="M6 7h12v3.5a6 6 0 0 1-12 0z"/><path d="M12 16.5v5"/></svg></span><b>Supported agents</b><span>Claude Code, Cursor, Codex, Gemini CLI, GitHub Copilot CLI, OpenCode and Muse Code. One <code>fuse init</code> sets up the hooks that check every edit.</span><i>Connect your agent -&gt;</i></a></li>
-        <li><a href="docs/how-it-works.html#privacy"><span class="ficon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10.5" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.7" r="1.2" fill="currentColor"/></svg></span><b>Runs locally</b><span>Fuse sends no telemetry, makes no network calls of its own, and has no settings to maintain.</span><i>Privacy and footprint -&gt;</i></a></li>
-        <li><a href="docs/how-it-works.html#failure-handling"><span class="ficon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6.5 9H3.5v6h3l4.5 4z"/><path d="m15.5 9.5 5 5M20.5 9.5l-5 5"/></svg></span><b>Silent when it cannot answer</b><span>If Fuse cannot answer, the hook prints nothing and the agent continues. Fuse never edits your code.</span><i>When Fuse cannot answer -&gt;</i></a></li>
+        <li class="wide" id="parallel"><a href="docs/parallel-agents"><span class="ficon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="5.5" r="2.3"/><circle cx="12" cy="5.5" r="2.3"/><circle cx="19" cy="5.5" r="2.3"/><path d="M5 7.8v1.7a3 3 0 0 0 3 3h8a3 3 0 0 0 3-3V7.8M12 7.8v8.2"/><rect x="7.5" y="16" width="9" height="5.5" rx="1.5"/></svg></span><b>Parallel agents in one working tree</b><span>Agents that build at once fail on each other's files in <code>obj</code> and <code>bin</code>, so each usually gets its own git worktree. With Fuse they share one working tree and one engine, and their builds take turns: 0 locked-file errors in 60 builds run 3 at a time, and 150 of 150 checks answered with 3 or 4 agents editing at once.</span><i>Subagents and parallel agents -&gt;</i></a></li>
+        <li><a href="docs/how-it-works#test-selection"><span class="ficon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/></svg></span><b>Affected tests</b><span>Runs only the tests the changed code can reach, and skips the rebuild when only <code>.cs</code> files changed.</span><i>How tests are selected -&gt;</i></a></li>
+        <li><a href="docs/harnesses"><span class="ficon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2.5v4.5M15 2.5v4.5"/><path d="M6 7h12v3.5a6 6 0 0 1-12 0z"/><path d="M12 16.5v5"/></svg></span><b>Supported agents</b><span>Claude Code, Cursor, Codex, Gemini CLI, GitHub Copilot CLI, OpenCode and Muse Code. One <code>fuse init</code> sets up the hooks that check every edit.</span><i>Connect your agent -&gt;</i></a></li>
+        <li><a href="docs/how-it-works#privacy"><span class="ficon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10.5" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.7" r="1.2" fill="currentColor"/></svg></span><b>Runs locally</b><span>Fuse sends no telemetry, makes no network calls of its own, and has no settings to maintain.</span><i>Privacy and footprint -&gt;</i></a></li>
+        <li><a href="docs/how-it-works#failure-handling"><span class="ficon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6.5 9H3.5v6h3l4.5 4z"/><path d="m15.5 9.5 5 5M20.5 9.5l-5 5"/></svg></span><b>Silent when it cannot answer</b><span>If Fuse cannot answer, the hook prints nothing and the agent continues. Fuse never edits your code.</span><i>When Fuse cannot answer -&gt;</i></a></li>
       </ul>
-      <p class="proof"><b>The cost is memory.</b> Fuse uses 319 MB to 512 MB once idle in the benchmarks, and more on a machine with more memory. <a href="docs/index.html#what-fuse-costs">What Fuse costs</a></p>
+      <p class="proof"><b>The cost is memory.</b> Fuse uses 319 MB to 512 MB once idle in the benchmarks, and more on a machine with more memory. <a href="docs/#what-fuse-costs">What Fuse costs</a></p>
     </section>
   </main>
 
   <footer class="site-footer">
     <a class="maker" href="https://www.litenova.solutions"><img src="assets/litenova-mark.svg" alt="" width="20" height="20">Built by Litenova Solutions</a>
-    <nav aria-label="Footer"><a href="docs/index.html">Docs</a><a href="docs/changelog.html">Changelog</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
+    <nav aria-label="Footer"><a href="docs/">Docs</a><a href="docs/changelog">Changelog</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
   </footer>
 </div>
 <script>

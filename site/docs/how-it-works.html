@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>How Fuse Works | Fuse</title>
-<meta name="description" content="How Fuse checks an edit against the commit you have checked out, selects the affected tests, runs them without MSBuild, and keeps several agents from breaking each other's builds.">
+<title>How Fuse Checks .NET Edits and Selects Tests | Fuse</title>
+<meta name="description" content="How Fuse keeps a .NET solution loaded, checks each edit against HEAD, follows changed declarations into dependent projects and picks the tests a change reaches.">
 <link rel="canonical" href="https://fuse.codes/docs/how-it-works">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 <meta name="author" content="Litenova Solutions">
@@ -13,8 +13,8 @@
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="Fuse">
 <meta property="og:locale" content="en_US">
-<meta property="og:title" content="How Fuse Works">
-<meta property="og:description" content="How Fuse checks an edit against the commit you have checked out, selects the affected tests, runs them without MSBuild, and keeps several agents from breaking each other's builds.">
+<meta property="og:title" content="How Fuse Checks .NET Edits and Selects Tests">
+<meta property="og:description" content="How Fuse keeps a .NET solution loaded, checks each edit against HEAD, follows changed declarations into dependent projects and picks the tests a change reaches.">
 <meta property="og:url" content="https://fuse.codes/docs/how-it-works">
 <meta property="og:image" content="https://fuse.codes/assets/og.png">
 <meta property="og:image:type" content="image/png">
@@ -22,8 +22,8 @@
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 8.1x to 27.7x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="How Fuse Works">
-<meta name="twitter:description" content="How Fuse checks an edit against the commit you have checked out, selects the affected tests, runs them without MSBuild, and keeps several agents from breaking each other's builds.">
+<meta name="twitter:title" content="How Fuse Checks .NET Edits and Selects Tests">
+<meta name="twitter:description" content="How Fuse keeps a .NET solution loaded, checks each edit against HEAD, follows changed declarations into dependent projects and picks the tests a change reaches.">
 <meta name="twitter:image" content="https://fuse.codes/assets/og.png">
 <meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 8.1x to 27.7x faster than dotnet build. dotnet tool install -g Fuse.">
 <link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
@@ -40,8 +40,8 @@
     {
       "@type": "TechArticle",
       "@id": "https://fuse.codes/docs/how-it-works#article",
-      "headline": "How Fuse Works",
-      "description": "How Fuse checks an edit against the commit you have checked out, selects the affected tests, runs them without MSBuild, and keeps several agents from breaking each other's builds.",
+      "headline": "How Fuse Checks .NET Edits and Selects Tests",
+      "description": "How Fuse keeps a .NET solution loaded, checks each edit against HEAD, follows changed declarations into dependent projects and picks the tests a change reaches.",
       "url": "https://fuse.codes/docs/how-it-works",
       "mainEntityOfPage": "https://fuse.codes/docs/how-it-works",
       "inLanguage": "en",
@@ -99,23 +99,23 @@
 <a class="skip-link" href="#main">Skip to main content</a>
 <div class="wrap wide">
   <header class="site-header">
-    <a class="brand" href="../index.html"><img src="../assets/fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
+    <a class="brand" href="../"><img src="../assets/fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
     <nav aria-label="Main">
-      <a href="index.html" aria-current="page">Docs</a>
-      <a href="benchmarks.html">Benchmarks</a>
+      <a href="./" aria-current="page">Docs</a>
+      <a href="benchmarks">Benchmarks</a>
       <a class="gh" href="https://github.com/Litenova-Solutions/Fuse" aria-label="Fuse on GitHub"><svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg></a>
     </nav>
   </header>
 
   <div class="docs">
     <main id="main" class="page" tabindex="-1">
-    <p class="crumbs"><a href="index.html">Docs</a> / Understand</p>
+    <p class="crumbs"><a href="./">Docs</a> / Understand</p>
     <h1>How Fuse Works</h1>
     <p class="jump"><a href="#docs-nav">All documentation pages</a></p>
     <p class="intro">Fuse answers 2 questions for a coding agent in a .NET repository: which compiler errors the changes introduce, and which tests the changes can break. It answers both from a background process that keeps the solution loaded, so the agent does not wait for a full build. All agents and subagents in the repository share that process.</p>
     <div class="audience">
       <p><b>This page is for</b> anyone who wants to know what happens between an agent's edit and Fuse's answer, and why Fuse is built that way. That is a user deciding how far to trust a clean answer, or a contributor starting on the code.</p>
-      <p><b>How to read it:</b> the first 2 sections explain the idea in plain terms. Each later section starts with a summary and then gives the exact rules. <a href="architecture.html">Architecture</a> maps this behavior to the code, and <a href="limits.html">Limits</a> lists what it cannot see.</p>
+      <p><b>How to read it:</b> the first 2 sections explain the idea in plain terms. Each later section starts with a summary and then gives the exact rules. <a href="architecture">Architecture</a> maps this behavior to the code, and <a href="limits">Limits</a> lists what it cannot see.</p>
     </div>
 
     <div class="key">
@@ -162,12 +162,12 @@
           <li>The <strong>pre-shell</strong> hook rewrites <code>dotnet build</code> and <code>dotnet test</code> in a shell command to <code>fuse build</code> and <code>fuse test</code>.</li>
           <li>The <strong>stop</strong> hook checks every change before the agent finishes. When errors that the agent's own edits cause remain, it sends the agent back once. In Claude Code a subagent's stop runs the same hook, so a subagent fixes its own errors before it hands its work back.</li>
         </ul>
-        <p>The agent never calls a hook itself; the harness runs each one on its event. OpenCode runs JavaScript plugins instead of commands, so <code>fuse init</code> writes a plugin that forwards the same events to <code>fuse hook opencode</code>. Muse Code runs hooks only from a plugin bundle, so <code>fuse init</code> writes one that you install and approve once (<a href="harnesses.html#muse-code">Muse Code</a>).</p>
+        <p>The agent never calls a hook itself; the harness runs each one on its event. OpenCode runs JavaScript plugins instead of commands, so <code>fuse init</code> writes a plugin that forwards the same events to <code>fuse hook opencode</code>. Muse Code runs hooks only from a plugin bundle, so <code>fuse init</code> writes one that you install and approve once (<a href="harnesses#muse-code">Muse Code</a>).</p>
       </li>
       <li><strong>The command line</strong> is <code>fuse check</code>, <code>fuse test</code> and <code>fuse build</code>, for people and for agents that run shell commands.</li>
       <li><strong>The MCP server</strong> is <code>fuse mcp</code>, which serves the 3 operations as the tools <code>fuse_check</code>, <code>fuse_test</code> and <code>fuse_build</code> to an MCP host (the application that runs an MCP client) that has no hooks, such as VS Code agent mode.</li>
     </ul>
-    <p><code>fuse init</code> registers the hooks with each harness the repository uses. <a href="harnesses.html">Connect your agent</a> lists what it writes.</p>
+    <p><code>fuse init</code> registers the hooks with each harness the repository uses. <a href="harnesses">Connect your agent</a> lists what it writes.</p>
 
     <h2 id="process-model">One warm process per repository <a class="anchor" href="#process-model" aria-label="Link to this section">#</a></h2>
     <p><code>dotnet build</code> starts MSBuild, evaluates every project and compiles what changed, on every call. Most of that work gives the same result from one edit to the next, so Fuse does it once and keeps the result. The result lives in a long-lived process, the <strong>engine</strong>, which holds the evaluated and compiled projects in memory and answers each request from them. Every command and hook runs in a short-lived <strong>client</strong>, which sends one request to the engine and prints the answer.</p>
@@ -199,11 +199,11 @@
           <li>The copies of the repository's own analyzers.</li>
           <li>A <code>root</code> file with the repository's path.</li>
         </ul>
-        <p>Once a day, a starting engine deletes every state directory whose repository no longer exists and that nothing wrote to for a day. That removes the state of deleted temporary repositories, for example. Fuse writes nothing inside the repository except the settings and the <code>.gitignore</code> line <code>fuse init</code> writes. <a href="troubleshooting.html#where-the-logs-are">Troubleshooting</a> gives the path on each operating system.</p>
+        <p>Once a day, a starting engine deletes every state directory whose repository no longer exists and that nothing wrote to for a day. That removes the state of deleted temporary repositories, for example. Fuse writes nothing inside the repository except the settings and the <code>.gitignore</code> line <code>fuse init</code> writes. <a href="troubleshooting#where-the-logs-are">Troubleshooting</a> gives the path on each operating system.</p>
       </li>
       <li><strong>One request at a time.</strong>
         <p>The engine answers checks and test plans one at a time, behind a request lock, because each one brings the shared compilations up to date before it reads them. A test plan holds the lock only while it brings them up to date and selects the tests. It copies build output and emits the changed assemblies after it releases the lock, from the compilations as they were when it selected, so a check from another agent does not wait for the copying and emitting.</p>
-        <p>When a client disconnects before its answer arrives, the engine cancels that request, so the lock passes to the next one. The client disconnects when the agent or its harness gives up waiting. <code>engine.log</code> names every request and gives one line of per-phase times (<a href="troubleshooting.html#reading-a-phase-line">reading a phase line</a>).</p>
+        <p>When a client disconnects before its answer arrives, the engine cancels that request, so the lock passes to the next one. The client disconnects when the agent or its harness gives up waiting. <code>engine.log</code> names every request and gives one line of per-phase times (<a href="troubleshooting#reading-a-phase-line">reading a phase line</a>).</p>
       </li>
       <li><strong>The client is native code.</strong> On Windows x64, Linux x64, Linux Arm64 and macOS Arm64, the <code>fuse</code> command is the native client, which is the client compiled ahead of time to native code. A hook therefore starts no .NET runtime and compiles nothing before it sends its request. The engine loads MSBuild and the repository's analyzers at run time. Native code cannot do that, so the native client always starts the engine as <code>dotnet fuse.dll engine &lt;root&gt;</code> from the <code>fuse.dll</code> installed with it. On every other platform <code>fuse</code> runs <code>fuse.dll</code> on the .NET runtime, as <code>dotnet tool run fuse</code> and a tool manifest do everywhere.</li>
       <li><strong>Nothing starts where there is nothing to check.</strong> A client starts an engine only in a repository where git knows a <code>.csproj</code> file (tracked, or untracked and not ignored). In any other repository a command or hook costs at most 2 <code>git ls-files</code> calls and starts nothing.</li>
@@ -289,7 +289,7 @@
       </li>
       <li><strong>Errors about generated code.</strong> When an error is about a type or member that a <a href="#projects-and-compilations">generated file</a> declares, a line under it names the file: <code>generated: Api/obj/Contract/Client.cs declares it, and Fuse reads that file as the last build wrote it; if it is generated from changed code, run fuse build to write it again</code>. A member the agent just added to the generator's source is missing from the file until a build writes it again. Such an error can therefore mean only that the file still holds the last build's content. After <code>fuse build</code>, the next check reads the new file. The line appears once per file in an answer.</li>
       <li><strong>Sessions.</strong>
-        <p>When several agents edit one working tree, the post-edit hook and the stop hook tell each agent only the errors its own edits cause. A <strong>session</strong> is one agent's run as its harness identifies it in the hook's payload (<a href="harnesses.html#sessions">what each harness sends</a>). A subagent the harness identifies on its own is a session of its own. The engine records which sessions wrote each changed file, in <code>sessions.tsv</code> in its state directory. It forgets a file once the file matches HEAD again.</p>
+        <p>When several agents edit one working tree, the post-edit hook and the stop hook tell each agent only the errors its own edits cause. A <strong>session</strong> is one agent's run as its harness identifies it in the hook's payload (<a href="harnesses#sessions">what each harness sends</a>). A subagent the harness identifies on its own is a session of its own. The engine records which sessions wrote each changed file, in <code>sessions.tsv</code> in its state directory. It forgets a file once the file matches HEAD again.</p>
         <p>The check still reads the whole working tree. Then, for each error in a file the session did not write together with another session, the engine compiles that file again in a view of the working tree with the files only other sessions wrote put back at HEAD. An error that is still there is the session's own.</p>
         <p>An error that is gone is compiled once more, in a view with the files only this session wrote put back at HEAD. When it is still there, other sessions' edits caused it without this one, so it is left out of this session's answer, and the summary counts it (<code>1 error(s) from other sessions' edits left out</code>). When it is gone too, it needs both sessions' edits, so it is reported.</p>
         <p>An error in a file several sessions wrote, and an error in a file no session is credited with, because a shell command, a generator or a tool without a post-edit hook changed it, is reported to every session whose check finds it. A check without a session, from the command line, the MCP server or a harness that names none, reports every error.</p>
@@ -300,7 +300,7 @@
         <p>An error another session's edits cause on their own is left to that session, which may still be writing the file. The summary counts only those in reach. The <code>N file(s) checked</code> count covers the session's targets and candidates, not the whole working tree. <code>fuse check</code>, the MCP tool and a stop with no session are unchanged. They cover every change.</p>
         <p>A subagent's session id starts with its parent's, followed by <code>/</code> and the subagent's own id. While the subagent runs, its edits count as another session's, so its parent's stop never blocks on half-written work. Once the subagent's own stop hook has run, it writes no more, and from then on its parent session counts its edits as its own. What the subagent left broken is the parent's to fix. The engine records a stopped session in <code>sessions.tsv</code> too. A harness that names no session gets every error at its stop hook, with the line <code>another agent editing this working tree may have caused some of them</code>.</p>
       </li>
-      <li><strong>The cost of sessions.</strong> The views cost time only while another session has written a file of its own, because each view compiles the projects whose files it puts back a second time. In the <a href="evals.html#attribution-suite">attribution suite</a>, the median post-edit hook took 504 ms with sessions and 98 ms without on FluentValidation, 1,706 ms and 328 ms on NodaTime, whose core project the views compiled again, 3,340 ms and 172 ms on Jellyfin, and 753 ms and 166 ms on Polly (<code>attribution-FluentValidation-20261029-1937.json</code>, <code>attribution-NodaTime-20261029-1938.json</code>, <code>attribution-Jellyfin-20261029-1939.json</code>, <code>attribution-Polly-20261029-1938.json</code>). Past 40 files to decide, the remaining errors are reported without being compiled again, and the summary then counts them. It says <code>errors in N file(s) not compared with other sessions' edits, so some of them may be other sessions'</code>.</li>
+      <li><strong>The cost of sessions.</strong> The views cost time only while another session has written a file of its own, because each view compiles the projects whose files it puts back a second time. In the <a href="evals#attribution-suite">attribution suite</a>, the median post-edit hook took 504 ms with sessions and 98 ms without on FluentValidation, 1,706 ms and 328 ms on NodaTime, whose core project the views compiled again, 3,340 ms and 172 ms on Jellyfin, and 753 ms and 166 ms on Polly (<code>attribution-FluentValidation-20261029-1937.json</code>, <code>attribution-NodaTime-20261029-1938.json</code>, <code>attribution-Jellyfin-20261029-1939.json</code>, <code>attribution-Polly-20261029-1938.json</code>). Past 40 files to decide, the remaining errors are reported without being compiled again, and the summary then counts them. It says <code>errors in N file(s) not compared with other sessions' edits, so some of them may be other sessions'</code>.</li>
     </ol>
     <p>Errors that share their cause print under one header that names it once. The header is <code>changed: &lt;declaration&gt; (N error(s))</code>, or <code>removed: ...</code> for a removed declaration, with <code>(N error(s), first M shown)</code> when the cap cuts the group. Grouped members print no cause line, since the header names it. Member error lines keep their shape at column 0. <code>last-check-results.txt</code> stays flat with every error.</p>
     <p>The engine returns at most 200 errors per answer by default, ordered by file and position, and the client prints the first 20. <code>--max-errors</code> and <code>--all-errors</code> raise both limits.</p>
@@ -373,13 +373,13 @@
     <p id="build-log"><strong>What <code>fuse build</code> prints</strong> is the build's errors, one line each. When you run <code>fuse build</code>, it also adds a file log to the build: MSBuild's file logger 9 at normal verbosity with its performance summary. The log is written to the state directory (the temporary folder outside a repository) and deleted once read. A test run with MSBuild adds it too. When the build produced warnings, the summary line counts them (<code>; 42 warning(s)</code>), read from the same log. Without <code>--warnings</code> warnings are counted, never listed. The log adds 2 more things the errors alone leave out:</p>
     <ul>
       <li>Under an <code>error MSB3073</code>, which says only that a command an MSBuild target ran exited with a code other than 0, the answer prints the last lines that command printed, at most 20, such as a code generator's exception and its first stack frame.</li>
-      <li>A build of 10 seconds or more ends its summary line with the 3 slowest tasks, their times summed over every project, and the 3 slowest projects. The compiler task, <code>Csc</code>, includes the analyzers and source generators it runs. Projects build in parallel, so a task's sum can exceed the build's own time. <a href="troubleshooting.html#a-slow-build">A slow build</a> says how to read it.</li>
+      <li>A build of 10 seconds or more ends its summary line with the 3 slowest tasks, their times summed over every project, and the 3 slowest projects. The compiler task, <code>Csc</code>, includes the analyzers and source generators it runs. Projects build in parallel, so a task's sum can exceed the build's own time. <a href="troubleshooting#a-slow-build">A slow build</a> says how to read it.</li>
     </ul>
     <p>When a build fails with CS2001 on a source file that no longer exists, another agent moved or deleted it while MSBuild compiled the file list it had evaluated. <code>fuse build</code> then runs the build once more, which evaluates the file list again, and prints <code>fuse: a source file moved while the build ran, so it ran again</code> above the answer.</p>
     <p>The engine takes no lock. It writes nothing into the working tree, a check does not build, and it loads the repository's analyzers from copies. A <code>dotnet build</code> that does not go through Fuse takes no lock either. The pre-shell hook rewrites an agent's <code>dotnet build</code> and <code>dotnet test</code> so that they do.</p>
 
     <h2 id="failure-handling">Failure handling <a class="anchor" href="#failure-handling" aria-label="Link to this section">#</a></h2>
-    <p>When Fuse cannot answer, the answer carries one of 9 codes and a message that names the fix: not a repository, no projects, loading, restore needed, load failed, timeout, invalid path, no registered session, internal. Commands print the message and exit with code 2. The MCP server marks the result as an error. <a href="messages.html">Messages and fixes</a> lists every message.</p>
+    <p>When Fuse cannot answer, the answer carries one of 9 codes and a message that names the fix: not a repository, no projects, loading, restore needed, load failed, timeout, invalid path, no registered session, internal. Commands print the message and exit with code 2. The MCP server marks the result as an error. <a href="messages">Messages and fixes</a> lists every message.</p>
     <p>A hook must never break the agent's session. It reports introduced errors and a missing restore, and nothing else. Every other outcome exits 0 and prints nothing the agent reads. A stop hook that lets the agent finish prints the empty answer its harness expects, such as <code>{}</code>. An exception or a payload that is not valid JSON is written to <code>hook.log</code> in the state directory. A post-edit hook that a harness runs inline, which is every harness except Claude Code, does not wait for an engine that is still loading. The stop hook therefore reports the first edits after the engine starts.</p>
 
     <h2 id="privacy">Privacy and footprint <a class="anchor" href="#privacy" aria-label="Link to this section">#</a></h2>
@@ -390,42 +390,42 @@
       <li>In a repository without a <code>.csproj</code> file, hooks return at once and no engine starts.</li>
       <li>Fuse has no configuration file and no environment variables of its own.</li>
     </ul>
-    <p>The <a href="faq.html">FAQ</a> answers common questions, and how Fuse differs from language servers and other tools.</p>
+    <p>The <a href="faq">FAQ</a> answers common questions, and how Fuse differs from language servers and other tools.</p>
 
     <nav class="pager" aria-label="Previous and next page">
-      <a href="parallel-agents.html"><span>Previous</span>Subagents and parallel agents</a>
-      <a class="next-page" href="limits.html"><span>Next</span>Limits</a>
+      <a href="parallel-agents"><span>Previous</span>Subagents and parallel agents</a>
+      <a class="next-page" href="limits"><span>Next</span>Limits</a>
     </nav>
     </main>
 
     <nav class="sidebar" id="docs-nav" aria-label="Documentation">
       <h2>Start here</h2>
       <ul>
-        <li><a href="index.html">Overview</a></li>
-        <li><a href="getting-started.html">Getting started</a></li>
-        <li><a href="harnesses.html">Connect your agent</a></li>
-        <li><a href="parallel-agents.html">Subagents and parallel agents</a></li>
+        <li><a href="./">Overview</a></li>
+        <li><a href="getting-started">Getting started</a></li>
+        <li><a href="harnesses">Connect your agent</a></li>
+        <li><a href="parallel-agents">Subagents and parallel agents</a></li>
       </ul>
       <h2>Understand</h2>
       <ul>
-        <li><a href="how-it-works.html" aria-current="page">How it works</a></li>
-        <li><a href="limits.html">Limits</a></li>
-        <li><a href="benchmarks.html">Benchmarks</a></li>
-        <li><a href="faq.html">FAQ</a></li>
+        <li><a href="how-it-works" aria-current="page">How it works</a></li>
+        <li><a href="limits">Limits</a></li>
+        <li><a href="benchmarks">Benchmarks</a></li>
+        <li><a href="faq">FAQ</a></li>
       </ul>
       <h2>Reference</h2>
       <ul>
-        <li><a href="commands.html">Commands</a></li>
-        <li><a href="messages.html">Messages and fixes</a></li>
-        <li><a href="troubleshooting.html">Troubleshooting</a></li>
-        <li><a href="changelog.html">Changelog</a></li>
+        <li><a href="commands">Commands</a></li>
+        <li><a href="messages">Messages and fixes</a></li>
+        <li><a href="troubleshooting">Troubleshooting</a></li>
+        <li><a href="changelog">Changelog</a></li>
       </ul>
       <h2>Contribute</h2>
       <ul>
         <li><a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/main/CONTRIBUTING.md">Contributing</a></li>
-        <li><a href="architecture.html">Architecture</a></li>
-        <li><a href="evals.html">Evals</a></li>
-        <li><a href="ai-policy.html">AI policy</a></li>
+        <li><a href="architecture">Architecture</a></li>
+        <li><a href="evals">Evals</a></li>
+        <li><a href="ai-policy">AI policy</a></li>
         <li><a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/main/SECURITY.md">Security</a></li>
       </ul>
     </nav>
@@ -433,7 +433,7 @@
 
   <footer class="site-footer">
     <a class="maker" href="https://www.litenova.solutions"><img src="../assets/litenova-mark.svg" alt="" width="20" height="20">Built by Litenova Solutions</a>
-    <nav aria-label="Footer"><a href="index.html">Docs</a><a href="changelog.html">Changelog</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
+    <nav aria-label="Footer"><a href="./">Docs</a><a href="changelog">Changelog</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
   </footer>
 </div>
 </body>

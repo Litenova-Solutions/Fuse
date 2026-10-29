@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Benchmarks | Fuse</title>
-<meta name="description" content="Benchmarks of Fuse against dotnet build and dotnet test on FluentValidation, NodaTime, Jellyfin and Polly.">
+<title>Fuse Benchmarks Against dotnet build and dotnet test | Fuse</title>
+<meta name="description" content="Fuse against dotnet build and dotnet test on FluentValidation, NodaTime, Jellyfin and Polly: check and test times, accuracy and memory, with every result file.">
 <link rel="canonical" href="https://fuse.codes/docs/benchmarks">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 <meta name="author" content="Litenova Solutions">
@@ -13,8 +13,8 @@
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="Fuse">
 <meta property="og:locale" content="en_US">
-<meta property="og:title" content="Benchmarks">
-<meta property="og:description" content="Benchmarks of Fuse against dotnet build and dotnet test on FluentValidation, NodaTime, Jellyfin and Polly.">
+<meta property="og:title" content="Fuse Benchmarks Against dotnet build and dotnet test">
+<meta property="og:description" content="Fuse against dotnet build and dotnet test on FluentValidation, NodaTime, Jellyfin and Polly: check and test times, accuracy and memory, with every result file.">
 <meta property="og:url" content="https://fuse.codes/docs/benchmarks">
 <meta property="og:image" content="https://fuse.codes/assets/og.png">
 <meta property="og:image:type" content="image/png">
@@ -22,8 +22,8 @@
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 8.1x to 27.7x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Benchmarks">
-<meta name="twitter:description" content="Benchmarks of Fuse against dotnet build and dotnet test on FluentValidation, NodaTime, Jellyfin and Polly.">
+<meta name="twitter:title" content="Fuse Benchmarks Against dotnet build and dotnet test">
+<meta name="twitter:description" content="Fuse against dotnet build and dotnet test on FluentValidation, NodaTime, Jellyfin and Polly: check and test times, accuracy and memory, with every result file.">
 <meta name="twitter:image" content="https://fuse.codes/assets/og.png">
 <meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 8.1x to 27.7x faster than dotnet build. dotnet tool install -g Fuse.">
 <link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
@@ -40,8 +40,8 @@
     {
       "@type": "TechArticle",
       "@id": "https://fuse.codes/docs/benchmarks#article",
-      "headline": "Benchmarks",
-      "description": "Benchmarks of Fuse against dotnet build and dotnet test on FluentValidation, NodaTime, Jellyfin and Polly.",
+      "headline": "Fuse Benchmarks Against dotnet build and dotnet test",
+      "description": "Fuse against dotnet build and dotnet test on FluentValidation, NodaTime, Jellyfin and Polly: check and test times, accuracy and memory, with every result file.",
       "url": "https://fuse.codes/docs/benchmarks",
       "mainEntityOfPage": "https://fuse.codes/docs/benchmarks",
       "inLanguage": "en",
@@ -99,25 +99,25 @@
 <a class="skip-link" href="#main">Skip to main content</a>
 <div class="wrap wide">
   <header class="site-header">
-    <a class="brand" href="../index.html"><img src="../assets/fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
+    <a class="brand" href="../"><img src="../assets/fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
     <nav aria-label="Main">
-      <a href="index.html">Docs</a>
-      <a href="benchmarks.html" aria-current="page">Benchmarks</a>
+      <a href="./">Docs</a>
+      <a href="benchmarks" aria-current="page">Benchmarks</a>
       <a class="gh" href="https://github.com/Litenova-Solutions/Fuse" aria-label="Fuse on GitHub"><svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg></a>
     </nav>
   </header>
 
   <div class="docs">
     <main id="main" class="page" tabindex="-1">
-    <p class="crumbs"><a href="index.html">Docs</a> / Understand</p>
+    <p class="crumbs"><a href="./">Docs</a> / Understand</p>
     <h1>Benchmarks</h1>
     <p class="jump"><a href="#docs-nav">All documentation pages</a></p>
     <p class="intro">On four open-source repositories, Fuse checked an edit 8.1x to 27.7x faster than <code>dotnet build</code> at the median. Over all 30 edits of each repository, it took 3.1x to 5.6x less time than the build. It ran the affected tests 1.2x to 2.9x faster than <code>dotnet test</code> on 3 of the 4. On NodaTime, where most tests run and one project goes through MSBuild, it ran them 1.4x slower. It reported no edit as clean that the build failed, and it missed 2 compiler errors in 120 generated cases (161 edits).</p>
     <div class="audience">
       <p><b>This page is for</b> anyone who is deciding whether to rely on Fuse, and for contributors who are comparing a change with the published numbers.</p>
-      <p><b>After reading it</b> you know how fast and how accurate Fuse was, which repositories it ran on, how far the times spread, and where each number comes from. <a href="evals.html">Evals</a> explains how the suites produce the numbers and how you reproduce them.</p>
+      <p><b>After reading it</b> you know how fast and how accurate Fuse was, which repositories it ran on, how far the times spread, and where each number comes from. <a href="evals">Evals</a> explains how the suites produce the numbers and how you reproduce them.</p>
     </div>
-    <p>These benchmarks measure 4 repositories: <a href="https://github.com/FluentValidation/FluentValidation">FluentValidation</a>, a validation library and the small one of the 4; <a href="https://github.com/nodatime/nodatime">NodaTime</a>, a date and time library; <a href="https://github.com/jellyfin/jellyfin">Jellyfin</a>, a media server; and <a href="https://github.com/App-vNext/Polly">Polly</a>, a resilience library. The evals in <code>evals/Fuse.Evals</code> run the <code>fuse</code> executable the way an agent does. They compare every answer with a real <code>dotnet build</code> or <code>dotnet test</code>. Each job ran on its own GitHub Actions <code>windows-latest</code> runner with 4 logical processors and 16 GB of memory, and that runner ran nothing else (<a href="evals.html#on-github-actions">Evals</a>). On Windows x64 the <code>fuse</code> command is the native client, so that is what the evals measure.</p>
+    <p>These benchmarks measure 4 repositories: <a href="https://github.com/FluentValidation/FluentValidation">FluentValidation</a>, a validation library and the small one of the 4; <a href="https://github.com/nodatime/nodatime">NodaTime</a>, a date and time library; <a href="https://github.com/jellyfin/jellyfin">Jellyfin</a>, a media server; and <a href="https://github.com/App-vNext/Polly">Polly</a>, a resilience library. The evals in <code>evals/Fuse.Evals</code> run the <code>fuse</code> executable the way an agent does. They compare every answer with a real <code>dotnet build</code> or <code>dotnet test</code>. Each job ran on its own GitHub Actions <code>windows-latest</code> runner with 4 logical processors and 16 GB of memory, and that runner ran nothing else (<a href="evals#on-github-actions">Evals</a>). On Windows x64 the <code>fuse</code> command is the native client, so that is what the evals measure.</p>
 
     <nav class="toc" aria-label="On this page">
       <p>On this page</p>
@@ -135,7 +135,7 @@
     </nav>
 
     <figure>
-      <img src="../assets/benefits.svg" width="800" height="1830" alt="Two panels that compare Fuse with the dotnet command it replaces on the 4 repositories, one for checking an edit and one for running the affected tests, each with the median times and, under them, the range from the fastest to the slowest case, the mean and P95; then 3 tables: warm check latency, accuracy against the real build and test run, and engine memory. The tables on this page list every number.">
+      <img src="../assets/benefits.svg" width="800" height="1830" loading="lazy" decoding="async" alt="Two panels that compare Fuse with the dotnet command it replaces on the 4 repositories, one for checking an edit and one for running the affected tests, each with the median times and, under them, the range from the fastest to the slowest case, the mean and P95; then 3 tables: warm check latency, accuracy against the real build and test run, and engine memory. The tables on this page list every number.">
       <figcaption>Each bar shows a median over the eval cases, measured on GitHub Actions windows-latest runners. Each dotnet bar stands for 100 percent, and each Fuse bar shows Fuse's time as a share of it. Under each pair you read the fastest to the slowest case, the mean, and P95.</figcaption>
     </figure>
 
@@ -198,7 +198,7 @@
     </div>
 
     <h2 id="native-client">The native client <a class="anchor" href="#native-client" aria-label="Link to this section">#</a></h2>
-    <p>On Windows x64, Linux x64, Linux Arm64 and macOS Arm64, the <code>fuse</code> command is the native client, compiled ahead of time to native code. Elsewhere it runs <code>fuse.dll</code> on the .NET runtime (<a href="how-it-works.html">How it works</a>). The same jobs ran the checks a second time with the managed client, on the same runner and against the same engine code. The difference between the 2 runs is therefore the client alone. Every hook and every command pays that difference.</p>
+    <p>On Windows x64, Linux x64, Linux Arm64 and macOS Arm64, the <code>fuse</code> command is the native client, compiled ahead of time to native code. Elsewhere it runs <code>fuse.dll</code> on the .NET runtime (<a href="how-it-works">How it works</a>). The same jobs ran the checks a second time with the managed client, on the same runner and against the same engine code. The difference between the 2 runs is therefore the client alone. Every hook and every command pays that difference.</p>
     <div class="table-scroll" role="region" aria-label="Native and managed client table" tabindex="0">
       <table>
         <caption class="sr-only">Warm checks with the managed client and with the native client, P50</caption>
@@ -214,7 +214,7 @@
     <p class="sources">The managed client's numbers come from these 4 files in <code>evals/results/managed</code>: <code>latency-FluentValidation-20261029-1858.json</code>, <code>latency-NodaTime-20261029-1900.json</code>, <code>latency-Jellyfin-20261029-1909.json</code> and <code>latency-Polly-20261029-1908.json</code>. They record build <code>5.7.0/f0c4d92bf6e840c6820ae7fa1f3a312e</code>, the managed build of the same commit. The native client's numbers come from the latency files listed above.</p>
 
     <h2 id="repeated-checks-and-tests-at-once">Repeated checks and tests at once <a class="anchor" href="#repeated-checks-and-tests-at-once" aria-label="Link to this section">#</a></h2>
-    <p>Two of the latency suite's multi-agent scenarios measure what several agents in one working tree do most often (<a href="evals.html#multi-agent-scenario">Evals</a>). <strong>Stops</strong> is a stop hook that checks every change again after a small fix. It makes a body edit in one file of each code project, up to 20, then runs a <code>fuse check</code> of every change and 5 more, each after another body edit in the first file. A repeat binds the file that changed, and it can keep the errors of the other files from the earlier check (<a href="how-it-works.html#check">errors kept from an earlier check</a>). The kept files are counted per compiled document, one per target framework, so their count can exceed the changed files. <strong>Tests</strong> is one <code>fuse test</code> on its own and then 2 started together, each after another body edit. When 2 runs only take turns, the pair takes twice as long as one.</p>
+    <p>Two of the latency suite's multi-agent scenarios measure what several agents in one working tree do most often (<a href="evals#multi-agent-scenario">Evals</a>). <strong>Stops</strong> is a stop hook that checks every change again after a small fix. It makes a body edit in one file of each code project, up to 20, then runs a <code>fuse check</code> of every change and 5 more, each after another body edit in the first file. A repeat binds the file that changed, and it can keep the errors of the other files from the earlier check (<a href="how-it-works#check">errors kept from an earlier check</a>). The kept files are counted per compiled document, one per target framework, so their count can exceed the changed files. <strong>Tests</strong> is one <code>fuse test</code> on its own and then 2 started together, each after another body edit. When 2 runs only take turns, the pair takes twice as long as one.</p>
     <div class="table-scroll" role="region" aria-label="Repeated checks and tests at once table" tabindex="0">
       <table>
         <caption class="sr-only">Repeated checks of every change, and one and two fuse test runs, per repository</caption>
@@ -234,15 +234,15 @@
     <p class="sources">These numbers come from <code>multiAgent.stops</code> and <code>multiAgent.tests</code> in <code>latency-FluentValidation-20261029-1855.json</code>, <code>latency-NodaTime-20261029-1858.json</code>, <code>latency-Jellyfin-20261029-1907.json</code> and <code>latency-Polly-20261029-1904.json</code> in <code>evals/results</code>.</p>
 
     <h2 id="slow-analyzer">Compilation-wide analyzer <a class="anchor" href="#slow-analyzer" aria-label="Link to this section">#</a></h2>
-    <p>The <a href="evals.html#analyzers-suite">analyzers suite</a> measures a generated 300-file project. The project's analyzer spends 2 seconds reading the whole project each time it starts. Its rule reports at error severity. The engine measured the analyzer at 4,001 ms on one file, so it ran it <a href="how-it-works.html#check">compilation-wide</a>. The post-edit hook leaves that analyzer out and names it, and it took 46 ms at the median. <code>fuse check</code> took 2.14 s for one edited file and 2.12 s for 20, with one run of the analyzer each time, and it reported the analyzer's error. Engine memory peaked at 338 MB and held 218 MB once idle.</p>
+    <p>The <a href="evals#analyzers-suite">analyzers suite</a> measures a generated 300-file project. The project's analyzer spends 2 seconds reading the whole project each time it starts. Its rule reports at error severity. The engine measured the analyzer at 4,001 ms on one file, so it ran it <a href="how-it-works#check">compilation-wide</a>. The post-edit hook leaves that analyzer out and names it, and it took 46 ms at the median. <code>fuse check</code> took 2.14 s for one edited file and 2.12 s for 20, with one run of the analyzer each time, and it reported the analyzer's error. Engine memory peaked at 338 MB and held 218 MB once idle.</p>
     <p class="sources">These numbers come from <code>analyzers-analyzer-fixture-20261029-1937.json</code> in <code>evals/results</code>. GitHub Actions run 40941018665 measured them (build <code>5.7.0/e61235320b09466ba67a805c5c71bfb0</code>).</p>
 
     <h2 id="a-large-tree">Large tree <a class="anchor" href="#a-large-tree" aria-label="Link to this section">#</a></h2>
-    <p>The <a href="evals.html#scale-suite">scale suite</a> measures one cold check of 1,500 changed files. The generated tree holds 6,002 files in 31 projects. The check answered in 39.2 s and checked all 1,500 files. Engine memory peaked at 294 MB and held 273 MB once idle. At the recorded factor of 2.5, that scales to about 98 s for a tree of 15,000 files.</p>
+    <p>The <a href="evals#scale-suite">scale suite</a> measures one cold check of 1,500 changed files. The generated tree holds 6,002 files in 31 projects. The check answered in 39.2 s and checked all 1,500 files. Engine memory peaked at 294 MB and held 273 MB once idle. At the recorded factor of 2.5, that scales to about 98 s for a tree of 15,000 files.</p>
     <p class="sources">These numbers come from <code>scale-scale-fixture-20261029-1940.json</code> in <code>evals/results</code>. GitHub Actions run 40941018665 measured them (build <code>5.7.0/e61235320b09466ba67a805c5c71bfb0</code>).</p>
 
     <h2 id="another-writers-errors">Another session's errors <a class="anchor" href="#another-writers-errors" aria-label="Link to this section">#</a></h2>
-    <p>The <a href="evals.html#attribution-suite">attribution suite</a> measures whether an agent that shares a working tree with another agent is told the other agent's errors. Over 9 pairs on the 4 repositories, writers without sessions were told 20 of each other's errors. With sessions, they were told all 64 of their own errors and none of the other's. In all 4 repositories, registering a directory instead of sending a hook left a writer's errors to that writer.</p>
+    <p>The <a href="evals#attribution-suite">attribution suite</a> measures whether an agent that shares a working tree with another agent is told the other agent's errors. Over 9 pairs on the 4 repositories, writers without sessions were told 20 of each other's errors. With sessions, they were told all 64 of their own errors and none of the other's. In all 4 repositories, registering a directory instead of sending a hook left a writer's errors to that writer.</p>
     <p class="sources">These numbers come from <code>attribution-FluentValidation-20261029-1937.json</code>, <code>attribution-NodaTime-20261029-1938.json</code>, <code>attribution-Jellyfin-20261029-1939.json</code> and <code>attribution-Polly-20261029-1938.json</code> in <code>evals/results</code>. GitHub Actions run 40941018665 measured them (build <code>5.7.0/e61235320b09466ba67a805c5c71bfb0</code>).</p>
 
     <h2 id="reading-the-numbers">Reading the numbers <a class="anchor" href="#reading-the-numbers" aria-label="Link to this section">#</a></h2>
@@ -292,42 +292,42 @@
       <li>The truth side, the real <code>dotnet build</code> and <code>dotnet test</code>, does not change while the repository and the eval code stay the same. It is therefore cached and measured once. Each result file names where its truth was measured in <code>truthOrigins</code>.</li>
       <li>Every result file records the commit of the repository it measured and the Fuse build that measured it. You can therefore trace each number to the source and to the executable behind it.</li>
     </ul>
-    <p>The evals are in <a href="https://github.com/Litenova-Solutions/Fuse/tree/main/evals/Fuse.Evals">evals/Fuse.Evals</a>, and every result file is in <a href="https://github.com/Litenova-Solutions/Fuse/tree/main/evals/results">evals/results</a>. <a href="evals.html">Evals</a> describes each suite in detail.</p>
+    <p>The evals are in <a href="https://github.com/Litenova-Solutions/Fuse/tree/main/evals/Fuse.Evals">evals/Fuse.Evals</a>, and every result file is in <a href="https://github.com/Litenova-Solutions/Fuse/tree/main/evals/results">evals/results</a>. <a href="evals">Evals</a> describes each suite in detail.</p>
 
     <nav class="pager" aria-label="Previous and next page">
-      <a href="limits.html"><span>Previous</span>Limits</a>
-      <a class="next-page" href="faq.html"><span>Next</span>FAQ</a>
+      <a href="limits"><span>Previous</span>Limits</a>
+      <a class="next-page" href="faq"><span>Next</span>FAQ</a>
     </nav>
     </main>
 
     <nav class="sidebar" id="docs-nav" aria-label="Documentation">
       <h2>Start here</h2>
       <ul>
-        <li><a href="index.html">Overview</a></li>
-        <li><a href="getting-started.html">Getting started</a></li>
-        <li><a href="harnesses.html">Connect your agent</a></li>
-        <li><a href="parallel-agents.html">Subagents and parallel agents</a></li>
+        <li><a href="./">Overview</a></li>
+        <li><a href="getting-started">Getting started</a></li>
+        <li><a href="harnesses">Connect your agent</a></li>
+        <li><a href="parallel-agents">Subagents and parallel agents</a></li>
       </ul>
       <h2>Understand</h2>
       <ul>
-        <li><a href="how-it-works.html">How it works</a></li>
-        <li><a href="limits.html">Limits</a></li>
-        <li><a href="benchmarks.html" aria-current="page">Benchmarks</a></li>
-        <li><a href="faq.html">FAQ</a></li>
+        <li><a href="how-it-works">How it works</a></li>
+        <li><a href="limits">Limits</a></li>
+        <li><a href="benchmarks" aria-current="page">Benchmarks</a></li>
+        <li><a href="faq">FAQ</a></li>
       </ul>
       <h2>Reference</h2>
       <ul>
-        <li><a href="commands.html">Commands</a></li>
-        <li><a href="messages.html">Messages and fixes</a></li>
-        <li><a href="troubleshooting.html">Troubleshooting</a></li>
-        <li><a href="changelog.html">Changelog</a></li>
+        <li><a href="commands">Commands</a></li>
+        <li><a href="messages">Messages and fixes</a></li>
+        <li><a href="troubleshooting">Troubleshooting</a></li>
+        <li><a href="changelog">Changelog</a></li>
       </ul>
       <h2>Contribute</h2>
       <ul>
         <li><a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/main/CONTRIBUTING.md">Contributing</a></li>
-        <li><a href="architecture.html">Architecture</a></li>
-        <li><a href="evals.html">Evals</a></li>
-        <li><a href="ai-policy.html">AI policy</a></li>
+        <li><a href="architecture">Architecture</a></li>
+        <li><a href="evals">Evals</a></li>
+        <li><a href="ai-policy">AI policy</a></li>
         <li><a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/main/SECURITY.md">Security</a></li>
       </ul>
     </nav>
@@ -335,7 +335,7 @@
 
   <footer class="site-footer">
     <a class="maker" href="https://www.litenova.solutions"><img src="../assets/litenova-mark.svg" alt="" width="20" height="20">Built by Litenova Solutions</a>
-    <nav aria-label="Footer"><a href="index.html">Docs</a><a href="changelog.html">Changelog</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
+    <nav aria-label="Footer"><a href="./">Docs</a><a href="changelog">Changelog</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
   </footer>
 </div>
 </body>

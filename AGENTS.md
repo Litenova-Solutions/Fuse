@@ -52,7 +52,7 @@ Tests generate real git repositories and restore them, so the first run needs Nu
 - One word per concept, in code, output, comments and docs: the vocabulary in [site/docs/architecture.html](site/docs/architecture.html) decides. That means no synonyms, not repeating the full phrase every time: once a thing is named, "it" or a short name is fine. Text says what is true now, in plain sentences, with keyboard punctuation only. Docs address the reader as "you" and explain a mechanism on one page, which other pages link to rather than repeat.
 - New tests must run: confirm the test count went up.
 - A commit an agent helped write carries an `Assisted-by:` trailer, and its `Signed-off-by:` line is the person's, as [site/docs/ai-policy.html](site/docs/ai-policy.html) says.
-- Every documentation page carries the same header, sidebar and footer. A new page adds its link to the sidebar of every page, its URL to `site/sitemap.xml` and `site/llms.txt`, and its pager links to its neighbors. A page opens with who it is for and what they do after it, and explains each term where it first appears.
+- Every documentation page carries the same header, sidebar and footer. A new page adds its link to the sidebar of every page, its URL to `site/sitemap.xml` and `site/llms.txt`, and its pager links to its neighbors. Pages link each other by their canonical address, without `.html` (`commands#fuse-check`, `../`), which fuse.codes serves directly; a `.html` link costs a redirect. A page's title, description, Open Graph and Twitter tags and structured data say the same thing, and its `dateModified` and sitemap `lastmod` change with its content. A page opens with who it is for and what they do after it, and explains each term where it first appears.
 
 ## Releases
 

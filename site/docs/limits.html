@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Limits | Fuse</title>
-<meta name="description" content="What Fuse cannot check, where it differs from dotnet build and dotnet test, and what to do about each case.">
+<title>Limits: What a Fuse Check Does Not See | Fuse</title>
+<meta name="description" content="What a Fuse check and its test selection do not see, such as custom build logic, warnings and code reached only at run time, and when to run a full build.">
 <link rel="canonical" href="https://fuse.codes/docs/limits">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 <meta name="author" content="Litenova Solutions">
@@ -13,8 +13,8 @@
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="Fuse">
 <meta property="og:locale" content="en_US">
-<meta property="og:title" content="Limits">
-<meta property="og:description" content="What Fuse cannot check, where it differs from dotnet build and dotnet test, and what to do about each case.">
+<meta property="og:title" content="Limits: What a Fuse Check Does Not See">
+<meta property="og:description" content="What a Fuse check and its test selection do not see, such as custom build logic, warnings and code reached only at run time, and when to run a full build.">
 <meta property="og:url" content="https://fuse.codes/docs/limits">
 <meta property="og:image" content="https://fuse.codes/assets/og.png">
 <meta property="og:image:type" content="image/png">
@@ -22,8 +22,8 @@
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 8.1x to 27.7x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Limits">
-<meta name="twitter:description" content="What Fuse cannot check, where it differs from dotnet build and dotnet test, and what to do about each case.">
+<meta name="twitter:title" content="Limits: What a Fuse Check Does Not See">
+<meta name="twitter:description" content="What a Fuse check and its test selection do not see, such as custom build logic, warnings and code reached only at run time, and when to run a full build.">
 <meta name="twitter:image" content="https://fuse.codes/assets/og.png">
 <meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 8.1x to 27.7x faster than dotnet build. dotnet tool install -g Fuse.">
 <link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
@@ -40,8 +40,8 @@
     {
       "@type": "TechArticle",
       "@id": "https://fuse.codes/docs/limits#article",
-      "headline": "Limits",
-      "description": "What Fuse cannot check, where it differs from dotnet build and dotnet test, and what to do about each case.",
+      "headline": "Limits: What a Fuse Check Does Not See",
+      "description": "What a Fuse check and its test selection do not see, such as custom build logic, warnings and code reached only at run time, and when to run a full build.",
       "url": "https://fuse.codes/docs/limits",
       "mainEntityOfPage": "https://fuse.codes/docs/limits",
       "inLanguage": "en",
@@ -99,17 +99,17 @@
 <a class="skip-link" href="#main">Skip to main content</a>
 <div class="wrap wide">
   <header class="site-header">
-    <a class="brand" href="../index.html"><img src="../assets/fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
+    <a class="brand" href="../"><img src="../assets/fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
     <nav aria-label="Main">
-      <a href="index.html" aria-current="page">Docs</a>
-      <a href="benchmarks.html">Benchmarks</a>
+      <a href="./" aria-current="page">Docs</a>
+      <a href="benchmarks">Benchmarks</a>
       <a class="gh" href="https://github.com/Litenova-Solutions/Fuse" aria-label="Fuse on GitHub"><svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg></a>
     </nav>
   </header>
 
   <div class="docs">
     <main id="main" class="page" tabindex="-1">
-    <p class="crumbs"><a href="index.html">Docs</a> / Understand</p>
+    <p class="crumbs"><a href="./">Docs</a> / Understand</p>
     <h1>Limits</h1>
     <p class="jump"><a href="#docs-nav">All documentation pages</a></p>
     <p class="intro">Fuse is faster than a build because it does less than a build. This page lists what it therefore cannot see and where its answer differs from <code>dotnet build</code> and <code>dotnet test</code>, with what you do about each case.</p>
@@ -144,10 +144,10 @@
     <h2 id="scope-and-requirements">Scope and requirements <a class="anchor" href="#scope-and-requirements" aria-label="Link to this section">#</a></h2>
     <ul>
       <li><strong>C# only.</strong> Fuse evaluates <code>.csproj</code> projects and checks <code>.cs</code>, <code>.razor</code> and <code>.cshtml</code> files. It does not evaluate Visual Basic and F# projects. Build those with <code>dotnet build</code>.</li>
-      <li><strong>The .NET 10 SDK, git and restored projects.</strong> Fuse runs <code>git</code> from the <code>PATH</code>, and it never runs <code>dotnet restore</code>. When a project is not restored, it answers with the command to run (<a href="messages.html#restoreneeded">RestoreNeeded</a>).</li>
+      <li><strong>The .NET 10 SDK, git and restored projects.</strong> Fuse runs <code>git</code> from the <code>PATH</code>, and it never runs <code>dotnet restore</code>. When a project is not restored, it answers with the command to run (<a href="messages#restoreneeded">RestoreNeeded</a>).</li>
       <li><strong>Only changes against HEAD.</strong> An error that is already committed is part of HEAD, so Fuse never reports it. Fuse also never reports an error that exists at HEAD and in the working tree alike. Run <code>fuse build</code> to see every error the solution has.</li>
       <li><strong>A repository needs a commit.</strong> With no commit, every file counts as added, so every error counts as introduced. Commit once before you rely on a check.</li>
-      <li><strong>Platforms.</strong> CI builds and tests Fuse on Windows, Linux and macOS (<code>.github/workflows/ci.yml</code>). The <a href="benchmarks.html">benchmarks</a> come from GitHub Actions <code>windows-latest</code> runners.</li>
+      <li><strong>Platforms.</strong> CI builds and tests Fuse on Windows, Linux and macOS (<code>.github/workflows/ci.yml</code>). The <a href="benchmarks">benchmarks</a> come from GitHub Actions <code>windows-latest</code> runners.</li>
       <li><strong>Letter case in paths on macOS.</strong> Fuse compares paths ignoring case on Windows and exactly on Linux and macOS. The default macOS volume ignores case, so Fuse does not match a file you name to <code>fuse check</code> in another letter case than its spelling on disk to the file git knows. Name files as they are spelled on disk, as hooks already do.</li>
     </ul>
 
@@ -155,23 +155,23 @@
     <ul>
       <li><strong>Compile inputs outside evaluation.</strong> A check compiles the sources, references, analyzers and options that MSBuild's evaluation lists, without running targets. It cannot see custom targets that change what the compiler receives, source generators that read files outside the project's additional files, or IL weaving (rewriting assemblies after the compiler runs). What to do: in such a repository, run <code>fuse build</code> before you finish a change.</li>
       <li><strong>Changes to build configuration.</strong> Both of Fuse's views, the working tree and HEAD, use the project files as they are on disk. Fuse does not compare a change to a <code>.csproj</code>, <code>.props</code>, <code>.targets</code>, <code>.editorconfig</code>, <code>.globalconfig</code>, <code>global.json</code> or <code>packages.lock.json</code> file on its own with HEAD. It checks the files the change affects only when they changed too. What to do: run <code>fuse build</code> after you change build configuration.</li>
-      <li><strong>Compilation-end analyzers.</strong> Analyzers that report only after seeing the whole project run only when a check compiles whole projects, which happens past 500 files in reach. They also run when the analyzer is a <a href="how-it-works.html#check">compilation-wide analyzer</a>, which runs over the whole compilation. Otherwise <code>fuse build</code> reports them.</li>
+      <li><strong>Compilation-end analyzers.</strong> Analyzers that report only after seeing the whole project run only when a check compiles whole projects, which happens past 500 files in reach. They also run when the analyzer is a <a href="how-it-works#check">compilation-wide analyzer</a>, which runs over the whole compilation. Otherwise <code>fuse build</code> reports them.</li>
       <li><strong>The post-edit hook leaves out compilation-wide analyzers.</strong> An analyzer that reads the whole project in its compilation start or compilation actions runs once over the whole compilation, which takes as long as compiling the project. The post-edit hook therefore leaves it out and names it in its summary. Its errors reach the agent at the stop hook, or from <code>fuse check</code>.</li>
-      <li><strong>Analyzers that do not finish in time.</strong> A check stops its analyzers when 80% of its client's wait has passed. It answers with every compiler error and the analyzer errors found so far. The summary says in how many files or projects the analyzers did not finish. This also covers a file whose HEAD analyzers did not finish: Fuse leaves the working tree's analyzer errors in that file out, because they cannot be told apart from errors HEAD already has. What to do: run <code>fuse build</code>, which runs every analyzer, and see <a href="troubleshooting.html#a-slow-analyzer">A slow analyzer</a> to find which analyzer is slow.</li>
+      <li><strong>Analyzers that do not finish in time.</strong> A check stops its analyzers when 80% of its client's wait has passed. It answers with every compiler error and the analyzer errors found so far. The summary says in how many files or projects the analyzers did not finish. This also covers a file whose HEAD analyzers did not finish: Fuse leaves the working tree's analyzer errors in that file out, because they cannot be told apart from errors HEAD already has. What to do: run <code>fuse build</code>, which runs every analyzer, and see <a href="troubleshooting#a-slow-analyzer">A slow analyzer</a> to find which analyzer is slow.</li>
       <li><strong>Warnings.</strong> A check reports errors only: compiler errors, warnings the project treats as errors, and analyzer diagnostics configured as errors.</li>
       <li><strong>Non-C# files.</strong> Fuse names a changed file that is not C# in the summary instead of checking it: <code>N non-C# file(s) changed, which Fuse does not check</code>, with the first five paths. Hooks stay silent about them: a stop shows the note only when it already blocks, and a post-edit hook never shows it. What to do: build or test those files with their own tools.</li>
       <li><strong>Scoped checks cover 2000 sources.</strong> Fuse refuses a <code>fuse check</code> over folders or patterns whose specs expand to more than 2000 sources. Name a smaller folder or pattern instead. What to do: split the scope, or check every change.</li>
       <li><strong>Matching.</strong> When HEAD has fewer errors in the same file with the same id and message, an error counts as introduced. When an edit removes one error and causes an identical one in the same file, Fuse reports nothing.</li>
-      <li><strong>Differences from the build's wording.</strong> The build compiles a dependent project against reference assemblies, which leave out private members, while Fuse compiles against the source. After you make a member private, the build says "does not contain a definition" and Fuse says "is inaccessible due to its protection level", at the same position. This difference explains the one error Fuse missed in the <a href="benchmarks.html#reading-the-numbers">benchmarks</a>.</li>
-      <li><strong>Generated files.</strong> Fuse reads a file a build writes into a project's <code>bin</code> or <code>obj</code> folder, such as a generated API client, as the last build wrote it, in both views (<a href="how-it-works.html#projects-and-compilations">generated files</a>). Fuse does not compare a change to it with HEAD. The change does not reach the files that use it: they are checked only when they change too. When the code a file is generated from changes, the file lacks that change until a build writes it again. An error about it names the file. What to do: run <code>fuse build</code>, then check again.</li>
-      <li><strong>Which agent made an edit.</strong> When several agents edit one working tree, the post-edit hook and the stop hook tell each session only the errors its own edits cause (<a href="how-it-works.html#check">sessions</a>). They know only the edits a post-edit hook reported.
+      <li><strong>Differences from the build's wording.</strong> The build compiles a dependent project against reference assemblies, which leave out private members, while Fuse compiles against the source. After you make a member private, the build says "does not contain a definition" and Fuse says "is inaccessible due to its protection level", at the same position. This difference explains the one error Fuse missed in the <a href="benchmarks#reading-the-numbers">benchmarks</a>.</li>
+      <li><strong>Generated files.</strong> Fuse reads a file a build writes into a project's <code>bin</code> or <code>obj</code> folder, such as a generated API client, as the last build wrote it, in both views (<a href="how-it-works#projects-and-compilations">generated files</a>). Fuse does not compare a change to it with HEAD. The change does not reach the files that use it: they are checked only when they change too. When the code a file is generated from changes, the file lacks that change until a build writes it again. An error about it names the file. What to do: run <code>fuse build</code>, then check again.</li>
+      <li><strong>Which agent made an edit.</strong> When several agents edit one working tree, the post-edit hook and the stop hook tell each session only the errors its own edits cause (<a href="how-it-works#check">sessions</a>). They know only the edits a post-edit hook reported.
         <ul>
           <li>Fuse credits an edit made by a shell command, a generator or a tool without a post-edit hook to no session, so its errors reach every agent whose check finds them.</li>
           <li>Gemini CLI and GitHub Copilot CLI send the parent's session id from a subagent, so a subagent and its parent count as one session there. The command line and the MCP server send no session, so their checks report every error.</li>
           <li>In a file two sessions wrote, a cause line can name the other session's declaration change. A file stays credited to the sessions that wrote it until a check sees it match HEAD, so a file reverted and written again between two checks still counts the earlier sessions among the sessions that wrote it, and its errors reach each of them.</li>
           <li>A subagent's edits count as its parent's only once its own stop hook has run, and only Claude Code's <code>SubagentStop</code> hook runs one. In Codex, Cursor, OpenCode and Muse Code a subagent stays a session of its own, so its parent's stop hook does not block on the errors it leaves. The subagent's own stop hook is what holds it to them. Muse Code fires its subagent stop for its own helper agents many times in a turn, so Fuse registers none there, and no stop hook holds a Muse subagent's errors.</li>
           <li>A session registered with <code>fuse session begin</code> lasts 4 hours or until <code>fuse session end</code>. While it is live, files under its patterns count as its session's, and their errors are left out of other sessions' answers. A stale registration hides real errors until it expires. An error that another session's edits cause on their own does not block a stop, so a working tree can keep errors that an agent left behind, either because it is still writing or because it gave up.</li>
-          <li>Deciding which session an error belongs to <a href="how-it-works.html#check">adds time</a> to each post-edit hook while another session has written files of its own: over a second on a repository the size of NodaTime. What to do: give agents that edit the same files at the same time separate tasks, and run <code>fuse check</code>, which reports every error, once all agents have finished.</li>
+          <li>Deciding which session an error belongs to <a href="how-it-works#check">adds time</a> to each post-edit hook while another session has written files of its own: over a second on a repository the size of NodaTime. What to do: give agents that edit the same files at the same time separate tasks, and run <code>fuse check</code>, which reports every error, once all agents have finished.</li>
         </ul></li>
       <li><strong>Output limits.</strong> An answer holds at most 200 errors by default, of which the command prints 20, and at most 10 cause lines. Its summary line still counts every error found. What to do: fix what is printed and check again, pass <code>--max-errors</code> or <code>--all-errors</code> for more, or run <code>fuse build</code> for the full list.</li>
     </ul>
@@ -195,7 +195,7 @@
     <ul>
       <li><strong>Resources and content files.</strong> A run without MSBuild takes resources and content files from the last real build. When any file other than a source file changed in a project directory since that build, Fuse builds with MSBuild instead, which is slower but complete.</li>
       <li><strong>Timestamps.</strong> Fuse judges freshness by timestamps, not content, so saving a resource file unchanged also sends the run through MSBuild.</li>
-      <li><strong>Tests that share a fixed resource.</strong> Test runs from several agents run at the same time (<a href="how-it-works.html#without-msbuild">each run holds its own copy</a>). Integration tests that each start their own server, such as <code>WebApplicationFactory</code> and its in-memory test server, or that start their own containers, do not collide. Tests that bind a fixed port, use one database by a fixed name, or write one fixed file outside their output can collide with the same tests in another agent's run. They then fail where they would pass alone. Fuse has no setting to run them one at a time. What to do: give each run its own port, database name or folder, for example from a random number or the process id.</li>
+      <li><strong>Tests that share a fixed resource.</strong> Test runs from several agents run at the same time (<a href="how-it-works#without-msbuild">each run holds its own copy</a>). Integration tests that each start their own server, such as <code>WebApplicationFactory</code> and its in-memory test server, or that start their own containers, do not collide. Tests that bind a fixed port, use one database by a fixed name, or write one fixed file outside their output can collide with the same tests in another agent's run. They then fail where they would pass alone. Fuse has no setting to run them one at a time. What to do: give each run its own port, database name or folder, for example from a random number or the process id.</li>
     </ul>
 
     <h2 id="builds-and-the-build-lock">Builds and the build lock <a class="anchor" href="#builds-and-the-build-lock" aria-label="Link to this section">#</a></h2>
@@ -206,17 +206,17 @@
           <li>A test run without MSBuild through <code>fuse test</code> runs from a copy and holds nothing in <code>bin</code>.</li>
         </ul>
         <p>What to do: in a repository that several agents work in, run builds and tests through <code>fuse build</code> and <code>fuse test</code>.</p></li>
-      <li><strong>What the pre-shell hook rewrites.</strong> The hook rewrites <code>dotnet build</code> and <code>dotnet test</code> where a command segment starts. <code>dotnet msbuild</code>, <code>dotnet run</code>, <code>dotnet publish</code> and scripts that call <code>dotnet</code> themselves run as they are. In Cursor, GitHub Copilot CLI, Codex and Muse Code it rewrites only a command that is one <code>dotnet build</code> or <code>dotnet test</code> with plain arguments. A command such as <code>cd Lib &amp;&amp; dotnet build</code> therefore runs there as it is (<a href="harnesses.html#codex">Codex</a>).</li>
+      <li><strong>What the pre-shell hook rewrites.</strong> The hook rewrites <code>dotnet build</code> and <code>dotnet test</code> where a command segment starts. <code>dotnet msbuild</code>, <code>dotnet run</code>, <code>dotnet publish</code> and scripts that call <code>dotnet</code> themselves run as they are. In Cursor, GitHub Copilot CLI, Codex and Muse Code it rewrites only a command that is one <code>dotnet build</code> or <code>dotnet test</code> with plain arguments. A command such as <code>cd Lib &amp;&amp; dotnet build</code> therefore runs there as it is (<a href="harnesses#codex">Codex</a>).</li>
     </ul>
 
     <h2 id="the-engine">The engine <a class="anchor" href="#the-engine" aria-label="Link to this section">#</a></h2>
     <ul>
-      <li><strong>Analyzers the repository builds.</strong> The engine loads an analyzer the repository builds itself as it was when the analyzer's project loaded. A rebuilt analyzer takes effect when projects next reload: after a project file change, a commit or branch switch, more than 300 changed files at once, or an engine restart. What to do: after changing an analyzer, run <code>fuse stop</code> (<a href="troubleshooting.html#stopping-or-restarting-the-engine">stopping the engine</a>). The next command starts an engine that loads the new analyzer.</li>
+      <li><strong>Analyzers the repository builds.</strong> The engine loads an analyzer the repository builds itself as it was when the analyzer's project loaded. A rebuilt analyzer takes effect when projects next reload: after a project file change, a commit or branch switch, more than 300 changed files at once, or an engine restart. What to do: after changing an analyzer, run <code>fuse stop</code> (<a href="troubleshooting#stopping-or-restarting-the-engine">stopping the engine</a>). The next command starts an engine that loads the new analyzer.</li>
       <li><strong>Memory.</strong> The engine keeps every project it has loaded in memory until it exits after 30 idle minutes. It never unloads one while it runs.
         <p>A check on a large project can briefly take several times that. 30 seconds after its last request, the engine compacts its memory and returns what the check freed to the operating system.</p>
-        <p>In the <a href="benchmarks.html">benchmarks</a> its working set once idle was 423 MB on the 40-project Jellyfin and 504 MB on the 15-project Polly, and it peaked at 1,091 MB during checks, on runners with 16 GB of memory (<code>latency-FluentValidation-20261029-1855.json</code>, <code>latency-NodaTime-20261029-1858.json</code>, <code>latency-Jellyfin-20261029-1907.json</code>, <code>latency-Polly-20261029-1904.json</code>). The engine uses more on a machine with more memory. Each git worktree runs its own engine.</p>
-        <p>What to do: on a machine short of memory, stop the engines you no longer need, as <a href="troubleshooting.html#stopping-or-restarting-the-engine">Stopping or restarting the engine</a> describes.</p></li>
-      <li><strong>Loading.</strong> The first request that reaches a project loads it. <a href="benchmarks.html">Benchmarks</a> gives the load times. A post-edit hook in a harness other than Claude Code does not wait for loading, so the stop hook reports the first edits after the engine starts.</li>
+        <p>In the <a href="benchmarks">benchmarks</a> its working set once idle was 423 MB on the 40-project Jellyfin and 504 MB on the 15-project Polly, and it peaked at 1,091 MB during checks, on runners with 16 GB of memory (<code>latency-FluentValidation-20261029-1855.json</code>, <code>latency-NodaTime-20261029-1858.json</code>, <code>latency-Jellyfin-20261029-1907.json</code>, <code>latency-Polly-20261029-1904.json</code>). The engine uses more on a machine with more memory. Each git worktree runs its own engine.</p>
+        <p>What to do: on a machine short of memory, stop the engines you no longer need, as <a href="troubleshooting#stopping-or-restarting-the-engine">Stopping or restarting the engine</a> describes.</p></li>
+      <li><strong>Loading.</strong> The first request that reaches a project loads it. <a href="benchmarks">Benchmarks</a> gives the load times. A post-edit hook in a harness other than Claude Code does not wait for loading, so the stop hook reports the first edits after the engine starts.</li>
       <li><strong>Large-tree points.</strong> Past 300 changed files, a sync reads <code>git status</code> again and reloads the loaded projects. Past 500 files in reach, a check binds whole projects. Past 2000 applied paths, the next sync re-evaluates the projects and resets the touched set. <code>fuse status</code> prints the first two as the large-tree limits. What to do: when checks feel slow, commit, or run <code>fuse stop</code> and let the next check reload.</li>
       <li><strong>Kept answers need a quiet tree to hash.</strong> Past 500 changed files, a check skips the kept answer, because hashing every file costs more than the reuse saves. An answer bound from text that no longer matches disk is served but not kept. What to do: nothing; the check still answers.</li>
       <li><strong>HEAD's kept state.</strong> The engine keeps HEAD's finished baseline errors on disk per commit and configuration. It warms a new HEAD's compilation-wide analyzer results in the background. Fuse drops either without telling you when it no longer applies: it computes an unreadable store entry again, and a warm cut short by another commit stops. What to do: nothing; both only cost time.</li>
@@ -242,39 +242,39 @@
     </ul>
 
     <nav class="pager" aria-label="Previous and next page">
-      <a href="how-it-works.html"><span>Previous</span>How it works</a>
-      <a class="next-page" href="benchmarks.html"><span>Next</span>Benchmarks</a>
+      <a href="how-it-works"><span>Previous</span>How it works</a>
+      <a class="next-page" href="benchmarks"><span>Next</span>Benchmarks</a>
     </nav>
     </main>
 
     <nav class="sidebar" id="docs-nav" aria-label="Documentation">
       <h2>Start here</h2>
       <ul>
-        <li><a href="index.html">Overview</a></li>
-        <li><a href="getting-started.html">Getting started</a></li>
-        <li><a href="harnesses.html">Connect your agent</a></li>
-        <li><a href="parallel-agents.html">Subagents and parallel agents</a></li>
+        <li><a href="./">Overview</a></li>
+        <li><a href="getting-started">Getting started</a></li>
+        <li><a href="harnesses">Connect your agent</a></li>
+        <li><a href="parallel-agents">Subagents and parallel agents</a></li>
       </ul>
       <h2>Understand</h2>
       <ul>
-        <li><a href="how-it-works.html">How it works</a></li>
-        <li><a href="limits.html" aria-current="page">Limits</a></li>
-        <li><a href="benchmarks.html">Benchmarks</a></li>
-        <li><a href="faq.html">FAQ</a></li>
+        <li><a href="how-it-works">How it works</a></li>
+        <li><a href="limits" aria-current="page">Limits</a></li>
+        <li><a href="benchmarks">Benchmarks</a></li>
+        <li><a href="faq">FAQ</a></li>
       </ul>
       <h2>Reference</h2>
       <ul>
-        <li><a href="commands.html">Commands</a></li>
-        <li><a href="messages.html">Messages and fixes</a></li>
-        <li><a href="troubleshooting.html">Troubleshooting</a></li>
-        <li><a href="changelog.html">Changelog</a></li>
+        <li><a href="commands">Commands</a></li>
+        <li><a href="messages">Messages and fixes</a></li>
+        <li><a href="troubleshooting">Troubleshooting</a></li>
+        <li><a href="changelog">Changelog</a></li>
       </ul>
       <h2>Contribute</h2>
       <ul>
         <li><a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/main/CONTRIBUTING.md">Contributing</a></li>
-        <li><a href="architecture.html">Architecture</a></li>
-        <li><a href="evals.html">Evals</a></li>
-        <li><a href="ai-policy.html">AI policy</a></li>
+        <li><a href="architecture">Architecture</a></li>
+        <li><a href="evals">Evals</a></li>
+        <li><a href="ai-policy">AI policy</a></li>
         <li><a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/main/SECURITY.md">Security</a></li>
       </ul>
     </nav>
@@ -282,7 +282,7 @@
 
   <footer class="site-footer">
     <a class="maker" href="https://www.litenova.solutions"><img src="../assets/litenova-mark.svg" alt="" width="20" height="20">Built by Litenova Solutions</a>
-    <nav aria-label="Footer"><a href="index.html">Docs</a><a href="changelog.html">Changelog</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
+    <nav aria-label="Footer"><a href="./">Docs</a><a href="changelog">Changelog</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
   </footer>
 </div>
 </body>

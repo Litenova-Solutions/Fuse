@@ -464,8 +464,9 @@ internal static class TestOperation
             // (hostpolicy.dll is not found), so a project with one runs through dotnet test, which starts it the right way.
             if (targets.Count == 0 || targets.Any(t => t.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) && !File.Exists(Path.ChangeExtension(t, ".runtimeconfig.json"))))
             {
-                // dotnet test starts such a target itself, and says in its own words when the build wrote none.
-                return await ThroughDotnetTestAsync(root, run, runner, switches, cancellationToken).ConfigureAwait(false);
+                // dotnet test starts such a target itself, and says in its own words when the build wrote none. The build
+                // above is done, so dotnet test does not build the project again.
+                return await ThroughDotnetTestAsync(root, run, runner, Built(switches), cancellationToken).ConfigureAwait(false);
             }
 
             string[] settings = run.Filter is not null || run.RunSettings is not null
@@ -495,8 +496,13 @@ internal static class TestOperation
                 // Counts that say nothing failed from a run that exited with a code other than 0 do not explain its exit code.
                 if (outcome is { Failed: 0 } && process.ExitCode != 0)
                     outcome = null;
+                // A target that exits 0 and prints no results is not a test application that runs itself (an NUnit or
+                // MSTest project can reference the platform without being one), so the project runs through dotnet test,
+                // which finds its tests, instead of passing with none.
+                if (outcome is null && process.ExitCode == 0)
+                    return await ThroughDotnetTestAsync(root, run, runner, Built(switches), cancellationToken).ConfigureAwait(false);
                 if (outcome is null)
-                    return (null, process.ExitCode == 0 ? null : process, log, results);
+                    return (null, process, log, results);
                 aggregate = aggregate.Add(outcome);
                 last = process;
             }
@@ -517,6 +523,9 @@ internal static class TestOperation
             }
         }
     }
+
+    /// <summary>The build switches with <c>--no-build</c>, for a <c>dotnet test</c> after the project was built.</summary>
+    private static string[] Built(string[] switches) => switches.Contains("--no-build") ? switches : [.. switches, "--no-build"];
 
     /// <summary>
     ///     A built test application's path under <paramref name="configuration"/>: evaluation names the default

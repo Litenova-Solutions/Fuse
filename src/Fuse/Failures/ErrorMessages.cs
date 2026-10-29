@@ -29,11 +29,6 @@ internal static class ErrorMessages
     public static string InvalidPath(string file) => $"\"{file}\" named in the check is not a valid path";
 
     /// <summary>
-    ///     The message for <see cref="ErrorCode.InvalidPath"/> when none of the files a check names is a C# source file of
-    ///     a project, such as a path with a typo or a file of another language. The engine answers with it instead of
-    ///     checking nothing, which would read as no errors introduced.
-    /// </summary>
-    /// <summary>
     ///     The message for <see cref="ErrorCode.InvalidPath"/> when none of the paths a test command names is a test
     ///     project, or holds one. The engine answers with it instead of running no test, which would read as a pass.
     /// </summary>
@@ -66,6 +61,11 @@ internal static class ErrorMessages
     /// <summary>The message for <see cref="ErrorCode.InvalidPath"/> when the paths of a scoped check expand to more sources than one covers.</summary>
     public static string ScopeTooManyFiles(int count) => $"the paths named in the check expand to {count} source files, more than the 2000 a scoped check covers; name a smaller folder or pattern";
 
+    /// <summary>
+    ///     The message for <see cref="ErrorCode.InvalidPath"/> when none of the files a check names is a C# source file of
+    ///     a project, such as a path with a typo or a file of another language. The engine answers with it instead of
+    ///     checking nothing, which would read as no errors introduced.
+    /// </summary>
     public static string NothingToCheck(IReadOnlyList<string> files) =>
         $"none of the files named in the check is a C# source file of a project in this repository: {string.Join(", ", files.Take(5))}{(files.Count > 5 ? $" and {files.Count - 5} more" : "")}";
 }

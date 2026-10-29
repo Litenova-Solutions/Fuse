@@ -292,3 +292,37 @@ pre .dim { color: var(--code-muted); user-select: none; }
 .pager .next-page { margin-left: auto; text-align: right; }
 
 .page .label { display: inline-block; font-size: 0.72rem; line-height: 1.6; color: var(--tag-text); background: var(--tag-bg); border: 1px solid var(--tag-line); border-radius: 999px; padding: 0 0.5rem; vertical-align: 0.1em; }
+
+/* A rail with the page's sections, beside the text on a wide screen (site/assets/docs.js builds it from the page's list). */
+.wrap.wide { max-width: 86rem; }
+.rail { display: none; }
+@media (min-width: 82rem) {
+  .docs.has-rail { grid-template-columns: 13rem minmax(0, 46rem) 13rem; gap: 3rem; }
+  .docs.has-rail .page > .toc { display: none; }
+  .rail { display: block; grid-column: 3; grid-row: 1; position: sticky; top: 1rem; max-height: calc(100vh - 2rem); overflow-y: auto; padding: 2.4rem 0 1rem; font-size: 0.84rem; }
+  .rail p { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; margin: 0 0 0.5rem; }
+  .rail ol { list-style: none; margin: 0; padding: 0; }
+  .rail li { margin: 0; }
+  .rail a { display: block; color: var(--muted); padding: 0.22rem 0.7rem; border-left: 2px solid var(--line); line-height: 1.4; }
+  .rail a:hover { color: var(--text); text-decoration: none; border-left-color: var(--slow); }
+  .rail a.current { color: var(--tag-text); font-weight: 600; border-left-color: var(--accent); background: var(--tag-bg); }
+}
+
+/* Color and hierarchy: a marker on each section, lead-ins that scan, table headers on a tint. */
+.docs .page h2 { padding-top: 1.4rem; border-top: 1px solid var(--line); }
+.docs .page h2::before { content: ""; display: inline-block; width: 0.32rem; height: 0.95em; background: var(--accent); border-radius: 2px; margin-right: 0.6rem; vertical-align: -0.08em; }
+.docs .page h3 { color: var(--tag-text); }
+.docs .page li > strong:first-child, .docs .page li > b:first-child { color: var(--tag-text); }
+.docs .page thead th { background: var(--tag-bg); color: var(--tag-text); border-bottom: 2px solid var(--tag-line); }
+.docs .page thead th:first-child { background: var(--tag-bg); }
+.docs .page tbody tr:hover > * { background: #faf9ff; }
+.docs .page .intro { color: var(--text); }
+
+/* The points of a long page, before its details. */
+.key { border: 1px solid var(--tag-line); background: linear-gradient(135deg, var(--tag-bg), #fbfaff 70%); border-radius: 0.7rem; padding: 0.9rem 1.1rem 0.6rem; margin: 0 0 1.6rem; font-size: 0.95rem; }
+.key > p:first-child { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; color: var(--tag-text); margin: 0 0 0.4rem; }
+.page .key ul { margin: 0 0 0.3rem; padding-left: 1.1rem; }
+.page .key li { margin-bottom: 0.35rem; }
+.page .key li::marker { color: var(--accent); }
+.callout.warn { border-left: 3px solid #e0a62e; }
+.callout.tip { border-left: 3px solid var(--accent); }

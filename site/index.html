@@ -230,27 +230,47 @@
         <p class="kicker">Built for Agents</p>
         <h2 id="features-heading">Features</h2>
       </div>
-      <div class="par">
-        <div class="par-head">
-          <h3>Parallel agents in one working tree</h3>
-          <p>Subagents edit, check and test the same repository at the same time, without a git worktree each. They share one Fuse engine, which loads the solution once, and builds through Fuse take turns, so no build fails on another agent's locked files.</p>
+      <div class="par2 nojs" id="parallel">
+        <div class="par2-head">
+          <div>
+            <h3>Parallel agents in one working tree</h3>
+            <p>Subagents edit, check and test the same repository at the same time, without a git worktree each. They share one Fuse engine, which loads the solution once, and builds through Fuse take turns.</p>
+          </div>
+          <div class="seg" role="group" aria-label="Show the three agents">
+            <button type="button" data-show="without" aria-pressed="false">Without Fuse</button>
+            <button type="button" data-show="with" aria-pressed="true">Through Fuse</button>
+          </div>
         </div>
-        <div class="par-compare">
-          <figure class="par-lanes bad">
-            <figcaption><b>Without Fuse</b>Each agent runs <code>dotnet build</code> on its own</figcaption>
-            <div class="par-row"><span class="who">Agent</span><span class="par-track"><i class="blk build" style="left:3%;width:58%">dotnet build</i></span></div>
-            <div class="par-row"><span class="who">Subagent</span><span class="par-track"><i class="blk fail" style="left:16%;width:46%">file in use</i></span></div>
-            <div class="par-row"><span class="who">Subagent</span><span class="par-track"><i class="blk fail" style="left:30%;width:46%">file in use</i></span></div>
-            <p class="par-note">The builds write the same <code>obj</code> and <code>bin</code> folders at once, and each agent loads the solution again.</p>
-          </figure>
-          <figure class="par-lanes good">
-            <figcaption><b>Through Fuse</b>One engine for every agent</figcaption>
-            <div class="par-row"><span class="who">Agent</span><span class="par-track"><i class="tick" style="left:2%"></i><i class="tick" style="left:9%"></i><i class="blk build ok" style="left:15%;width:26%">build</i><i class="tick" style="left:80%"></i></span></div>
-            <div class="par-row"><span class="who">Subagent</span><span class="par-track"><i class="tick" style="left:5%"></i><i class="tick" style="left:22%"></i><i class="blk build ok" style="left:42%;width:26%">build</i><i class="tick" style="left:88%"></i></span></div>
-            <div class="par-row"><span class="who">Subagent</span><span class="par-track"><i class="tick" style="left:12%"></i><i class="tick" style="left:31%"></i><i class="tick" style="left:50%"></i><i class="blk build ok" style="left:69%;width:26%">build</i></span></div>
-            <p class="par-note"><span class="key-tick"></span>checks answered by the warm engine at any time; builds wait for the build lock and run one after another.</p>
-          </figure>
+        <div class="views">
+        <div class="par2-view" data-view="without">
+          <p class="par2-cap"><b>Without Fuse.</b> Three builds write the same <code>obj</code> and <code>bin</code> folders at once, and each loads the solution on its own.</p>
+          <div class="trio">
+            <div class="mini"><div class="mini-bar">Agent</div><pre><code><span class="dim">$</span> dotnet build
+  Lib -&gt; bin/Debug/net10.0/Lib.dll
+<span class="ok">Build succeeded.</span></code></pre></div>
+            <div class="mini"><div class="mini-bar">Subagent 1</div><pre><code><span class="dim">$</span> dotnet test
+<span class="warn">warning MSB3026: Could not copy "obj/Debug/net10.0/Lib.dll" to "bin/Debug/net10.0/Lib.dll". Beginning retry 1 in 1000ms.</span>
+<span class="err">error MSB3027: Could not copy "obj/Debug/net10.0/Lib.dll" to "bin/Debug/net10.0/Lib.dll". Exceeded retry count of 10. Failed. The file is locked by: "dotnet (4120)"</span>
+<span class="err">Build FAILED.</span></code></pre></div>
+            <div class="mini"><div class="mini-bar">Subagent 2</div><pre><code><span class="dim">$</span> dotnet build
+<span class="err">error MSB3027: Could not copy "obj/Debug/net10.0/Lib.dll" to "bin/Debug/net10.0/Lib.dll". Exceeded retry count of 10. Failed. The file is locked by: "dotnet (4120)"</span>
+<span class="err">Build FAILED.</span></code></pre></div>
+          </div>
         </div>
+        <div class="par2-view" data-view="with">
+          <p class="par2-cap"><b>Through Fuse.</b> Checks go to the one warm engine at any time. A build or test run waits for the one before it, then runs.</p>
+          <div class="trio">
+            <div class="mini"><div class="mini-bar">Agent</div><pre><code><span class="dim">$</span> fuse check Lib/Calc.cs
+<span class="sum">fuse: no errors introduced (3 file(s) checked; tree 9f2c41aa07b3 over 1 changed file(s))</span></code></pre></div>
+            <div class="mini"><div class="mini-bar">Subagent 1</div><pre><code><span class="dim">$</span> fuse test
+<span class="sum">fuse: 0 failed, 42 passed in 6.1 s; ran 42 test(s) affected by your changes out of 2664; fuse test --all runs everything; without MSBuild</span></code></pre></div>
+            <div class="mini"><div class="mini-bar">Subagent 2</div><pre><code><span class="dim">$</span> fuse build
+<span class="dim">fuse: waiting for another build or test in this repository</span>
+<span class="sum">fuse: build succeeded in 9.4 s</span></code></pre></div>
+          </div>
+        </div>
+        </div>
+        <p class="par2-legend">Example output of three agents at the same moment. The numbers below are measured.</p>
         <ul class="par-stats">
           <li><b>0</b><span>locked-file errors in 60 builds run 3 at a time</span></li>
           <li><b>150 of 150</b><span>checks answered with 3 or 4 agents editing at once</span></li>
@@ -331,6 +351,21 @@ document.querySelectorAll("[data-copy]").forEach(function (b) {
     if (entries[0].isIntersecting) { seen.disconnect(); play(); }
   }, { threshold: 0.5 });
   seen.observe(race);
+})();
+</script>
+<script>
+// The parallel agents comparison shows one view at a time; without this script both views show, one after the other.
+(function () {
+  var box = document.getElementById("parallel");
+  if (!box) return;
+  var buttons = box.querySelectorAll(".seg button");
+  function show(view) {
+    box.setAttribute("data-show", view);
+    buttons.forEach(function (b) { b.setAttribute("aria-pressed", b.getAttribute("data-show") === view ? "true" : "false"); });
+  }
+  buttons.forEach(function (b) { b.addEventListener("click", function () { show(b.getAttribute("data-show")); }); });
+  box.classList.remove("nojs");
+  show("with");
 })();
 </script>
 </body>

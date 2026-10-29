@@ -352,34 +352,44 @@ pre .tk-cause { color: #9a9890; }
 pre .tk-summary { color: #d9cfff; }
 
 
-/* Parallel agents on the landing page: the same three agents without Fuse and through it, drawn as timelines, then the
-   measured numbers. */
-.par { max-width: 52rem; margin: 0 auto 2.6rem; border: 1px solid var(--tag-line); border-radius: 1rem; padding: 2rem 2.2rem 1.6rem; background: linear-gradient(135deg, var(--surface), var(--tag-bg)); }
-.par-head h3 { font-size: 1.3rem; letter-spacing: -0.01em; margin: 0 0 0.5rem; }
-.par-head p { color: var(--muted); font-size: 0.95rem; max-width: 40rem; margin: 0 0 1.5rem; }
-.par-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 0 0 1.4rem; }
-.par-lanes { margin: 0; background: var(--bg); border: 1px solid var(--line); border-radius: 0.8rem; padding: 0.9rem 1rem 0.8rem; }
-.par-lanes.good { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-.par-lanes figcaption { font-size: 0.82rem; color: var(--muted); margin: 0 0 0.8rem; }
-.par-lanes figcaption b { display: block; font-size: 0.95rem; color: var(--text); }
-.par-lanes.bad figcaption b { color: #b23b30; }
-.par-lanes.good figcaption b { color: var(--tag-text); }
-.par-row { display: grid; grid-template-columns: 4.6rem 1fr; align-items: center; gap: 0.6rem; margin-bottom: 0.45rem; font-size: 0.78rem; }
-.par-row .who { color: var(--muted); }
-.par-track { position: relative; height: 1.35rem; background: var(--track); border-radius: 0.35rem; }
-.par-track .blk { position: absolute; top: 0.15rem; bottom: 0.15rem; border-radius: 0.25rem; font-style: normal; font: 600 0.66rem ui-monospace, SFMono-Regular, Consolas, monospace; line-height: 1.05rem; padding: 0 0.4rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.par-track .build { background: var(--slow); color: #fff; }
-.par-track .build.ok { background: #8a8982; }
-.par-track .fail { background: #fbe1de; color: #b23b30; border: 1px solid #f2b8b2; }
-.par-track .tick { position: absolute; top: 0.3rem; width: 0.42rem; height: 0.75rem; border-radius: 0.2rem; background: var(--accent); }
-.par-note { font-size: 0.78rem; color: var(--muted); margin: 0.7rem 0 0; line-height: 1.45; }
-.par-note code { font-size: 0.92em; }
-.key-tick { display: inline-block; width: 0.42rem; height: 0.75rem; border-radius: 0.2rem; background: var(--accent); vertical-align: -0.1em; margin-right: 0.35rem; }
+
 .par-stats { list-style: none; padding: 0; margin: 0 0 1.2rem; display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.8rem; }
 .par-stats li { background: var(--bg); border: 1px solid var(--line); border-radius: 0.7rem; padding: 0.7rem 0.9rem; }
 .par-stats b { display: block; font-size: 1.5rem; letter-spacing: -0.02em; color: var(--tag-text); line-height: 1.2; }
 .par-stats span { font-size: 0.8rem; color: var(--muted); line-height: 1.4; display: block; }
-@media (max-width: 720px) {
-  .par { padding: 1.4rem 1.1rem 1.2rem; }
-  .par-compare, .par-stats { grid-template-columns: 1fr; }
+
+/* Parallel agents on the landing page: three agents' terminals at the same moment, without Fuse and through it. */
+.par2 { max-width: 56rem; margin: 0 auto 2.6rem; border: 1px solid var(--tag-line); border-radius: 1rem; padding: 1.8rem 2rem 1.5rem; background: linear-gradient(135deg, var(--surface), var(--tag-bg)); }
+.par2-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1.5rem; margin: 0 0 1.2rem; }
+.par2-head h3 { font-size: 1.3rem; letter-spacing: -0.01em; margin: 0 0 0.45rem; }
+.par2-head p { color: var(--muted); font-size: 0.95rem; max-width: 36rem; margin: 0; }
+.seg { flex: none; display: inline-flex; background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 0.2rem; }
+.seg button { border: 0; background: none; color: var(--muted); font: 600 0.82rem ui-sans-serif, system-ui, sans-serif; padding: 0.4rem 0.9rem; border-radius: 999px; cursor: pointer; }
+.seg button[aria-pressed="true"][data-show="with"] { background: var(--accent); color: #fff; }
+.seg button[aria-pressed="true"][data-show="without"] { background: #b23b30; color: #fff; }
+.par2:not(.nojs) .views { display: grid; }
+.par2:not(.nojs) .views > .par2-view { grid-area: 1 / 1; }
+.par2:not(.nojs)[data-show="with"] .par2-view[data-view="without"], .par2:not(.nojs)[data-show="without"] .par2-view[data-view="with"] { visibility: hidden; }
+.par2.nojs .seg { display: none; }
+.par2.nojs .par2-view + .par2-view { margin-top: 1.2rem; }
+.par2-cap { font-size: 0.88rem; color: var(--muted); margin: 0 0 0.7rem; }
+.par2-view[data-view="without"] .par2-cap b { color: #b23b30; }
+.par2-view[data-view="with"] .par2-cap b { color: var(--tag-text); }
+.trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.7rem; }
+.mini { min-width: 0; background: var(--code-bg); border-radius: 0.7rem; overflow: hidden; display: flex; flex-direction: column; }
+.par2-view[data-view="with"] .mini { box-shadow: 0 0 0 2px var(--accent); }
+.par2-view[data-view="without"] .mini + .mini { box-shadow: 0 0 0 2px #b23b30; }
+.mini-bar { padding: 0.4rem 0.8rem; font-size: 0.76rem; color: var(--code-muted); border-bottom: 1px solid #2c2c32; font-weight: 600; }
+.mini pre { flex: 1; margin: 0; border-radius: 0; padding: 0.7rem 0.8rem; font-size: 0.7rem; line-height: 1.5; min-height: 7.5rem; }
+.mini pre code { white-space: pre-wrap; overflow-wrap: anywhere; }
+.mini .dim { color: var(--code-muted); }
+.mini .err { color: #f28b82; }
+.mini .warn { color: #e5c07b; }
+.mini .ok { color: #a8d8a0; }
+.mini .sum { color: #b9a8ff; }
+.par2-legend { font-size: 0.78rem; color: var(--muted); margin: 0.9rem 0 1rem; }
+@media (max-width: 760px) {
+  .par2 { padding: 1.3rem 1.1rem 1.2rem; }
+  .par2-head { flex-direction: column; gap: 1rem; }
+  .trio, .par-stats { grid-template-columns: 1fr; }
 }

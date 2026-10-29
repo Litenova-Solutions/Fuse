@@ -90,7 +90,7 @@ main:focus { outline: none; }
 .repo h3 { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; font-size: 0.95rem; font-weight: 600; margin: 0 0 0.9rem; }
 .repo h3 span { font-weight: 400; font-size: 0.82rem; color: var(--muted); white-space: nowrap; }
 .repo h3 span a { color: var(--muted); text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 2px; }
-.lane { display: grid; grid-template-columns: 7.4rem 1fr 3.4rem; align-items: center; gap: 0.15rem 0.8rem; font-size: 0.88rem; margin-bottom: 0.6rem; }
+.lane { display: grid; grid-template-columns: 6.6rem 1fr 3.4rem; align-items: center; gap: 0.15rem 0.8rem; font-size: 0.88rem; margin-bottom: 0.6rem; }
 .lane code { color: var(--muted); }
 .lane.fuse code { color: var(--text); font-weight: 600; }
 .track { height: 0.6rem; background: var(--track); border-radius: 0 0.3rem 0.3rem 0; overflow: hidden; }
@@ -355,7 +355,3 @@ pre .tk-summary { color: #d9cfff; }
 .features a:hover .ficon { background: var(--accent); border-color: var(--accent); color: #fff; }
 .features .ficon { flex: none; align-self: flex-start; line-height: 0; }
 
-.lane .who { color: var(--muted); font-size: 0.82rem; }
-.lane.fuse .who { color: var(--text); font-weight: 600; }
-.fill.bad { background: #e8a39b; }
-.lane-cap { font-size: 0.74rem; color: var(--muted); margin: -0.3rem 0 0.5rem; }

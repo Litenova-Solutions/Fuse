@@ -188,7 +188,7 @@
           <p class="x"><b>9.9x</b> faster at the median</p>
         </div>
       </div>
-      <p class="proof">In 120 generated cases (161 edits), Fuse reported <b>0</b> broken edits as clean and missed <b>2</b> compiler errors. Each bar shows a median. Under each bar are its fastest to slowest case and its mean.</p>
+      <p class="proof">Each bar shows the median of 30 cases per repository, 161 edits in all. Under each bar are its fastest to slowest case and its mean.</p>
     </section>
 
     <section class="section" aria-labelledby="test-heading">
@@ -225,43 +225,39 @@
       </div>
       <p class="proof">In 40 generated changes, 24 of which made tests fail, <code>fuse test</code> ran every failing test except 1 hedging test in a Polly case. See <a href="docs/benchmarks.html">Benchmarks</a>.</p>
     </section>
-    <section class="section" aria-labelledby="sessions-heading">
+    <section class="section" aria-labelledby="accuracy-heading">
       <div class="section-head">
-        <p class="kicker">When Agents Share a Repository</p>
-        <h2 id="sessions-heading">Each Agent Sees Only Its Own Errors</h2>
-        <p>Two agents edit one repository. One renames a public method; the other edits a file in another project that calls it. Without sessions each agent's hook also reports the other agent's errors, which it may try to fix. With sessions it reports only its own.</p>
+        <p class="kicker">Can You Trust the Answer</p>
+        <h2 id="accuracy-heading">The Same Errors as <code>dotnet build</code></h2>
+        <p>Each eval case makes one to three edits, breaking or not, then compares <code>fuse check</code> error by error with a real <code>dotnet build</code> of the same tree.</p>
       </div>
       <div class="repos">
         <div class="repo">
-          <h3>Validation Library <span><a href="https://github.com/FluentValidation/FluentValidation">FluentValidation</a>, 2 pairs</span></h3>
-          <p class="lane-cap">Errors from the other agent's edit</p>
-          <div class="lane"><span class="who">without sessions</span><span class="track" aria-hidden="true"><span class="fill bad" style="width:83.3%"></span></span><span class="t">5</span></div>
-          <div class="lane fuse"><span class="who">with sessions</span><span class="track" aria-hidden="true"><span class="fill" style="width:0%"></span></span><span class="t">0</span></div>
-          <p class="x"><b>All 9</b> of their own errors reported; hook 0.10 s, 0.50 s with sessions</p>
+          <h3>Validation Library <span><a href="https://github.com/FluentValidation/FluentValidation">FluentValidation</a>, 30 cases</span></h3>
+          <div class="lane fuse"><code>fuse check</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">112</span></div>
+          <div class="lane"><code>dotnet build</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">112</span></div>
+          <p class="x"><b>0 of 29</b> failing builds reported as clean</p>
         </div>
         <div class="repo">
-          <h3>Date and Time Library <span><a href="https://github.com/nodatime/nodatime">NodaTime</a>, 1 pair</span></h3>
-          <p class="lane-cap">Errors from the other agent's edit</p>
-          <div class="lane"><span class="who">without sessions</span><span class="track" aria-hidden="true"><span class="fill bad" style="width:50%"></span></span><span class="t">3</span></div>
-          <div class="lane fuse"><span class="who">with sessions</span><span class="track" aria-hidden="true"><span class="fill" style="width:0%"></span></span><span class="t">0</span></div>
-          <p class="x"><b>All 12</b> of their own errors reported; hook 0.33 s, 1.71 s with sessions</p>
+          <h3>Date and Time Library <span><a href="https://github.com/nodatime/nodatime">NodaTime</a>, 30 cases</span></h3>
+          <div class="lane fuse"><code>fuse check</code><span class="track" aria-hidden="true"><span class="fill" style="width:99.2%"></span></span><span class="t">128</span></div>
+          <div class="lane"><code>dotnet build</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">129</span></div>
+          <p class="x"><b>0 of 28</b> failing builds reported as clean; 1 error missed</p>
         </div>
         <div class="repo">
-          <h3>Media Server <span><a href="https://github.com/jellyfin/jellyfin">Jellyfin</a>, 3 pairs</span></h3>
-          <p class="lane-cap">Errors from the other agent's edit</p>
-          <div class="lane"><span class="who">without sessions</span><span class="track" aria-hidden="true"><span class="fill bad" style="width:100%"></span></span><span class="t">6</span></div>
-          <div class="lane fuse"><span class="who">with sessions</span><span class="track" aria-hidden="true"><span class="fill" style="width:0%"></span></span><span class="t">0</span></div>
-          <p class="x"><b>All 10</b> of their own errors reported; hook 0.17 s, 3.34 s with sessions</p>
+          <h3>Media Server <span><a href="https://github.com/jellyfin/jellyfin">Jellyfin</a>, 30 cases</span></h3>
+          <div class="lane fuse"><code>fuse check</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">59</span></div>
+          <div class="lane"><code>dotnet build</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">59</span></div>
+          <p class="x"><b>0 of 27</b> failing builds reported as clean</p>
         </div>
         <div class="repo">
-          <h3>Resilience Library <span><a href="https://github.com/App-vNext/Polly">Polly</a>, 3 pairs</span></h3>
-          <p class="lane-cap">Errors from the other agent's edit</p>
-          <div class="lane"><span class="who">without sessions</span><span class="track" aria-hidden="true"><span class="fill bad" style="width:100%"></span></span><span class="t">6</span></div>
-          <div class="lane fuse"><span class="who">with sessions</span><span class="track" aria-hidden="true"><span class="fill" style="width:0%"></span></span><span class="t">0</span></div>
-          <p class="x"><b>All 33</b> of their own errors reported; hook 0.17 s, 0.75 s with sessions</p>
+          <h3>Resilience Library <span><a href="https://github.com/App-vNext/Polly">Polly</a>, 30 cases</span></h3>
+          <div class="lane fuse"><code>fuse check</code><span class="track" aria-hidden="true"><span class="fill" style="width:99.8%"></span></span><span class="t">655</span></div>
+          <div class="lane"><code>dotnet build</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">656</span></div>
+          <p class="x"><b>0 of 30</b> failing builds reported as clean; 1 error missed</p>
         </div>
       </div>
-      <p class="proof">Bars count the errors from the other agent's edit in both agents' hook answers. A harness that names its session in each hook, as Claude Code does, gets sessions with no setup. <a href="docs/parallel-agents.html">Subagents and parallel agents</a></p>
+      <p class="proof">Bars count the compiler errors each tool reported over the 30 cases. In no case did the build contradict an error Fuse reported. <a href="docs/benchmarks.html#speed-and-accuracy">How accuracy was measured</a></p>
     </section>
 
     <section class="section" aria-labelledby="features-heading">

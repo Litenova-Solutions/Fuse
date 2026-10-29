@@ -18,6 +18,8 @@ namespace Fuse.Protocol;
 [JsonDerivedType(typeof(PlanAnswered), nameof(PlanAnswered))]
 [JsonDerivedType(typeof(Unanswered), nameof(Unanswered))]
 [JsonDerivedType(typeof(Restart), nameof(Restart))]
+[JsonDerivedType(typeof(ChangedBuildAnswered), nameof(ChangedBuildAnswered))]
+[JsonDerivedType(typeof(StatusAnswered), nameof(StatusAnswered))]
 internal abstract record EngineResponse
 {
     private EngineResponse()
@@ -40,4 +42,10 @@ internal abstract record EngineResponse
 
     /// <summary>The engine is from another build and is exiting. The client starts an engine of its own build and sends the request again.</summary>
     public sealed record Restart : EngineResponse;
+
+    /// <summary>The answer to <see cref="EngineRequest.PlanChangedBuild"/>: the projects to build and the tree they were planned from.</summary>
+    public sealed record ChangedBuildAnswered(ChangedBuildPlan Plan) : EngineResponse;
+
+    /// <summary>The answer to <see cref="EngineRequest.Status"/>: the engine and the tree it watches.</summary>
+    public sealed record StatusAnswered(EngineStatus Engine) : EngineResponse;
 }

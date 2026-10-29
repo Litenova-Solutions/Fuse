@@ -51,6 +51,19 @@ internal sealed class WorkspaceSync
         var result = await _tracker.SyncAsync(knownPaths, cancellationToken).ConfigureAwait(false);
         if (_unfinished is { } unfinished)
             result = unfinished.Then(result);
+        if (result is SyncResult.Patch overflowing && _views.TouchedOverflows)
+        {
+            // The same re-evaluation the over-limit and project-file paths take, so the touched set stops
+            // growing with the session's lifetime; the log names why this sync took the expensive path.
+            _log($"touched set passed {SolutionViews.MaxTouchedPaths} paths; re-evaluating projects and resetting it");
+            var paths = new HashSet<RepoPath>(result.Paths);
+            paths.UnionWith(_tracker.Changed);
+            foreach (var directory in overflowing.VanishedDirectories)
+                paths.UnionWith(_views.FilesUnder(directory));
+            _views.ResetTouched();
+            result = new SyncResult.Reevaluate(paths, $"touched set passed {SolutionViews.MaxTouchedPaths} paths");
+        }
+
         _unfinished = result;
         switch (result)
         {

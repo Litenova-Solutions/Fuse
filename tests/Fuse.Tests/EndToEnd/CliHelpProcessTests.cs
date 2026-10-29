@@ -15,7 +15,7 @@ public class CliHelpProcessTests
     [InlineData("init", "fuse init [--instructions]")]
     [InlineData("uninit", "fuse uninit")]
     [InlineData("mcp", "fuse mcp")]
-    [InlineData("hook", "fuse hook <")]
+    // No hook case: the hook prints its own usage to stderr (see HookHelpProcessTests).
     [InlineData("engine", "fuse engine <root>")]
     [InlineData("version", "fuse --version")]
     public async Task Help_prints_the_subcommands_usage_and_runs_nothing(string command, string usage)

@@ -5,6 +5,7 @@ using Fuse.Dotnet;
 using Fuse.Failures;
 using Fuse.Paths;
 using Fuse.Protocol;
+using Fuse.Repo;
 using Fuse.Telemetry;
 using Fuse.Testing;
 using Fuse.Testing.Model;
@@ -133,6 +134,10 @@ internal sealed class RequestRouter : IDisposable
             return new EngineResponse.Unanswered(ErrorCode.LoadFailed, $"Fuse could not evaluate the repository's projects: {e.Message}");
         }
 
+        // Status needs no project, so it is answered before the check that refuses a repository without one.
+        if (request is EngineRequest.Status)
+            return await StatusAsync(request, cancellationToken).ConfigureAwait(false);
+
         if (_workspace.Graph.Projects.Count == 0)
             return new EngineResponse.Unanswered(ErrorCode.NoProjects, _workspace.Graph.Failures.Count > 0
                 ? $"no C# project could be evaluated: {_workspace.Graph.Failures[0]}"
@@ -156,6 +161,8 @@ internal sealed class RequestRouter : IDisposable
                 return await CheckPathsAsync(paths, analyzers, phases, cancellationToken).ConfigureAwait(false);
             if (request is EngineRequest.CheckFiles check)
                 return await CheckFilesAsync(check, analyzers, phases, cancellationToken).ConfigureAwait(false);
+            if (request is EngineRequest.PlanChangedBuild)
+                return await PlanChangedBuildAsync(phases, cancellationToken).ConfigureAwait(false);
 
             if (request is EngineRequest.PlanFailedTests failed)
             {
@@ -294,6 +301,72 @@ internal sealed class RequestRouter : IDisposable
         var session = SessionEdits.IsValid(check.Session) ? check.Session : null;
         return ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.Files(paths), session, analyzers, phases, cancellationToken, maxReported: check.MaxErrors).ConfigureAwait(false));
     }
+
+    /// <summary>
+    ///     Answers what the tree holds: it syncs under the request lock like a check, then reads the process, its
+    ///     working set and the changed files. It never loads a project and never refuses a repository without one.
+    /// </summary>
+    private async Task<EngineResponse> StatusAsync(EngineRequest request, CancellationToken cancellationToken)
+    {
+        var phases = new PhaseTimes();
+        var queued = Stopwatch.StartNew();
+        var gateHolder = await _requestLock.EnterAsync(RequestLog.KindOf(request), cancellationToken).ConfigureAwait(false);
+        phases.Add(Phase.Gate, queued);
+        var started = Environment.TickCount64;
+        try
+        {
+            var syncing = phases.Start();
+            await _workspace.SyncAsync([], cancellationToken).ConfigureAwait(false);
+            phases.Add(Phase.Sync, syncing);
+            var changed = _workspace.Tracker.Changed;
+            return new EngineResponse.StatusAnswered(new EngineStatus(
+                Environment.ProcessId,
+                Environment.WorkingSet,
+                changed.Count,
+                _workspace.Tracker.Head,
+                TreeStamp.Of(ChangedPairs(changed))));
+        }
+        catch (FuseException e)
+        {
+            return ResponseMapper.Unanswered(e);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            _log.Write($"{RequestLog.KindOf(request)} failed: {e}");
+            return new EngineResponse.Unanswered(ErrorCode.Internal, $"internal error: {e.Message} (details in {_log.FilePath})");
+        }
+        finally
+        {
+            // Released whatever the log write does: a lock that stays held makes every later request wait for it.
+            try
+            {
+                _requestLog.Write(request, phases, Environment.TickCount64 - started, gateHolder);
+            }
+            finally
+            {
+                Release();
+            }
+        }
+    }
+
+    /// <summary>
+    ///     Plans a build of the changed projects: it syncs under the request lock like a check, then plans from the
+    ///     graph and the changed files. It never loads a project.
+    /// </summary>
+    private async Task<EngineResponse> PlanChangedBuildAsync(PhaseTimes phases, CancellationToken cancellationToken)
+    {
+        var syncing = phases.Start();
+        await _workspace.SyncAsync([], cancellationToken).ConfigureAwait(false);
+        phases.Add(Phase.Sync, syncing);
+        var projectFiles = (await GitStatus.ChangedPathsAsync(_workspace.Root, cancellationToken).ConfigureAwait(false))
+            .Where(path => PathRules.IsProjectFile(path.Absolute))
+            .ToList();
+        return new EngineResponse.ChangedBuildAnswered(ChangedBuildPlanner.Plan(_workspace.Graph, _workspace.Tracker.Changed, projectFiles));
+    }
+
+    /// <summary>What the tree stamp hashes: each changed file with its path relative to the root and its absolute path to read.</summary>
+    private static IEnumerable<(string Relative, string Absolute)> ChangedPairs(IReadOnlyCollection<RepoPath> changed) =>
+        changed.Select(path => (path.Relative, path.Absolute));
 
     /// <summary>
     ///     Waits for a background load to stop, after the shutdown token has been cancelled, so the workspace is never

@@ -60,8 +60,10 @@ internal static class TestOperation
             if (response is not EngineResponse.PlanAnswered answered)
                 return OperationResult.Unanswered(response, "test plan");
             var plan = answered.Plan;
-            // A plan that answered every test from the cache runs nothing; the summary says how many it answered.
             // A gated suite outranks the cache: when a runtime is missing the run is blocked, not clean.
+            if (plan.Runs.Length == 0 && plan.ContainerGatedTests > 0)
+                return WithoutRuntime(plan);
+            // A plan that answered every test from the cache runs nothing; the summary says how many it answered.
             if (plan.Runs.Length == 0 && plan.CachedTests > 0)
                 return RenderCached(root, plan, started);
             if (plan.Runs.Length == 0)
@@ -663,9 +665,10 @@ internal static class TestOperation
 
     /// <summary>
     ///     The caller's <c>dotnet test</c> arguments with a positional path spelled the way the runner requires:
-    ///     Microsoft.Testing.Platform refuses a directory, project or solution given positionally, so a first argument
-    ///     naming one becomes <c>--project</c> or <c>--solution</c> with the path. An assembly stays positional, and
-    ///     arguments that already name a project or solution pass unchanged.
+    ///     Microsoft.Testing.Platform refuses a project or solution given positionally, so a first argument naming one
+    ///     becomes <c>--project</c> or <c>--solution</c> with the path. A directory stays positional, which
+    ///     <c>dotnet test</c> reads as the project it holds, as does an assembly, and arguments that already name a
+    ///     project or solution pass unchanged.
     /// </summary>
     internal static string[] NormalizeArguments(string workingDirectory, IReadOnlyList<string> arguments)
     {
@@ -691,7 +694,7 @@ internal static class TestOperation
             ? "--solution"
             : first.EndsWith("proj", StringComparison.OrdinalIgnoreCase)
                 ? "--project"
-                : IsDirectory(workingDirectory, first) ? "--project" : null;
+                : null;
         return option is null ? [.. arguments] : [option, first, .. arguments.Skip(1)];
     }
 
@@ -728,19 +731,6 @@ internal static class TestOperation
             : null;
     }
 
-    /// <summary>Whether <paramref name="path"/>, read from <paramref name="workingDirectory"/>, is a directory; a path that cannot be read as one is not.</summary>
-    private static bool IsDirectory(string workingDirectory, string path)
-    {
-        try
-        {
-            return Directory.Exists(Path.GetFullPath(path, workingDirectory));
-        }
-        catch (Exception e) when (e is ArgumentException or NotSupportedException or IOException)
-        {
-            return false;
-        }
-    }
-
     /// <summary>How <see cref="WithoutResults"/> names a run of the user's own <c>dotnet test</c> arguments.</summary>
     internal const string ArgumentsRun = "dotnet test";
 
@@ -760,6 +750,13 @@ internal static class TestOperation
             return [];
         return ["--settings", RunSettingsFile.Write(results, run.Filter, run.RunSettings)];
     }
+
+    /// <summary>
+    ///     The answer when every selected test needs a container runtime that is not running: no process starts, which
+    ///     reads as blocked rather than clean, and the answer names the fix.
+    /// </summary>
+    internal static OperationResult WithoutRuntime(TestPlan plan) =>
+        new(Outcome.ProblemsFound, $"fuse: no test ran: {plan.ContainerGatedTests} test(s) selected in {string.Join(", ", plan.ContainerGatedProjects)} need a container runtime, and none is running; start Docker or Podman and run fuse test again");
 
     /// <summary>
     ///     The answer for a run without results. Error lines in its output mean the project did not build, and print as a

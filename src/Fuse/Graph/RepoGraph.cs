@@ -240,6 +240,7 @@ internal sealed class RepoGraph
         // reaches it, which the client reads when it runs the plan.
         var isTestingPlatform = isTestingPlatformApplication;
         var framework = FrameworkOf(packages);
+        var requiresContainerRuntime = InfraOf(packages);
         var targetPaths = evaluations.Select(e => e.GetPropertyValue("TargetPath").Trim())
             .Where(t => t.Length > 0)
             .Select(t => System.IO.Path.GetFullPath(System.IO.Path.Combine(dir, t)))
@@ -262,13 +263,18 @@ internal sealed class RepoGraph
             IsTest = isTest,
             UsesTestingPlatform = isTestingPlatform,
             Framework = framework,
+            RequiresContainerRuntime = requiresContainerRuntime,
             TargetPaths = targetPaths,
             RunSettings = runSettings is null ? null : System.IO.Path.GetFullPath(System.IO.Path.Combine(dir, runSettings)),
-            IsExecutable = !isTest && (outputType.Equals("Exe", StringComparison.OrdinalIgnoreCase) || outputType.Equals("WinExe", StringComparison.OrdinalIgnoreCase) || isWeb),
+            IsExecutable = outputType.Equals("Exe", StringComparison.OrdinalIgnoreCase) || outputType.Equals("WinExe", StringComparison.OrdinalIgnoreCase) || isWeb,
         };
     }
 
     /// <summary>The test framework <paramref name="packages"/> name, or <see cref="TestFramework.Unknown"/> when none of them is one Fuse knows.</summary>
+    /// <summary>True when <paramref name="packages"/> name a Testcontainers package, whose tests need a container runtime running.</summary>
+    private static bool InfraOf(HashSet<string> packages) =>
+        packages.Any(p => p.Equals("Testcontainers", StringComparison.OrdinalIgnoreCase) || p.StartsWith("Testcontainers.", StringComparison.OrdinalIgnoreCase));
+
     private static TestFramework FrameworkOf(HashSet<string> packages)
     {
         if (packages.Any(p => p.Equals("xunit.v3", StringComparison.OrdinalIgnoreCase) || p.StartsWith("xunit.v3.", StringComparison.OrdinalIgnoreCase)))

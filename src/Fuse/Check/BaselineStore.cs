@@ -32,8 +32,9 @@ internal sealed partial class BaselineStore
     /// <summary>
     ///     The key the baseline results for <paramref name="head"/> are kept under, or null when nothing is kept for it:
     ///     the repository has no commit, or anything the results depend on cannot be read. The key covers HEAD, the
-    ///     Roslyn build, and per loaded project its evaluation inputs, its restore output and its analyzer assemblies,
-    ///     plus every editorconfig and globalconfig file, so a result is read only when all of those are as they were.
+    ///     Roslyn build, and per loaded project its evaluation inputs, its restore output, its analyzer assemblies, its
+    ///     additional files and its global analyzer options, plus every editorconfig and globalconfig file, so a result
+    ///     is read only when all of those are as they were.
     /// </summary>
     public static string? KeyFor(string? head, Solution baseline, RepoGraph graph, RepoRoot root)
     {
@@ -55,6 +56,25 @@ internal sealed partial class BaselineStore
                     return null;
                 foreach (var analyzer in references.OfType<AnalyzerFileReference>().Select(r => r.FullPath).Distinct(StringComparer.Ordinal).OrderBy(p => p, StringComparer.Ordinal))
                     lines.Add("analyzer:" + analyzer + "=" + HashFile(analyzer));
+                var additionalPaths = new List<string>();
+                foreach (var file in group.SelectMany(p => p.AdditionalDocuments).Select(d => d.FilePath))
+                {
+                    if (string.IsNullOrEmpty(file))
+                        return null;
+                    additionalPaths.Add(file);
+                }
+
+                foreach (var additional in additionalPaths.Distinct(StringComparer.Ordinal).OrderBy(p => p, StringComparer.Ordinal))
+                    lines.Add("additional:" + additional + "=" + HashFile(additional));
+                foreach (var project in group.OrderBy(p => p.Name, StringComparer.Ordinal))
+                {
+                    var options = project.AnalyzerOptions.AnalyzerConfigOptionsProvider.GlobalOptions;
+                    foreach (var key in options.Keys.Order(StringComparer.Ordinal))
+                    {
+                        if (options.TryGetValue(key, out var value))
+                            lines.Add("option:" + node.Path.Relative + "|" + project.Name + "|" + key + "=" + value);
+                    }
+                }
             }
 
             foreach (var config in ConfigFiles(root))

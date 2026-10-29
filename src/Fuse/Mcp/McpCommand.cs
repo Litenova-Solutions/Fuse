@@ -21,15 +21,15 @@ internal static class McpCommand
             Name = "fuse_check",
             Title = "Check C# changes",
             Description = "Compiler and analyzer errors the working tree has and HEAD does not: in the named files, or in every changed file when none are named, and in the files of dependent projects that use a changed declaration. Run after editing C# files. Once Fuse has loaded the repository it answers much faster than dotnet build.",
-            InputSchema = Schema("""{"type":"object","properties":{"files":{"type":"array","items":{"type":"string"},"description":"Files to check, absolute or relative to the repository root. Omit to check every file that differs from HEAD."}}}"""),
+            InputSchema = Schema("""{"type":"object","properties":{"files":{"type":"array","items":{"type":"string"},"description":"Files to check, absolute or relative to the repository root. Omit to check every file that differs from HEAD."},"max_errors":{"type":"integer","description":"Show at most this many errors (default 20)."}}}}"""),
             Annotations = new ToolAnnotations { ReadOnlyHint = true, IdempotentHint = true, OpenWorldHint = false },
         },
         new()
         {
             Name = "fuse_test",
             Title = "Run affected tests",
-            Description = "Runs the tests affected by the working-tree changes and reports only failures. Set all=true to run every test.",
-            InputSchema = Schema("""{"type":"object","properties":{"all":{"type":"boolean","description":"Run every test instead of the affected ones."}}}"""),
+            Description = "Runs the tests affected by the working-tree changes and reports only failures. Set all=true to run every test, or failed=true to rerun the tests that failed last time.",
+            InputSchema = Schema("""{"type":"object","properties":{"all":{"type":"boolean","description":"Run every test instead of the affected ones."},"failed":{"type":"boolean","description":"Rerun the tests that failed in the last recorded run instead of the affected ones."}}}"""),
             Annotations = new ToolAnnotations { ReadOnlyHint = false, DestructiveHint = false, OpenWorldHint = false },
         },
         new()
@@ -65,7 +65,8 @@ internal static class McpCommand
     /// <summary>Answers one tool call for the repository that contains <paramref name="workingDirectory"/>.</summary>
     /// <remarks>
     ///     A <c>fuse_check</c> file that is empty, not a string or not a path is refused with the <c>InvalidPath</c> message
-    ///     and <c>isError</c>, before anything is sent to the engine.
+    ///     and <c>isError</c>, before anything is sent to the engine. A <c>max_errors</c> that is no count of 1 to
+    ///     100000 is refused the same way, as is a <c>fuse_test</c> call with both <c>all</c> and <c>failed</c>.
     /// </remarks>
     internal static async Task<CallToolResult> CallAsync(CallToolRequestParams? request, string workingDirectory, CancellationToken cancellationToken)
     {
@@ -86,11 +87,21 @@ internal static class McpCommand
                         return Text(refusal.Text, isError: true);
                 }
 
-                (result, _) = await CheckOperation.RunAsync(root, files, session: null, waitForLoad: true, compilationWideAnalyzers: true, TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
+                var maxErrors = 0;
+                if (arguments.TryGetValue("max_errors", out var cap))
+                {
+                    if (cap.ValueKind != JsonValueKind.Number || !cap.TryGetInt32(out maxErrors) || maxErrors < 1 || maxErrors > CheckArguments.MaxErrorsLimit)
+                        return Text($"fuse: max_errors takes a count of 1 to {CheckArguments.MaxErrorsLimit}", isError: true);
+                }
+
+                (result, _) = await CheckOperation.RunAsync(root, files, session: null, waitForLoad: true, compilationWideAnalyzers: true, TimeSpan.FromMinutes(10), cancellationToken, maxErrors).ConfigureAwait(false);
                 break;
             case "fuse_test":
                 var all = arguments.TryGetValue("all", out var flag) && flag.ValueKind == JsonValueKind.True;
-                result = await TestOperation.RunAsync(root, root.Path, [], all, cancellationToken).ConfigureAwait(false);
+                var failed = arguments.TryGetValue("failed", out var retry) && retry.ValueKind == JsonValueKind.True;
+                if (all && failed)
+                    return Text("fuse: failed reruns the tests that failed last time and cannot be combined with all; set only one of them", isError: true);
+                result = await TestOperation.RunAsync(root, root.Path, [], all, cancellationToken, failed: failed).ConfigureAwait(false);
                 break;
             case "fuse_build":
                 var target = arguments.TryGetValue("target", out var t) && t.ValueKind == JsonValueKind.String ? t.GetString() : null;

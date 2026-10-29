@@ -36,6 +36,8 @@ internal static class ResponseMapper
         AnalyzersUnfinished = result.AnalyzersUnfinished,
         CompilationWideLeftOut = [.. result.CompilationWideLeftOut],
         FilesNotAttributed = result.FilesNotAttributed,
+        NonCSharpChanged = result.NonCSharpChanged,
+        NonCSharpSample = [.. result.NonCSharpSample],
         ScopedPaths = [.. result.ScopedPaths],
         WholeProjects = [.. result.WholeProjectCauses.Select(c => new ReportedWholeProject(c.Project, [.. c.ChangedFiles], [.. c.Causes]))],
     };
@@ -45,7 +47,11 @@ internal static class ResponseMapper
         [.. result.Runs.Select(r => new TestRun(r.Project.Absolute, r.Name, Mode(r.Mode), r.Filter, r.UsesTestingPlatform, r.RunSettings, r.FilterArguments, r.TargetPaths))],
         result.SelectedTests,
         result.TotalTests,
-        result.Summary);
+        result.Summary)
+    {
+        ContainerGatedTests = result.ContainerGatedTests,
+        ContainerGatedProjects = [.. result.ContainerGatedProjects],
+    };
 
     private static ReportedCause? Reported(Cause? cause) => cause switch
     {

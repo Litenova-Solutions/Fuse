@@ -69,8 +69,6 @@ internal sealed class TestClassKey
                 return classes.ToDictionary(c => c, _ => (string?)null, StringComparer.Ordinal);
 
             var files = await FilesAsync(variants, cancellationToken).ConfigureAwait(false);
-            if (ReadsOutsideProject(files, test))
-                return classes.ToDictionary(c => c, _ => (string?)null, StringComparer.Ordinal);
             var projects = variants.Values.Select(v => v.Project).ToList();
             var shared = SharedLines(root, involved, projects, test, head);
             if (shared is null)
@@ -104,10 +102,13 @@ internal sealed class TestClassKey
         HashSet<string> shared)
     {
         var own = files.Where(f => f.Value.Node.Path == test.Path && Declares(f.Value.Facts, className)).Select(f => f.Key).ToList();
-        if (own.Count == 0 || own.Any(f => ReadsEnvironment(files[f].Text)))
+        if (own.Count == 0)
+            return null;
+        var closure = Closure(files, edges, visible, own);
+        if (closure.Any(f => ReadsEnvironment(files[f].Text) || ReadsOutside(files[f].Text)))
             return null;
         var lines = new HashSet<string>(shared, StringComparer.Ordinal);
-        foreach (var file in Closure(files, edges, visible, own))
+        foreach (var file in closure)
             lines.Add($"src:{root.PathOf(file).Relative}={HashOf(files[file].Text)}");
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join("\n", lines.Order(StringComparer.Ordinal)))));
     }
@@ -376,11 +377,10 @@ internal sealed class TestClassKey
     private static bool ReadsEnvironment(string text) =>
         EnvironmentMarkers.Any(m => text.Contains(m, StringComparison.Ordinal));
 
-    /// <summary>True when a compiled test source reads or writes a file that can lie outside the test project.</summary>
-    private static bool ReadsOutsideProject(Dictionary<string, SourceFile> files, ProjectNode test) =>
-        files.Values.Any(f => f.Node.Path == test.Path
-            && FileMarkers.Any(m => f.Text.Contains(m, StringComparison.Ordinal))
-            && OutsideMarkers.Any(m => f.Text.Contains(m, StringComparison.Ordinal)));
+    /// <summary>True when the text reads or writes a file that can lie outside the test project.</summary>
+    private static bool ReadsOutside(string text) =>
+        FileMarkers.Any(m => text.Contains(m, StringComparison.Ordinal))
+        && OutsideMarkers.Any(m => text.Contains(m, StringComparison.Ordinal));
 
     private static string SimpleName(string qualified)
     {

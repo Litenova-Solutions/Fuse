@@ -1,3 +1,4 @@
+using Fuse.Check.Model;
 using Fuse.Operations;
 using Fuse.Protocol;
 
@@ -12,7 +13,11 @@ public class WholeProjectRenderTests
     [Fact]
     public void Whole_projects_name_their_forcing_files()
     {
-        var report = new CheckReport([], 4, ["App", "Lib"], ["Lib"], 2, true, 4, 4, 0)
+        // The engine sends every error it found up to its cap, so a report of 4 errors carries all 4.
+        var errors = Enumerable.Range(1, 4)
+            .Select(i => new ReportedError(new CompilerError($"src/F{i}.cs", i, 1, "CS0103", "no x")))
+            .ToArray();
+        var report = new CheckReport(errors, 4, ["App", "Lib"], ["Lib"], 2, true, 4, 4, 0)
         {
             WholeProjects =
             [

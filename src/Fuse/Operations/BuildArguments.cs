@@ -8,13 +8,14 @@ namespace Fuse.Operations;
 /// <param name="Json">True for one JSON object per diagnostic instead of text.</param>
 /// <param name="ListWarnings">True to list the warnings after the errors.</param>
 /// <param name="FromRewrite">True when the pre-shell hook rewrote the command, which prints a notice line first.</param>
-internal sealed record BuildArguments(IReadOnlyList<string> Passthrough, int MaxErrors, bool Json, bool ListWarnings, bool FromRewrite)
+/// <param name="Changed">True to build only the projects owning files changed since HEAD and their dependents.</param>
+internal sealed record BuildArguments(IReadOnlyList<string> Passthrough, int MaxErrors, bool Json, bool ListWarnings, bool FromRewrite, bool Changed)
 {
     /// <summary>The most errors <c>--max-errors</c> takes; past it the count is a typo, and <c>--all-errors</c> shows every error.</summary>
     internal const int MaxErrorsLimit = 100000;
 
     /// <summary>Fuse's own options: every other token goes to <c>dotnet build</c>, except a near miss of one of these, which is refused.</summary>
-    private static readonly string[] FuseOptions = ["--max-errors", "--all-errors", "--json", "--warnings", "--help"];
+    private static readonly string[] FuseOptions = ["--max-errors", "--all-errors", "--json", "--warnings", "--changed", "--help"];
 
     /// <summary>
     ///     Parses <paramref name="args"/>. Help tokens are dropped: the command prints help before parsing, so one here
@@ -30,6 +31,7 @@ internal sealed record BuildArguments(IReadOnlyList<string> Passthrough, int Max
         var json = false;
         var warnings = false;
         var fromRewrite = false;
+        var changed = false;
         var options = true;
         for (var i = 0; i < args.Count; i++)
         {
@@ -71,6 +73,12 @@ internal sealed record BuildArguments(IReadOnlyList<string> Passthrough, int Max
                 continue;
             }
 
+            if (token == "--changed")
+            {
+                changed = true;
+                continue;
+            }
+
             if (token == "--max-errors" || token.StartsWith("--max-errors=", StringComparison.Ordinal))
             {
                 var refusal = TakeCount(token, args, ref i, out var count);
@@ -87,7 +95,7 @@ internal sealed record BuildArguments(IReadOnlyList<string> Passthrough, int Max
 
         if (allErrors && maxErrors > 0)
             return (null, "fuse: --all-errors and --max-errors cannot be combined; choose one");
-        return (new BuildArguments(passthrough, allErrors ? int.MaxValue : maxErrors, json, warnings, fromRewrite), null);
+        return (new BuildArguments(passthrough, allErrors ? int.MaxValue : maxErrors, json, warnings, fromRewrite, changed), null);
     }
 
     /// <summary>The options the build runs with: JSON and every error uncap the errors shown.</summary>

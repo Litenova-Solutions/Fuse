@@ -37,7 +37,7 @@ public class FailedPlanTests
         Assert.Empty(plan.Runs);
         Assert.Equal(
             "reran 0 test(s) that failed last time in 0 test project(s)"
-            + "; left out Else, which is not a test project in this repository"
+            + "; left out Else.Tests, which is not a test project in this repository"
             + "; left out Gone, which is not a test project in this repository"
             + "; left out Lib, which is not a test project in this repository",
             plan.Summary);

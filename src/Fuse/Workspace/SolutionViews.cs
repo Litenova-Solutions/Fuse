@@ -24,6 +24,9 @@ internal sealed class SolutionViews
     private readonly AnalyzerShadow _analyzers;
     private readonly HashSet<RepoPath> _touched = [];
 
+    /// <summary>The most paths the touched set holds. Past it the next sync re-evaluates the projects and resets the set, so a long session's set stops growing with its lifetime.</summary>
+    internal const int MaxTouchedPaths = 2000;
+
     /// <summary>
     ///     Each generated file of the views (<see cref="GeneratedFiles"/>), with the length and last write time it had when
     ///     its content was last applied to both views.
@@ -105,6 +108,12 @@ internal sealed class SolutionViews
     ///     older content.
     /// </summary>
     public void Touch(IEnumerable<RepoPath> paths) => _touched.UnionWith(paths);
+
+    /// <summary>True when the touched set holds more than <see cref="MaxTouchedPaths"/> paths, so the next sync re-evaluates the projects and resets it.</summary>
+    public bool TouchedOverflows => _touched.Count > MaxTouchedPaths;
+
+    /// <summary>Empties the touched set. Called only when the projects are evaluated again, which reopens them from disk.</summary>
+    public void ResetTouched() => _touched.Clear();
 
     /// <summary>Derives both views from the loader's solution again, re-applying every touched and every changed file.</summary>
     /// <remarks>

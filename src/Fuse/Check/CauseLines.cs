@@ -12,13 +12,10 @@ namespace Fuse.Check;
 /// </summary>
 internal static partial class CauseLines
 {
-    /// <summary>At most this many causes per answer, so the cause lines of a change that reaches many files do not outnumber the errors.</summary>
-    public const int MaxCauses = 10;
-
     /// <summary>
     ///     Each error with its cause, in the same order. An error gets no cause when it is in a target, when an analyzer
-    ///     reported it, when the reach is not <see cref="Reach.Precise"/>, or when the cap is reached; in the last case it
-    ///     is marked <see cref="IntroducedError.IsCauseLeftOut"/>.
+    ///     reported it, or when the reach is not <see cref="Reach.Precise"/>. Every candidate error carries its cause, so
+    ///     grouping sees them all; the client prints at most ten cause lines and counts the rest itself.
     /// </summary>
     /// <param name="errors">The errors in the check's answer, in report order.</param>
     /// <param name="reach">The files the declaration changes reached; only a precise reach names a cause for a file.</param>
@@ -35,7 +32,6 @@ internal static partial class CauseLines
 
         var targetPaths = new HashSet<RepoPath>(targets);
         var result = new List<IntroducedError>(errors.Count);
-        var shown = 0;
         foreach (var error in errors)
         {
             var path = root.PathOf(error.Path);
@@ -45,14 +41,7 @@ internal static partial class CauseLines
                 continue;
             }
 
-            if (shown >= MaxCauses)
-            {
-                result.Add(new IntroducedError(error, IsCauseLeftOut: true));
-                continue;
-            }
-
             result.Add(new IntroducedError(error, About(error, cause, precise.AllCauses?.GetValueOrDefault(path))));
-            shown++;
         }
 
         return result;

@@ -3,8 +3,8 @@ using Fuse.Operations;
 namespace Fuse.Tests.Unit;
 
 /// <summary>
-///     How `fuse test` spells a positional project, solution or directory path for `dotnet test`, which refuses the
-///     positional form on Microsoft.Testing.Platform.
+///     How `fuse test` spells a positional project or solution path for `dotnet test`, which refuses the positional
+///     form on Microsoft.Testing.Platform. A directory stays positional, which `dotnet test` reads as the project it holds.
 /// </summary>
 public class TestArgumentsTests
 {
@@ -20,7 +20,7 @@ public class TestArgumentsTests
     }
 
     [Fact]
-    public void A_positional_directory_that_exists_is_a_project()
+    public void A_positional_directory_stays_positional()
     {
         var root = Directory.CreateTempSubdirectory("fuse-test-args");
         try
@@ -28,10 +28,10 @@ public class TestArgumentsTests
             var tests = root.CreateSubdirectory("Lib.Tests");
 
             Assert.Equal(
-                ["--project", "Lib.Tests"],
+                ["Lib.Tests"],
                 TestOperation.NormalizeArguments(root.FullName, ["Lib.Tests"]));
             Assert.Equal(
-                ["--project", tests.FullName, "--no-build"],
+                [tests.FullName, "--no-build"],
                 TestOperation.NormalizeArguments(root.FullName, [tests.FullName, "--no-build"]));
         }
         finally

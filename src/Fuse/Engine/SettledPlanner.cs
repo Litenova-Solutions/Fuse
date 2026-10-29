@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using Fuse.Paths;
 using Fuse.Telemetry;
 using Fuse.Testing;
 using Fuse.Testing.Model;
@@ -31,7 +32,7 @@ internal sealed class SettledPlanner
     private string? _prepared;
 
     /// <param name="planner">The planner a settled preparation selects and emits with.</param>
-    /// <param name="gate">The request lock, held only while the next settled plan is selected.</param>
+    /// <param name="gate">The request lock, held briefly while each poll syncs and while the next settled plan is selected.</param>
     /// <param name="workspace">The workspace the tree's snapshot is taken from.</param>
     /// <param name="log">Receives one line per settled preparation.</param>
     public SettledPlanner(TestPlanner planner, RequestGate gate, RepoWorkspace workspace, Action<string> log)
@@ -84,7 +85,25 @@ internal sealed class SettledPlanner
             string snapshot;
             try
             {
-                snapshot = Snapshot();
+                await _gate.EnterAsync("SettledPoll", shutdown).ConfigureAwait(false);
+                List<RepoPath> changed;
+                string? head;
+                try
+                {
+                    await _workspace.SyncAsync([], shutdown).ConfigureAwait(false);
+                    changed = [.. _workspace.Tracker.Changed];
+                    head = _workspace.Tracker.Head;
+                }
+                finally
+                {
+                    _gate.Exit();
+                }
+
+                snapshot = Snapshot(head, changed);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
             }
             catch (InvalidOperationException)
             {
@@ -137,7 +156,7 @@ internal sealed class SettledPlanner
         {
             pending = await _planner.SelectAsync(new TestScope.Affected(), PhaseTimes.None, shutdown).ConfigureAwait(false);
             // Noted again after the sync: when it moved during the selection, the emit would warm images for a tree nobody has.
-            if (Snapshot() != settled)
+            if (Snapshot(_workspace.Tracker.Head, _workspace.Tracker.Changed) != settled)
                 return;
         }
         finally
@@ -153,10 +172,10 @@ internal sealed class SettledPlanner
     }
 
     /// <summary>The tree as the settle loop watches it: HEAD and every changed file with its length and write time.</summary>
-    private string Snapshot()
+    private static string Snapshot(string? head, IReadOnlyCollection<RepoPath> changed)
     {
-        var builder = new StringBuilder(_workspace.Tracker.Head ?? "");
-        foreach (var path in _workspace.Tracker.Changed.OrderBy(p => p.Absolute, StringComparer.Ordinal))
+        var builder = new StringBuilder(head ?? "");
+        foreach (var path in changed.OrderBy(p => p.Absolute, StringComparer.Ordinal))
         {
             long length = -1;
             long ticks = -1;

@@ -177,13 +177,43 @@ internal static class CompiledCode
     /// <summary>One body: a block, or an expression body with whether it returns a value.</summary>
     private sealed record RawBody(BlockSyntax? Block, ArrowExpressionClauseSyntax? Arrow, bool ReturnsValue);
 
-    /// <summary>Replaces every block and expression body with a fixed one, leaving the header.</summary>
+    /// <summary>Strips every body, leaving the header: signature, constraints, attributes and accessor kinds.</summary>
     private sealed class HeaderShape : CSharpSyntaxRewriter
     {
-        public override SyntaxNode? VisitBlock(BlockSyntax node) => SyntaxFactory.Block();
+        public override SyntaxNode? VisitMethodDeclaration(MethodDeclarationSyntax node) =>
+            base.VisitMethodDeclaration(node) is MethodDeclarationSyntax visited
+                ? visited.WithBody(null).WithExpressionBody(null).WithSemicolonToken(default)
+                : null;
 
-        public override SyntaxNode? VisitArrowExpressionClause(ArrowExpressionClauseSyntax node) =>
-            SyntaxFactory.ArrowExpressionClause(SyntaxFactory.LiteralExpression(SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(0)));
+        public override SyntaxNode? VisitConstructorDeclaration(ConstructorDeclarationSyntax node) =>
+            base.VisitConstructorDeclaration(node) is ConstructorDeclarationSyntax visited
+                ? visited.WithBody(null).WithExpressionBody(null).WithSemicolonToken(default)
+                : null;
+
+        public override SyntaxNode? VisitOperatorDeclaration(OperatorDeclarationSyntax node) =>
+            base.VisitOperatorDeclaration(node) is OperatorDeclarationSyntax visited
+                ? visited.WithBody(null).WithExpressionBody(null).WithSemicolonToken(default)
+                : null;
+
+        public override SyntaxNode? VisitConversionOperatorDeclaration(ConversionOperatorDeclarationSyntax node) =>
+            base.VisitConversionOperatorDeclaration(node) is ConversionOperatorDeclarationSyntax visited
+                ? visited.WithBody(null).WithExpressionBody(null).WithSemicolonToken(default)
+                : null;
+
+        public override SyntaxNode? VisitPropertyDeclaration(PropertyDeclarationSyntax node) =>
+            base.VisitPropertyDeclaration(node) is PropertyDeclarationSyntax visited
+                ? visited.WithExpressionBody(null).WithSemicolonToken(default)
+                : null;
+
+        public override SyntaxNode? VisitIndexerDeclaration(IndexerDeclarationSyntax node) =>
+            base.VisitIndexerDeclaration(node) is IndexerDeclarationSyntax visited
+                ? visited.WithExpressionBody(null).WithSemicolonToken(default)
+                : null;
+
+        public override SyntaxNode? VisitAccessorDeclaration(AccessorDeclarationSyntax node) =>
+            base.VisitAccessorDeclaration(node) is AccessorDeclarationSyntax visited
+                ? visited.WithBody(null).WithExpressionBody(null).WithSemicolonToken(default)
+                : null;
     }
 
     /// <summary>

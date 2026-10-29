@@ -30,6 +30,8 @@ internal static class InstructionsFile
 
         - After each edit, Fuse tells you the compiler errors that edit introduced. Fix them before you go on.
         - Run `fuse test` to run the tests your changes can break; `fuse test --all` runs every test. `dotnet test` is rewritten to `fuse test`.
+        - `fuse test` skips test projects that need a container runtime when none is running, and says so; start Docker or Podman to run them.
+        - Fuse checks C# only; `fuse check` names changed files in other languages, which your repository's own gates cover.
         - Run `fuse build` instead of `dotnet build`: it prints only the errors, and waits for another agent's build instead of colliding with it.
         - When you finish, Fuse checks every change since HEAD (the commit checked out) and sends you back for the errors your edits introduced. `fuse check` runs the same check when you want it sooner.
         - When several agents work in this working tree, each is told the errors its own edits cause, and `fuse test` runs the tests its own edits affect.

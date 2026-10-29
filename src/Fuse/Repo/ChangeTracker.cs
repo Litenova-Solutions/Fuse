@@ -17,17 +17,22 @@ internal sealed class ChangeTracker : IDisposable
     /// </summary>
     private const int MaxPatchedPaths = 300;
 
+    /// <summary>How many changed non-sources <see cref="NonSourceSample"/> keeps: the first by sorted relative path.</summary>
+    private const int MaxNonSourceSample = 6;
+
     private readonly RepoRoot _root;
     private readonly HeadResolver _head;
     private readonly WatchedPaths _watched;
     private readonly GitBlobReader _blobs;
     private readonly HashSet<RepoPath> _changed = [];
+    private readonly HashSet<RepoPath> _nonSources = [];
 
     /// <summary>
     ///     What a sync took from the watcher and did not fold in because its reseed failed, or null. The next sync takes it
     ///     first, so it sees the same triggers and paths and seeds again.
     /// </summary>
     private WatchedChanges? _unfolded;
+    private HashSet<RepoPath>? _unfoldedNonSources;
 
     public ChangeTracker(RepoRoot root)
         : this(root, new WatchedPaths(root))
@@ -49,13 +54,20 @@ internal sealed class ChangeTracker : IDisposable
     /// <summary>The C# and Razor files that differ from HEAD, including deleted ones.</summary>
     public IReadOnlyCollection<RepoPath> Changed => _changed;
 
+    /// <summary>How many changed files are not sources; the check names them instead of reading them.</summary>
+    public int NonSourceChanged { get; private set; }
+
+    /// <summary>The first changed non-sources by sorted relative path.</summary>
+    public IReadOnlyList<RepoPath> NonSourceSample { get; private set; } = [];
+
     /// <summary>Reads git state and starts watching. Call once before <see cref="SyncAsync"/>.</summary>
     public async Task InitializeAsync(CancellationToken cancellationToken)
     {
         var head = await _head.ResolveAsync(Head, cancellationToken).ConfigureAwait(false);
-        var seeded = await SeedAsync(cancellationToken).ConfigureAwait(false);
+        var (seeded, nonSources) = await SeedAsync(cancellationToken).ConfigureAwait(false);
         Head = head;
         _changed.UnionWith(seeded);
+        SetNonSources(nonSources);
         _watched.Start();
     }
 
@@ -71,13 +83,17 @@ internal sealed class ChangeTracker : IDisposable
         var head = await _head.ResolveAsync(Head, cancellationToken).ConfigureAwait(false);
         var headMoved = !string.Equals(head, Head, StringComparison.Ordinal);
         var watched = Drain();
+        var watchedNonSources = DrainNonSources();
         var paths = new HashSet<RepoPath>(watched.Sources);
         // A hook names what the agent wrote, which can be a file the build generated or one outside the repository. The
         // watcher ignores the first, and git has no HEAD for the second, so neither is patched.
         foreach (var path in knownPaths)
         {
-            if (PathRules.IsSource(path.Absolute) && _root.Contains(path.Absolute) && !_watched.IsIgnored(path))
-                paths.Add(path);
+            if (_root.Contains(path.Absolute) && !_watched.IsIgnored(path))
+                if (PathRules.IsSource(path.Absolute))
+                    paths.Add(path);
+                else if (!PathRules.IsProjectFile(path.Absolute))
+                    watchedNonSources.Add(path);
         }
 
         // After HEAD moves or the watcher loses events, the reported paths are not the whole change, and past the limit
@@ -87,15 +103,17 @@ internal sealed class ChangeTracker : IDisposable
         {
             var reported = paths.Count;
             HashSet<RepoPath> seeded;
+            List<RepoPath> nonSources;
             try
             {
-                seeded = await SeedAsync(cancellationToken).ConfigureAwait(false);
+                (seeded, nonSources) = await SeedAsync(cancellationToken).ConfigureAwait(false);
             }
             catch (Exception)
             {
                 // Nothing is folded in, so HEAD and the set stay as they were, and the next sync takes what this one
                 // drained and reseeds again.
                 _unfolded = watched with { Sources = new HashSet<RepoPath>(paths) };
+                _unfoldedNonSources = watchedNonSources;
                 throw;
             }
 
@@ -103,6 +121,7 @@ internal sealed class ChangeTracker : IDisposable
             Head = head;
             _changed.Clear();
             _changed.UnionWith(seeded);
+            SetNonSources(nonSources);
             paths.UnionWith(_changed);
             if (headMoved)
                 return new SyncResult.Reevaluate(paths, head is null ? "HEAD has no commit" : $"HEAD moved to {head[..Math.Min(12, head.Length)]}");
@@ -114,10 +133,16 @@ internal sealed class ChangeTracker : IDisposable
         }
 
         foreach (var directory in watched.VanishedDirectories)
+        {
+            watchedNonSources.UnionWith(_nonSources.Where(c => c.IsUnder(directory)));
             paths.UnionWith(_changed.Where(c => c.IsUnder(directory)));
+        }
 
         foreach (var path in paths)
             Refresh(path);
+        foreach (var nonSource in watchedNonSources)
+            RefreshNonSource(nonSource);
+        NoteNonSources();
         return watched.ProjectFiles.Count > 0
             ? new SyncResult.Reevaluate(paths, watched.ProjectFiles[^1].Absolute)
             : new SyncResult.Patch(paths, watched.VanishedDirectories);
@@ -130,20 +155,35 @@ internal sealed class ChangeTracker : IDisposable
     public byte[]? ReadHead(RepoPath path) => Head is null || !_root.Contains(path.Absolute) ? null : _blobs.Read(Head, path.Relative);
 
     /// <summary>
-    ///     The sources git reports as changed, which replace <see cref="Changed"/> once the caller has them. It changes no
-    ///     state, so a failure leaves the tracker as it was.
+    /// Counts the non-sources <see cref="SeedAsync"/> read and keeps the first by sorted relative path.
+    /// </summary>
+    private void SetNonSources(List<RepoPath> nonSources)
+    {
+        _nonSources.Clear();
+        _nonSources.UnionWith(nonSources);
+        NoteNonSources();
+    }
+
+    /// <summary>
+    ///     The sources git reports as changed, with the non-sources beside them. It changes no state, so a failure
+    ///     leaves the tracker as it was.
     /// </summary>
     /// <exception cref="FuseException">git status fails.</exception>
-    private async Task<HashSet<RepoPath>> SeedAsync(CancellationToken cancellationToken)
+    private async Task<(HashSet<RepoPath> Sources, List<RepoPath> NonSources)> SeedAsync(CancellationToken cancellationToken)
     {
         var seeded = new HashSet<RepoPath>();
+        var nonSources = new List<RepoPath>();
         foreach (var path in await GitStatus.ChangedPathsAsync(_root, cancellationToken).ConfigureAwait(false))
         {
-            if (PathRules.IsSource(path.Absolute) && !_watched.IsIgnored(path))
+            if (_watched.IsIgnored(path))
+                continue;
+            if (PathRules.IsSource(path.Absolute))
                 seeded.Add(path);
+            else
+                nonSources.Add(path);
         }
 
-        return seeded;
+        return (seeded, nonSources);
     }
 
     /// <summary>What the watcher recorded since the last sync, after what a failed reseed took and did not fold in.</summary>
@@ -158,6 +198,34 @@ internal sealed class ChangeTracker : IDisposable
             [.. unfolded.VanishedDirectories, .. drained.VanishedDirectories],
             [.. unfolded.ProjectFiles, .. drained.ProjectFiles],
             [.. unfolded.WatcherErrors, .. drained.WatcherErrors]);
+    }
+
+    /// <summary>What the watcher recorded for non-sources since the last sync, after what a failed reseed took and did not fold in.</summary>
+    private HashSet<RepoPath> DrainNonSources()
+    {
+        var drained = _watched.DrainNonSources();
+        if (_unfoldedNonSources is not { } unfolded)
+            return drained;
+        _unfoldedNonSources = null;
+        unfolded.UnionWith(drained);
+        return unfolded;
+    }
+
+    /// <summary>Counts the non-sources that differ from HEAD and keeps the first by sorted relative path.</summary>
+    private void NoteNonSources()
+    {
+        NonSourceChanged = _nonSources.Count;
+        NonSourceSample = [.. _nonSources.OrderBy(p => p.Relative, StringComparer.Ordinal).Take(MaxNonSourceSample)];
+    }
+
+    private void RefreshNonSource(RepoPath path)
+    {
+        if (_watched.IsIgnored(path))
+            return;
+        if (DiffersFromHead(path))
+            _nonSources.Add(path);
+        else
+            _nonSources.Remove(path);
     }
 
     private void Refresh(RepoPath path)

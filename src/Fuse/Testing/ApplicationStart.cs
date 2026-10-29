@@ -52,53 +52,66 @@ internal static class ApplicationStart
             return;
         }
 
-        var project = RepoWorkspace.ProjectsFor(solution, test).FirstOrDefault();
-        var compilation = project is null ? null : await project.GetCompilationAsync(cancellationToken).ConfigureAwait(false);
-        if (project is null || compilation is null)
+        var variants = RepoWorkspace.ProjectsFor(solution, test).ToList();
+        if (variants.Count == 0)
         {
             selections.SelectWhole(test, reason);
             log($"test selection: {test.Name}: the test project is not loaded; running the project whole");
             return;
         }
 
-        var classes = await TestClassesAsync(project, compilation, cancellationToken).ConfigureAwait(false);
-        if (classes is null)
-        {
-            selections.SelectWhole(test, reason);
-            log($"test selection: {test.Name}: no test class found; running the project whole");
-            return;
-        }
-
         var (assemblies, files) = IdentityOf(application, solution);
         bool IsApplicationType(INamedTypeSymbol type) =>
             type.ContainingAssembly?.Name is { } assembly && assemblies.Contains(assembly);
-        var starts = new List<INamedTypeSymbol>();
-        var doubtful = 0;
-        foreach (var testClass in classes)
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        var starts = new HashSet<string>(StringComparer.Ordinal);
+        var doubtful = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var project in variants)
         {
-            switch (Classify(testClass, compilation, IsApplicationType, files, cancellationToken))
+            var compilation = await project.GetCompilationAsync(cancellationToken).ConfigureAwait(false);
+            if (compilation is null)
             {
-                case Classification.Starts:
-                    starts.Add(testClass);
-                    break;
-                case Classification.CannotBeTold:
-                    doubtful++;
-                    break;
-                default:
-                    break;
+                selections.SelectWhole(test, reason);
+                log($"test selection: {test.Name}: the test project is not loaded; running the project whole");
+                return;
+            }
+
+            var classes = await TestClassesAsync(project, compilation, cancellationToken).ConfigureAwait(false);
+            if (classes is null)
+            {
+                selections.SelectWhole(test, reason);
+                log($"test selection: {test.Name}: no test class found; running the project whole");
+                return;
+            }
+
+            foreach (var testClass in classes)
+            {
+                var name = MemberWalk.TestName(testClass);
+                names.Add(name);
+                switch (Classify(testClass, compilation, IsApplicationType, files, cancellationToken))
+                {
+                    case Classification.Starts:
+                        starts.Add(name);
+                        break;
+                    case Classification.CannotBeTold:
+                        doubtful.Add(name);
+                        break;
+                    default:
+                        break;
+                }
             }
         }
 
-        if (doubtful > 0)
+        if (doubtful.Count > 0)
         {
             selections.SelectWhole(test, reason);
-            log($"test selection: {test.Name}: {doubtful} of {classes.Count} test class(es) may start {application.Name}; running the project whole");
+            log($"test selection: {test.Name}: {doubtful.Count} of {names.Count} test class(es) may start {application.Name}; running the project whole");
             return;
         }
 
-        foreach (var testClass in starts)
-            selections.Add(test, MemberWalk.TestName(testClass) + ".");
-        log($"test selection: {test.Name}: {starts.Count} of {classes.Count} test class(es) start {application.Name}; selecting them whole, the rest by name");
+        foreach (var name in starts.OrderBy(n => n, StringComparer.Ordinal))
+            selections.Add(test, name + ".");
+        log($"test selection: {test.Name}: {starts.Count} of {names.Count} test class(es) start {application.Name}; selecting them whole, the rest by name");
     }
 
     /// <summary>
@@ -175,13 +188,25 @@ internal static class ApplicationStart
                     continue;
                 if (model.GetDeclaredSymbol(declaration, cancellationToken) is not INamedTypeSymbol type)
                     return null;
-                if (!type.GetMembers().OfType<IMethodSymbol>().Any(TestAttributes.IsTest))
+                if (!DeclaresOrInheritsTest(type))
                     continue;
                 classes.Add(type);
             }
         }
 
         return classes.Count == 0 ? null : [.. classes.OrderBy(MemberWalk.TestName, StringComparer.Ordinal)];
+    }
+
+    /// <summary>True when <paramref name="type"/> or any base type declares a test method, which the type then runs under its own name.</summary>
+    private static bool DeclaresOrInheritsTest(INamedTypeSymbol type)
+    {
+        for (var current = type; current is not null; current = current.BaseType)
+        {
+            if (current.GetMembers().OfType<IMethodSymbol>().Any(TestAttributes.IsTest))
+                return true;
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -411,14 +436,15 @@ internal static class ApplicationStart
         }
 
         /// <summary>
-        ///     One call: what it returns is followed, a process start names the process it starts, an assembly or type
-        ///     loaded by name cannot be told, and a startup type of the application starts it.
+        ///     One call: what it returns and what it is called on are followed, a process start names the process it
+        ///     starts, an assembly or type loaded by name cannot be told, and a startup type of the application starts it.
         /// </summary>
         private void ExamineInvocation(SemanticModel model, InvocationExpressionSyntax invocation)
         {
             if (model.GetSymbolInfo(invocation, _cancellationToken).Symbol is not IMethodSymbol method)
                 return;
             ConsiderType(method.ReturnType);
+            ConsiderType(method.ContainingType);
             var name = method.ContainingType?.Name;
             var space = method.ContainingType?.ContainingNamespace?.ToDisplayString();
             if (name == "Process" && space == "System.Diagnostics" && method.Name == "Start")
@@ -545,8 +571,9 @@ internal static class ApplicationStart
         }
 
         /// <summary>
-        ///     Follows one referenced type: a type of the test project joins the walk, the application's entry type
-        ///     starts it, and any other type from another assembly is read for a host shape and otherwise left alone.
+        ///     Follows one referenced type: a type of the test project joins the walk, and a type from another assembly
+        ///     is read for a host shape; a non-framework external type it cannot clear cannot be told, so the project
+        ///     stays whole.
         /// </summary>
         private void ConsiderType(ITypeSymbol? type)
         {
@@ -555,8 +582,8 @@ internal static class ApplicationStart
                 case INamedTypeSymbol named:
                     if (IsTestType(named) && !_isApplicationType(named))
                         Enqueue(named);
-                    else
-                        ExamineExternal(named);
+                    else if (!ExamineExternal(named) && !IsFrameworkType(named))
+                        _doubtful = true;
                     foreach (var argument in named.TypeArguments)
                         ConsiderType(argument);
                     break;

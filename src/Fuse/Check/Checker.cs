@@ -43,6 +43,15 @@ internal sealed class Checker
 {
     private const int MaxReported = 200;
 
+    /// <summary>
+    ///     Past this many changed files the kept answer is skipped: hashing every file costs more than the reuse saves.
+    ///     The same number as the whole-project threshold, so one number to remember.
+    /// </summary>
+    private const int MaxKeptHashFiles = 500;
+
+    /// <summary>How many sessions the engine log names per check before counting the rest.</summary>
+    private const int MaxLoggedSessions = 10;
+
     private static readonly CheckResult NoTargets = new([], 0, [], [], 0, false, 0, 0, 0);
 
     private readonly RepoWorkspace _workspace;
@@ -111,7 +120,7 @@ internal sealed class Checker
         if (targets.Count == 0 && scope is CheckScope.NamedPaths)
             throw new FuseException(ErrorCode.InvalidPath, ErrorMessages.NothingToCheck([.. scopedPaths]));
         if (targets.Count == 0)
-            return NoTargets;
+            return NoTargets with { NonCSharpChanged = _workspace.Tracker.NonSourceChanged, NonCSharpSample = [.. _workspace.Tracker.NonSourceSample.Select(p => p.Relative)] };
 
         // The sync above has folded in every edit, so what the tree holds now keys the answer a repeat of this check gets.
         // A check of every change answers from a kept answer only when the views hold that tree; an answer bound from
@@ -119,7 +128,13 @@ internal sealed class Checker
         var fresh = true;
         if (scope is CheckScope.AllChanges)
             fresh = await ViewsMatchDiskAsync(cancellationToken).ConfigureAwait(false);
-        var keptKey = fresh ? KeptKeyFor(scope, session, analyzers, maxReported) : null;
+        // Past the bound the kept answer costs more hashing than it saves; the check runs as usual.
+        var changedFiles = _workspace.Tracker.Changed.Count;
+        string? keptKey = null;
+        if (changedFiles > MaxKeptHashFiles)
+            _workspace.Log($"check: kept answer skipped, {changedFiles} changed file(s) past {MaxKeptHashFiles}");
+        else if (fresh)
+            keptKey = KeptKeyFor(scope, session, analyzers, maxReported);
         if (keptKey is not null && _kept.TryGet(keptKey, out var kept))
         {
             _workspace.Log("check: kept answer");
@@ -216,9 +231,10 @@ internal sealed class Checker
         analyzerMs += parts.AnalyzerMs;
         var (unfinished, leftOut) = _introduced.TakeAnalyzerReport();
         var reused = _introduced.TakeReused();
-        _workspace.Log($"check: binding {compilerMs} ms, analyzers {analyzerMs} ms (summed over files); {targets.Count} target(s) in {targetsMs} ms, {changedTargets.Count} with declaration changes, {filesChecked} file(s) bound{(reused > 0 ? $" ({reused} with errors reused from an earlier check)" : "")}, {timer.ElapsedMilliseconds} ms total{(wholeProjects ? WholeProjectsLog(wholeCauses) : "")}{(leftToOthers > 0 ? $", {leftToOthers} error(s) left to other sessions" : "")}{(notAttributed > 0 ? $", {notAttributed} file(s) not attributed" : "")}{(unfinished > 0 ? $", analyzers unfinished in {unfinished}" : "")}{(leftOut.Count > 0 ? $", left out {string.Join(", ", leftOut)}" : "")}");
+        _workspace.Log($"check: binding {compilerMs} ms, analyzers {analyzerMs} ms (summed over files); {targets.Count} target(s) in {targetsMs} ms, {changedTargets.Count} with declaration changes, {filesChecked} file(s) bound{(reused > 0 ? $" ({reused} with errors reused from an earlier check)" : "")}, {timer.ElapsedMilliseconds} ms total{(wholeProjects ? WholeProjectsLog(wholeCauses) : "")}{(leftToOthers > 0 ? $", {leftToOthers} error(s) left to other sessions" : "")}{(notAttributed > 0 ? $", {notAttributed} file(s) not attributed" : "")}{(unfinished > 0 ? $", analyzers unfinished in {unfinished}" : "")}{(leftOut.Count > 0 ? $", left out {string.Join(", ", leftOut)}" : "")}{SessionCounts()}");
         _introduced.LogBaseline();
-        var reported = CauseLines.Attach([.. ordered.Take(maxReported == 0 ? MaxReported : maxReported)], reach, root, targets);
+        var reported = CauseLines.Attach(ordered, reach, root, targets);
+        reported = [.. reported.Take(maxReported == 0 ? MaxReported : maxReported)];
         reported = await _generated.AttachAsync(_workspace.Current, reported, cancellationToken).ConfigureAwait(false);
         var result = new CheckResult(
             reported,
@@ -236,6 +252,8 @@ internal sealed class Checker
             FilesNotAttributed = notAttributed,
             ScopedPaths = scopedPaths,
             WholeProjectCauses = wholeCauses,
+            NonCSharpChanged = _workspace.Tracker.NonSourceChanged,
+            NonCSharpSample = [.. _workspace.Tracker.NonSourceSample.Select(p => p.Relative)],
         };
         if (keptKey is not null)
             _kept.Keep(keptKey, result);
@@ -253,7 +271,12 @@ internal sealed class Checker
         var warmed = false;
         var generation = _workspace.BaselineGeneration;
         foreach (var project in RepoWorkspace.ProjectsFor(_workspace.Baseline, node).ToList())
+        {
+            if (_workspace.BaselineGeneration != generation)
+                return warmed;
             warmed |= await _introduced.WarmBaselineAsync(project, generation, cancellationToken).ConfigureAwait(false);
+        }
+
         return warmed;
     }
 
@@ -451,6 +474,23 @@ internal sealed class Checker
             return ", whole projects";
         return ", whole projects: " + string.Join("; ", causes.Select(WholeCause));
         // The log holds every project and file.
+    }
+
+    /// <summary>How many changed files each session wrote, most files first; empty when no session wrote any.</summary>
+    private string SessionCounts()
+    {
+        var counts = _sessions.WritersOf(_workspace.Tracker.Changed)
+            .SelectMany(w => w.Value)
+            .GroupBy(session => session, StringComparer.Ordinal)
+            .Select(g => (Session: g.Key, Files: g.Count()))
+            .OrderByDescending(c => c.Files)
+            .ThenBy(c => c.Session, StringComparer.Ordinal)
+            .ToList();
+        if (counts.Count == 0)
+            return "";
+        var shown = counts.Take(MaxLoggedSessions).Select(c => $"{c.Session} {c.Files} file(s)").ToList();
+        var more = counts.Count - shown.Count;
+        return "; sessions: " + string.Join(", ", shown) + (more > 0 ? $", and {more} more" : "");
     }
 
     private static List<ProjectNode> OwnersOf(RepoGraph graph, IEnumerable<RepoPath> paths) =>

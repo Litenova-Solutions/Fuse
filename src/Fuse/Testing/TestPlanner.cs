@@ -32,24 +32,36 @@ internal sealed class TestPlanner
     /// <summary>The most reported outcomes one report keeps; past it the report is dropped and the round runs uncached next time.</summary>
     private const int MaxReportResults = 20000;
 
+    /// <summary>How long one container runtime probe answers plans; starting the runtime is noticed at the next plan past it.</summary>
+    private static readonly TimeSpan RuntimeProbeLifetime = TimeSpan.FromMinutes(5);
+
     private readonly RepoWorkspace _workspace;
     private readonly TestSelector _selector;
     private readonly TestCounter _counter = new();
     private readonly TestClassKey _keys = new();
     private readonly TestResultCache _cache;
+    private readonly TimeProvider _time;
+    private readonly Func<bool> _containerProbe;
+    private DateTime _runtimeCheckedAt = DateTime.MinValue;
+    private bool _runtimePresent;
     private readonly Lock _plansLock = new();
     private readonly Dictionary<string, Dictionary<(string Project, string Class), string>> _keptPlans = new(StringComparer.Ordinal);
     private readonly List<string> _keptOrder = [];
     private readonly Dictionary<PendingPlan, PendingCache> _pendingCache = [];
+    private readonly List<PendingPlan> _pendingOrder = [];
     private readonly Dictionary<TestPlanResult, (string PlanId, int CachedTests)> _wireInfo = new(ReferenceEqualityComparer.Instance);
 
     /// <param name="buildId">This build's id, which the result cache ignores any other build's file with.</param>
-    public TestPlanner(RepoWorkspace workspace, string buildId = "")
+    /// <param name="time">Measures the container runtime probe against its lifetime; a test moves it past the probe's expiry.</param>
+    /// <param name="containerProbe">Probes for a container runtime; a test answers without one.</param>
+    public TestPlanner(RepoWorkspace workspace, string buildId = "", TimeProvider? time = null, Func<bool>? containerProbe = null)
     {
         _workspace = workspace;
         _selector = new TestSelector(workspace, TimeProvider.System);
         Emitter = new ShadowEmitter(workspace);
         _cache = new TestResultCache(workspace.Root.StateDirectory, workspace.Log, buildId);
+        _time = time ?? TimeProvider.System;
+        _containerProbe = containerProbe ?? ContainerRuntime.IsRunning;
     }
 
     /// <summary>The emitter every plan prepares its shadow runs with, which keeps emitted assemblies between plans.</summary>
@@ -99,8 +111,33 @@ internal sealed class TestPlanner
 
         if (scope is TestScope.All)
         {
-            var everything = testProjects.Select(p => new PlannedRun(p.Path, p.Name, new RunMode.Build(), null, p.UsesTestingPlatform, RunSettingsOf(p), [], p.UsesTestingPlatform ? [.. p.TargetPaths] : [])).ToArray();
-            return PendingPlan.Of(new TestPlanResult(everything, total, total, $"ran every test in {testProjects.Count} test project(s)"), graph);
+            // A project that needs a container runtime runs only when one answers; without one its tests are
+            // left out of the plan and the summary names them.
+            var plain = testProjects;
+            var gatedTests = 0;
+            string[] gatedProjects = [];
+            if (testProjects.Any(p => p.RequiresContainerRuntime))
+            {
+                if (ContainerRuntimePresent())
+                {
+                    _workspace.Log($"test plan: container runtime present; {testProjects.Count(p => p.RequiresContainerRuntime)} gated project(s) planned");
+                }
+                else
+                {
+                    plain = testProjects.Where(p => !p.RequiresContainerRuntime).ToList();
+                    var gated = testProjects.Where(p => p.RequiresContainerRuntime).Select(p => (p.Name, Tests: _counter.TestsIn(p).Count)).Where(g => g.Tests > 0).ToList();
+                    gatedTests = gated.Sum(g => g.Tests);
+                    gatedProjects = [.. gated.Select(g => g.Name).Order(StringComparer.Ordinal)];
+                    if (gatedTests > 0)
+                        _workspace.Log($"test plan: left out {gatedTests} test(s) in {string.Join(", ", gatedProjects)} (no container runtime)");
+                }
+            }
+
+            var everything = plain.Select(p => new PlannedRun(p.Path, p.Name, new RunMode.Build(), null, p.UsesTestingPlatform, RunSettingsOf(p), [], p.UsesTestingPlatform ? [.. p.TargetPaths] : [])).ToArray();
+            var allSummary = $"ran every test in {plain.Count} test project(s)";
+            if (gatedTests > 0)
+                allSummary += $"; skipped {gatedTests} test(s) in {string.Join(", ", gatedProjects)} (no container runtime)";
+            return PendingPlan.Of(new TestPlanResult(everything, total - gatedTests, total, allSummary) { ContainerGatedTests = gatedTests, ContainerGatedProjects = gatedProjects }, graph);
         }
 
         // A plan for one session leaves out the files only other sessions wrote: the tests their changes affect are
@@ -135,11 +172,40 @@ internal sealed class TestPlanner
         var originals = new Dictionary<RepoPath, string?>();
         var cachedByProject = new Dictionary<RepoPath, int>();
         var keys = new Dictionary<(string Project, string Class), string>();
+        bool? runtimePresent = null;
+        var containerGatedTests = 0;
+        var containerGatedProjects = new List<string>();
         foreach (var (path, selection) in selections.OrderBy(s => s.Key.Absolute, StringComparer.Ordinal))
         {
             var node = graph.Find(path);
             if (node is null || (named is not null && !named.Contains(node)))
                 continue;
+            // A project that needs a container runtime runs only when one answers. Its tests are left out of
+            // the plan and of the cache, never counted as passed, and the summary names them.
+            if (node.RequiresContainerRuntime)
+            {
+                runtimePresent ??= ContainerRuntimePresent();
+                if (!runtimePresent.Value)
+                {
+                    if (selection is TestSelection.Whole gatedWhole)
+                        reasons.Add(gatedWhole.Reason);
+                    if (selection is not TestSelection.Methods { Patterns.Count: 0 })
+                    {
+                        var gated = _counter.TestsIn(node);
+                        var gatedCount = node.UsesTestingPlatform && node.Framework == TestFramework.Unknown && selection is TestSelection.Methods
+                            ? gated.Count
+                            : TestCounter.Count(gated, selection);
+                        if (gatedCount > 0)
+                        {
+                            containerGatedTests += gatedCount;
+                            containerGatedProjects.Add(node.Name);
+                        }
+                    }
+
+                    continue;
+                }
+            }
+
             var tests = _counter.TestsIn(node);
             // A class the cache answers leaves the selection, so the filter is built from what remains.
             var effective = selection;
@@ -189,6 +255,12 @@ internal sealed class TestPlanner
             projects.Add((node, filter.Expression, [], RepoWorkspace.ProjectsFor(snapshot, node).ToList()));
         }
 
+        containerGatedProjects.Sort(StringComparer.Ordinal);
+        if (runtimePresent is true)
+            _workspace.Log($"test plan: container runtime present; {projects.Count(p => p.Node.RequiresContainerRuntime)} gated project(s) planned");
+        else if (runtimePresent is false && containerGatedTests > 0)
+            _workspace.Log($"test plan: left out {containerGatedTests} test(s) in {string.Join(", ", containerGatedProjects)} (no container runtime)");
+
         if (selections.Count == 0 && outcome.AllSameCode)
             return PendingPlan.Of(new TestPlanResult([], 0, total, $"no test is affected by the changes (out of {total}); the changes compile to the same code as HEAD; fuse test --all runs everything"), graph);
 
@@ -203,9 +275,11 @@ internal sealed class TestPlanner
         summary.Append(namedNote);
         if (cached > 0)
             summary.Append("; ").Append(cached).Append(" result(s) from cache");
+        if (containerGatedTests > 0)
+            summary.Append($"; skipped {containerGatedTests} test(s) in {string.Join(", ", containerGatedProjects)} (no container runtime)");
         summary.Append("; fuse test --all runs everything");
         var pending = PendingPlan.ToPrepare(graph, projects, selected, total, summary.ToString(), scope is TestScope.Affected { BuildOnly: true });
-        NotePending(pending, new PendingCache(planId, cached, originals, cachedByProject));
+        NotePending(pending, new PendingCache(planId, cached, originals, cachedByProject, containerGatedTests, [.. containerGatedProjects]));
         KeepPlan(planId, keys);
         return pending;
     }
@@ -254,10 +328,26 @@ internal sealed class TestPlanner
                     return answered;
                 }
 
+                // Every selected test needs a container runtime that is not running; the client answers that no test ran.
+                if (cachedPlan is { GatedTests: > 0 })
+                {
+                    var gated = new TestPlanResult([], 0, pending.Total, pending.Summary)
+                    {
+                        ContainerGatedTests = cachedPlan.GatedTests,
+                        ContainerGatedProjects = cachedPlan.GatedProjects,
+                    };
+                    NoteWire(gated, cachedPlan.PlanId, cachedLeft);
+                    return gated;
+                }
+
                 return new TestPlanResult([], 0, pending.Total, $"no test is affected by the changes (out of {pending.Total}); fuse test --all runs everything");
             }
 
-            var result = new TestPlanResult([.. runs], pending.Selected, pending.Total, pending.Summary);
+            var result = new TestPlanResult([.. runs], pending.Selected, pending.Total, pending.Summary)
+            {
+                ContainerGatedTests = cachedPlan?.GatedTests ?? 0,
+                ContainerGatedProjects = cachedPlan?.GatedProjects ?? [],
+            };
             NoteWire(result, cachedPlan?.PlanId ?? "", cachedLeft);
             return result;
         }
@@ -359,6 +449,17 @@ internal sealed class TestPlanner
     /// <summary>A selection as the engine log gives it: "all", or how many patterns it has.</summary>
     private static string Describe(TestSelection selection) =>
         selection is TestSelection.Methods methods ? methods.Patterns.Count + " pattern(s)" : "all";
+
+    /// <summary>True when a container runtime answers, probed at most once every <see cref="RuntimeProbeLifetime"/>.</summary>
+    private bool ContainerRuntimePresent()
+    {
+        var now = _time.GetUtcNow().UtcDateTime;
+        if (now - _runtimeCheckedAt < RuntimeProbeLifetime)
+            return _runtimePresent;
+        _runtimePresent = _containerProbe();
+        _runtimeCheckedAt = now;
+        return _runtimePresent;
+    }
 
     /// <summary>
     /// A recorded test name as a filter matches it: a theory row without its argument values.
@@ -576,14 +677,19 @@ internal sealed class TestPlanner
         }
     }
 
-    /// <summary>Records what one plan's selection answered from the cache, until its runs are prepared.</summary>
+    /// <summary>Records what one plan's selection answered from the cache, until its runs are prepared, forgetting the plan unused the longest past the cap.</summary>
     private void NotePending(PendingPlan pending, PendingCache cache)
     {
         lock (_plansLock)
         {
-            if (_pendingCache.Count >= MaxKeptPlans)
-                _pendingCache.Clear();
             _pendingCache[pending] = cache;
+            _pendingOrder.Remove(pending);
+            _pendingOrder.Add(pending);
+            while (_pendingOrder.Count > MaxKeptPlans)
+            {
+                _pendingCache.Remove(_pendingOrder[0]);
+                _pendingOrder.RemoveAt(0);
+            }
         }
     }
 
@@ -595,6 +701,7 @@ internal sealed class TestPlanner
             if (!_pendingCache.TryGetValue(pending, out var cache))
                 return null;
             _pendingCache.Remove(pending);
+            _pendingOrder.Remove(pending);
             return cache;
         }
     }
@@ -623,7 +730,9 @@ internal sealed class TestPlanner
     /// <param name="CachedTests">How many selected tests the consultation answered from the cache.</param>
     /// <param name="OriginalFilters">Each answered project's filter as selected, for a fallback to a build with MSBuild.</param>
     /// <param name="CachedByProject">How many tests the consultation answered in each answered project.</param>
-    private sealed record PendingCache(string PlanId, int CachedTests, Dictionary<RepoPath, string?> OriginalFilters, Dictionary<RepoPath, int> CachedByProject);
+    /// <param name="GatedTests">How many selected tests need a container runtime that is not running, so they run in no run.</param>
+    /// <param name="GatedProjects">The projects those tests are in, in ordinal order.</param>
+    private sealed record PendingCache(string PlanId, int CachedTests, Dictionary<RepoPath, string?> OriginalFilters, Dictionary<RepoPath, int> CachedByProject, int GatedTests, string[] GatedProjects);
 
     /// <summary>What consulting the cache left of one project's selection.</summary>
     /// <param name="Effective">The selection without the answered classes.</param>

@@ -3,6 +3,7 @@ using Fuse.Engine.Client;
 using Fuse.Failures;
 using Fuse.Paths;
 using Fuse.Protocol;
+using Fuse.Repo;
 
 namespace Fuse.Operations;
 
@@ -10,6 +11,9 @@ namespace Fuse.Operations;
 internal static class CheckOperation
 {
     private const int MaxShown = 20;
+
+    /// <summary>At most this many individual cause lines per text answer; group headers are not counted.</summary>
+    internal const int MaxCauseLines = 10;
 
     /// <param name="files">Absolute paths of the files to check, or null for every change.</param>
     /// <param name="session">
@@ -26,8 +30,10 @@ internal static class CheckOperation
     /// <param name="cancellationToken">Cancels the check.</param>
     /// <param name="maxErrors">How many errors to show: 0 for the default count, <see cref="int.MaxValue"/> for every error.</param>
     /// <param name="json">True for one JSON object per error instead of text.</param>
+    /// <param name="includeTreeStamp">True to stamp the summary and the results file with the tree the check ended on, for <c>fuse check</c>; hook and MCP answers stay unstamped.</param>
+    /// <param name="includeNonCSharp">False to leave the changed files Fuse does not check out of the summary; the post-edit hook sends false.</param>
     public static async Task<(OperationResult Result, EngineResponse Response)> RunAsync(
-        RepoRoot root, IReadOnlyList<string>? files, string? session, bool waitForLoad, bool compilationWideAnalyzers, TimeSpan timeout, CancellationToken cancellationToken, int maxErrors = 0, bool json = false)
+        RepoRoot root, IReadOnlyList<string>? files, string? session, bool waitForLoad, bool compilationWideAnalyzers, TimeSpan timeout, CancellationToken cancellationToken, int maxErrors = 0, bool json = false, bool includeTreeStamp = false, bool includeNonCSharp = true)
     {
         EngineRequest request = files is null
             ? new EngineRequest.CheckChanges(waitForLoad) { Session = session, IsStopping = session is not null, MaxErrors = RequestedFor(maxErrors, json) }
@@ -35,7 +41,8 @@ internal static class CheckOperation
         var response = await EngineClient.SendAsync(root, request, timeout, cancellationToken).ConfigureAwait(false);
         if (response is not EngineResponse.CheckAnswered answered)
             return (OperationResult.Unanswered(response, "check result"), response);
-        return (Render(answered.Report, ResultsFile.WriteCheck(root, answered.Report), ShownFor(maxErrors, json), json), response);
+        var treeStamp = await StampAsync(root, includeTreeStamp, cancellationToken).ConfigureAwait(false);
+        return (Render(answered.Report, ResultsFile.WriteCheck(root, answered.Report, treeStamp), ShownFor(maxErrors, json), json, treeStamp, includeNonCSharp), response);
     }
 
     /// <param name="specs">Absolute file and directory paths and absolute glob patterns, in the order named.</param>
@@ -43,14 +50,16 @@ internal static class CheckOperation
     /// <param name="json">True for one JSON object per error instead of text.</param>
     /// <param name="timeout">How long to wait for the answer.</param>
     /// <param name="cancellationToken">Cancels the check.</param>
+    /// <param name="includeTreeStamp">True to stamp the summary and the results file with the tree the check ended on, for <c>fuse check</c>; hook and MCP answers stay unstamped.</param>
     public static async Task<(OperationResult Result, EngineResponse Response)> RunScopedAsync(
-        RepoRoot root, IReadOnlyList<string> specs, int maxErrors, bool json, TimeSpan timeout, CancellationToken cancellationToken)
+        RepoRoot root, IReadOnlyList<string> specs, int maxErrors, bool json, TimeSpan timeout, CancellationToken cancellationToken, bool includeTreeStamp = false)
     {
         var request = new EngineRequest.CheckPaths([.. specs], WaitForLoad: true) { MaxErrors = RequestedFor(maxErrors, json) };
         var response = await EngineClient.SendAsync(root, request, timeout, cancellationToken).ConfigureAwait(false);
         if (response is not EngineResponse.CheckAnswered answered)
             return (OperationResult.Unanswered(response, "check result"), response);
-        return (Render(answered.Report, ResultsFile.WriteCheck(root, answered.Report), ShownFor(maxErrors, json), json), response);
+        var treeStamp = await StampAsync(root, includeTreeStamp, cancellationToken).ConfigureAwait(false);
+        return (Render(answered.Report, ResultsFile.WriteCheck(root, answered.Report, treeStamp), ShownFor(maxErrors, json), json, treeStamp), response);
     }
 
     /// <summary>How many errors the request asks the engine to send: every error for JSON and <c>--all-errors</c>, else <paramref name="maxErrors"/>.</summary>
@@ -60,6 +69,22 @@ internal static class CheckOperation
     /// <summary>How many errors the answer prints: every error for JSON and <c>--all-errors</c>, else the default count.</summary>
     private static int ShownFor(int maxErrors, bool json) =>
         json || maxErrors == int.MaxValue ? int.MaxValue : maxErrors > 0 ? maxErrors : MaxShown;
+
+    /// <summary>The stamp for a finished check the command line prints, or null for a hook or MCP answer and when git cannot say what the tree holds.</summary>
+    private static async Task<string?> StampAsync(RepoRoot root, bool include, CancellationToken cancellationToken)
+    {
+        if (!include)
+            return null;
+        try
+        {
+            var (hash, count) = await TreeStamp.ForWorkingTreeAsync(root, cancellationToken).ConfigureAwait(false);
+            return TreeStamp.SummaryPart(hash, count);
+        }
+        catch (FuseException)
+        {
+            return null;
+        }
+    }
 
     /// <summary>
     ///     The absolute paths of the files a command line or an MCP call names, or the refusal to print when one is empty
@@ -107,7 +132,9 @@ internal static class CheckOperation
 
     /// <param name="maxShown">How many errors to print, or <see cref="int.MaxValue"/> for every error.</param>
     /// <param name="json">True for one JSON object per error instead of text, with the summary as the last line.</param>
-    internal static OperationResult Render(CheckReport report, string? resultsPath = null, int maxShown = MaxShown, bool json = false)
+    /// <param name="treeStamp">The stamp a <c>fuse check</c> summary carries, or null to print none.</param>
+    /// <param name="includeNonCSharp">False to leave the changed files Fuse does not check out of the summary.</param>
+    internal static OperationResult Render(CheckReport report, string? resultsPath = null, int maxShown = MaxShown, bool json = false, string? treeStamp = null, bool includeNonCSharp = true)
     {
         var text = new StringBuilder();
         IReadOnlyList<(string? Header, ReportedError Error, bool ShowCause)> shown;
@@ -121,11 +148,15 @@ internal static class CheckOperation
         {
             shown = CheckGroups.Split(report.Errors, maxShown <= 0 ? MaxShown : maxShown);
             var generatedShown = new HashSet<string>(StringComparer.Ordinal);
+            var causeLines = 0;
             foreach (var (header, error, showCause) in shown)
             {
                 if (header is not null)
                     text.Append(header).Append('\n');
-                AppendError(text, error, generatedShown, showCause);
+                var show = showCause && error.Cause is not null && causeLines < MaxCauseLines;
+                if (showCause && error.Cause is not null && show)
+                    causeLines++;
+                AppendError(text, error, generatedShown, show);
             }
         }
 
@@ -135,7 +166,9 @@ internal static class CheckOperation
         if (report.CheckedWholeProjects)
             summaryParts.Add(WholeProjectsSummary(report.WholeProjects));
         // Counted among the printed errors only, since a cause left out of an error that is not printed is no loss.
-        var causesLeftOut = shown.Count(e => e.Error.IsCauseLeftOut);
+        // The engine sends every cause; the text answer prints at most MaxCauseLines cause lines past the group headers.
+        var causesLeftOut = shown.Count(e => e.Error.IsCauseLeftOut)
+            + Math.Max(0, shown.Count(e => e.ShowCause && e.Error.Cause is not null) - MaxCauseLines);
         if (causesLeftOut > 0)
             summaryParts.Add($"{causesLeftOut} cause(s) left out");
         // Only an answer to a session leaves errors to other sessions; the session is told they exist, not what they are.
@@ -148,6 +181,8 @@ internal static class CheckOperation
             summaryParts.Add($"left out {report.CompilationWideLeftOut.Length} analyzer(s) that read the whole project, which the stop hook and fuse check run: {string.Join(", ", report.CompilationWideLeftOut)}");
         if (report.AnalyzersUnfinished > 0)
             summaryParts.Add($"analyzers did not finish in {report.AnalyzersUnfinished} file(s) or project(s) in time, so their analyzer errors may be missing; fuse build runs every analyzer");
+        if (includeNonCSharp && report.NonCSharpChanged > 0)
+            summaryParts.Add($"{report.NonCSharpChanged} non-C# file(s) changed, which Fuse does not check: {NonCSharpSample(report)}");
         var summaryTail = summaryParts.Count > 0 ? "; " + string.Join("; ", summaryParts) : "";
         var scoped = report.ScopedPaths.Length > 0 ? string.Join(", ", report.ScopedPaths) : null;
 
@@ -155,7 +190,7 @@ internal static class CheckOperation
         {
             var whose = report.LeftToOtherSessions > 0 ? " by this session's edits" : "";
             var where = scoped is null ? "" : $" in {scoped} and what it reaches";
-            text.Append($"fuse: no errors introduced{whose}{where} ({report.FilesChecked} file(s) checked{summaryTail})");
+            text.Append($"fuse: no errors introduced{whose}{where} ({report.FilesChecked} file(s) checked{summaryTail}{treeStamp})");
             return new OperationResult(Outcome.Clean, text.ToString());
         }
 
@@ -165,8 +200,19 @@ internal static class CheckOperation
         // The file holds every error the engine sent; the answer names it only when it left errors out, and never in JSON, which already holds them.
         var file = !json && report.ErrorCount > printed && resultsPath is not null ? $"; all {report.ErrorCount} in {resultsPath}" : "";
         var scope = scoped is null ? "" : $"; checked {scoped} and what it reaches";
-        text.Append($"fuse: {report.ErrorCount} error(s) introduced in {report.ErrorFileCount} file(s){more} ({string.Join(", ", report.Projects)}){summaryTail}{scope}{file}");
+        text.Append($"fuse: {report.ErrorCount} error(s) introduced in {report.ErrorFileCount} file(s){more} ({string.Join(", ", report.Projects)}){summaryTail}{scope}{treeStamp}{file}");
         return new OperationResult(Outcome.ProblemsFound, text.ToString());
+    }
+
+    /// <summary>The changed files the summary names for what Fuse does not check: the first five of the sample, then how many more changed.</summary>
+    private static string NonCSharpSample(CheckReport report)
+    {
+        var shown = report.NonCSharpSample.Take(5).ToList();
+        if (report.NonCSharpChanged <= shown.Count)
+            return string.Join(", ", shown);
+        return shown.Count == 0
+            ? $"... and {report.NonCSharpChanged} more"
+            : $"{string.Join(", ", shown)}, ... and {report.NonCSharpChanged - shown.Count} more";
     }
 
     private static string WholeProjectsSummary(ReportedWholeProject[] whole)

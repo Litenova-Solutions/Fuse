@@ -55,14 +55,18 @@ public class CauseLinesTests
         engine.Repo.Write("Lib/Calc.cs", "namespace Lib;\n\npublic static class Keep\n{\n}\n");
         var result = await engine.CheckAsync("Lib/Calc.cs");
 
-        // The line names a declaration as it was at HEAD, on one line, never the members the class held.
-        var lines = PrintedCauses(result);
-        Assert.NotEmpty(lines);
-        Assert.All(lines, l =>
+        // The cause names a declaration as it was at HEAD, on one line, never the members the class held. Errors
+        // sharing one cause print it once as a group header, so both headers and cause lines are checked.
+        Assert.NotEmpty(result.Errors);
+        var mentions = Render(result).Split('\n')
+            .Where(l => l.StartsWith("removed: ", StringComparison.Ordinal) || l.StartsWith("  removed: ", StringComparison.Ordinal))
+            .Select(l => l.TrimStart())
+            .ToList();
+        Assert.NotEmpty(mentions);
+        Assert.All(mentions, l =>
         {
             Assert.StartsWith("removed: ", l, StringComparison.Ordinal);
             Assert.DoesNotContain("{", l, StringComparison.Ordinal);
-            Assert.DoesNotContain("\n", l, StringComparison.Ordinal);
         });
     }
 
@@ -113,10 +117,10 @@ public class CauseLinesTests
     }
 
     [Fact]
-    public void An_answer_is_capped_and_says_how_many_were_left_out()
+    public void Every_candidate_error_carries_its_cause_so_grouping_sees_them_all()
     {
-        // The fixture is too small for the cap to bite in a real check, so the cap is exercised on the function that
-        // applies it: 25 candidate errors, each with a declaration to name.
+        // The fixture is too small for 25 candidates in a real check, so the rule is exercised on the function that
+        // applies it: 25 candidate errors, each with a declaration to name, all keep their cause for grouping.
         var causes = new Dictionary<RepoPath, Cause>();
         var errors = new List<CompilerError>();
         for (var i = 0; i < 25; i++)
@@ -129,18 +133,17 @@ public class CauseLinesTests
         var attached = CauseLines.Attach(errors, new Reach.Precise(causes), Root, []);
 
         Assert.Equal(errors, attached.Select(e => e.Error));
-        Assert.Equal(CauseLines.MaxCauses, attached.Count(e => e.Cause is not null));
-        Assert.All(attached.Take(CauseLines.MaxCauses), e => Assert.NotNull(e.Cause));
-        Assert.All(attached.Skip(CauseLines.MaxCauses), e => Assert.Null(e.Cause));
-        Assert.All(attached.Skip(CauseLines.MaxCauses), e => Assert.True(e.IsCauseLeftOut));
-        Assert.Equal(15, attached.Count(e => e.IsCauseLeftOut));
+        Assert.All(attached, e => Assert.NotNull(e.Cause));
+        Assert.All(attached, e => Assert.False(e.IsCauseLeftOut));
         Assert.Equal(new Cause.Changed("public int Method0()"), attached[0].Cause);
+        Assert.Equal(new Cause.Changed("public int Method24()"), attached[24].Cause);
     }
 
     [Fact]
-    public void A_target_an_analyzer_error_and_a_file_nothing_reached_get_no_cause_and_do_not_count_toward_the_cap()
+    public void A_target_an_analyzer_error_and_a_file_nothing_reached_get_no_cause()
     {
         // Every path here has a cause in the reach, so only the rules, not a missing entry, keep the first three bare.
+        // The twelve candidates past them all keep theirs: the engine caps nothing, the client budgets the printed lines.
         var causes = new Dictionary<RepoPath, Cause>
         {
             [Root.PathOf("src/Target.cs")] = new Cause.Changed("public int Target()"),
@@ -152,7 +155,7 @@ public class CauseLinesTests
             new("src/Analyzed.cs", 1, 1, "CA1825", "from an analyzer", FromAnalyzer: true),
             new("src/Unreached.cs", 1, 1, "CS0103", "in a file no change reached"),
         };
-        for (var i = 0; i < CauseLines.MaxCauses + 2; i++)
+        for (var i = 0; i < 12; i++)
         {
             var path = $"src/Candidate{i}.cs";
             causes[Root.PathOf(path)] = new Cause.Removed($"public int Method{i}()");
@@ -162,10 +165,9 @@ public class CauseLinesTests
         var attached = CauseLines.Attach(errors, new Reach.Precise(causes), Root, [Root.PathOf("src/Target.cs")]);
 
         Assert.All(attached.Take(3), e => Assert.Null(e.Cause));
-        Assert.Equal(CauseLines.MaxCauses, attached.Count(e => e.Cause is not null));
+        Assert.Equal(12, attached.Count(e => e.Cause is not null));
         Assert.Equal(new Cause.Removed("public int Method0()"), attached[3].Cause);
-        Assert.All(attached.Take(3), e => Assert.False(e.IsCauseLeftOut));
-        Assert.Equal(2, attached.Count(e => e.IsCauseLeftOut));
+        Assert.All(attached, e => Assert.False(e.IsCauseLeftOut));
     }
 
     [Fact]

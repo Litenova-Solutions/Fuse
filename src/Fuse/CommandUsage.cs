@@ -1,8 +1,6 @@
-using Fuse.Harnesses;
-
 namespace Fuse;
 
-/// <summary>The usage block of every subcommand, and the top-level one. <c>--help</c> prints one to standard output and exits 0; a usage failure prints one to standard error and exits 2.</summary>
+/// <summary>The usage block of every subcommand except the hook, whose usage the hook command prints itself, and the top-level one. <c>--help</c> prints one to standard output and exits 0; a usage failure prints one to standard error and exits 2.</summary>
 internal static class CommandUsage
 {
     internal const string Top = """
@@ -16,9 +14,9 @@ internal static class CommandUsage
           fuse test [args...]       run the tests affected by your changes (with args: the tests those dotnet test arguments name)
           fuse test --all           run every test
           fuse test --failed        rerun the tests that failed in the last recorded run
-          fuse build [args...] [--max-errors <n>|--all-errors] [--json] [--warnings]
+          fuse build [args...] [--max-errors <n>|--all-errors] [--json] [--warnings] [--changed]
                                     dotnet build, printing its errors
-          fuse status               show the engine and the changed files
+          fuse status [--json]      show the engine and the changed files
           fuse session begin <name> --paths <pattern> [<pattern>...]
                                     register an external writer as a session for its path patterns
           fuse session end <name>   end the registration
@@ -47,13 +45,14 @@ internal static class CommandUsage
         """;
 
     internal const string Build = """
-        fuse build [dotnet build arguments] [--max-errors <n>|--all-errors] [--json] [--warnings]
+        fuse build [dotnet build arguments] [--max-errors <n>|--all-errors] [--json] [--warnings] [--changed]
           dotnet build, printing its errors. Fuse adds -nologo -tl:off -v:q and a file log.
           Fuse options (not passed to dotnet build):
             --max-errors <n>  show at most n errors (default 20)
             --all-errors      show every error
             --json            one JSON object per error on stdout, then the summary line
             --warnings        list the warnings after the errors (default: count only)
+            --changed         build only the projects owning files changed since HEAD and their dependents
           Every other argument goes to dotnet build unchanged.
         """;
 
@@ -63,8 +62,10 @@ internal static class CommandUsage
         """;
 
     internal const string Status = """
-        fuse status
-          show the engine and the changed files.
+        fuse status [--json]
+          show the engine, its memory, the changed files and the tree they make, and the limits past which checks
+          slow down.
+          --json  one JSON object with the engine, the tree and the limits
         """;
 
     internal const string Session = """
@@ -97,12 +98,5 @@ internal static class CommandUsage
     internal const string Version = """
         fuse --version
           print the version.
-        """;
-
-    /// <summary>The hook's usage, with the harnesses and events it takes, as <c>fuse hook</c> itself prints them.</summary>
-    internal static string Hook =>
-        $"""
-        fuse hook <{string.Join('|', SupportedHarnesses.All.Select(h => h.Name))}> <{HookEvent.PostEdit}|{HookEvent.PreShell}|{HookEvent.Stop}>
-          the command registered hooks run. It reads the harness's JSON from standard input.
         """;
 }

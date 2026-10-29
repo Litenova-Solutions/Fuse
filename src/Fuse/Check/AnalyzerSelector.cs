@@ -75,16 +75,9 @@ internal sealed class AnalyzerSelector
                 perFile.Add(analyzer);
         }
 
-        var declarationOnly = ImmutableArray.CreateBuilder<DiagnosticAnalyzer>();
-        foreach (var (analyzer, _) in compilationWide)
-        {
-            if (await DeclarationOnlyProbe.ClassifyAsync(probe.Compilation, analyzer, project.AnalyzerOptions, cancellationToken).ConfigureAwait(false))
-                declarationOnly.Add(analyzer);
-        }
-
-        var plan = new AnalyzerPlan(perFile.ToImmutable(), compilationWide.ToImmutable()) { DeclarationOnly = declarationOnly.ToImmutable() };
+        var plan = new AnalyzerPlan(perFile.ToImmutable(), compilationWide.ToImmutable());
         if (!plan.CompilationWide.IsEmpty)
-            _log($"analyzers of {project.Name}: {plan.PerFile.Length} per file, {plan.CompilationWide.Length} compilation-wide ({string.Join(", ", plan.CompilationWide.Select(c => $"{Name(c.Analyzer)} {c.PerFile.TotalMilliseconds:0} ms on one file"))}{(plan.DeclarationOnly.IsEmpty ? "" : $"; declaration-only: {string.Join(", ", plan.DeclarationOnly.Select(Name))}")})");
+            _log($"analyzers of {project.Name}: {plan.PerFile.Length} per file, {plan.CompilationWide.Length} compilation-wide ({string.Join(", ", plan.CompilationWide.Select(c => $"{Name(c.Analyzer)} {c.PerFile.TotalMilliseconds:0} ms on one file"))})");
         return plan;
     }
 

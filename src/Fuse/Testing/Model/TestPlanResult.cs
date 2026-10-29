@@ -7,4 +7,11 @@ namespace Fuse.Testing.Model;
 /// <param name="SelectedTests">Test methods selected, counted from the test sources without discovery.</param>
 /// <param name="TotalTests">Test methods in the repository, counted the same way.</param>
 /// <param name="Summary">One sentence stating what was selected and why. The client prints it at the end of its last line.</param>
-internal sealed record TestPlanResult(IReadOnlyList<PlannedRun> Runs, int SelectedTests, int TotalTests, string Summary);
+internal sealed record TestPlanResult(IReadOnlyList<PlannedRun> Runs, int SelectedTests, int TotalTests, string Summary)
+{
+    /// <summary>How many selected tests need a container runtime that is not running, so they run in no run above.</summary>
+    public int ContainerGatedTests { get; init; }
+
+    /// <summary>The projects those tests are in, in ordinal order.</summary>
+    public string[] ContainerGatedProjects { get; init; } = [];
+}

@@ -22,8 +22,11 @@ internal sealed class BaselineWarmer
 
     private Task _running = Task.CompletedTask;
 
-    /// <summary>The baseline generation fully warmed, or -1 when none is.</summary>
-    private volatile int _warmed = -1;
+    /// <summary>The generation <see cref="_warmedProjects"/> belongs to. Only the one running warm reads and writes both.</summary>
+    private int _warmedGeneration = -1;
+
+    /// <summary>The projects warmed for <see cref="_warmedGeneration"/>, so a project that loads after the warm still gets warmed.</summary>
+    private readonly HashSet<RepoPath> _warmedProjects = [];
 
     /// <param name="workspace">The workspace whose baseline generations are warmed.</param>
     /// <param name="checker">The checker that warms one project.</param>
@@ -40,15 +43,13 @@ internal sealed class BaselineWarmer
     /// <summary>True while a background warm runs.</summary>
     public bool IsRunning => !_running.IsCompleted;
 
-    /// <summary>Starts warming in the background, unless a run is already going, the engine is shutting down, or the baseline generation is already warmed.</summary>
+    /// <summary>Starts warming in the background, unless a run is already going or the engine is shutting down.</summary>
     /// <param name="shutdown">The engine's shutdown token, which stops the warm between two projects.</param>
     public void Schedule(CancellationToken shutdown)
     {
         lock (_scheduling)
         {
             if (!_running.IsCompleted || shutdown.IsCancellationRequested)
-                return;
-            if (_warmed == _workspace.BaselineGeneration)
                 return;
             // RunAsync checks the token between projects, so Task.Run is not given it.
             _running = Task.Run(() => RunAsync(shutdown), CancellationToken.None);
@@ -57,7 +58,6 @@ internal sealed class BaselineWarmer
 
     private async Task RunAsync(CancellationToken shutdown)
     {
-        var warmed = new HashSet<RepoPath>();
         var generation = -1;
         while (!shutdown.IsCancellationRequested)
         {
@@ -67,10 +67,16 @@ internal sealed class BaselineWarmer
             try
             {
                 generation = _workspace.BaselineGeneration;
+                if (generation != _warmedGeneration)
+                {
+                    _warmedGeneration = generation;
+                    _warmedProjects.Clear();
+                }
+
                 next = null;
                 foreach (var candidate in _workspace.Graph.Projects)
                 {
-                    if (_workspace.IsLoaded(candidate) && !warmed.Contains(candidate.Path))
+                    if (_workspace.IsLoaded(candidate) && !_warmedProjects.Contains(candidate.Path))
                     {
                         next = candidate;
                         break;
@@ -83,12 +89,9 @@ internal sealed class BaselineWarmer
             }
 
             if (next is null)
-            {
-                _warmed = generation;
                 return;
-            }
 
-            warmed.Add(next.Path);
+            _warmedProjects.Add(next.Path);
             var warming = System.Diagnostics.Stopwatch.GetTimestamp();
             try
             {

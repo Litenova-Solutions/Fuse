@@ -12,6 +12,7 @@ internal sealed class WatchedPaths : IDisposable
     private readonly RepoRoot _root;
     private readonly RepoPath _gitDirectory;
     private readonly ConcurrentDictionary<RepoPath, byte> _sources = new();
+    private readonly ConcurrentDictionary<RepoPath, byte> _nonSources = new();
     private readonly ConcurrentDictionary<RepoPath, byte> _possibleDirectories = new();
     private readonly ConcurrentQueue<RepoPath> _projectFiles = new();
     private readonly ConcurrentQueue<string> _errors = new();
@@ -59,8 +60,13 @@ internal sealed class WatchedPaths : IDisposable
             _sources[entry] = 0;
         else if (PathRules.IsProjectFile(path))
             _projectFiles.Enqueue(entry);
-        else if (appearedOrVanished)
-            _possibleDirectories[entry] = 0; // A folder name can hold a dot, so only the next sync can say what it is.
+        else
+        {
+            // Non-sources are verified against HEAD at the next sync, like sources.
+            _nonSources[entry] = 0;
+            if (appearedOrVanished)
+                _possibleDirectories[entry] = 0; // A folder name can hold a dot, so only the next sync can say what it is.
+        }
     }
 
     /// <summary>Records that the watcher lost events, for example because its buffer overflowed.</summary>
@@ -108,6 +114,19 @@ internal sealed class WatchedPaths : IDisposable
         }
 
         return new WatchedChanges(sources, vanished, projectFiles, errors);
+    }
+
+    /// <summary>Takes every non-source event recorded since the previous call.</summary>
+    public HashSet<RepoPath> DrainNonSources()
+    {
+        var nonSources = new HashSet<RepoPath>();
+        foreach (var key in _nonSources.Keys)
+        {
+            if (_nonSources.TryRemove(key, out _))
+                nonSources.Add(key);
+        }
+
+        return nonSources;
     }
 
     /// <summary>

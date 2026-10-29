@@ -25,6 +25,8 @@ namespace Fuse.Protocol;
 [JsonDerivedType(typeof(PlanAllTests), nameof(PlanAllTests))]
 [JsonDerivedType(typeof(PlanFailedTests), nameof(PlanFailedTests))]
 [JsonDerivedType(typeof(ReportTestResults), nameof(ReportTestResults))]
+[JsonDerivedType(typeof(PlanChangedBuild), nameof(PlanChangedBuild))]
+[JsonDerivedType(typeof(Status), nameof(Status))]
 internal abstract record EngineRequest
 {
     private readonly string _buildId = "";
@@ -284,4 +286,17 @@ internal abstract record EngineRequest
             return hash.ToHashCode();
         }
     }
+
+    /// <summary>
+    ///     The projects to build for the files changed since HEAD: the owners and their dependents, reduced to the
+    ///     highest projects, with the tree they were planned from. Like a test plan, it always waits for the engine to
+    ///     finish loading.
+    /// </summary>
+    public sealed record PlanChangedBuild : EngineRequest;
+
+    /// <summary>
+    ///     The engine and the tree it watches: the process, its working set, and the changed files with their stamp.
+    ///     Answered without requiring C# projects, so status works in a repository that has none.
+    /// </summary>
+    public sealed record Status : EngineRequest;
 }

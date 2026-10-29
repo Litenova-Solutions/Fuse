@@ -46,6 +46,9 @@ public class SessionRegistrationTests
         using var repo = FixtureRepo.CreateStandard();
         await using var engine = await InProcessRequestRouter.StartAsync(repo);
         repo.Replace("Lib/Calc.cs", "public int Add(", "public int Plus(");
+        // Fold the edit in by naming it: a check of every change follows the file watcher, which may not have
+        // reported a file written milliseconds ago, while a check of named files reads them from disk at once.
+        await engine.CheckAsync(repo.Full("Lib/Calc.cs"));
         await engine.SendAsync(new EngineRequest.BeginSession("w1", ["Lib/**"]));
 
         var stop = Assert.IsType<EngineResponse.CheckAnswered>(
@@ -66,6 +69,9 @@ public class SessionRegistrationTests
         using var repo = FixtureRepo.CreateStandard();
         await using var engine = await InProcessRequestRouter.StartAsync(repo);
         repo.Replace("Lib/Calc.cs", "public int Add(", "public int Plus(");
+        // Fold the edit in by naming it: a check of every change follows the file watcher, which may not have
+        // reported a file written milliseconds ago, while a check of named files reads them from disk at once.
+        await engine.CheckAsync(repo.Full("Lib/Calc.cs"));
         await engine.SendAsync(new EngineRequest.BeginSession("w1", ["Lib/**"]));
 
         var report = Assert.IsType<EngineResponse.CheckAnswered>(

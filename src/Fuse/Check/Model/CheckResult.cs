@@ -42,6 +42,12 @@ internal sealed record CheckResult(
     /// </summary>
     public int FilesNotAttributed { get; init; }
 
+    /// <summary>How many changed files are not C# sources, which the check does not read.</summary>
+    public int NonCSharpChanged { get; init; }
+
+    /// <summary>The first changed non-C# files by sorted relative path, so the answer can name them.</summary>
+    public IReadOnlyList<string> NonCSharpSample { get; init; } = [];
+
     /// <summary>
     ///     The paths a scoped check was scoped to, repository-relative with forward slashes, in the order named. Empty for
     ///     a check of every change or of named files.

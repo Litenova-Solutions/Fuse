@@ -1,7 +1,11 @@
 using System.Text;
 using System.Text.RegularExpressions;
 using Fuse.Dotnet;
+using Fuse.Engine.Client;
+using Fuse.Failures;
 using Fuse.Paths;
+using Fuse.Protocol;
+using Fuse.Repo;
 
 namespace Fuse.Operations;
 
@@ -29,39 +33,131 @@ internal static partial class BuildOperation
         RunAsync(root, workingDirectory, arguments, BuildOptions.Default, cancellationToken);
 
     /// <param name="options">How many errors to print, in what form, and whether the warnings are listed.</param>
-    public static async Task<OperationResult> RunAsync(RepoRoot? root, string workingDirectory, IReadOnlyList<string> arguments, BuildOptions options, CancellationToken cancellationToken)
+    /// <param name="includeTreeStamp">True to stamp the summary and the results file with the tree the build ended on, for <c>fuse build</c>; the MCP answer and the test build stay unstamped.</param>
+    public static async Task<OperationResult> RunAsync(RepoRoot? root, string workingDirectory, IReadOnlyList<string> arguments, BuildOptions options, CancellationToken cancellationToken, bool includeTreeStamp = false)
     {
         // The arguments are the user's, unchanged, so an implicit restore still happens: an agent that has just added a
         // package reference and then builds needs it. Fuse adds the lock and leaves the command as it is.
         if (root is null)
-            return await BuildAsync(workingDirectory, workingDirectory, Path.GetTempPath(), arguments, options, null, cancellationToken).ConfigureAwait(false);
+            return await BuildAsync(workingDirectory, workingDirectory, Path.GetTempPath(), arguments, options, null, false, cancellationToken).ConfigureAwait(false);
 
         using var buildLock = BuildLock.AcquireForClient(root);
-        return await BuildAsync(workingDirectory, root.Path, root.StateDirectory, arguments, options, root, cancellationToken).ConfigureAwait(false);
+        return await BuildAsync(workingDirectory, root.Path, root.StateDirectory, arguments, options, root, includeTreeStamp, cancellationToken).ConfigureAwait(false);
     }
 
-    private static async Task<OperationResult> BuildAsync(string workingDirectory, string root, string logDirectory, IReadOnlyList<string> arguments, BuildOptions options, RepoRoot? resultsRoot, CancellationToken cancellationToken)
+    /// <summary>
+    ///     Builds the projects owning the files changed since HEAD and their dependents, one <c>dotnet build</c> per
+    ///     highest project under one lock, each with <paramref name="arguments"/>. When nothing changed it builds
+    ///     nothing; when the selection cannot be trusted it builds the whole solution instead.
+    /// </summary>
+    /// <param name="root">The repository to build the changed projects of.</param>
+    /// <param name="workingDirectory">Where <c>dotnet build</c> runs.</param>
+    /// <param name="arguments">The arguments for each <c>dotnet build</c>, unchanged.</param>
+    /// <param name="options">How many errors to print, in what form, and whether the warnings are listed.</param>
+    /// <param name="cancellationToken">Cancels the plan and the builds.</param>
+    public static async Task<OperationResult> RunChangedAsync(RepoRoot root, string workingDirectory, IReadOnlyList<string> arguments, BuildOptions options, CancellationToken cancellationToken)
+    {
+        var response = await EngineClient.SendAsync(root, new EngineRequest.PlanChangedBuild(), TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
+        if (response is not EngineResponse.ChangedBuildAnswered { Plan: not null } answered)
+            return OperationResult.Unanswered(response, "changed build plan");
+        var plan = answered.Plan;
+        if (plan.FallbackReason.Length > 0)
+            return await FallbackAsync(root, workingDirectory, arguments, options, plan.FallbackReason, cancellationToken).ConfigureAwait(false);
+        if (plan.BuildProjects.Length == 0)
+        {
+            if (plan.ChangedFileCount == 0)
+                return new OperationResult(Outcome.Clean, $"fuse: no C# changes since HEAD; nothing to build (tree {plan.TreeHash})");
+            return await FallbackAsync(root, workingDirectory, arguments, options, $"{plan.ChangedFileCount} changed file(s) in no project", cancellationToken).ConfigureAwait(false);
+        }
+
+        var names = plan.BuildProjects.Select(project => Path.GetFileNameWithoutExtension(project) ?? project).ToArray();
+        var text = new StringBuilder();
+        text.Append($"fuse: building {plan.BuildProjects.Length} project(s) for {plan.ChangedFileCount} changed file(s) (tree {plan.TreeHash}): {string.Join(", ", names)}");
+        if (!new HashSet<string>(names).SetEquals(plan.ChangedInProjects))
+            text.Append($"; changes in {string.Join(", ", plan.ChangedInProjects)}");
+        if (plan.UnownedFileCount > 0)
+            text.Append($"; {plan.UnownedFileCount} changed file(s) in no project");
+        using var buildLock = BuildLock.AcquireForClient(root);
+        var runs = new List<(ProcessResult Result, string Log, double Seconds, bool RanAgain)>(plan.BuildProjects.Length);
+        foreach (var project in plan.BuildProjects)
+            runs.Add(await RunOneAsync(["build", project, .. arguments, .. QuietArguments], workingDirectory, root.StateDirectory, cancellationToken).ConfigureAwait(false));
+
+        // The results file holds every project at once; each summary names it with the combined count.
+        var treeStamp = await StampAsync(root, cancellationToken).ConfigureAwait(false);
+        var errors = new List<BuildDiagnostic>();
+        var warnings = new List<BuildWarning>();
+        foreach (var (result, log, _, _) in runs)
+        {
+            errors.AddRange(BuildOutputParser.Diagnostics(result.Output, root.Path));
+            if (log.Length > 0)
+                warnings.AddRange(BuildLog.WarningsList(log, root.Path));
+        }
+
+        var resultsPath = BuildResultsFile.WriteBuild(root, errors, warnings, options.Json, treeStamp);
+        var failed = 0;
+        foreach (var ((result, log, seconds, ranAgain), name) in runs.Zip(names))
+        {
+            text.Append('\n');
+            if (ranAgain)
+                text.Append(RanAgainLine).Append('\n');
+            var rendered = Render(result, root.Path, seconds, $"build ({name})", options, resultsPath, log, treeStamp, errors.Count);
+            if (rendered.Outcome == Outcome.ProblemsFound)
+                failed++;
+            text.Append(rendered.Text);
+        }
+
+        if (plan.BuildProjects.Length > 1)
+            text.Append($"\nfuse: {failed} of {plan.BuildProjects.Length} project(s) failed");
+        return new OperationResult(failed > 0 ? Outcome.ProblemsFound : Outcome.Clean, text.ToString());
+    }
+
+    /// <summary>Builds the whole solution because <paramref name="reason"/> says the changed projects cannot be selected, saying so first.</summary>
+    private static async Task<OperationResult> FallbackAsync(RepoRoot root, string workingDirectory, IReadOnlyList<string> arguments, BuildOptions options, string reason, CancellationToken cancellationToken)
+    {
+        var whole = await RunAsync(root, workingDirectory, arguments, options, cancellationToken, includeTreeStamp: true).ConfigureAwait(false);
+        return whole with { Text = $"fuse: {reason}; building the whole solution instead\n" + whole.Text };
+    }
+
+    /// <summary>The stamp for a finished build, or null when git cannot say what the tree holds, which leaves the build unstamped rather than failing it.</summary>
+    private static async Task<string?> StampAsync(RepoRoot root, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var (hash, count) = await TreeStamp.ForWorkingTreeAsync(root, cancellationToken).ConfigureAwait(false);
+            return TreeStamp.SummaryPart(hash, count);
+        }
+        catch (FuseException)
+        {
+            return null;
+        }
+    }
+
+    private static async Task<OperationResult> BuildAsync(string workingDirectory, string root, string logDirectory, IReadOnlyList<string> arguments, BuildOptions options, RepoRoot? resultsRoot, bool includeTreeStamp, CancellationToken cancellationToken)
+    {
+        var (result, log, seconds, ranAgain) = await RunOneAsync(["build", .. arguments, .. QuietArguments], workingDirectory, logDirectory, cancellationToken).ConfigureAwait(false);
+        var treeStamp = includeTreeStamp && resultsRoot is not null ? await StampAsync(resultsRoot, cancellationToken).ConfigureAwait(false) : null;
+        var diagnostics = BuildOutputParser.Diagnostics(result.Output, root);
+        var warnings = log.Length == 0 ? [] : BuildLog.WarningsList(log, root);
+        var resultsPath = resultsRoot is null ? null : BuildResultsFile.WriteBuild(resultsRoot, diagnostics, warnings, options.Json, treeStamp);
+        var rendered = Render(result, root, seconds, "build", options, resultsPath, log, treeStamp);
+        return ranAgain ? rendered with { Text = RanAgainLine + "\n" + rendered.Text } : rendered;
+    }
+
+    /// <summary>Runs one <c>dotnet</c> build with the file log, running again when a source file moved mid-build.</summary>
+    /// <returns>The process, the log's text, the seconds both runs took, and whether it ran again.</returns>
+    private static async Task<(ProcessResult Result, string Log, double Seconds, bool RanAgain)> RunOneAsync(string[] executableArguments, string workingDirectory, string logDirectory, CancellationToken cancellationToken)
     {
         var started = Environment.TickCount64;
-        var (result, log) = await RunLoggedAsync(["build", .. arguments, .. QuietArguments], workingDirectory, logDirectory, cancellationToken).ConfigureAwait(false);
+        var (result, log) = await RunLoggedAsync(executableArguments, workingDirectory, logDirectory, cancellationToken).ConfigureAwait(false);
         // A source file that another agent moved while MSBuild compiled is missing from the file list it evaluated.
         // Evaluated again, the list is right, so the build runs once more.
         if (result.ExitCode != 0 && MovedSources(result.Output).Any(path => !File.Exists(path)))
         {
-            (result, log) = await RunLoggedAsync(["build", .. arguments, .. QuietArguments], workingDirectory, logDirectory, cancellationToken).ConfigureAwait(false);
-            var again = Finish(result, log);
-            return again with { Text = RanAgainLine + "\n" + again.Text };
+            (result, log) = await RunLoggedAsync(executableArguments, workingDirectory, logDirectory, cancellationToken).ConfigureAwait(false);
+            return (result, log, (Environment.TickCount64 - started) / 1000.0, true);
         }
 
-        return Finish(result, log);
-
-        OperationResult Finish(ProcessResult finished, string finishedLog)
-        {
-            var diagnostics = BuildOutputParser.Diagnostics(finished.Output, root);
-            var warnings = finishedLog.Length == 0 ? [] : BuildLog.WarningsList(finishedLog, root);
-            var resultsPath = resultsRoot is null ? null : BuildResultsFile.WriteBuild(resultsRoot, diagnostics, warnings, options.Json);
-            return Render(finished, root, (Environment.TickCount64 - started) / 1000.0, "build", options, resultsPath, finishedLog);
-        }
+        return (result, log, (Environment.TickCount64 - started) / 1000.0, false);
     }
 
     /// <summary>
@@ -122,7 +218,9 @@ internal static partial class BuildOperation
     /// <param name="options">How many errors to print, in what form, and whether the warnings are listed.</param>
     /// <param name="resultsPath">Where every error and warning was written, or null when it was not written.</param>
     /// <param name="log">The build's file log (<see cref="BuildLog"/>), or empty when it has none.</param>
-    internal static OperationResult Render(ProcessResult result, string root, double seconds, string operation, BuildOptions options, string? resultsPath = null, string log = "")
+    /// <param name="treeStamp">The stamp a <c>fuse build</c> summary carries, or null to print none.</param>
+    /// <param name="fileTotal">How many errors the results file holds when it holds more than this build's, or null.</param>
+    internal static OperationResult Render(ProcessResult result, string root, double seconds, string operation, BuildOptions options, string? resultsPath = null, string log = "", string? treeStamp = null, int? fileTotal = null)
     {
         var diagnostics = BuildOutputParser.Diagnostics(result.Output, root);
         var commands = log.Length == 0 ? [] : BuildLog.FailedCommands(log);
@@ -131,7 +229,10 @@ internal static partial class BuildOperation
         if (options.Json)
         {
             foreach (var diagnostic in diagnostics)
-                text.Append(DiagnosticJson.BuildLine(diagnostic)).Append('\n');
+                text.Append(DiagnosticJson.BuildLine(diagnostic, LockLine.Holder(diagnostic))).Append('\n');
+            // With no diagnostic parsed, the tail says where the failure is, as in text mode.
+            if (diagnostics.Count == 0 && result.ExitCode != 0)
+                text.Append(Tail(result.Output)).Append('\n');
         }
         else if (diagnostics.Count > 0 || result.ExitCode == 0)
         {
@@ -169,21 +270,21 @@ internal static partial class BuildOperation
         var warningsTail = warningsCount > 0 ? $"; {warningsCount} warning(s)" : "";
         if (result.ExitCode == 0)
         {
-            text.Append($"fuse: {operation} succeeded in {seconds:0.0} s{warningsTail}{timesTail}");
+            text.Append($"fuse: {operation} succeeded in {seconds:0.0} s{warningsTail}{timesTail}{treeStamp}");
             return new OperationResult(Outcome.Clean, text.ToString());
         }
 
         if (diagnostics.Count == 0)
         {
-            text.Append($"fuse: {operation} failed (exit code {result.ExitCode}) in {seconds:0.0} s{warningsTail}{timesTail}");
+            text.Append($"fuse: {operation} failed (exit code {result.ExitCode}) in {seconds:0.0} s{warningsTail}{timesTail}{treeStamp}");
             return new OperationResult(Outcome.ProblemsFound, text.ToString());
         }
 
         var shown = options.Json ? diagnostics.Count : Math.Min(options.MaxShown, diagnostics.Count);
         var more = !options.Json && diagnostics.Count > shown ? $", first {shown} shown" : "";
         // The file holds every error; the answer names it only when it left errors out, and never in JSON, which already holds them.
-        var file = !options.Json && diagnostics.Count > shown && resultsPath is not null ? $"; all {diagnostics.Count} in {resultsPath}" : "";
-        text.Append($"fuse: {operation} failed with {diagnostics.Count} error(s){more} in {seconds:0.0} s{warningsTail}{timesTail}{file}");
+        var file = !options.Json && diagnostics.Count > shown && resultsPath is not null ? $"; all {fileTotal ?? diagnostics.Count} in {resultsPath}" : "";
+        text.Append($"fuse: {operation} failed with {diagnostics.Count} error(s){more} in {seconds:0.0} s{warningsTail}{timesTail}{treeStamp}{file}");
         return new OperationResult(Outcome.ProblemsFound, text.ToString());
     }
 

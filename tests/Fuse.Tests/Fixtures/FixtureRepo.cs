@@ -58,7 +58,7 @@ internal sealed class FixtureRepo : IDisposable
         return new FixtureRepo(target);
     }
 
-    public string Full(string relative) => System.IO.Path.GetFullPath(System.IO.Path.Combine(Root.Path, relative));
+    public string Full(string relative) => System.IO.Path.Combine(Root.Path, relative);
 
     /// <summary>The repository path of a repository-relative file, as the engine names it.</summary>
     public RepoPath PathOf(string relative) => Root.PathOf(relative);
@@ -154,6 +154,11 @@ internal sealed class FixtureRepo : IDisposable
             File.Copy(file, destination, overwrite: true);
             File.SetLastWriteTimeUtc(destination, File.GetLastWriteTimeUtc(file));
         }
+
+        // Directory times last: creating the entries above stamps them again, and freshness reads a directory newer
+        // than the build output as a changed file set.
+        foreach (var directory in Directory.EnumerateDirectories(source, "*", SearchOption.AllDirectories))
+            Directory.SetLastWriteTimeUtc(System.IO.Path.Combine(target, System.IO.Path.GetRelativePath(source, directory)), Directory.GetLastWriteTimeUtc(directory));
     }
 
     /// <summary>

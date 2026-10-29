@@ -4,7 +4,6 @@ using Fuse.Check.Model;
 using Fuse.Paths;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
-using Microsoft.CodeAnalysis.Text;
 
 namespace Fuse.Check;
 
@@ -70,7 +69,6 @@ internal sealed class DiagnosticCollector
             _currentFilesGeneration = generation;
             _analyses.StopAll(baseline: false);
             _analyses.StopAll(baseline: true);
-            _analyses.ClearDeclarationOnly();
         }
 
         _unfinished.Clear();
@@ -249,6 +247,8 @@ internal sealed class DiagnosticCollector
     public async Task<bool> WarmBaselineProjectAsync(Project baselineProject, int generation, CancellationToken shutdown)
     {
         ForgetOlderBaseline(generation);
+        if (generation != _cachedGeneration)
+            return false;
         var compilation = await baselineProject.GetCompilationAsync(shutdown).ConfigureAwait(false);
         if (compilation is null)
             return false;
@@ -261,10 +261,7 @@ internal sealed class DiagnosticCollector
         if (plan.CompilationWide.IsEmpty)
             return false;
         // The shutdown token stops the wait, never the run: a run outlives the warm that started it, as it outlives a check.
-        if (!plan.RemainderAnalyzers.IsEmpty)
-            await CompilationWideAsync(baselineProject, baseline: true, withAnalyzers, plan.RemainderAnalyzers, shutdown).ConfigureAwait(false);
-        if (!plan.DeclarationOnly.IsEmpty)
-            await DeclarationOnlyAsync(baselineProject, compilation, baseline: true, withAnalyzers, plan.DeclarationOnly, shutdown).ConfigureAwait(false);
+        await CompilationWideAsync(baselineProject, baseline: true, withAnalyzers, plan.CompilationWideAnalyzers, shutdown).ConfigureAwait(false);
         return true;
     }
 
@@ -282,11 +279,12 @@ internal sealed class DiagnosticCollector
 
     /// <summary>
     ///     Empties both baseline caches, and stops the analyzer runs over the baseline, when <paramref name="generation"/>
-    ///     is not the baseline they were made for.
+    ///     is newer than the baseline they were made for. A generation older than the cached one is a warm that started
+    ///     before HEAD moved again, which must not clear what a newer baseline already cached or stop its runs.
     /// </summary>
     private void ForgetOlderBaseline(int generation)
     {
-        if (generation == _cachedGeneration)
+        if (generation <= _cachedGeneration)
             return;
         _baselineFiles.Clear();
         _baselineProjects.Clear();
@@ -350,8 +348,8 @@ internal sealed class DiagnosticCollector
             Interlocked.Add(ref _updateTicks, System.Diagnostics.Stopwatch.GetTimestamp() - updating);
             if (model is null)
                 return (cached.Errors, true);
-            var (compilationWide, _, compilationWideFinished, keptDeclarationOnly) = await RunAnalyzersAsync(document.Project, model, baseline, perFile: false, cancellationToken).ConfigureAwait(false);
-            return ([.. cached.Errors, .. compilationWide.Select(d => ToCompilerError(d.Diagnostic, fromAnalyzer: true)).OfType<CompilerError>(), .. keptDeclarationOnly], compilationWideFinished);
+            var (compilationWide, _, compilationWideFinished) = await RunAnalyzersAsync(document.Project, model, baseline, perFile: false, cancellationToken).ConfigureAwait(false);
+            return ([.. cached.Errors, .. compilationWide.Select(d => ToCompilerError(d.Diagnostic, fromAnalyzer: true)).OfType<CompilerError>()], compilationWideFinished);
         }
 
         var updated = System.Diagnostics.Stopwatch.GetTimestamp();
@@ -363,11 +361,11 @@ internal sealed class DiagnosticCollector
         var started = System.Diagnostics.Stopwatch.GetTimestamp();
         var compiler = semanticModel.GetDiagnostics(cancellationToken: cancellationToken).Where(IsError).Select(d => ToCompilerError(d, fromAnalyzer: false)).OfType<CompilerError>().ToList();
         Interlocked.Add(ref _compilerTicks, System.Diagnostics.Stopwatch.GetTimestamp() - started);
-        var (fromAnalyzers, perFileFinished, finished, declarationOnly) = await RunAnalyzersAsync(document.Project, semanticModel, baseline, perFile: true, cancellationToken).ConfigureAwait(false);
+        var (fromAnalyzers, perFileFinished, finished) = await RunAnalyzersAsync(document.Project, semanticModel, baseline, perFile: true, cancellationToken).ConfigureAwait(false);
         var analyzerErrors = fromAnalyzers.Select(d => (Error: ToCompilerError(d.Diagnostic, fromAnalyzer: true), d.PerFile)).Where(d => d.Error is not null).ToList();
         if (key is not null && perFileFinished)
             _currentFiles[document.Id] = new CachedFile(key, [.. compiler, .. analyzerErrors.Where(d => d.PerFile).Select(d => d.Error!)]);
-        return ([.. compiler, .. analyzerErrors.Select(d => d.Error!), .. declarationOnly], finished);
+        return ([.. compiler, .. analyzerErrors.Select(d => d.Error!)], finished);
     }
 
     /// <summary>
@@ -385,24 +383,21 @@ internal sealed class DiagnosticCollector
     /// <summary>
     ///     The analyzer errors in the file of <paramref name="model"/>: the per-file analyzers run on that file when
     ///     <paramref name="perFile"/> is true, and the compilation-wide ones once over the whole compilation, whose result
-    ///     every file of the check shares. The declaration-only ones among them run once per declarations instead, and
-    ///     their errors arrive already mapped to this compilation. The baseline runs the same analyzers as the working
-    ///     tree. Past the check's deadline, the file keeps the analyzer errors found so far, and a working-tree file
-    ///     counts as unfinished.
+    ///     every file of the check shares. The baseline runs the same analyzers as the working tree. Past the check's
+    ///     deadline, the file keeps the analyzer errors found so far, and a working-tree file counts as unfinished.
     /// </summary>
     /// <returns>
-    ///     Each error with whether a per-file analyzer reported it, the declaration-only errors in the file, whether the
-    ///     per-file analyzers finished, and whether every analyzer the check runs finished.
+    ///     Each error with whether a per-file analyzer reported it, whether the per-file analyzers finished, and whether
+    ///     every analyzer the check runs finished.
     /// </returns>
-    private async Task<(List<(Diagnostic Diagnostic, bool PerFile)> Errors, bool PerFileFinished, bool Finished, List<CompilerError> DeclarationOnly)> RunAnalyzersAsync(
+    private async Task<(List<(Diagnostic Diagnostic, bool PerFile)> Errors, bool PerFileFinished, bool Finished)> RunAnalyzersAsync(
         Project project, SemanticModel model, bool baseline, bool perFile, CancellationToken cancellationToken)
     {
         var withAnalyzers = _analyzers.For(project, model.Compilation);
         if (withAnalyzers is null)
-            return ([], true, true, []);
+            return ([], true, true);
         var run = _run;
         var result = new List<(Diagnostic Diagnostic, bool PerFile)>();
-        var declarationOnly = new List<CompilerError>();
         var perFileFinished = false;
         var finished = false;
         using var analyzing = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, run.Deadline);
@@ -438,17 +433,8 @@ internal sealed class DiagnosticCollector
             }
             else if (!plan.CompilationWide.IsEmpty)
             {
-                if (!plan.RemainderAnalyzers.IsEmpty)
-                {
-                    var all = await CompilationWideAsync(project, baseline, withAnalyzers, plan.RemainderAnalyzers, analyzing.Token).ConfigureAwait(false);
-                    result.AddRange(all.Where(d => d.Location.SourceTree == model.SyntaxTree).Select(d => (d, false)));
-                }
-
-                if (!plan.DeclarationOnly.IsEmpty)
-                {
-                    var reused = await DeclarationOnlyAsync(project, model.Compilation, baseline, withAnalyzers, plan.DeclarationOnly, analyzing.Token).ConfigureAwait(false);
-                    declarationOnly.AddRange(reused.Where(e => string.Equals(e.TreePath, model.SyntaxTree.FilePath, StringComparison.Ordinal)).Select(e => e.Error));
-                }
+                var all = await CompilationWideAsync(project, baseline, withAnalyzers, plan.CompilationWideAnalyzers, analyzing.Token).ConfigureAwait(false);
+                result.AddRange(all.Where(d => d.Location.SourceTree == model.SyntaxTree).Select(d => (d, false)));
             }
 
             finished = true;
@@ -459,7 +445,7 @@ internal sealed class DiagnosticCollector
                 _unfinished.TryAdd(_root.PathOf(model.SyntaxTree.FilePath).Relative, 0);
         }
 
-        return ([.. result.Where(d => IsError(d.Diagnostic))], perFileFinished, finished, declarationOnly);
+        return ([.. result.Where(d => IsError(d.Diagnostic))], perFileFinished, finished);
     }
 
     /// <summary>
@@ -486,166 +472,6 @@ internal sealed class DiagnosticCollector
                 }
             },
             wait);
-
-    /// <summary>
-    ///     The errors the declaration-only analyzers report anywhere in <paramref name="current"/>, each with the path of
-    ///     the tree it is in. The analyzers run once per declarations, and later compilations a body edit apart map the
-    ///     kept diagnostics to their own trees; a diagnostic that does not map runs the analyzers again on this
-    ///     compilation instead.
-    /// </summary>
-    private async Task<List<(CompilerError Error, string TreePath)>> DeclarationOnlyAsync(
-        Project project, Compilation current, bool baseline, CompilationWithAnalyzers analyzers, ImmutableArray<DiagnosticAnalyzer> declarationOnly, CancellationToken wait)
-    {
-        var declarations = await project.GetDependentSemanticVersionAsync(wait).ConfigureAwait(false);
-        var configuration = _configurationGeneration();
-        var identity = AnalyzerIdentity(declarationOnly);
-        var diagnostics = await _analyses.RunDeclarationOnlyAsync(
-            project.Id,
-            baseline,
-            declarations,
-            configuration,
-            identity,
-            async stop =>
-            {
-                var timer = System.Diagnostics.Stopwatch.GetTimestamp();
-                try
-                {
-                    return (await analyzers.GetAnalysisResultAsync(declarationOnly, stop).ConfigureAwait(false)).GetAllDiagnostics();
-                }
-                finally
-                {
-                    Interlocked.Add(ref _analyzerTicks, System.Diagnostics.Stopwatch.GetTimestamp() - timer);
-                }
-            },
-            wait).ConfigureAwait(false);
-        if (await MapAsync(diagnostics, current, wait).ConfigureAwait(false) is { } mapped)
-            return mapped;
-        // A diagnostic the kept run reported does not map to this compilation, so the analyzers run on it instead. The
-        // kept result is forgotten, and the next check keeps what this compilation reports.
-        _analyses.ForgetDeclarationOnly(project.Id, baseline, declarations, configuration, identity);
-        var timer = System.Diagnostics.Stopwatch.GetTimestamp();
-        try
-        {
-            var fresh = await analyzers.GetAnalysisResultAsync(declarationOnly, wait).ConfigureAwait(false);
-            return MapFresh(fresh.GetAllDiagnostics(), current);
-        }
-        finally
-        {
-            Interlocked.Add(ref _analyzerTicks, System.Diagnostics.Stopwatch.GetTimestamp() - timer);
-        }
-    }
-
-    /// <summary>
-    ///     What identifies the analyzers of a declaration-only run: each analyzer's type and the build of the assembly it
-    ///     comes from, so a rebuilt analyzer and another analyzer of the same assembly never share a result.
-    /// </summary>
-    private static string AnalyzerIdentity(ImmutableArray<DiagnosticAnalyzer> analyzers) =>
-        string.Join("\n", analyzers.Select(a => $"{a.GetType().FullName}|{a.GetType().Assembly.ManifestModule.ModuleVersionId}").Order(StringComparer.Ordinal));
-
-    /// <summary>
-    ///     The errors of a declaration-only run mapped to <paramref name="current"/>, or null when any error does not
-    ///     map. A diagnostic in a tree this compilation holds unchanged is kept; one in a tree a body edit changed is
-    ///     moved by the text changes between the trees, and only when the text it points at is the same there.
-    /// </summary>
-    private async Task<List<(CompilerError Error, string TreePath)>?> MapAsync(ImmutableArray<Diagnostic> diagnostics, Compilation current, CancellationToken cancellationToken)
-    {
-        var result = new List<(CompilerError Error, string TreePath)>();
-        foreach (var diagnostic in diagnostics)
-        {
-            if (!IsError(diagnostic) || !diagnostic.Location.IsInSource || diagnostic.Location.SourceTree is not { } from)
-                continue;
-            var moved = await MoveAsync(diagnostic, from, current, cancellationToken).ConfigureAwait(false);
-            if (moved is null)
-                return null;
-            result.Add(moved.Value);
-        }
-
-        return result;
-    }
-
-    /// <summary>The errors of a declaration-only run over <paramref name="current"/> itself, which map to nothing.</summary>
-    private List<(CompilerError Error, string TreePath)> MapFresh(ImmutableArray<Diagnostic> diagnostics, Compilation current)
-    {
-        var result = new List<(CompilerError Error, string TreePath)>();
-        foreach (var diagnostic in diagnostics)
-        {
-            if (!IsError(diagnostic) || !diagnostic.Location.IsInSource || diagnostic.Location.SourceTree is not { } tree)
-                continue;
-            if (!current.SyntaxTrees.Contains(tree))
-                continue;
-            if (ToMovedError(diagnostic, tree, diagnostic.Location.SourceSpan) is { } error)
-                result.Add((error, tree.FilePath));
-        }
-
-        return result;
-    }
-
-    /// <summary>
-    ///     A kept diagnostic moved to <paramref name="current"/>, or null when it does not map: its tree is gone, or the
-    ///     text changes between the trees touch its span, or the text it points at differs there.
-    /// </summary>
-    private async Task<(CompilerError Error, string TreePath)?> MoveAsync(Diagnostic diagnostic, SyntaxTree from, Compilation current, CancellationToken cancellationToken)
-    {
-        var path = from.FilePath;
-        var candidates = current.SyntaxTrees.Where(t => string.Equals(t.FilePath, path, StringComparison.Ordinal)).ToList();
-        if (candidates.Count == 0)
-            return null;
-        if (candidates.Contains(from) && ToMovedError(diagnostic, from, diagnostic.Location.SourceSpan) is { } kept)
-            return (kept, path);
-        var oldText = await from.GetTextAsync(cancellationToken).ConfigureAwait(false);
-        foreach (var tree in candidates)
-        {
-            var newText = await tree.GetTextAsync(cancellationToken).ConfigureAwait(false);
-            if (MoveSpan(diagnostic.Location.SourceSpan, oldText, newText) is { } moved && ToMovedError(diagnostic, tree, moved) is { } error)
-                return (error, tree.FilePath);
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    ///     Where <paramref name="span"/> of <paramref name="oldText"/> is in <paramref name="newText"/>, or null when the
-    ///     changes between the texts touch it or the text there differs. Only a span in an unchanged region moves.
-    /// </summary>
-    private static TextSpan? MoveSpan(TextSpan span, SourceText oldText, SourceText newText)
-    {
-        var shift = 0;
-        foreach (var change in oldText.GetTextChanges(newText))
-        {
-            if (change.Span.Start >= span.End)
-                break;
-            if (change.Span.End <= span.Start)
-            {
-                shift += (change.NewText?.Length ?? 0) - change.Span.Length;
-                continue;
-            }
-
-            return null;
-        }
-
-        var start = span.Start + shift;
-        if (start < 0)
-            return null;
-        var moved = new TextSpan(start, span.Length);
-        if (moved.End > newText.Length || !string.Equals(oldText.ToString(span), newText.ToString(moved), StringComparison.Ordinal))
-            return null;
-        return moved;
-    }
-
-    /// <summary>An analyzer error at <paramref name="span"/> of <paramref name="tree"/>, or null when the span maps nowhere.</summary>
-    private CompilerError? ToMovedError(Diagnostic diagnostic, SyntaxTree tree, TextSpan span)
-    {
-        var mapped = tree.GetMappedLineSpan(span);
-        if (!mapped.IsValid || string.IsNullOrEmpty(mapped.Path))
-            return null;
-        return new CompilerError(
-            _root.PathOf(mapped.Path).Relative,
-            mapped.StartLinePosition.Line + 1,
-            mapped.StartLinePosition.Character + 1,
-            diagnostic.Id,
-            diagnostic.GetMessage(System.Globalization.CultureInfo.InvariantCulture),
-            FromAnalyzer: true);
-    }
 
     /// <summary>Errors in source-generated documents whose <c>#line</c> mappings point at <paramref name="path"/> (Razor components and views).</summary>
     /// <returns>The errors, and whether the analyzers the check runs all finished on the documents.</returns>

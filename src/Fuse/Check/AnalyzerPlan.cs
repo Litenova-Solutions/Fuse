@@ -25,14 +25,4 @@ internal sealed record AnalyzerPlan(
 
     /// <summary>The compilation-wide analyzers alone.</summary>
     public ImmutableArray<DiagnosticAnalyzer> CompilationWideAnalyzers { get; } = [.. CompilationWide.Select(c => c.Analyzer)];
-
-    /// <summary>
-    ///     The compilation-wide analyzers that read only declarations, as <see cref="DeclarationOnlyProbe"/> proved: a
-    ///     body edit leaves their diagnostics alone, so their result is reused while the project's declarations are. Empty
-    ///     until classified.
-    /// </summary>
-    public ImmutableArray<DiagnosticAnalyzer> DeclarationOnly { get; init; } = [];
-
-    /// <summary>The compilation-wide analyzers that read bodies, which run again after every edit.</summary>
-    public ImmutableArray<DiagnosticAnalyzer> RemainderAnalyzers => [.. CompilationWide.Select(c => c.Analyzer).Where(a => !DeclarationOnly.Contains(a))];
 }

@@ -32,6 +32,13 @@ internal static class HookCommand
 
     public static async Task<int> RunAsync(string[] args, CancellationToken cancellationToken)
     {
+        // Help names no harness or event; it prints the usage the same way an unknown one does.
+        if (args.Contains("--help") || args.Contains("-h"))
+        {
+            await Console.Error.WriteLineAsync(Usage).ConfigureAwait(false);
+            return 0;
+        }
+
         if (args.Length < 2 || SupportedHarnesses.Find(args[0]) is not { } harness || args[1] is not (HookEvent.PostEdit or HookEvent.PreShell or HookEvent.Stop))
         {
             await Console.Error.WriteLineAsync(Usage).ConfigureAwait(false);
@@ -111,7 +118,7 @@ internal static class HookCommand
         var started = Environment.TickCount64;
         TimeSpan Remaining() => LongWait - TimeSpan.FromMilliseconds(Environment.TickCount64 - started);
         Task<(OperationResult Result, EngineResponse Response)> Check(CancellationToken ct) => CheckOperation.RunAsync(
-            root, files, session, waitForLoad: background, compilationWideAnalyzers: false, background ? Remaining() : TimeSpan.FromSeconds(50), ct);
+            root, files, session, waitForLoad: background, compilationWideAnalyzers: false, background ? Remaining() : TimeSpan.FromSeconds(50), ct, includeNonCSharp: false);
         return await PostEditAsync(harness, Check, Remaining, message => Log(root.Path, message), cancellationToken).ConfigureAwait(false);
     }
 

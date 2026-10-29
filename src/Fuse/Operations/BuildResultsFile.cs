@@ -12,10 +12,11 @@ internal static class BuildResultsFile
     ///     read whole, and with <paramref name="json"/> the errors again as JSON lines in <c>last-build-results.json</c>.
     ///     Always replaces the previous files, even when the build found nothing. Null when the text file could not be written.
     /// </summary>
-    internal static string? WriteBuild(RepoRoot root, IReadOnlyList<BuildDiagnostic> errors, IReadOnlyList<BuildWarning> warnings, bool json)
+    /// <param name="treeStamp">The stamp the header carries, or null for none.</param>
+    internal static string? WriteBuild(RepoRoot root, IReadOnlyList<BuildDiagnostic> errors, IReadOnlyList<BuildWarning> warnings, bool json, string? treeStamp = null)
     {
         var text = new StringBuilder();
-        text.Append($"fuse build: {errors.Count} error(s)").Append('\n');
+        text.Append($"fuse build: {errors.Count} error(s){treeStamp}").Append('\n');
         foreach (var error in errors)
             text.Append(error).Append('\n');
         if (warnings.Count > 0)
@@ -27,7 +28,7 @@ internal static class BuildResultsFile
 
         var path = ResultsFile.Write(root, "last-build-results.txt", text.ToString());
         if (json)
-            ResultsFile.Write(root, "last-build-results.json", errors.Count == 0 ? "" : string.Join('\n', errors.Select(DiagnosticJson.BuildLine)) + "\n");
+            ResultsFile.Write(root, "last-build-results.json", errors.Count == 0 ? "" : string.Join('\n', errors.Select(e => DiagnosticJson.BuildLine(e))) + "\n");
         return path;
     }
 }

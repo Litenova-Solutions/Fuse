@@ -31,7 +31,7 @@ public class ApplicationStartTests
             {
             }
 
-            public static class Report
+            public class Report
             {
                 public static string Line(int value) => "value=" + value;
             }
@@ -56,7 +56,7 @@ public class ApplicationStartTests
 
         namespace Tests
         {
-            public static class Helper
+            public class Helper
             {
                 public static int Twice(int value) => value * 2;
             }
@@ -313,8 +313,8 @@ public class ApplicationStartTests
         Assert.Equal(ApplicationStart.Classification.DoesNot, Classify("Tests.DirectTests"));
 
     [Fact]
-    public void External_base_class_cannot_be_told() =>
-        Assert.Equal(ApplicationStart.Classification.CannotBeTold, Classify("Tests.ExternalBaseTests"));
+    public void Process_base_class_does_not_start() =>
+        Assert.Equal(ApplicationStart.Classification.DoesNot, Classify("Tests.ExternalBaseTests"));
 
     [Fact]
     public void Framework_base_class_does_not_start() =>
@@ -349,7 +349,7 @@ public class ApplicationStartTests
         var compilation = CSharpCompilation.Create(
             "ApplicationStartFixture",
             [CSharpSyntaxTree.ParseText(source, cancellationToken: TestContext.Current.CancellationToken)],
-            [MetadataReference.CreateFromFile(typeof(object).Assembly.Location), MetadataReference.CreateFromFile(typeof(Process).Assembly.Location)],
+            [MetadataReference.CreateFromFile(typeof(object).Assembly.Location), MetadataReference.CreateFromFile(typeof(Process).Assembly.Location), MetadataReference.CreateFromFile(typeof(System.ComponentModel.Component).Assembly.Location)],
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
         Assert.Empty(compilation.GetDiagnostics(TestContext.Current.CancellationToken).Where(d => d.Severity == DiagnosticSeverity.Error));
         return compilation;

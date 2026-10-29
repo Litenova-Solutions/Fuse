@@ -60,6 +60,7 @@ public class SelectionBuilderTests
         IsExecutable = false,
         UsesTestingPlatform = false,
         Framework = TestFramework.Unknown,
+        RequiresContainerRuntime = false,
         TargetPaths = [],
     };
 }

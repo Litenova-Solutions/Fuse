@@ -7,4 +7,11 @@ namespace Fuse.Protocol;
 /// <param name="Summary">One sentence stating the selection and its reason.</param>
 /// <param name="PlanId">Names the content the plan selected from, which a report of its runs names back; empty when the runs are not reported. A line without it reads as empty.</param>
 /// <param name="CachedTests">How many selected tests the plan answered from the cache without running them. A line without it reads as 0.</param>
-internal sealed record TestPlan(TestRun[] Runs, int SelectedTests, int TotalTests, string Summary, string PlanId = "", int CachedTests = 0);
+internal sealed record TestPlan(TestRun[] Runs, int SelectedTests, int TotalTests, string Summary, string PlanId = "", int CachedTests = 0)
+{
+    /// <summary>How many selected tests need a container runtime that is not running, so they run in no run above. A line without it reads as 0.</summary>
+    public int ContainerGatedTests { get; init; }
+
+    /// <summary>The projects those tests are in, in ordinal order. A line without the list reads as one that names none.</summary>
+    public string[] ContainerGatedProjects { get; init; } = [];
+}

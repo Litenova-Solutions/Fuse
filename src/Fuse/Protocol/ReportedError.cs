@@ -6,9 +6,9 @@ namespace Fuse.Protocol;
 /// <param name="Error">The error itself, the one check model type the wire carries (decision D11 in site/docs/architecture.html).</param>
 /// <param name="Cause">
 ///     The declaration change to print under the error, or null when it prints with none: an error in a target, an
-///     analyzer error, an error under a broad reach, or an error past the cap on causes per answer.
+///     analyzer error, or an error under a broad reach.
 /// </param>
-/// <param name="IsCauseLeftOut">True when the error had a cause that the cap on causes per answer left out.</param>
+/// <param name="IsCauseLeftOut">True when the error had a cause that the printed answer leaves out.</param>
 internal sealed record ReportedError(CompilerError Error, ReportedCause? Cause = null, bool IsCauseLeftOut = false)
 {
     /// <summary>The repository-relative path of the generated file that declares what the error is about, or null.</summary>

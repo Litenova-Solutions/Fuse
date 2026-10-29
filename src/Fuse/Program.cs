@@ -28,8 +28,9 @@ internal static class Program
 
         var command = args.Length > 0 ? args[0] : "help";
         var rest = args.Skip(1).ToArray();
-        // Help wins over running: it prints before any root lookup, engine start, build or lock.
-        if (HasHelp(rest))
+        // Help wins over running: it prints before any root lookup, engine start, build or lock. The hook prints
+        // its own usage to stderr, so it is left out here.
+        if (command != "hook" && HasHelp(rest))
             return PrintCommandUsage(HelpFor(command), 0);
         try
         {
@@ -40,7 +41,7 @@ internal static class Program
                 "check" => await CheckAsync(rest, cancel.Token).ConfigureAwait(false),
                 "test" => await TestAsync(rest, cancel.Token).ConfigureAwait(false),
                 "build" => await BuildAsync(rest, cancel.Token).ConfigureAwait(false),
-                "status" => StatusAsync(),
+                "status" => await StatusAsync(rest, cancel.Token).ConfigureAwait(false),
                 "session" => await SessionAsync(rest, cancel.Token).ConfigureAwait(false),
                 "stop" => await StopAsync(rest, cancel.Token).ConfigureAwait(false),
                 "hook" => await HookCommand.RunAsync(rest, cancel.Token).ConfigureAwait(false),
@@ -84,7 +85,6 @@ internal static class Program
         "init" => CommandUsage.Init,
         "uninit" => CommandUsage.Uninit,
         "mcp" => CommandUsage.Mcp,
-        "hook" => CommandUsage.Hook,
         "engine" => CommandUsage.Engine,
         "--version" or "version" => CommandUsage.Version,
         _ => CommandUsage.Top,
@@ -109,7 +109,7 @@ internal static class Program
             var (specs, specsRefusal) = CheckOperation.ResolveFiles(parsed.Files, Path.GetFullPath);
             if (specsRefusal is not null)
                 return Print(specsRefusal);
-            var (scoped, _) = await CheckOperation.RunScopedAsync(root, specs, parsed.MaxErrors, parsed.Json, TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
+            var (scoped, _) = await CheckOperation.RunScopedAsync(root, specs, parsed.MaxErrors, parsed.Json, TimeSpan.FromMinutes(10), cancellationToken, includeTreeStamp: true).ConfigureAwait(false);
             return Print(scoped);
         }
 
@@ -121,7 +121,7 @@ internal static class Program
                 return Print(filesRefusal);
         }
 
-        var (result, _) = await CheckOperation.RunAsync(root, absolute, session: null, waitForLoad: true, compilationWideAnalyzers: true, TimeSpan.FromMinutes(10), cancellationToken, parsed.MaxErrors, parsed.Json).ConfigureAwait(false);
+        var (result, _) = await CheckOperation.RunAsync(root, absolute, session: null, waitForLoad: true, compilationWideAnalyzers: true, TimeSpan.FromMinutes(10), cancellationToken, parsed.MaxErrors, parsed.Json, includeTreeStamp: true).ConfigureAwait(false);
         return Print(result);
     }
 
@@ -147,6 +147,11 @@ internal static class Program
     /// </summary>
     private static async Task<int> TestAsync(string[] args, CancellationToken cancellationToken)
     {
+        // After the first -- every token goes to dotnet test unchanged, even one that reads as a Fuse option.
+        var dash = Array.IndexOf(args, "--");
+        string[] tail = dash < 0 ? [] : args[(dash + 1)..];
+        args = dash < 0 ? args : args[..dash];
+
         // --session is the pre-shell hook's, which names the session whose command it rewrote; it is never passed on.
         string? session = null;
         var index = Array.IndexOf(args, "--session");
@@ -169,7 +174,8 @@ internal static class Program
 
         var all = args.Contains("--all");
         var failed = args.Contains("--failed");
-        var passthrough = args.Where(a => a != "--all" && a != "--failed").ToList();
+        var head = args.Where(a => a != "--all" && a != "--failed").ToList();
+        var passthrough = head.Concat(tail).ToList();
         if (failed && (all || passthrough.Count > 0))
         {
             Console.Error.WriteLine("fuse: --failed reruns the tests that failed last time and cannot be combined with other arguments; pass the arguments without --failed to choose the scope");
@@ -182,10 +188,9 @@ internal static class Program
             return 2;
         }
 
-        foreach (var token in passthrough)
+        // Only what precedes -- can mistype a Fuse option; past it every token is dotnet test's.
+        foreach (var token in head)
         {
-            if (token == "--")
-                break;
             if (NearMiss.Suggest(token, TestFuseOptions) is { } suggestion)
             {
                 Console.Error.WriteLine($"fuse: '{token}' is not a fuse test option; did you mean '{suggestion}'?");
@@ -216,15 +221,44 @@ internal static class Program
         if (parsed.FromRewrite)
             Console.Error.WriteLine("fuse: dotnet build routed to fuse build (first 20 errors; fuse build --all-errors for every error)");
         var root = RepoRoot.Find(Environment.CurrentDirectory);
-        var result = await BuildOperation.RunAsync(root, Environment.CurrentDirectory, parsed.Passthrough, parsed.ToOptions(), cancellationToken).ConfigureAwait(false);
+        if (parsed.Changed)
+        {
+            // Changed is meaningless without HEAD; a whole build outside a repository still runs.
+            if (root is null)
+            {
+                Console.Error.WriteLine($"fuse: {ErrorMessages.NotARepository}");
+                return 2;
+            }
+
+            var changed = await BuildOperation.RunChangedAsync(root, Environment.CurrentDirectory, parsed.Passthrough, parsed.ToOptions(), cancellationToken).ConfigureAwait(false);
+            return Print(changed);
+        }
+
+        var result = await BuildOperation.RunAsync(root, Environment.CurrentDirectory, parsed.Passthrough, parsed.ToOptions(), cancellationToken, includeTreeStamp: true).ConfigureAwait(false);
         return Print(result);
     }
 
-    /// <summary><c>fuse status</c>, which a later wave fills in.</summary>
-    private static int StatusAsync()
+    /// <summary><c>fuse status</c>: the engine and the changed files, or the usage failure for an argument it does not take.</summary>
+    private static async Task<int> StatusAsync(string[] args, CancellationToken cancellationToken)
     {
-        Console.Error.WriteLine("fuse: status is not available in this build");
-        return 2;
+        var json = false;
+        foreach (var token in args)
+        {
+            if (token == "--json")
+            {
+                json = true;
+                continue;
+            }
+
+            Console.Error.WriteLine($"fuse: status takes [--json]; '{token}' is not one");
+            Console.Error.WriteLine(CommandUsage.Status);
+            return 2;
+        }
+
+        var root = RequireRoot();
+        if (root is null)
+            return 2;
+        return Print(await StatusOperation.RunAsync(root, json, cancellationToken).ConfigureAwait(false));
     }
 
     private static async Task<int> SessionAsync(string[] args, CancellationToken cancellationToken)

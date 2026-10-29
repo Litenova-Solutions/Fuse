@@ -15,6 +15,8 @@ public class SessionGateTests
     public async Task BeginSession_waits_for_the_request_lock()
     {
         using var repo = FixtureRepo.CreateStandard();
+        // An uncommitted edit, so the first load holds the request lock for seconds while the registration queues.
+        repo.Replace("Lib/Calc.cs", "a + b;", "a + b + 0;");
         var log = new EngineLog(repo.Root.StateDirectory);
         using var router = new RequestRouter(repo.Root, log);
         using var shutdown = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
@@ -44,6 +46,8 @@ public class SessionGateTests
     public async Task EndSession_waits_for_the_request_lock()
     {
         using var repo = FixtureRepo.CreateStandard();
+        // An uncommitted edit, so the first load holds the request lock for seconds while the registration queues.
+        repo.Replace("Lib/Calc.cs", "a + b;", "a + b + 0;");
         var log = new EngineLog(repo.Root.StateDirectory);
         using var router = new RequestRouter(repo.Root, log);
         using var shutdown = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);

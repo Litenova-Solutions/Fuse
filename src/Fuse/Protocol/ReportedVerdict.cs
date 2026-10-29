@@ -3,6 +3,9 @@ namespace Fuse.Protocol;
 /// <summary>How one reported test ended, as the client reports it and the engine stores it.</summary>
 internal enum ReportedVerdict
 {
+    /// <summary>The line named no verdict, which is never stored as a pass. A line without it reads as this.</summary>
+    Unknown,
+
     /// <summary>The test ran and passed.</summary>
     Passed,
 

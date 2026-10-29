@@ -48,7 +48,7 @@ public class StopScopeTests
         var all = await engine.CheckAllAsync();
 
         Assert.Equal(["App/Program.cs", "Lib.Tests/CalcTests.cs"], Paths(all, AddMissing));
-        Assert.Equal(["App/Program.cs"], Paths(all, GreetMissing));
+        Assert.Equal(["App/Program.cs", "Lib.Tests/GreeterTests.cs"], Paths(all, GreetMissing));
         Assert.Contains(all.Errors, e => e.Error is { Path: "Lib/Greeting.cs", Id: "CS0535" });
         Assert.Equal(0, all.LeftToOtherSessions);
     }

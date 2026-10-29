@@ -50,7 +50,7 @@ public class BaselineWarmerTests
         var errors = await collector.ForFileAsync(solution, repo.Root.PathOf(repo.Full("C1.cs")), cancellationToken);
 
         Assert.Equal(afterWarm, slow.Starts);
-        Assert.Equal("DECL1", Assert.Single(errors).Id);
+        Assert.Equal("DECL2", Assert.Single(errors).Id);
     }
 
     [Fact]

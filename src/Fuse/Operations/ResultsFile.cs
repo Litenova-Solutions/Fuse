@@ -13,10 +13,11 @@ internal static class ResultsFile
     ///     directory, for the agent to read whole. Always replaces the previous file, even when the check found
     ///     nothing. Null when the file could not be written.
     /// </summary>
-    internal static string? WriteCheck(RepoRoot root, CheckReport report)
+    /// <param name="treeStamp">The stamp the header carries, or null for none.</param>
+    internal static string? WriteCheck(RepoRoot root, CheckReport report, string? treeStamp = null)
     {
         var text = new StringBuilder();
-        text.Append($"fuse check: {report.ErrorCount} error(s) introduced").Append('\n');
+        text.Append($"fuse check: {report.ErrorCount} error(s) introduced{treeStamp}").Append('\n');
         var generatedShown = new HashSet<string>(StringComparer.Ordinal);
         foreach (var reported in report.Errors)
             CheckOperation.AppendError(text, reported, generatedShown);

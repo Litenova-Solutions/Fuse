@@ -30,6 +30,12 @@ internal sealed record CheckReport(
     /// <summary>How many files with errors were told to the session without deciding whose edits caused them.</summary>
     public int FilesNotAttributed { get; init; }
 
+    /// <summary>How many changed files are not C# sources, which the check does not read. A line without it reads as 0.</summary>
+    public int NonCSharpChanged { get; init; }
+
+    /// <summary>The first changed non-C# files by sorted relative path, so the answer can name them. A line without the list reads as one that names none.</summary>
+    public string[] NonCSharpSample { get; init; } = [];
+
     /// <summary>The paths a scoped check was scoped to, repository-relative with forward slashes, in the order named.</summary>
     public string[] ScopedPaths { get; init; } = [];
 

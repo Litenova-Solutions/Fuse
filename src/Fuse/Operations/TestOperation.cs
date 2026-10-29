@@ -444,10 +444,7 @@ internal static class TestOperation
     {
         string[] switches = scope?.BuildSwitches ?? [];
         if (runner || run.TargetPaths.Length == 0)
-        {
-            var ran = await RunDotnetTestAsync(root, root.Path, ["--project", run.Project, "--no-restore", .. switches, .. run.FilterArguments], cancellationToken, testingPlatform: true, run: run).ConfigureAwait(false);
-            return FilteredNoTest(run, ran);
-        }
+            return await ThroughDotnetTestAsync(root, run, runner, switches, cancellationToken).ConfigureAwait(false);
 
         var results = Path.Combine(root.StateDirectory, "results", Guid.NewGuid().ToString("N")[..8]);
         try
@@ -468,8 +465,7 @@ internal static class TestOperation
             if (targets.Count == 0 || targets.Any(t => t.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) && !File.Exists(Path.ChangeExtension(t, ".runtimeconfig.json"))))
             {
                 // dotnet test starts such a target itself, and says in its own words when the build wrote none.
-                var ran = await RunDotnetTestAsync(root, root.Path, ["--project", run.Project, "--no-restore", .. switches, .. run.FilterArguments], cancellationToken, testingPlatform: true, run: run).ConfigureAwait(false);
-                return FilteredNoTest(run, ran);
+                return await ThroughDotnetTestAsync(root, run, runner, switches, cancellationToken).ConfigureAwait(false);
             }
 
             string[] settings = run.Filter is not null || run.RunSettings is not null
@@ -539,6 +535,22 @@ internal static class TestOperation
     /// <summary>Whether <paramref name="path"/> has a segment that is exactly <paramref name="segment"/>.</summary>
     private static bool HasSegment(string path, string segment) =>
         path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Any(p => p.Equals(segment, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    ///     Runs a platform project through <c>dotnet test</c> instead of starting its applications. With the platform
+    ///     runner in <c>global.json</c>, <c>dotnet test</c> takes the project by <c>--project</c> and the framework's
+    ///     filter options. Without it, <c>dotnet test</c> is VSTest's: it takes the project positionally, refuses
+    ///     <c>--project</c>, reports to TRX, and reads a filter from the run settings, so a framework's own filter options
+    ///     are left out and the project runs whole.
+    /// </summary>
+    private static async Task<(TrxResults? Outcome, ProcessResult? Process, string Log, string ResultsDirectory)> ThroughDotnetTestAsync(
+        RepoRoot root, TestRun run, bool runner, string[] switches, CancellationToken cancellationToken)
+    {
+        var ran = runner
+            ? await RunDotnetTestAsync(root, root.Path, ["--project", run.Project, "--no-restore", .. switches, .. run.FilterArguments], cancellationToken, testingPlatform: true, run: run).ConfigureAwait(false)
+            : await RunDotnetTestAsync(root, root.Path, [run.Project, "--no-restore", .. switches], cancellationToken, run: run).ConfigureAwait(false);
+        return FilteredNoTest(run, ran);
+    }
 
     /// <summary>A filtered platform run that ran no test, answered as the platform's own no-test run; any other run unchanged.</summary>
     private static (TrxResults? Outcome, ProcessResult? Process, string Log, string ResultsDirectory) FilteredNoTest(

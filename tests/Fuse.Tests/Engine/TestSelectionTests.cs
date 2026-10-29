@@ -168,7 +168,7 @@ public class TestSelectionTests
     {
         await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
-        await Task.Delay(400, TestContext.Current.CancellationToken);
+        await engine.SyncAsync("Lib/Calc.cs");
         var plan = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
         var run = Assert.Single(plan.Runs);
         Assert.Equal("Lib.Tests", run.Name);
@@ -188,7 +188,7 @@ public class TestSelectionTests
         // This session changed Multiply; another session changed Format, which App.Tests reaches.
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
         engine.Repo.Replace("Lib/Formatter.cs", "value.ToString(", "(value + 0).ToString(");
-        await Task.Delay(400, TestContext.Current.CancellationToken);
+        await engine.SyncAsync("Lib/Calc.cs", "Lib/Formatter.cs");
         var scope = new TestScope.Affected { LeftOut = new HashSet<Fuse.Paths.RepoPath> { engine.Repo.PathOf("Lib/Formatter.cs") } };
 
         var plan = await engine.Planner.PlanAsync(scope, PhaseTimes.None, TestContext.Current.CancellationToken);
@@ -210,7 +210,7 @@ public class TestSelectionTests
         repo.Commit();
         await using var engine = await InProcessEngine.StartAsync(repo);
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
-        await Task.Delay(400, TestContext.Current.CancellationToken);
+        await engine.SyncAsync("Lib/Calc.cs");
 
         var plan = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
 
@@ -228,7 +228,7 @@ public class TestSelectionTests
         await using var engine = await InProcessEngine.StartAsync(repo);
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
         // The file watcher reports the edit a moment later, later still on macOS.
-        await Task.Delay(400, TestContext.Current.CancellationToken);
+        await engine.SyncAsync("Lib/Calc.cs");
 
         var plan = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
 
@@ -247,7 +247,7 @@ public class TestSelectionTests
         await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
         engine.Repo.Write("Lib/data.json", "{}");
-        await Task.Delay(400, TestContext.Current.CancellationToken);
+        await engine.SyncAsync("Lib/Calc.cs", "Lib/data.json");
         var plan = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
         Assert.IsType<RunMode.Build>(Assert.Single(plan.Runs).Mode);
     }
@@ -259,7 +259,7 @@ public class TestSelectionTests
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
         // Lib's own build output is now newer than its sources, and Lib.Tests still holds the copy of Lib from its last build.
         Build(engine.Repo, "Lib/Lib.csproj");
-        await Task.Delay(400, TestContext.Current.CancellationToken);
+        await engine.SyncAsync("Lib/Calc.cs");
 
         var plan = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
         var run = Assert.Single(plan.Runs);
@@ -277,7 +277,7 @@ public class TestSelectionTests
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
         // Building the test project builds Lib and copies it, so every assembly the test loads is current.
         Build(engine.Repo, "Lib.Tests/Lib.Tests.csproj");
-        await Task.Delay(400, TestContext.Current.CancellationToken);
+        await engine.SyncAsync("Lib/Calc.cs");
 
         var plan = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
         var run = Assert.Single(plan.Runs);
@@ -309,7 +309,7 @@ public class TestSelectionTests
     {
         await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Multi/Shape.cs", "=> count;", "=> count + 0;");
-        await Task.Delay(400, TestContext.Current.CancellationToken);
+        await engine.SyncAsync("Multi/Shape.cs");
         var plan = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
         Assert.Empty(plan.Runs);
         Assert.Equal(0, plan.SelectedTests);

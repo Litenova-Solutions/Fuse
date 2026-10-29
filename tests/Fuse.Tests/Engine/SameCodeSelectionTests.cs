@@ -25,7 +25,7 @@ public class SameCodeSelectionTests
         engine.Repo.Replace("Lib/Worker.cs", "doubled", "result");
         Assert.Empty(await SelectAsync(engine, "Lib/Worker.cs"));
 
-        await Task.Delay(400, TestContext.Current.CancellationToken);
+        await engine.SyncAsync("Lib/Worker.cs");
         var plan = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
 
         Assert.Empty(plan.Runs);
@@ -58,7 +58,7 @@ public class SameCodeSelectionTests
         engine.Repo.Replace("Lib/Worker.cs", "int doubled = input * 2;", "int doubled = input * 2; // doubled");
         Assert.Empty(await SelectAsync(engine, "Lib/Worker.cs"));
 
-        await Task.Delay(400, TestContext.Current.CancellationToken);
+        await engine.SyncAsync("Lib/Worker.cs");
         var plan = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
 
         Assert.Empty(plan.Runs);

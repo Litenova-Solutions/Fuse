@@ -18,8 +18,12 @@ namespace Fuse.Protocol;
 [JsonDerivedType(typeof(ShutDown), nameof(ShutDown))]
 [JsonDerivedType(typeof(CheckChanges), nameof(CheckChanges))]
 [JsonDerivedType(typeof(CheckFiles), nameof(CheckFiles))]
+[JsonDerivedType(typeof(CheckPaths), nameof(CheckPaths))]
+[JsonDerivedType(typeof(BeginSession), nameof(BeginSession))]
+[JsonDerivedType(typeof(EndSession), nameof(EndSession))]
 [JsonDerivedType(typeof(PlanAffectedTests), nameof(PlanAffectedTests))]
 [JsonDerivedType(typeof(PlanAllTests), nameof(PlanAllTests))]
+[JsonDerivedType(typeof(PlanFailedTests), nameof(PlanFailedTests))]
 internal abstract record EngineRequest
 {
     private readonly string _buildId = "";
@@ -121,6 +125,40 @@ internal abstract record EngineRequest
     ///     the engine to finish loading: <c>fuse test</c> runs nothing until it has the plan, so an answer that says the
     ///     engine is loading would only fail the command.
     /// </summary>
+    /// <summary>The errors that the changes under the named paths introduced, in those files and in the files they reach.</summary>
+    /// <param name="Paths">Absolute file and directory paths and absolute glob patterns.</param>
+    /// <param name="WaitForLoad">True to wait for the engine to finish loading; false to be answered at once with <see cref="ErrorCode.Loading"/> while it loads.</param>
+    public sealed record CheckPaths(string[] Paths, bool WaitForLoad) : EngineRequest
+    {
+        /// <summary>The named paths. A line without the list reads as one that names none, which checks nothing.</summary>
+        public string[] Paths { get; init; } = Paths ?? [];
+
+        /// <summary>
+        ///     How many errors the answer holds at most; 0 is the existing cap. A line without it reads as 0.
+        /// </summary>
+        public int MaxErrors { get; init; }
+    }
+
+    /// <summary>Registers an external writer as a session for the path patterns it writes.</summary>
+    /// <param name="Name">The name the launcher gives the writer.</param>
+    /// <param name="Paths">Repository-relative path patterns, as the launcher named them.</param>
+    public sealed record BeginSession(string Name, string[] Paths) : EngineRequest
+    {
+        /// <summary>The name. A line without it reads as empty, which no registration holds.</summary>
+        public string Name { get; init; } = Name ?? "";
+
+        /// <summary>The patterns. A line without the list reads as one that names none.</summary>
+        public string[] Paths { get; init; } = Paths ?? [];
+    }
+
+    /// <summary>Ends the registration an earlier begin request made.</summary>
+    /// <param name="Name">The name the launcher gave the writer.</param>
+    public sealed record EndSession(string Name) : EngineRequest
+    {
+        /// <summary>The name. A line without it reads as empty, which no registration holds.</summary>
+        public string Name { get; init; } = Name ?? "";
+    }
+
     public sealed record PlanAffectedTests : EngineRequest
     {
         /// <summary>
@@ -152,4 +190,53 @@ internal abstract record EngineRequest
 
     /// <summary>Every test project, run whole. Like <see cref="PlanAffectedTests"/>, it always waits for the engine to finish loading.</summary>
     public sealed record PlanAllTests : EngineRequest;
+
+    /// <summary>One test project of a rerun, with the fully qualified names of the tests to run in it.</summary>
+    /// <param name="Project">Absolute path of the test project file, as the last run recorded it.</param>
+    /// <param name="Tests">The failed test names to rerun, distinct and in ordinal order.</param>
+    public sealed record FailedProject(string Project, string[] Tests)
+    {
+        /// <summary>The project file. A line without it reads as empty, which names no project.</summary>
+        public string Project { get; init; } = Project ?? "";
+
+        /// <summary>The tests. A line without the list reads as one that names none.</summary>
+        public string[] Tests { get; init; } = Tests ?? [];
+
+        // A record compares its fields, and an array field by the array itself; two projects with the same names in
+        // different arrays are the same project, as one read back from the pipe must equal the one that was sent.
+        public bool Equals(FailedProject? other) =>
+            other is not null
+            && EqualityContract == other.EqualityContract
+            && Project == other.Project
+            && Tests.SequenceEqual(other.Tests);
+
+        public override int GetHashCode()
+        {
+            var hash = new HashCode();
+            hash.Add(Project);
+            foreach (var test in Tests)
+                hash.Add(test);
+            return hash.ToHashCode();
+        }
+    }
+
+    /// <summary>The tests that failed in the last recorded run, each project filtered to its recorded names. Like the other plan requests, it always waits for the engine to finish loading.</summary>
+    public sealed record PlanFailedTests(FailedProject[] Projects) : EngineRequest
+    {
+        /// <summary>The projects to rerun. A line without the list reads as one that names none, which runs nothing.</summary>
+        public FailedProject[] Projects { get; init; } = Projects ?? [];
+
+        public bool Equals(PlanFailedTests? other) =>
+            other is not null
+            && EqualityContract == other.EqualityContract
+            && Projects.SequenceEqual(other.Projects);
+
+        public override int GetHashCode()
+        {
+            var hash = new HashCode();
+            foreach (var project in Projects)
+                hash.Add(project);
+            return hash.ToHashCode();
+        }
+    }
 }

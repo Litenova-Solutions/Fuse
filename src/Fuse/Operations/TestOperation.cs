@@ -9,6 +9,7 @@ namespace Fuse.Operations;
 /// <summary>
 ///     Runs tests and prints failures. With no arguments it runs the tests affected by the working-tree changes
 ///     (planned by the engine); with arguments it passes them to <c>dotnet test</c> and adds result reporting.
+///     With <c>--failed</c> it reruns the tests that failed in the last recorded run.
 /// </summary>
 internal static class TestOperation
 {
@@ -19,9 +20,16 @@ internal static class TestOperation
     ///     The session the run is for, as its harness identifies it, or null. With one, the affected tests leave out the
     ///     changes only other sessions wrote. The pre-shell hook passes it to <c>fuse test</c>.
     /// </param>
-    public static async Task<OperationResult> RunAsync(RepoRoot root, string workingDirectory, IReadOnlyList<string> arguments, bool all, CancellationToken cancellationToken, string? session = null)
+    /// <param name="live">
+    ///     What the first stage's failures print to as soon as they are known, or null to print nothing until the answer.
+    ///     The command line passes its output; the MCP tool passes null and answers once.
+    /// </param>
+    /// <param name="failed">True to rerun the tests that failed in the last recorded run instead of planning from the changes.</param>
+    public static async Task<OperationResult> RunAsync(RepoRoot root, string workingDirectory, IReadOnlyList<string> arguments, bool all, CancellationToken cancellationToken, string? session = null, TextWriter? live = null, bool failed = false)
     {
         var started = Environment.TickCount64;
+        if (failed)
+            return await RunFailedAsync(root, live, all, arguments, started, cancellationToken).ConfigureAwait(false);
         // Arguments that only say where the tests are and how to build them plan the affected tests in that scope;
         // any other argument chooses the tests itself and passes to dotnet test as it is.
         var scope = arguments.Count > 0 ? TestScopeArguments.Parse(workingDirectory, arguments) : null;
@@ -35,7 +43,7 @@ internal static class TestOperation
             const string summary = "ran the tests your dotnet test arguments name";
             return outcome is null
                 ? WithoutResults(process, root, ArgumentsRun, summary, Seconds(started), log, resultsDirectory)
-                : Render(outcome, summary, Seconds(started), ResultsFile.WriteTests(root, [("", outcome)]));
+                : Render(outcome, summary, Seconds(started), ResultsFile.WriteTestsWithPaths(root, [("", "", outcome)]));
         }
 
         // Held from before the plan request: preparing the plan makes the engine mirror and emit into the copies the runs
@@ -51,9 +59,50 @@ internal static class TestOperation
             var plan = answered.Plan;
             if (plan.Runs.Length == 0)
                 return new OperationResult(Outcome.Clean, $"fuse: {plan.Summary}");
+            var failedFirst = FailedFirstSplit.ForPlan(root, plan);
             var held = buildLock;
             buildLock = null;
-            return await RunPlanAsync(root, plan, started, cancellationToken, held, scope).ConfigureAwait(false);
+            return await RunPlanAsync(root, plan, started, cancellationToken, held, scope, live: live, failedFirstByProject: failedFirst).ConfigureAwait(false);
+        }
+        finally
+        {
+            buildLock?.Dispose();
+        }
+    }
+
+    /// <summary>Reruns the tests that failed in the last recorded run, or answers why there is nothing to rerun.</summary>
+    private static async Task<OperationResult> RunFailedAsync(RepoRoot root, TextWriter? live, bool all, IReadOnlyList<string> arguments, long started, CancellationToken cancellationToken)
+    {
+        if (all || arguments.Count > 0)
+            return new OperationResult(Outcome.Unanswered, "fuse: --failed reruns the tests that failed last time and cannot be combined with other arguments; pass the arguments without --failed to choose the scope");
+        var record = LastTestResults.Read(root);
+        if (record is null)
+            return new OperationResult(Outcome.Unanswered, "fuse: no test run is recorded yet; run fuse test first");
+        var reruns = record
+            .Where(p => p.Project.Length > 0)
+            .Select(p => (p.Project, Failed: p.Tests.Where(t => t.Verdict == TestVerdict.Failed).Select(t => t.Name).Distinct(StringComparer.Ordinal).OrderBy(n => n, StringComparer.Ordinal).ToArray()))
+            .Where(x => x.Failed.Length > 0)
+            .ToList();
+        if (reruns.Count == 0)
+        {
+            if (record.Any(p => p.Project.Length == 0 && p.Tests.Any(t => t.Verdict == TestVerdict.Failed)))
+                return new OperationResult(Outcome.Unanswered, "fuse: the last test run was from dotnet test arguments, so its failures cannot be rerun; run fuse test");
+            return new OperationResult(Outcome.Clean, "fuse: the last test run had no failures");
+        }
+
+        var buildLock = BuildLock.AcquireForClient(root);
+        try
+        {
+            EngineRequest request = new EngineRequest.PlanFailedTests([.. reruns.Select(r => new EngineRequest.FailedProject(r.Project, r.Failed))]);
+            var response = await EngineClient.SendAsync(root, request, TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
+            if (response is not EngineResponse.PlanAnswered answered)
+                return OperationResult.Unanswered(response, "test plan");
+            var plan = answered.Plan;
+            if (plan.Runs.Length == 0)
+                return new OperationResult(Outcome.Unanswered, "fuse: none of the tests that failed last time is in a test project in this repository");
+            var held = buildLock;
+            buildLock = null;
+            return await RunPlanAsync(root, plan, started, cancellationToken, held, live: live, failedRerunCount: reruns.Sum(r => r.Failed.Length)).ConfigureAwait(false);
         }
         finally
         {
@@ -70,12 +119,15 @@ internal static class TestOperation
     ///     The build lock the caller took before it asked for the plan, which this call owns and releases, or null when
     ///     the caller holds none.
     /// </param>
+    /// <param name="live">What the first stage's failures print to as soon as they are known, or null for one answer at the end.</param>
+    /// <param name="failedRerunCount">How many failures a <c>--failed</c> rerun asked for, so matching none of them is reported as not found; null for any other run.</param>
+    /// <param name="failedFirstByProject">Each split project's priority tests by absolute project path, or null to run one stage.</param>
     /// <remarks>
     ///     Shadow runs write no build output: each holds the copy it runs from (<see cref="LocalState.HoldTestCopy"/>),
     ///     and the build lock is released while they run, so another client's build or test plan does not wait for them.
     ///     MSBuild runs share obj and bin folders across projects, so they run one after another, holding the lock.
     /// </remarks>
-    internal static async Task<OperationResult> RunPlanAsync(RepoRoot root, TestPlan plan, long started, CancellationToken cancellationToken, BuildLock? held = null, TestScopeArguments? scope = null)
+    internal static async Task<OperationResult> RunPlanAsync(RepoRoot root, TestPlan plan, long started, CancellationToken cancellationToken, BuildLock? held = null, TestScopeArguments? scope = null, TextWriter? live = null, int? failedRerunCount = null, IReadOnlyDictionary<string, string[]>? failedFirstByProject = null)
     {
         var buildLock = held;
         var copies = new List<IDisposable>();
@@ -85,7 +137,7 @@ internal static class TestOperation
             {
                 buildLock?.Dispose();
                 buildLock = null;
-            }, () => buildLock ??= BuildLock.AcquireForClient(root), scope, cancellationToken).ConfigureAwait(false);
+            }, () => buildLock ??= BuildLock.AcquireForClient(root), scope, cancellationToken, live, failedRerunCount, failedFirstByProject).ConfigureAwait(false);
         }
         finally
         {
@@ -96,8 +148,12 @@ internal static class TestOperation
     }
 
     private static async Task<OperationResult> RunPlanHoldingAsync(
-        RepoRoot root, TestPlan plan, long started, List<IDisposable> copies, Action releaseLock, Func<BuildLock> takeLock, TestScopeArguments? scope, CancellationToken cancellationToken)
+        RepoRoot root, TestPlan plan, long started, List<IDisposable> copies, Action releaseLock, Func<BuildLock> takeLock, TestScopeArguments? scope, CancellationToken cancellationToken, TextWriter? live = null, int? failedRerunCount = null, IReadOnlyDictionary<string, string[]>? failedFirstByProject = null)
     {
+        if (failedFirstByProject is not null
+            && await RunStagedAsync(root, plan, started, copies, releaseLock, takeLock, scope, live, failedFirstByProject, cancellationToken).ConfigureAwait(false) is { } staged)
+            return staged;
+
         var groups = plan.Runs.GroupBy(r => root.PathOf(r.Project)).ToList();
         // Whether dotnet test runs the platform in this repository decides how a platform run is started.
         var runner = GlobalJson.UsesTestingPlatform(root.Path, root.Path);
@@ -138,7 +194,7 @@ internal static class TestOperation
             }).ConfigureAwait(false);
 
         var aggregate = TrxResults.Empty;
-        var perProject = new List<(string Project, TrxResults Outcome)>();
+        var perProject = new List<(string Project, string Name, TrxResults Outcome)>();
         // A project that did not build, or whose run ended without results, is part of the answer whatever the other
         // projects did. A Microsoft.Testing.Platform run that passed without printing a run summary is kept apart: it has
         // no counts to add.
@@ -149,7 +205,7 @@ internal static class TestOperation
             if (outcomes.TryGetValue(group.Key, out var shadowOutcome))
             {
                 aggregate = aggregate.Add(shadowOutcome);
-                perProject.Add((group.First().Name, shadowOutcome));
+                perProject.Add((group.First().Project, group.First().Name, shadowOutcome));
                 continue;
             }
 
@@ -162,7 +218,7 @@ internal static class TestOperation
             if (outcome is not null)
             {
                 aggregate = aggregate.Add(outcome);
-                perProject.Add((run.Name, outcome));
+                perProject.Add((run.Project, run.Name, outcome));
                 continue;
             }
 
@@ -174,16 +230,191 @@ internal static class TestOperation
         }
 
         if (aggregate.Total == 0 && problems.Count == 0 && passedWithoutResults is not null)
+        {
+            // A clean run leaves no stale failures behind: without this a passing platform run would keep the last failures recorded.
+            ResultsFile.WriteTestsWithPaths(root, []);
             return passedWithoutResults;
+        }
         if (aggregate.Total == 0 && problems.Count > 0)
             return Join(problems);
+        if (failedRerunCount is not null && aggregate.Total == 0)
+            return new OperationResult(Outcome.ProblemsFound, $"fuse: none of the {failedRerunCount} test(s) that failed last time ran; they may have been renamed or removed");
 
         var shadowRuns = outcomes.Count;
         var mode = shadowRuns == groups.Count ? "without MSBuild" : shadowRuns > 0 ? $"without MSBuild for {shadowRuns} of {groups.Count} project(s)" : "built with MSBuild";
-        var resultsPath = aggregate.Total > 0 ? ResultsFile.WriteTests(root, perProject) : null;
+        var resultsPath = aggregate.Total > 0 ? ResultsFile.WriteTestsWithPaths(root, perProject) : null;
         var tests = Render(aggregate, $"{plan.Summary}; {mode}", Seconds(started), resultsPath);
         // The tests' answer comes first, so the last line is a failed build or run whenever there is one.
         return problems.Count == 0 ? tests : Join([tests, .. problems]);
+    }
+
+    /// <summary>What one stage of a split run produced: its combined results, answers, and which projects ran as shadow runs.</summary>
+    private sealed record StageOutcome(TrxResults Aggregate, List<(string Project, string Name, TrxResults Outcome)> PerProject, List<OperationResult> Problems, OperationResult? PassedWithoutResults, IReadOnlySet<RepoPath> Shadowed);
+
+    /// <summary>
+    ///     Runs a plan whose projects split into a first stage of last run's failures and a second stage of the rest,
+    ///     printing each stage's failures to <paramref name="live"/> as soon as its stage ends. Null when no project
+    ///     splits, so the caller runs one stage instead. The two stages record once, from their combined results, so the
+    ///     summary counts each test once.
+    /// </summary>
+    private static async Task<OperationResult?> RunStagedAsync(
+        RepoRoot root, TestPlan plan, long started, List<IDisposable> copies, Action releaseLock, Func<BuildLock> takeLock,
+        TestScopeArguments? scope, TextWriter? live, IReadOnlyDictionary<string, string[]> failedFirstByProject, CancellationToken cancellationToken)
+    {
+        var groups = plan.Runs.GroupBy(r => root.PathOf(r.Project)).ToList();
+        var priority = new List<(RepoPath Key, List<TestRun> Runs)>();
+        var rest = new List<(RepoPath Key, List<TestRun> Runs)>();
+        var single = new List<IGrouping<RepoPath, TestRun>>();
+        foreach (var group in groups)
+        {
+            var runs = group.ToList();
+            if (failedFirstByProject.TryGetValue(runs[0].Project, out var names)
+                && runs.All(r => !r.UsesTestingPlatform)
+                && runs.All(r => r.Filter == runs[0].Filter)
+                && runs[0].Filter is string original
+                && FailedFirstSplit.TrySplit(original, names, out var priorityFilter, out var restFilter))
+            {
+                priority.Add((group.Key, runs.Select(r => r with { Filter = priorityFilter }).ToList()));
+                rest.Add((group.Key, runs.Select(r => r with { Filter = restFilter }).ToList()));
+            }
+            else
+            {
+                single.Add(group);
+            }
+        }
+
+        if (priority.Count == 0)
+            return null;
+
+        // Every copy is held before the lock goes, so no plan prepared after it writes a copy these runs start from.
+        var staged = priority.Select(p => p.Runs).Concat(rest.Select(r => r.Runs)).SelectMany(r => r).Concat(single.SelectMany(g => g)).ToList();
+        var anyShadow = false;
+        foreach (var run in staged)
+        {
+            if (run.Mode is not TestRunMode.Shadow shadow)
+                continue;
+            anyShadow = true;
+            try
+            {
+                copies.Add(LocalState.HoldTestCopy(Path.GetDirectoryName(shadow.Assembly)!));
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                // A copy that cannot be held still runs; only a later plan could change it under the run.
+            }
+        }
+
+        if (anyShadow)
+            releaseLock();
+
+        // Whether dotnet test runs the platform in this repository decides how a platform run is started.
+        var runner = GlobalJson.UsesTestingPlatform(root.Path, root.Path);
+        string[] buildSwitches = scope?.BuildSwitches ?? [];
+        var first = await RunStageAsync(root, priority, runner, buildSwitches, plan.Summary, started, takeLock, scope, cancellationToken).ConfigureAwait(false);
+        if (live is not null)
+        {
+            live.Write(RenderFailures(first.Aggregate));
+            live.Flush();
+        }
+
+        releaseLock();
+        var secondGroups = rest.Concat(single.Select(g => (g.Key, g.ToList()))).ToList();
+        var second = await RunStageAsync(root, secondGroups, runner, buildSwitches, plan.Summary, started, takeLock, scope, cancellationToken).ConfigureAwait(false);
+        if (live is not null)
+        {
+            live.Write(RenderFailures(second.Aggregate));
+            live.Flush();
+        }
+
+        var aggregate = first.Aggregate.Add(second.Aggregate);
+        var problems = first.Problems.Concat(second.Problems).ToList();
+        var passedWithoutResults = first.PassedWithoutResults ?? second.PassedWithoutResults;
+        if (aggregate.Total == 0 && problems.Count == 0 && passedWithoutResults is not null)
+        {
+            ResultsFile.WriteTestsWithPaths(root, []);
+            return passedWithoutResults;
+        }
+        if (aggregate.Total == 0 && problems.Count > 0)
+            return Join(problems);
+
+        var perProject = new List<(string Project, string Name, TrxResults Outcome)>();
+        foreach (var group in groups)
+        {
+            var outcomes = first.PerProject.Concat(second.PerProject).Where(p => p.Project == group.First().Project).ToList();
+            if (outcomes.Count > 0)
+                perProject.Add((group.First().Project, group.First().Name, outcomes.Select(o => o.Outcome).Aggregate(TrxResults.Empty, (a, b) => a.Add(b))));
+        }
+
+        // A split project ran without MSBuild only when both its stages did.
+        var shadowRuns = priority.Count(p => first.Shadowed.Contains(p.Key) && second.Shadowed.Contains(p.Key)) + single.Count(g => second.Shadowed.Contains(g.Key));
+        var mode = shadowRuns == groups.Count ? "without MSBuild" : shadowRuns > 0 ? $"without MSBuild for {shadowRuns} of {groups.Count} project(s)" : "built with MSBuild";
+        var resultsPath = aggregate.Total > 0 ? ResultsFile.WriteTestsWithPaths(root, perProject) : null;
+        if (live is not null)
+        {
+            var summaryOnly = new OperationResult(
+                aggregate.Failed > 0 ? Outcome.ProblemsFound : Outcome.Clean,
+                RenderSummary(aggregate, $"{plan.Summary}; {mode}", Seconds(started), resultsPath));
+            return problems.Count == 0 ? summaryOnly : Join([summaryOnly, .. problems]);
+        }
+
+        var tests = Render(aggregate, $"{plan.Summary}; {mode}", Seconds(started), resultsPath);
+        // The tests' answer comes first, so the last line is a failed build or run whenever there is one.
+        return problems.Count == 0 ? tests : Join([tests, .. problems]);
+    }
+
+    /// <summary>Runs one stage's groups: its shadow runs in parallel without the lock, then the rest one after another with it.</summary>
+    private static async Task<StageOutcome> RunStageAsync(
+        RepoRoot root, IReadOnlyList<(RepoPath Key, List<TestRun> Runs)> stage, bool runner, string[] buildSwitches, string summary, long started,
+        Func<BuildLock> takeLock, TestScopeArguments? scope, CancellationToken cancellationToken)
+    {
+        var shadowGroups = stage.Where(g => g.Runs.All(r => r.Mode is TestRunMode.Shadow && !r.UsesTestingPlatform)).ToList();
+        var outcomes = new System.Collections.Concurrent.ConcurrentDictionary<RepoPath, TrxResults>();
+        await Parallel.ForEachAsync(
+            shadowGroups,
+            new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2), CancellationToken = cancellationToken },
+            async (group, ct) =>
+            {
+                var results = await Task.WhenAll(group.Runs.Select(run => RunDotnetTestAsync(
+                    root, root.Path, [((TestRunMode.Shadow)run.Mode).Assembly], ct, assembly: true, run: run))).ConfigureAwait(false);
+                // A shadow run that could not start sends the project back through MSBuild below.
+                if (results.Any(r => r.Outcome is null))
+                    return;
+                outcomes[group.Key] = results.Aggregate(TrxResults.Empty, (sum, r) => sum.Add(r.Outcome!));
+            }).ConfigureAwait(false);
+
+        var aggregate = TrxResults.Empty;
+        var perProject = new List<(string Project, string Name, TrxResults Outcome)>();
+        var problems = new List<OperationResult>();
+        OperationResult? passedWithoutResults = null;
+        foreach (var (key, runs) in stage)
+        {
+            if (outcomes.TryGetValue(key, out var shadowOutcome))
+            {
+                aggregate = aggregate.Add(shadowOutcome);
+                perProject.Add((runs[0].Project, runs[0].Name, shadowOutcome));
+                continue;
+            }
+
+            takeLock();
+            var run = runs[0];
+            var (outcome, process, log, _) = run.UsesTestingPlatform
+                ? await RunPlatformAsync(root, run, runner, scope, cancellationToken).ConfigureAwait(false)
+                : await RunDotnetTestAsync(root, root.Path, [run.Project, "--no-restore", .. buildSwitches], cancellationToken, run: run).ConfigureAwait(false);
+            if (outcome is not null)
+            {
+                aggregate = aggregate.Add(outcome);
+                perProject.Add((run.Project, run.Name, outcome));
+                continue;
+            }
+
+            var answer = WithoutResults(process, root, $"the test run of {run.Name}", summary, Seconds(started), log);
+            if (answer.Outcome == Outcome.Clean)
+                passedWithoutResults ??= answer;
+            else
+                problems.Add(answer);
+        }
+
+        return new StageOutcome(aggregate, perProject, problems, passedWithoutResults, outcomes.Keys.ToHashSet());
     }
 
     /// <summary>Several answers as one, in order; it found problems when any of them did.</summary>
@@ -506,31 +737,50 @@ internal static class TestOperation
             text.Append("  ").Append(frame).Append('\n');
     }
 
-    /// <summary>The answer for runs that wrote TRX results: the failures, then the counts and <paramref name="summary"/>.</summary>
-    private static OperationResult Render(TrxResults outcome, string summary, double seconds, string? resultsPath = null)
+    /// <summary>The answer for runs with results: the failures grouped by their shared first line, then the counts and <paramref name="summary"/>.</summary>
+    internal static OperationResult Render(TrxResults outcome, string summary, double seconds, string? resultsPath = null)
     {
         var text = new StringBuilder();
-        foreach (var failure in outcome.Failures.Take(MaxFailuresShown))
-            AppendFailure(text, failure);
+        text.Append(RenderFailures(outcome));
+        text.Append(RenderSummary(outcome, summary, seconds, resultsPath));
+        return new OperationResult(outcome.Failed > 0 ? Outcome.ProblemsFound : Outcome.Clean, text.ToString());
+    }
 
-        if (outcome.Failures.Count > MaxFailuresShown)
+    /// <summary>The failures of <paramref name="outcome"/> as the answer prints them: each group under its shared line, then the names past the detail budget.</summary>
+    internal static string RenderFailures(TrxResults outcome)
+    {
+        var text = new StringBuilder();
+        var (detailed, restNames, restCount) = FailureGroups.Split(outcome.Failures, MaxFailuresShown);
+        foreach (var (header, failure) in detailed)
         {
-            // Names only past the first ten, so the agent sees up to 110 failing tests by name.
-            var rest = outcome.Failures.Skip(MaxFailuresShown).Select(f => f.Name).Distinct().ToList();
-            text.Append($"also failed ({outcome.Failures.Count - MaxFailuresShown}):\n");
-            foreach (var name in rest.Take(MaxNamesShown))
-                text.Append("  ").Append(name).Append('\n');
-            if (rest.Count > MaxNamesShown)
-                text.Append($"  ... and {rest.Count - MaxNamesShown} more\n");
+            if (header is not null)
+                text.Append(header).Append('\n');
+            AppendFailure(text, failure);
         }
+
+        if (restCount > 0)
+        {
+            // Names only past the detail budget, so the agent sees up to 110 failing tests by name.
+            text.Append($"also failed ({restCount}):\n");
+            foreach (var name in restNames.Take(MaxNamesShown))
+                text.Append("  ").Append(name).Append('\n');
+            if (restNames.Count > MaxNamesShown)
+                text.Append($"  ... and {restNames.Count - MaxNamesShown} more\n");
+        }
+
+        return text.ToString();
+    }
+
+    /// <summary>The last line for runs with results: the counts, <paramref name="summary"/>, and the results file when the answer left failures or names out.</summary>
+    internal static string RenderSummary(TrxResults outcome, string summary, double seconds, string? resultsPath = null)
+    {
         var skipped = outcome.Skipped > 0 ? $", {outcome.Skipped} skipped" : "";
         // The file holds every failure; the answer names it only when it left failures or names out.
-        var namesCapped = outcome.Failures.Count > MaxFailuresShown
-            && outcome.Failures.Skip(MaxFailuresShown).Select(f => f.Name).Distinct().Count() > MaxNamesShown;
+        var (_, restNames, _) = FailureGroups.Split(outcome.Failures, MaxFailuresShown);
+        var namesCapped = restNames.Count > MaxNamesShown;
         var file = resultsPath is not null && (outcome.Failed > Math.Min(MaxFailuresShown, outcome.Failures.Count) || namesCapped)
             ? $"; all {outcome.Failed} in {resultsPath}"
             : "";
-        text.Append($"fuse: {outcome.Failed} failed, {outcome.Passed} passed{skipped} in {seconds:0.0} s; {summary}{file}");
-        return new OperationResult(outcome.Failed > 0 ? Outcome.ProblemsFound : Outcome.Clean, text.ToString());
+        return $"fuse: {outcome.Failed} failed, {outcome.Passed} passed{skipped} in {seconds:0.0} s; {summary}{file}";
     }
 }

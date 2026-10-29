@@ -2,7 +2,7 @@ using Fuse.Paths;
 
 namespace Fuse.Check.Model;
 
-/// <summary>What a check covers: every change since HEAD, or the files a client names.</summary>
+/// <summary>What a check covers: every change since HEAD, the files a client names, or the paths a scoped check names.</summary>
 internal abstract record CheckScope
 {
     private CheckScope()
@@ -18,4 +18,11 @@ internal abstract record CheckScope
     ///     watcher reports them, so a check that follows an edit at once still sees it.
     /// </param>
     public sealed record Files(IReadOnlyList<RepoPath> Paths) : CheckScope;
+
+    /// <summary>The directories, files and glob patterns a scoped check names, exactly as the caller named them.</summary>
+    /// <param name="Named">
+    ///     Absolute file and directory paths and absolute glob patterns, in the order named. The check expands them
+    ///     against the files that differ from HEAD after the sync.
+    /// </param>
+    public sealed record NamedPaths(IReadOnlyList<string> Named) : CheckScope;
 }

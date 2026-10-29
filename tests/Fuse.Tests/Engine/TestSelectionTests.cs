@@ -14,8 +14,8 @@ public class TestSelectionTests
     private static async Task<Dictionary<string, TestSelection>> SelectAsync(InProcessEngine engine, TestSelector selector, params string[] files)
     {
         await engine.Workspace.SyncAsync(files.Select(engine.Repo.PathOf), TestContext.Current.CancellationToken);
-        var selection = await selector.SelectAsync(files.Select(engine.Repo.PathOf).ToList(), TestContext.Current.CancellationToken);
-        return selection.ToDictionary(kv => Path.GetFileNameWithoutExtension(kv.Key.Absolute), kv => kv.Value);
+        var result = await selector.SelectAsync(files.Select(engine.Repo.PathOf).ToList(), TestContext.Current.CancellationToken);
+        return result.Selections.ToDictionary(kv => Path.GetFileNameWithoutExtension(kv.Key.Absolute), kv => kv.Value);
     }
 
     [Fact]
@@ -146,6 +146,7 @@ public class TestSelectionTests
         // The type walk selects the whole class, not only Multiplies, and reaches the application through Program.cs.
         Assert.Equal(["Lib.Tests.CalcTests."], Assert.IsType<TestSelection.Methods>(selection["Lib.Tests"]).Patterns);
         Assert.Equal("App uses the changed code and runs behind an application host", Assert.IsType<TestSelection.Whole>(selection["App.Tests"]).Reason);
+        Assert.Contains(engine.Log, line => line.StartsWith("test selection: member walk over budget in ", StringComparison.Ordinal) && line.EndsWith("; selecting at class level", StringComparison.Ordinal));
     }
 
     [Fact]

@@ -181,7 +181,7 @@ public class SessionAttributionTests
         Assert.Equal(["App/Program.cs", "Lib.Tests/CalcTests.cs"], Paths(a, AddMissing));
         Assert.Empty(Paths(a, GreetMissing));
         Assert.DoesNotContain(a.Errors, e => e.Error is { Path: "Lib/Greeting.cs", Id: "CS0535" });
-        Assert.Equal(3, a.LeftToOtherSessions);
+        Assert.Equal(1, a.LeftToOtherSessions);
     }
 
     [Fact]

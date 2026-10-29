@@ -99,17 +99,25 @@ internal sealed class Checker
         // A file that matches HEAD again is no longer credited to the sessions that wrote it, whichever check sees it first.
         _sessions.Forget(_workspace.Tracker.Changed);
 
-        var targets = _targets.Resolve(scope);
+        IReadOnlyList<string> scopedPaths = scope is CheckScope.NamedPaths namedPaths ? ScopeExpansion.DisplaySpecs(_workspace.Root, namedPaths.Named) : [];
+        var targets = scope is CheckScope.NamedPaths pathScope
+            ? ScopeExpansion.Expand(_workspace, pathScope.Named)
+            : _targets.Resolve(scope, scope is CheckScope.AllChanges && session is not null ? _sessions.OnlyOtherSessionsWrote(_workspace.Tracker.Changed, session) : null);
         // Named files that are all outside every project, or not C# sources, would check nothing and read as a pass.
         if (targets.Count == 0 && scope is CheckScope.Files { Paths.Count: > 0 } named)
             throw new FuseException(ErrorCode.InvalidPath, ErrorMessages.NothingToCheck([.. named.Paths.Select(p => p.Relative)]));
+        if (targets.Count == 0 && scope is CheckScope.NamedPaths)
+            throw new FuseException(ErrorCode.InvalidPath, ErrorMessages.NothingToCheck([.. scopedPaths]));
         if (targets.Count == 0)
             return NoTargets;
 
         // The sync above has folded in every edit, so what the tree holds now keys the answer a repeat of this check gets.
         var keptKey = KeptKeyFor(scope, session, analyzers);
         if (keptKey is not null && _kept.TryGet(keptKey, out var kept))
+        {
+            _workspace.Log("check: kept answer");
             return kept;
+        }
 
         var graph = _workspace.Graph;
         var loading = phases.Start();
@@ -141,6 +149,7 @@ internal sealed class Checker
         Reach reach = new Reach.None();
         var filesChecked = targets.Count;
         var wholeProjects = false;
+        var wholeCauses = new List<WholeProjectCause>();
         if (changedIn.Count > 0)
         {
             dependents = changedIn.SelectMany(graph.DependentsOf).DistinctBy(p => p.Path)
@@ -161,6 +170,13 @@ internal sealed class Checker
             errors.AddRange(bound.Errors);
             filesChecked = bound.FilesChecked;
             wholeProjects = bound.CheckedWholeProjects;
+            if (wholeProjects)
+            {
+                if (reach is Reach.Broad broad)
+                    wholeCauses.AddRange(BroadCauses(broad, reached));
+                else
+                    wholeCauses.AddRange(bound.WholeProjectCauses);
+            }
         }
 
         var root = _workspace.Root;
@@ -191,7 +207,7 @@ internal sealed class Checker
         analyzerMs += parts.AnalyzerMs;
         var (unfinished, leftOut) = _introduced.TakeAnalyzerReport();
         var reused = _introduced.TakeReused();
-        _workspace.Log($"check: binding {compilerMs} ms, analyzers {analyzerMs} ms (summed over files); {targets.Count} target(s) in {targetsMs} ms, {changedTargets.Count} with declaration changes, {filesChecked} file(s) bound{(reused > 0 ? $" ({reused} with errors reused from an earlier check)" : "")}, {timer.ElapsedMilliseconds} ms total{(wholeProjects ? ", whole projects" : "")}{(leftToOthers > 0 ? $", {leftToOthers} error(s) left to other sessions" : "")}{(notAttributed > 0 ? $", {notAttributed} file(s) not attributed" : "")}{(unfinished > 0 ? $", analyzers unfinished in {unfinished}" : "")}{(leftOut.Count > 0 ? $", left out {string.Join(", ", leftOut)}" : "")}");
+        _workspace.Log($"check: binding {compilerMs} ms, analyzers {analyzerMs} ms (summed over files); {targets.Count} target(s) in {targetsMs} ms, {changedTargets.Count} with declaration changes, {filesChecked} file(s) bound{(reused > 0 ? $" ({reused} with errors reused from an earlier check)" : "")}, {timer.ElapsedMilliseconds} ms total{(wholeProjects ? WholeProjectsLog(wholeCauses) : "")}{(leftToOthers > 0 ? $", {leftToOthers} error(s) left to other sessions" : "")}{(notAttributed > 0 ? $", {notAttributed} file(s) not attributed" : "")}{(unfinished > 0 ? $", analyzers unfinished in {unfinished}" : "")}{(leftOut.Count > 0 ? $", left out {string.Join(", ", leftOut)}" : "")}");
         var reported = CauseLines.Attach([.. ordered.Take(MaxReported)], reach, root, targets);
         reported = await _generated.AttachAsync(_workspace.Current, reported, cancellationToken).ConfigureAwait(false);
         var result = new CheckResult(
@@ -208,6 +224,8 @@ internal sealed class Checker
             AnalyzersUnfinished = unfinished,
             CompilationWideLeftOut = leftOut,
             FilesNotAttributed = notAttributed,
+            ScopedPaths = scopedPaths,
+            WholeProjectCauses = wholeCauses,
         };
         if (keptKey is not null)
             _kept.Keep(keptKey, result);
@@ -220,9 +238,15 @@ internal sealed class Checker
     /// </summary>
     private string? KeptKeyFor(CheckScope scope, string? session, AnalyzerRun analyzers)
     {
-        var scopeKey = scope is CheckScope.Files files
-            ? "files:" + string.Join(",", files.Paths.Select(p => p.Relative).Order(StringComparer.Ordinal))
-            : "all";
+        var scopeKey = scope switch
+        {
+            CheckScope.Files files => "files:" + string.Join(",", files.Paths.Select(p => p.Relative).Order(StringComparer.Ordinal)),
+            CheckScope.NamedPaths paths => "paths:" + string.Join(",", ScopeExpansion.DisplaySpecs(_workspace.Root, paths.Named).Order(StringComparer.Ordinal)),
+            _ => "all",
+        };
+        // A paths scope keys by its display specs,
+        // distinct from all changes
+        // and from any file list.
         return KeptCheck.KeyFor(
             scopeKey,
             session,
@@ -232,6 +256,35 @@ internal sealed class Checker
             _workspace.BaselineGeneration,
             _sessions.RecordsHash(),
             _workspace.Tracker.Changed.Select(path => (path.Relative, path.Absolute)));
+    }
+
+    private static IReadOnlyList<WholeProjectCause> BroadCauses(Reach.Broad broad, IReadOnlyList<ProjectNode> reached)
+    {
+        var pairs = (broad.BroadCauses ?? [])
+            .Select(b => (File: b.File.Relative, Cause: b.Cause is Cause.Removed ? $"removed: {b.Cause.Declaration}" : $"changed: {b.Cause.Declaration}"))
+            .Distinct()
+            .OrderBy(p => p.File, StringComparer.Ordinal)
+            .ThenBy(p => p.Cause, StringComparer.Ordinal)
+            .ToList();
+        var files = pairs.Select(p => p.File).Distinct(StringComparer.Ordinal).ToList();
+        var causes = pairs.Select(p => p.Cause).Distinct(StringComparer.Ordinal).ToList();
+        return [.. reached.OrderBy(n => n.Name, StringComparer.Ordinal).Select(n => new WholeProjectCause(n.Name, files, causes))];
+    }
+
+    private static string WholeCause(WholeProjectCause cause)
+    {
+        if (cause.ChangedFiles.Count == 0)
+            return cause.Project;
+        var files = string.Join(", ", cause.ChangedFiles);
+        return cause.Causes.Count == 0 ? $"{cause.Project} because {files}" : $"{cause.Project} because {files} ({string.Join("; ", cause.Causes)})";
+    }
+
+    private static string WholeProjectsLog(List<WholeProjectCause> causes)
+    {
+        if (causes.Count == 0)
+            return ", whole projects";
+        return ", whole projects: " + string.Join("; ", causes.Select(WholeCause));
+        // The log holds every project and file.
     }
 
     private static List<ProjectNode> OwnersOf(RepoGraph graph, IEnumerable<RepoPath> paths) =>

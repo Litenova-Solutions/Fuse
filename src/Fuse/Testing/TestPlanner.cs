@@ -31,7 +31,7 @@ internal sealed class TestPlanner
     {
         _workspace = workspace;
         _selector = new TestSelector(workspace, TimeProvider.System);
-        Emitter = new ShadowEmitter(workspace.Root);
+        Emitter = new ShadowEmitter(workspace);
     }
 
     /// <summary>The emitter every plan prepares its shadow runs with, which keeps emitted assemblies between plans.</summary>
@@ -98,7 +98,8 @@ internal sealed class TestPlanner
             return PendingPlan.Of(new TestPlanResult([], 0, total, $"no C# changes since HEAD, so no test is affected{namedNote} (fuse test --all runs everything)"), graph);
 
         var timer = Stopwatch.StartNew();
-        var selections = await _selector.SelectAsync(changed, cancellationToken).ConfigureAwait(false);
+        var outcome = await _selector.SelectAsync(changed, cancellationToken).ConfigureAwait(false);
+        var selections = outcome.Selections;
         phases.Add(Phase.Selection, timer);
         _workspace.Log($"test plan: selection in {timer.ElapsedMilliseconds} ms: {string.Join("; ", selections.Select(s => $"{Path.GetFileNameWithoutExtension(s.Key.Absolute)} {Describe(s.Value)}"))}");
         var projects = new List<(ProjectNode Node, string? Filter, string[] FilterArguments, IReadOnlyList<Project> Variants)>();
@@ -145,6 +146,9 @@ internal sealed class TestPlanner
 
             projects.Add((node, filter.Expression, [], RepoWorkspace.ProjectsFor(snapshot, node).ToList()));
         }
+
+        if (selections.Count == 0 && outcome.AllSameCode)
+            return PendingPlan.Of(new TestPlanResult([], 0, total, $"no test is affected by the changes (out of {total}); the changes compile to the same code as HEAD; fuse test --all runs everything"), graph);
 
         var summary = new StringBuilder($"ran {selected} test(s) affected by your changes out of {total}");
         if (reasons.Count > 0)
@@ -290,4 +294,98 @@ internal sealed class TestPlanner
     /// <summary>A selection as the engine log gives it: "all", or how many patterns it has.</summary>
     private static string Describe(TestSelection selection) =>
         selection is TestSelection.Methods methods ? methods.Patterns.Count + " pattern(s)" : "all";
+
+    /// <summary>
+    /// A recorded test name as a filter matches it: a theory row without its argument values.
+    /// </summary>
+    private static string StripTheoryArgs(string name)
+    {
+        var args = name.IndexOf('(');
+        return args < 0 ? name : name[..args].Trim();
+    }
+
+    /// <summary>
+    ///     Selects the recorded failures <paramref name="byProject"/> names for a rerun, in the test projects they are
+    ///     still in. Projects that are gone or hold no tests are left out and named in the summary, as are the paths
+    ///     <paramref name="unknown"/> holds that name no file. The caller holds the request lock.
+    /// </summary>
+    /// <param name="byProject">Recorded failure names by test project file.</param>
+    /// <param name="unknown">Recorded project paths that name no file.</param>
+    /// <param name="phases">Collects the <see cref="Phase.Sync"/> and <see cref="Phase.Selection"/> phases.</param>
+    /// <param name="cancellationToken">Cancels the plan.</param>
+    public async Task<PendingPlan> SelectFailedAsync(IReadOnlyDictionary<RepoPath, string[]> byProject, IReadOnlyList<string> unknown, PhaseTimes phases, CancellationToken cancellationToken)
+    {
+        var syncing = phases.Start();
+        await _workspace.SyncAsync([], cancellationToken).ConfigureAwait(false);
+        phases.Add(Phase.Sync, syncing);
+        var graph = _workspace.Graph;
+        var testProjects = graph.Projects.Where(p => p.IsTest).ToList();
+        var total = testProjects.Sum(p => _counter.TestsIn(p).Count);
+        if (testProjects.Count == 0)
+            return PendingPlan.Of(new TestPlanResult([], 0, 0, "no test projects in this repository"), graph);
+
+        var timer = Stopwatch.StartNew();
+        var leftOut = unknown.Where(p => p.Length > 0).Select(p => Path.GetFileNameWithoutExtension(p) ?? "").Where(n => n.Length > 0).ToList();
+        var reruns = new List<(ProjectNode Node, string[] Names)>();
+        foreach (var (path, tests) in byProject.OrderBy(p => p.Key.Absolute, StringComparer.Ordinal))
+        {
+            var node = graph.Find(path);
+            if (node is null || !node.IsTest)
+            {
+                leftOut.Add(node?.Name ?? Path.GetFileNameWithoutExtension(path.Absolute));
+                continue;
+            }
+
+            var names = tests.Select(StripTheoryArgs).Distinct(StringComparer.Ordinal).OrderBy(n => n, StringComparer.Ordinal).ToArray();
+            if (names.Length > 0)
+                reruns.Add((node, names));
+        }
+
+        var runner = GlobalJson.UsesTestingPlatform(_workspace.Root.Path, _workspace.Root.Path);
+        var projects = new List<(ProjectNode Node, string? Filter, string[] FilterArguments, IReadOnlyList<Project> Variants)>();
+        var collapsed = new List<string>();
+        var platformCollapsed = new List<string>();
+        var reasons = new HashSet<string>(StringComparer.Ordinal);
+        var selected = 0;
+        var snapshot = _workspace.Current;
+        foreach (var (node, names) in reruns)
+        {
+            TestSelection selection = new TestSelection.Methods([.. names]);
+            var tests = _counter.TestsIn(node);
+            // A platform project whose framework Fuse cannot filter runs whole, so every test in it counts as run.
+            selected += node.UsesTestingPlatform && node.Framework == TestFramework.Unknown
+                ? tests.Count
+                : TestCounter.Count(tests, selection);
+            if (node.UsesTestingPlatform)
+            {
+                var (platformFilter, arguments) = PlatformRun(node, selection, runner, collapsed, platformCollapsed, reasons);
+                projects.Add((node, platformFilter, arguments, []));
+                continue;
+            }
+
+            var filter = TestFilter.For(selection);
+            if (filter.Collapse != FilterCollapse.None)
+            {
+                var form = filter.Collapse == FilterCollapse.ToClasses ? $"{filter.Patterns} class prefix(es)" : "no filter, so the project runs whole";
+                _workspace.Log($"test plan: {node.Name} filter of {names.Length} pattern(s) is above {TestFilter.MaxPatterns}, collapsed to {form}");
+                NoteCollapse(node, filter.Collapse, collapsed);
+            }
+
+            projects.Add((node, filter.Expression, [], RepoWorkspace.ProjectsFor(snapshot, node).ToList()));
+        }
+
+        phases.Add(Phase.Selection, timer);
+        var summary = new StringBuilder($"reran {reruns.Sum(r => r.Names.Length)} test(s) that failed last time in {reruns.Count} test project(s)");
+        if (reasons.Count > 0)
+            summary.Append(" (whole projects where ").Append(string.Join("; ", reasons)).Append(')');
+        if (collapsed.Count > 0)
+            summary.Append("; ran ").Append(string.Join(", ", collapsed)).Append(", because a test filter holds at most ").Append(TestFilter.MaxPatterns).Append(" names");
+        if (platformCollapsed.Count > 0)
+            summary.Append("; ran ").Append(string.Join(", ", platformCollapsed)).Append(", because a platform filter holds at most ").Append(PlatformFilter.MaxNames).Append(" names");
+        foreach (var name in leftOut.Distinct(StringComparer.Ordinal).OrderBy(n => n, StringComparer.Ordinal))
+            summary.Append("; left out ").Append(name).Append(", which is not a test project in this repository");
+        if (reruns.Count == 0)
+            return PendingPlan.Of(new TestPlanResult([], 0, total, summary.ToString()), graph);
+        return PendingPlan.ToPrepare(graph, projects, selected, total, summary.ToString());
+    }
 }

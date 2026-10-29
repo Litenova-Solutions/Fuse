@@ -42,6 +42,7 @@ internal static partial class XUnitOutput
             return null;
 
         var failures = new List<TestFailure>();
+        var records = new List<TestRecord>();
         for (var i = 0; i < summary; i++)
         {
             if (FailedLine().Match(lines[i]) is not { Success: true } header)
@@ -60,10 +61,13 @@ internal static partial class XUnitOutput
             }
 
             i--;
-            failures.Add(new TestFailure(header.Groups["name"].Value, TrxReader.Trim(string.Join('\n', message), 12), TrxReader.Frames(string.Join('\n', stack), root)));
+            var name = header.Groups["name"].Value;
+            failures.Add(new TestFailure(name, TrxReader.Trim(string.Join('\n', message), 12), TrxReader.Frames(string.Join('\n', stack), root)));
+            // The failed lines carry no durations, and passed tests print no names, so failures are recorded with none.
+            records.Add(new TestRecord(name, TestVerdict.Failed, TimeSpan.Zero));
         }
 
-        return new TrxResults(total - failed - skipped, failed, skipped, failures);
+        return new TrxResults(total - failed - skipped, failed, skipped, failures) { Records = records };
     }
 
     private static int Count(Match counts, string name) =>

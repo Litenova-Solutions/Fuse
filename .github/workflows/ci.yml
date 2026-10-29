@@ -10,8 +10,9 @@ permissions:
 
 jobs:
   # The tests run in shards on each OS, because most of their time goes to generating and restoring fixture
-  # repositories. Each shard names test classes or namespaces with the test platform's filters, and the last one runs
-  # every test the others do not, so a test in a new class or namespace still runs.
+  # repositories. Each shard names test classes with the test platform's filters, and the last one runs
+  # every test the others do not, so a test in a new class or namespace still runs. The real-build contention
+  # tests are isolated together, and the heaviest lock tests run on their own.
   test:
     name: Test ${{ matrix.shard.name }} (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -20,22 +21,26 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         shard:
-          - name: checker
-            filter: --filter-class Fuse.Tests.Engine.CheckerTests
-          - name: selection
-            filter: --filter-class Fuse.Tests.Engine.CauseLinesTests --filter-class Fuse.Tests.Engine.TestSelectionTests --filter-class Fuse.Tests.Engine.ShadowPreparationTests --filter-class Fuse.Tests.Engine.PhaseTimingTests --filter-class Fuse.Tests.Engine.EngineClientTests
-          - name: router
-            filter: --filter-class Fuse.Tests.Engine.RequestRouterTests --filter-class Fuse.Tests.Engine.SessionAttributionTests --filter-class Fuse.Tests.Engine.ReusedErrorsTests --filter-class Fuse.Tests.Engine.ChangeReachTests
-          - name: processes
-            filter: --filter-namespace Fuse.Tests.EndToEnd
+          - name: e2e-locks
+            filter: --filter-class Fuse.Tests.EndToEnd.BuildLockTests
+          - name: e2e-builds
+            filter: --filter-class Fuse.Tests.EndToEnd.PlanRunTests --filter-class Fuse.Tests.EndToEnd.AnalyzerLockTests --filter-class Fuse.Tests.EndToEnd.BuildOutputTests
+          - name: e2e-checks
+            filter: --filter-class Fuse.Tests.EndToEnd.EngineProcessTests --filter-class Fuse.Tests.EndToEnd.NonAsciiPathTests
+          - name: engine-heavy
+            filter: --filter-class Fuse.Tests.Engine.CheckerTests --filter-class Fuse.Tests.Engine.RequestRouterTests
+          - name: engine-selection
+            filter: --filter-class Fuse.Tests.Engine.TestSelectionTests --filter-class Fuse.Tests.Engine.SessionAttributionTests --filter-class Fuse.Tests.Engine.CauseLinesTests --filter-class Fuse.Tests.Engine.ShadowPreparationTests --filter-class Fuse.Tests.Engine.PhaseTimingTests --filter-class Fuse.Tests.Engine.EngineClientTests --filter-class Fuse.Tests.Engine.ChangeReachTests --filter-class Fuse.Tests.Engine.ReusedErrorsTests
           - name: rest
             filter: >-
-              --filter-not-namespace Fuse.Tests.EndToEnd
-              --filter-not-class Fuse.Tests.Engine.CheckerTests --filter-not-class Fuse.Tests.Engine.CauseLinesTests
-              --filter-not-class Fuse.Tests.Engine.TestSelectionTests --filter-not-class Fuse.Tests.Engine.ShadowPreparationTests
+              --filter-not-class Fuse.Tests.EndToEnd.BuildLockTests --filter-not-class Fuse.Tests.EndToEnd.PlanRunTests
+              --filter-not-class Fuse.Tests.EndToEnd.AnalyzerLockTests --filter-not-class Fuse.Tests.EndToEnd.BuildOutputTests
+              --filter-not-class Fuse.Tests.EndToEnd.EngineProcessTests --filter-not-class Fuse.Tests.EndToEnd.NonAsciiPathTests
+              --filter-not-class Fuse.Tests.Engine.CheckerTests --filter-not-class Fuse.Tests.Engine.RequestRouterTests
+              --filter-not-class Fuse.Tests.Engine.TestSelectionTests --filter-not-class Fuse.Tests.Engine.SessionAttributionTests
+              --filter-not-class Fuse.Tests.Engine.CauseLinesTests --filter-not-class Fuse.Tests.Engine.ShadowPreparationTests
               --filter-not-class Fuse.Tests.Engine.PhaseTimingTests --filter-not-class Fuse.Tests.Engine.EngineClientTests
-              --filter-not-class Fuse.Tests.Engine.RequestRouterTests --filter-not-class Fuse.Tests.Engine.SessionAttributionTests
-              --filter-not-class Fuse.Tests.Engine.ReusedErrorsTests --filter-not-class Fuse.Tests.Engine.ChangeReachTests
+              --filter-not-class Fuse.Tests.Engine.ChangeReachTests --filter-not-class Fuse.Tests.Engine.ReusedErrorsTests
     steps:
       - uses: actions/checkout@v7
 
@@ -68,6 +73,11 @@ jobs:
       - name: Format
         run: dotnet format Fuse.slnx --verify-no-changes
 
+  # Package runs after the tests, so the run never exceeds 20 concurrent jobs: 6 shards on 3 OS plus Format
+  # is 19 while the tests run, then the package jobs run on their own. It still runs when the tests fail, so a
+  # broken build keeps its packaging signal; only a cancelled run skips it.
   package:
     name: Package
+    needs: [test]
+    if: ${{ !cancelled() }}
     uses: ./.github/workflows/package.yml

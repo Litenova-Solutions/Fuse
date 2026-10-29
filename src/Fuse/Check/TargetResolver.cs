@@ -23,10 +23,19 @@ internal sealed class TargetResolver
         scope is CheckScope.Files files ? files.Paths : [];
 
     /// <summary>The targets of <paramref name="scope"/>, read after the sync so every change includes the latest edits.</summary>
-    public IReadOnlyList<RepoPath> Resolve(CheckScope scope)
+    public IReadOnlyList<RepoPath> Resolve(CheckScope scope, IReadOnlySet<RepoPath>? excluded = null)
+    {
+        if (scope is CheckScope.NamedPaths paths)
+            return ScopeExpansion.Expand(_workspace, paths.Named);
+        return ResolveRest(scope, excluded);
+    }
+
+    private List<RepoPath> ResolveRest(CheckScope scope, IReadOnlySet<RepoPath>? excluded)
     {
         var graph = _workspace.Graph;
         var paths = scope is CheckScope.Files ? NamedPaths(scope) : _workspace.Tracker.Changed;
+        if (excluded is not null && scope is CheckScope.AllChanges)
+            paths = paths.Where(p => !excluded.Contains(p)).ToList();
         return paths
             .Where(p => PathRules.IsSource(p.Absolute))
             .Distinct()

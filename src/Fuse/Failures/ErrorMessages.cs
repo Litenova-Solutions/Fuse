@@ -40,6 +40,32 @@ internal static class ErrorMessages
     public static string NoTestProjectNamed(IReadOnlyList<string> paths) =>
         $"none of the paths given names a test project in this repository: {string.Join(", ", paths.Take(5))}{(paths.Count > 5 ? $" and {paths.Count - 5} more" : "")}";
 
+    public static string NoRegisteredSession(string name) => $"no registered session named {name}";
+
+    /// <summary>The message for <see cref="ErrorCode.InvalidPath"/> when a session name holds a character a name cannot hold.</summary>
+    public static string InvalidSessionName(string name) => $"\"{name}\" is not a valid session name; use 1 to 64 letters, digits, -, _ or .";
+
+    /// <summary>The message for <see cref="ErrorCode.InvalidPath"/> when a session pattern is not a pattern the engine matches.</summary>
+    public static string InvalidSessionPattern(string? pattern) => $"\"{pattern}\" is not a valid path pattern; use forward slashes, * and ? inside a segment, ** as a whole segment, no .. segment";
+
+    /// <summary>The message for <see cref="ErrorCode.InvalidPath"/> when a begin request names no pattern.</summary>
+    public static string SessionNeedsPattern() => "a session needs at least one path pattern; name one after --paths";
+
+    /// <summary>The message for <see cref="ErrorCode.InvalidPath"/> when a registration names more patterns than one holds.</summary>
+    public static string TooManySessionPatterns(int count) => $"a session holds at most 32 path patterns, not {count}; name fewer";
+
+    /// <summary>The message for <see cref="ErrorCode.InvalidPath"/> when too many sessions are registered at once.</summary>
+    public static string TooManyRegisteredSessions() => "at most 64 sessions can be registered at once; end one with fuse session end <name>";
+
+    /// <summary>The message for <see cref="ErrorCode.InvalidPath"/> when a session pattern names a path outside the repository.</summary>
+    public static string SessionPatternOutsideRepository(string pattern) => $"\"{pattern}\" is outside this repository; name a pattern inside it";
+
+    /// <summary>The message for <see cref="ErrorCode.InvalidPath"/> when one directory or glob of a scoped check matches no changed source it could check.</summary>
+    public static string ScopeMatchesNothing(string spec) => $"\"{spec}\" in the check matches no changed C# source file of a project in this repository";
+
+    /// <summary>The message for <see cref="ErrorCode.InvalidPath"/> when the paths of a scoped check expand to more sources than one covers.</summary>
+    public static string ScopeTooManyFiles(int count) => $"the paths named in the check expand to {count} source files, more than the 2000 a scoped check covers; name a smaller folder or pattern";
+
     public static string NothingToCheck(IReadOnlyList<string> files) =>
         $"none of the files named in the check is a C# source file of a project in this repository: {string.Join(", ", files.Take(5))}{(files.Count > 5 ? $" and {files.Count - 5} more" : "")}";
 }

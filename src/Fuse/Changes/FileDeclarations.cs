@@ -266,6 +266,26 @@ internal sealed class FileDeclarations
     ///     because a checkout with <c>core.autocrlf</c> writes CRLF where HEAD has LF and that is not an edit
     ///     (<see cref="Repo.HeadComparison"/> ignores it too).
     /// </summary>
+    /// <summary>
+    ///     The parameter list of a method-like declaration as its tokens read, names and defaults included, or empty when
+    ///     the node declares no parameter list. The surface leaves names and defaults out, but the shadow emitter compares
+    ///     them: callers inline defaults and can name parameters.
+    /// </summary>
+    internal static string FlatParameters(SyntaxNode node)
+    {
+        BaseParameterListSyntax? list = node switch
+        {
+            MethodDeclarationSyntax method => method.ParameterList,
+            ConstructorDeclarationSyntax ctor => ctor.ParameterList,
+            OperatorDeclarationSyntax op => op.ParameterList,
+            ConversionOperatorDeclarationSyntax conversion => conversion.ParameterList,
+            IndexerDeclarationSyntax indexer => indexer.ParameterList,
+            DelegateDeclarationSyntax del => del.ParameterList,
+            _ => null,
+        };
+        return Flat(list);
+    }
+
     private static string Flat(SyntaxNode? node)
     {
         if (node is null)

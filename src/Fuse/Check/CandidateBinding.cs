@@ -29,25 +29,25 @@ internal sealed class CandidateBinding
     /// <param name="cancellationToken">Cancels the binding.</param>
     /// <returns>
     ///     The errors introduced in the candidates, how many source files the whole check bound (the targets included),
-    ///     and whether whole projects were bound. A file counts once however many target frameworks compile it, and only
-    ///     when a project owns it, so the files the build generates under <c>bin</c> and <c>obj</c> are bound but not
-    ///     counted.
+    ///     whether whole projects were bound, and why each reached project was bound whole. A file counts once however many
+    ///     target frameworks compile it, and only when a project owns it, so the files the build generates under <c>bin</c>
+    ///     and <c>obj</c> are bound but not counted.
     /// </returns>
-    public async Task<(List<CompilerError> Errors, int FilesChecked, bool CheckedWholeProjects)> BindAsync(
+    public async Task<(List<CompilerError> Errors, int FilesChecked, bool CheckedWholeProjects, IReadOnlyList<WholeProjectCause> WholeProjectCauses)> BindAsync(
         Reach reach, IReadOnlyList<ProjectNode> reached, IReadOnlyCollection<RepoPath> targets, CancellationToken cancellationToken)
     {
         var candidates = new HashSet<RepoPath>(
             reach switch
             {
                 Reach.Broad broad => broad.Files,
-                Reach.Precise precise => precise.Causes.Keys,
+                Reach.Precise named => named.Causes.Keys,
                 _ => [],
             });
         candidates.ExceptWith(targets);
 
         var graph = _workspace.Graph;
         if (candidates.Count <= WholeProjectThreshold)
-            return (await _introduced.InFilesAsync(candidates, cancellationToken).ConfigureAwait(false), targets.Count + candidates.Count(c => graph.OwnersOf(c).Count > 0), false);
+            return (await _introduced.InFilesAsync(candidates, cancellationToken).ConfigureAwait(false), targets.Count + candidates.Count(c => graph.OwnersOf(c).Count > 0), false, []);
 
         var errors = new List<CompilerError>();
         foreach (var node in reached)
@@ -61,6 +61,52 @@ internal sealed class CandidateBinding
                 files.Add(file);
         }
 
-        return (errors, files.Count, true);
+        // A broad reach names its causes itself; the checker assembles those. A precise reach past the threshold names
+        // them here, from the origins of each reached project's candidates and the targets it owns.
+        if (reach is not Reach.Precise precise)
+            return (errors, files.Count, true, []);
+        return (errors, files.Count, true, WholeCauses(precise, candidates, reached, targets, graph));
     }
+
+    private static List<WholeProjectCause> WholeCauses(
+        Reach.Precise precise, IReadOnlySet<RepoPath> candidates, IReadOnlyList<ProjectNode> reached, IReadOnlyCollection<RepoPath> targets, RepoGraph graph)
+    {
+        var causes = new List<WholeProjectCause>();
+        foreach (var node in reached.OrderBy(n => n.Name, StringComparer.Ordinal))
+        {
+            var owned = candidates.Where(c => graph.OwnersOf(c).Any(o => o.Path == node.Path)).ToList();
+            var targetsOwned = targets.Where(t => graph.OwnersOf(t).Any(o => o.Path == node.Path)).ToList();
+            if (owned.Count == 0 && targetsOwned.Count == 0)
+                continue;
+            var reachedCauses = new HashSet<Cause>();
+            foreach (var candidate in owned)
+            {
+                if (precise.AllCauses?.TryGetValue(candidate, out var all) == true)
+                {
+                    foreach (var cause in all)
+                        reachedCauses.Add(cause);
+                }
+                else if (precise.Causes.TryGetValue(candidate, out var first))
+                {
+                    reachedCauses.Add(first);
+                }
+            }
+
+            var origins = new HashSet<RepoPath>(targetsOwned);
+            foreach (var cause in reachedCauses)
+            {
+                if (precise.CauseFiles?.TryGetValue(cause, out var origin) == true)
+                    origins.Add(origin);
+            }
+
+            var files = origins.Select(o => o.Relative).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToList();
+            var rendered = reachedCauses.Select(Render).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToList();
+            causes.Add(new WholeProjectCause(node.Name, files, rendered));
+        }
+
+        return causes;
+    }
+
+    private static string Render(Cause cause) =>
+        cause is Cause.Removed ? $"removed: {cause.Declaration}" : $"changed: {cause.Declaration}";
 }

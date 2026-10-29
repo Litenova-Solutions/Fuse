@@ -24,6 +24,25 @@ internal static class TestFilter
         _ => throw new UnreachableException($"a selection is whole or methods, not {selection.GetType().Name}"),
     };
 
+    /// <summary>
+    ///     The filter for <paramref name="selection"/> without the tests <paramref name="excludeNames"/> names: the
+    ///     parenthesised join plus one <c>&amp;FullyQualifiedName!=</c> clause per excluded test. Null when the split the
+    ///     exclusion would make cannot be expressed: a whole selection, an empty one, one that already collapses, or one
+    ///     whose patterns with the exclusions are above the bound. The caller then runs one stage instead of two, never a
+    ///     wider filter.
+    /// </summary>
+    public static RunFilter? For(TestSelection selection, IReadOnlyCollection<string> excludeNames)
+    {
+        if (excludeNames.Count == 0)
+            return For(selection);
+        if (selection is not TestSelection.Methods methods || methods.Patterns.Count == 0 || methods.Patterns.Count > MaxPatterns)
+            return null;
+        if (methods.Patterns.Count + excludeNames.Count > MaxPatterns)
+            return null;
+        var exclusions = string.Concat(excludeNames.OrderBy(n => n, StringComparer.Ordinal).Select(n => "&FullyQualifiedName!=" + Escape(n)));
+        return new RunFilter($"({Join(methods.Patterns)}){exclusions}", methods.Patterns.Count + excludeNames.Count, FilterCollapse.None);
+    }
+
     private static RunFilter For(ImmutableHashSet<string> patterns)
     {
         if (patterns.Count <= MaxPatterns)

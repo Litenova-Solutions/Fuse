@@ -13,14 +13,15 @@ internal static class Program
     private const string Usage = """
         usage: Fuse.Evals <suite> <repo> [--mutations N] [--seed S] [--solution path] [--fuse path]
                           [--cache file] [--truth-dir dir] [--cache-out file] [--part all|checks|main|agents]
+                          [--failed-rounds] [--projects N --files M --changed K]
                Fuse.Evals truth <correctness|selection> <repo> --out file [--shard K --shards N] [--cache file]
                Fuse.Evals key <correctness|selection> <repo> [--mutations N] [--seed S]
                Fuse.Evals chart
                Fuse.Evals clone <repo>
                Fuse.Evals clean
-          suite: correctness | selection | latency | attribution | analyzers | all
+          suite: correctness | selection | latency | attribution | analyzers | scale | stale | all
           repo:  fixture (generated under evals/.work/fixture), analyzer-fixture (generated under evals/.work/analyzer-fixture),
-                 a pinned repository name, or a path to a git repository
+                 scale-fixture (generated under evals/.work/scale-fixture), a pinned repository name, or a path to a git repository
           truth: runs shard K of N of the truth side (the real dotnet build or dotnet test) and writes it to a file; the
                  suite run merges the files in --truth-dir and runs what is still missing. Without them it reads and
                  writes evals/.work/truth/<suite>-<repo>.json, so a second run on the same tree measures only Fuse
@@ -29,8 +30,14 @@ internal static class Program
                  without and with sessions; no truth and no test runs
           analyzers: on analyzer-fixture, an analyzer that reads the whole project: whether it runs compilation-wide,
                  the post-edit hook and check times, the engine's peak and idle memory; no truth and no test runs
+          scale: on scale-fixture, one cold check of every change in a large tree: wall time, files checked, the
+                 engine's peak and idle memory; no truth and no test runs
+          stale: on fixture, an error reported by the post-edit hook and fixed before the stop hook: whether the stop
+                 delivers it again; no truth and no test runs
           --part: for latency, what to measure: all (the default); checks, the checks alone; main, the checks and
                  the test rounds; agents, the multi-agent scenario after the cold checks and body edits
+          --failed-rounds: for selection on fixture, three fix-and-rerun rounds with fuse test --failed afterwards
+          --projects, --files, --changed: for scale, the fixture size: projects, files per project, changed files
           clone: NodaTime | Jellyfin | CommunityToolkit, checked out at the pinned commit under
                  %LOCALAPPDATA%/fuse/evals/repos (outside this repository, so its build settings do not leak in)
           clean: deletes %LOCALAPPDATA%/fuse/evals, which holds every checkout; the generated fixture in
@@ -75,7 +82,7 @@ internal static class Program
             return 2;
         }
 
-        var repoPath = await ResolveAsync(rest[1], fuseRoot);
+        var repoPath = await ResolveAsync(rest[1], fuseRoot, options);
         var solutionPath = options.GetValueOrDefault("solution") ?? DefaultSolution(repoPath);
         var repo = new EvalRepo(repoPath, fuse, solutionPath);
         var seed = int.Parse(options.GetValueOrDefault("seed") ?? "1", CultureInfo.InvariantCulture);
@@ -115,13 +122,22 @@ internal static class Program
             {
                 result = await AnalyzerSuite.RunAsync(repo);
             }
+            else if (name == "scale")
+            {
+                var (projects, files, changed) = ScaleFixture.Args(options);
+                result = await ScaleSuite.RunAsync(repo, solution, projects, files, changed);
+            }
+            else if (name == "stale")
+            {
+                result = await HookStaleness.RunAsync(repo, solution);
+            }
             else
             {
                 var truth = await TruthForAsync(name, repo, solution, await KeyAsync(name), seed, Mutations(name), options, fuseRoot);
                 result = name switch
                 {
                     "correctness" => await CorrectnessSuite.RunAsync(repo, solution, truth),
-                    "selection" => await SelectionSuite.RunAsync(repo, truth),
+                    "selection" => await SelectionSuite.RunAsync(repo, solution, truth, options.ContainsKey("failed-rounds")),
                     _ => throw new ArgumentException($"unknown suite {name}"),
                 };
             }
@@ -264,13 +280,19 @@ internal static class Program
             .ToList();
     }
 
-    /// <summary>The repository to measure: the generated fixture, a pinned repository already cloned, or any path.</summary>
-    private static async Task<string> ResolveAsync(string nameOrPath, string fuseRoot)
+    /// <summary>The repository to measure: a generated fixture, a pinned repository already cloned, or any path.</summary>
+    private static async Task<string> ResolveAsync(string nameOrPath, string fuseRoot, Dictionary<string, string> options)
     {
         if (nameOrPath == "fixture")
             return await FixtureGenerator.CreateAsync(Path.Combine(fuseRoot, "evals", ".work", "fixture"));
         if (nameOrPath == "analyzer-fixture")
             return await AnalyzerFixture.CreateAsync(Path.Combine(fuseRoot, "evals", ".work", "analyzer-fixture"));
+        if (nameOrPath == "scale-fixture")
+        {
+            var (projects, files, changed) = ScaleFixture.Args(options);
+            return await ScaleFixture.CreateAsync(Path.Combine(fuseRoot, "evals", ".work", "scale-fixture"), projects, files, changed);
+        }
+
         if (PinnedRepo.Find(nameOrPath) is { } pinned && Directory.Exists(pinned.WorkPath()))
             return pinned.WorkPath();
         return Path.GetFullPath(nameOrPath);
@@ -317,11 +339,27 @@ internal static class Program
             throw new InvalidOperationException($"git {string.Join(' ', args)} failed:\n{result.Output}");
     }
 
+    /// <summary>
+    ///     The <c>--name value</c> pairs after the suite and repository, by name without the dashes. A flag with no value,
+    ///     last or before another flag, reads as <c>true</c>, so <c>--failed-rounds</c> needs no argument.
+    /// </summary>
     private static Dictionary<string, string> Options(string[] args)
     {
         var result = new Dictionary<string, string>(StringComparer.Ordinal);
-        for (var i = 0; i + 1 < args.Length; i += 2)
-            result[args[i].TrimStart('-')] = args[i + 1];
+        for (var i = 0; i < args.Length; i++)
+        {
+            var key = args[i].TrimStart('-');
+            if (i + 1 < args.Length && !args[i + 1].StartsWith('-'))
+            {
+                result[key] = args[i + 1];
+                i++;
+            }
+            else
+            {
+                result[key] = "true";
+            }
+        }
+
         return result;
     }
 

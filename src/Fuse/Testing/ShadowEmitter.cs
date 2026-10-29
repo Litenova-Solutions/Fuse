@@ -1,8 +1,10 @@
 using System.Diagnostics;
 using System.Globalization;
+using Fuse.Changes;
 using Fuse.Graph;
 using Fuse.Paths;
 using Fuse.Testing.Model;
+using Fuse.Workspace;
 using Microsoft.CodeAnalysis;
 
 namespace Fuse.Testing;
@@ -33,13 +35,18 @@ namespace Fuse.Testing;
 /// </remarks>
 internal sealed class ShadowEmitter
 {
+    private readonly RepoWorkspace _workspace;
     private readonly RepoRoot _root;
     private readonly EmitCache _cache = new();
 
     /// <summary>Each shadow file this emitter wrote, with the bytes it wrote and the length and time the file had after.</summary>
     private readonly Dictionary<string, Written> _written = new(StringComparer.OrdinalIgnoreCase);
 
-    public ShadowEmitter(RepoRoot root) => _root = root;
+    public ShadowEmitter(RepoWorkspace workspace)
+    {
+        _workspace = workspace;
+        _root = workspace.Root;
+    }
 
     /// <summary>How many assemblies were emitted since the engine started, as opposed to taken from the cache.</summary>
     public int Emits => _cache.Emits;
@@ -95,25 +102,74 @@ internal sealed class ShadowEmitter
                 stale.Add(project.Id);
         }
 
-        // A stale assembly's dependents inside the closure are re-emitted too, so none of them binds to a member that moved.
+        // A stale assembly's dependents inside the closure are re-emitted too, so none of them binds to a member that
+        // moved, unless the assemblies they depend on declare the same as HEAD: their images would not change, so the
+        // ones already in the shadow folder are kept.
         var emit = new HashSet<ProjectId>(stale);
+        var declares = new Dictionary<ProjectId, bool>();
         bool grew;
         do
         {
             grew = false;
             foreach (var project in closure)
             {
-                if (!emit.Contains(project.Id) && project.ProjectReferences.Any(r => emit.Contains(r.ProjectId)))
-                    grew = emit.Add(project.Id);
+                if (emit.Contains(project.Id))
+                    continue;
+                foreach (var reference in project.ProjectReferences.Where(r => emit.Contains(r.ProjectId)))
+                {
+                    if (!declares.TryGetValue(reference.ProjectId, out var changed))
+                    {
+                        changed = true;
+                        if (solution.GetProject(reference.ProjectId) is { } referenced)
+                            changed = await DeclaresChangeAsync(referenced, cancellationToken).ConfigureAwait(false);
+                        declares[reference.ProjectId] = changed;
+                    }
+
+                    if (changed)
+                    {
+                        grew = emit.Add(project.Id);
+                        break;
+                    }
+                }
             }
         }
         while (grew);
 
         var shadow = CopyFolder(Path.Combine(_root.StateDirectory, "shadow", $"{testProject.Name.Replace('(', '-').Replace(")", "")}"), log);
+        // A kept dependent is emitted again when the shadow folder does not already hold the image this emitter wrote,
+        // as on a fresh copy: the build output it would be copied from can predate HEAD.
+        var skipped = new List<Project>();
+        foreach (var project in closure)
+        {
+            if (emit.Contains(project.Id))
+                continue;
+            var dependedOn = project.ProjectReferences.Select(r => r.ProjectId).Where(emit.Contains).ToList();
+            if (dependedOn.Count == 0 || dependedOn.Any(id => !declares.TryGetValue(id, out var changed) || changed))
+                continue;
+            var kept = Path.Combine(shadow, Path.GetFileName(project.OutputFilePath!));
+            if (HoldsWritten(kept) && HoldsWritten(Path.ChangeExtension(kept, ".pdb")))
+                skipped.Add(project);
+            else
+                emit.Add(project.Id);
+        }
+
+        foreach (var project in skipped)
+        {
+            var names = project.ProjectReferences
+                .Where(r => emit.Contains(r.ProjectId) && declares.TryGetValue(r.ProjectId, out var changed) && !changed)
+                .Select(r => solution.GetProject(r.ProjectId)?.Name)
+                .OfType<string>()
+                .OrderBy(n => n, StringComparer.Ordinal)
+                .ToList();
+            if (names.Count > 0)
+                log($"test plan: {project.Name}: not emitting {project.Name} again; {string.Join(", ", names)} {(names.Count == 1 ? "compiles" : "compile")} to the same declarations as HEAD");
+        }
+
         var targets = emit.Select(id => Path.Combine(shadow, Path.GetFileName(solution.GetProject(id)!.OutputFilePath!))).ToList();
+        var keptTargets = skipped.Select(p => Path.Combine(shadow, Path.GetFileName(p.OutputFilePath!))).ToList();
         // The files about to be emitted are not copied first: the copy would only be overwritten, and when the emitted
-        // image is already in place, it would make the image be written again.
-        Mirror(testOutputDirectory, shadow, [.. targets, .. targets.Select(t => Path.ChangeExtension(t, ".pdb"))]);
+        // image is already in place, it would make the image be written again. The kept images are not copied either.
+        Mirror(testOutputDirectory, shadow, [.. targets, .. targets.Select(t => Path.ChangeExtension(t, ".pdb")), .. keptTargets, .. keptTargets.Select(t => Path.ChangeExtension(t, ".pdb"))]);
         foreach (var id in emit)
         {
             var project = solution.GetProject(id)!;
@@ -138,6 +194,77 @@ internal sealed class ShadowEmitter
         }
 
         return new RunMode.Shadow(Path.Combine(shadow, Path.GetFileName(testOutput)));
+    }
+
+    /// <summary>
+    ///     True when <paramref name="project"/> declares anything HEAD does not: a declaration added, removed or changed,
+    ///     or a parameter list that reads differently, whose names and defaults callers can name or inline although the
+    ///     surface leaves them out. Anything undecidable counts as a change, so the project's dependents are emitted again.
+    /// </summary>
+    /// <param name="project">A project of the snapshot the plan took.</param>
+    /// <param name="cancellationToken">Cancels reading file contents.</param>
+    private async Task<bool> DeclaresChangeAsync(Project project, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var baseline = _workspace.Baseline;
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var document in project.Documents)
+            {
+                if (document.FilePath is null)
+                    return true;
+                seen.Add(document.FilePath);
+                if (await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false) is not { } current)
+                    return true;
+                var before = baseline.GetDocument(document.Id)
+                    ?? baseline.GetDocumentIdsWithFilePath(document.FilePath).Select(baseline.GetDocument).FirstOrDefault(d => d is not null && d.Project.Id == document.Project.Id);
+                if (before is null || await before.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false) is not { } head)
+                    return true;
+                var beforeDeclarations = FileDeclarations.Of(head);
+                var currentDeclarations = FileDeclarations.Of(current);
+                if (SurfaceDiff.Compare(beforeDeclarations, currentDeclarations).Changes.Count > 0)
+                    return true;
+                if (ParameterListsDiffer(beforeDeclarations, currentDeclarations))
+                    return true;
+            }
+
+            if (baseline.GetProject(project.Id) is not { } baselineProject)
+                return true;
+            foreach (var document in baselineProject.Documents)
+            {
+                if (document.FilePath is not null && !seen.Contains(document.FilePath))
+                    return true;
+            }
+
+            return false;
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            return true;
+        }
+    }
+
+    /// <summary>True when a method-like declaration both versions declare has a parameter list that reads differently.</summary>
+    private static bool ParameterListsDiffer(FileDeclarations before, FileDeclarations after)
+    {
+        foreach (var declaration in after.All)
+        {
+            if (before.Find(declaration.Key) is not { } previous)
+                continue;
+            if (!string.Equals(FileDeclarations.FlatParameters(previous.Node), FileDeclarations.FlatParameters(declaration.Node), StringComparison.Ordinal))
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>Whether this emitter wrote <paramref name="path"/> and the file still holds those bytes.</summary>
+    private bool HoldsWritten(string path)
+    {
+        if (!_written.TryGetValue(path, out var written))
+            return false;
+        var file = new FileInfo(path);
+        return file.Exists && file.Length == written.Length && file.LastWriteTimeUtc == written.WrittenUtc;
     }
 
     /// <summary>

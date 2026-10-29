@@ -25,6 +25,10 @@ name: Evals
 # The analyzers suite is lighter still: one job generates a small repository whose analyzer reads the whole project at
 # error severity, measures the post-edit hook, checks of one and twenty files and the engine's memory, and uploads
 # evals-analyzer-fixture-analyzers. The evals label runs it with the latency suite.
+#
+# The scale suite is check-only on a generated large tree: one job generates thousands of files, changes a quarter of
+# them, and measures one cold check and the engine's memory, uploading evals-scale-fixture-scale. Like attribution, it
+# runs only when the suites input names it.
 
 on:
   pull_request:
@@ -36,7 +40,7 @@ on:
         default: '["FluentValidation", "NodaTime", "Jellyfin", "CommunityToolkit"]'
         required: true
       suites:
-        description: Suites to run, as a JSON array (correctness, selection, latency, attribution, analyzers).
+        description: Suites to run, as a JSON array (correctness, selection, latency, attribution, analyzers, scale).
         default: '["correctness", "selection", "latency"]'
         required: true
       fresh-truth:
@@ -61,6 +65,7 @@ jobs:
       latency: ${{ steps.matrix.outputs.latency }}
       attribution: ${{ steps.matrix.outputs.attribution }}
       analyzers: ${{ steps.matrix.outputs.analyzers }}
+      scale: ${{ steps.matrix.outputs.scale }}
       measure: ${{ steps.matrix.outputs.measure }}
     steps:
       - id: matrix
@@ -84,6 +89,7 @@ jobs:
           latency = [r for r in repos] if "latency" in suites else []
           attribution = [r for r in repos] if "attribution" in suites else []
           analyzers = "analyzers" in suites
+          scale = "scale" in suites
           # One call of evals-suite.yml per suite and repository, so a repository's measure job waits only for its own
           # truth. Jobs start in matrix order when the runners are all busy, so the longest go first: selection before
           # correctness, and the largest repositories first.
@@ -92,6 +98,7 @@ jobs:
           measure.sort(key=lambda m: (m["suite"] != "selection", order.get(m["repo"], 4)))
           with open(os.environ["GITHUB_OUTPUT"], "a") as out:
               out.write(f"analyzers={str(analyzers).lower()}\n")
+              out.write(f"scale={str(scale).lower()}\n")
               for name, value in (("latency", latency), ("attribution", attribution), ("measure", measure)):
                   out.write(f"{name}={json.dumps(value)}\n")
                   print(f"{name}: {json.dumps(value)}")
@@ -262,6 +269,37 @@ jobs:
         if: always()
         with:
           name: evals-analyzer-fixture-analyzers
+          path: out/
+          if-no-files-found: error
+
+  scale:
+    name: scale on the scale fixture
+    needs: [plan, build]
+    if: needs.plan.outputs.scale == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - uses: actions/download-artifact@v8
+        with:
+          name: build
+      - *identity
+      - name: Run scale with the native client
+        run: |
+          $EVALS scale scale-fixture --fuse "$(cygpath -w "$PWD/artifacts/native/fuse.exe")"
+          mkdir -p out/results
+          git ls-files --others --exclude-standard evals/results | xargs -I{} mv {} out/results/
+      - *runner
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: evals-scale-fixture-scale
           path: out/
           if-no-files-found: error
 

@@ -36,6 +36,8 @@ internal static class ResponseMapper
         AnalyzersUnfinished = result.AnalyzersUnfinished,
         CompilationWideLeftOut = [.. result.CompilationWideLeftOut],
         FilesNotAttributed = result.FilesNotAttributed,
+        ScopedPaths = [.. result.ScopedPaths],
+        WholeProjects = [.. result.WholeProjectCauses.Select(c => new ReportedWholeProject(c.Project, [.. c.ChangedFiles], [.. c.Causes]))],
     };
 
     /// <summary>A test plan as the client receives it, each run with the mode the client starts it in and its project file's absolute path.</summary>

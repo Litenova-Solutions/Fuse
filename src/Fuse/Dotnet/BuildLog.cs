@@ -97,6 +97,30 @@ internal static partial class BuildLog
             ? int.Parse(matches[^1].Groups["count"].Value, CultureInfo.InvariantCulture)
             : 0;
 
+    /// <summary>
+    ///     The warnings the log holds, distinct in first-seen order, with paths made relative to <paramref name="root"/>.
+    ///     The console runs with errors only, so the file log is where the warnings are.
+    /// </summary>
+    public static List<BuildWarning> WarningsList(string log, string root)
+    {
+        var result = new List<BuildWarning>();
+        var seen = new HashSet<BuildWarning>();
+        foreach (var (_, text) in Entries(log))
+        {
+            var match = BuildOutputParser.FileDiagnostic().Match(text.Trim());
+            if (!match.Success || match.Groups["sev"].Value != "warning")
+                continue;
+            if (!int.TryParse(match.Groups["line"].Value, CultureInfo.InvariantCulture, out var line)
+                || !int.TryParse(match.Groups["col"].Value, CultureInfo.InvariantCulture, out var column))
+                continue;
+            var warning = new BuildWarning(BuildOutputParser.Relative(match.Groups["file"].Value.Trim(), root), line, column, match.Groups["id"].Value, match.Groups["msg"].Value.Trim());
+            if (seen.Add(warning))
+                result.Add(warning);
+        }
+
+        return result;
+    }
+
     private static string Seconds(long ms) => (ms / 1000.0).ToString("0.0", CultureInfo.InvariantCulture) + " s";
 
     /// <summary>A project file's name without its folder or extension, whichever separator the build's operating system used.</summary>

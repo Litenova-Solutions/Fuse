@@ -41,4 +41,15 @@ internal sealed record CheckResult(
     ///     because more files needed deciding than attribution decides in one check.
     /// </summary>
     public int FilesNotAttributed { get; init; }
+
+    /// <summary>
+    ///     The paths a scoped check was scoped to, repository-relative with forward slashes, in the order named. Empty for
+    ///     a check of every change or of named files.
+    /// </summary>
+    public IReadOnlyList<string> ScopedPaths { get; init; } = [];
+
+    /// <summary>
+    ///     Why each project was bound whole, in project-name order. Empty when the check bound no project whole.
+    /// </summary>
+    public IReadOnlyList<WholeProjectCause> WholeProjectCauses { get; init; } = [];
 }

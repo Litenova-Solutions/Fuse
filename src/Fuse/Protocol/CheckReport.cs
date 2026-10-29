@@ -29,4 +29,10 @@ internal sealed record CheckReport(
 
     /// <summary>How many files with errors were told to the session without deciding whose edits caused them.</summary>
     public int FilesNotAttributed { get; init; }
+
+    /// <summary>The paths a scoped check was scoped to, repository-relative with forward slashes, in the order named.</summary>
+    public string[] ScopedPaths { get; init; } = [];
+
+    /// <summary>Why each project was bound whole, in project-name order.</summary>
+    public ReportedWholeProject[] WholeProjects { get; init; } = [];
 }

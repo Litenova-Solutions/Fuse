@@ -27,6 +27,9 @@ internal enum ErrorCode
     /// <summary>A request names a file by an empty string or by one that is not a valid path.</summary>
     InvalidPath,
 
+    /// <summary>No session is registered under the name an end request names.</summary>
+    NoRegisteredSession,
+
     /// <summary>An unexpected failure inside Fuse.</summary>
     Internal,
 }

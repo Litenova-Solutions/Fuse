@@ -32,7 +32,7 @@ internal sealed class RequestRouter : IDisposable
     {
         _log = log;
         _workspace = new RepoWorkspace(root, log.Write);
-        _sessions = new SessionEdits(root, Path.Combine(root.StateDirectory, "sessions.tsv"));
+        _sessions = new SessionEdits(root, Path.Combine(root.StateDirectory, "sessions.tsv"), Path.Combine(root.StateDirectory, "registered-sessions.tsv"), log: log.Write);
         _checker = new Checker(_workspace, _sessions);
         _planner = new TestPlanner(_workspace);
         _preloader = new Preloader(_workspace, _requestLock, log);
@@ -56,6 +56,9 @@ internal sealed class RequestRouter : IDisposable
             // A file an earlier engine recorded that matches HEAD now was reverted or committed while no engine watched;
             // forgotten here, its sessions are not still credited when the file is written again before the first check.
             _sessions.Forget(_workspace.Tracker.Changed);
+            var live = _sessions.LiveRegistrations();
+            if (live.Count > 0)
+                _log.Write($"registered sessions live: {string.Join(", ", live.Select(r => r.Session[SessionEdits.RegisteredPrefix.Length..]).Order(StringComparer.Ordinal))}");
             var owners = _workspace.Tracker.Changed.SelectMany(_workspace.Graph.OwnersOf).DistinctBy(p => p.Path).ToList();
             if (owners.Count > 0)
             {
@@ -85,6 +88,10 @@ internal sealed class RequestRouter : IDisposable
     /// </summary>
     public async Task<EngineResponse> HandleAsync(EngineRequest request, CancellationToken cancellationToken)
     {
+        if (request is EngineRequest.BeginSession begin)
+            return BeginSession(begin);
+        if (request is EngineRequest.EndSession end)
+            return EndSession(end);
         if (request is EngineRequest.Ping or EngineRequest.ShutDown)
             return new EngineResponse.Acknowledged();
 
@@ -102,7 +109,7 @@ internal sealed class RequestRouter : IDisposable
             _sessions.MarkStopped(stopping);
 
         var initialization = _initialization ?? Task.CompletedTask;
-        if (!initialization.IsCompleted && request is EngineRequest.CheckChanges { WaitForLoad: false } or EngineRequest.CheckFiles { WaitForLoad: false })
+        if (!initialization.IsCompleted && request is EngineRequest.CheckChanges { WaitForLoad: false } or EngineRequest.CheckFiles { WaitForLoad: false } or EngineRequest.CheckPaths { WaitForLoad: false })
             return new EngineResponse.Unanswered(ErrorCode.Loading, "Fuse is still loading this repository; the next check will include these changes");
         try
         {
@@ -137,8 +144,34 @@ internal sealed class RequestRouter : IDisposable
                 var session = SessionEdits.IsValid(changes.Session) ? changes.Session : null;
                 return ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.AllChanges(), session, analyzers, phases, cancellationToken).ConfigureAwait(false));
             }
+            if (request is EngineRequest.CheckPaths paths)
+                return await CheckPathsAsync(paths, analyzers, phases, cancellationToken).ConfigureAwait(false);
             if (request is EngineRequest.CheckFiles check)
                 return await CheckFilesAsync(check, analyzers, phases, cancellationToken).ConfigureAwait(false);
+
+            if (request is EngineRequest.PlanFailedTests failed)
+            {
+                var byProject = new Dictionary<RepoPath, string[]>();
+                var unknown = new List<string>();
+                foreach (var project in failed.Projects)
+                {
+                    if (string.IsNullOrWhiteSpace(project.Project))
+                        continue;
+                    try
+                    {
+                        byProject[_workspace.Root.PathOfNamed(project.Project)] = project.Tests ?? [];
+                    }
+                    catch (Exception e) when (e is ArgumentException or PathTooLongException)
+                    {
+                        unknown.Add(project.Project);
+                    }
+                }
+
+                var pendingFailed = await _planner.SelectFailedAsync(byProject, unknown, phases, cancellationToken).ConfigureAwait(false);
+                held = false;
+                Release();
+                return ResponseMapper.Answered(await _planner.PrepareAsync(pendingFailed, phases, cancellationToken).ConfigureAwait(false));
+            }
 
             TestScope scope = request switch
             {
@@ -207,10 +240,10 @@ internal sealed class RequestRouter : IDisposable
     private async Task<IReadOnlySet<RepoPath>> OnlyOtherSessionsWroteAsync(string session, CancellationToken cancellationToken)
     {
         await _workspace.SyncAsync([], cancellationToken).ConfigureAwait(false);
-        return _sessions.WritersOf(_workspace.Tracker.Changed)
-            .Where(w => !w.Value.Any(writer => _sessions.IsOwnEdit(writer, session)))
-            .Select(w => w.Key)
-            .ToHashSet();
+        return _sessions.OnlyOtherSessionsWrote(_workspace.Tracker.Changed, session);
+        // Scoping lives in SessionEdits now,
+        // so a plan and a stop check
+        // leave out the same files.
     }
 
     /// <summary>Releases the request lock and lets the background load continue.</summary>
@@ -257,6 +290,54 @@ internal sealed class RequestRouter : IDisposable
     ///     Waits for a background load to stop, after the shutdown token has been cancelled, so the workspace is never
     ///     disposed under a project that is still loading.
     /// </summary>
+    private EngineResponse BeginSession(EngineRequest.BeginSession begin)
+    {
+        try
+        {
+            _sessions.BeginRegistration(begin.Name, begin.Paths);
+            return new EngineResponse.Acknowledged();
+        }
+        catch (FuseException e)
+        {
+            return ResponseMapper.Unanswered(e);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            _log.Write($"BeginSession failed: {e}");
+            return new EngineResponse.Unanswered(ErrorCode.Internal, $"internal error: {e.Message} (details in {_log.FilePath})");
+        }
+    }
+
+    private EngineResponse EndSession(EngineRequest.EndSession end)
+    {
+        try
+        {
+            return _sessions.EndRegistration(end.Name)
+                ? new EngineResponse.Acknowledged()
+                : new EngineResponse.Unanswered(ErrorCode.NoRegisteredSession, ErrorMessages.NoRegisteredSession(end.Name));
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            _log.Write($"EndSession failed: {e}");
+            return new EngineResponse.Unanswered(ErrorCode.Internal, $"internal error: {e.Message} (details in {_log.FilePath})");
+        }
+    }
+
+    /// <summary>
+    ///     Checks the paths <paramref name="check"/> names. A path that is empty is answered with
+    ///     <see cref="ErrorCode.InvalidPath"/> before anything is checked; the checker expands the rest.
+    /// </summary>
+    private async Task<EngineResponse> CheckPathsAsync(EngineRequest.CheckPaths check, AnalyzerRun analyzers, PhaseTimes phases, CancellationToken cancellationToken)
+    {
+        foreach (var spec in check.Paths)
+        {
+            if (string.IsNullOrWhiteSpace(spec))
+                return new EngineResponse.Unanswered(ErrorCode.InvalidPath, ErrorMessages.EmptyPath);
+        }
+
+        return ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.NamedPaths(check.Paths), session: null, analyzers, phases, cancellationToken).ConfigureAwait(false));
+    }
+
     public Task WaitForPreloadAsync() => _preloader.WaitAsync();
 
     public void Dispose()

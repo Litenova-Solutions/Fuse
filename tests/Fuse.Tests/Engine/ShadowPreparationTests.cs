@@ -62,8 +62,8 @@ public class ShadowPreparationTests
         await Task.Delay(400, TestContext.Current.CancellationToken);
         var second = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
 
-        // Lib changed, and Lib.Tests depends on it, so both are emitted again.
-        Assert.Equal(emits + 2, engine.Planner.Emitter.Emits);
+        // Lib changed, but it declares the same as HEAD, so only Lib is emitted again and Lib.Tests keeps its image.
+        Assert.Equal(emits + 1, engine.Planner.Emitter.Emits);
         var lib = File.ReadAllBytes(ShadowFile(second, "Lib.dll"));
         Assert.Equal(ShadowFile(first, "Lib.dll"), ShadowFile(second, "Lib.dll"));
         Assert.True(HoldsString(lib, "second"), "the shadow Lib.dll does not hold the second edit");

@@ -104,6 +104,15 @@ internal static partial class CorrectnessSuite
             var truthErrors = Subtract(item.Names, head.Names);
             var fuseErrors = EvalRepo.ParseFuseErrors(fuse.Result.Output);
             var fuseCount = EvalRepo.ParseFuseCount(fuse.Result.Output);
+            var printedErrors = fuseErrors.Count;
+            // A capped answer prints some errors and writes every one to its results file, so a file that holds them all
+            // is what the case is classified on; matching only the printed ones would count the rest as missed.
+            if (ResultsFileCounts.CappedResults(fuse.Result.Output) is { } cappedAnswer && ResultsFileCounts.ReadText(cappedAnswer.Path) is { } text
+                && ResultsFileCounts.EngineUnsentIn(text) == 0 && ResultsFileCounts.CheckErrorsIn(text) == cappedAnswer.Total)
+            {
+                fuseErrors = EvalRepo.ParseFuseErrors(text);
+            }
+
             var result = Classify(solution, planned.Index, edits, truthErrors, fuseErrors, fuseCount, fuse.Result.ExitCode, fuse.Milliseconds, item.Seconds,
                 fuse.Result.ExitCode is 0 or 1 ? null : fuse.Result.Output.Trim()) with
             {
@@ -115,7 +124,7 @@ internal static partial class CorrectnessSuite
                 WholeProjectsBound = counts.WholeProjectsBound,
                 KeptAnswerHit = counts.KeptAnswerHit,
                 FilesWithReusedErrors = counts.FilesWithReusedErrors,
-                PrintedErrors = fuseErrors.Count,
+                PrintedErrors = printedErrors,
                 TotalErrors = fuseCount,
             };
             // A capped answer proves its completeness with its results file: the file holds every error the summary

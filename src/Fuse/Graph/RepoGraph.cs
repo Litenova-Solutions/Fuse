@@ -266,7 +266,7 @@ internal sealed class RepoGraph
             RequiresContainerRuntime = requiresContainerRuntime,
             TargetPaths = targetPaths,
             RunSettings = runSettings is null ? null : System.IO.Path.GetFullPath(System.IO.Path.Combine(dir, runSettings)),
-            IsExecutable = outputType.Equals("Exe", StringComparison.OrdinalIgnoreCase) || outputType.Equals("WinExe", StringComparison.OrdinalIgnoreCase) || isWeb,
+            IsExecutable = !isTest && (outputType.Equals("Exe", StringComparison.OrdinalIgnoreCase) || outputType.Equals("WinExe", StringComparison.OrdinalIgnoreCase) || isWeb),
         };
     }
 

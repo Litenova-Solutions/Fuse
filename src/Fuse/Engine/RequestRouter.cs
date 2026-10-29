@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Fuse.Check;
 using Fuse.Check.Model;
+using Fuse.Dotnet;
 using Fuse.Failures;
 using Fuse.Paths;
 using Fuse.Protocol;
@@ -23,6 +24,8 @@ internal sealed class RequestRouter : IDisposable
     private readonly TestPlanner _planner;
     private readonly RequestGate _requestLock = new();
     private readonly Preloader _preloader;
+    private readonly BaselineWarmer _warmer;
+    private SettledPlanner? _settledPlanner;
     private readonly RequestLog _requestLog;
     private readonly SessionEdits _sessions;
     private Task? _initialization;
@@ -34,8 +37,9 @@ internal sealed class RequestRouter : IDisposable
         _workspace = new RepoWorkspace(root, log.Write);
         _sessions = new SessionEdits(root, Path.Combine(root.StateDirectory, "sessions.tsv"), Path.Combine(root.StateDirectory, "registered-sessions.tsv"), log: log.Write);
         _checker = new Checker(_workspace, _sessions);
-        _planner = new TestPlanner(_workspace);
-        _preloader = new Preloader(_workspace, _requestLock, log);
+        _planner = new TestPlanner(_workspace, EngineVersion.Build);
+        _preloader = new Preloader(_workspace, _requestLock, log.Write);
+        _warmer = new BaselineWarmer(_workspace, _checker, _requestLock, log.Write);
         _requestLog = new RequestLog(log);
     }
 
@@ -78,22 +82,26 @@ internal sealed class RequestRouter : IDisposable
         }
 
         _preloader.Schedule(_shutdown);
+        _warmer.Schedule(_shutdown);
+        _settledPlanner = new SettledPlanner(_planner, _requestLock, _workspace, _log.Write);
+        _settledPlanner.Start(_shutdown);
     }
 
     /// <summary>
-    ///     Answers one request. A ping or a shutdown is answered at once; a check or a test plan waits for initialization
-    ///     (a check that does not wait for the load is refused while loading), then for the request lock, then runs. A check
+    ///     Answers one request. A ping or a shutdown is answered at once; a session registration waits for the request
+    ///     lock; a check or a test plan waits for initialization (a check that does not wait for the load is refused while
+    ///     loading), then for the request lock, then runs. A check
     ///     holds the lock until it is answered; a test plan holds it through the sync and the selection, and releases it
     ///     before it mirrors and emits into the shadow folders from the snapshot it took.
     /// </summary>
     public async Task<EngineResponse> HandleAsync(EngineRequest request, CancellationToken cancellationToken)
     {
-        if (request is EngineRequest.BeginSession begin)
-            return BeginSession(begin);
-        if (request is EngineRequest.EndSession end)
-            return EndSession(end);
+        if (request is EngineRequest.BeginSession or EngineRequest.EndSession)
+            return await SessionAsync(request, cancellationToken).ConfigureAwait(false);
         if (request is EngineRequest.Ping or EngineRequest.ShutDown)
             return new EngineResponse.Acknowledged();
+        if (request is EngineRequest.ReportTestResults report)
+            return ReportTestResults(report);
 
         // The client's wait started before this request queued, so the analyzers' share of it is counted from here.
         using var analyzerDeadline = new CancellationTokenSource();
@@ -142,7 +150,7 @@ internal sealed class RequestRouter : IDisposable
             if (request is EngineRequest.CheckChanges changes)
             {
                 var session = SessionEdits.IsValid(changes.Session) ? changes.Session : null;
-                return ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.AllChanges(), session, analyzers, phases, cancellationToken).ConfigureAwait(false));
+                return ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.AllChanges(), session, analyzers, phases, cancellationToken, maxReported: changes.MaxErrors).ConfigureAwait(false));
             }
             if (request is EngineRequest.CheckPaths paths)
                 return await CheckPathsAsync(paths, analyzers, phases, cancellationToken).ConfigureAwait(false);
@@ -170,7 +178,7 @@ internal sealed class RequestRouter : IDisposable
                 var pendingFailed = await _planner.SelectFailedAsync(byProject, unknown, phases, cancellationToken).ConfigureAwait(false);
                 held = false;
                 Release();
-                return ResponseMapper.Answered(await _planner.PrepareAsync(pendingFailed, phases, cancellationToken).ConfigureAwait(false));
+                return AnswerPlan(await _planner.PrepareAsync(pendingFailed, phases, cancellationToken).ConfigureAwait(false));
             }
 
             TestScope scope = request switch
@@ -187,7 +195,7 @@ internal sealed class RequestRouter : IDisposable
             // lock is released and a check from another client does not wait behind the emit.
             held = false;
             Release();
-            return ResponseMapper.Answered(await _planner.PrepareAsync(pending, phases, cancellationToken).ConfigureAwait(false));
+            return AnswerPlan(await _planner.PrepareAsync(pending, phases, cancellationToken).ConfigureAwait(false));
         }
         catch (FuseException e)
         {
@@ -246,11 +254,12 @@ internal sealed class RequestRouter : IDisposable
         // leave out the same files.
     }
 
-    /// <summary>Releases the request lock and lets the background load continue.</summary>
+    /// <summary>Releases the request lock and lets the background load and warm continue.</summary>
     private void Release()
     {
         _requestLock.Exit();
         _preloader.Schedule(_shutdown);
+        _warmer.Schedule(_shutdown);
     }
 
     /// <summary>True while the projects are evaluated and first loaded, or while a background load runs.</summary>
@@ -283,7 +292,7 @@ internal sealed class RequestRouter : IDisposable
         }
 
         var session = SessionEdits.IsValid(check.Session) ? check.Session : null;
-        return ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.Files(paths), session, analyzers, phases, cancellationToken).ConfigureAwait(false));
+        return ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.Files(paths), session, analyzers, phases, cancellationToken, maxReported: check.MaxErrors).ConfigureAwait(false));
     }
 
     /// <summary>
@@ -324,6 +333,64 @@ internal sealed class RequestRouter : IDisposable
     }
 
     /// <summary>
+    ///     Answers a session registration through the request lock, so no registration begins or ends mid-check: a check
+    ///     takes its session exclusion at the start and re-reads writers later, and a registration between the two would
+    ///     shield errors neither read shielded. It waits for no initialization beyond the lock, which the first evaluation
+    ///     holds; a registration needs no workspace.
+    /// </summary>
+    private async Task<EngineResponse> SessionAsync(EngineRequest request, CancellationToken cancellationToken)
+    {
+        await _requestLock.EnterAsync(RequestLog.KindOf(request), cancellationToken).ConfigureAwait(false);
+        try
+        {
+            return request switch
+            {
+                EngineRequest.BeginSession begin => BeginSession(begin),
+                EngineRequest.EndSession end => EndSession(end),
+                _ => throw new UnreachableException($"{request.GetType().Name} is not a session request"),
+            };
+        }
+        finally
+        {
+            Release();
+        }
+    }
+
+    /// <summary>
+    ///     Keeps the reported passes of one plan's shadow runs. It needs no workspace sync and never holds the request
+    ///     lock, so a report never waits behind a test run. A failed report loses one round of caching and nothing else.
+    /// </summary>
+    private EngineResponse.Acknowledged ReportTestResults(EngineRequest.ReportTestResults report)
+    {
+        try
+        {
+            _planner.ReportResults(report.PlanId, [.. report.Results.Select(r => (r.Project, r.Test, ToVerdict(r.Verdict)))]);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            _log.Write($"test result report failed: {e}");
+        }
+
+        return new EngineResponse.Acknowledged();
+    }
+
+    /// <summary>The reported verdict as the planner reads it.</summary>
+    private static TestVerdict ToVerdict(ReportedVerdict verdict) => verdict switch
+    {
+        ReportedVerdict.Passed => TestVerdict.Passed,
+        ReportedVerdict.Failed => TestVerdict.Failed,
+        _ => TestVerdict.Skipped,
+    };
+
+    /// <summary>The answer to a test plan request, carrying the plan's id and how many tests it answered from the cache.</summary>
+    private EngineResponse AnswerPlan(TestPlanResult result)
+    {
+        var answered = (EngineResponse.PlanAnswered)ResponseMapper.Answered(result);
+        var (planId, cachedTests) = _planner.WireInfoFor(result);
+        return answered with { Plan = answered.Plan with { PlanId = planId, CachedTests = cachedTests } };
+    }
+
+    /// <summary>
     ///     Checks the paths <paramref name="check"/> names. A path that is empty is answered with
     ///     <see cref="ErrorCode.InvalidPath"/> before anything is checked; the checker expands the rest.
     /// </summary>
@@ -335,10 +402,16 @@ internal sealed class RequestRouter : IDisposable
                 return new EngineResponse.Unanswered(ErrorCode.InvalidPath, ErrorMessages.EmptyPath);
         }
 
-        return ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.NamedPaths(check.Paths), session: null, analyzers, phases, cancellationToken).ConfigureAwait(false));
+        return ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.NamedPaths(check.Paths), session: null, analyzers, phases, cancellationToken, maxReported: check.MaxErrors).ConfigureAwait(false));
     }
 
-    public Task WaitForPreloadAsync() => _preloader.WaitAsync();
+    public Task WaitForPreloadAsync() => Task.WhenAll(_preloader.WaitAsync(), _warmer.WaitAsync(), WaitForSettledAsync());
+
+    /// <summary>
+    ///     Waits for the settled planner to stop, after the shutdown token has been cancelled, so the workspace is never
+    ///     disposed under a settled preparation.
+    /// </summary>
+    public Task WaitForSettledAsync() => _settledPlanner?.WaitAsync() ?? Task.CompletedTask;
 
     public void Dispose()
     {

@@ -23,15 +23,33 @@ namespace Fuse.Testing;
 /// </remarks>
 internal sealed class TestPlanner
 {
+    /// <summary>The most plans kept for reports; past it the plan unused the longest goes.</summary>
+    private const int MaxKeptPlans = 8;
+
+    /// <summary>The most plan results kept for the wire; past them the unclaimed ones go, which answer empty.</summary>
+    private const int MaxWireInfo = 16;
+
+    /// <summary>The most reported outcomes one report keeps; past it the report is dropped and the round runs uncached next time.</summary>
+    private const int MaxReportResults = 20000;
+
     private readonly RepoWorkspace _workspace;
     private readonly TestSelector _selector;
     private readonly TestCounter _counter = new();
+    private readonly TestClassKey _keys = new();
+    private readonly TestResultCache _cache;
+    private readonly Lock _plansLock = new();
+    private readonly Dictionary<string, Dictionary<(string Project, string Class), string>> _keptPlans = new(StringComparer.Ordinal);
+    private readonly List<string> _keptOrder = [];
+    private readonly Dictionary<PendingPlan, PendingCache> _pendingCache = [];
+    private readonly Dictionary<TestPlanResult, (string PlanId, int CachedTests)> _wireInfo = new(ReferenceEqualityComparer.Instance);
 
-    public TestPlanner(RepoWorkspace workspace)
+    /// <param name="buildId">This build's id, which the result cache ignores any other build's file with.</param>
+    public TestPlanner(RepoWorkspace workspace, string buildId = "")
     {
         _workspace = workspace;
         _selector = new TestSelector(workspace, TimeProvider.System);
         Emitter = new ShadowEmitter(workspace);
+        _cache = new TestResultCache(workspace.Root.StateDirectory, workspace.Log, buildId);
     }
 
     /// <summary>The emitter every plan prepares its shadow runs with, which keeps emitted assemblies between plans.</summary>
@@ -110,35 +128,59 @@ internal sealed class TestPlanner
         var collapsed = new List<string>();
         var platformCollapsed = new List<string>();
         var snapshot = _workspace.Current;
+        var buildOnly = scope is TestScope.Affected { BuildOnly: true };
+        var planId = Guid.NewGuid().ToString("N");
+        var head = _workspace.Tracker.Head;
+        var cached = 0;
+        var originals = new Dictionary<RepoPath, string?>();
+        var cachedByProject = new Dictionary<RepoPath, int>();
+        var keys = new Dictionary<(string Project, string Class), string>();
         foreach (var (path, selection) in selections.OrderBy(s => s.Key.Absolute, StringComparer.Ordinal))
         {
             var node = graph.Find(path);
             if (node is null || (named is not null && !named.Contains(node)))
                 continue;
             var tests = _counter.TestsIn(node);
+            // A class the cache answers leaves the selection, so the filter is built from what remains.
+            var effective = selection;
+            if (!buildOnly && !node.UsesTestingPlatform && selection is TestSelection.Methods methods && methods.Patterns.Count > 0)
+            {
+                var consulted = await ConsultCacheAsync(snapshot, graph, node, methods, tests, head, cancellationToken).ConfigureAwait(false);
+                effective = consulted.Effective;
+                if (consulted.Cached > 0)
+                {
+                    cached += consulted.Cached;
+                    cachedByProject[node.Path] = consulted.Cached;
+                    originals[node.Path] = consulted.OriginalFilter;
+                }
+
+                foreach (var (className, key) in consulted.Keys)
+                    keys[(node.Path.Absolute, className)] = key;
+            }
+
             // A platform project whose framework Fuse cannot filter runs whole (below), so every test in it counts as run.
-            var count = node.UsesTestingPlatform && node.Framework == TestFramework.Unknown && selection is TestSelection.Methods
+            var count = node.UsesTestingPlatform && node.Framework == TestFramework.Unknown && effective is TestSelection.Methods
                 ? tests.Count
-                : TestCounter.Count(tests, selection);
+                : TestCounter.Count(tests, effective);
             // A static count of zero is not proof nothing matches (inherited test methods run under the derived class's name), so only an empty selection is skipped.
-            if (selection is TestSelection.Methods { Patterns.Count: 0 })
+            if (effective is TestSelection.Methods { Patterns.Count: 0 })
                 continue;
             selected += count;
-            if (selection is TestSelection.Whole whole)
+            if (effective is TestSelection.Whole whole)
                 reasons.Add(whole.Reason);
 
             if (node.UsesTestingPlatform)
             {
                 // A platform project has no shadow run; its filter is its framework's, from PlatformRun below.
-                var (platformFilter, arguments) = PlatformRun(node, selection, runner, collapsed, platformCollapsed, reasons);
+                var (platformFilter, arguments) = PlatformRun(node, effective, runner, collapsed, platformCollapsed, reasons);
                 projects.Add((node, platformFilter, arguments, []));
                 continue;
             }
 
-            var filter = TestFilter.For(selection);
+            var filter = TestFilter.For(effective);
             if (filter.Collapse != FilterCollapse.None)
             {
-                var patterns = ((TestSelection.Methods)selection).Patterns.Count;
+                var patterns = ((TestSelection.Methods)effective).Patterns.Count;
                 var form = filter.Collapse == FilterCollapse.ToClasses ? $"{filter.Patterns} class prefix(es)" : "no filter, so the project runs whole";
                 _workspace.Log($"test plan: {node.Name} filter of {patterns} pattern(s) is above {TestFilter.MaxPatterns}, collapsed to {form}");
                 NoteCollapse(node, filter.Collapse, collapsed);
@@ -159,8 +201,13 @@ internal sealed class TestPlanner
             summary.Append("; ran ").Append(string.Join(", ", platformCollapsed)).Append(", because a platform filter holds at most ").Append(PlatformFilter.MaxNames).Append(" names");
         summary.Append(othersNote);
         summary.Append(namedNote);
+        if (cached > 0)
+            summary.Append("; ").Append(cached).Append(" result(s) from cache");
         summary.Append("; fuse test --all runs everything");
-        return PendingPlan.ToPrepare(graph, projects, selected, total, summary.ToString(), scope is TestScope.Affected { BuildOnly: true });
+        var pending = PendingPlan.ToPrepare(graph, projects, selected, total, summary.ToString(), scope is TestScope.Affected { BuildOnly: true });
+        NotePending(pending, new PendingCache(planId, cached, originals, cachedByProject));
+        KeepPlan(planId, keys);
+        return pending;
     }
 
     /// <summary>
@@ -173,28 +220,46 @@ internal sealed class TestPlanner
     public async Task<TestPlanResult> PrepareAsync(PendingPlan pending, PhaseTimes phases, CancellationToken cancellationToken)
     {
         if (pending.Answered is not null)
+        {
+            NoteWire(pending.Answered, "", 0);
             return pending.Answered;
+        }
 
+        var cachedPlan = PendingOf(pending);
         await Preparation.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             var preparing = Stopwatch.StartNew();
             var emitting = new Stopwatch();
             var runs = new List<PlannedRun>();
+            var cachedLeft = cachedPlan?.CachedTests ?? 0;
             foreach (var (node, filter, filterArguments, variants) in pending.Projects)
             {
                 if (node.UsesTestingPlatform)
                     runs.Add(new PlannedRun(node.Path, node.Name, new RunMode.Build(), filter, true, RunSettingsOf(node), filterArguments, [.. node.TargetPaths]));
                 else
-                    runs.AddRange(await RunsOfAsync(node, filter, variants, pending.Graph, emitting, preparing, pending.BuildOnly, cancellationToken).ConfigureAwait(false));
+                    runs.AddRange(RestoreOnBuild(node, await RunsOfAsync(node, filter, variants, pending.Graph, emitting, preparing, pending.BuildOnly, cancellationToken).ConfigureAwait(false), cachedPlan, ref cachedLeft));
             }
 
             // Everything in the preparation but the emit is the mirror: judging which assemblies are stale, and the copy.
             phases.Add(Phase.Mirror, preparing.Elapsed.TotalMilliseconds - emitting.Elapsed.TotalMilliseconds);
             phases.Add(Phase.Emit, emitting.Elapsed.TotalMilliseconds);
             if (runs.Count == 0)
+            {
+                // Every selected test answered from the cache runs nothing; the summary says how many it answered.
+                if (cachedLeft > 0 && cachedPlan is not null)
+                {
+                    var answered = new TestPlanResult([], 0, pending.Total, pending.Summary);
+                    NoteWire(answered, cachedPlan.PlanId, cachedLeft);
+                    return answered;
+                }
+
                 return new TestPlanResult([], 0, pending.Total, $"no test is affected by the changes (out of {pending.Total}); fuse test --all runs everything");
-            return new TestPlanResult([.. runs], pending.Selected, pending.Total, pending.Summary);
+            }
+
+            var result = new TestPlanResult([.. runs], pending.Selected, pending.Total, pending.Summary);
+            NoteWire(result, cachedPlan?.PlanId ?? "", cachedLeft);
+            return result;
         }
         finally
         {
@@ -388,4 +453,182 @@ internal sealed class TestPlanner
             return PendingPlan.Of(new TestPlanResult([], 0, total, summary.ToString()), graph);
         return PendingPlan.ToPrepare(graph, projects, selected, total, summary.ToString());
     }
+
+    /// <summary>
+    ///     Answers the selected classes of <paramref name="node"/> from the cache where the stored pass proves the
+    ///     inputs unchanged: the classes leave the selection, so the filter is built from what remains.
+    /// </summary>
+    private async Task<Consulted> ConsultCacheAsync(
+        Solution snapshot, RepoGraph graph, ProjectNode node, TestSelection.Methods selection, IReadOnlyList<string> tests, string? head, CancellationToken cancellationToken)
+    {
+        var keys = new Dictionary<string, string>(StringComparer.Ordinal);
+        var selected = tests.Where(t => selection.Patterns.Any(p => t.Contains(p, StringComparison.Ordinal))).ToList();
+        if (selected.Count == 0)
+            return new Consulted(selection, 0, null, keys);
+        var byClass = selected.GroupBy(ClassOf).ToList();
+        var computed = await _keys.KeysForAsync(snapshot, _workspace.Root, graph, node, [.. byClass.Select(g => g.Key)], head, cancellationToken).ConfigureAwait(false);
+        var hit = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var group in byClass)
+        {
+            if (!computed.TryGetValue(group.Key, out var key) || key is null)
+                continue;
+            keys[group.Key] = key;
+            // A hit answers every selected test of the class: a pass that names fewer ran fewer, and the rest run for real.
+            if (_cache.TryGet(node.Path.Absolute, group.Key, out var pass)
+                && pass.Key == key
+                && group.All(t => pass.Tests.Contains(t, StringComparer.Ordinal)))
+                hit.UnionWith(group);
+        }
+
+        if (hit.Count == 0)
+            return new Consulted(selection, 0, null, keys);
+        // Only the patterns naming an answered test leave; a remaining pattern names no answered test by construction.
+        var effective = new TestSelection.Methods([.. selection.Patterns.Where(p => !hit.Any(t => t.Contains(p, StringComparison.Ordinal)))]);
+        // A selection still running whole runs the answered tests too, so they are not answered from the cache.
+        if (TestFilter.For(effective) is { Collapse: FilterCollapse.ToWholeProject })
+            return new Consulted(selection, 0, null, keys);
+        return new Consulted(effective, hit.Count, TestFilter.For(selection).Expression, keys);
+    }
+
+    /// <summary>
+    ///     The runs of one project with their filter as selected, unless the project fell back to a build with MSBuild
+    ///     after the cache answered part of it: a build reads inputs the key cannot prove unchanged, so the answered
+    ///     tests run for real and leave the cached count.
+    /// </summary>
+    private static IReadOnlyList<PlannedRun> RestoreOnBuild(ProjectNode node, IReadOnlyList<PlannedRun> prepared, PendingCache? cached, ref int cachedLeft)
+    {
+        if (cached is null || !cached.CachedByProject.TryGetValue(node.Path, out var answered) || answered == 0)
+            return prepared;
+        // Shadow runs kept the reduced filter; one build runs the project as selected.
+        if (prepared.Count != 1 || prepared[0].Mode is not RunMode.Build)
+            return prepared;
+        cachedLeft -= answered;
+        return [prepared[0] with { Filter = cached.OriginalFilters.GetValueOrDefault(node.Path) }];
+    }
+
+    /// <summary>
+    ///     Keeps the classes of <paramref name="planId"/> every reported test passed, and forgets a class with a failure
+    ///     or a skip, so a failure is always rerun. A report for an unknown plan, such as one sent before the engine
+    ///     restarted, is logged and dropped.
+    /// </summary>
+    /// <param name="results">The shadow runs' outcomes, each with its test project file's absolute path.</param>
+    public void ReportResults(string planId, IReadOnlyList<(string Project, string Test, TestVerdict Verdict)> results)
+    {
+        Dictionary<(string Project, string Class), string> keys;
+        lock (_plansLock)
+        {
+            if (!_keptPlans.TryGetValue(planId, out var kept))
+            {
+                _workspace.Log("test result report: unknown plan; keeping nothing");
+                return;
+            }
+
+            keys = new Dictionary<(string Project, string Class), string>(kept);
+        }
+
+        if (results.Count > MaxReportResults)
+        {
+            _workspace.Log($"test result report: {results.Count} result(s) past {MaxReportResults}; keeping nothing");
+            return;
+        }
+
+        foreach (var group in results.GroupBy(r => (r.Project, Class: ClassOf(r.Test))))
+        {
+            if (!keys.TryGetValue(group.Key, out var key))
+                continue;
+            if (group.Any(r => r.Verdict != TestVerdict.Passed))
+            {
+                _cache.Drop(group.Key.Project, group.Key.Class);
+                continue;
+            }
+
+            var names = group.Select(r => StripTheoryArgs(r.Test)).Distinct(StringComparer.Ordinal).OrderBy(n => n, StringComparer.Ordinal).ToArray();
+            if (names.Length > 0)
+                _cache.Store(new CachedPass(group.Key.Project, group.Key.Class, key, names, DateTime.UtcNow));
+        }
+    }
+
+    /// <summary>The plan id and cached count for <paramref name="result"/>, or empty when the plan answered nothing from the cache.</summary>
+    internal (string PlanId, int CachedTests) WireInfoFor(TestPlanResult result)
+    {
+        lock (_plansLock)
+        {
+            if (!_wireInfo.TryGetValue(result, out var info))
+                return ("", 0);
+            _wireInfo.Remove(result);
+            return info;
+        }
+    }
+
+    /// <summary>Keeps the plan's per-class keys for its report, forgetting the plan unused the longest past the cap.</summary>
+    private void KeepPlan(string planId, Dictionary<(string Project, string Class), string> keys)
+    {
+        lock (_plansLock)
+        {
+            _keptPlans[planId] = keys;
+            _keptOrder.Remove(planId);
+            _keptOrder.Add(planId);
+            while (_keptOrder.Count > MaxKeptPlans)
+            {
+                _keptPlans.Remove(_keptOrder[0]);
+                _keptOrder.RemoveAt(0);
+            }
+        }
+    }
+
+    /// <summary>Records what one plan's selection answered from the cache, until its runs are prepared.</summary>
+    private void NotePending(PendingPlan pending, PendingCache cache)
+    {
+        lock (_plansLock)
+        {
+            if (_pendingCache.Count >= MaxKeptPlans)
+                _pendingCache.Clear();
+            _pendingCache[pending] = cache;
+        }
+    }
+
+    /// <summary>Takes what one plan's selection answered from the cache, or null when it answered nothing.</summary>
+    private PendingCache? PendingOf(PendingPlan pending)
+    {
+        lock (_plansLock)
+        {
+            if (!_pendingCache.TryGetValue(pending, out var cache))
+                return null;
+            _pendingCache.Remove(pending);
+            return cache;
+        }
+    }
+
+    /// <summary>Records the wire answer of one plan result, until the router names it on the wire.</summary>
+    private void NoteWire(TestPlanResult result, string planId, int cachedTests)
+    {
+        lock (_plansLock)
+        {
+            if (_wireInfo.Count >= MaxWireInfo)
+                _wireInfo.Clear();
+            _wireInfo[result] = (planId, cachedTests);
+        }
+    }
+
+    /// <summary>The class of a test name: the name without its method, and without a theory row's argument values.</summary>
+    private static string ClassOf(string test)
+    {
+        var name = StripTheoryArgs(test);
+        var dot = name.LastIndexOf('.');
+        return dot < 0 ? name : name[..dot];
+    }
+
+    /// <summary>What one plan's cache consultation found, from its selection until its runs are prepared.</summary>
+    /// <param name="PlanId">Names the content the plan selected from, which the report of its runs names back.</param>
+    /// <param name="CachedTests">How many selected tests the consultation answered from the cache.</param>
+    /// <param name="OriginalFilters">Each answered project's filter as selected, for a fallback to a build with MSBuild.</param>
+    /// <param name="CachedByProject">How many tests the consultation answered in each answered project.</param>
+    private sealed record PendingCache(string PlanId, int CachedTests, Dictionary<RepoPath, string?> OriginalFilters, Dictionary<RepoPath, int> CachedByProject);
+
+    /// <summary>What consulting the cache left of one project's selection.</summary>
+    /// <param name="Effective">The selection without the answered classes.</param>
+    /// <param name="Cached">How many selected tests the consultation answered.</param>
+    /// <param name="OriginalFilter">The filter as selected, for a fallback to a build with MSBuild.</param>
+    /// <param name="Keys">Every selected class's key, answered or not, for the report.</param>
+    private sealed record Consulted(TestSelection Effective, int Cached, string? OriginalFilter, Dictionary<string, string> Keys);
 }

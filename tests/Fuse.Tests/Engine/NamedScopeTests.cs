@@ -16,7 +16,8 @@ public class NamedScopeTests
     public async Task A_directory_limits_the_plan_to_its_test_projects()
     {
         await using var engine = await InProcessEngine.StartAsync();
-        // The greeting is reached from Lib.Tests by method and makes App.Tests run whole.
+        // The greeting reaches Lib.Tests and the report line reaches App.Tests; the plan names only App.Tests.
+        engine.Repo.Replace("App/Report.cs", "\"value=\" + Lib.Formatter.Format(value)", "\"value: \" + Lib.Formatter.Format(value)");
         engine.Repo.Replace("Lib/Greeting.cs", "\"Hello \" + name", "\"Hello, \" + name");
         // The file watcher reports the edit a moment later.
         await Task.Delay(400, TestContext.Current.CancellationToken);
@@ -36,6 +37,10 @@ public class NamedScopeTests
     {
         await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Greeting.cs", "\"Hello \" + name", "\"Hello, \" + name");
+        // The file watcher reports the edit a moment later.
+        await Task.Delay(400, TestContext.Current.CancellationToken);
+
+        engine.Repo.Replace("App/Report.cs", "\"value=\" + Lib.Formatter.Format(value)", "\"value: \" + Lib.Formatter.Format(value)");
         // The file watcher reports the edit a moment later.
         await Task.Delay(400, TestContext.Current.CancellationToken);
 

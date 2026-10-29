@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using Fuse.Changes;
 using Fuse.Graph;
 using Fuse.Paths;
@@ -24,8 +26,10 @@ namespace Fuse.Testing;
 ///     <para>
 ///         One emitter serves every plan of the engine. It keeps the emitted images in an <see cref="EmitCache"/>, and
 ///         remembers each shadow file it wrote, so an image that is already in place is not written again and the copy
-///         from build output never overwrites a file it is about to emit. It runs after the request lock is released,
-///         against the snapshot the plan took under it; <see cref="TestPlanner"/> prepares one plan at a time.
+///         from build output never overwrites a file it is about to emit. It also remembers what a kept dependent's
+///         referenced projects declared when its image was written, so the image is kept only while they declare the
+///         same. It runs after the request lock is released, against the snapshot the plan took under it;
+///         <see cref="TestPlanner"/> prepares one plan at a time.
 ///     </para>
 ///     <para>
 ///         A test run holds the copy it runs from until it ends, and a plan never writes a copy a run holds: it prepares a
@@ -41,6 +45,9 @@ internal sealed class ShadowEmitter
 
     /// <summary>Each shadow file this emitter wrote, with the bytes it wrote and the length and time the file had after.</summary>
     private readonly Dictionary<string, Written> _written = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>For each dependent this emitter wrote, the declaration fingerprint of each project it references, as it was when the dependent was written.</summary>
+    private readonly Dictionary<ProjectId, Dictionary<ProjectId, string>> _fingerprints = new();
 
     public ShadowEmitter(RepoWorkspace workspace)
     {
@@ -137,7 +144,10 @@ internal sealed class ShadowEmitter
 
         var shadow = CopyFolder(Path.Combine(_root.StateDirectory, "shadow", $"{testProject.Name.Replace('(', '-').Replace(")", "")}"), log);
         // A kept dependent is emitted again when the shadow folder does not already hold the image this emitter wrote,
-        // as on a fresh copy: the build output it would be copied from can predate HEAD.
+        // as on a fresh copy: the build output it would be copied from can predate HEAD. It is also emitted again when a
+        // referenced project declares differently than when the kept image was written, even while it declares the same
+        // as HEAD: the kept image was compiled against an intermediate state.
+        var current = new Dictionary<ProjectId, string?>();
         var skipped = new List<Project>();
         foreach (var project in closure)
         {
@@ -147,7 +157,8 @@ internal sealed class ShadowEmitter
             if (dependedOn.Count == 0 || dependedOn.Any(id => !declares.TryGetValue(id, out var changed) || changed))
                 continue;
             var kept = Path.Combine(shadow, Path.GetFileName(project.OutputFilePath!));
-            if (HoldsWritten(kept) && HoldsWritten(Path.ChangeExtension(kept, ".pdb")))
+            if (HoldsWritten(kept) && HoldsWritten(Path.ChangeExtension(kept, ".pdb"))
+                && await FingerprintsMatchAsync(project, dependedOn, solution, current, cancellationToken).ConfigureAwait(false))
                 skipped.Add(project);
             else
                 emit.Add(project.Id);
@@ -186,6 +197,7 @@ internal sealed class ShadowEmitter
                 var target = Path.Combine(shadow, Path.GetFileName(project.OutputFilePath!));
                 await WriteAsync(target, image.Pe, cancellationToken).ConfigureAwait(false);
                 await WriteAsync(Path.ChangeExtension(target, ".pdb"), image.Pdb, cancellationToken).ConfigureAwait(false);
+                await RecordFingerprintsAsync(project, solution, cancellationToken).ConfigureAwait(false);
             }
             finally
             {
@@ -256,6 +268,79 @@ internal sealed class ShadowEmitter
         }
 
         return false;
+    }
+
+    /// <summary>
+    ///     True when every project in <paramref name="dependedOn"/> declares the same as when
+    ///     <paramref name="dependent"/>'s image was written. A missing record, or a fingerprint that cannot be read,
+    ///     means the image is written again.
+    /// </summary>
+    private async Task<bool> FingerprintsMatchAsync(Project dependent, IReadOnlyList<ProjectId> dependedOn, Solution solution, Dictionary<ProjectId, string?> current, CancellationToken cancellationToken)
+    {
+        if (!_fingerprints.TryGetValue(dependent.Id, out var recorded))
+            return false;
+        foreach (var id in dependedOn)
+        {
+            if (!current.TryGetValue(id, out var fingerprint))
+            {
+                fingerprint = solution.GetProject(id) is { } referenced ? await FingerprintAsync(referenced, cancellationToken).ConfigureAwait(false) : null;
+                current[id] = fingerprint;
+            }
+
+            if (fingerprint is null || !recorded.TryGetValue(id, out var written) || written != fingerprint)
+                return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>Records the declaration fingerprint of each project <paramref name="project"/> references, as it is now.</summary>
+    private async Task RecordFingerprintsAsync(Project project, Solution solution, CancellationToken cancellationToken)
+    {
+        var recorded = new Dictionary<ProjectId, string>();
+        foreach (var reference in project.ProjectReferences)
+        {
+            if (solution.GetProject(reference.ProjectId) is { } referenced
+                && await FingerprintAsync(referenced, cancellationToken).ConfigureAwait(false) is { } fingerprint)
+                recorded[reference.ProjectId] = fingerprint;
+        }
+
+        _fingerprints[project.Id] = recorded;
+    }
+
+    /// <summary>
+    ///     The declarations <paramref name="project"/> holds now: every declaration's identity, surface and parameter
+    ///     lists, over every document in path order, hashed. A default value or a constant is part of it, because callers
+    ///     inline them. Null when the declarations cannot be read, which the caller treats as changed.
+    /// </summary>
+    private static async Task<string?> FingerprintAsync(Project project, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var builder = new StringBuilder();
+            foreach (var document in project.Documents.OrderBy(d => d.FilePath, StringComparer.OrdinalIgnoreCase))
+            {
+                if (document.FilePath is null)
+                    return null;
+                if (await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false) is not { } root)
+                    return null;
+                foreach (var declaration in FileDeclarations.Of(root).All)
+                {
+                    builder.Append(declaration.Key).Append('\n');
+                    builder.Append(declaration.Surface ?? "<none>").Append('\n');
+                    foreach (var part in declaration.Parts)
+                        builder.Append(FileDeclarations.FlatParameters(part)).Append('\n');
+                }
+
+                builder.Append('\0');
+            }
+
+            return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(builder.ToString())));
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            return null;
+        }
     }
 
     /// <summary>Whether this emitter wrote <paramref name="path"/> and the file still holds those bytes.</summary>

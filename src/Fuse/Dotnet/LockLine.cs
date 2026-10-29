@@ -24,15 +24,6 @@ internal static partial class LockLine
         return $"locked: {file} is held by {holder}; stop that process, then run the build again";
     }
 
-    /// <summary>The holder MSBuild names for <paramref name="error"/>, as <c>name (pid n)</c>, or null when it names none.</summary>
-    public static string? Holder(BuildDiagnostic error)
-    {
-        if (!IsCopyError(error))
-            return null;
-        var match = LockedBy().Match(error.Message);
-        return match.Success ? $"{match.Groups["name"].Value} (pid {match.Groups["pid"].Value})" : null;
-    }
-
     private static bool IsCopyError(BuildDiagnostic error) =>
         error.Code is "MSB3021" or "MSB3026" or "MSB3027";
 

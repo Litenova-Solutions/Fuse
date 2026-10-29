@@ -62,7 +62,8 @@ internal sealed class CandidateBinding
         }
 
         // A broad reach names its causes itself; the checker assembles those. A precise reach past the threshold names
-        // them here, from the origins of each reached project's candidates and the targets it owns.
+        // them here, from the origins of each reached project's candidates and the targets it owns, or from the forcing
+        // files when it owns neither.
         if (reach is not Reach.Precise precise)
             return (errors, files.Count, true, []);
         return (errors, files.Count, true, WholeCauses(precise, candidates, reached, targets, graph));
@@ -72,12 +73,15 @@ internal sealed class CandidateBinding
         Reach.Precise precise, IReadOnlySet<RepoPath> candidates, IReadOnlyList<ProjectNode> reached, IReadOnlyCollection<RepoPath> targets, RepoGraph graph)
     {
         var causes = new List<WholeProjectCause>();
+        // Every reached project was bound whole, so every one is named, even one that owns no candidate and no target:
+        // it names the changed files that forced the whole binding.
+        var forcing = precise.CauseFiles is not null
+            ? precise.CauseFiles.Values.Distinct().OrderBy(p => p.Relative, StringComparer.Ordinal).ToList()
+            : targets.OrderBy(p => p.Relative, StringComparer.Ordinal).ToList();
         foreach (var node in reached.OrderBy(n => n.Name, StringComparer.Ordinal))
         {
             var owned = candidates.Where(c => graph.OwnersOf(c).Any(o => o.Path == node.Path)).ToList();
             var targetsOwned = targets.Where(t => graph.OwnersOf(t).Any(o => o.Path == node.Path)).ToList();
-            if (owned.Count == 0 && targetsOwned.Count == 0)
-                continue;
             var reachedCauses = new HashSet<Cause>();
             foreach (var candidate in owned)
             {
@@ -97,6 +101,12 @@ internal sealed class CandidateBinding
             {
                 if (precise.CauseFiles?.TryGetValue(cause, out var origin) == true)
                     origins.Add(origin);
+            }
+
+            if (owned.Count == 0 && targetsOwned.Count == 0)
+            {
+                foreach (var file in forcing)
+                    origins.Add(file);
             }
 
             var files = origins.Select(o => o.Relative).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToList();

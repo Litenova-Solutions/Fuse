@@ -71,6 +71,17 @@ internal sealed class RepoWorkspace : IDisposable
     public Task EnsureLoadedAsync(IEnumerable<ProjectNode> projects, CancellationToken cancellationToken) =>
         _sync.EnsureLoadedAsync(projects, cancellationToken);
 
+    /// <summary>Applies each of <paramref name="paths"/> to both views again: its disk content to <see cref="Current"/> and its HEAD content to <see cref="Baseline"/>.</summary>
+    /// <param name="paths">The files to apply; each is also touched.</param>
+    /// <param name="cancellationToken">Cancels reading file contents.</param>
+    public Task PatchViewsAsync(IReadOnlyCollection<RepoPath> paths, CancellationToken cancellationToken) =>
+        _sync.PatchViewsAsync(paths, cancellationToken);
+
+    /// <summary>Derives both views from the loader's solution again, re-applying every touched and every changed file.</summary>
+    /// <param name="cancellationToken">Cancels reading file contents.</param>
+    public Task RebuildViewsAsync(CancellationToken cancellationToken) =>
+        _sync.RebuildAsync(cancellationToken);
+
     /// <summary>
     ///     Loads <paramref name="project"/> into the loader without touching <see cref="Current"/> or
     ///     <see cref="Baseline"/>, so it can run while requests are served; the next request folds it into both views.
@@ -79,7 +90,30 @@ internal sealed class RepoWorkspace : IDisposable
     public Task PreloadAsync(ProjectNode project, CancellationToken cancellationToken) =>
         _projects.PreloadAsync(project, cancellationToken);
 
+    /// <summary>
+    ///     Builds the compilations of <paramref name="node"/> in the loader, so a later check binds against what is
+    ///     already built instead of building it inside the check. The views share the loader's compilations for the
+    ///     projects whose content they did not change, so what is built here is what the check reuses.
+    /// </summary>
+    /// <returns>The compilations built, one per target framework; empty when the loader holds no project of the node.</returns>
+    public async Task<IReadOnlyList<Compilation>> PreloadCompilationAsync(ProjectNode node, CancellationToken cancellationToken)
+    {
+        var result = new List<Compilation>();
+        if (_projects.Solution is not { } loaded)
+            return result;
+        foreach (var project in ProjectsFor(loaded, node).ToList())
+        {
+            if (await project.GetCompilationAsync(cancellationToken).ConfigureAwait(false) is { } compilation)
+                result.Add(compilation);
+        }
+
+        return result;
+    }
+
     public bool IsLoaded(ProjectNode node) => _projects.IsLoaded(node);
+
+    /// <summary>Why <paramref name="node"/> did not load, or null when no load of it has failed.</summary>
+    public string? LoadFailureOf(ProjectNode node) => _projects.LoadFailureOf(node);
 
     /// <summary>The loaded Roslyn projects (one per target framework) built from <paramref name="node"/>.</summary>
     /// <remarks>

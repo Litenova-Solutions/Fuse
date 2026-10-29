@@ -13,20 +13,8 @@ namespace Fuse;
 
 internal static class Program
 {
-    private const string Usage = """
-        fuse - faster .NET build and test loop for AI coding agents
-
-          fuse init [--instructions]  register Fuse's hooks with the agent harnesses this repository uses
-                                    (--instructions: also add a Fuse section to AGENTS.md)
-          fuse uninit               remove what fuse init wrote, stop this repository's engine and delete its state
-          fuse check [files...]     errors the working tree has that HEAD does not, across dependent projects
-          fuse test [args...]       run the tests affected by your changes (with args: the tests those dotnet test arguments name)
-          fuse test --all           run every test
-          fuse build [args...]      dotnet build, printing its errors
-          fuse stop [--all]         stop this repository's engine (--all: every engine); the next command starts one
-          fuse mcp                  stdio MCP server (fuse_check, fuse_test, fuse_build) for MCP hosts that run no hooks
-          fuse hook <harness> <event>   the command registered hooks run
-        """;
+    /// <summary>Fuse's own options of <c>fuse test</c>: a near miss of one is refused, and every other token goes to <c>dotnet test</c>.</summary>
+    private static readonly string[] TestFuseOptions = ["--all", "--failed", "--help"];
 
     public static async Task<int> Main(string[] args)
     {
@@ -40,6 +28,9 @@ internal static class Program
 
         var command = args.Length > 0 ? args[0] : "help";
         var rest = args.Skip(1).ToArray();
+        // Help wins over running: it prints before any root lookup, engine start, build or lock.
+        if (HasHelp(rest))
+            return PrintCommandUsage(HelpFor(command), 0);
         try
         {
             return command switch
@@ -49,10 +40,13 @@ internal static class Program
                 "check" => await CheckAsync(rest, cancel.Token).ConfigureAwait(false),
                 "test" => await TestAsync(rest, cancel.Token).ConfigureAwait(false),
                 "build" => await BuildAsync(rest, cancel.Token).ConfigureAwait(false),
+                "status" => StatusAsync(),
+                "session" => await SessionAsync(rest, cancel.Token).ConfigureAwait(false),
                 "stop" => await StopAsync(rest, cancel.Token).ConfigureAwait(false),
                 "hook" => await HookCommand.RunAsync(rest, cancel.Token).ConfigureAwait(false),
-                "mcp" => await McpCommand.RunAsync(cancel.Token).ConfigureAwait(false),
+                "mcp" => await McpAsync(rest, cancel.Token).ConfigureAwait(false),
                 "engine" when rest.Length == 1 => await EngineAsync(rest[0]).ConfigureAwait(false),
+                "engine" => PrintCommandUsage(CommandUsage.Engine, 2),
                 "--version" or "version" => PrintVersion(),
                 "help" or "--help" or "-h" => PrintUsage(0),
                 _ => PrintUsage(2),
@@ -64,26 +58,92 @@ internal static class Program
         }
     }
 
-    private static async Task<int> CheckAsync(string[] files, CancellationToken cancellationToken)
+    /// <summary>Whether <paramref name="rest"/> asks for help: an exact <c>--help</c> or <c>-h</c> before any <c>--</c>, after which every token is an argument.</summary>
+    private static bool HasHelp(string[] rest)
     {
+        foreach (var token in rest)
+        {
+            if (token == "--")
+                return false;
+            if (token is "--help" or "-h")
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>The usage block for <paramref name="command"/>, or the top-level one for a command Fuse does not have.</summary>
+    private static string HelpFor(string command) => command switch
+    {
+        "check" => CommandUsage.Check,
+        "test" => CommandUsage.Test,
+        "build" => CommandUsage.Build,
+        "stop" => CommandUsage.Stop,
+        "status" => CommandUsage.Status,
+        "session" => CommandUsage.Session,
+        "init" => CommandUsage.Init,
+        "uninit" => CommandUsage.Uninit,
+        "mcp" => CommandUsage.Mcp,
+        "hook" => CommandUsage.Hook,
+        "engine" => CommandUsage.Engine,
+        "--version" or "version" => CommandUsage.Version,
+        _ => CommandUsage.Top,
+    };
+
+    private static async Task<int> CheckAsync(string[] args, CancellationToken cancellationToken)
+    {
+        var (parsed, refusal) = CheckArguments.Parse(args);
+        if (parsed is null)
+        {
+            Console.Error.WriteLine(refusal);
+            Console.Error.WriteLine(CommandUsage.Check);
+            return 2;
+        }
+
         var root = RequireRoot();
         if (root is null)
             return 2;
-        IReadOnlyList<string>? absolute = null;
-        if (files.Length > 0)
+        // A directory or a pattern scopes the check to the changed sources under it; files alone check as named.
+        if (parsed.Files.Count > 0 && parsed.Files.Any(IsScopedSpec))
         {
-            (absolute, var refusal) = CheckOperation.ResolveFiles(files, Path.GetFullPath);
-            if (refusal is not null)
-                return Print(refusal);
+            var (specs, specsRefusal) = CheckOperation.ResolveFiles(parsed.Files, Path.GetFullPath);
+            if (specsRefusal is not null)
+                return Print(specsRefusal);
+            var (scoped, _) = await CheckOperation.RunScopedAsync(root, specs, parsed.MaxErrors, parsed.Json, TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
+            return Print(scoped);
         }
 
-        var (result, _) = await CheckOperation.RunAsync(root, absolute, session: null, waitForLoad: true, compilationWideAnalyzers: true, TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
+        IReadOnlyList<string>? absolute = null;
+        if (parsed.Files.Count > 0)
+        {
+            (absolute, var filesRefusal) = CheckOperation.ResolveFiles(parsed.Files, Path.GetFullPath);
+            if (filesRefusal is not null)
+                return Print(filesRefusal);
+        }
+
+        var (result, _) = await CheckOperation.RunAsync(root, absolute, session: null, waitForLoad: true, compilationWideAnalyzers: true, TimeSpan.FromMinutes(10), cancellationToken, parsed.MaxErrors, parsed.Json).ConfigureAwait(false);
         return Print(result);
     }
 
+    /// <summary>Whether <paramref name="spec"/> scopes a check: a directory that exists, or a pattern with a wildcard.</summary>
+    private static bool IsScopedSpec(string spec)
+    {
+        if (spec.Contains('*') || spec.Contains('?'))
+            return true;
+        try
+        {
+            return Directory.Exists(Path.GetFullPath(spec));
+        }
+        catch (Exception e) when (e is ArgumentException or PathTooLongException or NotSupportedException)
+        {
+            return false;
+        }
+    }
+
     /// <summary>
-    ///     <c>fuse test</c>. <c>--all</c> and <c>dotnet test</c> arguments each choose the scope, so the two together are a
-    ///     usage failure rather than one of them quietly winning.
+    ///     <c>fuse test</c>. <c>--all</c>, <c>--failed</c> and <c>dotnet test</c> arguments each choose the scope, so two
+    ///     together are a usage failure rather than one of them quietly winning. A near miss of a Fuse option is refused;
+    ///     every other token goes to <c>dotnet test</c>.
     /// </summary>
     private static async Task<int> TestAsync(string[] args, CancellationToken cancellationToken)
     {
@@ -102,25 +162,83 @@ internal static class Program
             args = [.. args[..index], .. args[(index + 2)..]];
         }
 
+        // --from-rewrite is the pre-shell hook's too: the command ran through Fuse, which the notice says.
+        var fromRewrite = args.Contains("--from-rewrite");
+        if (fromRewrite)
+            args = [.. args.Where(a => a != "--from-rewrite")];
+
         var all = args.Contains("--all");
-        var passthrough = args.Where(a => a != "--all").ToList();
+        var failed = args.Contains("--failed");
+        var passthrough = args.Where(a => a != "--all" && a != "--failed").ToList();
+        if (failed && (all || passthrough.Count > 0))
+        {
+            Console.Error.WriteLine("fuse: --failed reruns the tests that failed last time and cannot be combined with other arguments; pass the arguments without --failed to choose the scope");
+            return 2;
+        }
+
         if (all && passthrough.Count > 0)
         {
             Console.Error.WriteLine("fuse: --all runs every test and cannot be combined with other arguments; pass the arguments without --all to choose the scope");
             return 2;
         }
 
+        foreach (var token in passthrough)
+        {
+            if (token == "--")
+                break;
+            if (NearMiss.Suggest(token, TestFuseOptions) is { } suggestion)
+            {
+                Console.Error.WriteLine($"fuse: '{token}' is not a fuse test option; did you mean '{suggestion}'?");
+                Console.Error.WriteLine(CommandUsage.Test);
+                return 2;
+            }
+        }
+
         var root = RequireRoot();
         if (root is null)
             return 2;
-        var result = await TestOperation.RunAsync(root, Environment.CurrentDirectory, passthrough, all, cancellationToken, session).ConfigureAwait(false);
+        if (fromRewrite)
+            Console.Error.WriteLine("fuse: dotnet test routed to fuse test (tests affected by your changes; fuse test --all runs every test)");
+        var result = await TestOperation.RunAsync(root, Environment.CurrentDirectory, passthrough, all, cancellationToken, session, live: Console.Out, failed: failed).ConfigureAwait(false);
         return Print(result);
     }
 
     private static async Task<int> BuildAsync(string[] args, CancellationToken cancellationToken)
     {
+        var (parsed, refusal) = BuildArguments.Parse(args);
+        if (parsed is null)
+        {
+            Console.Error.WriteLine(refusal);
+            Console.Error.WriteLine(CommandUsage.Build);
+            return 2;
+        }
+
+        if (parsed.FromRewrite)
+            Console.Error.WriteLine("fuse: dotnet build routed to fuse build (first 20 errors; fuse build --all-errors for every error)");
         var root = RepoRoot.Find(Environment.CurrentDirectory);
-        var result = await BuildOperation.RunAsync(root, Environment.CurrentDirectory, args, cancellationToken).ConfigureAwait(false);
+        var result = await BuildOperation.RunAsync(root, Environment.CurrentDirectory, parsed.Passthrough, parsed.ToOptions(), cancellationToken).ConfigureAwait(false);
+        return Print(result);
+    }
+
+    /// <summary><c>fuse status</c>, which a later wave fills in.</summary>
+    private static int StatusAsync()
+    {
+        Console.Error.WriteLine("fuse: status is not available in this build");
+        return 2;
+    }
+
+    private static async Task<int> SessionAsync(string[] args, CancellationToken cancellationToken)
+    {
+        var root = RequireRoot();
+        if (root is null)
+            return 2;
+        var result = await SessionOperation.RunAsync(root, args, cancellationToken).ConfigureAwait(false);
+        if (result.Text.StartsWith("usage:", StringComparison.Ordinal))
+        {
+            Console.Error.WriteLine(result.Text);
+            return 2;
+        }
+
         return Print(result);
     }
 
@@ -129,11 +247,27 @@ internal static class Program
     {
         var all = args is ["--all"];
         if (args.Length > 0 && !all)
-            return PrintUsage(2);
+        {
+            Console.Error.WriteLine(CommandUsage.Stop);
+            return 2;
+        }
+
         var root = all ? null : RequireRoot();
         if (!all && root is null)
             return 2;
         return Print(await StopOperation.RunAsync(root, all, cancellationToken).ConfigureAwait(false));
+    }
+
+    /// <summary><c>fuse mcp</c>, which takes no arguments; any is a usage failure.</summary>
+    private static async Task<int> McpAsync(string[] args, CancellationToken cancellationToken)
+    {
+        if (args.Length > 0)
+        {
+            Console.Error.WriteLine(CommandUsage.Mcp);
+            return 2;
+        }
+
+        return await McpCommand.RunAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private static RepoRoot? RequireRoot()
@@ -173,9 +307,11 @@ internal static class Program
         return 0;
     }
 
-    private static int PrintUsage(int exitCode)
+    private static int PrintUsage(int exitCode) => PrintCommandUsage(CommandUsage.Top, exitCode);
+
+    private static int PrintCommandUsage(string usage, int exitCode)
     {
-        (exitCode == 0 ? Console.Out : Console.Error).WriteLine(Usage);
+        (exitCode == 0 ? Console.Out : Console.Error).WriteLine(usage);
         return exitCode;
     }
 }

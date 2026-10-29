@@ -16,6 +16,9 @@ internal sealed class IntroducedErrors
 {
     private readonly RepoWorkspace _workspace;
     private readonly DiagnosticCollector _collector;
+    private readonly Lock _keyLock = new();
+    private int _keyGeneration = -1;
+    private string? _baselineKey;
 
     public IntroducedErrors(RepoWorkspace workspace)
     {
@@ -37,6 +40,38 @@ internal sealed class IntroducedErrors
 
     /// <inheritdoc cref="DiagnosticCollector.TakeAnalyzerReport"/>
     public (int Unfinished, IReadOnlyList<string> LeftOut) TakeAnalyzerReport() => _collector.TakeAnalyzerReport();
+
+    /// <inheritdoc cref="DiagnosticCollector.WarmBaselineProjectAsync"/>
+    public Task<bool> WarmBaselineAsync(Project project, int generation, CancellationToken cancellationToken) =>
+        _collector.WarmBaselineProjectAsync(project, generation, cancellationToken);
+
+    /// <summary>
+    ///     Writes how many stored baseline results the check read and how many it computed, when it read the store.
+    /// </summary>
+    public void LogBaseline()
+    {
+        var (stored, computed) = _collector.TakeBaselineReport();
+        if (stored + computed == 0 || _workspace.Tracker.Head is not { } head)
+            return;
+        _workspace.Log($"baseline: {stored} stored result(s) read for HEAD {head[..Math.Min(12, head.Length)]}; {computed} computed");
+    }
+
+    /// <summary>The store key of the current baseline, computed once per baseline generation.</summary>
+    private string? BaselineKey()
+    {
+        // Files bind in parallel, so the key is computed under a lock; computing it twice would only repeat the same result.
+        var generation = _workspace.BaselineGeneration;
+        lock (_keyLock)
+        {
+            if (generation != _keyGeneration)
+            {
+                _baselineKey = BaselineStore.KeyFor(_workspace.Tracker.Head, _workspace.Baseline, _workspace.Graph, _workspace.Root);
+                _keyGeneration = generation;
+            }
+
+            return _baselineKey;
+        }
+    }
 
     /// <summary>The introduced errors in <paramref name="paths"/>, bound in parallel; semantic models of different documents bind independently.</summary>
     /// <param name="paths">The files to bind. A file that no longer exists has no errors.</param>
@@ -80,7 +115,7 @@ internal sealed class IntroducedErrors
             var baselineProject = _workspace.Baseline.GetProject(project.Id);
             var (baseline, finished) = baselineProject is null
                 ? ((IReadOnlyList<CompilerError>)[], true)
-                : await _collector.ForBaselineProjectAsync(baselineProject, _workspace.BaselineGeneration, cancellationToken).ConfigureAwait(false);
+                : await _collector.ForBaselineProjectAsync(baselineProject, _workspace.BaselineGeneration, cancellationToken, BaselineKey()).ConfigureAwait(false);
             // An error HEAD had in a file renamed since then is matched under the file's new name.
             var (introduced, leftOut) = ErrorDelta.Introduced(current, baseline.Select(e => renamedFrom.TryGetValue(e.Path, out var renamed) ? e with { Path = renamed } : e), finished);
             if (leftOut)
@@ -101,7 +136,7 @@ internal sealed class IntroducedErrors
             return [];
         // A file renamed since HEAD is compared with the errors HEAD had under its old name.
         var headPath = renames.TryGetValue(path, out var renamedFrom) ? renamedFrom : path;
-        var (baseline, finished) = await _collector.ForBaselineFileAsync(_workspace.Baseline, _workspace.BaselineGeneration, headPath, cancellationToken).ConfigureAwait(false);
+        var (baseline, finished) = await _collector.ForBaselineFileAsync(_workspace.Baseline, _workspace.BaselineGeneration, headPath, cancellationToken, BaselineKey()).ConfigureAwait(false);
         var (introduced, leftOut) = ErrorDelta.Introduced(current, headPath == path ? baseline : baseline.Select(e => e with { Path = path.Relative }), finished);
         if (leftOut)
             _collector.MarkUnfinished(path.Relative);

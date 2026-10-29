@@ -14,6 +14,9 @@ internal static partial class BuildOperation
 {
     private const int MaxShown = 20;
 
+    /// <summary>At most this many warnings <c>--warnings</c> lists; the rest are only in the results file.</summary>
+    internal const int MaxWarningsShown = 20;
+
     /// <summary>A build that takes at least this long says where its time went.</summary>
     internal const double TimesFromSeconds = 10;
 
@@ -22,18 +25,22 @@ internal static partial class BuildOperation
     /// <summary>The line printed above the answer when a source file moved during the build and it ran again.</summary>
     internal const string RanAgainLine = "fuse: a source file moved while the build ran, so it ran again";
 
-    public static async Task<OperationResult> RunAsync(RepoRoot? root, string workingDirectory, IReadOnlyList<string> arguments, CancellationToken cancellationToken)
+    public static Task<OperationResult> RunAsync(RepoRoot? root, string workingDirectory, IReadOnlyList<string> arguments, CancellationToken cancellationToken) =>
+        RunAsync(root, workingDirectory, arguments, BuildOptions.Default, cancellationToken);
+
+    /// <param name="options">How many errors to print, in what form, and whether the warnings are listed.</param>
+    public static async Task<OperationResult> RunAsync(RepoRoot? root, string workingDirectory, IReadOnlyList<string> arguments, BuildOptions options, CancellationToken cancellationToken)
     {
         // The arguments are the user's, unchanged, so an implicit restore still happens: an agent that has just added a
         // package reference and then builds needs it. Fuse adds the lock and leaves the command as it is.
         if (root is null)
-            return await BuildAsync(workingDirectory, workingDirectory, Path.GetTempPath(), arguments, cancellationToken).ConfigureAwait(false);
+            return await BuildAsync(workingDirectory, workingDirectory, Path.GetTempPath(), arguments, options, null, cancellationToken).ConfigureAwait(false);
 
         using var buildLock = BuildLock.AcquireForClient(root);
-        return await BuildAsync(workingDirectory, root.Path, root.StateDirectory, arguments, cancellationToken).ConfigureAwait(false);
+        return await BuildAsync(workingDirectory, root.Path, root.StateDirectory, arguments, options, root, cancellationToken).ConfigureAwait(false);
     }
 
-    private static async Task<OperationResult> BuildAsync(string workingDirectory, string root, string logDirectory, IReadOnlyList<string> arguments, CancellationToken cancellationToken)
+    private static async Task<OperationResult> BuildAsync(string workingDirectory, string root, string logDirectory, IReadOnlyList<string> arguments, BuildOptions options, RepoRoot? resultsRoot, CancellationToken cancellationToken)
     {
         var started = Environment.TickCount64;
         var (result, log) = await RunLoggedAsync(["build", .. arguments, .. QuietArguments], workingDirectory, logDirectory, cancellationToken).ConfigureAwait(false);
@@ -42,11 +49,19 @@ internal static partial class BuildOperation
         if (result.ExitCode != 0 && MovedSources(result.Output).Any(path => !File.Exists(path)))
         {
             (result, log) = await RunLoggedAsync(["build", .. arguments, .. QuietArguments], workingDirectory, logDirectory, cancellationToken).ConfigureAwait(false);
-            var again = Render(result, root, (Environment.TickCount64 - started) / 1000.0, "build", log);
+            var again = Finish(result, log);
             return again with { Text = RanAgainLine + "\n" + again.Text };
         }
 
-        return Render(result, root, (Environment.TickCount64 - started) / 1000.0, "build", log);
+        return Finish(result, log);
+
+        OperationResult Finish(ProcessResult finished, string finishedLog)
+        {
+            var diagnostics = BuildOutputParser.Diagnostics(finished.Output, root);
+            var warnings = finishedLog.Length == 0 ? [] : BuildLog.WarningsList(finishedLog, root);
+            var resultsPath = resultsRoot is null ? null : BuildResultsFile.WriteBuild(resultsRoot, diagnostics, warnings, options.Json);
+            return Render(finished, root, (Environment.TickCount64 - started) / 1000.0, "build", options, resultsPath, finishedLog);
+        }
     }
 
     /// <summary>
@@ -101,46 +116,91 @@ internal static partial class BuildOperation
         MissingSource().Matches(output).Select(m => m.Groups["path"].Value).Where(Path.IsPathRooted);
 
     /// <param name="log">The build's file log (<see cref="BuildLog"/>), or empty when it has none.</param>
-    internal static OperationResult Render(ProcessResult result, string root, double seconds, string operation, string log = "")
+    internal static OperationResult Render(ProcessResult result, string root, double seconds, string operation, string log = "") =>
+        Render(result, root, seconds, operation, new BuildOptions(MaxShown, false, false), null, log);
+
+    /// <param name="options">How many errors to print, in what form, and whether the warnings are listed.</param>
+    /// <param name="resultsPath">Where every error and warning was written, or null when it was not written.</param>
+    /// <param name="log">The build's file log (<see cref="BuildLog"/>), or empty when it has none.</param>
+    internal static OperationResult Render(ProcessResult result, string root, double seconds, string operation, BuildOptions options, string? resultsPath = null, string log = "")
     {
-        var errors = BuildOutputParser.Errors(result.Output, root);
+        var diagnostics = BuildOutputParser.Diagnostics(result.Output, root);
         var commands = log.Length == 0 ? [] : BuildLog.FailedCommands(log);
+        var warnings = options.ListWarnings && log.Length > 0 ? ListedWarnings(BuildLog.WarningsList(log, root), diagnostics) : [];
         var text = new StringBuilder();
-        foreach (var error in errors.Take(MaxShown))
+        if (options.Json)
         {
-            text.Append(error).Append('\n');
-            // What a failed command printed explains its exit code, which is all the error line says.
-            foreach (var (command, lines) in commands)
+            foreach (var diagnostic in diagnostics)
+                text.Append(DiagnosticJson.BuildLine(diagnostic)).Append('\n');
+        }
+        else if (diagnostics.Count > 0 || result.ExitCode == 0)
+        {
+            foreach (var diagnostic in diagnostics.Take(options.MaxShown))
             {
-                if (!error.Contains($"error MSB3073: The command \"{command}", StringComparison.Ordinal))
-                    continue;
-                foreach (var line in lines)
-                    text.Append("  ").Append(line).Append('\n');
-                break;
+                var line = diagnostic.ToString();
+                text.Append(line).Append('\n');
+                // What a failed command printed explains its exit code, which is all the error line says.
+                foreach (var (command, lines) in commands)
+                {
+                    if (!line.Contains($"error MSB3073: The command \"{command}", StringComparison.Ordinal))
+                        continue;
+                    foreach (var commandLine in lines)
+                        text.Append("  ").Append(commandLine).Append('\n');
+                    break;
+                }
+
+                // A file another process holds open names the holder and what to do.
+                if (LockLine.For(diagnostic, root) is { } locked)
+                    text.Append("  ").Append(locked).Append('\n');
             }
         }
+        else
+        {
+            // Nothing matched the diagnostic format: show the tail, which is where MSBuild puts the failure.
+            text.Append(Tail(result.Output)).Append('\n');
+        }
+
+        if (options.ListWarnings)
+            AppendWarnings(text, warnings, resultsPath);
 
         var times = seconds >= TimesFromSeconds && log.Length > 0 ? BuildLog.Times(log) : null;
         var timesTail = times is null ? "" : $" ({times})";
-        var warnings = log.Length == 0 ? 0 : BuildLog.Warnings(log);
-        var warningsTail = warnings > 0 ? $"; {warnings} warning(s)" : "";
+        var warningsCount = log.Length == 0 ? 0 : BuildLog.Warnings(log);
+        var warningsTail = warningsCount > 0 ? $"; {warningsCount} warning(s)" : "";
         if (result.ExitCode == 0)
         {
             text.Append($"fuse: {operation} succeeded in {seconds:0.0} s{warningsTail}{timesTail}");
             return new OperationResult(Outcome.Clean, text.ToString());
         }
 
-        if (errors.Count == 0)
+        if (diagnostics.Count == 0)
         {
-            // Nothing matched the diagnostic format: show the tail, which is where MSBuild puts the failure.
-            text.Append(Tail(result.Output)).Append('\n');
             text.Append($"fuse: {operation} failed (exit code {result.ExitCode}) in {seconds:0.0} s{warningsTail}{timesTail}");
             return new OperationResult(Outcome.ProblemsFound, text.ToString());
         }
 
-        var more = errors.Count > MaxShown ? $", first {MaxShown} shown" : "";
-        text.Append($"fuse: {operation} failed with {errors.Count} error(s){more} in {seconds:0.0} s{warningsTail}{timesTail}");
+        var shown = options.Json ? diagnostics.Count : Math.Min(options.MaxShown, diagnostics.Count);
+        var more = !options.Json && diagnostics.Count > shown ? $", first {shown} shown" : "";
+        // The file holds every error; the answer names it only when it left errors out, and never in JSON, which already holds them.
+        var file = !options.Json && diagnostics.Count > shown && resultsPath is not null ? $"; all {diagnostics.Count} in {resultsPath}" : "";
+        text.Append($"fuse: {operation} failed with {diagnostics.Count} error(s){more} in {seconds:0.0} s{warningsTail}{timesTail}{file}");
         return new OperationResult(Outcome.ProblemsFound, text.ToString());
+    }
+
+    /// <summary>The warnings that are not also errors: one treated as an error already prints as one.</summary>
+    private static List<BuildWarning> ListedWarnings(IReadOnlyList<BuildWarning> warnings, IReadOnlyList<BuildDiagnostic> diagnostics)
+    {
+        var errors = diagnostics.Select(d => (d.File, d.Line, d.Column, d.Code)).ToHashSet();
+        return [.. warnings.Where(w => !errors.Contains((w.File, (int?)w.Line, (int?)w.Column, w.Code)))];
+    }
+
+    /// <summary>The warnings after the errors, each indented, with where the rest are when they do not all fit.</summary>
+    private static void AppendWarnings(StringBuilder text, List<BuildWarning> warnings, string? resultsPath)
+    {
+        foreach (var warning in warnings.Take(MaxWarningsShown))
+            text.Append("  ").Append(warning).Append('\n');
+        if (warnings.Count > MaxWarningsShown)
+            text.Append("  ... ").Append(warnings.Count - MaxWarningsShown).Append(" more warning(s)").Append(resultsPath is null ? " not shown" : $" in {resultsPath}").Append('\n');
     }
 
     /// <summary>The last 30 non-empty lines of a process's output, which is where a failure without an error line is described.</summary>

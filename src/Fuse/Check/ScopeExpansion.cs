@@ -6,7 +6,7 @@ namespace Fuse.Check;
 
 /// <summary>
 ///     Turns the paths a scoped check names into its targets: the changed sources under its directories and patterns, and
-///     the files it names. A directory or a glob that matches no changed source the check could cover is refused instead
+///     the files it names. A spec that matches no C# source the check could cover is refused instead
 ///     of answering clean, which would read as no errors introduced.
 /// </summary>
 internal static class ScopeExpansion
@@ -20,7 +20,7 @@ internal static class ScopeExpansion
     /// </summary>
     /// <param name="workspace">The repository, whose change tracker is the universe a directory or a glob matches in.</param>
     /// <param name="named">Absolute file and directory paths and absolute glob patterns, in the order named.</param>
-    /// <exception cref="FuseException">A directory or a glob matches nothing checkable, or the expansion is too large.</exception>
+    /// <exception cref="FuseException">A directory, a glob or a file matches nothing checkable, or the expansion is too large.</exception>
     public static List<RepoPath> Expand(RepoWorkspace workspace, IReadOnlyList<string> named)
     {
         var root = workspace.Root;
@@ -57,14 +57,19 @@ internal static class ScopeExpansion
                 continue;
             }
 
+            RepoPath file;
             try
             {
-                union.Add(root.PathOfNamed(spec));
+                file = root.PathOfNamed(spec);
             }
             catch (Exception e) when (e is ArgumentException or PathTooLongException)
             {
                 throw new FuseException(ErrorCode.InvalidPath, ErrorMessages.InvalidPath(spec));
             }
+
+            if (!PathRules.IsSource(file.Absolute) || graph.OwnersOf(file).Count == 0)
+                throw new FuseException(ErrorCode.InvalidPath, ErrorMessages.ScopeMatchesNothing(DisplaySpec(root, spec)));
+            union.Add(file);
         }
 
         var targets = union.Where(p => PathRules.IsSource(p.Absolute))

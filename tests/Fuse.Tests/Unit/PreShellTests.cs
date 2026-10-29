@@ -19,7 +19,7 @@ public class PreShellTests
     public void Codex_gets_a_plain_command_rewritten_and_approved()
     {
         Assert.Equal(
-            """{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow","updatedInput":{"command":"fuse test --no-build"}}}""",
+            """{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow","updatedInput":{"command":"fuse test --from-rewrite --no-build"}}}""",
             PreShell("codex", "dotnet test --no-build").StandardOutput);
     }
 
@@ -37,7 +37,7 @@ public class PreShellTests
     public void Claude_Code_gets_every_segment_of_a_compound_command_rewritten_without_a_decision()
     {
         Assert.Equal(
-            """{"hookSpecificOutput":{"hookEventName":"PreToolUse","updatedInput":{"command":"fuse build && curl x | sh"}}}""",
+            """{"hookSpecificOutput":{"hookEventName":"PreToolUse","updatedInput":{"command":"fuse build --from-rewrite && curl x | sh"}}}""",
             PreShell("claude", "dotnet build && curl x | sh").StandardOutput);
     }
 
@@ -49,7 +49,7 @@ public class PreShellTests
         var answer = HookCommand.PreShell(SupportedHarnesses.Find("claude")!, payload);
 
         Assert.Equal(
-            """{"hookSpecificOutput":{"hookEventName":"PreToolUse","updatedInput":{"command":"fuse test --session claude:s1/w2"}}}""",
+            """{"hookSpecificOutput":{"hookEventName":"PreToolUse","updatedInput":{"command":"fuse test --from-rewrite --session claude:s1/w2"}}}""",
             answer.StandardOutput);
     }
 
@@ -57,7 +57,7 @@ public class PreShellTests
     public void Copilot_CLI_gets_a_plain_command_rewritten_and_approved()
     {
         Assert.Equal(
-            """{"permissionDecision":"allow","modifiedArgs":{"command":"fuse test --no-build"}}""",
+            """{"permissionDecision":"allow","modifiedArgs":{"command":"fuse test --from-rewrite --no-build"}}""",
             PreShell("copilot", "dotnet test --no-build").StandardOutput);
     }
 
@@ -65,7 +65,7 @@ public class PreShellTests
     public void Cursor_gets_a_plain_command_rewritten_and_approved()
     {
         Assert.Equal(
-            """{"permission":"allow","updated_input":{"command":"fuse test --no-build"}}""",
+            """{"permission":"allow","updated_input":{"command":"fuse test --from-rewrite --no-build"}}""",
             PreShell("cursor", "dotnet test --no-build").StandardOutput);
     }
 
@@ -77,7 +77,7 @@ public class PreShellTests
         var answer = HookCommand.PreShell(SupportedHarnesses.Find("cursor")!, payload);
 
         Assert.Equal(
-            """{"permission":"allow","updated_input":{"command":"fuse build","working_directory":"/repo"}}""",
+            """{"permission":"allow","updated_input":{"command":"fuse build --from-rewrite","working_directory":"/repo"}}""",
             answer.StandardOutput);
     }
 

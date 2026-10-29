@@ -22,7 +22,8 @@ internal static class FailedFirstSplit
     ///     Each VSTest project of <paramref name="plan"/> whose selection holds recorded failures as
     ///     (absolute project path, distinct failure names in ordinal order), or null when no project splits. A project
     ///     splits only for a method selection with between 1 and <see cref="MaxPriority"/> recorded failures in it;
-    ///     platform projects and whole runs never split.
+    ///     platform projects and whole runs never split, and neither does a project whose split would name a theory row:
+    ///     the stripped name cannot exclude the row from the rest, so the project runs as one stage.
     /// </summary>
     internal static IReadOnlyDictionary<string, string[]>? ForPlan(RepoRoot root, TestPlan plan)
     {
@@ -30,13 +31,18 @@ internal static class FailedFirstSplit
         if (record is null)
             return null;
         var failed = new Dictionary<string, string[]>(StringComparer.Ordinal);
+        var stripped = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
         foreach (var (project, _, tests) in record)
         {
             if (project.Length == 0)
                 continue;
-            var names = tests.Where(t => t.Verdict == TestVerdict.Failed).Select(t => StripTheoryArgs(t.Name)).Distinct(StringComparer.Ordinal).OrderBy(n => n, StringComparer.Ordinal).ToArray();
+            var pairs = tests.Where(t => t.Verdict == TestVerdict.Failed).Select(t => (Stripped: StripTheoryArgs(t.Name), t.Name)).ToList();
+            var names = pairs.Select(p => p.Stripped).Distinct(StringComparer.Ordinal).OrderBy(n => n, StringComparer.Ordinal).ToArray();
             if (names.Length > 0)
+            {
                 failed[project] = names;
+                stripped[project] = pairs.Where(p => p.Stripped != p.Name).Select(p => p.Stripped).ToHashSet(StringComparer.Ordinal);
+            }
         }
 
         if (failed.Count == 0)
@@ -53,7 +59,8 @@ internal static class FailedFirstSplit
             if (patterns.Count == 0)
                 continue;
             var priority = names.Where(n => patterns.Any(p => n.Contains(p, StringComparison.Ordinal))).ToArray();
-            if (priority.Length >= 1 && priority.Length <= MaxPriority)
+            if (priority.Length >= 1 && priority.Length <= MaxPriority
+                && !(stripped.TryGetValue(group.Key, out var cut) && priority.Any(cut.Contains)))
                 split[group.Key] = priority;
         }
 

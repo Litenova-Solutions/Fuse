@@ -120,13 +120,15 @@ internal static class FuseProcess
         private readonly StringBuilder _stdout = new();
         private readonly StringBuilder _stderr = new();
         private readonly TaskCompletionSource _exited = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly Task _stdoutPump;
+        private readonly Task _stderrPump;
 
         internal Client(Process process)
         {
             _process = process;
             // Both pumps are started before anything waits, so neither pipe can fill and stall the client.
-            _ = PumpAsync(process.StandardOutput, _stdout);
-            _ = PumpAsync(process.StandardError, _stderr);
+            _stdoutPump = PumpAsync(process.StandardOutput, _stdout);
+            _stderrPump = PumpAsync(process.StandardError, _stderr);
             // Without this the Exited event is never raised, and waiting on it would wait for the test's own timeout.
             process.EnableRaisingEvents = true;
             process.Exited += (_, _) => _exited.TrySetResult();
@@ -177,9 +179,10 @@ internal static class FuseProcess
             // stdout would keep these reads open and fail the test by timeout.
             await _process.WaitForExitAsync(cancellation.Token);
             await _exited.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellation.Token);
-            // The output pumps finish just after the process does; a short wait keeps a truncated last line out of the
-            // assertion that follows.
-            await Task.Delay(100, cancellation.Token);
+            // The pumps hold the client's last lines until they see the end of its output, so they are awaited before the
+            // captured text is read; a fixed delay cannot promise that on a loaded runner. The engine starts fully
+            // detached and holds none of the client's handles, so they finish just after the client does.
+            await Task.WhenAll(_stdoutPump, _stderrPump).WaitAsync(cancellation.Token);
             return (_process.ExitCode, Stdout, Stderr);
         }
 

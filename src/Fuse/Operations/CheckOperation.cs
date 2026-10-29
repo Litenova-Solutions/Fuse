@@ -24,17 +24,42 @@ internal static class CheckOperation
     /// </param>
     /// <param name="timeout">How long to wait for the answer.</param>
     /// <param name="cancellationToken">Cancels the check.</param>
+    /// <param name="maxErrors">How many errors to show: 0 for the default count, <see cref="int.MaxValue"/> for every error.</param>
+    /// <param name="json">True for one JSON object per error instead of text.</param>
     public static async Task<(OperationResult Result, EngineResponse Response)> RunAsync(
-        RepoRoot root, IReadOnlyList<string>? files, string? session, bool waitForLoad, bool compilationWideAnalyzers, TimeSpan timeout, CancellationToken cancellationToken)
+        RepoRoot root, IReadOnlyList<string>? files, string? session, bool waitForLoad, bool compilationWideAnalyzers, TimeSpan timeout, CancellationToken cancellationToken, int maxErrors = 0, bool json = false)
     {
         EngineRequest request = files is null
-            ? new EngineRequest.CheckChanges(waitForLoad) { Session = session, IsStopping = session is not null }
-            : new EngineRequest.CheckFiles(files, waitForLoad) { Session = session, LeaveOutCompilationWide = !compilationWideAnalyzers };
+            ? new EngineRequest.CheckChanges(waitForLoad) { Session = session, IsStopping = session is not null, MaxErrors = RequestedFor(maxErrors, json) }
+            : new EngineRequest.CheckFiles(files, waitForLoad) { Session = session, LeaveOutCompilationWide = !compilationWideAnalyzers, MaxErrors = RequestedFor(maxErrors, json) };
         var response = await EngineClient.SendAsync(root, request, timeout, cancellationToken).ConfigureAwait(false);
         if (response is not EngineResponse.CheckAnswered answered)
             return (OperationResult.Unanswered(response, "check result"), response);
-        return (Render(answered.Report, ResultsFile.WriteCheck(root, answered.Report)), response);
+        return (Render(answered.Report, ResultsFile.WriteCheck(root, answered.Report), ShownFor(maxErrors, json), json), response);
     }
+
+    /// <param name="specs">Absolute file and directory paths and absolute glob patterns, in the order named.</param>
+    /// <param name="maxErrors">How many errors to show: 0 for the default count, <see cref="int.MaxValue"/> for every error.</param>
+    /// <param name="json">True for one JSON object per error instead of text.</param>
+    /// <param name="timeout">How long to wait for the answer.</param>
+    /// <param name="cancellationToken">Cancels the check.</param>
+    public static async Task<(OperationResult Result, EngineResponse Response)> RunScopedAsync(
+        RepoRoot root, IReadOnlyList<string> specs, int maxErrors, bool json, TimeSpan timeout, CancellationToken cancellationToken)
+    {
+        var request = new EngineRequest.CheckPaths([.. specs], WaitForLoad: true) { MaxErrors = RequestedFor(maxErrors, json) };
+        var response = await EngineClient.SendAsync(root, request, timeout, cancellationToken).ConfigureAwait(false);
+        if (response is not EngineResponse.CheckAnswered answered)
+            return (OperationResult.Unanswered(response, "check result"), response);
+        return (Render(answered.Report, ResultsFile.WriteCheck(root, answered.Report), ShownFor(maxErrors, json), json), response);
+    }
+
+    /// <summary>How many errors the request asks the engine to send: every error for JSON and <c>--all-errors</c>, else <paramref name="maxErrors"/>.</summary>
+    private static int RequestedFor(int maxErrors, bool json) =>
+        json || maxErrors == int.MaxValue ? int.MaxValue : maxErrors;
+
+    /// <summary>How many errors the answer prints: every error for JSON and <c>--all-errors</c>, else the default count.</summary>
+    private static int ShownFor(int maxErrors, bool json) =>
+        json || maxErrors == int.MaxValue ? int.MaxValue : maxErrors > 0 ? maxErrors : MaxShown;
 
     /// <summary>
     ///     The absolute paths of the files a command line or an MCP call names, or the refusal to print when one is empty
@@ -68,31 +93,49 @@ internal static class CheckOperation
         $"generated: {file} declares it, and Fuse reads that file as the last build wrote it; if it is generated from changed code, run fuse build to write it again";
 
     /// <summary>One error as the answer prints it: its canonical line, its cause, and the generated-code line once per file.</summary>
-    internal static void AppendError(StringBuilder text, ReportedError reported, HashSet<string> generatedShown)
+    /// <param name="showCause">False for a grouped member, whose group header already names the cause.</param>
+    internal static void AppendError(StringBuilder text, ReportedError reported, HashSet<string> generatedShown, bool showCause = true)
     {
         text.Append(reported.Error).Append('\n');
         // The line under an error in a file the agent did not edit names the declaration change that made the file a candidate.
-        if (reported.Cause is { } cause)
+        if (showCause && reported.Cause is { } cause)
             text.Append("  ").Append(cause.Kind == CauseKind.Removed ? "removed" : "changed").Append(": ").Append(cause.Declaration).Append('\n');
         // Said once per file: the file may be older than the code it is generated from.
         if (reported.GeneratedFile is { } generated && generatedShown.Add(generated))
             text.Append("  ").Append(GeneratedLine(generated)).Append('\n');
     }
 
-    internal static OperationResult Render(CheckReport report, string? resultsPath = null)
+    /// <param name="maxShown">How many errors to print, or <see cref="int.MaxValue"/> for every error.</param>
+    /// <param name="json">True for one JSON object per error instead of text, with the summary as the last line.</param>
+    internal static OperationResult Render(CheckReport report, string? resultsPath = null, int maxShown = MaxShown, bool json = false)
     {
         var text = new StringBuilder();
-        var generatedShown = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var reported in report.Errors.Take(MaxShown))
-            AppendError(text, reported, generatedShown);
+        IReadOnlyList<(string? Header, ReportedError Error, bool ShowCause)> shown;
+        if (json)
+        {
+            foreach (var reported in report.Errors)
+                text.Append(DiagnosticJson.CheckLine(reported)).Append('\n');
+            shown = [.. report.Errors.Select(e => ((string?)null, e, false))];
+        }
+        else
+        {
+            shown = CheckGroups.Split(report.Errors, maxShown <= 0 ? MaxShown : maxShown);
+            var generatedShown = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var (header, error, showCause) in shown)
+            {
+                if (header is not null)
+                    text.Append(header).Append('\n');
+                AppendError(text, error, generatedShown, showCause);
+            }
+        }
 
         var summaryParts = new List<string>();
         if (report.DeclarationsChangedIn.Length > 0)
             summaryParts.Add($"{string.Join(", ", report.DeclarationsChangedIn)} declarations changed, {report.DependentProjectsChecked} dependent project(s) checked");
         if (report.CheckedWholeProjects)
-            summaryParts.Add("checked whole projects");
+            summaryParts.Add(WholeProjectsSummary(report.WholeProjects));
         // Counted among the printed errors only, since a cause left out of an error that is not printed is no loss.
-        var causesLeftOut = report.Errors.Take(MaxShown).Count(e => e.IsCauseLeftOut);
+        var causesLeftOut = shown.Count(e => e.Error.IsCauseLeftOut);
         if (causesLeftOut > 0)
             summaryParts.Add($"{causesLeftOut} cause(s) left out");
         // Only an answer to a session leaves errors to other sessions; the session is told they exist, not what they are.
@@ -106,20 +149,47 @@ internal static class CheckOperation
         if (report.AnalyzersUnfinished > 0)
             summaryParts.Add($"analyzers did not finish in {report.AnalyzersUnfinished} file(s) or project(s) in time, so their analyzer errors may be missing; fuse build runs every analyzer");
         var summaryTail = summaryParts.Count > 0 ? "; " + string.Join("; ", summaryParts) : "";
+        var scoped = report.ScopedPaths.Length > 0 ? string.Join(", ", report.ScopedPaths) : null;
 
         if (report.ErrorCount == 0)
         {
             var whose = report.LeftToOtherSessions > 0 ? " by this session's edits" : "";
-            text.Append($"fuse: no errors introduced{whose} ({report.FilesChecked} file(s) checked{summaryTail})");
+            var where = scoped is null ? "" : $" in {scoped} and what it reaches";
+            text.Append($"fuse: no errors introduced{whose}{where} ({report.FilesChecked} file(s) checked{summaryTail})");
             return new OperationResult(Outcome.Clean, text.ToString());
         }
 
         // The counts are the engine's, over every error it found; the errors it sends are capped, and so are those printed.
-        var shown = Math.Min(MaxShown, report.Errors.Length);
-        var more = report.ErrorCount > shown ? $", first {shown} shown" : "";
-        // The file holds every error the engine sent; the answer names it only when it left errors out.
-        var file = report.ErrorCount > shown && resultsPath is not null ? $"; all {report.ErrorCount} in {resultsPath}" : "";
-        text.Append($"fuse: {report.ErrorCount} error(s) introduced in {report.ErrorFileCount} file(s){more} ({string.Join(", ", report.Projects)}){summaryTail}{file}");
+        var printed = shown.Count;
+        var more = report.ErrorCount > printed ? $", first {printed} shown" : "";
+        // The file holds every error the engine sent; the answer names it only when it left errors out, and never in JSON, which already holds them.
+        var file = !json && report.ErrorCount > printed && resultsPath is not null ? $"; all {report.ErrorCount} in {resultsPath}" : "";
+        var scope = scoped is null ? "" : $"; checked {scoped} and what it reaches";
+        text.Append($"fuse: {report.ErrorCount} error(s) introduced in {report.ErrorFileCount} file(s){more} ({string.Join(", ", report.Projects)}){summaryTail}{scope}{file}");
         return new OperationResult(Outcome.ProblemsFound, text.ToString());
+    }
+
+    private static string WholeProjectsSummary(ReportedWholeProject[] whole)
+    {
+        if (whole.Length == 0)
+            return "checked whole projects";
+        var shown = whole.OrderBy(w => w.Project, StringComparer.Ordinal).Take(3).ToList();
+        var parts = new List<string>();
+        var filesOmitted = 0;
+        foreach (var project in shown)
+        {
+            var files = project.ChangedFiles.Order(StringComparer.Ordinal).ToList();
+            var causes = project.Causes.Order(StringComparer.Ordinal).ToList();
+            if (files.Count == 0)
+            {
+                parts.Add(project.Project);
+                continue;
+            }
+            filesOmitted += Math.Max(0, files.Count - 2);
+            var filesPart = string.Join(", ", files.Take(2));
+            parts.Add(causes.Count == 0 ? $"{project.Project} because {filesPart}" : $"{project.Project} because {filesPart} ({string.Join("; ", causes)})");
+        }
+        var omitted = (whole.Length - shown.Count) + filesOmitted;
+        return "checked whole projects: " + string.Join("; ", parts) + (omitted > 0 ? $"; and {omitted} more in the engine log" : "");
     }
 }

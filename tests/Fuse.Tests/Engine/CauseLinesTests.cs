@@ -25,10 +25,11 @@ public class CauseLinesTests
         var result = await engine.CheckAsync("Lib/Calc.cs");
 
         // A rename is a removal of the old declaration and an addition of a new one, and the errors in the callers name
-        // the old one, so the line does too.
-        var lines = PrintedCauses(result);
-        Assert.Equal(result.Errors.Count(e => e.Error.Path != "Lib/Calc.cs"), lines.Count);
-        Assert.All(lines, l => Assert.Equal("removed: public int Add(int a, int b)", l));
+        // the old one, so the group header does too, once for every caller.
+        var rendered = Render(result);
+        var callers = result.Errors.Count(e => e.Error.Path != "Lib/Calc.cs");
+        Assert.Contains($"removed: public int Add(int a, int b) ({callers} error(s))", rendered, StringComparison.Ordinal);
+        Assert.Empty(PrintedCauses(result));
         Assert.Equal(
             ["App/Program.cs", "Lib.Tests/CalcTests.cs"],
             result.Errors.Select(e => e.Error.Path).Order(StringComparer.Ordinal).ToArray());
@@ -75,9 +76,10 @@ public class CauseLinesTests
         // The interface member changed, so every call to Greet and every implementation of the interface is a candidate. The
         // parameter list is part of the key, so the change is the removal of the old member, which the callers used. A
         // changed type header is broad and gets no cause at all.
-        var lines = PrintedCauses(result);
-        Assert.NotEmpty(lines);
-        Assert.All(lines, l => Assert.Equal("removed: string Greet(string name)", l));
+        var lines = Render(result).Split('\n');
+        Assert.NotEmpty(result.Errors);
+        Assert.Contains(lines, l => l.StartsWith("removed: string Greet(string name) (", StringComparison.Ordinal) && l.EndsWith(" error(s))", StringComparison.Ordinal));
+        Assert.Empty(PrintedCauses(result));
     }
 
     [Fact]
@@ -195,13 +197,13 @@ public class CauseLinesTests
     public async Task The_cause_line_is_indented_under_its_error()
     {
         await using var engine = await InProcessEngine.StartAsync();
-        engine.Repo.Replace("Lib/Calc.cs", "public int Add(", "public int Plus(");
+        engine.Repo.Replace("Lib/Calc.cs", "    public int Mul(int a, int b) => a * b;\n", "");
         var result = await engine.CheckAsync("Lib/Calc.cs");
 
         var lines = Render(result).Split('\n');
         var errorIndex = Array.FindIndex(lines, l => l.Contains("CS1061", StringComparison.Ordinal));
         Assert.True(errorIndex >= 0, $"no error line in: {string.Join(" | ", lines)}");
-        Assert.Equal("  removed: public int Add(int a, int b)", lines[errorIndex + 1]);
+        Assert.Equal("  removed: public int Mul(int a, int b)", lines[errorIndex + 1]);
     }
 
     [Fact]

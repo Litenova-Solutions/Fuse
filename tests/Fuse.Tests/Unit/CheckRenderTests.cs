@@ -42,7 +42,7 @@ public class CheckRenderTests
     [Fact]
     public void Causes_left_out_are_counted_among_the_printed_errors_only()
     {
-        // 25 errors in candidates: the first 10 carry a cause and the other 15 lost theirs to the cap, but only 20 print.
+        // 25 errors in candidates: the first 10 share a cause and the other 15 lost theirs to the cap. The group shows 2 and the 15 without a cause fill the rest, so 17 print.
         var errors = Enumerable.Range(1, 25)
             .Select(i => i <= 10
                 ? new ReportedError(new CompilerError($"src/F{i}.cs", 1, 1, "CS1061", "no Add"), new ReportedCause(CauseKind.Removed, "public int Add()"))
@@ -51,7 +51,7 @@ public class CheckRenderTests
 
         var result = CheckOperation.Render(new CheckReport(errors, 25, ["App"], ["Lib"], 1, false, 25, 25, 0));
 
-        Assert.EndsWith("; 10 cause(s) left out", result.Text.Split('\n')[^1], StringComparison.Ordinal);
+        Assert.EndsWith("; 15 cause(s) left out", result.Text.Split('\n')[^1], StringComparison.Ordinal);
     }
 
     [Fact]

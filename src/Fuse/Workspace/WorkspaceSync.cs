@@ -84,6 +84,17 @@ internal sealed class WorkspaceSync
             await _views.RebuildAsync(cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>Applies each of <paramref name="paths"/> to both views again: its disk content to the current view and its HEAD content to the baseline.</summary>
+    /// <param name="paths">The files to apply; each is also touched.</param>
+    /// <param name="cancellationToken">Cancels reading file contents.</param>
+    public Task PatchViewsAsync(IReadOnlyCollection<RepoPath> paths, CancellationToken cancellationToken) =>
+        _views.PatchAsync(paths, cancellationToken);
+
+    /// <summary>Derives both views from the loader's solution again, re-applying every touched and every changed file.</summary>
+    /// <param name="cancellationToken">Cancels reading file contents.</param>
+    public Task RebuildAsync(CancellationToken cancellationToken) =>
+        _views.RebuildAsync(cancellationToken);
+
     /// <summary>
     ///     Acts on <see cref="SyncResult.Reevaluate"/> and <see cref="SyncResult.Reload"/>, which differ only in whether
     ///     the projects are evaluated before every project is closed.

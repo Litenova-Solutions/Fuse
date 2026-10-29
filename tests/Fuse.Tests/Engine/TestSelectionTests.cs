@@ -38,9 +38,9 @@ public class TestSelectionTests
         var lib = Assert.IsType<TestSelection.Methods>(selection["Lib.Tests"]);
         Assert.Contains("Lib.Tests.GreeterTests.Greets", lib.Patterns);
         Assert.DoesNotContain(lib.Patterns, p => p.Contains("CalcTests", StringComparison.Ordinal));
-        // The app's top-level statements call Greet, and the runtime calls the entry point, so App.Tests runs whole.
-        var app = Assert.IsType<TestSelection.Whole>(selection["App.Tests"]);
-        Assert.Equal("App's entry point calls the changed code", app.Reason);
+        // The app's top-level statements call Greet, and the runtime calls the entry point, but App.Tests holds only a
+        // direct call, which cannot observe the change through the host, so nothing is selected in it.
+        Assert.DoesNotContain("App.Tests", selection.Keys);
     }
 
     [Fact]
@@ -114,16 +114,13 @@ public class TestSelectionTests
     }
 
     [Fact]
-    public async Task Top_level_statements_select_dependent_test_projects_whole()
+    public async Task Top_level_statements_select_only_the_tests_that_reach_them()
     {
         await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("App/Program.cs", "calc.Add(1, 2)", "calc.Add(2, 2)");
         var selection = await SelectAsync(engine, "App/Program.cs");
-        var app = Assert.IsType<TestSelection.Whole>(selection["App.Tests"]);
-        // The seeds select App.Tests whole for the top-level statements, and the type walk reaches the application too;
-        // the member-level answer gives the reason the class-level answer gives.
-        Assert.Equal("App uses the changed code and runs behind an application host", app.Reason);
-        Assert.False(selection.ContainsKey("Lib.Tests"));
+        // App.Tests holds only a direct call, which the top-level statements do not reach, so nothing is selected.
+        Assert.Empty(selection);
     }
 
     [Fact]
@@ -143,9 +140,10 @@ public class TestSelectionTests
         // Every reading of this clock is 9 seconds after the last, so the walk is past its 8 second budget at its first check.
         var selection = await SelectAsync(engine, new TestSelector(engine.Workspace, new LeapingClock()), "Lib/Calc.cs");
 
-        // The type walk selects the whole class, not only Multiplies, and reaches the application through Program.cs.
+        // The type walk selects the whole class, not only Multiplies. App.Tests holds only a direct call, so the
+        // resolved application selects nothing in it.
         Assert.Equal(["Lib.Tests.CalcTests."], Assert.IsType<TestSelection.Methods>(selection["Lib.Tests"]).Patterns);
-        Assert.Equal("App uses the changed code and runs behind an application host", Assert.IsType<TestSelection.Whole>(selection["App.Tests"]).Reason);
+        Assert.DoesNotContain("App.Tests", selection.Keys);
         Assert.Contains(engine.Log, line => line.StartsWith("test selection: member walk over budget in ", StringComparison.Ordinal) && line.EndsWith("; selecting at class level", StringComparison.Ordinal));
     }
 

@@ -24,6 +24,7 @@ namespace Fuse.Protocol;
 [JsonDerivedType(typeof(PlanAffectedTests), nameof(PlanAffectedTests))]
 [JsonDerivedType(typeof(PlanAllTests), nameof(PlanAllTests))]
 [JsonDerivedType(typeof(PlanFailedTests), nameof(PlanFailedTests))]
+[JsonDerivedType(typeof(ReportTestResults), nameof(ReportTestResults))]
 internal abstract record EngineRequest
 {
     private readonly string _buildId = "";
@@ -89,6 +90,11 @@ internal abstract record EngineRequest
         ///     more, so from then on its parent session counts its edits as its own. A line without it reads as false.
         /// </summary>
         public bool IsStopping { get; init; }
+
+        /// <summary>
+        ///     How many errors the answer holds at most; 0 is the existing cap. A line without it reads as 0.
+        /// </summary>
+        public int MaxErrors { get; init; }
     }
 
     /// <summary>The errors that the changes to the named files introduced, in those files and in the files they reach.</summary>
@@ -118,6 +124,11 @@ internal abstract record EngineRequest
         ///     checks every change, runs them. A line without it reads as false, which runs every analyzer.
         /// </summary>
         public bool LeaveOutCompilationWide { get; init; }
+
+        /// <summary>
+        ///     How many errors the answer holds at most; 0 is the existing cap. A line without it reads as 0.
+        /// </summary>
+        public int MaxErrors { get; init; }
     }
 
     /// <summary>
@@ -236,6 +247,40 @@ internal abstract record EngineRequest
             var hash = new HashCode();
             foreach (var project in Projects)
                 hash.Add(project);
+            return hash.ToHashCode();
+        }
+    }
+
+    /// <summary>Every test outcome of the shadow runs of one plan, so the engine keeps the classes that passed.</summary>
+    public sealed record ReportTestResults(ReportedTestResult[] Results) : EngineRequest
+    {
+        /// <summary>The outcomes. A line without the list reads as one that names none, which keeps nothing.</summary>
+        public ReportedTestResult[] Results { get; init; } = Results ?? [];
+
+        private readonly string _planId = "";
+
+        /// <summary>
+        ///     The plan the outcomes ran from, which names the content they ran against. A line without it reads as
+        ///     empty, which no plan has.
+        /// </summary>
+        public string PlanId
+        {
+            get => _planId;
+            init => _planId = value ?? "";
+        }
+
+        public bool Equals(ReportTestResults? other) =>
+            other is not null
+            && EqualityContract == other.EqualityContract
+            && PlanId == other.PlanId
+            && Results.SequenceEqual(other.Results);
+
+        public override int GetHashCode()
+        {
+            var hash = new HashCode();
+            hash.Add(PlanId);
+            foreach (var result in Results)
+                hash.Add(result);
             return hash.ToHashCode();
         }
     }

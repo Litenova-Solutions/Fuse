@@ -5,27 +5,27 @@ namespace Fuse.Tests.Unit;
 public class CommandRewriterTests
 {
     [Theory]
-    [InlineData("dotnet build", "fuse build")]
-    [InlineData("dotnet test", "fuse test")]
-    [InlineData("dotnet test --filter Foo", "fuse test --filter Foo")]
-    [InlineData("cd src && dotnet build -c Release", "cd src && fuse build -c Release")]
-    [InlineData("dotnet build; dotnet test", "fuse build; fuse test")]
-    [InlineData("dotnet test | tail -20", "fuse test | tail -20")]
-    [InlineData("false || dotnet test", "false || fuse test")]
-    [InlineData("  dotnet.exe test", "  fuse test")]
-    [InlineData("DOTNET_CLI_UI_LANGUAGE=en dotnet test", "DOTNET_CLI_UI_LANGUAGE=en fuse test")]
-    [InlineData("A=1 B_2=x/y dotnet build -c Release", "A=1 B_2=x/y fuse build -c Release")]
-    [InlineData("cd src && CI= dotnet test | tail", "cd src && CI= fuse test | tail")]
-    [InlineData("X=$HOME dotnet test", "X=$HOME fuse test")]
+    [InlineData("dotnet build", "fuse build --from-rewrite")]
+    [InlineData("dotnet test", "fuse test --from-rewrite")]
+    [InlineData("dotnet test --filter Foo", "fuse test --from-rewrite --filter Foo")]
+    [InlineData("cd src && dotnet build -c Release", "cd src && fuse build --from-rewrite -c Release")]
+    [InlineData("dotnet build; dotnet test", "fuse build --from-rewrite; fuse test --from-rewrite")]
+    [InlineData("dotnet test | tail -20", "fuse test --from-rewrite | tail -20")]
+    [InlineData("false || dotnet test", "false || fuse test --from-rewrite")]
+    [InlineData("  dotnet.exe test", "  fuse test --from-rewrite")]
+    [InlineData("DOTNET_CLI_UI_LANGUAGE=en dotnet test", "DOTNET_CLI_UI_LANGUAGE=en fuse test --from-rewrite")]
+    [InlineData("A=1 B_2=x/y dotnet build -c Release", "A=1 B_2=x/y fuse build --from-rewrite -c Release")]
+    [InlineData("cd src && CI= dotnet test | tail", "cd src && CI= fuse test --from-rewrite | tail")]
+    [InlineData("X=$HOME dotnet test", "X=$HOME fuse test --from-rewrite")]
     public void Rewrites_dotnet_build_and_test_at_segment_starts(string command, string expected)
     {
         Assert.Equal(expected, CommandRewriter.Rewrite(command));
     }
 
     [Theory]
-    [InlineData("dotnet test", "fuse test --session claude:a1/agent-2")]
-    [InlineData("dotnet test --filter Foo", "fuse test --session claude:a1/agent-2 --filter Foo")]
-    [InlineData("dotnet build && dotnet test", "fuse build && fuse test --session claude:a1/agent-2")]
+    [InlineData("dotnet test", "fuse test --from-rewrite --session claude:a1/agent-2")]
+    [InlineData("dotnet test --filter Foo", "fuse test --from-rewrite --session claude:a1/agent-2 --filter Foo")]
+    [InlineData("dotnet build && dotnet test", "fuse build --from-rewrite && fuse test --from-rewrite --session claude:a1/agent-2")]
     public void Passes_the_session_to_fuse_test_only(string command, string expected)
     {
         Assert.Equal(expected, CommandRewriter.Rewrite(command, "claude:a1/agent-2"));
@@ -39,7 +39,7 @@ public class CommandRewriterTests
     [InlineData("a'b")]
     public void Leaves_out_a_session_id_a_shell_would_not_pass_on_unchanged(string session)
     {
-        Assert.Equal("fuse test", CommandRewriter.Rewrite("dotnet test", session));
+        Assert.Equal("fuse test --from-rewrite", CommandRewriter.Rewrite("dotnet test", session));
     }
 
     [Theory]
@@ -55,11 +55,11 @@ public class CommandRewriterTests
     }
 
     [Theory]
-    [InlineData("dotnet build", "fuse build")]
-    [InlineData("dotnet test", "fuse test")]
-    [InlineData("dotnet test --no-build --filter FullyQualifiedName~Lib.Tests.CalcTests", "fuse test --no-build --filter FullyQualifiedName~Lib.Tests.CalcTests")]
-    [InlineData("  dotnet.exe build src\\App\\App.csproj -c Release -p:Version=1.2.3  ", "  fuse build src\\App\\App.csproj -c Release -p:Version=1.2.3  ")]
-    [InlineData("DOTNET_CLI_UI_LANGUAGE=en dotnet test --no-build", "DOTNET_CLI_UI_LANGUAGE=en fuse test --no-build")]
+    [InlineData("dotnet build", "fuse build --from-rewrite")]
+    [InlineData("dotnet test", "fuse test --from-rewrite")]
+    [InlineData("dotnet test --no-build --filter FullyQualifiedName~Lib.Tests.CalcTests", "fuse test --from-rewrite --no-build --filter FullyQualifiedName~Lib.Tests.CalcTests")]
+    [InlineData("  dotnet.exe build src\\App\\App.csproj -c Release -p:Version=1.2.3  ", "  fuse build --from-rewrite src\\App\\App.csproj -c Release -p:Version=1.2.3  ")]
+    [InlineData("DOTNET_CLI_UI_LANGUAGE=en dotnet test --no-build", "DOTNET_CLI_UI_LANGUAGE=en fuse test --from-rewrite --no-build")]
     public void A_command_that_is_one_plain_invocation_is_rewritten_whole(string command, string expected)
     {
         Assert.Equal(expected, CommandRewriter.RewriteWhole(command));

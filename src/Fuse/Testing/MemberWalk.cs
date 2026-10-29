@@ -24,9 +24,9 @@ namespace Fuse.Testing;
 ///         goes on to that member's callers, so a test that reaches the change through a helper class is selected too.
 ///     </para>
 ///     <para>
-///         A member with no caller in source goes to <see cref="HostRule"/>. Code an application host calls selects every
-///         test project that depends on the application; a library member a framework calls through an external interface
-///         or base class is reached through its type.
+///         A member with no caller in source goes to <see cref="HostRule"/>. Code an application host calls selects the
+///         test classes that start the application (see <see cref="ApplicationStart"/>); a library member a framework calls
+///         through an external interface or base class is reached through its type.
 ///     </para>
 ///     <para>One walk serves one request, over the solution of that request.</para>
 /// </remarks>
@@ -46,6 +46,7 @@ internal sealed class MemberWalk
     private readonly HashSet<ISymbol> _visited = new(SymbolEqualityComparer.Default);
     private readonly Queue<ISymbol> _queue = new();
     private readonly SelectionBuilder _selections = new();
+    private readonly HashSet<(RepoPath Test, RepoPath Application)> _resolved = [];
 
     /// <param name="workspace">Gives the HEAD text of a changed file and the project graph.</param>
     /// <param name="solution">The current solution, with the reached projects loaded.</param>
@@ -107,7 +108,7 @@ internal sealed class MemberWalk
                 {
                     // Top-level statements are the application's entry point.
                     if (node is not null)
-                        SelectDependentsWhole(node, "top-level statements changed");
+                        await SelectApplicationDependentsAsync(node, "top-level statements changed", cancellationToken).ConfigureAwait(false);
                     continue;
                 }
 
@@ -154,7 +155,7 @@ internal sealed class MemberWalk
             if (node is null)
                 continue;
             if (HostRule.IsCalledByHost(symbol, node))
-                SelectDependentsWhole(node, $"{symbol.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat)} is called by an application host or a framework");
+                await SelectApplicationDependentsAsync(node, $"{symbol.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat)} is called by an application host or a framework", cancellationToken).ConfigureAwait(false);
             else if (HostRule.IsFrameworkInvoked(symbol) && symbol.ContainingType is { } containing)
             {
                 // A library member called through an external interface or base class (Equals, CompareTo,
@@ -164,6 +165,21 @@ internal sealed class MemberWalk
         }
 
         return new WalkOutcome(true, _visited.Count, (long)_time.GetElapsedTime(started).TotalMilliseconds);
+    }
+
+    /// <summary>
+    ///     Selects the tests reached through <paramref name="application"/>: every test project that depends on it has its
+    ///     test classes resolved (see <see cref="ApplicationStart"/>), so the classes that start the application run whole
+    ///     and the rest keep the tests the walk selected by name. A test project already resolved for it is skipped.
+    /// </summary>
+    public async Task SelectApplicationDependentsAsync(ProjectNode application, string reason, CancellationToken cancellationToken)
+    {
+        foreach (var test in HostRule.DependentTestProjects(_workspace.Graph, application))
+        {
+            if (!_resolved.Add((test.Path, application.Path)))
+                continue;
+            await ApplicationStart.ResolveAsync(_solution, test, application, reason, _selections, _workspace.Log, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     /// <summary>
@@ -201,7 +217,7 @@ internal sealed class MemberWalk
 
         if (enclosing is IMethodSymbol method && HostRule.IsEntryPoint(method))
         {
-            SelectDependentsWhole(node, $"{node.Name}'s entry point calls the changed code");
+            await SelectApplicationDependentsAsync(node, $"{node.Name}'s entry point calls the changed code", cancellationToken).ConfigureAwait(false);
             return;
         }
 
@@ -317,7 +333,7 @@ internal sealed class MemberWalk
     }
 
     /// <summary>The name test adapters report for a type: namespace, then nested types joined with <c>+</c>.</summary>
-    private static string TestName(INamedTypeSymbol type)
+    internal static string TestName(INamedTypeSymbol type)
     {
         var nesting = new Stack<string>();
         for (var t = type; t is not null; t = t.ContainingType)

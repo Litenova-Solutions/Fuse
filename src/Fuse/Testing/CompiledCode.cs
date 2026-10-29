@@ -189,8 +189,8 @@ internal static class CompiledCode
     /// <summary>
     ///     Rewrites a body so a rename does not register: every local, parameter and range variable becomes the order it
     ///     is first seen in, and every local type the type it names. A name under <c>nameof</c> keeps its text, because the
-    ///     name is the value there, and a query fails the comparison, because its range variables declare nowhere this
-    ///     rewriter reaches.
+    ///     name is the value there; a name that is an inferred member or a captured argument fails the comparison, for the
+    ///     same reason; and a query fails it, because its range variables declare nowhere this rewriter reaches.
     /// </summary>
     private sealed class Normalizer : CSharpSyntaxRewriter
     {
@@ -211,7 +211,19 @@ internal static class CompiledCode
                 return node;
             var symbol = _model.GetSymbolInfo(node).Symbol;
             if (symbol is ILocalSymbol or IParameterSymbol or IRangeVariableSymbol)
+            {
+                // A parameter name is not a value: renaming a local never changes it, so it normalizes as before.
+                if (node.Parent is NameColonSyntax or NameEqualsSyntax)
+                    return SyntaxFactory.IdentifierName(Placeholder(symbol));
+                if (IsInferredMemberName(node) || IsCapturedArgument(node))
+                {
+                    Failed = true;
+                    return node;
+                }
+
                 return SyntaxFactory.IdentifierName(Placeholder(symbol));
+            }
+
             if (symbol is null)
                 SawUnbound = true;
             return node;
@@ -395,6 +407,155 @@ internal static class CompiledCode
             }
 
             return false;
+        }
+
+        /// <summary>
+        ///     True when <paramref name="node"/> is an inferred member name: an anonymous-object member without an explicit
+        ///     name, or a tuple element without one. The name is the value there, so a rename changes what the code does.
+        /// </summary>
+        private static bool IsInferredMemberName(IdentifierNameSyntax node)
+        {
+            if (node.Parent is AnonymousObjectMemberDeclaratorSyntax member && member.NameEquals is null && member.Expression == node)
+                return true;
+            return node.Parent is ArgumentSyntax argument && argument.NameColon is null && argument.Expression == node && argument.Parent is TupleExpressionSyntax;
+        }
+
+        /// <summary>True when <paramref name="node"/> sits in an argument whose text a <c>CallerArgumentExpression</c> captures.</summary>
+        private bool IsCapturedArgument(SyntaxNode node)
+        {
+            for (var current = node.Parent; current is not null; current = current.Parent)
+            {
+                if (current is ArgumentSyntax argument && ArgumentIsCaptured(argument))
+                    return true;
+                if (current is AttributeArgumentSyntax attribute && AttributeArgumentIsCaptured(attribute))
+                    return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>True when <paramref name="argument"/> binds to a parameter whose text a <c>CallerArgumentExpression</c> captures.</summary>
+        private bool ArgumentIsCaptured(ArgumentSyntax argument)
+        {
+            if (argument.Parent is BracketedArgumentListSyntax bracket && bracket.Parent is ElementAccessExpressionSyntax element)
+                return IndexerArgumentIsCaptured(element, bracket, argument);
+            if (argument.Parent is not ArgumentListSyntax list)
+                return false;
+            var method = list.Parent switch
+            {
+                InvocationExpressionSyntax invocation => _model.GetSymbolInfo(invocation).Symbol as IMethodSymbol
+                    ?? _model.GetSymbolInfo(invocation.Expression).Symbol as IMethodSymbol,
+                ObjectCreationExpressionSyntax creation => _model.GetSymbolInfo(creation).Symbol as IMethodSymbol,
+                ImplicitObjectCreationExpressionSyntax implicitCreation => _model.GetSymbolInfo(implicitCreation).Symbol as IMethodSymbol,
+                ConstructorInitializerSyntax initializer => _model.GetSymbolInfo(initializer).Symbol as IMethodSymbol,
+                _ => null,
+            };
+            return method is not null && Captures(method.Parameters, BoundName(list.Arguments, argument, method.Parameters));
+        }
+
+        /// <summary>True when the indexer argument <paramref name="argument"/> binds to a captured parameter.</summary>
+        private bool IndexerArgumentIsCaptured(ElementAccessExpressionSyntax element, BracketedArgumentListSyntax bracket, ArgumentSyntax argument)
+        {
+            if (_model.GetSymbolInfo(element).Symbol is not IPropertySymbol indexer)
+                return false;
+            string? name;
+            if (argument.NameColon is not null)
+            {
+                name = argument.NameColon.Name.Identifier.Text;
+            }
+            else
+            {
+                var index = IndexOf(bracket.Arguments, argument);
+                name = index >= 0 && index < indexer.Parameters.Length ? indexer.Parameters[index].Name : null;
+            }
+
+            return Captures(indexer.Parameters, name);
+        }
+
+        /// <summary>True when the attribute argument <paramref name="argument"/> binds to a captured constructor parameter.</summary>
+        private bool AttributeArgumentIsCaptured(AttributeArgumentSyntax argument)
+        {
+            if (argument.Parent is not AttributeArgumentListSyntax list || list.Parent is not AttributeSyntax attribute)
+                return false;
+            // `Name = value` sets a property, not a constructor parameter.
+            if (argument.NameEquals is not null)
+                return false;
+            if (_model.GetSymbolInfo(attribute).Symbol is not IMethodSymbol constructor)
+                return false;
+            string? name;
+            if (argument.NameColon is not null)
+            {
+                name = argument.NameColon.Name.Identifier.Text;
+            }
+            else
+            {
+                var index = IndexOf(list.Arguments, argument);
+                if (index < 0)
+                    return false;
+                name = index < constructor.Parameters.Length ? constructor.Parameters[index].Name
+                    : constructor.Parameters.Length > 0 && constructor.Parameters[^1].IsParams ? constructor.Parameters[^1].Name : null;
+            }
+
+            return Captures(constructor.Parameters, name);
+        }
+
+        /// <summary>The parameter <paramref name="argument"/> binds to, or null when it binds to none.</summary>
+        private static string? BoundName(SeparatedSyntaxList<ArgumentSyntax> arguments, ArgumentSyntax argument, IReadOnlyList<IParameterSymbol> parameters)
+        {
+            if (argument.NameColon is not null)
+                return argument.NameColon.Name.Identifier.Text;
+            var index = IndexOf(arguments, argument);
+            if (index < 0)
+                return null;
+            if (index < parameters.Count)
+                return parameters[index].Name;
+            return parameters.Count > 0 && parameters[^1].IsParams ? parameters[^1].Name : null;
+        }
+
+        /// <summary>True when a parameter in <paramref name="parameters"/> captures <paramref name="name"/> with a <c>CallerArgumentExpression</c>.</summary>
+        private static bool Captures(IReadOnlyList<IParameterSymbol> parameters, string? name)
+        {
+            if (name is null)
+                return false;
+            foreach (var parameter in parameters)
+            {
+                foreach (var attribute in parameter.GetAttributes())
+                {
+                    if (attribute.AttributeClass?.Name is not ("CallerArgumentExpressionAttribute" or "CallerArgumentExpression"))
+                        continue;
+                    // The attribute names the parameter whose text it captures; when it cannot be read, the text could be this argument's.
+                    if (attribute.ConstructorArguments.Length == 0 || attribute.ConstructorArguments[0].Value is not string captured)
+                        return true;
+                    if (captured == name)
+                        return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>The position of <paramref name="argument"/> in <paramref name="arguments"/>, by identity, or -1.</summary>
+        private static int IndexOf(SeparatedSyntaxList<ArgumentSyntax> arguments, ArgumentSyntax argument)
+        {
+            for (var i = 0; i < arguments.Count; i++)
+            {
+                if (ReferenceEquals(arguments[i], argument))
+                    return i;
+            }
+
+            return -1;
+        }
+
+        /// <summary>The position of <paramref name="argument"/> in <paramref name="arguments"/>, by identity, or -1.</summary>
+        private static int IndexOf(SeparatedSyntaxList<AttributeArgumentSyntax> arguments, AttributeArgumentSyntax argument)
+        {
+            for (var i = 0; i < arguments.Count; i++)
+            {
+                if (ReferenceEquals(arguments[i], argument))
+                    return i;
+            }
+
+            return -1;
         }
 
         /// <summary>The type as the identity it names, keeping <c>ref</c>, so <c>var</c> compares against the explicit type.</summary>

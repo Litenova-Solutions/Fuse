@@ -72,7 +72,9 @@ internal static class PathPattern
             return have == actual.Length;
         if (wanted[want] == "**")
         {
-            for (var skip = have; skip <= actual.Length; skip++)
+            // A last ** names what is under a directory, so it takes at least one segment; elsewhere it may take none.
+            var least = want == wanted.Length - 1 ? have + 1 : have;
+            for (var skip = least; skip <= actual.Length; skip++)
             {
                 if (MatchesSegments(wanted, want + 1, actual, skip))
                     return true;

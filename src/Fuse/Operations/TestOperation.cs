@@ -16,6 +16,9 @@ internal static class TestOperation
     private const int MaxFailuresShown = 10;
     private const int MaxNamesShown = 100;
 
+    /// <summary>The most shadow outcomes one report carries; past it nothing is reported, and the round runs uncached next time.</summary>
+    private const int MaxReportedResults = 20000;
+
     /// <param name="session">
     ///     The session the run is for, as its harness identifies it, or null. With one, the affected tests leave out the
     ///     changes only other sessions wrote. The pre-shell hook passes it to <c>fuse test</c>.
@@ -57,6 +60,10 @@ internal static class TestOperation
             if (response is not EngineResponse.PlanAnswered answered)
                 return OperationResult.Unanswered(response, "test plan");
             var plan = answered.Plan;
+            // A plan that answered every test from the cache runs nothing; the summary says how many it answered.
+            // A gated suite outranks the cache: when a runtime is missing the run is blocked, not clean.
+            if (plan.Runs.Length == 0 && plan.CachedTests > 0)
+                return RenderCached(root, plan, started);
             if (plan.Runs.Length == 0)
                 return new OperationResult(Outcome.Clean, $"fuse: {plan.Summary}");
             var failedFirst = FailedFirstSplit.ForPlan(root, plan);
@@ -133,11 +140,14 @@ internal static class TestOperation
         var copies = new List<IDisposable>();
         try
         {
-            return await RunPlanHoldingAsync(root, plan, started, copies, () =>
+            var shadow = new List<(string Project, string Test, TestVerdict Verdict)>();
+            var answer = await RunPlanHoldingAsync(root, plan, started, copies, () =>
             {
                 buildLock?.Dispose();
                 buildLock = null;
-            }, () => buildLock ??= BuildLock.AcquireForClient(root), scope, cancellationToken, live, failedRerunCount, failedFirstByProject).ConfigureAwait(false);
+            }, () => buildLock ??= BuildLock.AcquireForClient(root), scope, cancellationToken, live, failedRerunCount, failedFirstByProject, shadow).ConfigureAwait(false);
+            await ReportShadowAsync(root, plan, shadow, cancellationToken).ConfigureAwait(false);
+            return answer;
         }
         finally
         {
@@ -148,10 +158,10 @@ internal static class TestOperation
     }
 
     private static async Task<OperationResult> RunPlanHoldingAsync(
-        RepoRoot root, TestPlan plan, long started, List<IDisposable> copies, Action releaseLock, Func<BuildLock> takeLock, TestScopeArguments? scope, CancellationToken cancellationToken, TextWriter? live = null, int? failedRerunCount = null, IReadOnlyDictionary<string, string[]>? failedFirstByProject = null)
+        RepoRoot root, TestPlan plan, long started, List<IDisposable> copies, Action releaseLock, Func<BuildLock> takeLock, TestScopeArguments? scope, CancellationToken cancellationToken, TextWriter? live = null, int? failedRerunCount = null, IReadOnlyDictionary<string, string[]>? failedFirstByProject = null, List<(string Project, string Test, TestVerdict Verdict)>? shadow = null)
     {
         if (failedFirstByProject is not null
-            && await RunStagedAsync(root, plan, started, copies, releaseLock, takeLock, scope, live, failedFirstByProject, cancellationToken).ConfigureAwait(false) is { } staged)
+            && await RunStagedAsync(root, plan, started, copies, releaseLock, takeLock, scope, live, failedFirstByProject, cancellationToken, shadow).ConfigureAwait(false) is { } staged)
             return staged;
 
         var groups = plan.Runs.GroupBy(r => root.PathOf(r.Project)).ToList();
@@ -193,6 +203,14 @@ internal static class TestOperation
                 outcomes[group.Key] = results.Aggregate(TrxResults.Empty, (sum, r) => sum.Add(r.Outcome!));
             }).ConfigureAwait(false);
 
+        // Only shadow runs report back: a build with MSBuild reads inputs the key cannot prove unchanged.
+        if (shadow is not null)
+        {
+            foreach (var (project, outcome) in outcomes)
+                foreach (var record in outcome.Records)
+                    shadow.Add((project.Absolute, record.Name, record.Verdict));
+        }
+
         var aggregate = TrxResults.Empty;
         var perProject = new List<(string Project, string Name, TrxResults Outcome)>();
         // A project that did not build, or whose run ended without results, is part of the answer whatever the other
@@ -229,6 +247,9 @@ internal static class TestOperation
                 problems.Add(answer);
         }
 
+        // Cached passes count as passed; the plan's summary says how many came from the cache.
+        if (plan.CachedTests > 0)
+            aggregate = aggregate.Add(new TrxResults(plan.CachedTests, 0, 0, []));
         if (aggregate.Total == 0 && problems.Count == 0 && passedWithoutResults is not null)
         {
             // A clean run leaves no stale failures behind: without this a passing platform run would keep the last failures recorded.
@@ -259,7 +280,7 @@ internal static class TestOperation
     /// </summary>
     private static async Task<OperationResult?> RunStagedAsync(
         RepoRoot root, TestPlan plan, long started, List<IDisposable> copies, Action releaseLock, Func<BuildLock> takeLock,
-        TestScopeArguments? scope, TextWriter? live, IReadOnlyDictionary<string, string[]> failedFirstByProject, CancellationToken cancellationToken)
+        TestScopeArguments? scope, TextWriter? live, IReadOnlyDictionary<string, string[]> failedFirstByProject, CancellationToken cancellationToken, List<(string Project, string Test, TestVerdict Verdict)>? shadow = null)
     {
         var groups = plan.Runs.GroupBy(r => root.PathOf(r.Project)).ToList();
         var priority = new List<(RepoPath Key, List<TestRun> Runs)>();
@@ -291,12 +312,12 @@ internal static class TestOperation
         var anyShadow = false;
         foreach (var run in staged)
         {
-            if (run.Mode is not TestRunMode.Shadow shadow)
+            if (run.Mode is not TestRunMode.Shadow shadowMode)
                 continue;
             anyShadow = true;
             try
             {
-                copies.Add(LocalState.HoldTestCopy(Path.GetDirectoryName(shadow.Assembly)!));
+                copies.Add(LocalState.HoldTestCopy(Path.GetDirectoryName(shadowMode.Assembly)!));
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
@@ -326,7 +347,16 @@ internal static class TestOperation
             live.Flush();
         }
 
+        if (shadow is not null)
+        {
+            AddShadowRecords(first, shadow);
+            AddShadowRecords(second, shadow);
+        }
+
         var aggregate = first.Aggregate.Add(second.Aggregate);
+        // Cached passes count as passed; the plan's summary says how many came from the cache.
+        if (plan.CachedTests > 0)
+            aggregate = aggregate.Add(new TrxResults(plan.CachedTests, 0, 0, []));
         var problems = first.Problems.Concat(second.Problems).ToList();
         var passedWithoutResults = first.PassedWithoutResults ?? second.PassedWithoutResults;
         if (aggregate.Total == 0 && problems.Count == 0 && passedWithoutResults is not null)
@@ -416,6 +446,46 @@ internal static class TestOperation
 
         return new StageOutcome(aggregate, perProject, problems, passedWithoutResults, outcomes.Keys.ToHashSet());
     }
+
+    /// <summary>Adds the shadow runs' outcomes of <paramref name="stage"/> to <paramref name="shadow"/>; a project its stage ran with MSBuild contributes none.</summary>
+    private static void AddShadowRecords(StageOutcome stage, List<(string Project, string Test, TestVerdict Verdict)> shadow)
+    {
+        var shadowed = stage.Shadowed.Select(p => p.Absolute).ToHashSet(StringComparer.Ordinal);
+        foreach (var (project, _, outcome) in stage.PerProject)
+        {
+            if (!shadowed.Contains(project))
+                continue;
+            foreach (var record in outcome.Records)
+                shadow.Add((project, record.Name, record.Verdict));
+        }
+    }
+
+    /// <summary>
+    ///     Reports the shadow runs' outcomes to the engine, so it keeps the classes that passed. A failed report loses
+    ///     one round of caching and nothing else.
+    /// </summary>
+    private static async Task ReportShadowAsync(RepoRoot root, TestPlan plan, List<(string Project, string Test, TestVerdict Verdict)> shadow, CancellationToken cancellationToken)
+    {
+        if (plan.PlanId.Length == 0 || shadow.Count == 0 || shadow.Count > MaxReportedResults)
+            return;
+        try
+        {
+            EngineRequest request = new EngineRequest.ReportTestResults([.. shadow.Select(s => new ReportedTestResult(s.Test, ToReported(s.Verdict), s.Project))]) { PlanId = plan.PlanId };
+            await EngineClient.SendAsync(root, request, TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            // A failed report loses one round of caching and nothing else.
+        }
+    }
+
+    /// <summary>The record's verdict as the engine reads it.</summary>
+    private static ReportedVerdict ToReported(TestVerdict verdict) => verdict switch
+    {
+        TestVerdict.Passed => ReportedVerdict.Passed,
+        TestVerdict.Failed => ReportedVerdict.Failed,
+        _ => ReportedVerdict.Skipped,
+    };
 
     /// <summary>Several answers as one, in order; it found problems when any of them did.</summary>
     private static OperationResult Join(List<OperationResult> answers) =>
@@ -735,6 +805,17 @@ internal static class TestOperation
             text.Append("  ").Append(line).Append('\n');
         foreach (var frame in failure.Frames)
             text.Append("  ").Append(frame).Append('\n');
+    }
+
+    /// <summary>
+    ///     The answer when the plan answered every test from the cache and runs nothing: the cached counts with the
+    ///     plan's summary. It clears the last run's record, so no stale failure stays behind.
+    /// </summary>
+    private static OperationResult RenderCached(RepoRoot root, TestPlan plan, long started)
+    {
+        var outcome = new TrxResults(plan.CachedTests, 0, 0, []);
+        var resultsPath = ResultsFile.WriteTestsWithPaths(root, []);
+        return Render(outcome, $"{plan.Summary}; without MSBuild", Seconds(started), resultsPath);
     }
 
     /// <summary>The answer for runs with results: the failures grouped by their shared first line, then the counts and <paramref name="summary"/>.</summary>

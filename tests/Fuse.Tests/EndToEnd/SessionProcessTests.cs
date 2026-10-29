@@ -53,6 +53,8 @@ public class SessionProcessTests
             var allowed = await FuseProcess.RunAsync(repo.Path, Stop("judge", repo.Path), "hook", "claude", "stop");
             Assert.DoesNotContain("decision", allowed.Stdout, StringComparison.Ordinal);
 
+            // The engine reads the registrations when it starts, so the expiry is written while none runs.
+            await FuseProcess.StopEngineAsync(repo.Root);
             var file = Path.Combine(repo.Root.StateDirectory, "registered-sessions.tsv");
             var lines = File.ReadAllLines(file).Select(l => "0" + l[l.IndexOf('\t')..]).ToArray();
             File.WriteAllLines(file, lines);

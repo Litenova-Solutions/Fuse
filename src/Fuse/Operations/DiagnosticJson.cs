@@ -11,7 +11,7 @@ internal static partial class DiagnosticJson
     /// <summary>One build diagnostic as one JSON object.</summary>
     public static string BuildLine(BuildDiagnostic diagnostic) =>
         JsonSerializer.Serialize(
-            new DiagnosticLine(diagnostic.File, diagnostic.Line, diagnostic.Column, diagnostic.Code, diagnostic.Message, LockedBy: LockLine.Holder(diagnostic)),
+            new DiagnosticLine(diagnostic.File, diagnostic.Line, diagnostic.Column, diagnostic.Code, diagnostic.Message),
             Lines.Default.DiagnosticLine);
 
     /// <summary>One introduced error as one JSON object.</summary>
@@ -24,8 +24,8 @@ internal static partial class DiagnosticJson
     private static string? CauseOf(ReportedCause? cause) =>
         cause is null ? null : $"{(cause.Kind == CauseKind.Removed ? "removed" : "changed")}: {cause.Declaration}";
 
-    /// <summary>One diagnostic line: the build fields, then what only a check or a locked file adds.</summary>
-    private sealed record DiagnosticLine(string File, int? Line, int? Column, string Code, string Message, string? Cause = null, string? Generated = null, string? LockedBy = null);
+    /// <summary>One diagnostic line: the build fields, then what only a check adds.</summary>
+    private sealed record DiagnosticLine(string File, int? Line, int? Column, string Code, string Message, string? Cause = null, string? Generated = null);
 
     [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonSerializable(typeof(DiagnosticLine))]

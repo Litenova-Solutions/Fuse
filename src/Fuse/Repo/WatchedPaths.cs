@@ -81,7 +81,7 @@ internal sealed class WatchedPaths : IDisposable
     ///     A path that appeared or vanished is resolved here: an existing directory contributes its sources and project
     ///     files, which arrive without events of their own when the directory is moved or renamed, and a path that is
     ///     neither a file nor a directory any more is reported as vanished, so the workspace can drop what it holds under
-    ///     it. An existing file that is neither a source nor a project file contributes nothing.
+    ///     it. The other files in an existing directory are recorded for <see cref="DrainNonSources"/>.
     /// </remarks>
     public WatchedChanges Drain()
     {
@@ -101,12 +101,17 @@ internal sealed class WatchedPaths : IDisposable
                 continue;
             if (Directory.Exists(key.Absolute))
             {
+                // The folder itself is not a changed file. Its non-sources go to the next DrainNonSources, since a
+                // watcher that only starts watching a new folder after it appears, as on Linux, misses their own events.
+                _nonSources.TryRemove(key, out _);
                 foreach (var file in FilesUnder(key))
                 {
                     if (PathRules.IsSource(file.Absolute))
                         sources.Add(file);
-                    else
+                    else if (PathRules.IsProjectFile(file.Absolute))
                         projectFiles.Add(file);
+                    else
+                        _nonSources[file] = 0;
                 }
             }
             else if (!File.Exists(key.Absolute))
@@ -150,13 +155,12 @@ internal sealed class WatchedPaths : IDisposable
         return false;
     }
 
-    /// <summary>The sources and project files under <paramref name="directory"/>, at any depth, that the tracker follows.</summary>
+    /// <summary>The files under <paramref name="directory"/>, at any depth, that the tracker follows.</summary>
     private List<RepoPath> FilesUnder(RepoPath directory)
     {
         try
         {
             return Directory.EnumerateFiles(directory.Absolute, "*", SearchOption.AllDirectories)
-                .Where(f => PathRules.IsSource(f) || PathRules.IsProjectFile(f))
                 .Select(_root.PathOf)
                 .Where(f => !IsIgnored(f))
                 .ToList();

@@ -364,3 +364,4 @@ pre .tk-summary { color: #d9cfff; }
 .stat-cards span code { font-size: 0.88em; }
 .stat-cards i { font-style: normal; color: var(--accent); font-size: 0.85rem; margin-top: 0.7rem; }
 @media (max-width: 720px) { .stat-cards { grid-template-columns: 1fr; } }
+.stat-cards em { font-style: normal; font-weight: 600; font-size: 0.92rem; color: var(--text); margin-bottom: 0.5rem; }

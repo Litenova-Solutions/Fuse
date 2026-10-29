@@ -227,15 +227,15 @@
     </section>
     <section class="section" aria-labelledby="more-heading">
       <div class="section-head">
-        <p class="kicker">Beyond the Median</p>
+        <p class="kicker">Beyond One Edit</p>
         <h2 id="more-heading">Measured Where Agents Struggle</h2>
-        <p>Four newer evals: a repeated check, two agents in one tree, a large uncommitted tree and a slow analyzer.</p>
+        <p>An agent checks again and again, shares the tree with other agents, piles up large changes and runs slow analyzers. Four evals measure each case.</p>
       </div>
       <ul class="stat-cards">
-        <li><a href="docs/benchmarks.html#speed-and-accuracy"><b>27 to 44 ms</b><span>for a check when nothing changed since the last one, on a warm engine, across the four repositories.</span><i>Benchmarks -&gt;</i></a></li>
-        <li><a href="docs/benchmarks.html#another-writers-errors"><b>20 to 0</b><span>of another agent's errors shown to an agent in the same tree, without and with sessions, while it still gets all 64 of its own.</span><i>Another writer's errors -&gt;</i></a></li>
-        <li><a href="docs/benchmarks.html#a-large-tree"><b>1,500 files</b><span>changed and checked in one cold check of 39.2 s, in a tree of 6,002 files and 31 projects.</span><i>A large tree -&gt;</i></a></li>
-        <li><a href="docs/benchmarks.html#slow-analyzer"><b>46 ms</b><span>for the post-edit hook beside an analyzer that takes 4,001 ms; <code>fuse check</code> runs that analyzer in 2.14 s and reports its error.</span><i>A slow analyzer -&gt;</i></a></li>
+        <li><a href="docs/benchmarks.html#speed-and-accuracy"><em>The agent checks again before it stops</em><b>27 to 44 ms</b><span>A second <code>fuse check</code> with nothing changed answers in 27 to 44 ms on the four repositories, so checking after every step costs the agent almost nothing.</span><i>Benchmarks -&gt;</i></a></li>
+        <li><a href="docs/benchmarks.html#another-writers-errors"><em>Two agents edit the same tree</em><b>0 of 20</b><span>Across 9 pairs of agents, 20 errors the other agent caused showed up without sessions, errors an agent might try to fix. With sessions, none of the 20 showed up, and all 64 of each agent's own errors still did.</span><i>Another writer's errors -&gt;</i></a></li>
+        <li><a href="docs/benchmarks.html#a-large-tree"><em>A large change is not committed yet</em><b>39.2 s</b><span>With 1,500 changed files in a tree of 6,002 files and 31 projects, the first check after the engine started covered every changed file in 39.2 s.</span><i>A large tree -&gt;</i></a></li>
+        <li><a href="docs/benchmarks.html#slow-analyzer"><em>An analyzer reads the whole project</em><b>46 ms</b><span>The hook after each edit leaves that slow analyzer out and answers in 46 ms. <code>fuse check</code> runs it, takes 2.14 s, and still reports its error.</span><i>A slow analyzer -&gt;</i></a></li>
       </ul>
     </section>
 

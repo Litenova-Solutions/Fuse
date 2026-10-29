@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using Fuse.Failures;
 using Fuse.Paths;
+using Fuse.Protocol;
 using Fuse.Repo;
 
 namespace Fuse.Harnesses;
@@ -72,8 +73,8 @@ internal static class InitCommand
         }
 
         output.WriteLine(harnesses.Count > 0
-            ? "fuse: hooks registered; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors"
-            : "fuse: MCP server registered in .vscode/mcp.json; VS Code's agent can call fuse_check, fuse_test and fuse_build");
+            ? $"fuse: hooks registered by Fuse {EngineVersion.Product}; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors"
+            : $"fuse: MCP server registered in .vscode/mcp.json by Fuse {EngineVersion.Product}; VS Code's agent can call fuse_check, fuse_test and fuse_build");
         foreach (var step in harnesses.Select(h => h.NextStep).OfType<string>())
             output.WriteLine($"fuse: {step}");
         return 0;

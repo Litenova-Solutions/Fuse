@@ -21,7 +21,11 @@ internal abstract record Reach
     ///     declaration explains it.
     /// </summary>
     /// <param name="Files">Every source file in the projects with declaration changes and in their dependents.</param>
-    public sealed record Broad(IReadOnlySet<RepoPath> Files) : Reach;
+    /// <param name="BroadCauses">
+    ///     The declaration changes that made the reach broad, each with the file that holds it, for the whole-project
+    ///     answer. Null when only the files are known.
+    /// </param>
+    public sealed record Broad(IReadOnlySet<RepoPath> Files, IReadOnlyList<(RepoPath File, Cause Cause)>? BroadCauses = null) : Reach;
 
     /// <summary>The files that use a changed declaration, each with the change that made it a candidate.</summary>
     /// <param name="Causes">
@@ -33,5 +37,8 @@ internal abstract record Reach
     ///     <paramref name="Causes"/>. An error whose message names a later change's declaration prints that change instead,
     ///     so an error in a file two changes reach names the one it is about. Null when only the first is known.
     /// </param>
-    public sealed record Precise(IReadOnlyDictionary<RepoPath, Cause> Causes, IReadOnlyDictionary<RepoPath, IReadOnlyList<Cause>>? AllCauses = null) : Reach;
+    /// <param name="CauseFiles">
+    ///     Each cause's file, the target that holds its declaration change. Null when only the causes are known.
+    /// </param>
+    public sealed record Precise(IReadOnlyDictionary<RepoPath, Cause> Causes, IReadOnlyDictionary<RepoPath, IReadOnlyList<Cause>>? AllCauses = null, IReadOnlyDictionary<Cause, RepoPath>? CauseFiles = null) : Reach;
 }

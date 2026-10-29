@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Architecture | Fuse</title>
-<meta name="description" content="How Fuse's code is organized: its layers, which namespace may use which, the order to read it in, and the words its types are named with.">
+<title>Fuse Architecture: Layers, Engine and Rules | Fuse</title>
+<meta name="description" content="How the Fuse code is organized: its namespaces as layers, the engine and the client, the pipe protocol, the rules each change follows and the words it uses.">
 <link rel="canonical" href="https://fuse.codes/docs/architecture">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 <meta name="author" content="Litenova Solutions">
@@ -13,24 +13,26 @@
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="Fuse">
 <meta property="og:locale" content="en_US">
-<meta property="og:title" content="Architecture">
-<meta property="og:description" content="How Fuse's code is organized: its layers, which namespace may use which, the order to read it in, and the words its types are named with.">
+<meta property="og:title" content="Fuse Architecture: Layers, Engine and Rules">
+<meta property="og:description" content="How the Fuse code is organized: its namespaces as layers, the engine and the client, the pipe protocol, the rules each change follows and the words it uses.">
 <meta property="og:url" content="https://fuse.codes/docs/architecture">
 <meta property="og:image" content="https://fuse.codes/assets/og.png">
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 7.0x to 31.0x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 8.1x to 27.7x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Architecture">
-<meta name="twitter:description" content="How Fuse's code is organized: its layers, which namespace may use which, the order to read it in, and the words its types are named with.">
+<meta name="twitter:title" content="Fuse Architecture: Layers, Engine and Rules">
+<meta name="twitter:description" content="How the Fuse code is organized: its namespaces as layers, the engine and the client, the pipe protocol, the rules each change follows and the words it uses.">
 <meta name="twitter:image" content="https://fuse.codes/assets/og.png">
-<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 7.0x to 31.0x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 8.1x to 27.7x faster than dotnet build. dotnet tool install -g Fuse.">
 <link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
 <link rel="icon" href="../assets/fuse-icon.svg" type="image/svg+xml" sizes="any">
 <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
 <link rel="sitemap" type="application/xml" href="../sitemap.xml">
 <link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/docs.js" defer></script>
+<script src="../assets/highlight.js" defer></script>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -38,12 +40,12 @@
     {
       "@type": "TechArticle",
       "@id": "https://fuse.codes/docs/architecture#article",
-      "headline": "Architecture",
-      "description": "How Fuse's code is organized: its layers, which namespace may use which, the order to read it in, and the words its types are named with.",
+      "headline": "Fuse Architecture: Layers, Engine and Rules",
+      "description": "How the Fuse code is organized: its namespaces as layers, the engine and the client, the pipe protocol, the rules each change follows and the words it uses.",
       "url": "https://fuse.codes/docs/architecture",
       "mainEntityOfPage": "https://fuse.codes/docs/architecture",
       "inLanguage": "en",
-      "dateModified": "2026-10-17",
+      "dateModified": "2026-10-29",
       "image": "https://fuse.codes/assets/og.png",
       "isPartOf": {
         "@type": "WebSite",
@@ -97,25 +99,34 @@
 <a class="skip-link" href="#main">Skip to main content</a>
 <div class="wrap wide">
   <header class="site-header">
-    <a class="brand" href="../index.html"><img src="../assets/fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
+    <a class="brand" href="../"><img src="../assets/fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
     <nav aria-label="Main">
-      <a href="index.html" aria-current="page">Docs</a>
-      <a href="benchmarks.html">Benchmarks</a>
+      <a href="./" aria-current="page">Docs</a>
+      <a href="benchmarks">Benchmarks</a>
       <a class="gh" href="https://github.com/Litenova-Solutions/Fuse" aria-label="Fuse on GitHub"><svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg></a>
     </nav>
   </header>
 
   <div class="docs">
     <main id="main" class="page" tabindex="-1">
-    <p class="crumbs"><a href="index.html">Docs</a> / Contribute</p>
+    <p class="crumbs"><a href="./">Docs</a> / Contribute</p>
     <h1>Architecture</h1>
     <p class="jump"><a href="#docs-nav">All documentation pages</a></p>
-    <p class="intro">How Fuse's code is organized: its layers, which namespace may use which, the order to read it in, the types each feature is built from, and the words those types are named with.</p>
+    <p class="intro">Fuse's code is organized into layers, and each layer is a set of namespaces. This page states which namespaces each namespace may use, the order you read them in, the types each feature is built from, and the words those types are named with.</p>
     <div class="audience">
       <p><b>This page is for</b> contributors and coding agents changing Fuse. Read it before adding a namespace, a type that other namespaces use, a step to the check or test pipeline, or a word to the output.</p>
-      <p><b>Read first</b> <a href="how-it-works.html">How it works</a>, which describes what Fuse does. This page describes where that behavior lives and what it is called.</p>
+      <p><b>Read first</b> <a href="how-it-works">How it works</a>, which describes what Fuse does. This page describes where that behavior lives and what it is called.</p>
     </div>
-    <p>Fuse is one project, <code>src/Fuse</code>, and its namespaces are its layers. Two tests hold the code to this page: <code>tests/Fuse.Tests/Architecture/NamespaceDependencyTests.cs</code> for the layers and <code>PathComparisonTests.cs</code> for how paths compare. A change that contradicts a rule here changes the page, the tests and the code together, and records a decision in <a href="#decisions">Decisions</a>.</p>
+    <div class="key">
+      <p>In short</p>
+      <ul>
+        <li>Fuse is one project whose namespaces are its layers, and dependencies point down with no cycles.</li>
+        <li>Each feature declares its concepts as model types first, and features never know the wire.</li>
+        <li>The client runs short-lived commands while the engine alone loads MSBuild and Roslyn.</li>
+        <li>Vocabulary is the authority for names, and two tests hold the code to this page.</li>
+      </ul>
+    </div>
+    <p>Fuse is one project, <code>src/Fuse</code>, and its namespaces are its layers. Two tests hold the code to this page: <code>tests/Fuse.Tests/Architecture/NamespaceDependencyTests.cs</code> for the layers and <code>PathComparisonTests.cs</code> for how paths compare. When your change contradicts a rule on this page, change the page, the tests and the code together, and record a decision in <a href="#decisions">Decisions</a>.</p>
 
     <nav class="toc" aria-label="On this page">
       <p>On this page</p>
@@ -140,24 +151,24 @@
 
     <h2 id="principles">Principles <a class="anchor" href="#principles" aria-label="Link to this section">#</a></h2>
     <ol>
-      <li><strong>Abstractions come first in reading order.</strong> Each feature declares its concepts as small model types (records and their variants) before any class that computes them. A reader learns what a check is from its model, and how it is computed from its steps.</li>
-      <li><strong>Dependencies point down.</strong> A namespace uses only the layers below it. No cycle exists between namespaces, and a test fails the build when one appears.</li>
+      <li><strong>Abstractions come first in reading order.</strong> Each feature declares its concepts as small model types (records and their variants) before any class that computes them. You learn what a check is from its model, and how the code computes it from its steps.</li>
+      <li><strong>Dependencies point down.</strong> A namespace uses only the layers below it. No cycle exists between namespaces. When one appears, a test fails the build.</li>
       <li><strong>One responsibility per type.</strong> A class holds one step, one rule or one piece of state. A class that needs several paragraphs to describe is several classes.</li>
-      <li><strong>Each abstraction takes the form that states it most directly.</strong> A model record, a variant hierarchy, a class per step, an abstract class and an interface are all abstractions; an interface is worth adding for a seam or a contract even with one implementation. The one role Fuse implements several times is the harness (<a href="#harnesses">Harnesses</a>).</li>
-      <li><strong>Variants replace nulls that change control flow.</strong> When code branches on whether a value is null, the value is two concepts, and each gets a named case. A null that is only printed, such as an optional message on a wire record, can stay.</li>
+      <li><strong>Each abstraction takes the form that states it most directly.</strong> A model record, a variant hierarchy, a class per step, an abstract class and an interface are all abstractions. Add an interface for a seam or a contract even when it will have one implementation. The one role Fuse implements several times is the harness (<a href="#harnesses">Harnesses</a>).</li>
+      <li><strong>Variants replace nulls that change control flow.</strong> When code branches on whether a value is null, that value holds 2 concepts, so give each a named case. A null that is only printed, such as an optional message on a wire record, can stay.</li>
       <li><strong>Features do not know the wire.</strong> Check and Testing return domain results. The engine maps them to <code>Protocol</code> records in one place.</li>
       <li><strong>One word per concept.</strong> <a href="#vocabulary">Vocabulary</a> is the authority for names, and <a href="#naming-rules">Naming rules</a> decide the next one.</li>
     </ol>
 
     <h2 id="layers">Layers <a class="anchor" href="#layers" aria-label="Link to this section">#</a></h2>
-    <p>Listed from the top. Each layer may use the layers below it, with the exceptions stated in <a href="#dependency-rules">Dependency rules</a>.</p>
+    <p>The table lists the layers from the top. Each layer may use the layers below it, except where <a href="#dependency-rules">Dependency rules</a> says otherwise.</p>
     <div class="table-scroll" role="region" aria-label="Layers" tabindex="0">
       <table>
         <thead><tr><th scope="col">Layer</th><th scope="col">Namespaces</th><th scope="col">Owns</th></tr></thead>
         <tbody>
           <tr><th scope="row">Composition</th><td><code>Fuse</code> (<code>Program</code>)</td><td>Parsing the command line and choosing a surface or the engine</td></tr>
           <tr><th scope="row">Surfaces</th><td><code>Fuse.Hooks</code>, <code>Fuse.Mcp</code>, <code>Fuse.Harnesses</code></td><td><code>fuse hook</code>, <code>fuse mcp</code>, and <code>fuse init</code> and <code>fuse uninit</code> with one type per harness</td></tr>
-          <tr><th scope="row">Operations</th><td><code>Fuse.Operations</code></td><td>Check, test and build as a client runs them, and rendering their output</td></tr>
+          <tr><th scope="row">Operations</th><td><code>Fuse.Operations</code></td><td>Check, test, build, status and session as a client runs them (<code>CheckOperation</code>, <code>TestOperation</code>, <code>BuildOperation</code>, <code>StatusOperation</code>, <code>SessionOperation</code>), and rendering their output</td></tr>
           <tr><th scope="row">Client</th><td><code>Fuse.Engine.Client</code></td><td>Finding, starting and calling the engine</td></tr>
           <tr><th scope="row">Wire</th><td><code>Fuse.Protocol</code></td><td>Request and response records, their JSON, and <code>EngineVersion</code></td></tr>
           <tr><th scope="row">Engine</th><td><code>Fuse.Engine</code></td><td>The engine process: pipe server, request routing, preload, mapping results to <code>Protocol</code></td></tr>
@@ -169,7 +180,7 @@
         </tbody>
       </table>
     </div>
-    <p>The client and the engine are separate processes. <code>fuse init</code>, <code>fuse hook</code>, <code>fuse check</code>, <code>fuse test</code>, <code>fuse build</code> and <code>fuse mcp</code> run in a short-lived client. <code>fuse engine &lt;root&gt;</code> runs the long-lived engine, which alone loads MSBuild and Roslyn. The layers above Wire run in the client and the layers from Engine down run in the engine; Wire, Foundation, <code>Fuse.Repo</code>, <code>Fuse.Dotnet</code> and <code>Fuse.Check.Model</code> (for <code>CompilerError</code>, <a href="#decisions">D11</a>) are shared.</p>
+    <p>The client and the engine are separate processes. <code>fuse init</code>, <code>fuse hook</code>, <code>fuse check</code>, <code>fuse test</code>, <code>fuse build</code>, <code>fuse status</code>, <code>fuse session</code> and <code>fuse mcp</code> run in a short-lived client. <code>fuse engine &lt;root&gt;</code> runs the long-lived engine, which alone loads MSBuild and Roslyn. The layers above Wire run in the client, and the layers from Engine down run in the engine. Wire, Foundation, <code>Fuse.Repo</code>, <code>Fuse.Dotnet</code> and <code>Fuse.Check.Model</code> (for <code>CompilerError</code>, <a href="#decisions">D11</a>) are shared.</p>
 
     <h2 id="dependency-rules">Dependency rules <a class="anchor" href="#dependency-rules" aria-label="Link to this section">#</a></h2>
     <div class="table-scroll" role="region" aria-label="Dependency rules" tabindex="0">
@@ -196,25 +207,29 @@
         </tbody>
       </table>
     </div>
-    <p>Three rules carry most of the value:</p>
+    <p>Three of these rules matter most:</p>
     <ol>
       <li><strong>Features never use <code>Fuse.Engine</code>, <code>Fuse.Protocol</code> or anything above them.</strong> A check is testable without a pipe, and the wire can change without touching the algorithm.</li>
-      <li><strong>No client namespace uses <code>Microsoft.CodeAnalysis</code>, <code>Microsoft.Build</code>, or a Fuse namespace that does.</strong> Those are <code>Fuse.Graph</code>, <code>Fuse.Workspace</code>, <code>Fuse.Changes</code>, the features and <code>Fuse.Engine</code>. A hook pays for every assembly it loads, and the runtime loads one as soon as a method that uses it runs, so a single client call into an engine namespace would load Roslyn into every hook. The test follows every namespace a client namespace uses, directly or through others, and fails when that reaches Roslyn, MSBuild or an engine-side namespace.</li>
-      <li><strong><code>Program</code> is the only type that references both the client and the engine</strong>, because it is where <code>fuse engine</code> and the client commands are told apart.</li>
+      <li><strong>No client namespace uses <code>Microsoft.CodeAnalysis</code> or <code>Microsoft.Build</code>, directly or through a Fuse namespace that uses them.</strong> The engine-side namespaces are <code>Fuse.Graph</code>, <code>Fuse.Workspace</code>, <code>Fuse.Changes</code>, the features and <code>Fuse.Engine</code>. A hook pays for every assembly it loads, and the runtime loads one as soon as a method that uses it runs, so a single client call into an engine namespace would load Roslyn into every hook. The test follows every namespace a client namespace uses, directly or through others, and fails when that reaches Roslyn, MSBuild or an engine-side namespace.</li>
+      <li><strong><code>Program</code> is the only type that references both the client and the engine</strong>, because it tells <code>fuse engine</code> apart from the client commands.</li>
     </ol>
-    <p><code>tests/Fuse.Tests/Architecture/NamespaceDependencyTests.cs</code> enforces the table and rule 2. It reads every <code>.cs</code> file under <code>src/Fuse</code>, takes the file's namespace from its <code>namespace</code> line, and collects every <code>Fuse.X</code>, <code>Microsoft.CodeAnalysis</code> and <code>Microsoft.Build</code> name in its <code>using</code> directives and in fully qualified references. A type a file names from an enclosing namespace without a <code>using</code>, such as a <code>Fuse.Engine</code> type in <code>Fuse.Engine.Client</code>, counts too, and the test also fails on a cycle between namespaces. It fails naming the file, the namespace it used and the rule it broke. A new namespace fails the test until it has a row, which is the point at which its layer is decided. The table on this page and the test change together.</p>
+    <p><code>tests/Fuse.Tests/Architecture/NamespaceDependencyTests.cs</code> enforces the table and rule 2. It reads every <code>.cs</code> file under <code>src/Fuse</code> and takes the file's namespace from its <code>namespace</code> line. It then collects every <code>Fuse.X</code>, <code>Microsoft.CodeAnalysis</code> and <code>Microsoft.Build</code> name from the <code>using</code> directives and from fully qualified references.</p>
+    <p>A type a file names from an enclosing namespace without a <code>using</code>, such as a <code>Fuse.Engine</code> type in <code>Fuse.Engine.Client</code>, counts too. The test also fails when it finds a cycle between namespaces. Each failure names the file, the namespace it used and the rule it broke.</p>
+    <div class="callout tip">
+      <p>When you add a namespace, the test fails until you give it a row. That row is where you decide its layer. Change the table on this page and the test together.</p>
+    </div>
 
     <h2 id="reading-order">Reading order <a class="anchor" href="#reading-order" aria-label="Link to this section">#</a></h2>
-    <p>For a contributor new to the code:</p>
+    <p>If you are new to the code, read in this order:</p>
     <ol>
-      <li><a href="how-it-works.html">How it works</a>: what Fuse does and why.</li>
+      <li><a href="how-it-works">How it works</a>: what Fuse does and why.</li>
       <li><code>Fuse.Protocol</code>: the questions the engine answers and the shape of each answer. It is small and is the product's contract.</li>
       <li><code>Fuse.Check.Model</code>, then the steps in <code>Fuse.Check</code> in the order <a href="#check">Check</a> lists them.</li>
       <li><code>Fuse.Testing.Model</code>, then the steps in <code>Fuse.Testing</code>.</li>
       <li><code>Fuse.Changes.Model</code>, then <code>Fuse.Changes</code>, <code>Fuse.Workspace</code> and the Sources layer, when a change needs them.</li>
       <li><code>Fuse.Engine</code>, <code>Fuse.Engine.Client</code>, <code>Fuse.Operations</code> and the surfaces, for how a request travels.</li>
     </ol>
-    <p>Model types sit in a <code>Model</code> folder and namespace inside their feature (<code>src/Fuse/Check/Model</code>, namespace <code>Fuse.Check.Model</code>). A model type uses only other model types of its feature, <code>Fuse.Changes</code> model types and Foundation, so a reader can understand the folder without opening anything else.</p>
+    <p>Model types sit in a <code>Model</code> folder and namespace inside their feature (<code>src/Fuse/Check/Model</code>, namespace <code>Fuse.Check.Model</code>). A model type uses only other model types of its feature, <code>Fuse.Changes</code> model types and Foundation, so you can understand the folder without opening anything else.</p>
 
     <h2 id="foundation">Foundation <a class="anchor" href="#foundation" aria-label="Link to this section">#</a></h2>
     <div class="table-scroll" role="region" aria-label="Foundation types" tabindex="0">
@@ -224,19 +239,20 @@
           <tr><th scope="row"><code>RepoRoot</code></th><td><code>Fuse.Paths</code></td><td>The canonical repository root, its pipe name and its state directory.</td></tr>
           <tr><th scope="row"><code>RepoPath</code></th><td><code>Fuse.Paths</code></td><td>A file or directory of the repository, by its absolute path. See below.</td></tr>
           <tr><th scope="row"><code>PathRules</code></th><td><code>Fuse.Paths</code></td><td>Which files are sources, project inputs or build output, which the client and the engine both use.</td></tr>
-          <tr><th scope="row"><code>LocalState</code></th><td><code>Fuse.Paths</code></td><td>Fuse's folders in the user's local application data: the engine copies, the lock file an engine holds in its copy, the lock file a test run holds in the copy of build output it runs from, and the state directories, with the removal of the ones nothing uses. The client makes a copy and the engine holds and removes them, so it sits below both.</td></tr>
+          <tr><th scope="row"><code>PathPattern</code></th><td><code>Fuse.Paths</code></td><td>A path pattern against repository-relative paths: <code>**</code> as a whole segment matches zero or more segments, <code>*</code> and <code>?</code> match inside one segment, and a pattern with no wildcards names a file or a directory subtree. Session registrations match files with it.</td></tr>
+          <tr><th scope="row"><code>LocalState</code></th><td><code>Fuse.Paths</code></td><td>Fuse's folders in the user's local application data: the engine copies, the lock file an engine holds in its copy, the lock file a test run holds in the copy of build output it runs from, and the state directories. It also removes the ones nothing uses. The client makes a copy and the engine holds and removes them, so it sits below both.</td></tr>
           <tr><th scope="row"><code>FuseException</code>, <code>ErrorCode</code></th><td><code>Fuse.Failures</code></td><td>A failure that ends a request, with the message that names the fix. <code>ErrorMessages</code> holds each message that does not depend on the request, so every surface words a failure the same way (<a href="#decisions">D8</a>).</td></tr>
           <tr><th scope="row"><code>PhaseTimes</code>, <code>Phase</code>, <code>PhaseLine</code></th><td><code>Fuse.Telemetry</code></td><td>The timed phases of one request, the phase names as constants, and the one log line that carries them. The engine writes the line and <code>evals/Fuse.Evals</code> reads it, so the names and the format are a contract and live in one place. <code>PhaseTimes.None</code> records nothing, so no caller passes or checks a null collector.</td></tr>
           <tr><th scope="row"><code>EngineLog</code></th><td><code>Fuse.Telemetry</code></td><td>The engine log writer. Features write to it through <code>RepoWorkspace.Log</code>, so none of them takes a second constructor argument.</td></tr>
         </tbody>
       </table>
     </div>
-    <p><strong><code>RepoPath</code></strong> is a <code>readonly struct</code> that holds the root, the absolute path and its hash, computed once. It compares the way the file system does (ignoring case on Windows, ordinally elsewhere), so every set and dictionary of paths takes no comparer. <code>Relative</code> gives the repository-relative path with forward slashes, <code>FileName</code> the last segment, <code>IsUnder</code> whether it lies in a directory, and <code>Matches</code> whether a path Roslyn or MSBuild reports is the same spelling, which needs no canonicalization.</p>
-    <p><code>RepoRoot.PathOf</code> is the only way to make one: it takes a path absolute or relative to the root, and canonicalizes any spelling not under the root's own (a junction, a symlink, a <code>subst</code> drive), so each file has one value. A path outside the root, such as a project in a sibling folder, is a value too, and its relative form starts with <code>../</code>. The wire, command-line arguments and the Roslyn and MSBuild APIs keep strings: <code>RequestRouter</code> turns the files a request names into values and answers an empty or invalid one with <code>ErrorCode.InvalidPath</code>, and <code>ResponseMapper</code> writes them back as absolute strings.</p>
+    <p><strong><code>RepoPath</code></strong> is a <code>readonly struct</code> that holds the root, the absolute path and its hash, which it computes once. It compares the way the file system does (ignoring case on Windows, ordinally elsewhere), so every set and dictionary of paths takes no comparer. <code>Relative</code> gives the repository-relative path with forward slashes, <code>FileName</code> gives the last segment, <code>IsUnder</code> tells whether the path lies in a directory, and <code>Matches</code> tells whether a path Roslyn or MSBuild reports is the same spelling, which needs no canonicalization.</p>
+    <p>You make one only through <code>RepoRoot.PathOf</code>. It takes a path, absolute or relative to the root, and canonicalizes any spelling that is not under the root's own spelling (a junction, a symlink, a <code>subst</code> drive), so each file has one value. A path outside the root, such as a project in a sibling folder, is a value too; its relative form starts with <code>../</code>. The wire, command-line arguments and the Roslyn and MSBuild APIs keep strings. <code>RequestRouter</code> turns the files a request names into values, and answers an empty or invalid one with <code>ErrorCode.InvalidPath</code>. <code>ResponseMapper</code> writes them back as absolute strings.</p>
     <p><code>tests/Fuse.Tests/Architecture/PathComparisonTests.cs</code> fails when a string comparison chosen by the operating system appears outside <code>RepoPath</code>, when code outside <code>Fuse.Paths</code> uses <code>RepoPath.Comparison</code>, or when <code>Fuse.Protocol</code> names <code>RepoPath</code>.</p>
 
     <h2 id="changes">Changes <a class="anchor" href="#changes" aria-label="Link to this section">#</a></h2>
-    <p><code>Fuse.Changes</code> answers one question for both features: which declarations differ between a file at HEAD and on disk, decided from syntax. The features ask it in two forms, whether a file's visible declarations changed (Check) and whether any declaration's code changed (Testing), so there are two functions. Both read a file the same way, into the same declarations under the same key.</p>
+    <p><code>Fuse.Changes</code> answers one question for both features: which declarations differ between a file at HEAD and the same file on disk, decided from syntax. The features ask that question in 2 forms: whether a file's visible declarations changed (Check), and whether any declaration's code changed (Testing). Each form is one function. Both functions read a file the same way, into the same declarations under the same key.</p>
     <h3 id="model-fuse-changes-model">Model (<code>Fuse.Changes.Model</code>) <a class="anchor" href="#model-fuse-changes-model" aria-label="Link to this section">#</a></h3>
     <p>It uses only Foundation and no Roslyn, so a feature's model may use it.</p>
     <div class="table-scroll" role="region" aria-label="Changes model" tabindex="0">
@@ -249,41 +265,58 @@
         </tbody>
       </table>
     </div>
-    <p>A key is read from syntax alone. A member's signature holds its kind, name, explicit interface, arity and parameter types with their modifiers, <code>checked</code> for a checked operator, and a conversion's target type, so overloads, a static constructor, an explicit implementation, a checked operator and two conversions to one type each have their own key. An extension block has no name, so its key is its receiver's type. A field has one key per variable. When a file declares one key more than once (the parts of a partial type or member, or two extension blocks for the same receiver), the parts are one declaration: its surface holds every part's, so a change to any part is a change to the declaration, and <code>CodeDiff</code> compares the parts one by one.</p>
+    <p>A key is read from syntax alone. A member's signature holds its kind, name, explicit interface, arity and parameter types with their modifiers, <code>checked</code> for a checked operator, and a conversion's target type. Overloads, a static constructor, an explicit implementation, a checked operator and 2 conversions to one type therefore each have their own key.</p>
+    <p>An extension block has no name, so its key is its receiver's type. A field has one key per variable.</p>
+    <p>When a file declares one key more than once (the parts of a partial type or member, or 2 extension blocks for the same receiver), the parts form one declaration. Its surface holds every part's surface, so a change to any part is a change to the declaration. <code>CodeDiff</code> compares the parts one by one.</p>
     <h3 id="steps-fuse-changes">Steps (<code>Fuse.Changes</code>) <a class="anchor" href="#steps-fuse-changes" aria-label="Link to this section">#</a></h3>
     <ol>
-      <li><code>FileDeclarations</code>: reads one version of a file into its declarations, each a <code>DeclarationNode</code> with its key, its syntax node, its surface (what other files can observe, with bodies and trivia removed; none for a finalizer or top-level statements), the names other code reaches it by, and its containing type. It is the one walk of namespaces, types and members that both functions use.</li>
-      <li><code>DeclarationHeader</code>: a declaration's header as written, on one line. <code>DeclarationChange</code> carries it and a cause quotes it.</li>
-      <li><code>SurfaceDiff</code>: Check's question. It compares the surfaces of two <code>FileDeclarations</code> and returns <code>FileChanges</code>, which is broad when a type header, a delegate, a global using or a file-level attribute list changed.</li>
-      <li><code>CodeDiff</code>: Testing's question. It compares the code of the same declarations, a type by its header (its surface) and anything else by its whole syntax, and returns the nodes the test walks start from: each added or changed declaration, the type of each removed member, the compilation unit when top-level statements change, and every type, and the compilation unit of a file with top-level statements, when the file's usings (at file level or inside a namespace) or file-level attributes change.</li>
+      <li><code>FileDeclarations</code> reads one version of a file into its declarations. Each declaration is a <code>DeclarationNode</code> with its key, its syntax node, its surface (what other files can observe, with bodies and trivia removed; none for a finalizer or top-level statements), the names other code reaches it by, and its containing type. It is the one walk of namespaces, types and members that both functions use.</li>
+      <li><code>DeclarationHeader</code> is a declaration's header as written, on one line. <code>DeclarationChange</code> carries it, and a cause quotes it.</li>
+      <li><code>SurfaceDiff</code> answers Check's question. It compares the surfaces of 2 <code>FileDeclarations</code> and returns <code>FileChanges</code>, which is broad when a type header, a delegate, a global using or a file-level attribute list changed.</li>
+      <li><code>CodeDiff</code> answers Testing's question. It compares the code of the same declarations: a type by its header (its surface), and anything else by its whole syntax. It returns the nodes the test walks start from: each added or changed declaration; the type of each removed member; the compilation unit when top-level statements change; and every type, and the compilation unit of a file with top-level statements, when the file's usings (at file level or inside a namespace) or file-level attributes change.</li>
     </ol>
 
     <h2 id="check">Check <a class="anchor" href="#check" aria-label="Link to this section">#</a></h2>
-    <p>The steps follow the numbered list in <a href="how-it-works.html#check">How it works</a>. Each is one class.</p>
+    <p>The steps follow the numbered list in <a href="how-it-works#check">How it works</a>. Each step is one class.</p>
     <h3 id="model-fuse-check-model">Model (<code>Fuse.Check.Model</code>) <a class="anchor" href="#model-fuse-check-model" aria-label="Link to this section">#</a></h3>
     <div class="table-scroll" role="region" aria-label="Check model" tabindex="0">
       <table>
         <thead><tr><th scope="col">Type</th><th scope="col">Cases or fields</th></tr></thead>
         <tbody>
-          <tr><th scope="row"><code>CheckScope</code></th><td><code>AllChanges</code>, <code>Files(IReadOnlyList&lt;RepoPath&gt;)</code></td></tr>
+          <tr><th scope="row"><code>CheckScope</code></th><td><code>AllChanges</code>, <code>Files(IReadOnlyList&lt;RepoPath&gt;)</code>, <code>NamedPaths(IReadOnlyList&lt;string&gt;)</code> (the directories, files and glob patterns a scoped check names, exactly as named)</td></tr>
           <tr><th scope="row"><code>Reach</code></th><td><code>None</code> (no declaration change), <code>Broad(IReadOnlySet&lt;RepoPath&gt;)</code> (every file in the reached projects), <code>Precise(IReadOnlyDictionary&lt;RepoPath, Cause&gt;)</code>, with every cause that reaches each file in <code>AllCauses</code></td></tr>
           <tr><th scope="row"><code>Cause</code></th><td><code>Changed(declaration)</code>, <code>Removed(declaration as it was at HEAD)</code></td></tr>
-          <tr><th scope="row"><code>IntroducedError</code></th><td><code>CompilerError</code>, <code>Cause?</code>, <code>IsCauseLeftOut</code> when the cap on causes left its cause out, and <code>GeneratedFile</code> when a generated file declares what the error is about</td></tr>
-          <tr><th scope="row"><code>CheckResult</code></th><td>introduced errors, files checked, the projects the errors are in, projects with declaration changes, dependents checked, whether whole projects were checked, how many errors were found in how many files before the cap, and how many errors were left to other sessions</td></tr>
+          <tr><th scope="row"><code>IntroducedError</code></th><td><code>CompilerError</code>, <code>Cause?</code>, <code>IsCauseLeftOut</code> when the printed answer leaves its cause out, and <code>GeneratedFile</code> when a generated file declares what the error is about</td></tr>
+          <tr><th scope="row"><code>CheckResult</code></th><td>introduced errors, files checked, the projects the errors are in, projects with declaration changes, dependents checked, whether whole projects were checked, how many errors were found in how many files before the cap, how many errors were left to other sessions, how many changed files are not C# sources with the first of them, the paths a scoped check was scoped to, and why each project was bound whole</td></tr>
+          <tr><th scope="row"><code>WholeProjectCause</code></th><td>the changed files that forced a project to be bound whole, with the declaration changes that forced it, each pre-rendered as <code>removed: ...</code> or <code>changed: ...</code></td></tr>
         </tbody>
       </table>
     </div>
-    <p><code>CompilerError</code> lives in <code>Fuse.Check.Model</code> and <code>Fuse.Protocol</code> uses it, because the wire carries it unchanged (<a href="#decisions">D11</a>). The cause is nullable because only rendering reads it: an error in a target file, an analyzer error and an error past the cap all print with no cause line.</p>
+    <p><code>CompilerError</code> lives in <code>Fuse.Check.Model</code> and <code>Fuse.Protocol</code> uses it, because the wire carries it unchanged (<a href="#decisions">D11</a>). The cause is nullable because only rendering reads it. An error in a target file, an analyzer error, and an error under a reach that is not precise all print with no cause line.</p>
     <h3 id="steps-fuse-check">Steps (<code>Fuse.Check</code>) <a class="anchor" href="#steps-fuse-check" aria-label="Link to this section">#</a></h3>
     <ol>
-      <li><code>TargetResolver</code>: turns a <code>CheckScope</code> into the source files that have an owning project.</li>
-      <li><code>IntroducedErrors</code>: binds files or whole projects in both views and keeps the errors with no match at HEAD, using <code>DiagnosticCollector</code>, <code>AnalyzerSelector</code> and <code>ErrorDelta</code>, and matches a file renamed since HEAD with its old name. <code>AnalyzerSelector</code> also makes each project's <code>AnalyzerPlan</code>, which names its compilation-wide analyzers, and <code>DiagnosticCollector</code> runs those once per compilation through <code>CompilationAnalyses</code>, whose runs outlive the check that started them and stop when a newer compilation of the project replaces theirs. Each check's <code>AnalyzerRun</code> says whether they run and when its analyzers must stop, on the working tree and the baseline alike; a file whose baseline analyzers did not finish has its working-tree analyzer errors left out. <code>DiagnosticCollector</code> keeps each working-tree file's compiler and per-file analyzer errors under a key of its text's checksum, its project's dependent semantic version and the configuration generation, and reuses them while the key holds.</li>
-      <li><code>ChangeReach</code>: turns the declaration changes of the targets, as <code>SurfaceDiff</code> finds them, into a <code>Reach</code>.</li>
-      <li><code>CandidateBinding</code>: binds the reached files, or whole projects past 500 candidates.</li>
-      <li><code>SessionAttribution</code>: for a check answered to a session, leaves out the errors other sessions' edits caused without it, by binding the files with errors again in views of the current solution with some sessions' files at HEAD content (<code>RepoWorkspace.CurrentWithHeadContentAsync</code>). It reads <code>SessionEdits</code>, the record of which sessions wrote each changed file, which <code>RequestRouter</code> fills from <code>CheckFiles.Session</code> and keeps in <code>sessions.tsv</code> in the state directory. A stop hook's <code>CheckChanges</code> with <code>IsStopping</code> marks its session stopped there, and <code>SessionEdits.IsOwnEdit</code> counts a stopped subagent's edits as its parent's. For a test plan for a session, <code>RequestRouter</code> passes the files only other sessions wrote in <code>TestScope.Affected.LeftOut</code>, because <code>Fuse.Testing</code> may not use <code>Fuse.Check</code>.</li>
-      <li><code>CauseLines</code>: attaches causes to errors in candidate files, at most ten per answer, each error getting the cause whose declared name its message quotes.</li>
-      <li><code>GeneratedSource</code>: names, on each reported error, the generated file (one in a <code>bin</code> or <code>obj</code> folder of its project) that declares the symbols bound at the error, or the type whose member is accessed there.</li>
-      <li><code>Checker</code>: answers one check request, behind the engine's request lock. It syncs the workspace, loads the owners of the targets and later the dependents of the projects with declaration changes, runs steps 1 to 7 in order, records each as a <code>Phase</code>, and returns a <code>CheckResult</code>. After the sync it first answers from <code>KeptCheck</code> when an earlier check of the same scope, session and analyzer run was keyed by the same changed files' contents, HEAD, configuration and baseline generations and session record; an answer whose analyzers did not finish is never kept.</li>
+      <li><code>TargetResolver</code> turns a <code>CheckScope</code> into the source files that have an owning project. <code>ScopeExpansion</code> expands a scoped check's directories, files and glob patterns against the files that differ from HEAD, and keeps the C# sources a project owns. A spec that matches nothing is refused instead of answering clean. For a check of every change answered to a session that is stopping, it excludes the files only other sessions wrote, so the stop checks only its own files and what they reach.</li>
+      <li><code>IntroducedErrors</code> binds files or whole projects in both views, and keeps the errors that have no match at HEAD. It uses <code>DiagnosticCollector</code>, <code>AnalyzerSelector</code> and <code>ErrorDelta</code>, and matches a file renamed since HEAD with its old name.
+        <ul>
+          <li><code>AnalyzerSelector</code> also makes each project's <code>AnalyzerPlan</code>, which names its compilation-wide analyzers. <code>DiagnosticCollector</code> runs those once per compilation through <code>CompilationAnalyses</code>. Each run outlives the check that started it, and stops when a newer compilation of the project replaces it.</li>
+          <li>Each check's <code>AnalyzerRun</code> says whether they run and when its analyzers must stop, on the working tree and the baseline alike. When a file's baseline analyzers did not finish, the check leaves its working-tree analyzer errors out.</li>
+          <li><code>DiagnosticCollector</code> keeps each working-tree file's compiler and per-file analyzer errors under a key of its text's checksum, its project's dependent semantic version and the configuration generation. It reuses them while the key holds.</li>
+          <li><code>BaselineStore</code> keeps HEAD's finished baseline results on disk, keyed by commit, Roslyn build, project inputs, restore output, analyzer assemblies and config files, so the first check after an engine restart reads them instead of binding HEAD again.</li>
+        </ul>
+      </li>
+      <li><code>ChangeReach</code> turns the declaration changes of the targets, as <code>SurfaceDiff</code> finds them, into a <code>Reach</code>.</li>
+      <li><code>CandidateBinding</code> binds the reached files, or whole projects past 500 candidates.</li>
+      <li><code>SessionAttribution</code> leaves out, for a check answered to a session, the errors that other sessions' edits caused without it. It finds them by binding the files with errors again in views of the current solution with some sessions' files at HEAD content (<code>RepoWorkspace.CurrentWithHeadContentAsync</code>).
+        <ul>
+          <li>It reads <code>SessionEdits</code>, the record of which sessions wrote each changed file, which <code>RequestRouter</code> fills from <code>CheckFiles.Session</code> and keeps in <code>sessions.tsv</code> in the state directory.</li>
+          <li>An external writer a launcher registered with <code>fuse session begin</code> is a <code>RegisteredSession</code>, kept in <code>registered-sessions.tsv</code>. Files under its path patterns count as that session's until the registration ends or 4 hours pass.</li>
+          <li>A stop hook's <code>CheckChanges</code> with <code>IsStopping</code> marks its session stopped there, and <code>SessionEdits.IsOwnEdit</code> counts a stopped subagent's edits as its parent's.</li>
+          <li>For a test plan for a session, <code>RequestRouter</code> passes the files only other sessions wrote in <code>TestScope.Affected.LeftOut</code>, because <code>Fuse.Testing</code> may not use <code>Fuse.Check</code>.</li>
+        </ul>
+      </li>
+      <li><code>CauseLines</code> attaches causes to errors in candidate files: each error gets the cause whose declared name its message quotes. Every candidate error carries its cause. The client prints at most 10 cause lines and counts the rest itself.</li>
+      <li>For each reported error, <code>GeneratedSource</code> names the generated file (one in a <code>bin</code> or <code>obj</code> folder of its project) that declares the symbols bound at the error, or the type whose member is accessed there.</li>
+      <li><code>Checker</code> answers one check request, behind the engine's request lock. It syncs the workspace, loads the owners of the targets and later the dependents of the projects with declaration changes, runs steps 1 to 7 in order, records each as a <code>Phase</code>, and returns a <code>CheckResult</code>. After the sync it first answers from <code>KeptCheck</code> when an earlier check of the same scope, session and analyzer run was keyed by the same changed files' contents, HEAD, configuration and baseline generations and session record. An answer whose analyzers did not finish is never kept.</li>
     </ol>
 
     <h2 id="testing">Testing <a class="anchor" href="#testing" aria-label="Link to this section">#</a></h2>
@@ -298,100 +331,141 @@
           <tr><th scope="row"><code>FilterCollapse</code></th><td><code>None</code>, <code>ToClasses</code>, <code>ToWholeProject</code></td></tr>
           <tr><th scope="row"><code>RunMode</code></th><td><code>Shadow(assembly)</code>, <code>Build</code></td></tr>
           <tr><th scope="row"><code>PlannedRun</code></th><td>test project, name, <code>RunMode</code>, filter, whether it uses Microsoft.Testing.Platform, the project's runsettings file, the platform filter arguments, the built test applications</td></tr>
-          <tr><th scope="row"><code>TestPlanResult</code></th><td>one <code>PlannedRun</code> per run, selected and total test counts, summary</td></tr>
+          <tr><th scope="row"><code>TestPlanResult</code></th><td>one <code>PlannedRun</code> per run, selected and total test counts, summary, and the tests and projects left out for want of a container runtime</td></tr>
+          <tr><th scope="row"><code>SelectionResult</code></th><td>the selected tests keyed by test project file, how many changed declarations compiled to the same code as HEAD, and whether every one did</td></tr>
+          <tr><th scope="row"><code>WalkOutcome</code></th><td>how the member walk ended: whether it finished, how many symbols it visited, how long it ran</td></tr>
         </tbody>
       </table>
     </div>
-    <p>A selection never reaches the wire: <code>TestFilter</code> turns it into the filter of a run. The run mode does, as <code>Protocol.TestRunMode</code>, a record with the same two cases that System.Text.Json writes with a <code>kind</code> property (<code>"mode":{"kind":"Shadow","assembly":"..."}</code> or <code>"mode":{"kind":"Build"}</code>) through <code>[JsonPolymorphic]</code> and <code>[JsonDerivedType]</code>. It is a second record because <code>Fuse.Protocol</code> may not use a feature's model beyond <a href="#decisions">D11</a>, and naming rule 5 keeps the two names apart.</p>
+    <p>A selection never reaches the wire. <code>TestFilter</code> turns it into the filter of a run. The run mode does reach the wire, as <code>Protocol.TestRunMode</code>, a record with the same 2 cases that System.Text.Json writes with a <code>kind</code> property (<code>"mode":{"kind":"Shadow","assembly":"..."}</code> or <code>"mode":{"kind":"Build"}</code>) through <code>[JsonPolymorphic]</code> and <code>[JsonDerivedType]</code>. It is a second record because <code>Fuse.Protocol</code> may not use a feature's model beyond <a href="#decisions">D11</a>, and naming rule 5 keeps the 2 names apart.</p>
     <h3 id="steps-fuse-testing">Steps (<code>Fuse.Testing</code>) <a class="anchor" href="#steps-fuse-testing" aria-label="Link to this section">#</a></h3>
-    <p>These follow <a href="how-it-works.html#test-selection">How it works</a>.</p>
+    <p>These steps follow <a href="how-it-works#test-selection">How it works</a>.</p>
     <ol>
-      <li><code>TypeGraph</code>: which types name which, built from syntax with each file's facts cached by text version, and its reverse closure.</li>
-      <li><code>TypeWalk</code>: the class-level answer. It walks <code>TypeGraph</code> back from the types that declare a changed declaration and selects each test class it reaches. A reached test file without classes selects its project whole, and a reached application applies <code>HostRule</code>.</li>
-      <li><code>MemberWalk</code>: the member-level refinement within its budget of 300 symbols and 8 seconds. It also seeds both walks: it finds each changed file's changed declarations with <code>CodeDiff</code>, selects the ones in test projects at once, and selects the test projects behind an application whole when its top-level statements change.</li>
-      <li><code>HostRule</code>: application code reached through an application host selects every test project that depends on the application. It decides which members an application host or a framework calls (<code>IsEntryPoint</code>, <code>IsFrameworkInvoked</code>, <code>IsCalledByHost</code>) and which test projects that selects (<code>DependentTestProjects</code>).</li>
-      <li><code>TestSelector</code>: chooses between the walks and merges their selections. The class-level answer is the projects the seeds selected whole, overlaid by the type walk, whose whole selections replace the seeds' reasons. The member walk's answer replaces it only when at most 40 test classes are reachable and the walk finishes, and then a project the seeds selected whole keeps the class-level answer's reason, so the summary does not depend on which answer was returned. <code>SelectionBuilder</code> holds one walk's selections while it runs.</li>
-      <li><code>TestFilter</code>: builds the VSTest filter for a <code>TestSelection</code> as a <code>RunFilter</code>, and collapses it when the selection has more than 2,000 patterns, to class prefixes and then to no filter (<code>FilterCollapse</code>). The client writes it into a runsettings file with <code>Dotnet.RunSettingsFile</code>. <code>PlatformFilter</code> builds a Microsoft.Testing.Platform run's arguments for xUnit v3 and TUnit, bounded at 200 names the same way; MSTest and NUnit take the VSTest filter there. Which framework a project uses is <code>Graph.TestFramework</code>, from its packages.</li>
-      <li><code>ShadowEmitter</code>: prepares a shadow run and returns <code>RunMode.Shadow</code>, or returns <code>RunMode.Build</code> when a shadow run is not safe. One emitter serves every plan: <code>EmitCache</code> keeps each emitted image (<code>EmittedImage</code>) per build output path, reused while the project's dependent version and the write time of its build output stay the same, and the emitter does not copy build output over a shadow file it is about to emit, or write an image that is already in place. Each test project has numbered copies (<code>g1</code>, <code>g2</code> and so on); the emitter prepares the newest one no test run holds (<code>LocalState.HoldTestCopy</code>, <code>LocalState.IsInUse</code>), starts a new one otherwise, and deletes the older ones no run holds.</li>
-      <li><code>TestPlanner</code>: turns the selections into a <code>TestPlanResult</code> in two parts, with <code>TestCounter</code> counting tests from source for the summary. <code>SelectAsync</code> runs under the request lock, records the <code>sync</code> and <code>selection</code> phases, and returns a <code>PendingPlan</code> that holds the snapshot it selected from. <code>PrepareAsync</code> runs after the lock is released, one plan at a time, prepares the shadow runs from that snapshot, and records the <code>mirror</code> and <code>emit</code> phases. Paths a command named limit the plan through <code>NamedTestProjects</code>, and a named configuration or framework leaves every run to MSBuild.</li>
+      <li><code>TypeGraph</code> records which types name which, built from syntax with each file's facts cached by text version, and its reverse closure.</li>
+      <li><code>TypeWalk</code> gives the class-level answer. It walks <code>TypeGraph</code> back from the types that declare a changed declaration and selects each test class it reaches. A reached test file without classes selects its project whole, and a reached application applies <code>HostRule</code>.</li>
+      <li><code>MemberWalk</code> gives the member-level refinement within its budget of 300 symbols and 8 seconds, ending in a <code>WalkOutcome</code>. It also seeds both walks. It finds each changed file's changed declarations with <code>CodeDiff</code>, seeds nothing for one that compiles to the same code as HEAD (see <code>CompiledCode</code>), selects the ones in test projects at once, and selects the test projects behind an application whole when its top-level statements change.</li>
+      <li><code>CompiledCode</code> decides whether a changed declaration compiles to the same code as HEAD's. A declaration qualifies when its header reads the same without bodies, and its bodies read the same after every local, parameter and range variable name is replaced with the order it is first seen in and every local type with the type it names. A local rename and <code>var</code> against the explicit type therefore qualify. Anything else, and anything undecidable, counts as changed.</li>
+      <li><code>HostRule</code> says that application code reached through an application host selects every test project that depends on the application. It decides which members an application host or a framework calls (<code>IsEntryPoint</code>, <code>IsFrameworkInvoked</code>, <code>IsCalledByHost</code>) and which test projects that selects (<code>DependentTestProjects</code>).</li>
+      <li><code>TestSelector</code> chooses between the walks and merges their selections into a <code>SelectionResult</code>. The class-level answer is the projects the seeds selected whole, overlaid by the type walk, whose whole selections replace the seeds' reasons. The member walk's answer replaces it only when at most 100 test classes are reachable and the walk finishes. In that case a project the seeds selected whole keeps the class-level answer's reason, so the summary does not depend on which answer was returned. <code>SelectionBuilder</code> holds one walk's selections while it runs.</li>
+      <li><code>TestFilter</code> builds the VSTest filter for a <code>TestSelection</code> as a <code>RunFilter</code>, and collapses it when the selection has more than 2,000 patterns, to class prefixes and then to no filter (<code>FilterCollapse</code>). The client writes it into a runsettings file with <code>Dotnet.RunSettingsFile</code>. <code>PlatformFilter</code> builds a Microsoft.Testing.Platform run's arguments for xUnit v3 and TUnit, bounded at 200 names the same way. MSTest and NUnit take the VSTest filter there. <code>Graph.TestFramework</code> tells which framework a project uses, from its packages.</li>
+      <li><code>ShadowEmitter</code> prepares a shadow run and returns <code>RunMode.Shadow</code>, or returns <code>RunMode.Build</code> when a shadow run is not safe.
+        <ul>
+          <li>One emitter serves every plan. <code>EmitCache</code> keeps each emitted image (<code>EmittedImage</code>) per build output path, and reuses it while the project's dependent version and the write time of its build output stay the same. The emitter does not copy build output over a shadow file it is about to emit, or write an image that is already in place.</li>
+          <li>Each test project has numbered copies (<code>g1</code>, <code>g2</code> and so on). The emitter prepares the newest one no test run holds (<code>LocalState.HoldTestCopy</code>, <code>LocalState.IsInUse</code>), starts a new one otherwise, and deletes the older ones no run holds.</li>
+          <li>A dependent is emitted again only when a project it depends on changed its declarations. Otherwise the shadow folder keeps its image.</li>
+        </ul>
+      </li>
+      <li><code>TestPlanner</code> turns the selections into a <code>TestPlanResult</code> in 2 parts. <code>TestCounter</code> counts tests from source for the summary.
+        <ul>
+          <li><code>SelectAsync</code> runs under the request lock, records the <code>sync</code> and <code>selection</code> phases, and returns a <code>PendingPlan</code> that holds the snapshot it selected from.</li>
+          <li><code>PrepareAsync</code> runs after the lock is released, one plan at a time, prepares the shadow runs from that snapshot, and records the <code>mirror</code> and <code>emit</code> phases.</li>
+          <li>Paths a command named limit the plan through <code>NamedTestProjects</code>, and a named configuration or framework leaves every run to MSBuild.</li>
+          <li>When no container runtime answers, the plan leaves out the test projects that need one, and names them.</li>
+          <li>A rerun selects the recorded failures still in their projects and names the projects that are gone.</li>
+        </ul>
+      </li>
     </ol>
 
     <h2 id="workspace-and-sources">Workspace and sources <a class="anchor" href="#workspace-and-sources" aria-label="Link to this section">#</a></h2>
-    <p><code>Fuse.Repo</code> finds which files differ from HEAD, and <code>Fuse.Workspace</code> keeps the current and baseline solutions in step with them. Every request starts with a sync: <code>ChangeTracker</code> folds what changed into its set and returns a <code>SyncResult</code>, and <code>WorkspaceSync</code> acts on it.</p>
+    <p><code>Fuse.Repo</code> finds which files differ from HEAD, and <code>Fuse.Workspace</code> keeps the current and baseline solutions in step with them. Every request starts with a sync. <code>ChangeTracker</code> folds what changed into its set and returns a <code>SyncResult</code>, and <code>WorkspaceSync</code> acts on it.</p>
     <h3 id="change-tracking-fuse-repo">Change tracking (<code>Fuse.Repo</code>) <a class="anchor" href="#change-tracking-fuse-repo" aria-label="Link to this section">#</a></h3>
     <ol>
-      <li><code>HeadResolver</code>: the commit HEAD points at and whether git can read it. <code>GitHead</code> reads the ref files, loose or packed, without starting git; git answers when they do not (reftable refs, unusual layouts), and a new HEAD is checked with <code>git cat-file</code> so a broken commit cannot pass as clean. <code>HeadResolver.GitFailure</code> words the failure when git cannot read the repository, which <code>GitStatus</code> reports too.</li>
-      <li><code>GitStatus</code>: the seed. It reads the NUL-separated records of <code>git status --porcelain=v1 -z</code> and takes each path exactly as git wrote it, since a name may begin or end with a space, hold a quote or not be ASCII.</li>
-      <li><code>WatchedPaths</code>: the file watcher and what it recorded since the last sync, which <code>Drain</code> hands over as <code>WatchedChanges</code>: the sources, the directories that are gone, the project files that changed and the watcher's errors. It also decides which paths are ignored (git's own directory, and <code>bin</code>, <code>obj</code>, <code>.git</code> and <code>node_modules</code> folders).</li>
-      <li><code>HeadComparison</code>: whether a file on disk differs from HEAD. Every carriage return is skipped on both sides, so a checkout that converts line endings is no change, and a file on one side only always is.</li>
-      <li><code>ChangeTracker</code>: composes them. It holds HEAD and the set of changed sources, and reads a file at HEAD through <code>GitBlobReader</code>. After HEAD moves, after a watcher error, or when more than 300 sources changed (<code>MaxPatchedPaths</code>), it seeds the set again from <code>GitStatus</code>, because the recorded events are not the whole change; otherwise it compares each reported path with HEAD.</li>
+      <li><code>HeadResolver</code> resolves the commit HEAD points at and whether git can read it. <code>GitHead</code> reads the ref files, loose or packed, without starting git. Git answers when they do not (reftable refs, unusual layouts). The resolver checks a new HEAD with <code>git cat-file</code>, so a broken commit cannot pass as clean. <code>HeadResolver.GitFailure</code> words the failure when git cannot read the repository, and <code>GitStatus</code> reports that failure too.</li>
+      <li><code>GitStatus</code> produces the seed. It reads the NUL-separated records of <code>git status --porcelain=v1 -z</code> and takes each path exactly as git wrote it, since a name may begin or end with a space, hold a quote or not be ASCII.</li>
+      <li><code>WatchedPaths</code> is the file watcher and what it recorded since the last sync. <code>Drain</code> hands that over as <code>WatchedChanges</code>: the sources, the directories that are gone, the project files that changed and the watcher's errors. It also decides which paths are ignored (git's own directory, and <code>bin</code>, <code>obj</code>, <code>.git</code> and <code>node_modules</code> folders).</li>
+      <li><code>HeadComparison</code> decides whether a file on disk differs from HEAD. It skips every carriage return on both sides, so a checkout that converts line endings is no change, and a file on one side only always is.</li>
+      <li><code>ChangeTracker</code> composes them. It holds HEAD and the set of changed sources, and reads a file at HEAD through <code>GitBlobReader</code>. After HEAD moves, after a watcher error, or when more than 300 sources changed (<code>MaxPatchedPaths</code>), it seeds the set again from <code>GitStatus</code>, because the recorded events are not the whole change. Otherwise it compares each reported path with HEAD.</li>
     </ol>
     <p><code>SyncResult</code> has one case per response, and <code>ChangeTracker</code> chooses them in this order:</p>
     <div class="table-scroll" role="region" aria-label="SyncResult cases" tabindex="0">
       <table>
         <thead><tr><th scope="col">Case</th><th scope="col">Chosen when</th><th scope="col">Carries</th><th scope="col"><code>WorkspaceSync</code> then</th></tr></thead>
         <tbody>
-          <tr><th scope="row"><code>Reevaluate(Paths, Trigger)</code></th><td>HEAD moved, the watcher reported an error, or a project, props, targets, editorconfig or global.json file changed</td><td>the files to apply again; the trigger names the new commit, the watcher's error or the last project file</td><td>evaluates every project, closes them all, reopens the ones that were loaded and applies the files again</td></tr>
+          <tr><th scope="row"><code>Reevaluate(Paths, Trigger)</code></th><td>HEAD moved, the watcher reported an error, or a project, props, targets, editorconfig, globalconfig, global.json or packages.lock.json file changed</td><td>the files to apply again; the trigger names the new commit, the watcher's error or the last project file</td><td>evaluates every project, closes them all, reopens the ones that were loaded and applies the files again</td></tr>
           <tr><th scope="row"><code>Reload(Paths, Trigger)</code></th><td>more than 300 sources changed, and none of the above</td><td>the same; the trigger names how many files changed</td><td>the same, without evaluating</td></tr>
           <tr><th scope="row"><code>Patch(Paths, VanishedDirectories)</code></th><td>otherwise</td><td>the files to apply and the directories that are gone</td><td>applies each file, and each file it holds under a vanished directory, to both views, after deriving them again if the loader holds a project they lack</td></tr>
         </tbody>
       </table>
     </div>
     <p>Each case is one response, so a combination that cannot happen cannot be written. A moved HEAD always re-evaluates, because the commit it moved to can have other project files. The engine log names the case and the trigger, as in <code>reloading: Reevaluate trigger=HEAD moved to &lt;commit&gt;</code> and <code>reloading: Reload trigger=&lt;count&gt; changed files</code>.</p>
+    <p><code>TreeStamp</code> is the tree stamp: a short hash of what the changed files hold. A summary uses it to name the tree its command saw. The engine stamps a check from its tracker, and a build stamps from git. Both hash the same way, so the same tree stamps the same.</p>
     <h3 id="workspace-fuse-workspace">Workspace (<code>Fuse.Workspace</code>) <a class="anchor" href="#workspace-fuse-workspace" aria-label="Link to this section">#</a></h3>
     <ol>
-      <li><code>ProjectLoader</code>: evaluates every project into the <code>RepoGraph</code> and opens the ones requests need in an MSBuildWorkspace, which is used only as a loader because its <code>TryApplyChanges</code> writes to disk. It refuses a project that is not restored (<code>RestoreNeeded</code>, naming the <code>dotnet restore</code> to run) or that did not load (<code>LoadFailed</code>, with <code>LoadFailure</code> telling a real failure from a restore warning), and increments <code>ConfigurationGeneration</code> whenever it closes every project. A background load (<code>PreloadAsync</code>) opens a project outside a request, which neither view holds until the next request derives them again.</li>
-      <li><code>SolutionViews</code>: the current and baseline solutions, both derived from the loader's solution with the repository's own analyzers loaded from a copy (<code>AnalyzerShadow</code>), and <code>BaselineGeneration</code>, which changes only when the baseline's content does. It applies a file's disk content to the current solution and its HEAD content to the baseline, adding or removing documents as needed, and remembers every path it applied so that a rebuild from the loader applies them again. It also remembers the loader solution it last finished deriving both views from, so <code>HoldEveryOpenProject</code> says whether the loader has opened a project since. Its <code>RefreshGeneratedAsync</code>, which <code>WorkspaceSync</code> calls on every sync, reads each generated file (a document in a <code>bin</code> or <code>obj</code> folder of its project) again when its length or write time changed, and applies it to both views.</li>
-      <li><code>WorkspaceSync</code>: acts on each <code>SyncResult</code>, and folds the projects the loader opens into both views (<code>EnsureLoadedAsync</code>). A result it did not finish acting on, such as a re-evaluation after HEAD moved that was cancelled or failed, is kept, and the next sync acts on it followed by its own result (<code>SyncResult.Then</code>, where the case that does more wins), because the tracker has already taken the new HEAD and does not report the move again. A rebuild at a HEAD other than the one the baseline was read at increments <code>BaselineGeneration</code>. It rebuilds both views whenever <code>HoldEveryOpenProject</code> is false, which covers a request's own load, a background load, and a load that a cancelled or failed request cut short after some projects opened, all in one rebuild.</li>
-      <li><code>RepoWorkspace</code>: the entry point the features use. It composes the tracker and the three classes above and adds no rule of its own.</li>
+      <li><code>ProjectLoader</code> evaluates every project into the <code>RepoGraph</code> and opens the ones requests need in an MSBuildWorkspace. The workspace serves only as a loader, because its <code>TryApplyChanges</code> writes to disk. It refuses a project that is not restored (<code>RestoreNeeded</code>, naming the <code>dotnet restore</code> to run) or that did not load (<code>LoadFailed</code>, with <code>LoadFailure</code> telling a real failure from a restore warning). It increments <code>ConfigurationGeneration</code> whenever it closes every project. A background load (<code>PreloadAsync</code>) opens a project outside a request. Neither view holds it until the next request derives them again.</li>
+      <li><code>SolutionViews</code> holds the current and baseline solutions, both derived from the loader's solution with the repository's own analyzers loaded from a copy (<code>AnalyzerShadow</code>), and <code>BaselineGeneration</code>, which changes only when the baseline's content does.
+        <ul>
+          <li>It applies a file's disk content to the current solution and its HEAD content to the baseline, adding or removing documents as needed. It remembers every path it applied, so that a rebuild from the loader applies them again.</li>
+          <li>It also remembers the loader solution it last finished deriving both views from, so <code>HoldEveryOpenProject</code> says whether the loader has opened a project since.</li>
+          <li>Its <code>RefreshGeneratedAsync</code>, which <code>WorkspaceSync</code> calls on every sync, reads each generated file (a document in a <code>bin</code> or <code>obj</code> folder of its project) again when its length or write time changed, and applies it to both views.</li>
+        </ul>
+      </li>
+      <li><code>WorkspaceSync</code> acts on each <code>SyncResult</code>, and folds the projects the loader opens into both views (<code>EnsureLoadedAsync</code>).
+        <ul>
+          <li>It keeps a result it did not finish acting on, such as a re-evaluation after HEAD moved that was cancelled or failed. The next sync acts on it, followed by its own result (<code>SyncResult.Then</code>, where the case that does more wins), because the tracker has already taken the new HEAD and does not report the move again.</li>
+          <li>A rebuild at a HEAD other than the one the baseline was read at increments <code>BaselineGeneration</code>.</li>
+          <li>It rebuilds both views whenever <code>HoldEveryOpenProject</code> is false, which covers a request's own load, a background load, and a load that a cancelled or failed request cut short after some projects opened, all in one rebuild.</li>
+        </ul>
+      </li>
+      <li><code>RepoWorkspace</code> is the entry point the features use. It composes the tracker and the 3 classes above, and adds no rule of its own.</li>
     </ol>
 
     <h2 id="harnesses">Harnesses <a class="anchor" href="#harnesses" aria-label="Link to this section">#</a></h2>
-    <p>A harness is an agent host that runs Fuse's hooks: Claude Code, Cursor, Gemini CLI, Codex, GitHub Copilot CLI, OpenCode and Muse Code. <code>Fuse.Harnesses</code> holds a <code>Harness</code> base class with seven implementations, <code>ClaudeCode</code>, <code>Cursor</code>, <code>GeminiCli</code>, <code>Codex</code>, <code>CopilotCli</code>, <code>OpenCode</code> and <code>MuseCode</code>. Adding a harness means adding one class and listing it in <code>SupportedHarnesses</code>. Each implementation owns everything about its harness:</p>
+    <p>A harness is an agent host that runs Fuse's hooks: Claude Code, Cursor, Gemini CLI, Codex, GitHub Copilot CLI, OpenCode and Muse Code. <code>Fuse.Harnesses</code> holds a <code>Harness</code> base class with 7 implementations: <code>ClaudeCode</code>, <code>Cursor</code>, <code>GeminiCli</code>, <code>Codex</code>, <code>CopilotCli</code>, <code>OpenCode</code> and <code>MuseCode</code>. To add a harness, add one class and list it in <code>SupportedHarnesses</code>. Each implementation owns everything about its harness:</p>
     <ul>
-      <li>its <code>Name</code> on the command line (<code>claude</code>, <code>cursor</code>, <code>gemini</code>, <code>codex</code>, <code>copilot</code>, <code>opencode</code>, <code>muse</code>), which every registration already written into users' settings contains, so it never changes;</li>
-      <li>how to detect it in a repository (<code>IsUsedIn</code>, from its settings directory or instructions file), and where and how its hooks are registered (<code>RegisterHooks</code>), including the permission allowances Claude Code gets for <code>fuse build</code> and <code>fuse test</code> the OpenCode plugin, <code>Harnesses/opencode-plugin.js</code>, which the tool embeds, and the Muse Code plugin bundle, with what the user runs once after <code>fuse init</code> so the harness loads it (<code>NextStep</code>);</li>
+      <li>its <code>Name</code> on the command line (<code>claude</code>, <code>cursor</code>, <code>gemini</code>, <code>codex</code>, <code>copilot</code>, <code>opencode</code>, <code>muse</code>). Every registration already written into users' settings contains that name, so it never changes.</li>
+      <li>how to detect it in a repository (<code>IsUsedIn</code>, from its settings directory or instructions file), and where and how its hooks are registered (<code>RegisterHooks</code>). That includes the permission allowances Claude Code gets for <code>fuse build</code> and <code>fuse test</code>, the OpenCode plugin (<code>Harnesses/opencode-plugin.js</code>, which the tool embeds), and the Muse Code plugin bundle with what the user runs once after <code>fuse init</code> so the harness loads it (<code>NextStep</code>).</li>
       <li>how it answers a pre-shell, post-edit and stop event: <code>ReplaceShellCommand</code>, <code>ReportAfterEdit</code>, and <code>AllowStop</code> or <code>BlockStop</code>, each returning a <code>HookAnswer</code> with the standard output, standard error and exit code the harness reads;</li>
       <li>whether it runs the post-edit hook in the background (<code>RunsPostEditInBackground</code>), and whether Cursor also runs the hooks in its settings (<code>IsAlsoRunByCursor</code>). Both are true for Claude Code only.</li>
-      <li>whether its answer to a pre-shell event approves the command (<code>ApprovesRewrittenCommand</code>, true for Codex and Muse Code), and which of its tools write files (<code>WritesFiles</code>), for a harness such as Muse Code whose post-edit hook runs after every tool.</li>
+      <li>whether its answer to a pre-shell event approves the command (<code>ApprovesRewrittenCommand</code>, true for Cursor, GitHub Copilot CLI, Codex and Muse Code), and which of its tools write files (<code>WritesFiles</code>), for a harness such as Muse Code whose post-edit hook runs after every tool.</li>
     </ul>
-    <p>The base class holds only that contract and the helpers the seven share: the hook command for an event, detection from paths in the repository, and replacing Fuse's handler in the nested hook format Claude Code, Gemini CLI and Codex use. Each harness's hook configuration keeps the harness's own event and tool names (Claude Code's <code>PreToolUse</code> with a <code>Bash</code> matcher, Gemini CLI's <code>BeforeTool</code>); only the command it runs names Fuse's event.</p>
-    <p><code>HookEvent</code> names the three events once, for the commands <code>RegisterHooks</code> writes and the events <code>fuse hook</code> accepts. <code>SupportedHarnesses</code> lists the harnesses in the order <code>fuse init</code> registers them and finds one by its name on the command line, for <code>fuse hook</code> and its usage line. <code>SettingsFile</code> reads and writes the files <code>fuse init</code> writes: it replaces a file through a temporary file beside it, and tries that move up to five times, 50 ms apart, while it fails with <code>IOException</code> or <code>UnauthorizedAccessException</code>, which is how Windows reports a file a virus scanner or the search indexer is holding.</p>
-    <p><code>InitCommand</code> registers every harness it detects, or Claude Code when it detects neither a harness nor VS Code, plus the VS Code MCP server in <code>.vscode/mcp.json</code>, which is not a harness because VS Code runs no hooks, and has <code>GitIgnore</code> add the reserved <code>.fuse</code> folder to <code>.gitignore</code>. <code>HookCommand</code> in <code>Fuse.Hooks</code> reads the event and the payload (<code>HookPayload</code>), does the work that is the same for every harness (rewriting the command with <code>CommandRewriter</code>, running the check), and asks the harness for the answer. An unknown harness or event, <code>pre-bash</code> included (<a href="#decisions">D12</a>), gets the usage line on standard error and exit code 0.</p>
+    <p>The base class holds only that contract and the helpers the 7 share. Those are the hook command for an event, detection from paths in the repository, and replacing Fuse's handler in the nested hook format Claude Code, Gemini CLI and Codex use. Each harness's hook configuration keeps the harness's own event and tool names (Claude Code's <code>PreToolUse</code> with a <code>Bash</code> matcher, Gemini CLI's <code>BeforeTool</code>). Only the command it runs names Fuse's event.</p>
+    <p><code>HookEvent</code> names the 3 events once, for the commands <code>RegisterHooks</code> writes and the events <code>fuse hook</code> accepts. <code>SupportedHarnesses</code> lists the harnesses in the order <code>fuse init</code> registers them, and finds one by its name on the command line, for <code>fuse hook</code> and its usage line. <code>SettingsFile</code> reads and writes the files <code>fuse init</code> writes. It replaces a file through a temporary file beside it, and tries that move up to 5 times, 50 ms apart, while it fails with <code>IOException</code> or <code>UnauthorizedAccessException</code>. That is how Windows reports a file a virus scanner or the search indexer is holding.</p>
+    <p><code>InitCommand</code> registers every harness it detects, or Claude Code when it detects neither a harness nor VS Code, plus the VS Code MCP server in <code>.vscode/mcp.json</code>, which is not a harness because VS Code runs no hooks. It also has <code>GitIgnore</code> add the reserved <code>.fuse</code> folder to <code>.gitignore</code>. <code>HookCommand</code> in <code>Fuse.Hooks</code> reads the event and the payload (<code>HookPayload</code>), does the work that is the same for every harness (rewriting the command with <code>CommandRewriter</code>, running the check), and asks the harness for the answer. An unknown harness or event, <code>pre-bash</code> included (<a href="#decisions">D12</a>), gets the usage line on standard error and exit code 0.</p>
 
     <h2 id="engine-and-client">Engine and client <a class="anchor" href="#engine-and-client" aria-label="Link to this section">#</a></h2>
-    <p><code>Fuse.Engine.Client</code> holds <code>EngineClient</code>, which finds, starts and calls the engine, and <code>EngineLauncher</code>, which starts it detached from the caller. <code>EngineVersion</code> is in <code>Fuse.Protocol</code>, because the build id it defines is part of every request. The build id is the product version and the module id of <code>fuse.dll</code>. The native client is compiled separately from the same sources and has a module id of its own, so it reads the module id of the <code>fuse.dll</code> installed with it (<code>EngineVersion.ManagedDirectory</code>) instead, and the engine it starts from that <code>fuse.dll</code> reports the same id (D14). <code>EngineVersion.IsNativeClient</code> is <code>RuntimeFeature.IsDynamicCodeSupported</code> negated; <code>Program</code> reads that feature switch directly for <code>fuse engine</code>, because the native compiler treats it as a constant only there, and so leaves the engine, Roslyn and MSBuild out of the native client.</p>
-    <p>The engine process is <code>EngineServer</code>, the pipe server, and four classes behind it:</p>
+    <p><code>Fuse.Engine.Client</code> holds <code>EngineClient</code>, which finds, starts and calls the engine, and <code>EngineLauncher</code>, which starts it detached from the caller. <code>EngineVersion</code> is in <code>Fuse.Protocol</code>, because the build id it defines is part of every request.</p>
+    <p>The build id is the product version and the module id of <code>fuse.dll</code>. The native client is compiled separately from the same sources and has a module id of its own, so it reads the module id of the <code>fuse.dll</code> installed with it (<code>EngineVersion.ManagedDirectory</code>) instead. The engine it starts from that <code>fuse.dll</code> reports the same id (D14).</p>
+    <p><code>EngineVersion.IsNativeClient</code> is <code>RuntimeFeature.IsDynamicCodeSupported</code> negated. <code>Program</code> reads that feature switch directly for <code>fuse engine</code>, because the native compiler treats it as a constant only there, and so leaves the engine, Roslyn and MSBuild out of the native client.</p>
+    <p>The engine process is <code>EngineServer</code>, the pipe server, and the classes behind it:</p>
     <ul>
-      <li><code>RequestRouter</code>: initialization and routing a request to its feature. A check holds the request lock until it is answered; a test plan holds it through the sync and the selection (<code>TestPlanner.SelectAsync</code>) and releases it before its shadow preparation (<code>TestPlanner.PrepareAsync</code>).</li>
-      <li><code>RequestGate</code>: the request lock. It admits one holder at a time and tells each request what held the lock longest while it waited: a request's case, <code>Preload</code> or <code>Initialization</code>, which the phase line writes as <code>gateHolder</code>.</li>
-      <li><code>Preloader</code>: the background load of dependents, one load at a time, and the projects that failed to preload, each tried again once the projects reload or a restore writes a <code>project.assets.json</code> in its closure.</li>
-      <li><code>RequestLog</code>: the log line and the phase line per request, both naming the request by its case (<code>CheckChanges</code>, <code>CheckFiles</code>, <code>PlanAffectedTests</code>, <code>PlanAllTests</code>), which the phase line writes as its <code>kind</code>.</li>
-      <li><code>ResponseMapper</code>: <code>CheckResult</code> and <code>TestPlanResult</code> to <code>Protocol</code> records, and <code>FuseException</code> to an unanswered response.</li>
+      <li><code>RequestRouter</code> handles initialization and routes each request to its feature. A check holds the request lock until it is answered. A test plan holds it through the sync and the selection (<code>TestPlanner.SelectAsync</code>), and releases it before its shadow preparation (<code>TestPlanner.PrepareAsync</code>). A changed-build plan syncs under the lock like a check and never loads a project. A session registration passes through the lock so none begins or ends mid-check. A status answer takes the lock but needs no project.</li>
+      <li><code>RequestGate</code> is the request lock. It admits one holder at a time, and tells each request what held the lock longest while it waited: a request's case, <code>Preload</code> or <code>Initialization</code>. The phase line writes that as <code>gateHolder</code>.</li>
+      <li><code>Preloader</code> loads dependents in the background, one load at a time, and tracks the projects that failed to preload. It tries each one again once the projects reload or a restore writes a <code>project.assets.json</code> in its closure. Each load also builds the project's compilation, so the next check that needs it finds it built.</li>
+      <li>After HEAD moves, <code>BaselineWarmer</code> warms the baseline compilation-wide analyzer results in the background, one project at a time between requests. The first check that needs them then finds them running or done instead of starting them.</li>
+      <li><code>ChangedBuildPlanner</code> builds the plan behind <code>fuse build --changed</code>: the projects that own the files changed since HEAD and their dependents, reduced to the highest projects, or the whole solution with the reason when the selection cannot be trusted.</li>
+      <li><code>RequestLog</code> writes the log line and the phase line per request. Both name the request by its case, which the phase line writes as its <code>kind</code>.</li>
+      <li><code>ResponseMapper</code> maps <code>CheckResult</code> and <code>TestPlanResult</code> to <code>Protocol</code> records, and <code>FuseException</code> to an unanswered response.</li>
     </ul>
-    <p><code>EngineRequest</code> and <code>EngineResponse</code> are variants, which System.Text.Json source generation writes through <code>[JsonPolymorphic]</code> and <code>[JsonDerivedType]</code> with the case in a property written first. Every request carries <code>BuildId</code> and <code>RequestId</code> on the base record. A request line that leaves out an optional field reads it as its default (an empty build id or request id, an empty file list, not waiting for the load), because the source-generated reader would otherwise set it to null, and <code>RequestRouter</code> releases the request lock in a <code>finally</code> of its own around the request log.</p>
+    <p><code>EngineRequest</code> and <code>EngineResponse</code> are variants, which System.Text.Json source generation writes through <code>[JsonPolymorphic]</code> and <code>[JsonDerivedType]</code> with the case in a property written first. Every request carries <code>BuildId</code> and <code>RequestId</code> on the base record. A request line that leaves out an optional field reads it as its default (an empty build id or request id, an empty file list, not waiting for the load), because the source-generated reader would otherwise set it to null. <code>RequestRouter</code> releases the request lock in a <code>finally</code> of its own around the request log.</p>
     <div class="table-scroll" role="region" aria-label="Wire records" tabindex="0">
       <table>
         <thead><tr><th scope="col">Record</th><th scope="col">Cases</th></tr></thead>
         <tbody>
-          <tr><th scope="row"><code>EngineRequest</code>, its case in a <code>request</code> property</th><td><code>Ping</code>, <code>ShutDown</code>, <code>CheckChanges(WaitForLoad)</code> with an optional <code>Session</code> and <code>IsStopping</code>, <code>CheckFiles(Files, WaitForLoad)</code> with an optional <code>Session</code>, <code>PlanAffectedTests</code> with an optional <code>Session</code>, <code>PlanAllTests</code></td></tr>
-          <tr><th scope="row"><code>EngineResponse</code>, its case in a <code>status</code> property</th><td><code>Acknowledged</code> (to <code>Ping</code> and <code>ShutDown</code>), <code>CheckAnswered(Report)</code>, <code>PlanAnswered(Plan)</code>, <code>Unanswered(Code, Message)</code>, <code>Restart</code></td></tr>
+          <tr><th scope="row"><code>EngineRequest</code>, its case in a <code>request</code> property</th><td><code>Ping</code>, <code>ShutDown</code>, <code>CheckChanges(WaitForLoad)</code> with an optional <code>Session</code>, <code>IsStopping</code> and <code>MaxErrors</code>, <code>CheckFiles(Files, WaitForLoad)</code> with an optional <code>Session</code>, <code>LeaveOutCompilationWide</code> and <code>MaxErrors</code>, <code>CheckPaths(Paths, WaitForLoad)</code> with an optional <code>MaxErrors</code>, <code>BeginSession(Name, Paths)</code>, <code>EndSession(Name)</code>, <code>PlanAffectedTests</code> with an optional <code>Session</code>, <code>Projects</code> and <code>BuildOnly</code>, <code>PlanAllTests</code>, <code>PlanFailedTests(Projects)</code> of <code>FailedProject</code> (a project file with the test names to rerun), <code>PlanChangedBuild</code>, <code>Status</code></td></tr>
+          <tr><th scope="row"><code>EngineResponse</code>, its case in a <code>status</code> property</th><td><code>Acknowledged</code> (to <code>Ping</code> and <code>ShutDown</code>, and to a session registration), <code>CheckAnswered(Report)</code>, <code>PlanAnswered(Plan)</code>, <code>Unanswered(Code, Message)</code>, <code>Restart</code>, <code>ChangedBuildAnswered(ChangedBuildPlan)</code>, <code>StatusAnswered(EngineStatus)</code></td></tr>
         </tbody>
       </table>
     </div>
-    <p>The scope is part of the request's case, so the wire has no null that means every change and no flag for every test, and <code>Fuse.Protocol</code> still uses no feature type beyond <code>CompilerError</code> (<a href="#decisions">D11</a>). <code>RequestRouter</code> turns each case into a <code>CheckScope</code> or a <code>TestScope</code>. A plan request always waits for the engine to finish loading, because <code>fuse test</code> runs nothing until it has the plan; only a check can ask not to wait. The engine's failure word is the operation's: an <code>Unanswered</code> response becomes the <code>Unanswered</code> outcome.</p>
-    <p>The engine reads <code>BuildId</code> from the request line before the case (<code>ProtocolJson.ReadBuildId</code>), so a client of any other build gets <code>Restart</code>, whatever shape that build gives its requests. The case properties are named so that an engine of an earlier build can answer too: it reads <code>kind</code> into its own enum and drops a request whose value it does not know, so no request has a <code>kind</code> property, and it writes <code>Restart</code> as <code>{"status":"Restart"}</code>, which this build reads as <code>EngineResponse.Restart</code>. Because a mismatched engine restarts, changing these records needs no compatibility code.</p>
+    <p>The scope is part of the request's case, so the wire has no null that means every change and no flag for every test. <code>Fuse.Protocol</code> still uses no feature type beyond <code>CompilerError</code> (<a href="#decisions">D11</a>). <code>RequestRouter</code> turns each case into a <code>CheckScope</code> or a <code>TestScope</code>. A plan request always waits for the engine to finish loading, because <code>fuse test</code> runs nothing until it has the plan. Only a check can ask not to wait.</p>
+    <ul>
+      <li>A changed-build answer carries a <code>ChangedBuildPlan</code>: the project files to build, the projects that own a change, the changed file count, the tree stamp it was planned from, and why to build the whole solution instead.</li>
+      <li>A status answer carries an <code>EngineStatus</code>: the engine's process id and working set, the changed file count, HEAD and the tree stamp.</li>
+      <li>A check report names why each project was bound whole (<code>ReportedWholeProject</code>), the non-C# changes, and the paths a scoped check was scoped to. A test plan carries the tests and projects left out for want of a container runtime.</li>
+    </ul>
+    <p>The engine's failure word is the operation's: an <code>Unanswered</code> response becomes the <code>Unanswered</code> outcome.</p>
+    <p>The engine reads <code>BuildId</code> from the request line before the case (<code>ProtocolJson.ReadBuildId</code>), so a client of any other build gets <code>Restart</code>, whatever shape that build gives its requests. The case properties are named so that an engine of an earlier build can answer too. It reads <code>kind</code> into its own enum and drops a request whose value it does not know, so no request has a <code>kind</code> property. It writes <code>Restart</code> as <code>{"status":"Restart"}</code>, which this build reads as <code>EngineResponse.Restart</code>. Because a mismatched engine restarts, changing these records needs no compatibility code.</p>
     <p><code>OperationResult</code> carries an <code>Outcome</code> (<code>Clean</code>, <code>ProblemsFound</code>, <code>Unanswered</code>) and derives the exit code from it (0, 1, 2). MCP marks <code>isError</code> on <code>Unanswered</code>, and the hooks treat <code>ProblemsFound</code> as a reason to wake the agent.</p>
 
     <h2 id="vocabulary">Vocabulary <a class="anchor" href="#vocabulary" aria-label="Link to this section">#</a></h2>
-    <p>Each word names one thing. "Output" says whether agents and people see the word in CLI, hook and MCP text; a word marked no stays in code and contributor docs. Review rejects a word from the last column.</p>
+    <p>Each word names one thing. "Output" says whether agents and people see the word in CLI, hook and MCP text. A word marked no stays in code and contributor docs. Review rejects any word from the last column.</p>
     <div class="table-scroll" role="region" aria-label="Vocabulary" tabindex="0">
       <table>
         <thead><tr><th scope="col">Word</th><th scope="col">Means</th><th scope="col">Output</th><th scope="col">Do not write</th></tr></thead>
         <tbody>
           <tr><th scope="row">HEAD</th><td>The commit that is checked out, which Fuse compares against. Gloss it once as "the commit you have checked out" where a reader may not know git.</td><td>yes</td><td>the last commit, the latest commit</td></tr>
           <tr><th scope="row">Working tree</th><td>The files as they are on disk.</td><td>yes</td><td>working copy, local files</td></tr>
-          <tr><th scope="row">Scope</th><td>What a request covers: every change, or named files.</td><td>no</td><td>reach, targets</td></tr>
+          <tr><th scope="row">Scope</th><td>What a request covers: every change, or named files, directories and patterns.</td><td>no</td><td>reach, targets</td></tr>
+          <tr><th scope="row">Scoped check</th><td>A check of named directories, files and glob patterns, and what they reach.</td><td>yes ("checked ... and what it reaches")</td><td>partial check, scoped run</td></tr>
           <tr><th scope="row">Target</th><td>A source file inside the scope.</td><td>no</td><td>input, edited file (unless it was edited)</td></tr>
           <tr><th scope="row">Surface</th><td>The declarations a file exposes to other files.</td><td>no</td><td>API, signature</td></tr>
           <tr><th scope="row">Declaration change</th><td>A declaration in the surface that was added, removed or changed.</td><td>yes ("declarations changed")</td><td>surface change, API change</td></tr>
@@ -399,25 +473,36 @@
           <tr><th scope="row">Reach</th><td>The files a declaration change can break: none, broad, or precise.</td><td>no</td><td>scope, impact</td></tr>
           <tr><th scope="row">Candidate</th><td>A file bound because of reach, not because it is a target.</td><td>no</td><td>affected file, dependent file</td></tr>
           <tr><th scope="row">Cause</th><td>The declaration change that made a candidate a candidate, printed under an error in that file.</td><td>yes</td><td>context, provenance, reason</td></tr>
+          <tr><th scope="row">Group</th><td>Errors or failures that print under one shared header: check errors with the same cause, test failures with the same first message line. <code>CheckGroups</code>, <code>FailureGroups</code>.</td><td>yes ("(N error(s))", "with the same first message line")</td><td>cluster, batch</td></tr>
           <tr><th scope="row">Generated file</th><td>A file a build writes into a project's <code>bin</code> or <code>obj</code> folder that the project compiles, such as an API client. Fuse reads it as the last build wrote it. <code>GeneratedFile</code> on an error.</td><td>yes ("generated: ...")</td><td>stale file, codegen output</td></tr>
+          <tr><th scope="row">Non-C#</th><td>A changed file that is not a C# source, named in the summary and never checked.</td><td>yes ("N non-C# file(s) changed")</td><td>non-CSharp, non C#</td></tr>
           <tr><th scope="row">Introduced</th><td>An error the working tree has and HEAD does not, matched by file, id and message.</td><td>yes ("2 errors introduced")</td><td>new, regression</td></tr>
           <tr><th scope="row">Compiler error</th><td>An error the compiler or an analyzer reports, at error severity under the project's configuration. <code>CompilerError</code> on the wire.</td><td>yes</td><td>diagnostic (for Fuse's record)</td></tr>
           <tr><th scope="row">Compilation-wide analyzer</th><td>An analyzer whose compilation start or compilation actions took a second or more on one file, so it runs once per compilation instead of once per file. <code>AnalyzerPlan</code>.</td><td>yes ("analyzer(s) that read the whole project")</td><td>slow analyzer, expensive analyzer, global analyzer</td></tr>
           <tr><th scope="row">Compilation analysis</th><td>One run of analyzers over a whole compilation, shared by every file and every check of that compilation, and going on after the check that started it stops waiting. <code>CompilationAnalyses</code>.</td><td>no</td><td>pass, background analysis</td></tr>
+          <tr><th scope="row">Kept errors</th><td>A file's errors from an earlier check, reused while its text, declarations and configuration read the same. <code>DiagnosticCollector</code>.</td><td>no</td><td>cached errors</td></tr>
+          <tr><th scope="row">Kept answer</th><td>An earlier check's result, answered again without binding when nothing it depends on changed. <code>KeptCheck</code>.</td><td>no</td><td>cached answer</td></tr>
           <tr><th scope="row">Current</th><td>The solution with every file as it is on disk.</td><td>no</td><td>working view</td></tr>
           <tr><th scope="row">Baseline</th><td>The same projects with every changed file at its HEAD content.</td><td>no</td><td>HEAD view, head solution</td></tr>
           <tr><th scope="row">Owner</th><td>A project whose sources include a file.</td><td>no</td><td>parent project</td></tr>
           <tr><th scope="row">Dependent</th><td>A project that depends on another, as <code>RepoGraph.DependentsOf</code> returns it.</td><td>yes</td><td>consumer, downstream</td></tr>
+          <tr><th scope="row">Whole project</th><td>A project a check binds whole instead of file by file, past 500 candidates. <code>WholeProjectCause</code>.</td><td>yes ("checked whole projects")</td><td>full project</td></tr>
           <tr><th scope="row">Bind</th><td>Compute a file's or a project's diagnostics with Roslyn.</td><td>no</td><td>(in output, write "check")</td></tr>
           <tr><th scope="row">Affected</th><td>A test a change can break, as Fuse selects it.</td><td>yes</td><td>reached, impacted, selected (in output)</td></tr>
           <tr><th scope="row">Selection</th><td>The tests chosen in one test project.</td><td>no</td><td>filter (the filter is how a selection is passed to <code>dotnet test</code>)</td></tr>
-          <tr><th scope="row">Plan</th><td>Every selection, and how each runs.</td><td>no</td><td></td></tr>
+          <tr><th scope="row">Plan</th><td>Every test selection, and how each runs.</td><td>no</td><td></td></tr>
+          <tr><th scope="row">Container-gated</th><td>A test project whose tests need a container runtime, left out and named when none answers.</td><td>yes ("no container runtime")</td><td>docker-gated, infra test</td></tr>
           <tr><th scope="row">Shadow run</th><td>Running a test assembly from a copy of its build output with the changed assemblies emitted into it.</td><td>yes ("without MSBuild")</td><td>fast path, fast build</td></tr>
+          <tr><th scope="row">Stage</th><td>The tests that failed in the last recorded run, run before the rest as their own run. <code>FailedFirstSplit</code>.</td><td>no</td><td>phase</td></tr>
+          <tr><th scope="row">Rerun</th><td>Running the tests that failed in the last recorded run again. <code>fuse test --failed</code>.</td><td>yes ("reran N test(s)", "that failed last time")</td><td>retry, repeat</td></tr>
+          <tr><th scope="row">Changed-build plan</th><td>What <code>fuse build --changed</code> builds: the projects that own the changed files and their dependents, reduced to the highest projects, or the whole solution with the reason. <code>ChangedBuildPlan</code>.</td><td>no</td><td></td></tr>
           <tr><th scope="row">Summary</th><td>The sentence at the end of an answer that says what was done and why.</td><td>no</td><td>scope, message</td></tr>
+          <tr><th scope="row">Tree stamp</th><td>A short hash of what the changed files hold, naming the tree a command saw. <code>TreeStamp</code>.</td><td>yes ("tree ...")</td><td>tree hash, stamp (alone)</td></tr>
           <tr><th scope="row">Client</th><td>The process that sent a request.</td><td>no</td><td>caller, agent (the agent is outside Fuse)</td></tr>
           <tr><th scope="row">Session</th><td>One agent's run as its harness identifies it in a hook payload, prefixed with the harness's name. A subagent the harness identifies on its own is a session of its own; once it has stopped, its parent counts its edits as its own.</td><td>yes ("other sessions' edits")</td><td>agent id, writer, owner (for a file's sessions)</td></tr>
+          <tr><th scope="row">Session registration</th><td>An external writer a launcher registered as a session for its path patterns, until it ends or 4 hours pass. <code>RegisteredSession</code>.</td><td>yes ("session ... registered")</td><td>external session, writer registration</td></tr>
           <tr><th scope="row">Native client</th><td>The client compiled ahead of time to native code, which the <code>fuse</code> command is on Windows x64, Linux x64, Linux Arm64 and macOS Arm64.</td><td>no</td><td>AOT client, thin client, native build</td></tr>
-          <tr><th scope="row">Phase</th><td>One named, timed part of a request.</td><td>no</td><td>stage, step</td></tr>
+          <tr><th scope="row">Phase</th><td>One named, timed part of a request.</td><td>no</td><td>step</td></tr>
           <tr><th scope="row">Configuration generation</th><td>The counter that invalidates everything derived from project configuration.</td><td>no</td><td>loader generation</td></tr>
           <tr><th scope="row">Unanswered</th><td>Fuse could not produce an answer: an <code>Unanswered</code> engine response, and exit code 2.</td><td>yes (exit code 2, and <code>isError</code> in MCP)</td><td>failed (for Fuse itself)</td></tr>
           <tr><th scope="row">Failed</th><td>A test or a build failed.</td><td>yes</td><td>error (for a test); failed (for Fuse or the engine not answering)</td></tr>
@@ -434,7 +519,7 @@
     <p>These decide a name the vocabulary does not list yet. Each exists because breaking it once made two things share a name.</p>
     <ol>
       <li><strong>A word in the vocabulary is reserved.</strong> A second concept gets a different word, and the collision is added to the "Do not write" column. Without it, "failed" would mean both a test failure and Fuse not answering.</li>
-      <li><strong>One concept, one word.</strong> Review rejects a synonym, in code, docs and output alike. Without it, one concept collects several names, as the cause once had four.</li>
+      <li><strong>One concept, one word.</strong> Review rejects a synonym, in code, docs and output alike. Without it, one concept collects several names, as the cause once had 4.</li>
       <li><strong>Output uses only words marked yes.</strong> Compiler and implementation words (bind, shadow, surface, reach) stay in code and contributor docs. A reader of the output does not know what "bound" or "fast path" mean.</li>
       <li><strong>No Fuse type shares a simple name with a BCL, Roslyn or MSBuild type.</strong> An alias to resolve a clash is the signal, as a Fuse <code>Diagnostic</code> next to Roslyn's would need.</li>
       <li><strong>A domain type and the wire record it maps to never share a name.</strong> Features return <code>*Result</code> types (<code>CheckResult</code>, <code>TestPlanResult</code>); <code>Protocol</code> records are named for what the client receives (<code>CheckReport</code>, <code>TestPlan</code>).</li>
@@ -446,12 +531,12 @@
     </ol>
 
     <h2 id="decisions">Decisions <a class="anchor" href="#decisions" aria-label="Link to this section">#</a></h2>
-    <p>A later change that contradicts one records a new decision here rather than editing the old one.</p>
+    <p>When a later change contradicts a decision, record a new decision here rather than editing the old one.</p>
     <div class="table-scroll" role="region" aria-label="Decisions" tabindex="0">
       <table>
         <thead><tr><th scope="col">Id</th><th scope="col">Decision</th><th scope="col">Why</th></tr></thead>
         <tbody>
-          <tr><th scope="row">D1</th><td>Foundation is three namespaces: <code>Fuse.Paths</code>, <code>Fuse.Failures</code>, <code>Fuse.Telemetry</code>.</td><td>Naming rule 8. A single <code>Fuse.Core</code> would name nothing and collect unrelated types.</td></tr>
+          <tr><th scope="row">D1</th><td>Foundation is 3 namespaces: <code>Fuse.Paths</code>, <code>Fuse.Failures</code>, <code>Fuse.Telemetry</code>.</td><td>Naming rule 8. A single <code>Fuse.Core</code> would name nothing and collect unrelated types.</td></tr>
           <tr><th scope="row">D2</th><td>Each feature keeps its model types in a <code>Model</code> sub-namespace.</td><td>It makes the reading order visible in the tree. The cost is one <code>using</code> per step file.</td></tr>
           <tr><th scope="row">D3</th><td>Fuse stays one project. Layering, including keeping Roslyn and MSBuild out of the client, is enforced by <code>NamespaceDependencyTests</code>.</td><td>The test catches every edge a project split would, including the Roslyn ban, without extra projects, packing or internal-visibility wiring. Revisit only if the test is worked around.</td></tr>
           <tr><th scope="row">D4</th><td>The output says "introduced", as the code does.</td><td>One word per concept in code and output. "fuse: 2 error(s) introduced in 2 file(s)" and "fuse: no errors introduced" read as plainly as "new" does.</td></tr>
@@ -464,13 +549,13 @@
           <tr><th scope="row">D11</th><td><code>CompilerError</code> lives in <code>Fuse.Check.Model</code>, and <code>Fuse.Protocol</code> may use that one type.</td><td>The wire carries it unchanged, and features may not use <code>Fuse.Protocol</code>, so it cannot live there. A second record with the same fields would only add a copy step. <code>Fuse.Check.Model</code> has no Roslyn or MSBuild reference, so a client that uses <code>Fuse.Protocol</code> still loads neither.</td></tr>
           <tr><th scope="row">D12</th><td><code>fuse hook</code> accepts only <code>pre-shell</code>. This replaces D5's accepted <code>pre-bash</code> alias.</td><td>Fuse carries no compatibility code for earlier builds, and one alias is one more thing to remove later. A user who does not rerun <code>fuse init</code> after updating loses the <code>dotnet</code> rewrite until they do, and the changelog says so.</td></tr>
           <tr><th scope="row">D13</th><td>The documentation lives in <code>site/docs/</code> as static HTML pages that share <code>site/assets/style.css</code> with the home page. Only the files GitHub and the release workflow read stay Markdown: the README, <code>CONTRIBUTING.md</code>, <code>SECURITY.md</code> and <code>CHANGELOG.md</code> in the root, and <code>CODE_OF_CONDUCT.md</code> and <code>SUPPORT.md</code> in <code>.github/</code>. <code>CHANGELOG.md</code> is the list of changes the release workflow publishes; the changelog page explains each release with its upgrade steps.</td><td>One copy of each page, on the site where readers find it, with diagrams, callouts and navigation that Markdown on GitHub cannot show. The pages need no build step, so the site deploys from <code>main</code> as it is.</td></tr>
-          <tr><th scope="row">D14</th><td>The client ships as native code for win-x64, linux-x64, linux-arm64 and osx-arm64, and the engine always runs <code>fuse.dll</code> on the .NET runtime. One project builds both: a native publish also publishes <code>fuse.dll</code> beside the native client, and the build id is the module id of that <code>fuse.dll</code> on both sides. The Linux and macOS packages are native tool packages; the win-x64 package is framework-dependent with the native client as its packaged shim, because the SDK puts a native tool behind a <code>.cmd</code> file on Windows, which Git Bash cannot run. The musl RIDs and every other platform install <code>fuse.dll</code>.</td><td>A check of an unchanged tree spends almost all its time in the client: on NodaTime it took 162 ms with the managed client and 23 ms with the native client on the same runner (<code>evals/results/managed/latency-NodaTime-20260930-1429.json</code> and <code>evals/results/latency-NodaTime-20260930-1422.json</code>), and every check gains about the same (<a href="benchmarks.html#native-client">Benchmarks</a>). The engine cannot be native, because it loads MSBuild and analyzers at run time. Keeping one project keeps D3.</td></tr>
+          <tr><th scope="row">D14</th><td>The client ships as native code for win-x64, linux-x64, linux-arm64 and osx-arm64, and the engine always runs <code>fuse.dll</code> on the .NET runtime. One project builds both: a native publish also publishes <code>fuse.dll</code> beside the native client, and the build id is the module id of that <code>fuse.dll</code> on both sides. The Linux and macOS packages are native tool packages; the win-x64 package is framework-dependent with the native client as its packaged shim, because the SDK puts a native tool behind a <code>.cmd</code> file on Windows, which Git Bash cannot run. The musl RIDs and every other platform install <code>fuse.dll</code>.</td><td>A check of an unchanged tree spends almost all its time in the client: on NodaTime it took 218 ms with the managed client and 28 ms with the native client on the same runner (<code>evals/results/managed/latency-NodaTime-20261029-1900.json</code> and <code>evals/results/latency-NodaTime-20261029-1858.json</code>), and every check gains about the same (<a href="benchmarks#native-client">Benchmarks</a>). The engine cannot be native, because it loads MSBuild and analyzers at run time. Keeping one project keeps D3.</td></tr>
         </tbody>
       </table>
     </div>
 
     <h2 id="known-deviations">Known deviations <a class="anchor" href="#known-deviations" aria-label="Link to this section">#</a></h2>
-    <p>These are decisions that bend a principle, recorded so they are not copied as precedent.</p>
+    <p>These decisions bend a principle. They are recorded here so no one copies them as precedent.</p>
     <div class="table-scroll" role="region" aria-label="Known deviations" tabindex="0">
       <table>
         <thead><tr><th scope="col">Deviation</th><th scope="col">Where</th><th scope="col">Why it stands</th></tr></thead>
@@ -485,39 +570,39 @@
     </div>
 
     <nav class="pager" aria-label="Previous and next page">
-      <a href="changelog.html"><span>Previous</span>Changelog</a>
-      <a class="next-page" href="evals.html"><span>Next</span>Evals</a>
+      <a href="changelog"><span>Previous</span>Changelog</a>
+      <a class="next-page" href="evals"><span>Next</span>Evals</a>
     </nav>
     </main>
 
     <nav class="sidebar" id="docs-nav" aria-label="Documentation">
       <h2>Start here</h2>
       <ul>
-        <li><a href="index.html">Overview</a></li>
-        <li><a href="getting-started.html">Getting started</a></li>
-        <li><a href="harnesses.html">Connect your agent</a></li>
-        <li><a href="parallel-agents.html">Subagents and parallel agents</a></li>
+        <li><a href="./">Overview</a></li>
+        <li><a href="getting-started">Getting started</a></li>
+        <li><a href="harnesses">Connect your agent</a></li>
+        <li><a href="parallel-agents">Subagents and parallel agents</a></li>
       </ul>
       <h2>Understand</h2>
       <ul>
-        <li><a href="how-it-works.html">How it works</a></li>
-        <li><a href="limits.html">Limits</a></li>
-        <li><a href="benchmarks.html">Benchmarks</a></li>
-        <li><a href="faq.html">FAQ</a></li>
+        <li><a href="how-it-works">How it works</a></li>
+        <li><a href="limits">Limits</a></li>
+        <li><a href="benchmarks">Benchmarks</a></li>
+        <li><a href="faq">FAQ</a></li>
       </ul>
       <h2>Reference</h2>
       <ul>
-        <li><a href="commands.html">Commands</a></li>
-        <li><a href="messages.html">Messages and fixes</a></li>
-        <li><a href="troubleshooting.html">Troubleshooting</a></li>
-        <li><a href="changelog.html">Changelog</a></li>
+        <li><a href="commands">Commands</a></li>
+        <li><a href="messages">Messages and fixes</a></li>
+        <li><a href="troubleshooting">Troubleshooting</a></li>
+        <li><a href="changelog">Changelog</a></li>
       </ul>
       <h2>Contribute</h2>
       <ul>
         <li><a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/main/CONTRIBUTING.md">Contributing</a></li>
-        <li><a href="architecture.html" aria-current="page">Architecture</a></li>
-        <li><a href="evals.html">Evals</a></li>
-        <li><a href="ai-policy.html">AI policy</a></li>
+        <li><a href="architecture" aria-current="page">Architecture</a></li>
+        <li><a href="evals">Evals</a></li>
+        <li><a href="ai-policy">AI policy</a></li>
         <li><a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/main/SECURITY.md">Security</a></li>
       </ul>
     </nav>
@@ -525,7 +610,7 @@
 
   <footer class="site-footer">
     <a class="maker" href="https://www.litenova.solutions"><img src="../assets/litenova-mark.svg" alt="" width="20" height="20">Built by Litenova Solutions</a>
-    <nav aria-label="Footer"><a href="index.html">Docs</a><a href="changelog.html">Changelog</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
+    <nav aria-label="Footer"><a href="./">Docs</a><a href="changelog">Changelog</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
   </footer>
 </div>
 </body>

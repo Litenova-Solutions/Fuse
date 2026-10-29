@@ -51,6 +51,19 @@ internal sealed class WorkspaceSync
         var result = await _tracker.SyncAsync(knownPaths, cancellationToken).ConfigureAwait(false);
         if (_unfinished is { } unfinished)
             result = unfinished.Then(result);
+        if (result is SyncResult.Patch overflowing && _views.TouchedOverflows)
+        {
+            // Re-evaluates the projects as a project-file change does, so the touched set stays bounded however
+            // long the engine runs; the log names why this sync took the expensive path.
+            _log($"touched set passed {SolutionViews.MaxTouchedPaths} paths; re-evaluating projects and resetting it");
+            var paths = new HashSet<RepoPath>(result.Paths);
+            paths.UnionWith(_tracker.Changed);
+            foreach (var directory in overflowing.VanishedDirectories)
+                paths.UnionWith(_views.FilesUnder(directory));
+            _views.ResetTouched();
+            result = new SyncResult.Reevaluate(paths, $"touched set passed {SolutionViews.MaxTouchedPaths} paths");
+        }
+
         _unfinished = result;
         switch (result)
         {
@@ -83,6 +96,17 @@ internal sealed class WorkspaceSync
         if (!_views.HoldEveryOpenProject)
             await _views.RebuildAsync(cancellationToken).ConfigureAwait(false);
     }
+
+    /// <summary>Applies each of <paramref name="paths"/> to both views again: its disk content to the current view and its HEAD content to the baseline.</summary>
+    /// <param name="paths">The files to apply; each is also touched.</param>
+    /// <param name="cancellationToken">Cancels reading file contents.</param>
+    public Task PatchViewsAsync(IReadOnlyCollection<RepoPath> paths, CancellationToken cancellationToken) =>
+        _views.PatchAsync(paths, cancellationToken);
+
+    /// <summary>Derives both views from the loader's solution again, re-applying every touched and every changed file.</summary>
+    /// <param name="cancellationToken">Cancels reading file contents.</param>
+    public Task RebuildAsync(CancellationToken cancellationToken) =>
+        _views.RebuildAsync(cancellationToken);
 
     /// <summary>
     ///     Acts on <see cref="SyncResult.Reevaluate"/> and <see cref="SyncResult.Reload"/>, which differ only in whether

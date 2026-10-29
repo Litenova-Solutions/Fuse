@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Commands | Fuse</title>
-<meta name="description" content="Every fuse command: its arguments, what it prints, and its exit codes.">
+<title>Fuse Commands: check, test, build, init and status | Fuse</title>
+<meta name="description" content="Reference for every fuse command, including fuse check, fuse test, fuse build, fuse init and fuse status, with their options, output lines and exit codes.">
 <link rel="canonical" href="https://fuse.codes/docs/commands">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 <meta name="author" content="Litenova Solutions">
@@ -13,24 +13,26 @@
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="Fuse">
 <meta property="og:locale" content="en_US">
-<meta property="og:title" content="Commands">
-<meta property="og:description" content="Every fuse command: its arguments, what it prints, and its exit codes.">
+<meta property="og:title" content="Fuse Commands: check, test, build, init and status">
+<meta property="og:description" content="Reference for every fuse command, including fuse check, fuse test, fuse build, fuse init and fuse status, with their options, output lines and exit codes.">
 <meta property="og:url" content="https://fuse.codes/docs/commands">
 <meta property="og:image" content="https://fuse.codes/assets/og.png">
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 7.0x to 31.0x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 8.1x to 27.7x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Commands">
-<meta name="twitter:description" content="Every fuse command: its arguments, what it prints, and its exit codes.">
+<meta name="twitter:title" content="Fuse Commands: check, test, build, init and status">
+<meta name="twitter:description" content="Reference for every fuse command, including fuse check, fuse test, fuse build, fuse init and fuse status, with their options, output lines and exit codes.">
 <meta name="twitter:image" content="https://fuse.codes/assets/og.png">
-<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 7.0x to 31.0x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 8.1x to 27.7x faster than dotnet build. dotnet tool install -g Fuse.">
 <link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
 <link rel="icon" href="../assets/fuse-icon.svg" type="image/svg+xml" sizes="any">
 <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
 <link rel="sitemap" type="application/xml" href="../sitemap.xml">
 <link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/docs.js" defer></script>
+<script src="../assets/highlight.js" defer></script>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -38,12 +40,12 @@
     {
       "@type": "TechArticle",
       "@id": "https://fuse.codes/docs/commands#article",
-      "headline": "Commands",
-      "description": "Every fuse command: its arguments, what it prints, and its exit codes.",
+      "headline": "Fuse Commands: check, test, build, init and status",
+      "description": "Reference for every fuse command, including fuse check, fuse test, fuse build, fuse init and fuse status, with their options, output lines and exit codes.",
       "url": "https://fuse.codes/docs/commands",
       "mainEntityOfPage": "https://fuse.codes/docs/commands",
       "inLanguage": "en",
-      "dateModified": "2026-10-17",
+      "dateModified": "2026-10-29",
       "image": "https://fuse.codes/assets/og.png",
       "isPartOf": {
         "@type": "WebSite",
@@ -97,23 +99,32 @@
 <a class="skip-link" href="#main">Skip to main content</a>
 <div class="wrap wide">
   <header class="site-header">
-    <a class="brand" href="../index.html"><img src="../assets/fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
+    <a class="brand" href="../"><img src="../assets/fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
     <nav aria-label="Main">
-      <a href="index.html" aria-current="page">Docs</a>
-      <a href="benchmarks.html">Benchmarks</a>
+      <a href="./" aria-current="page">Docs</a>
+      <a href="benchmarks">Benchmarks</a>
       <a class="gh" href="https://github.com/Litenova-Solutions/Fuse" aria-label="Fuse on GitHub"><svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg></a>
     </nav>
   </header>
 
   <div class="docs">
     <main id="main" class="page" tabindex="-1">
-    <p class="crumbs"><a href="index.html">Docs</a> / Reference</p>
+    <p class="crumbs"><a href="./">Docs</a> / Reference</p>
     <h1>Commands</h1>
     <p class="jump"><a href="#docs-nav">All documentation pages</a></p>
-    <p class="intro">The reference for every <code>fuse</code> command: its arguments, what it prints, and its exit codes. When a command cannot answer, its message is listed in <a href="messages.html">Messages and fixes</a>.</p>
+    <p class="intro">Every <code>fuse</code> command takes arguments, prints an answer, and exits with a code. This page lists all three for each command. When a command cannot answer, its message is listed in <a href="messages">Messages and fixes</a>.</p>
     <div class="audience">
-      <p><b>This page is for</b> anyone reading Fuse's output, whether you ran a command yourself or are looking at what a hook sent the agent, and anyone scripting Fuse or connecting it to a tool.</p>
-      <p><b>Before it</b>, <a href="getting-started.html">Getting started</a> sets Fuse up in your repository and shows the common commands' output.</p>
+      <p><b>This page is for</b> you when you read what Fuse printed, whether you ran the command yourself or you look at what a hook sent your agent, and when you script Fuse or connect it to another tool.</p>
+      <p><b>Before it</b>, <a href="getting-started">Getting started</a> sets Fuse up in your repository and shows what the common commands print.</p>
+    </div>
+    <div class="key">
+      <p>In short</p>
+      <ul>
+        <li>Three commands do the work. <code>check</code> reports the errors your changes introduced, <code>test</code> runs the tests your changes affect, and <code>build</code> runs the real build and prints only its errors.</li>
+        <li>Every command works on the git repository that holds your current directory, compares the working tree with HEAD, and reads no configuration.</li>
+        <li>When Fuse answered and found nothing to fix, the exit code is 0. When it answered and found something to fix, it is 1. When it could not answer, it is 2.</li>
+        <li>Hooks and the MCP server give agents the same text the commands print, without the tree stamp. What you see in a terminal is therefore what the agent reads.</li>
+      </ul>
     </div>
 
     <nav class="toc" aria-label="On this page">
@@ -126,6 +137,8 @@
         <li><a href="#fuse-check">fuse check</a></li>
         <li><a href="#fuse-test">fuse test</a></li>
         <li><a href="#fuse-build">fuse build</a></li>
+        <li><a href="#fuse-status">fuse status</a></li>
+        <li><a href="#fuse-session">fuse session</a></li>
         <li><a href="#fuse-stop">fuse stop</a></li>
         <li><a href="#fuse-mcp">fuse mcp</a></li>
         <li><a href="#fuse-hook">fuse hook</a></li>
@@ -135,54 +148,70 @@
     </nav>
 
     <h2 id="overview">Overview <a class="anchor" href="#overview" aria-label="Link to this section">#</a></h2>
-    <p><code>fuse</code> is one executable. <code>check</code>, <code>test</code> and <code>build</code> are its three operations; <code>init</code> sets a repository up, <code>uninit</code> takes Fuse out of it again, and <code>stop</code> stops its engine. <code>hook</code> runs them for a harness and <code>mcp</code> serves them to an MCP host; both give the same text the command line prints, so what you see in a terminal is what the agent reads.</p>
-    <p>Every command works on the git repository that contains the current directory (a hook, on the repository of the files its payload names), compares the working tree (the files on disk) with HEAD (the commit you have checked out), and reads no configuration.</p>
+    <p><code>fuse</code> is one executable. <code>check</code>, <code>test</code> and <code>build</code> are its three operations. <code>init</code> sets a repository up, <code>uninit</code> takes Fuse out of it again, <code>status</code> shows the engine and the changed files, <code>session</code> registers an external writer as a session, and <code>stop</code> stops the engine. <code>hook</code> runs the operations for a harness, and <code>mcp</code> serves them to an MCP host. Both give the same text the command line prints, so what you see in a terminal is what the agent reads.</p>
+    <p>Every command works on the git repository that holds your current directory. A hook instead works on the repository of the files its payload names. Each command compares the working tree, the files on disk, with HEAD, the commit you have checked out, and reads no configuration.</p>
     <pre data-label="Output"><code>$ fuse help
 fuse - faster .NET build and test loop for AI coding agents
 
   fuse init [--instructions]  register Fuse's hooks with the agent harnesses this repository uses
-                                    (--instructions: also add a Fuse section to AGENTS.md)
+                            (--instructions: also add a Fuse section to AGENTS.md)
   fuse uninit               remove what fuse init wrote, stop this repository's engine and delete its state
-  fuse check [files...]     errors the working tree has that HEAD does not, across dependent projects
+  fuse check [files...] [--max-errors &lt;n&gt;|--all-errors] [--json]
+                            errors the working tree has that HEAD does not, across dependent projects
   fuse test [args...]       run the tests affected by your changes (with args: the tests those dotnet test arguments name)
   fuse test --all           run every test
-  fuse build [args...]      dotnet build, printing its errors
+  fuse test --failed        rerun the tests that failed in the last recorded run
+  fuse build [args...] [--max-errors &lt;n&gt;|--all-errors] [--json] [--warnings] [--changed]
+                            dotnet build, printing its errors
+  fuse status [--json]      show the engine and the changed files
+  fuse session begin &lt;name&gt; --paths &lt;pattern&gt; [&lt;pattern&gt;...]
+                            register an external writer as a session for its path patterns
+  fuse session end &lt;name&gt;   end the registration
   fuse stop [--all]         stop this repository's engine (--all: every engine); the next command starts one
   fuse mcp                  stdio MCP server (fuse_check, fuse_test, fuse_build) for MCP hosts that run no hooks
   fuse hook &lt;harness&gt; &lt;event&gt;   the command registered hooks run</code></pre>
 
     <h2 id="exit-codes">Exit codes <a class="anchor" href="#exit-codes" aria-label="Link to this section">#</a></h2>
-    <p>The exit code tells a script, or a harness, which of three things happened: Fuse answered and all is well, Fuse answered and something needs fixing, or Fuse could not answer.</p>
-    <table>
+    <p>The exit code tells your script, or a harness, which of three things happened. Either Fuse answered and all is well, Fuse answered and something needs fixing, or Fuse could not answer.</p>
+    <div class="table-scroll" role="region" aria-label="Exit codes" tabindex="0">
+      <table>
       <thead><tr><th scope="col">Code</th><th scope="col">Meaning</th></tr></thead>
       <tbody>
         <tr><th scope="row">0</th><td>Fuse answered and found nothing to fix: no errors introduced, the tests passed, or the build succeeded.</td></tr>
         <tr><th scope="row">1</th><td>Fuse answered and found something to fix: errors introduced, a test failed, or a build failed.</td></tr>
-        <tr><th scope="row">2</th><td>Fuse could not answer. The output says why and what to run, as <a href="messages.html">Messages and fixes</a> lists. An unknown command also exits with 2 and prints the usage on standard error, and <code>fuse test --all</code> with other arguments exits with 2 and says why there (<a href="#fuse-test">fuse test</a>).</td></tr>
+        <tr><th scope="row">2</th><td>Fuse could not answer, so the output says why and what to run, as <a href="messages">Messages and fixes</a> lists. A usage failure also exits with 2 and prints the usage on standard error (<a href="messages#usage-failures">Usage failures</a>), for example an unknown command or option, or a flag combined with arguments it cannot take.</td></tr>
         <tr><th scope="row">130</th><td>Ctrl+C stopped the command.</td></tr>
       </tbody>
     </table>
-    <p><code>fuse hook</code> exits with 0 in every case except one: the Claude Code post-edit hook exits with 2 to wake the agent, as <a href="#fuse-hook">fuse hook</a> describes.</p>
+    </div>
+    <p><code>fuse hook</code> exits with 0 in every case but one. The Claude Code post-edit hook exits with 2 to wake the agent, as <a href="#fuse-hook">fuse hook</a> describes.</p>
 
     <h2 id="fuse-init">fuse init <a class="anchor" href="#fuse-init" aria-label="Link to this section">#</a></h2>
-    <p>Registers Fuse's hooks with every harness the repository uses, and the MCP server with VS Code, and adds <code>.fuse/</code> to the root <code>.gitignore</code> (<a href="harnesses.html#the-fuse-folder">The .fuse folder</a>). It detects a harness by its folder or file in the repository root and sets up Claude Code when it finds none. <a href="harnesses.html">Connect your agent</a> lists what it detects and writes, and how running it again behaves.</p>
+    <p>This command registers Fuse's hooks with every harness your repository uses, and the MCP server with VS Code. It also adds <code>.fuse/</code> to the root <code>.gitignore</code> (<a href="harnesses#the-fuse-folder">The .fuse folder</a>). It detects a harness by its folder or file in the repository root, and when it finds none it sets up Claude Code. <a href="harnesses">Connect your agent</a> lists what it detects and writes, and what happens when you run it again.</p>
     <pre class="out" data-label="Output"><code>$ fuse init
 wrote .claude/settings.json
 wrote .gitignore
-fuse: hooks registered; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors</code></pre>
-    <p>It exits with 2 outside a git repository and in a repository where git knows no <code>.csproj</code> file. It also exits with 2, after the <code>wrote</code> lines of the files it wrote before, when a settings file it has to change is not valid JSON (<code>fuse: &lt;file&gt; is not valid JSON (&lt;reason&gt;); fix or remove it</code>, leaving the file as it was) or cannot be written (<code>fuse: could not write &lt;file&gt; (&lt;reason&gt;)</code>, leaving no temporary file). An empty settings file, or one that holds only comments, counts as an empty object.</p>
+fuse: hooks registered by Fuse 5.7.0; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors</code></pre>
+    <p>Outside a git repository, and in a repository where git knows no <code>.csproj</code> file, it exits with 2. It also exits with 2 when a settings file it has to change is not valid JSON (<code>fuse: &lt;file&gt; is not valid JSON (&lt;reason&gt;); fix or remove it</code>, leaving the file as it was) or cannot be written (<code>fuse: could not write &lt;file&gt; (&lt;reason&gt;)</code>, leaving no temporary file). It first prints the <code>wrote</code> lines for the files it wrote before the failure.</p>
+    <p>A settings file that is empty, or that holds only comments, counts as an empty object. The closing line names the Fuse version that registered the hooks. When you run the command again after an upgrade, it prints the new version even when every file is unchanged.</p>
     <h3 id="fuse-init-instructions">fuse init --instructions <a class="anchor" href="#fuse-init-instructions" aria-label="Link to this section">#</a></h3>
-    <p>Also writes a Fuse section into the instruction files your agents read, so an agent knows the commands before a hook first answers it. The section goes into <code>AGENTS.md</code>, which it creates when the repository has none, into <code>CLAUDE.md</code> when that file exists and does not import <code>@AGENTS.md</code>, because Claude Code reads <code>CLAUDE.md</code>, and into <code>GEMINI.md</code> when that file exists. It sits between the lines <code>&lt;!-- fuse:begin --&gt;</code> and <code>&lt;!-- fuse:end --&gt;</code>: a file without them gets the section at its end, and running the command again replaces only what is between them and keeps the file's line endings. <a href="parallel-agents.html#telling-agents-about-fuse">Subagents and parallel agents</a> shows the section.</p>
+    <p>This flag also writes a Fuse section into the instruction files your agents read, so an agent knows the commands before a hook first answers it. The section goes into <code>AGENTS.md</code>, which the command creates when your repository has none. It also goes into <code>CLAUDE.md</code> when that file exists and does not import <code>@AGENTS.md</code>, because Claude Code reads <code>CLAUDE.md</code>, and into <code>GEMINI.md</code> when that file exists. The section sits between the lines <code>&lt;!-- fuse:begin --&gt;</code> and <code>&lt;!-- fuse:end --&gt;</code>. A file without them gets the section at its end. Running the command again replaces only what sits between them and keeps the file's line endings. <a href="parallel-agents#telling-agents-about-fuse">Subagents and parallel agents</a> shows the section.</p>
     <pre class="out" data-label="Output"><code>$ fuse init --instructions
 wrote .claude/settings.json
 unchanged .gitignore
 wrote AGENTS.md
 wrote CLAUDE.md
-fuse: hooks registered; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors</code></pre>
-    <p>A file whose section is already current prints <code>unchanged</code>, as a settings file does. Any other argument prints <code>usage: fuse init [--instructions]</code> and exits with 2.</p>
+fuse: hooks registered by Fuse 5.7.0; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors</code></pre>
+    <p>When a file's section is already current, the command prints <code>unchanged</code> for it, as it does for a settings file. Any other argument prints <code>usage: fuse init [--instructions]</code> and exits with 2.</p>
 
     <h2 id="fuse-uninit">fuse uninit <a class="anchor" href="#fuse-uninit" aria-label="Link to this section">#</a></h2>
-    <p>Removes what <code>fuse init</code> and <code>fuse init --instructions</code> wrote, for every harness whether the repository still uses it or not, then stops the repository's engine and deletes its state directory (<a href="troubleshooting.html#where-the-logs-are">where it is</a>). In a shared settings file it takes out only the handlers that run <code>fuse hook</code>, and in Claude Code's settings also the <code>Bash(fuse build:*)</code> and <code>Bash(fuse test:*)</code> permissions; every other entry stays, and a file left with nothing in it is deleted. The files that belong to Fuse are deleted whole: <code>.github/hooks/fuse.json</code>, <code>.opencode/plugins/fuse.js</code> and the Muse Code bundle <code>.muse/plugins/fuse</code>. It also takes the <code>fuse</code> server out of <code>.vscode/mcp.json</code>, the <code>.fuse/</code> line out of <code>.gitignore</code>, and the section between <code>&lt;!-- fuse:begin --&gt;</code> and <code>&lt;!-- fuse:end --&gt;</code> out of <code>AGENTS.md</code>, <code>CLAUDE.md</code> and <code>GEMINI.md</code>, deleting a file that held nothing else. A folder the deletions leave empty is deleted too.</p>
+    <p>This command removes what <code>fuse init</code> and <code>fuse init --instructions</code> wrote. It covers every harness, whether your repository still uses it or not. It then stops your repository's engine and deletes its state directory (<a href="troubleshooting#where-the-logs-are">where it is</a>).</p>
+    <ul>
+      <li>In a shared settings file, it takes out only the handlers that run <code>fuse hook</code>. In Claude Code's settings it also takes out the <code>Bash(fuse build:*)</code> and <code>Bash(fuse test:*)</code> permissions. Every other entry stays, and the command deletes a file left with nothing in it.</li>
+      <li>The files that belong to Fuse are deleted whole: <code>.github/hooks/fuse.json</code>, <code>.opencode/plugins/fuse.js</code> and the Muse Code bundle <code>.muse/plugins/fuse</code>.</li>
+      <li>It also takes the <code>fuse</code> server out of <code>.vscode/mcp.json</code>, the <code>.fuse/</code> line out of <code>.gitignore</code>, and the section between <code>&lt;!-- fuse:begin --&gt;</code> and <code>&lt;!-- fuse:end --&gt;</code> out of <code>AGENTS.md</code>, <code>CLAUDE.md</code> and <code>GEMINI.md</code>. It deletes a file that held nothing else.</li>
+    </ul>
+    <p>The command also deletes a folder the deletions leave empty. Session registrations are deleted with the state directory.</p>
     <pre class="out" data-label="Output"><code>$ fuse uninit
 wrote .claude/settings.json
 deleted .gitignore
@@ -190,61 +219,107 @@ deleted AGENTS.md
 fuse: stopped the engine for /home/you/shop
 fuse: deleted the engine's state in /home/you/.local/share/fuse/repos/3f2a9c1d7e5b8a60
 fuse: removed Fuse from this repository; `dotnet tool uninstall -g Fuse` removes the tool itself</code></pre>
-    <p>Muse Code keeps its own copy of a plugin it installed, so after removing the bundle the command also prints <code>fuse: Muse Code keeps the plugin it installed: run `muse plugins remove fuse` once</code>. In a repository with nothing <code>fuse init</code> wrote, it changes no file and prints <code>fuse: this repository has nothing fuse init wrote</code>. It exits with 2 outside a git repository, and when a settings file it has to change is not valid JSON or cannot be written, with the same messages as <code>fuse init</code>. Any argument prints <code>usage: fuse uninit</code> and exits with 2. The fuse tool stays installed; <code>dotnet tool uninstall -g Fuse</code> removes it.</p>
+    <p>Muse Code keeps its own copy of a plugin it installed. After removing the bundle, the command therefore also prints <code>fuse: Muse Code keeps the plugin it installed: run `muse plugins remove fuse` once</code>. In a repository with nothing <code>fuse init</code> wrote, it changes no file and prints <code>fuse: this repository has nothing fuse init wrote</code>.</p>
+    <p>When no engine runs, the stop line reads <code>fuse: no engine runs for &lt;root&gt;</code>. When the state is already gone, the command prints <code>fuse: no engine state to delete</code>. When the state cannot be deleted, it prints <code>fuse: could not delete the engine's state in &lt;state&gt; (&lt;reason&gt;); delete it once no fuse command runs</code>.</p>
+    <p>Outside a git repository it exits with 2. It also exits with 2 when a settings file it has to change is not valid JSON or cannot be written, with the same messages as <code>fuse init</code>. Any argument prints <code>usage: fuse uninit</code> and exits with 2. The fuse tool stays installed. To remove it, run <code>dotnet tool uninstall -g Fuse</code>.</p>
 
     <h2 id="fuse-check">fuse check <a class="anchor" href="#fuse-check" aria-label="Link to this section">#</a></h2>
-    <pre data-label="Usage"><code>fuse check [files...]</code></pre>
-    <p>Reports the compiler errors the working tree has that HEAD does not. It covers the checked files, and every file, in the same project or a dependent one, that uses a declaration the checked files changed.</p>
+    <pre data-label="Usage"><code>fuse check [files...] [--max-errors &lt;n&gt;|--all-errors] [--json]</code></pre>
+    <p>This command reports the compiler errors the working tree has that HEAD does not. It covers the checked files, and every file in the same project or a dependent one that uses a declaration the checked files changed.</p>
     <ul>
-      <li><strong>Without files</strong>, it checks every source file (<code>.cs</code>, <code>.razor</code>, <code>.cshtml</code>) that differs from HEAD: modified, added (untracked and not ignored by git) or deleted. Files under <code>bin</code>, <code>obj</code>, <code>.git</code> and <code>node_modules</code> are skipped.</li>
-      <li><strong>With files</strong>, it checks those files. A path is relative to the current directory or absolute. A named file is checked even when it matches HEAD, and a file that is not a source file or that no project owns is skipped.</li>
+      <li><strong>Without files</strong>, it checks every source file (<code>.cs</code>, <code>.razor</code>, <code>.cshtml</code>) that differs from HEAD: modified, added, or deleted. Added covers untracked files that git does not ignore. Files under <code>bin</code>, <code>obj</code>, <code>.git</code> and <code>node_modules</code> are skipped.</li>
+      <li><strong>With files</strong>, it checks those files. Give a path relative to your current directory, or an absolute path. A named file is checked even when it matches HEAD. The command leaves out a file that is not a source file, or that no project owns. When none of the named files is a source file a project owns, the check is refused (<a href="messages#invalidpath">InvalidPath</a>).</li>
+      <li><strong>With a directory or a pattern</strong>, it checks a scope. An argument that is a directory that exists, or that holds <code>*</code> or <code>?</code>, scopes the whole call. The check then covers the changed sources under each directory and pattern, the named files alongside them, and what they reach. A directory or pattern matches within the changed sources, while a file is taken as named. Every directory, pattern and file must match at least one C# source a project owns. One that matches none refuses the whole call, as does an expansion past the 2000 sources one scoped check covers (<a href="messages#invalidpath">InvalidPath</a>).</li>
     </ul>
-    <p>It waits for the engine to finish loading the repository, for up to 10 minutes. <a href="how-it-works.html#check">How it works</a> describes what the check does.</p>
+    <p>Three flags shape the answer.</p>
+    <ul>
+      <li><code>--max-errors &lt;n&gt;</code> shows at most <code>n</code> errors, where <code>n</code> counts from 1 to 100000. Without a flag the command prints the first 20.</li>
+      <li><code>--all-errors</code> shows every error, and cannot be combined with <code>--max-errors</code>.</li>
+      <li><code>--json</code> prints one JSON object per error instead of text lines, with the summary as the last line.</li>
+    </ul>
+    <p>Without a flag the engine sends at most 200 errors. <code>--max-errors &lt;n&gt;</code> sends and prints at most <code>n</code>. <code>--all-errors</code> and <code>--json</code> send and print every error.</p>
+    <p>After <code>--</code> every token is a file, even one that looks like an option. The command refuses an unknown option, a bad count, and a combined pair on standard error with the usage, and exits with 2 (<a href="messages#usage-failures">Usage failures</a>). <code>--warnings</code> is not a check flag. For warnings, run <code>fuse build --warnings</code>.</p>
+    <p>The command waits up to 10 minutes for the engine to finish loading the repository. <a href="how-it-works#check">How it works</a> describes what the check does.</p>
     <pre class="out" data-label="Output"><code>$ fuse check
+removed: public int Add(int a, int b) (2 error(s))
 App/Program.cs(3,30): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)
-  removed: public int Add(int a, int b)
 Lib.Tests/CalcTests.cs(6,54): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)
-  removed: public int Add(int a, int b)
-fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations changed, 2 dependent project(s) checked</code></pre>
+fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations changed, 2 dependent project(s) checked; tree 9f2c41aa07b3 over 3 changed file(s)</code></pre>
     <h3 id="reading-the-output">Reading the output <a class="anchor" href="#reading-the-output" aria-label="Link to this section">#</a></h3>
     <p>The output has four kinds of line.</p>
     <ul>
-      <li><strong>Error lines</strong>, one per introduced error, as <code>path(line,column): error ID: message</code>, with the path relative to the repository root and forward slashes. This is the format <code>dotnet build</code> uses, so tools that read build errors read these too. The engine returns at most 200 errors, ordered by file and position, and the command prints the first 20. Every check also writes every error it was sent to <code>last-check-results.txt</code> in the state directory, replaced each time, so the rest can be read there.</li>
-      <li><strong>Cause lines</strong>, indented by two spaces under an error in a file the check reached because of a declaration change: <code>changed:</code> and the changed declaration as the working tree has it, or <code>removed:</code> and the removed declaration as HEAD had it, on one line without its body. A field is quoted as its modifiers, type and name, as in <code>changed: public long Limit</code>, and a constant with its value. An error in a checked file itself and an analyzer error get no cause line. When any change in the check can break code without naming it (a type header, a delegate, a global using or an assembly attribute), no error in the answer gets one. An answer holds at most ten.</li>
-      <li><strong>Generated lines</strong>, indented by two spaces under an error about a type or member that a file the build generates declares, once per file: <code>generated: &lt;path&gt; declares it, and Fuse reads that file as the last build wrote it; if it is generated from changed code, run fuse build to write it again</code> (<a href="how-it-works.html#check">errors about generated code</a>).</li>
+      <li><strong>Error lines</strong>, one per introduced error, as <code>path(line,column): error ID: message</code>, with the path relative to the repository root and forward slashes. This is the format <code>dotnet build</code> uses, so tools that read build errors read these too. The engine returns at most 200 errors, ordered by file and position. The command prints the first 20, or what the flags say.
+      <p>Every check also writes every error it was sent to <code>last-check-results.txt</code> in the state directory. The file is replaced each time, so you can read the rest there. Its first line is <code>fuse check: N error(s) introduced</code> with the tree stamp the summary carries. Then comes every error flat, without group headers, and <code>... and N more error(s) the engine did not send</code> when the engine held errors back.</p>
+      </li>
+      <li><strong>Group headers and cause lines.</strong> Errors that share a cause print under one header, <code>removed|changed: &lt;declaration&gt; (N error(s))</code>. The members print as plain error lines without a cause of their own. When more errors were found than fit, each group first shows up to two members, and its header counts what it holds back as <code>(N error(s), first M shown)</code>. Ungrouped errors fill the rest.
+      <p>An error with no shared cause keeps its cause line. The line is indented by two spaces and holds the declaration on one line without its body: <code>changed:</code> with the changed declaration as the working tree has it, or <code>removed:</code> with the removed declaration as HEAD had it. A field is quoted as its modifiers, type and name, as in <code>changed: public long Limit</code>, and a constant with its value.</p>
+      <p>An error in a checked file itself gets no cause line, and neither does an analyzer error. When any change in the check can break code without naming it (a type header, a delegate, a global using or an assembly attribute), no error in the answer gets one. Past the group headers the answer holds at most ten cause lines.</p>
+      </li>
+      <li><strong>Generated lines</strong>, indented by two spaces under an error about a type or member that a file the build generates declares, once per file. Each reads <code>generated: &lt;path&gt; declares it, and Fuse reads that file as the last build wrote it; if it is generated from changed code, run fuse build to write it again</code> (<a href="how-it-works#check">errors about generated code</a>).</li>
       <li><strong>The summary line</strong>, last, in one of two forms:
         <ul>
-          <li><code>fuse: N error(s) introduced in M file(s)</code>, followed by <code>, first 20 shown</code> when N is over 20, the projects the errors are in, in parentheses, and then <code>; all N in &lt;path&gt;</code> naming the results file. N, M and the projects count every error the check found, including those past the 200 the engine returns.</li>
-          <li><code>fuse: no errors introduced (F file(s) checked)</code>, where F counts the checked files and the files the check reached.</li>
+          <li><code>fuse: N error(s) introduced in M file(s)</code>, followed by <code>, first P shown</code> when more were found than fit, then the projects the errors are in, in parentheses. Then come the parts below, <code>; checked &lt;paths&gt; and what it reaches</code> for a scoped check, <code>; tree &lt;hash&gt; over C changed file(s)</code>, and <code>; all N in &lt;path&gt;</code>, which names the results file when errors were left out. N, M and the projects count every error the check found, including those past what the engine sent. A <code>--json</code> summary never names the results file, because the objects above it already hold every error.</li>
+          <li><code>fuse: no errors introduced (F file(s) checked)</code>, where F counts the checked files and the files the check reached. A scoped check instead reads <code>fuse: no errors introduced in &lt;paths&gt; and what it reaches (F file(s) checked)</code>. An answer to a session with other sessions' errors left out reads <code>fuse: no errors introduced by this session's edits (F file(s) checked; ...)</code>.</li>
         </ul>
       </li>
     </ul>
-    <p>The summary ends with any of these parts, separated by semicolons. In the second form they go inside the parentheses, after <code>F file(s) checked</code>, as in <code>fuse: no errors introduced (3 file(s) checked; Lib declarations changed, 2 dependent project(s) checked)</code>.</p>
-    <table>
+    <p>The summary ends with any of these parts, separated by semicolons. In the second form they sit inside the parentheses, after <code>F file(s) checked</code>, as in <code>fuse: no errors introduced (3 file(s) checked; Lib declarations changed, 2 dependent project(s) checked; tree 9f2c41aa07b3 over 3 changed file(s))</code>.</p>
+    <div class="table-scroll" role="region" aria-label="Parts of a check summary" tabindex="0">
+      <table>
       <thead><tr><th scope="col">Part</th><th scope="col">Meaning</th></tr></thead>
       <tbody>
-        <tr><th scope="row"><code>P declarations changed, K dependent project(s) checked</code></th><td>The projects in which a checked file changed a declaration, and how many projects that depend on them the check searched.</td></tr>
-        <tr><th scope="row"><code>checked whole projects</code></th><td>More than 500 files were in reach, so the check compiled the reached projects whole.</td></tr>
-        <tr><th scope="row"><code>C cause(s) left out</code></th><td>More than ten errors had a cause, and C of them are printed without one.</td></tr>
-        <tr><th scope="row"><code>left out N analyzer(s) that read the whole project, which the stop hook and fuse check run: A</code></th><td>Only the post-edit hook prints this: it left out the <a href="how-it-works.html#check">compilation-wide analyzers</a> A.</td></tr>
+        <tr><th scope="row"><code>P declarations changed, K dependent project(s) checked</code></th><td>The projects where a checked file changed a declaration, and how many projects that depend on them the check searched.</td></tr>
+        <tr><th scope="row"><code>checked whole projects: Lib because Lib/Calc.cs (removed: ...)</code></th><td>More than 500 files were in reach, so the check compiled the reached projects whole. It names up to 3 projects with up to 2 of the changed files that forced each and their causes. What does not fit counts as <code>; and N more in the engine log</code>.</td></tr>
+        <tr><th scope="row"><code>C cause(s) left out</code></th><td>More than ten printed errors had a cause past the group headers, so C of them print without one.</td></tr>
+        <tr><th scope="row"><code>left out N analyzer(s) that read the whole project, which the stop hook and fuse check run: A</code></th><td>Only the post-edit hook prints this part. It left out the <a href="how-it-works#check">compilation-wide analyzers</a> A.</td></tr>
         <tr><th scope="row"><code>analyzers did not finish in N file(s) or project(s) in time, ...</code></th><td>The check stopped its analyzers before its client's wait ran out, so analyzer errors in N files or projects may be missing. Their compiler errors are complete.</td></tr>
-        <tr><th scope="row"><code>errors in N file(s) not compared with other sessions' edits, ...</code></th><td>The errors in N files were told without being <a href="how-it-works.html#check">attributed</a> to sessions, so some of them may be other sessions'.</td></tr>
+        <tr><th scope="row"><code>errors in N file(s) not compared with other sessions' edits, ...</code></th><td>The errors in N files were reported without being <a href="how-it-works#check">attributed</a> to sessions, so some of them may be other sessions'.</td></tr>
+        <tr><th scope="row"><code>N non-C# file(s) changed, which Fuse does not check: &lt;paths&gt;</code></th><td>The changed files Fuse does not check. This part comes last on clean and error answers alike, and names the first 5 paths, counting the rest as <code>... and M more</code>. With named files it still covers the whole tree, not the named scope.</td></tr>
       </tbody>
     </table>
-    <p>An error counts as introduced when HEAD has fewer errors with the same file, id and message than the working tree. Line numbers are ignored, so an error that only moved is not reported, and a file renamed since HEAD is compared with the errors HEAD had under its old name. Errors are compiler errors, warnings the project treats as errors, and analyzer diagnostics at error severity. Warnings are not reported.</p>
-    <p>The exit code is 1 when an error was introduced and 0 when none was.</p>
+    </div>
+    <p>After the parts, every <code>fuse check</code> summary names the tree the command ended on: <code>; tree &lt;12 hex&gt; over N changed file(s)</code>. On a clean answer it sits inside the parentheses. Hook and MCP answers carry no stamp.</p>
+    <p>With <code>--json</code> each error prints as one JSON object with <code>file</code>, <code>line</code>, <code>column</code>, <code>code</code> and <code>message</code>. It adds <code>cause</code> when the error has one, and <code>generated</code> when a generated file declares what the error is about. <code>line</code> and <code>column</code> are left out for a general error. The results file is still written:</p>
+    <pre class="out" data-label="Output"><code>$ fuse check --json
+{"file":"App/Program.cs","line":3,"column":30,"code":"CS1061","message":"'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)","cause":"removed: public int Add(int a, int b)"}
+fuse: 1 error(s) introduced in 1 file(s) (App); tree 9f2c41aa07b3 over 3 changed file(s)</code></pre>
+    <p>An error counts as introduced when HEAD has fewer errors with the same file, id and message than the working tree. Line numbers are ignored, so an error that only moved is not reported. A file renamed since HEAD is compared with the errors HEAD had under its old name. Errors are compiler errors, warnings the project treats as errors, and analyzer diagnostics at error severity. Warnings are not reported.</p>
+    <p>When an error was introduced, the exit code is 1. When none was, it is 0. When Fuse could not answer or the arguments did not parse, it is 2.</p>
 
     <h2 id="fuse-test">fuse test <a class="anchor" href="#fuse-test" aria-label="Link to this section">#</a></h2>
     <pre data-label="Usage"><code>fuse test
 fuse test --all
+fuse test --failed
 fuse test [dotnet test arguments]</code></pre>
-    <p>Runs tests and prints only the failures, in one of three forms.</p>
+    <p>This command runs tests and prints only the failures. It has four forms.</p>
     <ul>
-      <li><strong><code>fuse test</code></strong> runs the tests affected by the working-tree changes: the tests the changed code can reach, as <a href="how-it-works.html#test-selection">How it works</a> describes. When a test project has build output and only C# sources changed since, it runs without MSBuild.</li>
-      <li><strong><code>fuse test --all</code></strong> runs every test project whole, each built with MSBuild.</li>
-      <li><strong><code>fuse test</code> with <code>dotnet test</code> arguments</strong> depends on the arguments. Arguments that only say where the tests are and how to build them run the first form, limited to the test projects the paths name, which the summary names: a directory, a project file or a solution file, or <code>--project</code> and <code>--solution</code>; <code>-c</code> and <code>--configuration</code>; <code>-f</code> and <code>--framework</code>; <code>--no-build</code>; <code>--no-restore</code>; <code>-v</code> and <code>--verbosity</code>; <code>--nologo</code>; <code>-tl</code> and its values. A configuration or a framework is honored by building every run with MSBuild. A path that names no test project is refused with <code>fuse: none of the paths given names a test project in this repository</code> and exit code 2. With any other argument, the command runs <code>dotnet test</code> with those arguments in the current directory and adds result reporting: a first argument naming a directory, a project file or a solution file is passed as <code>--project</code> or <code>--solution</code>, the form Microsoft.Testing.Platform requires, and a <code>--results-directory</code> value is passed as a full path, with a Git Bash spelling such as <code>/c/...</code> read as its Windows path; every other argument passes unchanged. <code>--all</code> cannot be combined with them: <code>fuse test --all --filter Name=A</code> prints <code>fuse: --all runs every test and cannot be combined with other arguments; pass the arguments without --all to choose the scope</code> on standard error, runs nothing and exits with 2.</li>
+      <li><strong><code>fuse test</code></strong> runs the tests affected by the working-tree changes, which are the tests the changed code can reach, as <a href="how-it-works#test-selection">How it works</a> describes. When a test project has build output and only C# sources changed since, it runs without MSBuild.</li>
+      <li><strong><code>fuse test --all</code></strong> runs every test project whole, and builds each with MSBuild. Test projects that need a container runtime are left out when none answers, and the summary names them.</li>
+      <li><strong><code>fuse test --failed</code></strong> reruns the tests that failed in the last recorded run.
+        <ul>
+          <li>It cannot be combined with <code>--all</code> or any other argument. With one, it prints <code>fuse: --failed reruns the tests that failed last time and cannot be combined with other arguments; pass the arguments without --failed to choose the scope</code> on standard error, runs nothing, and exits with 2.</li>
+          <li>When no run is recorded yet, it prints <code>fuse: no test run is recorded yet; run fuse test first</code> and exits with 2.</li>
+          <li>When the last run came from your own <code>dotnet test</code> arguments, it prints <code>fuse: the last test run was from dotnet test arguments, so its failures cannot be rerun; run fuse test</code> and exits with 2.</li>
+          <li>When the last run had no failures, it prints <code>fuse: the last test run had no failures</code> and exits with 0.</li>
+          <li>When the failed tests are in no test project of the repository anymore, it prints <code>fuse: none of the tests that failed last time is in a test project in this repository</code> and exits with 2 (<a href="messages#no-failures-to-rerun">No failures to rerun</a>).</li>
+        </ul>
+        <p>On success the summary reads <code>reran N test(s) that failed last time in M test project(s)</code>. It adds a <code>; left out X, which is not a test project in this repository</code> clause per project that no longer is one, and the filter clauses below when the rerun widened.</p>
+        <p>When none of the recorded failures still runs, it prints <code>fuse: none of the N test(s) that failed last time ran; they may have been renamed or removed</code> and exits with 1.</p>
+      </li>
+      <li><strong><code>fuse test</code> with <code>dotnet test</code> arguments</strong> runs what the arguments name, as follows.
+        <ul>
+          <li>Arguments that only say where the tests are and how to build them run the first form, limited to the test projects the paths name, which the summary names. These are a directory, a project file or a solution file, or <code>--project</code> and <code>--solution</code>; <code>-c</code> and <code>--configuration</code>; <code>-f</code> and <code>--framework</code>; <code>--no-build</code>; <code>--no-restore</code>; <code>-v</code> and <code>--verbosity</code>; <code>--nologo</code> and <code>-nologo</code>; <code>-tl</code> and its values.</li>
+          <li>When you pass a configuration or a framework, every run builds with MSBuild.</li>
+          <li>When a path names no test project, the command is refused with <code>fuse: none of the paths given names a test project in this repository: &lt;paths&gt;</code> and exit code 2.</li>
+          <li>With any other argument, the command runs <code>dotnet test</code> with those arguments in the current directory and adds result reporting. On Microsoft.Testing.Platform, a first argument that names a directory, a project file or a solution file is passed as <code>--project</code> or <code>--solution</code>, the form it requires, while on VSTest it stays positional. A <code>--results-directory</code> value is passed as a full path, with a Git Bash spelling such as <code>/c/...</code> read as its Windows path. Every other argument passes unchanged.</li>
+          <li>After the first <code>--</code>, no token is read as a Fuse option, even <code>--all</code> and <code>--failed</code>, and the <code>--</code> itself is stripped. For example, <code>fuse test -- --all</code> runs <code>dotnet test --all</code> with that argument.</li>
+          <li><code>--all</code> cannot be combined with other arguments. For example, <code>fuse test --all --filter Name=A</code> prints <code>fuse: --all runs every test and cannot be combined with other arguments; pass the arguments without --all to choose the scope</code> on standard error, runs nothing, and exits with 2.</li>
+          <li>A near miss of a Fuse option is refused with <code>fuse: '&lt;token&gt;' is not a fuse test option; did you mean '&lt;option&gt;'?</code> on standard error with the usage, exiting with 2. Every other token goes to <code>dotnet test</code>.</li>
+        </ul>
+      </li>
     </ul>
-    <p>Every form takes the <a href="how-it-works.html#builds-and-the-build-lock">build lock</a>. Runs without MSBuild each run from a copy of their own and give the lock up while they run, so test runs from several agents run at the same time; runs with MSBuild hold it until their last <code>dotnet test</code> process exits. The first two forms wait for the engine's plan for up to 10 minutes. A client that waits for the lock ends on Ctrl+C only once the lock is free.</p>
+    <p>Every form takes the <a href="how-it-works#builds-and-the-build-lock">build lock</a>. Runs without MSBuild each run from a copy of their own, and give the lock up while they run, so test runs from several agents run at the same time. Runs with MSBuild hold the lock until their last <code>dotnet test</code> process exits. The affected, <code>--all</code> and <code>--failed</code> forms wait up to 10 minutes for the engine's plan. A client that waits for the lock ends on Ctrl+C only once the lock is free.</p>
+    <p>When the pre-shell hook rewrote your command, the command first prints a notice on standard error: <code>fuse: dotnet test routed to fuse test (tests affected by your changes; fuse test --all runs every test)</code>. A <code>fuse test</code> you typed prints none.</p>
     <pre class="out" data-label="Output"><code>$ fuse test
 FAILED Lib.Tests.CalcTests.Multiplies
   Assert.Equal() Failure: Values differ
@@ -253,18 +328,25 @@ FAILED Lib.Tests.CalcTests.Multiplies
   at Lib.Tests.CalcTests.Multiplies() in Lib.Tests/CalcTests.cs:line 9
 fuse: 1 failed, 0 passed in 2.8 s; ran 1 test(s) affected by your changes out of 2; fuse test --all runs everything; without MSBuild</code></pre>
     <h3 id="reading-the-output">Reading the output <a class="anchor" href="#reading-the-output" aria-label="Link to this section">#</a></h3>
-    <p>Each failed test prints <code>FAILED</code> and its name, then its message (up to 12 lines) and up to five stack frames inside the repository, indented by two spaces. The first 10 failures print in detail. The next 100 print by name only, under <code>also failed (N):</code>, and a line <code>... and N more</code> counts the rest. Every test run also writes all its failures, grouped by project, to <code>last-test-results.txt</code> in the state directory, replaced each time, and when failures or names were left out the summary ends with <code>; all F in &lt;path&gt;</code> naming it.</p>
-    <p>The summary line is <code>fuse: F failed, P passed in X.X s</code> (with <code>, S skipped</code> when tests were skipped), then what ran, then how it ran.</p>
-    <table>
+    <p>Each failed test prints <code>FAILED</code> and its name, then its message (up to 12 lines) and up to five stack frames inside the repository, indented by two spaces. Failures that share their message's first line print under one <code>N failure(s) with the same first message line: ...</code> header, which cuts the line at 160 characters. The members keep their full text.</p>
+    <p>The first 10 failures print in detail. The next 100 print by name only, under <code>also failed (N):</code>. A line <code>... and N more</code> counts the rest.</p>
+    <p>Every test run also writes all its failures, grouped by project, to <code>last-test-results.txt</code> in the state directory. The file is replaced each time, and holds the failures flat and without group headers. When failures or names were left out, the summary ends with <code>; all F in &lt;path&gt;</code> naming it. Beside it, <code>last-test-results.json</code> holds the run projects with their absolute paths and each test's verdict and duration, failures first, at most 20,000 tests. It serves <code>fuse test --failed</code> and the runs that put failures first. A file that cannot be read counts as no record.</p>
+    <p>The summary line is <code>fuse: F failed, P passed in X.X s</code>, with <code>, S skipped</code> added when tests were skipped. Then comes what ran, then how it ran.</p>
+    <div class="table-scroll" role="region" aria-label="What a test summary says ran" tabindex="0">
+      <table>
       <thead><tr><th scope="col">What ran</th><th scope="col">When</th></tr></thead>
       <tbody>
         <tr><td><code>ran N test(s) affected by your changes out of T; fuse test --all runs everything</code></td><td><code>fuse test</code></td></tr>
         <tr><td><code>ran every test in N test project(s)</code></td><td><code>fuse test --all</code></td></tr>
+        <tr><td><code>reran N test(s) that failed last time in M test project(s)</code></td><td><code>fuse test --failed</code></td></tr>
         <tr><td><code>ran the tests your dotnet test arguments name</code></td><td><code>fuse test</code> with arguments</td></tr>
       </tbody>
     </table>
-    <p>When the pre-shell hook rewrote the command, it passed the agent's session with <code>--session</code>, and the plan leaves out the changes only other sessions wrote (<a href="how-it-works.html#test-selection">a session's own tests</a>). The first form then adds <code>; left out N changed file(s) only other sessions wrote</code> before <code>; fuse test --all runs everything</code>, and when nothing is left, prints <code>fuse: no C# changes by this session since HEAD, so no test is affected; left out N changed file(s) only other sessions wrote (fuse test --all runs everything)</code>. You do not pass <code>--session</code> yourself; without it the plan covers every change.</p>
-    <p>N and T count test methods from source, by test attribute, without running test discovery; the failed and passed counts come from the test run. When a test project runs whole, the first form adds the reason in parentheses, for example <code>(whole projects where App uses the changed code and runs behind an application host)</code>. The reasons are:</p>
+    </div>
+    <p>When the pre-shell hook rewrote the command, it passed the agent's session with <code>--session</code>. The plan then leaves out the changes only other sessions wrote (<a href="how-it-works#test-selection">a session's own tests</a>). The first form adds <code>; left out N changed file(s) only other sessions wrote</code> before <code>; fuse test --all runs everything</code>. When nothing is left, it prints <code>fuse: no C# changes by this session since HEAD, so no test is affected; left out N changed file(s) only other sessions wrote (fuse test --all runs everything)</code>. You do not pass <code>--session</code> yourself. Without it the plan covers every change.</p>
+    <p>Test projects that need a container runtime are left out of the affected and <code>--all</code> plans when none answers. The summary names them: <code>; skipped N test(s) in P1, P2 (no container runtime)</code>. A project needs a container runtime when any of its package references is <code>Testcontainers</code> or starts with <code>Testcontainers.</code>. Runs from your own <code>dotnet test</code> arguments pass to <code>dotnet test</code> verbatim, with no pre-flight.</p>
+    <p>On the command line, when the last recorded run left 1 to 100 failures inside a VSTest method selection, those tests run first as their own stage, and their failures print before the rest runs. The final summary counts each test once. A project whose recorded failures name theory rows, a platform run, and a whole-project run stay one stage.</p>
+    <p>N and T count test methods from source, by test attribute, without running test discovery. The failed and passed counts come from the test run. When a test project runs whole, the first form adds the reason in parentheses, for example <code>(whole projects where App uses the changed code and runs behind an application host)</code>. The reasons are:</p>
     <ul>
       <li><code>&lt;application&gt; uses the changed code and runs behind an application host</code></li>
       <li><code>&lt;application&gt;'s entry point calls the changed code</code></li>
@@ -275,75 +357,141 @@ fuse: 1 failed, 0 passed in 2.8 s; ran 1 test(s) affected by your changes out of
       <li><code>a test project changed outside any class</code></li>
       <li><code>&lt;project&gt; runs on a test framework Fuse cannot filter</code>, for a Microsoft.Testing.Platform project whose framework Fuse does not know</li>
     </ul>
-    <p>How it ran is <code>without MSBuild</code>, <code>without MSBuild for N of M project(s)</code> or <code>built with MSBuild</code>; the form with arguments leaves it out.</p>
+    <p>When a selection held more names than a filter carries, the summary says what ran instead: <code>; ran whole test classes in Lib.Tests, because a test filter holds at most 2000 names</code>. A platform filter holds 200 names.</p>
+    <p>How it ran is <code>without MSBuild</code>, <code>without MSBuild for N of M project(s)</code> or <code>built with MSBuild</code>. The form with arguments leaves it out.</p>
     <h3 id="when-no-test-runs-or-a-test-project-does-not-build">When no test runs, or a test project does not build <a class="anchor" href="#when-no-test-runs-or-a-test-project-does-not-build" aria-label="Link to this section">#</a></h3>
     <p>When no test runs, the command prints one of these lines and exits with 0:</p>
     <pre class="out" data-label="Output"><code>fuse: no C# changes since HEAD, so no test is affected (fuse test --all runs everything)
 fuse: no test is affected by the changes (out of T); fuse test --all runs everything
+fuse: no test is affected by the changes (out of T); the changes compile to the same code as HEAD; fuse test --all runs everything
 fuse: no test projects in this repository</code></pre>
-    <p>When a test project does not build, the command prints the build's errors and <code>fuse: test build failed with N error(s) in T s</code> in the format of <a href="#fuse-build">fuse build</a>, and exits with 1. When other test projects ran, their results come first and each failed build follows them, so the last line is the failed build even when every test that ran passed.</p>
-    <p>A test project on Microsoft.Testing.Platform writes no TRX file, so Fuse reads the counts from the run summary it prints and each failed test's message and stack frames from its output, and the answer has the same form as above. It runs with its framework's own filter, and without the <code>global.json</code> opt-in Fuse builds it and runs its test application directly, once per target framework; a filtered run that ran no test is answered as a run that exits with 8, below. In a repository whose <code>global.json</code> selects Microsoft.Testing.Platform, <code>fuse test</code> with arguments passes them on without VSTest's logger options, which the test application would reject. A run whose summary counts an error, such as an argument the test application rejects, a run that printed no summary, and any test run that exits with a code other than 0 without results and without an error line print the last 30 lines of the output and <code>fuse: the test run of &lt;project&gt; exited with code E and produced no results in T s</code>, and exit with 1; for <code>fuse test</code> with arguments the line names the run <code>dotnet test</code>. A passing run without a summary prints <code>fuse: tests passed in T s;</code> and the summary. A run that exits with 8, the platform's code for a run in which no test ran, prints only <code>fuse: no test matched the dotnet test arguments (exit code 8)</code> for <code>fuse test</code> with arguments, or <code>fuse: the test run of &lt;project&gt; ran no test (exit code 8)</code>, and exits with 1.</p>
-    <p>The exit code is 1 when a test failed or a test project did not build, and 0 otherwise.</p>
+    <p>When every selected test needs a container runtime and none answers, the command starts no process, prints <code>fuse: no test ran: N test(s) selected in P need a container runtime, and none is running; start Docker or Podman and run fuse test again</code>, and exits with 1.</p>
+    <p>When a test project does not build, the command prints the build's errors and <code>fuse: test build failed with N error(s) in T s</code> in the format of <a href="#fuse-build">fuse build</a>, and exits with 1. When other test projects ran, their results come first and each failed build follows them. The last line is therefore the failed build, even when every test that ran passed.</p>
+    <p>A test project on Microsoft.Testing.Platform writes no TRX file. Fuse therefore reads the counts from the run summary it prints, and each failed test's message and stack frames from its output. The answer has the same form as above. The project runs with its framework's own filter. Without the <code>global.json</code> opt-in, Fuse builds it, then starts its test application directly, once per target framework.</p>
+    <p>A project with a .NET Framework target runs through <code>dotnet test</code> instead, because that target has no <code>runtimeconfig.json</code> to start it from. So does a project whose started target exits without printing results. A filtered run that ran no test is answered as a run that exits with 8, below. In a repository whose <code>global.json</code> selects Microsoft.Testing.Platform, <code>fuse test</code> with arguments passes them on without VSTest's logger options, which the test application would reject.</p>
+    <p>Three kinds of run print the last 30 lines of the output and <code>fuse: the test run of &lt;project&gt; exited with code E and produced no results in T s</code>, and exit with 1: a run whose summary counts an error, such as an argument the test application rejects; a run that printed no summary; and any test run that exits with a code other than 0 without results and without an error line. For <code>fuse test</code> with arguments the line names the run <code>dotnet test</code> and appends <code> (no result file in &lt;dir&gt;)</code>.</p>
+    <p>A passing run without a summary prints <code>fuse: tests passed in T s;</code> and the summary. A run that exits with 8, the platform's code for a run in which no test ran, prints only one line and exits with 1: <code>fuse: no test matched the dotnet test arguments (exit code 8)</code> for <code>fuse test</code> with arguments, or <code>fuse: the test run of &lt;project&gt; ran no test (exit code 8)</code>.</p>
+    <p>The exit code is 1 when a test failed, a test project did not build, or the run was blocked. It is 0 when the tests passed or no test was affected, and 2 when Fuse could not answer or the arguments did not parse.</p>
 
     <h2 id="fuse-build">fuse build <a class="anchor" href="#fuse-build" aria-label="Link to this section">#</a></h2>
-    <pre data-label="Usage"><code>fuse build [dotnet build arguments]</code></pre>
-    <p>Runs the real <code>dotnet build</code> in the current directory with the arguments unchanged, implicit restore included, and adds <code>-nologo -tl:off -v:q -clp:ErrorsOnly;NoSummary</code> so that MSBuild prints only errors. It also adds a <a href="how-it-works.html#build-log">file log</a> with <code>-fl9</code> and <code>-flp9</code>, which it reads and deletes. Inside a repository it takes the <a href="how-it-works.html#builds-and-the-build-lock">build lock</a>; outside one it runs without it.</p>
+    <pre data-label="Usage"><code>fuse build [dotnet build arguments] [--max-errors &lt;n&gt;|--all-errors] [--json] [--warnings] [--changed]</code></pre>
+    <p>This command runs the real <code>dotnet build</code> in your current directory with the arguments unchanged, implicit restore included. It adds <code>-nologo -tl:off -v:q -clp:ErrorsOnly;NoSummary</code> so that MSBuild prints only errors. It also adds a <a href="how-it-works#build-log">file log</a> with <code>-fl9</code> and <code>-flp9</code>, which it reads and deletes. Inside a repository it takes the <a href="how-it-works#builds-and-the-build-lock">build lock</a>. Outside one it runs without it.</p>
+    <p>Its own options are <code>--max-errors &lt;n&gt;</code>, <code>--all-errors</code>, <code>--json</code>, <code>--warnings</code> and <code>--changed</code>. They shape the answer and never reach <code>dotnet build</code>.</p>
+    <ul>
+      <li><code>--max-errors &lt;n&gt;</code> shows at most <code>n</code> errors, where <code>n</code> counts from 1 to 100000. Without a flag the command prints the first 20.</li>
+      <li><code>--all-errors</code> shows every error, and cannot be combined with <code>--max-errors</code>.</li>
+      <li><code>--json</code> prints one JSON object per error instead of text lines, with the summary as the last line.</li>
+    </ul>
+    <p>Every other argument goes to <code>dotnet build</code> unchanged, as does every token after <code>--</code>, even one that looks like a Fuse option. A near miss of a Fuse option, a bad count, and a combined pair are refused on standard error with the usage, exiting with 2 (<a href="messages#usage-failures">Usage failures</a>). The near miss reads <code>fuse: '&lt;token&gt;' is not a fuse build option; did you mean '&lt;option&gt;'?</code>.</p>
+    <p>When the pre-shell hook rewrote your command, the command first prints a notice on standard error: <code>fuse: dotnet build routed to fuse build (first 20 errors; fuse build --all-errors for every error)</code>. A <code>fuse build</code> you typed prints none.</p>
     <pre class="out" data-label="Output"><code>$ fuse build
 App/Program.cs(3,30): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)
 Lib.Tests/CalcTests.cs(6,54): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)
-fuse: build failed with 2 error(s) in 1.1 s</code></pre>
-    <p>Unlike <code>fuse check</code>, this is the whole build, so it reports every error the solution has, including errors HEAD already has. It prints each error once, with its path relative to the repository root and without MSBuild's trailing project tag, up to 20 of them. The last line is one of:</p>
+fuse: build failed with 2 error(s) in 1.1 s; tree 9f2c41aa07b3 over 3 changed file(s)</code></pre>
+    <p>Unlike <code>fuse check</code>, this is the whole build. It reports every error the solution has, including errors HEAD already has. It prints each error once, with its path relative to the repository root and without MSBuild's trailing project tag: up to 20 of them, or what <code>--max-errors</code> and <code>--all-errors</code> say. The last line is one of:</p>
     <ul>
       <li><code>fuse: build succeeded in T s</code></li>
-      <li><code>fuse: build failed with N error(s) in T s</code>, with <code>, first 20 shown</code> when N is over 20</li>
+      <li><code>fuse: build failed with N error(s) in T s</code>, with <code>, first M shown</code> when more were found than fit</li>
       <li><code>fuse: build failed (exit code E) in T s</code>, after the last 30 lines of the build's output, when the build failed and no line of its output parses as an error</li>
     </ul>
-    <p>A build of 10 seconds or more adds, in parentheses at the end of the last line, the three slowest tasks summed over every project and the three slowest projects. In this example of the format the build spent its time compiling:</p>
+    <p>Each form ends with <code>; N warning(s)</code> when the build logged warnings. On builds of 10 seconds or more it adds the slowest-tasks part below. It ends with <code>; tree &lt;hash&gt; over C changed file(s)</code>, naming the tree the command ended on. When errors were left out, it also names the results file: <code>; all N in &lt;path&gt;</code>. A <code>--json</code> summary never names the results file, because the objects above it already hold every error.</p>
+    <p>A build of 10 seconds or more adds the three slowest tasks summed over every project and the three slowest projects, in parentheses after the warning count. In this example of the format, the build spent its time compiling:</p>
     <pre class="out" data-label="Output"><code>fuse: build succeeded in 95.0 s (slowest tasks summed over projects: Csc 120.4 s, ResolveAssemblyReference 6.2 s, Copy 3.1 s; slowest projects: Api 60.2 s, Api.Tests 41.0 s, Domain 20.5 s)</code></pre>
-    <p>Under an <code>error MSB3073</code>, which says that a command a target ran exited with a code other than 0, the answer prints the last lines the command printed, at most 20, indented by two spaces, such as a generator's exception and its first stack frame:</p>
+    <p>Under an <code>error MSB3073</code>, which says that a command a target ran exited with a code other than 0, the answer prints the last lines the command printed. It prints at most 20, indented by two spaces, such as a generator's exception and its first stack frame:</p>
     <pre class="out" data-label="Output"><code>Api/Api.csproj(40,5): error MSB3073: The command "dotnet getdocument --assembly Api.dll" exited with code 11.
   Generating document named 'v1'.
   System.InvalidOperationException: Duplicate audit action 'Create' on AuditController.
      at Api.Audit.Register(String action) in Api/Audit.cs:line 12
 fuse: build failed with 1 error(s) in 14.2 s</code></pre>
-    <p>When the build fails with CS2001 on a source file that no longer exists, because another agent moved it while the build ran, it runs the build once more and prints <code>fuse: a source file moved while the build ran, so it ran again</code> above the answer. <a href="how-it-works.html#build-log">How it works</a> describes the file log.</p>
-    <p>Warnings are not printed. The exit code is 0 when the build succeeded and 1 when it failed.</p>
+    <p>Under an error for a file another process holds open (MSB3021, MSB3026 or MSB3027), the answer prints who holds it and what to do, indented by two spaces. It prints <code>locked: &lt;file&gt; is held by &lt;name&gt; (pid &lt;n&gt;); stop that process, then run the build again</code>. When the holder is a build server, it prints <code>locked: &lt;file&gt; is held by &lt;name&gt; (pid &lt;n&gt;), a build server; run dotnet build-server shutdown, then run the build again</code> instead. When MSBuild names no holder, it prints <code>locked: &lt;file&gt; is being used by another process; stop the running application or build that holds it, then run the build again</code>. <code>--json</code> omits the line and carries the holder as <code>lockedBy</code> instead.</p>
+    <p>When the build fails with CS2001 on a source file that no longer exists, because another agent moved it while the build ran, the command runs the build once more. It prints <code>fuse: a source file moved while the build ran, so it ran again</code> above the answer. <a href="how-it-works#build-log">How it works</a> describes the file log.</p>
+    <p><code>--warnings</code> lists the warnings after the errors, each indented by two spaces, up to 20 of them. The rest count as <code>... N more warning(s) in &lt;path&gt;</code>, naming the results file, or <code>... N more warning(s) not shown</code> outside a repository. A warning that is also an error prints once, as an error. Without the flag, warnings are only counted in the summary.</p>
+    <p>Every build writes every error and warning to <code>last-build-results.txt</code> in the state directory. The file is replaced each time. Its first line is <code>fuse build: N error(s)</code> with the tree stamp the summary carries. Then comes every error and, under <code>## warnings</code>, every warning. With <code>--json</code> the errors are also written as JSON lines to <code>last-build-results.json</code>.</p>
+    <p>With <code>--json</code> each error prints as one JSON object with <code>file</code>, <code>code</code> and <code>message</code>. It adds <code>line</code> and <code>column</code> except for general errors, and <code>lockedBy</code> as <code>&lt;name&gt; (pid &lt;n&gt;)</code> when another process holds the file. A failed build with no parseable error prints the output tail before the summary, as text mode does. With <code>--warnings</code> the warnings still print as text lines.</p>
+    <p>With <code>--changed</code> the command builds only the projects that own files changed since HEAD and their dependents, reduced to the highest projects. It runs one <code>dotnet build</code> per project under one lock, each with the same extra arguments. It first prints what it builds: <code>fuse: building M project(s) for N changed file(s) (tree &lt;hash&gt;): A, B</code>. It adds <code>; changes in C</code> when the changed projects differ from the built ones, and <code>; U changed file(s) in no project</code> when some changed files no project owns.</p>
+    <p>Each project then answers as <code>build (&lt;name&gt;)</code>. When several built, a last line counts the failures: <code>fuse: F of M project(s) failed</code>. With no C# changes the command builds nothing. It prints <code>fuse: no C# changes since HEAD; nothing to build (tree &lt;hash&gt;)</code> and exits with 0.</p>
+    <div class="callout warn">
+      <p>When the selection cannot be trusted, the command builds the whole solution instead and says why first. That happens when project files changed, or when no changed file is owned. It prints <code>fuse: project files changed (A.csproj); building the whole solution instead</code>, or <code>fuse: N changed file(s) in no project; building the whole solution instead</code>.</p>
+      <p><code>--changed</code> outside a git repository is refused, because without HEAD there is nothing to compare with. A whole <code>fuse build</code> still runs there.</p>
+    </div>
+    <p>The exit code is 0 when the build succeeded, and 1 when it failed. It is 2 when Fuse could not answer or the arguments did not parse.</p>
+
+    <h2 id="fuse-status">fuse status <a class="anchor" href="#fuse-status" aria-label="Link to this section">#</a></h2>
+    <pre data-label="Usage"><code>fuse status [--json]</code></pre>
+    <p>This command shows whether an engine runs for your repository, how many files differ from HEAD, and the limits past which a large tree slows checks down. It never starts an engine. Past a short wait it reads the tree from git instead.</p>
+    <pre class="out" data-label="Output"><code>$ fuse status
+fuse: engine running for /home/you/shop (pid 1234), 512 MB; idle exits after 30 min
+fuse: 3 changed file(s) since HEAD; tree 9f2c41aa07b3; HEAD 1a2b3c4d5e6f
+fuse: large-tree limits: past 300 changed files a sync reloads projects; past 500 files in reach a check binds whole projects; commit or run fuse stop and let the next check reload when checks feel slow</code></pre>
+    <p>The first line says whether an engine runs: <code>fuse: engine running for &lt;root&gt; (pid &lt;pid&gt;), &lt;MB&gt; MB; idle exits after 30 min</code>, <code>fuse: engine for &lt;root&gt; did not answer in 2 s</code>, or <code>fuse: no engine runs for &lt;root&gt;; the next check starts one</code>. The second line counts the changed files and stamps the tree: <code>fuse: N changed file(s) since HEAD; tree &lt;hash&gt;; HEAD &lt;12 hex&gt;</code>. When more than 300 files changed, a warning line comes before the limits line: <code>fuse: warning: N changed files is past the 300-file reload point; checks reseed from git and reload projects, so they slow down - commit soon</code>.</p>
+    <p>With <code>--json</code> the command prints one object with these fields:</p>
+    <div class="table-scroll" role="region" aria-label="fuse status fields" tabindex="0">
+      <table>
+      <thead><tr><th scope="col">Field</th><th scope="col">Meaning</th></tr></thead>
+      <tbody>
+        <tr><th scope="row"><code>engine</code></th><td><code>running</code>, <code>stopped</code>, or <code>unknown</code> when an engine exists but did not answer in time.</td></tr>
+        <tr><th scope="row"><code>pid</code></th><td>The engine process, left out without a running engine.</td></tr>
+        <tr><th scope="row"><code>memoryMB</code></th><td>The engine's working set in megabytes, left out without a running engine.</td></tr>
+        <tr><th scope="row"><code>changedFiles</code></th><td>How many files differ from HEAD.</td></tr>
+        <tr><th scope="row"><code>head</code></th><td>HEAD, left out when the repository has no commits yet.</td></tr>
+        <tr><th scope="row"><code>tree</code></th><td>The tree stamp: 12 hex characters over what the changed files hold.</td></tr>
+        <tr><th scope="row"><code>reloadAt</code></th><td>300: past this many changed files a sync reloads projects.</td></tr>
+        <tr><th scope="row"><code>wholeProjectAt</code></th><td>500: past this many files in reach a check compiles whole projects.</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>In a repository it exits with 0, and outside one with 2. Any other argument prints <code>fuse: status takes [--json]; '&lt;token&gt;' is not one</code> with the usage and exits with 2.</p>
+
+    <h2 id="fuse-session">fuse session <a class="anchor" href="#fuse-session" aria-label="Link to this section">#</a></h2>
+    <pre data-label="Usage"><code>fuse session begin &lt;name&gt; --paths &lt;pattern&gt; [&lt;pattern&gt;...] | fuse session end &lt;name&gt;</code></pre>
+    <p>This command registers an external writer as a session for its path patterns. An external writer is a program that writes files without sending a hook payload. The registration lets a stop hook tell that writer's half-written errors apart from the stopping session's. Beginning a name that is already registered replaces its patterns and restarts its 4 hours.</p>
+    <pre class="out" data-label="Output"><code>$ fuse session begin worker-a --paths "src/WorkerA/**"
+fuse: session worker-a registered for 1 path pattern(s); files under them count as that session's until fuse session end worker-a or 4 hours pass
+$ fuse session end worker-a
+fuse: session worker-a ended; its files now count as no session's</code></pre>
+    <p>A name holds 1 to 64 letters, digits, <code>-</code>, <code>_</code> and <code>.</code>. A pattern is read relative to the repository root with forward slashes. <code>**</code> as a whole segment matches any run of segments, while <code>*</code> and <code>?</code> match inside one segment. No segment is <code>..</code>. A pattern without wildcards names a file or a directory subtree. A pattern holds at most 256 characters, a session at most 32 patterns, and 64 sessions can be registered at once.</p>
+    <p>Ending a name that is not registered prints <code>fuse: no registered session named &lt;name&gt;</code> and exits with 2. Anything other than the two forms prints the usage on standard error and exits with 2 (<a href="messages#invalidpath">InvalidPath</a>, <a href="messages#usage-failures">Usage failures</a>).</p>
+    <p>Registrations live in <code>registered-sessions.tsv</code> in the state directory. <code>fuse uninit</code> deletes them with the state, while <code>fuse stop</code> keeps them. A plain <code>fuse check</code> still reports every error, registered or not.</p>
 
     <h2 id="fuse-stop">fuse stop <a class="anchor" href="#fuse-stop" aria-label="Link to this section">#</a></h2>
-    <p>Stops the engine of the repository that contains the current directory. It asks the engine to stop, as a client of another build does, waits up to 10 seconds for it to exit, and when it has not, kills the process the engine log names as the last engine that started, if that process is still a <code>dotnet</code> or <code>fuse</code> process. It never starts an engine; the next command or hook starts a new one. Stop the engine after changing an analyzer the repository builds itself, to give its memory back at once, or when it stops answering (<a href="troubleshooting.html#stopping-or-restarting-the-engine">Stopping or restarting the engine</a>).</p>
+    <p>This command stops the engine of the repository that holds your current directory. It asks the engine to stop, as a client of another build does, and waits up to 10 seconds for it to exit. When the engine has not exited, the command kills the process the engine log names as the last engine that started, if that process is still a <code>dotnet</code> or <code>fuse</code> process. It never starts an engine. The next command or hook starts a new one. Stop the engine after changing an analyzer your repository builds itself, to give its memory back at once, or when it stops answering (<a href="troubleshooting#stopping-or-restarting-the-engine">Stopping or restarting the engine</a>).</p>
     <pre class="out" data-label="Output"><code>$ fuse stop
 fuse: stopped the engine for /home/me/src/my-repo</code></pre>
-    <p>When no engine runs it prints <code>fuse: no engine runs for &lt;root&gt;</code>, and when the engine had to be killed, <code>fuse: the engine for &lt;root&gt; did not stop within 10 s of being asked, so its process &lt;pid&gt; was killed</code>. Both exit with 0.</p>
-    <p><code>fuse stop --all</code> does the same for every repository Fuse keeps a state directory for and that still exists, prints one line for each engine it stopped, and prints <code>fuse: no engine runs</code> when there was none. Any other argument prints the usage and exits with 2.</p>
+    <p>When no engine runs, it prints <code>fuse: no engine runs for &lt;root&gt;</code>. When the engine had to be killed, it prints <code>fuse: the engine for &lt;root&gt; did not stop within 10 s of being asked, so its process &lt;pid&gt; was killed</code>. Both exit with 0.</p>
+    <p><code>fuse stop --all</code> does the same for every repository that Fuse keeps a state directory for and that still exists. It prints one line for each engine it stopped, and <code>fuse: no engine runs</code> when there was none. Any other argument prints the usage and exits with 2.</p>
 
     <h2 id="fuse-mcp">fuse mcp <a class="anchor" href="#fuse-mcp" aria-label="Link to this section">#</a></h2>
-    <p>Runs an MCP server over standard input and output, for an MCP host without hooks. The server finds the repository from its working directory on every call, so the host has to start it inside the repository. <a href="harnesses.html#other-mcp-hosts">Connect your agent</a> shows how to register it.</p>
-    <table>
+    <p>This command runs an MCP server over standard input and output, for an MCP host without hooks. The server finds the repository from its working directory on every call, so the host has to start it inside the repository. <a href="harnesses#other-mcp-hosts">Connect your agent</a> shows how to register it.</p>
+    <div class="table-scroll" role="region" aria-label="MCP tools" tabindex="0">
+      <table>
       <thead><tr><th scope="col">Tool</th><th scope="col">Arguments</th><th scope="col">Runs</th></tr></thead>
       <tbody>
-        <tr><th scope="row"><code>fuse_check</code></th><td><code>files</code>: array of paths, relative to the repository root or absolute; omit to check every change</td><td><code>fuse check</code></td></tr>
-        <tr><th scope="row"><code>fuse_test</code></th><td><code>all</code>: <code>true</code> to run every test</td><td><code>fuse test</code> or <code>fuse test --all</code></td></tr>
+        <tr><th scope="row"><code>fuse_check</code></th><td><code>files</code>: array of paths, relative to the repository root or absolute; omit to check every change. <code>max_errors</code>: integer from 1 to 100000; omit for the first 20</td><td><code>fuse check</code></td></tr>
+        <tr><th scope="row"><code>fuse_test</code></th><td><code>all</code>: <code>true</code> to run every test. <code>failed</code>: <code>true</code> to rerun the tests that failed in the last recorded run</td><td><code>fuse test</code>, <code>fuse test --all</code> or <code>fuse test --failed</code></td></tr>
         <tr><th scope="row"><code>fuse_build</code></th><td><code>target</code>: project or solution; omit to build what <code>dotnet build</code> picks in the repository root</td><td><code>fuse build</code></td></tr>
       </tbody>
     </table>
-    <p>Each tool returns one text block with the same text the command prints. The result's <code>isError</code> is <code>true</code> only when Fuse could not answer, including outside a repository and for an unknown tool name. Errors introduced, failed tests and a failed build are answers, so their <code>isError</code> is <code>false</code>. <code>fuse_check</code> is marked read-only and idempotent; <code>fuse_test</code> and <code>fuse_build</code> are not read-only.</p>
-    <p>This transcript sends an <code>initialize</code> request, the <code>initialized</code> notification, <code>tools/list</code>, one <code>fuse_check</code> call and one call to a tool that does not exist, one JSON message per line:</p>
+    </div>
+    <p>Each tool returns one text block with the same text the command prints. The result's <code>isError</code> is <code>true</code> only when Fuse could not answer, including outside a repository and for an unknown tool name. Errors introduced, failed tests and a failed build are answers, so their <code>isError</code> is <code>false</code>.</p>
+    <p><code>fuse_check</code> is marked read-only and idempotent. <code>fuse_test</code> and <code>fuse_build</code> are not read-only. <code>fuse_check</code> takes files; the directory and pattern forms live on the command line only. A <code>max_errors</code> that is no count of 1 to 100000 is refused with <code>fuse: max_errors takes a count of 1 to 100000</code>. <code>all</code> with <code>failed</code> is refused with <code>fuse: failed reruns the tests that failed last time and cannot be combined with all; set only one of them</code>. Both are error results.</p>
+    <p>This transcript sends one JSON message per line: an <code>initialize</code> request, the <code>initialized</code> notification, <code>tools/list</code>, one <code>fuse_check</code> call, and one call to a tool that does not exist:</p>
     <pre class="out" data-label="Sent"><code>{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"example","version":"1.0"}}}
 {"jsonrpc":"2.0","method":"notifications/initialized"}
 {"jsonrpc":"2.0","id":2,"method":"tools/list"}
 {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"fuse_check","arguments":{"files":["Lib/Calc.cs"]}}}
 {"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"fuse_lint","arguments":{}}}</code></pre>
     <p>The server's responses:</p>
-    <pre class="out" data-label="Received"><code>{"result":{"protocolVersion":"2025-06-18","capabilities":{"logging":{},"tools":{}},"serverInfo":{"name":"fuse","version":"5.5.0"}},"id":1,"jsonrpc":"2.0"}
-{"result":{"tools":[{"name":"fuse_check","title":"Check C# changes","description":"Compiler and analyzer errors the working tree has and HEAD does not: in the named files, or in every changed file when none are named, and in the files of dependent projects that use a changed declaration. Run after editing C# files. Once Fuse has loaded the repository it answers much faster than dotnet build.","inputSchema":{"type":"object","properties":{"files":{"type":"array","items":{"type":"string"},"description":"Files to check, absolute or relative to the repository root. Omit to check every file that differs from HEAD."}}},"annotations":{"idempotentHint":true,"openWorldHint":false,"readOnlyHint":true}},{"name":"fuse_test","title":"Run affected tests","description":"Runs the tests affected by the working-tree changes and reports only failures. Set all=true to run every test.","inputSchema":{"type":"object","properties":{"all":{"type":"boolean","description":"Run every test instead of the affected ones."}}},"annotations":{"destructiveHint":false,"openWorldHint":false,"readOnlyHint":false}},{"name":"fuse_build","title":"Build","description":"Runs dotnet build and reports its errors.","inputSchema":{"type":"object","properties":{"target":{"type":"string","description":"Project or solution to build. Omit to build what dotnet build picks in the repository root."}}},"annotations":{"destructiveHint":false,"openWorldHint":false,"readOnlyHint":false}}]},"id":2,"jsonrpc":"2.0"}
-{"result":{"content":[{"type":"text","text":"App/Program.cs(3,30): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)\n  removed: public int Add(int a, int b)\nLib.Tests/CalcTests.cs(6,54): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)\n  removed: public int Add(int a, int b)\nfuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations changed, 2 dependent project(s) checked"}],"isError":false},"id":3,"jsonrpc":"2.0"}
+    <pre class="out" data-label="Received"><code>{"result":{"protocolVersion":"2025-06-18","capabilities":{"logging":{},"tools":{}},"serverInfo":{"name":"fuse","version":"5.7.0"}},"id":1,"jsonrpc":"2.0"}
+{"result":{"tools":[{"name":"fuse_check","title":"Check C# changes","description":"Compiler and analyzer errors the working tree has and HEAD does not: in the named files, or in every changed file when none are named, and in the files of dependent projects that use a changed declaration. Run after editing C# files. Once Fuse has loaded the repository it answers much faster than dotnet build.","inputSchema":{"type":"object","properties":{"files":{"type":"array","items":{"type":"string"},"description":"Files to check, absolute or relative to the repository root. Omit to check every file that differs from HEAD."},"max_errors":{"type":"integer","description":"Show at most this many errors (default 20)."}}},"annotations":{"idempotentHint":true,"openWorldHint":false,"readOnlyHint":true}},{"name":"fuse_test","title":"Run affected tests","description":"Runs the tests affected by the working-tree changes and reports only failures. Set all=true to run every test, or failed=true to rerun the tests that failed last time.","inputSchema":{"type":"object","properties":{"all":{"type":"boolean","description":"Run every test instead of the affected ones."},"failed":{"type":"boolean","description":"Rerun the tests that failed in the last recorded run instead of the affected ones."}}},"annotations":{"destructiveHint":false,"openWorldHint":false,"readOnlyHint":false}},{"name":"fuse_build","title":"Build","description":"Runs dotnet build and reports its errors.","inputSchema":{"type":"object","properties":{"target":{"type":"string","description":"Project or solution to build. Omit to build what dotnet build picks in the repository root."}}},"annotations":{"destructiveHint":false,"openWorldHint":false,"readOnlyHint":false}}]},"id":2,"jsonrpc":"2.0"}
+{"result":{"content":[{"type":"text","text":"removed: public int Add(int a, int b) (2 error(s))\nApp/Program.cs(3,30): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)\nLib.Tests/CalcTests.cs(6,54): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)\nfuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations changed, 2 dependent project(s) checked"}],"isError":false},"id":3,"jsonrpc":"2.0"}
 {"result":{"content":[{"type":"text","text":"fuse: unknown tool fuse_lint; the tools are fuse_check, fuse_test and fuse_build"}],"isError":true},"id":4,"jsonrpc":"2.0"}</code></pre>
-    <p>The server reads its input as UTF-8 whatever the console's code page, and exits when the host closes its standard input.</p>
+    <p>The server reads its input as UTF-8 whatever the console's code page. It exits when the host closes its standard input.</p>
 
     <h2 id="fuse-hook">fuse hook <a class="anchor" href="#fuse-hook" aria-label="Link to this section">#</a></h2>
-    <pre data-label="Usage"><code>fuse hook &lt;harness&gt; &lt;event&gt;</code></pre>
-    <p>The command every installed hook runs. You do not run it yourself, except to see what a hook would answer, as <a href="getting-started.html#what-the-agent-gets">Getting started</a> does. It reads the harness's JSON payload from standard input as UTF-8 and answers in that harness's format, which <a href="harnesses.html">Connect your agent</a> shows for each one. The harness is <code>claude</code>, <code>cursor</code>, <code>gemini</code>, <code>codex</code>, <code>copilot</code>, <code>opencode</code> or <code>muse</code>. Any other harness or event prints a usage line on standard error and exits with 0.</p>
-    <table>
+    <pre data-label="Usage"><code>usage: fuse hook &lt;claude|cursor|gemini|codex|copilot|opencode|muse&gt; &lt;post-edit|pre-shell|stop&gt;</code></pre>
+    <p>This is the command every installed hook runs. You do not run it yourself, except to see what a hook would answer, as <a href="getting-started#what-the-agent-gets">Getting started</a> does. It reads the harness's JSON payload from standard input as UTF-8, and answers in that harness's format, which <a href="harnesses">Connect your agent</a> shows for each one. The harness is <code>claude</code>, <code>cursor</code>, <code>gemini</code>, <code>codex</code>, <code>copilot</code>, <code>opencode</code> or <code>muse</code>. Any other harness or event prints the usage line on standard error and exits with 0, without reading standard input. <code>--help</code> before or after the harness and event does the same.</p>
+    <div class="table-scroll" role="region" aria-label="Hook events" tabindex="0">
+      <table>
       <thead><tr><th scope="col">Event</th><th scope="col">What it does</th></tr></thead>
       <tbody>
         <tr><th scope="row"><code>post-edit</code></th><td>Checks the source files the edit wrote and reports introduced errors.</td></tr>
@@ -351,62 +499,67 @@ fuse: stopped the engine for /home/me/src/my-repo</code></pre>
         <tr><th scope="row"><code>stop</code></th><td>Checks every change when the agent tries to finish, and sends it back once while its own edits introduce errors or a project needs a restore.</td></tr>
       </tbody>
     </table>
+    </div>
     <h3 id="post-edit">post-edit <a class="anchor" href="#post-edit" aria-label="Link to this section">#</a></h3>
-    <p>Reads the edited paths from the payload's tool input (<code>file_path</code>, <code>filePath</code>, <code>path</code> or <code>notebook_path</code>, and the files an <code>apply_patch</code> patch adds, updates, deletes or moves to), keeps the <code>.cs</code>, <code>.razor</code> and <code>.cshtml</code> files, and runs <code>fuse check</code> on them. Relative paths resolve against the payload's <code>cwd</code> (or the first of its <code>workspace_roots</code>), or the hook's own working directory when the payload names neither.</p>
-    <p>For Claude Code, which runs the hook in the background, it waits for the engine to finish loading for up to 280 seconds, writes the check's output to standard error, and exits with 2, which wakes the agent. Every other harness runs the hook inline, so the agent waits for it: there it answers only once the engine has loaded, waits up to 50 seconds, and writes its answer as JSON to standard output.</p>
-    <p>When the payload names the agent's session (<a href="harnesses.html#sessions">what each harness sends</a>), the check is answered to that session: errors that other sessions' edits caused without it are left out, and the summary counts them, as in <code>; 1 error(s) from other sessions' edits left out</code>. When every error found is another session's, the answer is clean and the hook stays silent. <a href="how-it-works.html#check">How it works</a> describes how an error is attributed.</p>
+    <p>This event reads the edited paths from the payload's tool input: <code>file_path</code>, <code>filePath</code>, <code>path</code> or <code>notebook_path</code>, and the files an <code>apply_patch</code> patch adds, updates, deletes or moves to. It keeps the <code>.cs</code>, <code>.razor</code> and <code>.cshtml</code> files, and runs <code>fuse check</code> on them. Relative paths resolve against the payload's <code>cwd</code>, or the first of its <code>workspace_roots</code>. When the payload names neither, they resolve against the hook's own working directory.</p>
+    <p>Claude Code runs the hook in the background. There the hook waits up to 280 seconds for the engine to finish loading, covering at most two checks: the first answer, and one confirmation against the tree as it stands before an answer with errors is delivered. It writes the check's output to standard error, and exits with 2, which wakes the agent. Every other harness runs the hook inline, so the agent waits for it. There the hook answers only once the engine has loaded, waits up to 50 seconds, and writes its answer as JSON to standard output.</p>
+    <p>When the payload names the agent's session (<a href="harnesses#sessions">what each harness sends</a>), the check is answered to that session. Errors that other sessions' edits caused without it are left out, and the summary counts them, as in <code>; 1 error(s) from other sessions' edits left out</code>. When every error found is another session's, the answer is clean and the hook stays silent. <a href="how-it-works#check">How it works</a> describes how an error is attributed.</p>
     <h3 id="pre-shell">pre-shell <a class="anchor" href="#pre-shell" aria-label="Link to this section">#</a></h3>
-    <p>Reads the command from the tool input's <code>command</code>, and rewrites <code>dotnet build</code> and <code>dotnet test</code> (also <code>dotnet.exe</code>) where a command segment starts: at the beginning, or after <code>&amp;&amp;</code>, <code>||</code>, <code>;</code>, <code>|</code> or a line break. <code>cd Lib &amp;&amp; dotnet build -c Release</code> becomes <code>cd Lib &amp;&amp; fuse build -c Release</code>, and variable assignments before the verb are kept, so <code>DOTNET_CLI_UI_LANGUAGE=en dotnet test</code> becomes <code>DOTNET_CLI_UI_LANGUAGE=en fuse test</code>. An assignment counts when its value has no whitespace, quote, backtick, separator, redirection or parenthesis. A command without either verb is left alone. When the payload names the agent's session and its id holds only letters, digits and <code>- _ . : /</code>, <code>fuse test</code> gets <code>--session</code> and the session, as in <code>fuse test --session claude:&lt;id&gt;</code>, so it runs the tests that session's edits affect (<a href="how-it-works.html#test-selection">a session's own tests</a>). Claude Code, Gemini CLI and OpenCode get the rewritten command. Codex and Muse Code get it only when the whole command is one <code>dotnet build</code> or <code>dotnet test</code> with plain arguments, after plain assignments if any, because their answer also approves the command (<a href="harnesses.html#codex">Codex</a>). Cursor and GitHub Copilot CLI have no pre-shell hook.</p>
+    <p>This event reads the command from the tool input's <code>command</code>. It rewrites <code>dotnet build</code> and <code>dotnet test</code> (also <code>dotnet.exe</code>) where a command segment starts: at the beginning, or after <code>&amp;&amp;</code>, <code>||</code>, <code>;</code>, <code>|</code> or a line break. <code>cd Lib &amp;&amp; dotnet build -c Release</code> becomes <code>cd Lib &amp;&amp; fuse build -c Release</code>. Variable assignments before the verb are kept, so <code>DOTNET_CLI_UI_LANGUAGE=en dotnet test</code> becomes <code>DOTNET_CLI_UI_LANGUAGE=en fuse test</code>.</p>
+    <p>An assignment counts when its value has no whitespace, quote, backtick, separator, redirection or parenthesis. A command without either verb is left alone. When the payload names the agent's session, and its id holds only letters, digits and <code>- _ . : /</code>, <code>fuse test</code> gets <code>--session</code> and the session, as in <code>fuse test --session claude:&lt;id&gt;</code>. It then runs the tests that session's edits affect (<a href="how-it-works#test-selection">a session's own tests</a>).</p>
+    <p>Claude Code, Gemini CLI and OpenCode get the rewritten command. Cursor, GitHub Copilot CLI, Codex and Muse Code get it only when the whole command is one <code>dotnet build</code> or <code>dotnet test</code> with plain arguments, after plain assignments if any, because their answer also approves the command (<a href="harnesses#codex">Codex</a>).</p>
     <h3 id="stop">stop <a class="anchor" href="#stop" aria-label="Link to this section">#</a></h3>
-    <p>Checks every change in the working tree, waiting for the engine for up to 280 seconds. When the payload names the agent's session, the check is answered to that session: it sends the agent back with the errors its own edits cause, alone or with another session's, and the errors in changes no session is credited with, followed by <code>Fix these errors before finishing. The working tree has them and HEAD does not, and no other session's edits cause them on their own.</code> Errors another session's edits cause on their own are left out and counted in the summary, and when they are all there is, the agent finishes. A subagent's edits count as its parent's once the subagent has stopped (<a href="how-it-works.html#check">the stop hook and subagents</a>). In Claude Code the same command runs as the <code>SubagentStop</code> hook, so a subagent is sent back for its own errors. When the payload names no session, the hook sends the agent back with every error and <code>Fix these errors before finishing. The working tree has them and HEAD does not; another agent editing this working tree may have caused some of them.</code> For a project that needs a restore, it sends the restore message alone. When the payload says the agent is already continuing because of an earlier stop hook (<code>stop_hook_active</code> is <code>true</code>, or <code>loop_count</code> is above 0), it lets the agent finish, so it sends an agent back at most once in a row and cannot trap it in a loop.</p>
+    <p>This event checks every change in the working tree, waiting up to 280 seconds for the engine. When the payload names the agent's session, the check covers only that session's files and what they reach, and is answered to that session. It sends the agent back with the errors its own edits cause, alone or with another session's, and with the errors in changes no session is credited with. They are followed by <code>Fix these errors before finishing. The working tree has them and HEAD does not, and no other session's edits cause them on their own.</code></p>
+    <p>Errors another session's edits cause on their own are left out and counted in the summary, counting only those in reach. When they are all there is, the agent finishes. A subagent's edits count as its parent's once the subagent has stopped (<a href="how-it-works#check">the stop hook and subagents</a>). In Claude Code the same command runs as the <code>SubagentStop</code> hook, so a subagent is sent back for its own errors.</p>
+    <p>When the payload names no session, the hook sends the agent back with every error and <code>Fix these errors before finishing. The working tree has them and HEAD does not; another agent editing this working tree may have caused some of them.</code> For a project that needs a restore, it sends the restore message alone. When the payload says the agent is already continuing because of an earlier stop hook (<code>stop_hook_active</code> is <code>true</code>, or <code>loop_count</code> is above 0), the hook lets the agent finish. It therefore sends an agent back at most once in a row, and cannot trap it in a loop.</p>
     <h3 id="what-a-hook-never-does">What a hook never does <a class="anchor" href="#what-a-hook-never-does" aria-label="Link to this section">#</a></h3>
-    <p>A hook reports only introduced errors and a missing restore. Every other outcome, including a loading engine, a timeout and an internal failure, exits with 0 and prints nothing (or <code>{}</code> where the harness expects JSON), so a hook never breaks the agent's session. A payload that is not valid JSON or not a JSON object, and an exception, are written to <code>hook.log</code> in the <a href="troubleshooting.html#where-the-logs-are">state directory</a>. Claude Code hooks whose payload comes from Cursor, which also runs Claude Code's settings, do nothing, so the Cursor hook answers there.</p>
+    <p>A hook reports only introduced errors and a missing restore. Every other outcome, including a loading engine, a timeout and an internal failure, exits with 0 and prints nothing, or <code>{}</code> where the harness expects JSON. A hook therefore never breaks the agent's session. A payload that is not valid JSON or not a JSON object, and an exception, are written to <code>hook.log</code> in the <a href="troubleshooting#where-the-logs-are">state directory</a>. A Claude Code hook whose payload comes from Cursor does nothing, because Cursor also runs Claude Code's settings. The Cursor hook answers there.</p>
 
     <h2 id="version-and-help">fuse --version and fuse help <a class="anchor" href="#version-and-help" aria-label="Link to this section">#</a></h2>
     <p><code>fuse --version</code> (or <code>fuse version</code>) prints the product version:</p>
     <pre class="out" data-label="Output"><code>$ fuse --version
-5.5.0</code></pre>
-    <p><code>fuse help</code> (or <code>--help</code>, <code>-h</code>, or no arguments) prints the usage shown at the top of this page to standard output and exits with 0.</p>
-    <p><code>fuse engine &lt;root&gt;</code> is the engine process itself. Clients start it; there is no reason to run it by hand. The native client refuses it with exit code 2, because the engine runs only from <code>fuse.dll</code> on the .NET runtime.</p>
+5.7.0</code></pre>
+    <p><code>fuse help</code> (or <code>--help</code>, <code>-h</code>, or no arguments) prints the usage shown at the top of this page to standard output and exits with 0. Every command takes <code>--help</code> (or <code>-h</code>) before any <code>--</code>. It prints that command's usage to standard output and exits with 0, running nothing: no root lookup, no engine, no build and no lock. <code>fuse hook --help</code> is the exception. It prints the hook usage to standard error, still with 0 and without reading standard input. An unknown command prints the top-level usage to standard error and exits with 2.</p>
+    <p><code>fuse engine &lt;root&gt;</code> is the engine process itself. Clients start it, so there is no reason to run it by hand. The native client refuses it with exit code 2, because the engine runs only from <code>fuse.dll</code> on the .NET runtime.</p>
 
     <h2 id="environment">Environment <a class="anchor" href="#environment" aria-label="Link to this section">#</a></h2>
     <p>Fuse has no configuration file and no environment variables of its own. When a client starts the engine, it looks for the <code>dotnet</code> host in <code>DOTNET_HOST_PATH</code> and <code>DOTNET_ROOT</code>, the variables the .NET SDK sets, then in the runtime's own directory, then on the <code>PATH</code>. The native client has no runtime directory, so it uses the variables or the <code>PATH</code>. Every child process Fuse starts gets <code>DOTNET_CLI_TELEMETRY_OPTOUT=1</code>, <code>DOTNET_NOLOGO=1</code> and <code>DOTNET_CLI_UI_LANGUAGE=en</code>, so its output is in English and Fuse can parse it.</p>
-    <p>Fuse needs the .NET 10 SDK, git on the <code>PATH</code>, and restored projects. It writes the harness settings <code>fuse init</code> creates, the instruction files <code>fuse init --instructions</code> updates, and the state directory in the user's local application data, and nothing else.</p>
+    <p>Fuse needs the .NET 10 SDK, git on the <code>PATH</code>, and restored projects. It writes the harness settings <code>fuse init</code> creates, the instruction files <code>fuse init --instructions</code> updates, and the state directory in your local application data. It writes nothing else.</p>
 
     <nav class="pager" aria-label="Previous and next page">
-      <a href="faq.html"><span>Previous</span>FAQ</a>
-      <a class="next-page" href="messages.html"><span>Next</span>Messages and fixes</a>
+      <a href="faq"><span>Previous</span>FAQ</a>
+      <a class="next-page" href="messages"><span>Next</span>Messages and fixes</a>
     </nav>
     </main>
 
     <nav class="sidebar" id="docs-nav" aria-label="Documentation">
       <h2>Start here</h2>
       <ul>
-        <li><a href="index.html">Overview</a></li>
-        <li><a href="getting-started.html">Getting started</a></li>
-        <li><a href="harnesses.html">Connect your agent</a></li>
-        <li><a href="parallel-agents.html">Subagents and parallel agents</a></li>
+        <li><a href="./">Overview</a></li>
+        <li><a href="getting-started">Getting started</a></li>
+        <li><a href="harnesses">Connect your agent</a></li>
+        <li><a href="parallel-agents">Subagents and parallel agents</a></li>
       </ul>
       <h2>Understand</h2>
       <ul>
-        <li><a href="how-it-works.html">How it works</a></li>
-        <li><a href="limits.html">Limits</a></li>
-        <li><a href="benchmarks.html">Benchmarks</a></li>
-        <li><a href="faq.html">FAQ</a></li>
+        <li><a href="how-it-works">How it works</a></li>
+        <li><a href="limits">Limits</a></li>
+        <li><a href="benchmarks">Benchmarks</a></li>
+        <li><a href="faq">FAQ</a></li>
       </ul>
       <h2>Reference</h2>
       <ul>
-        <li><a href="commands.html" aria-current="page">Commands</a></li>
-        <li><a href="messages.html">Messages and fixes</a></li>
-        <li><a href="troubleshooting.html">Troubleshooting</a></li>
-        <li><a href="changelog.html">Changelog</a></li>
+        <li><a href="commands" aria-current="page">Commands</a></li>
+        <li><a href="messages">Messages and fixes</a></li>
+        <li><a href="troubleshooting">Troubleshooting</a></li>
+        <li><a href="changelog">Changelog</a></li>
       </ul>
       <h2>Contribute</h2>
       <ul>
         <li><a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/main/CONTRIBUTING.md">Contributing</a></li>
-        <li><a href="architecture.html">Architecture</a></li>
-        <li><a href="evals.html">Evals</a></li>
-        <li><a href="ai-policy.html">AI policy</a></li>
+        <li><a href="architecture">Architecture</a></li>
+        <li><a href="evals">Evals</a></li>
+        <li><a href="ai-policy">AI policy</a></li>
         <li><a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/main/SECURITY.md">Security</a></li>
       </ul>
     </nav>
@@ -414,8 +567,9 @@ fuse: stopped the engine for /home/me/src/my-repo</code></pre>
 
   <footer class="site-footer">
     <a class="maker" href="https://www.litenova.solutions"><img src="../assets/litenova-mark.svg" alt="" width="20" height="20">Built by Litenova Solutions</a>
-    <nav aria-label="Footer"><a href="index.html">Docs</a><a href="changelog.html">Changelog</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
+    <nav aria-label="Footer"><a href="./">Docs</a><a href="changelog">Changelog</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
   </footer>
 </div>
 </body>
 </html>
+

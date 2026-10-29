@@ -253,6 +253,27 @@ internal sealed partial class EvalRepo
         return match.Success ? int.Parse(match.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture) : 0;
     }
 
+    /// <summary>Whether a stop-hook answer blocks, and the reason it gives, read from its JSON; an answer that is not JSON never blocks.</summary>
+    public static (bool Blocked, string Reason) ParseStopBlock(string output)
+    {
+        try
+        {
+            using var document = System.Text.Json.JsonDocument.Parse(output.Trim());
+            if (document.RootElement.ValueKind != System.Text.Json.JsonValueKind.Object)
+                return (false, "");
+            var root = document.RootElement;
+            var blocked = root.TryGetProperty("decision", out var decision) && decision.GetString() == "block";
+            var reason = root.TryGetProperty("reason", out var reasonProperty) && reasonProperty.ValueKind == System.Text.Json.JsonValueKind.String
+                ? reasonProperty.GetString() ?? ""
+                : "";
+            return (blocked, reason);
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return (false, "");
+        }
+    }
+
     [GeneratedRegex(@"^[^\r\n]+\(\d+,\d+\): error [A-Za-z]+\d+: .*$")]
     private static partial Regex FuseError();
     [GeneratedRegex(@"fuse: (\d+) error\(s\) introduced")]

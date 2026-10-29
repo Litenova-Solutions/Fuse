@@ -1,20 +1,20 @@
 # Fuse
 
-> Fuse is a .NET tool that makes dotnet build and dotnet test faster for AI coding agents. It keeps a repository's C# solution loaded in the background, reports only the compiler errors an edit caused (including breaks in other projects), runs only the affected tests, and prints only build errors. All agents and subagents in a repository share one Fuse process, and their builds take turns. It runs through agent hooks and an MCP server, locally, with no telemetry. Its main cost is memory: 339 MB to 1,019 MB once idle on the benchmark repositories, up to 1,763 MB while it checks, and more on a machine with more memory.
+> Fuse is a .NET tool that makes `dotnet build` and `dotnet test` faster for AI coding agents. It keeps a repository's C# solution loaded in a background process, the engine. It reports only the compiler errors an edit introduced, including breaks in other projects. It runs only the affected tests. It prints only build errors. All agents and subagents in a repository share one engine, so their builds take turns. Agents use it through hooks or an MCP server. It runs locally and has no telemetry. Its main cost is memory. Once idle, it uses 319 MB to 512 MB on the benchmark repositories, up to 1,091 MB while it checks, and more on a machine with more memory.
 
-Fuse needs the .NET 10 SDK. Install it with `dotnet tool install -g Fuse`, then run `fuse init` in a repository. `fuse init` registers Fuse's hooks with each harness the repository uses (Claude Code, Cursor, Gemini CLI, Codex, GitHub Copilot CLI, OpenCode and Muse Code), and the MCP server with VS Code agent mode. After each edit the agent gets only the errors that edit introduced, compared with HEAD, the commit you have checked out. When the agent runs `dotnet test`, only the affected tests run and only failures are printed. Fuse is open source under the Apache-2.0 license.
+Fuse needs the .NET 10 SDK. Install it with `dotnet tool install -g Fuse`. Then run `fuse init` in a repository. `fuse init` registers Fuse's hooks with each harness the repository uses (Claude Code, Cursor, Gemini CLI, Codex, GitHub Copilot CLI, OpenCode and Muse Code), and the MCP server with VS Code agent mode. After each edit, the agent gets only the errors that edit introduced, compared with HEAD, the commit you have checked out. When the agent runs `dotnet test`, only the affected tests run and only failures are printed. Fuse is open source under the Apache-2.0 license.
 
 ## Docs
 
 - [Overview](https://fuse.codes/docs/): what Fuse is, what it gives an agent, what it costs, the words the documentation uses, and which page answers which question
 - [Getting started](https://fuse.codes/docs/getting-started): install Fuse, set it up in your repository, and see what it reports
-- [Connect your agent](https://fuse.codes/docs/harnesses): what fuse init writes for each harness, and how an MCP host runs fuse mcp
-- [Subagents and parallel agents](https://fuse.codes/docs/parallel-agents): several agents in one repository, what each is told, fuse init --instructions and fuse stop
+- [Connect your agent](https://fuse.codes/docs/harnesses): what `fuse init` writes for each harness, and how an MCP host runs `fuse mcp`
+- [Subagents and parallel agents](https://fuse.codes/docs/parallel-agents): several agents in one repository, what each is told, `fuse init --instructions` and `fuse stop`
 - [How it works](https://fuse.codes/docs/how-it-works): how Fuse checks an edit, selects tests and runs them
 - [Limits](https://fuse.codes/docs/limits): what Fuse cannot check, and what to do about it
 - [Benchmarks](https://fuse.codes/docs/benchmarks): benchmarks on four repositories, with the result file behind each number
 - [FAQ](https://fuse.codes/docs/faq): why Fuse exists, common questions, and how Fuse differs from language servers, Roslyn MCP servers, code search tools and test impact analysis tools
-- [Commands](https://fuse.codes/docs/commands): every fuse command, its arguments, its output and its exit codes
+- [Commands](https://fuse.codes/docs/commands): every `fuse` command, its arguments, its output and its exit codes
 - [Messages and fixes](https://fuse.codes/docs/messages): every message Fuse prints when it cannot answer, and the fix
 - [Troubleshooting](https://fuse.codes/docs/troubleshooting): silent hooks, slow checks, log locations and how to stop the engine
 - [Changelog](https://fuse.codes/docs/changelog): what changed in each release, the upgrade steps, and which versions are supported
@@ -23,7 +23,7 @@ Fuse needs the .NET 10 SDK. Install it with `dotnet tool install -g Fuse`, then 
 
 - [Architecture](https://fuse.codes/docs/architecture): how the code is organized, for contributors and coding agents
 - [Evals](https://fuse.codes/docs/evals): how the evals work and how to run them
-- [AI policy](https://fuse.codes/docs/ai-policy): how AI tools may be used to contribute
+- [AI policy](https://fuse.codes/docs/ai-policy): how you may use AI tools to contribute
 - [Contributing](https://raw.githubusercontent.com/Litenova-Solutions/Fuse/main/CONTRIBUTING.md): how to build, test and submit a change
 - [Security](https://raw.githubusercontent.com/Litenova-Solutions/Fuse/main/SECURITY.md): supported versions and how to report a vulnerability
 - [GitHub repository](https://github.com/Litenova-Solutions/Fuse): source code, issues and releases

@@ -5,8 +5,9 @@ namespace Fuse.Hooks;
 /// <summary>
 ///     Rewrites <c>dotnet build</c> and <c>dotnet test</c> in a shell command to <c>fuse build</c> and <c>fuse test</c>,
 ///     without parsing shell quoting: after every command separator (<see cref="Rewrite"/>), or only in a command that is
-///     one plain invocation (<see cref="RewriteWhole"/>). <c>fuse test</c> also gets <c>--session</c> and the session
-///     whose command it is, when that id holds only plain characters, so its affected tests are that session's.
+///     one plain invocation (<see cref="RewriteWhole"/>). Each rewrite carries <c>--from-rewrite</c>, which the command
+///     reads and never forwards, so it can say it ran through Fuse. <c>fuse test</c> also gets <c>--session</c> and the
+///     session whose command it is, when that id holds only plain characters, so its affected tests are that session's.
 /// </summary>
 internal static partial class CommandRewriter
 {
@@ -16,7 +17,7 @@ internal static partial class CommandRewriter
     public static string? Rewrite(string command, string? session = null)
     {
         var sessionArgument = session is not null && PlainSession().IsMatch(session) ? $" --session {session}" : "";
-        var rewritten = Segment().Replace(command, m => m.Groups["lead"].Value + "fuse " + m.Groups["verb"].Value + (m.Groups["verb"].Value == "test" ? sessionArgument : ""));
+        var rewritten = Segment().Replace(command, m => m.Groups["lead"].Value + "fuse " + m.Groups["verb"].Value + " --from-rewrite" + (m.Groups["verb"].Value == "test" ? sessionArgument : ""));
         return rewritten == command ? null : rewritten;
     }
 

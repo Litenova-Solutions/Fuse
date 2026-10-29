@@ -64,6 +64,12 @@ internal sealed class MemberWalk
     /// <summary>The selections found so far, keyed by test project file. It grows while the walk runs.</summary>
     public IReadOnlyDictionary<RepoPath, TestSelection> Selections => _selections.Selections;
 
+    /// <summary>How many changed declarations <see cref="SeedAsync"/> has seen across its calls.</summary>
+    public int ChangedDeclarations { get; private set; }
+
+    /// <summary>How many of them compiled to the same code as HEAD and seeded nothing.</summary>
+    public int DroppedSameCode { get; private set; }
+
     /// <summary>
     ///     Seeds the walk with the declarations that changed in <paramref name="path"/> and returns them, for the type
     ///     walk. A changed declaration in a test project is selected at once; top-level statements select every test
@@ -88,6 +94,14 @@ internal sealed class MemberWalk
             var node = NodeOf(document.Project);
             foreach (var changed in CodeDiff.Find(before, root))
             {
+                ChangedDeclarations++;
+                if (changed is not CompilationUnitSyntax
+                    && await CompiledCode.SameAsHeadAsync(document, changed, model, _workspace.Baseline, cancellationToken).ConfigureAwait(false))
+                {
+                    DroppedSameCode++;
+                    continue;
+                }
+
                 seeds.Add((document, changed));
                 if (changed is CompilationUnitSyntax)
                 {
@@ -110,14 +124,14 @@ internal sealed class MemberWalk
         return seeds;
     }
 
-    /// <summary>Runs the walk. Returns false when it went past 300 symbols or 8 seconds before finishing.</summary>
-    public async Task<bool> RunAsync(CancellationToken cancellationToken)
+    /// <summary>Runs the walk, recording how many symbols it visited and how long it ran.</summary>
+    public async Task<WalkOutcome> RunAsync(CancellationToken cancellationToken)
     {
         var started = _time.GetTimestamp();
         while (_queue.Count > 0)
         {
             if (_visited.Count > MaxSymbols || _time.GetElapsedTime(started) > Budget)
-                return false;
+                return new WalkOutcome(false, _visited.Count, (long)_time.GetElapsedTime(started).TotalMilliseconds);
 
             var symbol = _queue.Dequeue();
             var referenced = false;
@@ -149,7 +163,7 @@ internal sealed class MemberWalk
             }
         }
 
-        return true;
+        return new WalkOutcome(true, _visited.Count, (long)_time.GetElapsedTime(started).TotalMilliseconds);
     }
 
     /// <summary>

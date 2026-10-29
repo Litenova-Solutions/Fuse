@@ -5,4 +5,11 @@ namespace Fuse.Protocol;
 /// <param name="SelectedTests">Test methods selected, counted statically.</param>
 /// <param name="TotalTests">Test methods in the repository, counted statically.</param>
 /// <param name="Summary">One sentence stating the selection and its reason.</param>
-internal sealed record TestPlan(TestRun[] Runs, int SelectedTests, int TotalTests, string Summary);
+internal sealed record TestPlan(TestRun[] Runs, int SelectedTests, int TotalTests, string Summary)
+{
+    /// <summary>How many selected tests need a container runtime that is not running, so they run in no run above. A line without it reads as 0.</summary>
+    public int ContainerGatedTests { get; init; }
+
+    /// <summary>The projects those tests are in, in ordinal order. A line without the list reads as one that names none.</summary>
+    public string[] ContainerGatedProjects { get => field ?? []; init; } = [];
+}

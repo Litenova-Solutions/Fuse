@@ -1,0 +1,650 @@
+{
+  "suite": "latency",
+  "repo": "FluentValidation",
+  "commit": "fa3c160b17796ff67d6aa5ae6c4b05b471f1a791",
+  "fuseBuild": "5.7.0/8412aa2295b74518ab6a60b222122671",
+  "target": "src/FluentValidation/AbstractValidator.cs",
+  "method": "RuleFor",
+  "referencingFilesInOtherProjects": 56,
+  "coldCleanMs": 4494.9067,
+  "coldBodyEditMs": 8540.3894,
+  "bodyEdit": {
+    "p50": 354.9,
+    "p95": 467.3,
+    "max": 467.3,
+    "n": 15
+  },
+  "signatureEdit": {
+    "p50": 3968.4,
+    "p95": 12486.9,
+    "max": 12486.9,
+    "n": 10
+  },
+  "signatureEditSample": "fuse: 883 error(s) introduced in 55 file(s), first 2 shown (FluentValidation.Tests.Benchmarks, FluentValidation.Tests); FluentValidation declarations changed, 3 dependent project(s) checked; tree ed8690a63d4a over 1 changed file(s); all 883 in C:\\Users\\runneradmin\\AppData\\Local\\fuse\\repos\\737e362cd978cd34\\last-check-results.txt",
+  "warmUnchanged": {
+    "p50": 36.5,
+    "p95": 42.3,
+    "max": 42.3,
+    "n": 10
+  },
+  "part": "all",
+  "testRound": {
+    "p50": 9458.1,
+    "p95": 24385.2,
+    "max": 24385.2,
+    "n": 5
+  },
+  "bodyEditPhases": {
+    "phases": {
+      "bindAnalyzers": {
+        "p50": 95,
+        "p95": 167,
+        "max": 167,
+        "n": 15
+      },
+      "bindCompiler": {
+        "p50": 71,
+        "p95": 121,
+        "max": 121,
+        "n": 15
+      },
+      "bindFrameworks": {
+        "p50": 1,
+        "p95": 1,
+        "max": 1,
+        "n": 15
+      },
+      "bindTargets": {
+        "p50": 303.3,
+        "p95": 416.2,
+        "max": 416.2,
+        "n": 15
+      },
+      "bindUpdate": {
+        "p50": 125,
+        "p95": 205,
+        "max": 205,
+        "n": 15
+      },
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 15
+      },
+      "load": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 15
+      },
+      "surfaceDiff": {
+        "p50": 2.7,
+        "p95": 9.8,
+        "max": 9.8,
+        "n": 15
+      },
+      "sync": {
+        "p50": 1.6,
+        "p95": 6.7,
+        "max": 6.7,
+        "n": 15
+      },
+      "total": {
+        "p50": 312,
+        "p95": 421,
+        "max": 421,
+        "n": 15
+      }
+    },
+    "outsideEngine": {
+      "p50": 44.8,
+      "p95": 94.8,
+      "max": 94.8,
+      "n": 15
+    },
+    "n": 15
+  },
+  "signatureEditPhases": {
+    "phases": {
+      "bindAnalyzers": {
+        "p50": 20,
+        "p95": 57,
+        "max": 57,
+        "n": 9
+      },
+      "bindCandidates": {
+        "p50": 3868.2,
+        "p95": 8929.7,
+        "max": 8929.7,
+        "n": 9
+      },
+      "bindCompiler": {
+        "p50": 16,
+        "p95": 32,
+        "max": 32,
+        "n": 9
+      },
+      "bindFrameworks": {
+        "p50": 1,
+        "p95": 1,
+        "max": 1,
+        "n": 9
+      },
+      "bindTargets": {
+        "p50": 85.9,
+        "p95": 145.8,
+        "max": 145.8,
+        "n": 9
+      },
+      "bindUpdate": {
+        "p50": 44,
+        "p95": 71,
+        "max": 71,
+        "n": 9
+      },
+      "gate": {
+        "p50": 0,
+        "p95": 0.4,
+        "max": 0.4,
+        "n": 10
+      },
+      "load": {
+        "p50": 0,
+        "p95": 0.1,
+        "max": 0.1,
+        "n": 9
+      },
+      "loadDependents": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 9
+      },
+      "referenceSearch": {
+        "p50": 5.9,
+        "p95": 3159.9,
+        "max": 3159.9,
+        "n": 9
+      },
+      "surfaceDiff": {
+        "p50": 1.6,
+        "p95": 4.4,
+        "max": 4.4,
+        "n": 9
+      },
+      "sync": {
+        "p50": 1.4,
+        "p95": 12.6,
+        "max": 12.6,
+        "n": 10
+      },
+      "total": {
+        "p50": 3938,
+        "p95": 12438,
+        "max": 12438,
+        "n": 10
+      }
+    },
+    "outsideEngine": {
+      "p50": 44.7,
+      "p95": 3654,
+      "max": 3654,
+      "n": 10
+    },
+    "n": 10
+  },
+  "warmUnchangedPhases": {
+    "phases": {
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 10
+      },
+      "sync": {
+        "p50": 0.4,
+        "p95": 0.6,
+        "max": 0.6,
+        "n": 10
+      },
+      "total": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 10
+      }
+    },
+    "outsideEngine": {
+      "p50": 36.5,
+      "p95": 42.3,
+      "max": 42.3,
+      "n": 10
+    },
+    "n": 10
+  },
+  "testRoundPhases": {
+    "phases": {
+      "emit": {
+        "p50": 378.4,
+        "p95": 5749.4,
+        "max": 5749.4,
+        "n": 5
+      },
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 5
+      },
+      "mirror": {
+        "p50": 145,
+        "p95": 10322.3,
+        "max": 10322.3,
+        "n": 5
+      },
+      "selection": {
+        "p50": 63.4,
+        "p95": 88.5,
+        "max": 88.5,
+        "n": 5
+      },
+      "sync": {
+        "p50": 2,
+        "p95": 2.3,
+        "max": 2.3,
+        "n": 5
+      },
+      "total": {
+        "p50": 578,
+        "p95": 16172,
+        "max": 16172,
+        "n": 5
+      }
+    },
+    "outsideEngine": {
+      "p50": 8213.9,
+      "p95": 8989.2,
+      "max": 8989.2,
+      "n": 5
+    },
+    "n": 5
+  },
+  "noCodeChange": {
+    "edits": [
+      {
+        "kind": "comment",
+        "checkMs": 270.1303,
+        "filesChecked": 1,
+        "checkErrors": 0,
+        "testMs": 896.8409,
+        "testsSelected": 0,
+        "testsRun": 0,
+        "noCodeChange": true,
+        "note": null
+      },
+      {
+        "kind": "local-rename",
+        "checkMs": 404.4531,
+        "filesChecked": 1,
+        "checkErrors": 0,
+        "testMs": 21945.324,
+        "testsSelected": 838,
+        "testsRun": 2661,
+        "noCodeChange": false,
+        "note": null
+      },
+      {
+        "kind": "reformat",
+        "checkMs": null,
+        "filesChecked": null,
+        "checkErrors": null,
+        "testMs": null,
+        "testsSelected": null,
+        "testsRun": null,
+        "noCodeChange": null,
+        "note": "the target method has no indented line"
+      },
+      {
+        "kind": "using-sort",
+        "checkMs": 7289.0987,
+        "filesChecked": 1,
+        "checkErrors": 0,
+        "testMs": 698.048,
+        "testsSelected": 0,
+        "testsRun": 0,
+        "noCodeChange": true,
+        "note": null
+      },
+      {
+        "kind": "whitespace",
+        "checkMs": 265.4328,
+        "filesChecked": 1,
+        "checkErrors": 0,
+        "testMs": 112.6503,
+        "testsSelected": 0,
+        "testsRun": 0,
+        "noCodeChange": true,
+        "note": null
+      }
+    ],
+    "check": {
+      "p50": 270.1,
+      "p95": 7289.1,
+      "max": 7289.1,
+      "n": 4
+    },
+    "testRound": {
+      "p50": 698,
+      "p95": 21945.3,
+      "max": 21945.3,
+      "n": 4
+    },
+    "checkPhases": {
+      "phases": {
+        "bindAnalyzers": {
+          "p50": 65,
+          "p95": 359,
+          "max": 359,
+          "n": 4
+        },
+        "bindCompiler": {
+          "p50": 51,
+          "p95": 621,
+          "max": 621,
+          "n": 4
+        },
+        "bindFrameworks": {
+          "p50": 1,
+          "p95": 1,
+          "max": 1,
+          "n": 4
+        },
+        "bindTargets": {
+          "p50": 225.3,
+          "p95": 4591.9,
+          "max": 4591.9,
+          "n": 4
+        },
+        "bindUpdate": {
+          "p50": 117,
+          "p95": 3579,
+          "max": 3579,
+          "n": 4
+        },
+        "gate": {
+          "p50": 0,
+          "p95": 9.4,
+          "max": 9.4,
+          "n": 4
+        },
+        "load": {
+          "p50": 0,
+          "p95": 0.4,
+          "max": 0.4,
+          "n": 4
+        },
+        "surfaceDiff": {
+          "p50": 3.1,
+          "p95": 23.9,
+          "max": 23.9,
+          "n": 4
+        },
+        "sync": {
+          "p50": 1.5,
+          "p95": 16.5,
+          "max": 16.5,
+          "n": 4
+        },
+        "total": {
+          "p50": 234,
+          "p95": 4687,
+          "max": 4687,
+          "n": 4
+        }
+      },
+      "outsideEngine": {
+        "p50": 45.5,
+        "p95": 2602.1,
+        "max": 2602.1,
+        "n": 4
+      },
+      "n": 4
+    },
+    "testRoundPhases": {
+      "phases": {
+        "emit": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 1
+        },
+        "gate": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 4
+        },
+        "mirror": {
+          "p50": 7.1,
+          "p95": 7.1,
+          "max": 7.1,
+          "n": 1
+        },
+        "selection": {
+          "p50": 212.1,
+          "p95": 626.7,
+          "max": 626.7,
+          "n": 4
+        },
+        "sync": {
+          "p50": 0.6,
+          "p95": 4.7,
+          "max": 4.7,
+          "n": 4
+        },
+        "total": {
+          "p50": 235,
+          "p95": 859,
+          "max": 859,
+          "n": 4
+        }
+      },
+      "outsideEngine": {
+        "p50": 57,
+        "p95": 21710.3,
+        "max": 21710.3,
+        "n": 4
+      },
+      "n": 4
+    }
+  },
+  "multiAgent": {
+    "writers": {
+      "clients": 3,
+      "editsPerClient": 10,
+      "wallMs": 34581.3573,
+      "checks": 30,
+      "unanswered": 0,
+      "notRun": 0,
+      "gate": {
+        "p50": 70.4,
+        "p95": 346.9,
+        "max": 563,
+        "n": 30
+      },
+      "gateByHolder": {
+        "CheckChanges": {
+          "p50": 344.2,
+          "p95": 346.9,
+          "max": 346.9,
+          "n": 2
+        },
+        "CheckFiles": {
+          "p50": 106.8,
+          "p95": 563,
+          "max": 563,
+          "n": 16
+        },
+        "PlanAffectedTests": {
+          "p50": 23.9,
+          "p95": 23.9,
+          "max": 23.9,
+          "n": 1
+        }
+      },
+      "engineTotal": {
+        "p50": 62,
+        "p95": 422,
+        "max": 562,
+        "n": 30
+      },
+      "singleClientTotalP50": 312
+    },
+    "builds": {
+      "clients": 3,
+      "rounds": 5,
+      "wallMs": 56228.3052,
+      "each": {
+        "p50": 7095,
+        "p95": 13963.9,
+        "max": 13963.9,
+        "n": 15
+      },
+      "collisions": 0,
+      "collisionSamples": []
+    },
+    "rounds": [
+      {
+        "index": 1,
+        "project": "FluentValidation.csproj",
+        "edit": "src\\FluentValidation\\AbstractValidator.cs",
+        "ms": 9435.0879,
+        "testProjects": [
+          "FluentValidation.Tests"
+        ],
+        "failingTests": 0
+      },
+      {
+        "index": 2,
+        "project": "FluentValidation.csproj",
+        "edit": "src\\FluentValidation\\AbstractValidator.cs",
+        "ms": 8283.4871,
+        "testProjects": [
+          "FluentValidation.Tests"
+        ],
+        "failingTests": 0
+      },
+      {
+        "index": 3,
+        "project": "FluentValidation.csproj",
+        "edit": "src\\FluentValidation\\AbstractValidator.cs",
+        "ms": 7999.6552,
+        "testProjects": [
+          "FluentValidation.Tests"
+        ],
+        "failingTests": 0
+      }
+    ],
+    "attribution": {
+      "renamedIn": "src/FluentValidation/AssemblyScanner.cs",
+      "method": "FindValidatorsInAssembly",
+      "brokenIn": "src/FluentValidation.DependencyInjectionExtensions/ServiceCollectionExtensions.cs",
+      "ownWithoutSessions": 6,
+      "otherWithoutSessions": 2,
+      "ownWithSessions": 6,
+      "otherWithSessions": 0,
+      "leftToOtherSessions": 2,
+      "msWithoutSessions": 136.5543,
+      "msWithSessions": 234.9205
+    },
+    "stops": {
+      "changedFiles": 3,
+      "firstMs": 131.0365,
+      "repeat": {
+        "p50": 48.2,
+        "p95": 58.8,
+        "max": 58.8,
+        "n": 5
+      },
+      "mostReused": 2
+    },
+    "tests": {
+      "edit": "src/FluentValidation.Tests.Benchmarks/AccessorCacheBenchmark.cs",
+      "aloneMs": 42.8892,
+      "pairWallMs": 256.0831,
+      "pairEach": {
+        "p50": 48.9,
+        "p95": 255.9,
+        "max": 255.9,
+        "n": 2
+      },
+      "notPassed": 0
+    },
+    "stopsUnchangedRepeat": [
+      {
+        "ms": 40.2831,
+        "documentsBound": 0
+      },
+      {
+        "ms": 41.2399,
+        "documentsBound": 0
+      },
+      {
+        "ms": 41.2328,
+        "documentsBound": 0
+      }
+    ],
+    "scopeOnly": [
+      {
+        "form": "directory",
+        "arg": "src/FluentValidation.Tests",
+        "projectsPlanned": 0,
+        "testsSelected": 0,
+        "mode": "none",
+        "ms": 41.0486
+      },
+      {
+        "form": "project",
+        "arg": "src/FluentValidation.Tests/FluentValidation.Tests.csproj",
+        "projectsPlanned": 0,
+        "testsSelected": 0,
+        "mode": "none",
+        "ms": 40.6808
+      },
+      {
+        "form": "build-only",
+        "arg": "--no-build",
+        "projectsPlanned": 0,
+        "testsSelected": 0,
+        "mode": "none",
+        "ms": 39.2248
+      }
+    ],
+    "plainRun": {
+      "form": "plain",
+      "arg": "",
+      "projectsPlanned": 0,
+      "testsSelected": 0,
+      "mode": "none",
+      "ms": 43.1179
+    },
+    "wholeRun": {
+      "form": "all",
+      "arg": "--all",
+      "projectsPlanned": 1,
+      "testsSelected": 2664,
+      "mode": "msbuild",
+      "ms": 12247.1248
+    },
+    "scopeRefusal": {
+      "arg": "src/FluentValidation",
+      "refused": true,
+      "exitCode": 2
+    }
+  },
+  "engineWorkingSetMb": 732,
+  "enginePeakWorkingSetMb": 738.3,
+  "engineIdleWorkingSetMb": 512,
+  "treeCleanAfter": true
+}

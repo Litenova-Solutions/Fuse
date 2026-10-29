@@ -38,6 +38,15 @@ internal sealed record MultiAgentStops(int ChangedFiles, double FirstMs, Latency
 /// <summary>One agent's <c>fuse test</c> on its own, and two agents' started together: the pair's wall time and each run's time.</summary>
 internal sealed record MultiAgentTests(string Edit, double AloneMs, double PairWallMs, LatencyStats PairEach, int NotPassed);
 
+/// <summary>One check of every change repeated with no edit in between: its wall time and how many documents it bound, 0 for a kept answer.</summary>
+internal sealed record MultiAgentUnchangedRepeat(double Ms, int DocumentsBound);
+
+/// <summary>One scope form of <c>fuse test</c> on the same edit: what it planned and selected, and how it ran.</summary>
+internal sealed record ScopeOnlyRun(string Form, string Arg, int ProjectsPlanned, int? TestsSelected, string Mode, double Ms);
+
+/// <summary>One scope that names no test project, which the product refuses with exit code 2.</summary>
+internal sealed record ScopeRefusal(string Arg, bool Refused, int ExitCode);
+
 /// <summary>The multi-agent scenarios, the attribution pair from <see cref="AttributionSuite"/>, as the latency result file's <c>multiAgent</c> object.</summary>
 internal sealed record MultiAgentResult(MultiAgentWriters Writers, MultiAgentBuilds Builds, List<MultiAgentRound> Rounds, AttributionPair? Attribution)
 {
@@ -45,8 +54,20 @@ internal sealed record MultiAgentResult(MultiAgentWriters Writers, MultiAgentBui
 
     public MultiAgentTests? Tests { get; init; }
 
-    /// <summary>The wall times of the checks of every change repeated with no edit in between, in milliseconds.</summary>
-    public List<double>? StopsUnchangedRepeat { get; init; }
+    /// <summary>The checks of every change repeated with no edit in between, which answer from the answer the engine kept.</summary>
+    public List<MultiAgentUnchangedRepeat>? StopsUnchangedRepeat { get; init; }
+
+    /// <summary>The same edit planned by scope: a directory, a project and a build switch.</summary>
+    public List<ScopeOnlyRun>? ScopeOnly { get; init; }
+
+    /// <summary>The same edit planned by a plain <c>fuse test</c>, which the scope forms compare against.</summary>
+    public ScopeOnlyRun? PlainRun { get; init; }
+
+    /// <summary>The same edit with <c>fuse test --all</c>, which runs every test.</summary>
+    public ScopeOnlyRun? WholeRun { get; init; }
+
+    /// <summary>One scope that names no test project, which the product refuses.</summary>
+    public ScopeRefusal? ScopeRefusal { get; init; }
 }
 
 /// <summary>
@@ -75,10 +96,20 @@ internal static partial class MultiAgentScenario
         var writers = await WritersAsync(repo, targets, singleClientTotalP50);
         var builds = await BuildsAsync(repo);
         var rounds = await RoundsAsync(repo, solution);
+        var (scopes, plain, whole, refusal) = await ScopesAsync(repo, solution);
         var attribution = (await AttributionSuite.PairsAsync(repo, solution, 1)).FirstOrDefault();
         var (stops, stopsUnchangedRepeat) = await StopsAsync(repo, solution);
         var tests = await TestsAsync(repo, solution);
-        return new MultiAgentResult(writers, builds, rounds, attribution) { Stops = stops, Tests = tests, StopsUnchangedRepeat = stopsUnchangedRepeat };
+        return new MultiAgentResult(writers, builds, rounds, attribution)
+        {
+            Stops = stops,
+            Tests = tests,
+            StopsUnchangedRepeat = stopsUnchangedRepeat,
+            ScopeOnly = scopes,
+            PlainRun = plain,
+            WholeRun = whole,
+            ScopeRefusal = refusal,
+        };
     }
 
     /// <summary>
@@ -86,7 +117,7 @@ internal static partial class MultiAgentScenario
     ///     stop hook makes, and <see cref="StopRepeats"/> more, each after another body edit in the first file. A repeat
     ///     binds the file that changed again and can reuse the errors of the others.
     /// </summary>
-    private static async Task<(MultiAgentStops Stops, List<double> UnchangedRepeat)> StopsAsync(EvalRepo repo, SolutionInfo solution)
+    private static async Task<(MultiAgentStops Stops, List<MultiAgentUnchangedRepeat> UnchangedRepeat)> StopsAsync(EvalRepo repo, SolutionInfo solution)
     {
         var targets = EditablePerProject(solution, text => TextEdit(text, "1")).Take(StopFiles).Select(t => t.File).ToList();
         var originals = targets.ToDictionary(f => f, File.ReadAllBytes, StringComparer.OrdinalIgnoreCase);
@@ -97,10 +128,21 @@ internal static partial class MultiAgentScenario
                 await File.WriteAllTextAsync(file, BodyEdit(texts[file], 1));
             await Task.Delay(500);
             var first = await repo.FuseTimedAsync("check");
-            // The same tree checked again with no edit in between: the engine answers from the answer it kept.
-            var unchangedRepeat = new List<double>();
+            // The same tree checked again with no edit in between: the engine answers from the answer it kept. Each
+            // repeat takes its phase line, whose bound-documents count says what the repeat cost.
+            var taken = new HashSet<string>(StringComparer.Ordinal);
+            while (RequestPhases.TakeNewest(repo.EngineLogLines(), taken) is not null)
+            {
+            }
+
+            var unchangedRepeat = new List<MultiAgentUnchangedRepeat>();
             for (var i = 0; i < StopUnchangedRepeats; i++)
-                unchangedRepeat.Add((await repo.FuseTimedAsync("check")).Milliseconds);
+            {
+                var repeat = await repo.FuseTimedAsync("check");
+                var repeatPhases = RequestPhases.TakeNewest(repo.EngineLogLines(), taken);
+                unchangedRepeat.Add(new MultiAgentUnchangedRepeat(repeat.Milliseconds, repeatPhases is null ? 0 : (int)Math.Round(repeatPhases.Phases.GetValueOrDefault(Phase.BindFrameworks))));
+            }
+
             var seen = repo.EngineLogLines().Count;
             var repeats = new List<double>();
             var mostReused = 0;
@@ -120,7 +162,7 @@ internal static partial class MultiAgentScenario
             }
 
             var stops = new MultiAgentStops(targets.Count, first.Milliseconds, LatencyStats.Of(repeats), mostReused);
-            Console.WriteLine($"[multiAgent] stops: {targets.Count} changed file(s), first check {first.Milliseconds:0} ms, repeat P50 {stops.Repeat.P50:0} ms, unchanged repeat P50 {LatencyStats.Of(unchangedRepeat).P50:0} ms, at most {mostReused} file(s) reused");
+            Console.WriteLine($"[multiAgent] stops: {targets.Count} changed file(s), first check {first.Milliseconds:0} ms, repeat P50 {stops.Repeat.P50:0} ms, unchanged repeat P50 {LatencyStats.Of(unchangedRepeat.Select(r => r.Ms).ToList()).P50:0} ms, at most {mostReused} file(s) reused");
             return (stops, unchangedRepeat);
         }
         finally
@@ -128,6 +170,87 @@ internal static partial class MultiAgentScenario
             foreach (var (file, bytes) in originals)
                 File.WriteAllBytes(file, bytes);
         }
+    }
+
+    /// <summary>
+    ///     The same body edit planned four ways: a plain <c>fuse test</c>, a test directory, a test project and a build
+    ///     switch; then every test with <c>--all</c>, and one scope that names no test project, which the product refuses.
+    ///     Each form edits the same file, so the plans compare form against form.
+    /// </summary>
+    private static async Task<(List<ScopeOnlyRun> Scopes, ScopeOnlyRun Plain, ScopeOnlyRun Whole, ScopeRefusal Refusal)> ScopesAsync(EvalRepo repo, SolutionInfo solution)
+    {
+        var testSources = solution.TestProjects.ToDictionary(t => t, t => SourcesUnder(Path.GetDirectoryName(t)!).Select(File.ReadAllText).ToList(), StringComparer.OrdinalIgnoreCase);
+        var file = EditablePerProject(solution, text => TextEdit(text, "1"))
+            .Select(c => c.File)
+            .FirstOrDefault(f => TestProjectsUsing(f, testSources).Count > 0)
+            ?? throw new InvalidOperationException($"the scopes scenario needs a file a test project uses; found none in {solution.Root}");
+        var project = solution.TestProjects.Order(StringComparer.Ordinal).First();
+        var directory = Path.GetRelativePath(repo.Root, Path.GetDirectoryName(project)!).Replace('\\', '/');
+        var csproj = Path.GetRelativePath(repo.Root, project).Replace('\\', '/');
+        var bytes = File.ReadAllBytes(file);
+        var original = File.ReadAllText(file);
+        try
+        {
+            var plain = await ScopeFormAsync(repo, file, original, bytes, "plain", "", []);
+            var scopes = new List<ScopeOnlyRun>
+            {
+                await ScopeFormAsync(repo, file, original, bytes, "directory", directory, [directory]),
+                await ScopeFormAsync(repo, file, original, bytes, "project", csproj, [csproj]),
+                await ScopeFormAsync(repo, file, original, bytes, "build-only", "--no-build", ["--no-build"]),
+            };
+            var whole = await WholeRunAsync(repo, file, original, bytes);
+            var refusal = await ScopeRefusalAsync(repo, solution, file, original, bytes);
+            Console.WriteLine($"[multiAgent] scopes: plain {plain.ProjectsPlanned} project(s) {plain.TestsSelected?.ToString() ?? "?"} test(s); directory {scopes[0].ProjectsPlanned}; project {scopes[1].ProjectsPlanned}; --no-build {scopes[2].Mode}; --all {whole.TestsSelected?.ToString() ?? "?"} test(s); refusal of {refusal.Arg}: {refusal.Refused}");
+            return (scopes, plain, whole, refusal);
+        }
+        finally
+        {
+            File.WriteAllBytes(file, bytes);
+        }
+    }
+
+    /// <summary>One scope form: the same body edit, the plan it makes, and the file restored for the next form.</summary>
+    private static async Task<ScopeOnlyRun> ScopeFormAsync(EvalRepo repo, string file, string original, byte[] bytes, string form, string arg, string[] testArgs)
+    {
+        await File.WriteAllTextAsync(file, BodyEdit(original, 1));
+        await Task.Delay(500);
+        var logStart = repo.EngineLogLines().Count;
+        var run = await repo.FuseTimedAsync(["test", .. testArgs]);
+        var counts = TestPlanCounts.Parse(run.Output, repo.EngineLogLines().Skip(logStart).ToList());
+        var mode = counts.MsbuildRuns > 0 ? "msbuild" : counts.ShadowRuns > 0 ? "shadow" : "none";
+        await File.WriteAllBytesAsync(file, bytes);
+        return new ScopeOnlyRun(form, arg, counts.ProjectsPlanned, TestPlanCounts.SelectedTests(run.Output), mode, run.Milliseconds);
+    }
+
+    /// <summary><c>fuse test --all</c> on the same edit: it plans no selection, so its counts come from its own summary.</summary>
+    private static async Task<ScopeOnlyRun> WholeRunAsync(EvalRepo repo, string file, string original, byte[] bytes)
+    {
+        await File.WriteAllTextAsync(file, BodyEdit(original, 1));
+        await Task.Delay(500);
+        var run = await repo.FuseTimedAsync("test", "--all");
+        var counts = TestPlanCounts.RunCounts(run.Output);
+        // Every --all run builds with MSBuild, and its summary names how many test projects it ran.
+        var projects = WholeRunProjects().Match(run.Output) is { Success: true } match
+            ? int.Parse(match.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture)
+            : 0;
+        await File.WriteAllBytesAsync(file, bytes);
+        return new ScopeOnlyRun("all", "--all", projects, counts.Failed + counts.Passed + counts.Skipped, "msbuild", run.Milliseconds);
+    }
+
+    /// <summary>One scope that names no test project: a code project's directory the product refuses with exit code 2.</summary>
+    private static async Task<ScopeRefusal> ScopeRefusalAsync(EvalRepo repo, SolutionInfo solution, string file, string original, byte[] bytes)
+    {
+        var directory = solution.CodeProjects
+            .Select(p => Path.GetDirectoryName(p)!)
+            .Order(StringComparer.Ordinal)
+            .FirstOrDefault(d => solution.TestProjects.All(t => !t.StartsWith(d + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)))
+            ?? throw new InvalidOperationException($"the scopes scenario needs a directory that names no test project; found none in {solution.Root}");
+        var arg = Path.GetRelativePath(repo.Root, directory).Replace('\\', '/');
+        await File.WriteAllTextAsync(file, BodyEdit(original, 1));
+        await Task.Delay(500);
+        var run = await repo.FuseTimedAsync("test", arg);
+        await File.WriteAllBytesAsync(file, bytes);
+        return new ScopeRefusal(arg, run.ExitCode == 2, run.ExitCode);
     }
 
     /// <summary>
@@ -444,4 +567,7 @@ internal static partial class MultiAgentScenario
 
     [GeneratedRegex(@"check: .*\((\d+) with errors reused from an earlier check\)", RegexOptions.CultureInvariant)]
     private static partial Regex Reused();
+
+    [GeneratedRegex(@"ran every test in (\d+) test project\(s\)", RegexOptions.CultureInvariant)]
+    private static partial Regex WholeRunProjects();
 }

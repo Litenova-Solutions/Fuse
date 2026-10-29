@@ -32,6 +32,13 @@ internal static class HookCommand
 
     public static async Task<int> RunAsync(string[] args, CancellationToken cancellationToken)
     {
+        // Help names no harness or event; it prints the usage the same way an unknown one does.
+        if (args.Contains("--help") || args.Contains("-h"))
+        {
+            await Console.Error.WriteLineAsync(Usage).ConfigureAwait(false);
+            return 0;
+        }
+
         if (args.Length < 2 || SupportedHarnesses.Find(args[0]) is not { } harness || args[1] is not (HookEvent.PostEdit or HookEvent.PreShell or HookEvent.Stop))
         {
             await Console.Error.WriteLineAsync(Usage).ConfigureAwait(false);
@@ -108,9 +115,51 @@ internal static class HookCommand
         // errors its own edits cause; one harness's ids never meet another's, because each is prefixed with its name.
         var background = harness.RunsPostEditInBackground;
         var session = payload.Session is { } id ? $"{harness.Name}:{id}" : null;
-        var (result, response) = await CheckOperation.RunAsync(
-            root, files, session, waitForLoad: background, compilationWideAnalyzers: false, background ? LongWait : TimeSpan.FromSeconds(50), cancellationToken).ConfigureAwait(false);
-        return ShouldReport(result, response) ? harness.ReportAfterEdit(result.Text) : HookAnswer.None;
+        var started = Environment.TickCount64;
+        TimeSpan Remaining() => LongWait - TimeSpan.FromMilliseconds(Environment.TickCount64 - started);
+        Task<(OperationResult Result, EngineResponse Response)> Check(CancellationToken ct) => CheckOperation.RunAsync(
+            root, files, session, waitForLoad: background, compilationWideAnalyzers: false, background ? Remaining() : TimeSpan.FromSeconds(50), ct, includeNonCSharp: false);
+        return await PostEditAsync(harness, Check, Remaining, message => Log(root.Path, message), cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    ///     Answers a post-edit event from at most two checks. A harness that runs the hook in the background delivers its
+    ///     answer late, so an answer with errors is confirmed against the tree as it stands before it is returned, and
+    ///     dropped when the current tree no longer reports it. A hook the harness runs inline answers from one check.
+    /// </summary>
+    /// <param name="harness">The harness the answer is for.</param>
+    /// <param name="check">Runs one check of the edited files; production passes a closure over <see cref="CheckOperation"/>.</param>
+    /// <param name="remaining">How much of <see cref="LongWait"/> is left; with none left the answer is dropped, not confirmed.</param>
+    /// <param name="log">Writes one line to <c>hook.log</c> for every confirmed delivery and every drop.</param>
+    /// <param name="cancellationToken">Cancels the checks.</param>
+    internal static async Task<HookAnswer> PostEditAsync(
+        Harness harness,
+        Func<CancellationToken, Task<(OperationResult Result, EngineResponse Response)>> check,
+        Func<TimeSpan> remaining,
+        Action<string> log,
+        CancellationToken cancellationToken)
+    {
+        var (result, response) = await check(cancellationToken).ConfigureAwait(false);
+        if (!harness.RunsPostEditInBackground || !ShouldReport(result, response))
+            return ShouldReport(result, response) ? harness.ReportAfterEdit(result.Text) : HookAnswer.None;
+        // The first answer was true when computed; only a second check against the current tree says it still is. When it
+        // cannot answer, the answer is dropped: the stop hook checks every change before the agent may finish.
+        var first = SummaryLine(result.Text);
+        if (remaining() <= TimeSpan.Zero)
+        {
+            log($"{harness.Name} post-edit dropped: {first} (a check of the current tree did not report it)");
+            return HookAnswer.None;
+        }
+
+        var (confirmed, confirmation) = await check(cancellationToken).ConfigureAwait(false);
+        if (ShouldReport(confirmed, confirmation))
+        {
+            log($"{harness.Name} post-edit delivered: {SummaryLine(confirmed.Text)}");
+            return harness.ReportAfterEdit(confirmed.Text);
+        }
+
+        log($"{harness.Name} post-edit dropped: {first} (a check of the current tree did not report it)");
+        return HookAnswer.None;
     }
 
     private static async Task<HookAnswer> StopAsync(Harness harness, HookPayload payload, CancellationToken cancellationToken)
@@ -127,6 +176,8 @@ internal static class HookCommand
         var (result, response) = await CheckOperation.RunAsync(root, null, session, waitForLoad: true, compilationWideAnalyzers: true, LongWait, cancellationToken).ConfigureAwait(false);
         if (!ShouldReport(result, response))
             return harness.AllowStop();
+        // A stop that blocks is told apart from a background post-edit the harness delivers late by this line.
+        Log(root.Path, $"{harness.Name} stop blocked: {SummaryLine(result.Text)}");
         // A missing restore is not an error the changes introduced; its message already names the command to run.
         if (result.Outcome != Outcome.ProblemsFound)
             return harness.BlockStop(result.Text);
@@ -153,6 +204,9 @@ internal static class HookCommand
     /// </summary>
     private static bool ShouldReport(OperationResult result, EngineResponse response) =>
         result.Outcome == Outcome.ProblemsFound || response is EngineResponse.Unanswered { Code: ErrorCode.RestoreNeeded };
+
+    /// <summary>The last line of a check's output: its summary, which names what was found.</summary>
+    private static string SummaryLine(string text) => text[(text.LastIndexOf('\n') + 1)..];
 
     /// <summary>Writes <paramref name="answer"/> where the harness reads it and returns its exit code.</summary>
     private static int Write(HookAnswer answer)

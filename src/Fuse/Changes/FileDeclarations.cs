@@ -260,7 +260,26 @@ internal sealed class FileDeclarations
 
     private static string Qualify(string container, string name) => container.Length == 0 ? name : container + "." + name;
 
-    /// <summary>Text of a node with all trivia collapsed, so formatting and comments never register as changes.</summary>
+    /// <summary>
+    ///     The parameter list of a method-like declaration as its tokens read, names and defaults included, or empty when
+    ///     the node declares no parameter list. The surface leaves names and defaults out, but the shadow emitter compares
+    ///     them: callers inline defaults and can name parameters.
+    /// </summary>
+    internal static string FlatParameters(SyntaxNode node)
+    {
+        BaseParameterListSyntax? list = node switch
+        {
+            MethodDeclarationSyntax method => method.ParameterList,
+            ConstructorDeclarationSyntax ctor => ctor.ParameterList,
+            OperatorDeclarationSyntax op => op.ParameterList,
+            ConversionOperatorDeclarationSyntax conversion => conversion.ParameterList,
+            IndexerDeclarationSyntax indexer => indexer.ParameterList,
+            DelegateDeclarationSyntax del => del.ParameterList,
+            _ => null,
+        };
+        return Flat(list);
+    }
+
     /// <summary>
     ///     The node's tokens separated by single spaces. A line break inside a token, in a multi-line string, reads as LF,
     ///     because a checkout with <c>core.autocrlf</c> writes CRLF where HEAD has LF and that is not an edit

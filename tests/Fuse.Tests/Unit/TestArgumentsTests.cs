@@ -3,8 +3,8 @@ using Fuse.Operations;
 namespace Fuse.Tests.Unit;
 
 /// <summary>
-///     How `fuse test` spells a positional project, solution or directory path for `dotnet test`, which refuses the
-///     positional form on Microsoft.Testing.Platform.
+///     How `fuse test` spells a positional project or solution path for `dotnet test`, which refuses the positional
+///     form on Microsoft.Testing.Platform. A directory stays positional, which `dotnet test` reads as the project it holds.
 /// </summary>
 public class TestArgumentsTests
 {
@@ -15,12 +15,12 @@ public class TestArgumentsTests
             ["--project", "tests/Lib.Tests/Lib.Tests.csproj", "--no-restore"],
             TestOperation.NormalizeArguments(Path.GetTempPath(), ["tests/Lib.Tests/Lib.Tests.csproj", "--no-restore"]));
         Assert.Equal(
-            ["--solution", "NightHall.slnx"],
-            TestOperation.NormalizeArguments(Path.GetTempPath(), ["NightHall.slnx"]));
+            ["--solution", "Shop.slnx"],
+            TestOperation.NormalizeArguments(Path.GetTempPath(), ["Shop.slnx"]));
     }
 
     [Fact]
-    public void A_positional_directory_that_exists_is_a_project()
+    public void A_positional_directory_is_a_project_on_the_platform_and_stays_positional_on_vstest()
     {
         var root = Directory.CreateTempSubdirectory("fuse-test-args");
         try
@@ -33,6 +33,12 @@ public class TestArgumentsTests
             Assert.Equal(
                 ["--project", tests.FullName, "--no-build"],
                 TestOperation.NormalizeArguments(root.FullName, [tests.FullName, "--no-build"]));
+            Assert.Equal(
+                ["Lib.Tests"],
+                TestOperation.NormalizeArguments(root.FullName, ["Lib.Tests"], testingPlatform: false));
+            Assert.Equal(
+                ["Lib.Tests/Lib.Tests.csproj", "--no-build"],
+                TestOperation.NormalizeArguments(root.FullName, ["Lib.Tests/Lib.Tests.csproj", "--no-build"], testingPlatform: false));
         }
         finally
         {

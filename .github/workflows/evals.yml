@@ -11,7 +11,7 @@ name: Evals
 #
 # The correctness and selection suites run in evals-suite.yml, called once per suite and repository: truth jobs split
 # into shards, then a measure job. Each call waits only for its own truth, so a small repository's results do not wait
-# for the Community Toolkit's truth. The truth does not change while the repository's tree, the seed, the SDK and the eval
+# for a large repository's truth. The truth does not change while the repository's tree, the seed, the SDK and the eval
 # code stay the same, so it is kept in the Actions cache and a later run skips those jobs.
 #
 # Each measure job and each latency merge job uploads evals-<repo>-<suite>: results/ holds the file to commit to evals/results,
@@ -25,6 +25,10 @@ name: Evals
 # The analyzers suite is lighter still: one job generates a small repository whose analyzer reads the whole project at
 # error severity, measures the post-edit hook, checks of one and twenty files and the engine's memory, and uploads
 # evals-analyzer-fixture-analyzers. The evals label runs it with the latency suite.
+#
+# The scale suite is check-only on a generated large tree: one job generates thousands of files, changes a quarter of
+# them, and measures one cold check and the engine's memory, uploading evals-scale-fixture-scale. Like attribution, it
+# runs only when the suites input names it.
 
 on:
   pull_request:
@@ -32,17 +36,21 @@ on:
   workflow_dispatch:
     inputs:
       repos:
-        description: Repositories to measure, as a JSON array (FluentValidation, NodaTime, Jellyfin, CommunityToolkit, or fixture for the generated solution).
-        default: '["FluentValidation", "NodaTime", "Jellyfin", "CommunityToolkit"]'
+        description: Repositories to measure, as a JSON array (FluentValidation, NodaTime, Jellyfin, Polly, or fixture for the generated solution).
+        default: '["FluentValidation", "NodaTime", "Jellyfin", "Polly"]'
         required: true
       suites:
-        description: Suites to run, as a JSON array (correctness, selection, latency, attribution, analyzers).
+        description: Suites to run, as a JSON array (correctness, selection, latency, attribution, analyzers, scale).
         default: '["correctness", "selection", "latency"]'
         required: true
       fresh-truth:
         description: Ignore the cached truth and run the real dotnet build and dotnet test again, as after a flaky test.
         type: boolean
         default: false
+      latency_parts:
+        description: Latency parts to run, as a JSON array (main, agents). One part alone skips the merge, for a quicker look at one scenario.
+        default: '["main", "agents"]'
+        required: false
 
 permissions:
   contents: read
@@ -61,37 +69,39 @@ jobs:
       latency: ${{ steps.matrix.outputs.latency }}
       attribution: ${{ steps.matrix.outputs.attribution }}
       analyzers: ${{ steps.matrix.outputs.analyzers }}
+      scale: ${{ steps.matrix.outputs.scale }}
       measure: ${{ steps.matrix.outputs.measure }}
     steps:
       - id: matrix
         shell: python
         env:
-          REPOS: ${{ inputs.repos || '["FluentValidation", "NodaTime", "Jellyfin", "CommunityToolkit"]' }}
+          REPOS: ${{ inputs.repos || '["FluentValidation", "NodaTime", "Jellyfin", "Polly"]' }}
           SUITES: ${{ inputs.suites || '["latency", "analyzers"]' }}
         run: |
           import json, os
           repos = json.loads(os.environ["REPOS"])
           suites = json.loads(os.environ["SUITES"])
-          # Truth shards per repository, from the 5.4.0 run's dotnet times. A selection case on the Community Toolkit
-          # takes about 15 minutes of dotnet test and HEAD's full run as long, so each of its 10 cases and HEAD get a
-          # shard of their own. A Jellyfin case takes about 4 minutes and HEAD 14, so its shards hold two cases each. A
+          # Truth shards per repository, from the 5.4.0 run's dotnet times; Polly's are a first estimate, to rebalance
+          # from its first run's truth job times. A Jellyfin case takes about 4 minutes and HEAD 14, so its shards hold two cases each. A
           # correctness case is one build, so its shards hold about eight cases on the larger repositories.
           shards = {
-              "correctness": {"fixture": 1, "FluentValidation": 1, "NodaTime": 2, "Jellyfin": 4, "CommunityToolkit": 4},
-              "selection": {"fixture": 1, "FluentValidation": 1, "NodaTime": 4, "Jellyfin": 6, "CommunityToolkit": 11},
+              "correctness": {"fixture": 1, "FluentValidation": 1, "NodaTime": 2, "Jellyfin": 4, "Polly": 2},
+              "selection": {"fixture": 1, "FluentValidation": 1, "NodaTime": 4, "Jellyfin": 6, "Polly": 4},
           }
           staged = [s for s in ("correctness", "selection") if s in suites]
           latency = [r for r in repos] if "latency" in suites else []
           attribution = [r for r in repos] if "attribution" in suites else []
           analyzers = "analyzers" in suites
+          scale = "scale" in suites
           # One call of evals-suite.yml per suite and repository, so a repository's measure job waits only for its own
           # truth. Jobs start in matrix order when the runners are all busy, so the longest go first: selection before
           # correctness, and the largest repositories first.
-          order = {"CommunityToolkit": 0, "Jellyfin": 1, "NodaTime": 2, "FluentValidation": 3, "fixture": 4}
+          order = {"Jellyfin": 0, "NodaTime": 1, "Polly": 2, "FluentValidation": 3, "fixture": 4}
           measure = [{"suite": s, "repo": r, "shards": shards[s].get(r, 1), "shard_list": json.dumps(list(range(shards[s].get(r, 1))))} for s in staged for r in repos]
           measure.sort(key=lambda m: (m["suite"] != "selection", order.get(m["repo"], 4)))
           with open(os.environ["GITHUB_OUTPUT"], "a") as out:
               out.write(f"analyzers={str(analyzers).lower()}\n")
+              out.write(f"scale={str(scale).lower()}\n")
               for name, value in (("latency", latency), ("attribution", attribution), ("measure", measure)):
                   out.write(f"{name}={json.dumps(value)}\n")
                   print(f"{name}: {json.dumps(value)}")
@@ -133,7 +143,7 @@ jobs:
       fail-fast: false
       matrix:
         repo: ${{ fromJSON(needs.plan.outputs.latency) }}
-        part: [main, agents]
+        part: ${{ fromJSON(inputs.latency_parts || '["main", "agents"]') }}
     defaults:
       run:
         shell: bash
@@ -186,6 +196,17 @@ jobs:
           New-Item -ItemType Directory -Force out | Out-Null
           "runner: $env:ImageOS $env:ImageVersion`ncpu: $cpu, $cores logical processors`nmemory: $memory GB`nsdk: $(dotnet --version)`ncommit: $env:GITHUB_SHA" | Set-Content out/runner.txt
           Get-Content out/runner.txt
+      - name: Keep the engine logs
+        if: always()
+        # The engine log and hook log of every repository the run used, so a failed or slow scenario can be read
+        # without running it again.
+        run: |
+          mkdir -p out/engine-logs
+          for d in "$(cygpath -u "$LOCALAPPDATA")"/fuse/repos/*/; do
+            [ -d "$d" ] || continue
+            n=$(basename "$d"); mkdir -p "out/engine-logs/$n"
+            cp "$d"engine.log "$d"hook.log "$d"root "out/engine-logs/$n/" 2>/dev/null || true
+          done
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -265,10 +286,41 @@ jobs:
           path: out/
           if-no-files-found: error
 
+  scale:
+    name: scale on the scale fixture
+    needs: [plan, build]
+    if: needs.plan.outputs.scale == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - uses: actions/download-artifact@v8
+        with:
+          name: build
+      - *identity
+      - name: Run scale with the native client
+        run: |
+          $EVALS scale scale-fixture --fuse "$(cygpath -w "$PWD/artifacts/native/fuse.exe")"
+          mkdir -p out/results
+          git ls-files --others --exclude-standard evals/results | xargs -I{} mv {} out/results/
+      - *runner
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: evals-scale-fixture-scale
+          path: out/
+          if-no-files-found: error
+
   latency-merge:
     name: merge latency on ${{ matrix.repo }}
     needs: [plan, latency]
-    if: ${{ !cancelled() && needs.plan.outputs.latency != '[]' }}
+    if: ${{ !cancelled() && needs.plan.outputs.latency != '[]' && (!inputs.latency_parts || (contains(inputs.latency_parts, 'main') && contains(inputs.latency_parts, 'agents'))) }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -290,7 +342,9 @@ jobs:
           main_file = glob.glob("main/results/*.json")[0]
           main = json.load(open(main_file))
           agents = json.load(open(glob.glob("agents/results/*.json")[0]))
-          if agents["fuseBuild"] != main["fuseBuild"] or agents["commit"] != main["commit"]:
+          # The generated fixture is committed again in each job, so only a pinned repository's commits can match.
+          same_commit = agents["commit"] == main["commit"] or "${{ matrix.repo }}" == "fixture"
+          if agents["fuseBuild"] != main["fuseBuild"] or not same_commit:
               raise SystemExit("the two latency parts measured different builds or commits")
           main["part"] = "all"
           main["multiAgent"] = agents["multiAgent"]

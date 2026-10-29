@@ -55,12 +55,19 @@ internal sealed class GitBlobReader : IDisposable
         if (header.EndsWith(" missing", StringComparison.Ordinal) || header.EndsWith(" ambiguous", StringComparison.Ordinal))
             return null;
         var parts = header.Split(' ');
-        if (parts.Length != 3 || parts[1] != "blob" || !int.TryParse(parts[2], out var size))
+        if (parts.Length != 3 || !int.TryParse(parts[2], out var size))
+        {
+            // A header that does not parse leaves the stream at an unknown place, so the next read starts a new process.
+            Stop();
             return null;
+        }
+
+        // Git sends the content of any object the path names, a directory's tree included. It is read either way, so
+        // the next header is where the next read looks for it.
         var content = new byte[size];
         stdout.ReadExactly(content);
         stdout.ReadByte(); // The trailing newline after the content.
-        return content;
+        return parts[1] == "blob" ? content : null;
     }
 
     private static string ReadLine(Stream stream)

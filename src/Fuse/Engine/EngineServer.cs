@@ -1,6 +1,7 @@
 using System.IO.Pipes;
 using System.Runtime.InteropServices;
 using System.Text;
+using Fuse.Check;
 using Fuse.Failures;
 using Fuse.Paths;
 using Fuse.Protocol;
@@ -104,12 +105,13 @@ internal static class EngineServer
         }
     }
 
-    /// <summary>Records this repository's root and removes the engine copies and state directories nothing uses.</summary>
+    /// <summary>Records this repository's root and removes the engine copies, the stored baselines and the state directories nothing uses.</summary>
     private static void CleanUpLocalState(RepoRoot root, EngineLog log)
     {
         try
         {
             LocalState.RecordRoot(root);
+            BaselineStore.Prune(root.StateDirectory);
             LocalState.RemoveUnusedEngineCopies(LocalState.EngineCopies, AppContext.BaseDirectory, DateTime.UtcNow);
             var removed = LocalState.RemoveStateOfMissingRepositories(LocalState.Repositories, DateTime.UtcNow);
             if (removed > 0)

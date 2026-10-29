@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
+using Fuse.Dotnet;
 
 namespace Fuse.Evals;
 
@@ -105,6 +106,9 @@ internal sealed partial class SolutionInfo
     private static bool IsTestProject(string project)
     {
         var text = File.ReadAllText(project);
+        // A project that says it is not a test project, such as Polly's Snippets, runs no tests and prints no results.
+        if (text.Contains("<IsTestProject>false", StringComparison.OrdinalIgnoreCase))
+            return false;
         return text.Contains("Microsoft.NET.Test.Sdk", StringComparison.OrdinalIgnoreCase)
                || text.Contains("xunit", StringComparison.OrdinalIgnoreCase)
                || text.Contains("NUnit", StringComparison.OrdinalIgnoreCase)
@@ -115,34 +119,12 @@ internal sealed partial class SolutionInfo
     }
 
     /// <summary>
-    ///     True when the project runs its tests on Microsoft.Testing.Platform, from the project file or from a
-    ///     <c>global.json</c> test runner at or above it. That runner is a separate executable, not VSTest, so it ignores
-    ///     <c>--logger trx</c> and the run contributes no results to compare against.
+    ///     True when the project runs its tests on Microsoft.Testing.Platform, from the <c>global.json</c> test runner
+    ///     nearest to it, the same runner <c>dotnet test</c> itself would use. That runner is a separate executable, not
+    ///     VSTest, so it ignores <c>--logger trx</c> and the run's results come from its output instead.
     /// </summary>
-    public static bool IsMicrosoftTestingPlatform(string project)
-    {
-        if (File.ReadAllText(project).Contains("UseMicrosoftTestingPlatformRunner", StringComparison.OrdinalIgnoreCase))
-            return true;
-        for (var dir = Path.GetDirectoryName(project); dir is not null; dir = Path.GetDirectoryName(dir))
-        {
-            var global = Path.Combine(dir, "global.json");
-            if (!File.Exists(global))
-                continue;
-            try
-            {
-                using var document = System.Text.Json.JsonDocument.Parse(File.ReadAllText(global));
-                if (document.RootElement.TryGetProperty("test", out var test) && test.ValueKind is System.Text.Json.JsonValueKind.Object
-                    && test.TryGetProperty("runner", out var runner) && runner.GetString() == "Microsoft.Testing.Platform")
-                    return true;
-            }
-            catch (System.Text.Json.JsonException)
-            {
-                // A global.json the evals cannot read says nothing about the runner; treat it as VSTest.
-            }
-        }
-
-        return false;
-    }
+    public static bool IsMicrosoftTestingPlatform(string project, string root) =>
+        GlobalJson.UsesTestingPlatform(Path.GetDirectoryName(project)!, root);
 
     [GeneratedRegex(@"<ProjectReference\s+Include=""([^""]+)""")]
     private static partial Regex ProjectReference();

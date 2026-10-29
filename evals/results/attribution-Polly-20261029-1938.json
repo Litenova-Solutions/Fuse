@@ -1,0 +1,77 @@
+{
+  "suite": "attribution",
+  "repo": "Polly",
+  "commit": "31d7ac300743b10163d00ef72fccea88f3acabad",
+  "fuseBuild": "5.7.0/e61235320b09466ba67a805c5c71bfb0",
+  "pairs": [
+    {
+      "renamedIn": "src/Polly.Core/CircuitBreaker/CircuitBreakerManualControl.cs",
+      "method": "IsolateAsync",
+      "brokenIn": "bench/Polly.Core.Benchmarks/Utils/Helper.CircuitBreaker.cs",
+      "ownWithoutSessions": 11,
+      "otherWithoutSessions": 2,
+      "ownWithSessions": 11,
+      "otherWithSessions": 0,
+      "leftToOtherSessions": 2,
+      "msWithoutSessions": 277.531,
+      "msWithSessions": 867.0031
+    },
+    {
+      "renamedIn": "src/Polly.Core/CircuitBreaker/CircuitBreakerManualControl.cs",
+      "method": "IsolateAsync",
+      "brokenIn": "src/Snippets/Docs/CircuitBreaker.cs",
+      "ownWithoutSessions": 11,
+      "otherWithoutSessions": 2,
+      "ownWithSessions": 11,
+      "otherWithSessions": 0,
+      "leftToOtherSessions": 2,
+      "msWithoutSessions": 166.1725,
+      "msWithSessions": 752.8851
+    },
+    {
+      "renamedIn": "src/Polly.Core/CircuitBreaker/CircuitBreakerManualControl.cs",
+      "method": "IsolateAsync",
+      "brokenIn": "src/Snippets/Docs/Migration.CircuitBreaker.cs",
+      "ownWithoutSessions": 11,
+      "otherWithoutSessions": 2,
+      "ownWithSessions": 11,
+      "otherWithSessions": 0,
+      "leftToOtherSessions": 2,
+      "msWithoutSessions": 104.708,
+      "msWithSessions": 705.0141
+    }
+  ],
+  "external": [
+    {
+      "renamedIn": "src/Polly.Core/CircuitBreaker/CircuitBreakerManualControl.cs",
+      "method": "IsolateAsync",
+      "brokenIn": "bench/Polly.Core.Benchmarks/Utils/Helper.CircuitBreaker.cs",
+      "otherWithRegistration": 0,
+      "blockedWhileRegistered": true,
+      "blockedAfterEnd": true,
+      "expiredShielding": null,
+      "msWithRegistration": 552.0768,
+      "msAfterEnd": 81.0025,
+      "note": null
+    }
+  ],
+  "externalSkipped": null,
+  "ownWithoutSessions": 33,
+  "otherWithoutSessions": 6,
+  "ownWithSessions": 33,
+  "otherWithSessions": 0,
+  "leftToOtherSessions": 6,
+  "msWithoutSessions": {
+    "p50": 166.2,
+    "p95": 277.5,
+    "max": 277.5,
+    "n": 3
+  },
+  "msWithSessions": {
+    "p50": 752.9,
+    "p95": 867,
+    "max": 867,
+    "n": 3
+  },
+  "treeCleanAfter": true
+}

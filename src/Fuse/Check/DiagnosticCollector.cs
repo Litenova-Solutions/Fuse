@@ -16,11 +16,14 @@ internal sealed class DiagnosticCollector
 {
     private readonly RepoRoot _root;
     private readonly AnalyzerSelector _analyzers;
+    private readonly BaselineStore _store;
     private readonly ConcurrentDictionary<RepoPath, BaselineFile> _baselineFiles = new();
     private readonly ConcurrentDictionary<ProjectId, IReadOnlyList<CompilerError>> _baselineProjects = new();
     private readonly CompilationAnalyses _analyses = new();
-    private int _cachedGeneration = -1;
+    private volatile int _cachedGeneration = -1;
     private readonly Func<int> _configurationGeneration;
+    private int _storeLookups;
+    private int _storeHits;
 
     /// <summary>The compiler and per-file analyzer errors of each working-tree file at the last check that bound it, by the key they were found under.</summary>
     private readonly ConcurrentDictionary<DocumentId, CachedFile> _currentFiles = new();
@@ -72,6 +75,7 @@ internal sealed class DiagnosticCollector
         _leftOut.Clear();
         TakeReused();
         TakeBindParts();
+        TakeBaselineReport();
     }
 
     /// <summary>
@@ -99,6 +103,15 @@ internal sealed class DiagnosticCollector
         _root = root;
         _configurationGeneration = configurationGeneration;
         _analyzers = new AnalyzerSelector(configurationGeneration, log);
+        _store = new BaselineStore(root, log);
+    }
+
+    /// <summary>How many stored baseline results the current check read, and how many it computed instead, for the engine log.</summary>
+    public (int Stored, int Computed) TakeBaselineReport()
+    {
+        var lookups = Interlocked.Exchange(ref _storeLookups, 0);
+        var hits = Interlocked.Exchange(ref _storeHits, 0);
+        return (hits, lookups - hits);
     }
 
     /// <summary>How many working-tree files had their errors reused since the last call, for the engine log.</summary>
@@ -157,19 +170,36 @@ internal sealed class DiagnosticCollector
     ///     and the deadline the check runs on the working tree. A result whose analyzers finished is cached until the
     ///     baseline changes; one that ran the compilation-wide analyzers also serves a check that leaves them out.
     /// </summary>
+    /// <param name="baselineKey">The store key of this baseline, or null when nothing is kept for it.</param>
     /// <returns>
     ///     HEAD's errors in the file, and whether its analyzers finished. When they did not, an analyzer error the working
     ///     tree has there cannot be told from one HEAD has.
     /// </returns>
-    public async Task<(IReadOnlyList<CompilerError> Errors, bool AnalyzersFinished)> ForBaselineFileAsync(Solution baseline, int generation, RepoPath path, CancellationToken cancellationToken)
+    public async Task<(IReadOnlyList<CompilerError> Errors, bool AnalyzersFinished)> ForBaselineFileAsync(Solution baseline, int generation, RepoPath path, CancellationToken cancellationToken, string? baselineKey = null)
     {
         ForgetOlderBaseline(generation);
         var compilationWide = _run.CompilationWide;
         if (_baselineFiles.TryGetValue(path, out var cached) && (cached.CompilationWide || !compilationWide))
             return (cached.Errors, true);
+        if (baselineKey is not null)
+        {
+            Interlocked.Increment(ref _storeLookups);
+            if (_store.TryReadFile(baselineKey, path) is { } stored && (stored.CompilationWide || !compilationWide))
+            {
+                Interlocked.Increment(ref _storeHits);
+                _baselineFiles[path] = new BaselineFile(stored.Errors, stored.CompilationWide);
+                return (stored.Errors, true);
+            }
+        }
+
         var (errors, finished) = await ForFileAsync(baseline, path, baseline: true, cancellationToken).ConfigureAwait(false);
         if (finished)
+        {
             _baselineFiles[path] = new BaselineFile(errors, compilationWide);
+            if (baselineKey is not null)
+                _store.WriteFile(baselineKey, path, errors, compilationWide);
+        }
+
         return (errors, finished);
     }
 
@@ -177,25 +207,84 @@ internal sealed class DiagnosticCollector
     ///     Same as <see cref="ForProjectAsync(Project, CancellationToken)"/> against the baseline, under the check's
     ///     deadline. A result whose analyzers finished is cached until the baseline changes.
     /// </summary>
+    /// <param name="baselineKey">The store key of this baseline, or null when nothing is kept for it.</param>
     /// <returns>HEAD's errors in the project, and whether its analyzers finished.</returns>
-    public async Task<(IReadOnlyList<CompilerError> Errors, bool AnalyzersFinished)> ForBaselineProjectAsync(Project project, int generation, CancellationToken cancellationToken)
+    public async Task<(IReadOnlyList<CompilerError> Errors, bool AnalyzersFinished)> ForBaselineProjectAsync(Project project, int generation, CancellationToken cancellationToken, string? baselineKey = null)
     {
         ForgetOlderBaseline(generation);
         if (_baselineProjects.TryGetValue(project.Id, out var cached))
             return (cached, true);
+        var storedKey = baselineKey is null ? null : _store.ProjectKeyFor(project);
+        if (baselineKey is not null && storedKey is not null)
+        {
+            Interlocked.Increment(ref _storeLookups);
+            if (_store.TryReadProject(baselineKey, storedKey) is { } stored)
+            {
+                Interlocked.Increment(ref _storeHits);
+                _baselineProjects[project.Id] = stored;
+                return (stored, true);
+            }
+        }
+
         var (errors, finished) = await ForProjectAsync(project, baseline: true, cancellationToken).ConfigureAwait(false);
         if (finished)
+        {
             _baselineProjects[project.Id] = errors;
+            if (baselineKey is not null && storedKey is not null)
+                _store.WriteProject(baselineKey, storedKey, errors);
+        }
+
         return (errors, finished);
     }
 
     /// <summary>
+    ///     Runs the compilation-wide analyzers over <paramref name="baselineProject"/>, for the background warm after HEAD
+    ///     moved, so the first check that needs their result finds it running or done instead of starting it. It fills the
+    ///     same shared runs a check waits for (<see cref="CompilationAnalyses"/>); a check of the same compilation waits
+    ///     for them instead of starting its own.
+    /// </summary>
+    /// <returns>True when the project has compilation-wide analyzers that were warmed.</returns>
+    public async Task<bool> WarmBaselineProjectAsync(Project baselineProject, int generation, CancellationToken shutdown)
+    {
+        ForgetOlderBaseline(generation);
+        if (generation != _cachedGeneration)
+            return false;
+        var compilation = await baselineProject.GetCompilationAsync(shutdown).ConfigureAwait(false);
+        if (compilation is null)
+            return false;
+        var withAnalyzers = _analyzers.For(baselineProject, compilation);
+        if (withAnalyzers is null)
+            return false;
+        if (await FirstModelAsync(baselineProject, shutdown).ConfigureAwait(false) is not { } probe)
+            return false;
+        var plan = await _analyzers.PlanAsync(baselineProject, withAnalyzers, probe, shutdown).ConfigureAwait(false);
+        if (plan.CompilationWide.IsEmpty)
+            return false;
+        // The shutdown token stops the wait, never the run: a run outlives the warm that started it, as it outlives a check.
+        await CompilationWideAsync(baselineProject, baseline: true, withAnalyzers, plan.CompilationWideAnalyzers, shutdown).ConfigureAwait(false);
+        return true;
+    }
+
+    /// <summary>The semantic model of the project's first document, as the probe that plans its analyzers.</summary>
+    private static async Task<SemanticModel?> FirstModelAsync(Project project, CancellationToken cancellationToken)
+    {
+        foreach (var document in project.Documents)
+        {
+            if (await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false) is { } model)
+                return model;
+        }
+
+        return null;
+    }
+
+    /// <summary>
     ///     Empties both baseline caches, and stops the analyzer runs over the baseline, when <paramref name="generation"/>
-    ///     is not the baseline they were made for.
+    ///     is newer than the baseline they were made for. A generation older than the cached one is a warm that started
+    ///     before HEAD moved again, which must not clear what a newer baseline already cached or stop its runs.
     /// </summary>
     private void ForgetOlderBaseline(int generation)
     {
-        if (generation == _cachedGeneration)
+        if (generation <= _cachedGeneration)
             return;
         _baselineFiles.Clear();
         _baselineProjects.Clear();
@@ -344,7 +433,7 @@ internal sealed class DiagnosticCollector
             }
             else if (!plan.CompilationWide.IsEmpty)
             {
-                var all = await CompilationWideAsync(project, baseline, withAnalyzers, plan, analyzing.Token).ConfigureAwait(false);
+                var all = await CompilationWideAsync(project, baseline, withAnalyzers, plan.CompilationWideAnalyzers, analyzing.Token).ConfigureAwait(false);
                 result.AddRange(all.Where(d => d.Location.SourceTree == model.SyntaxTree).Select(d => (d, false)));
             }
 
@@ -364,7 +453,7 @@ internal sealed class DiagnosticCollector
     ///     the files of a check, and every later check until an edit makes a new compilation, share it, and it runs on past
     ///     the deadline of the check that started it (<see cref="CompilationAnalyses"/>).
     /// </summary>
-    private Task<ImmutableArray<Diagnostic>> CompilationWideAsync(Project project, bool baseline, CompilationWithAnalyzers analyzers, AnalyzerPlan plan, CancellationToken wait) =>
+    private Task<ImmutableArray<Diagnostic>> CompilationWideAsync(Project project, bool baseline, CompilationWithAnalyzers analyzers, ImmutableArray<DiagnosticAnalyzer> wide, CancellationToken wait) =>
         _analyses.RunAsync(
             project.Id,
             baseline,
@@ -375,7 +464,7 @@ internal sealed class DiagnosticCollector
                 var timer = System.Diagnostics.Stopwatch.GetTimestamp();
                 try
                 {
-                    return (await analyzers.GetAnalysisResultAsync(plan.CompilationWideAnalyzers, stop).ConfigureAwait(false)).GetAllDiagnostics();
+                    return (await analyzers.GetAnalysisResultAsync(wide, stop).ConfigureAwait(false)).GetAllDiagnostics();
                 }
                 finally
                 {

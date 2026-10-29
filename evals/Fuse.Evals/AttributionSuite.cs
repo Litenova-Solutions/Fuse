@@ -55,6 +55,7 @@ internal static partial class AttributionSuite
         var pairs = await PairsAsync(repo, solution, Pairs);
         if (pairs.Count == 0)
             throw new InvalidOperationException($"no public method in {repo.Root} has a caller in another project whose break the check reports");
+        var (external, externalSkipped) = await ExternalAsync(repo, solution);
         var summary = new
         {
             suite = "attribution",
@@ -62,6 +63,8 @@ internal static partial class AttributionSuite
             commit = await repo.HeadAsync(),
             fuseBuild = await repo.VersionAsync(),
             pairs,
+            external,
+            externalSkipped,
             ownWithoutSessions = pairs.Sum(p => p.OwnWithoutSessions),
             otherWithoutSessions = pairs.Sum(p => p.OtherWithoutSessions),
             ownWithSessions = pairs.Sum(p => p.OwnWithSessions),
@@ -121,6 +124,44 @@ internal static partial class AttributionSuite
         return result;
     }
 
+    /// <summary>
+    ///     One pair where the second writer is registered as an external session instead of sending hooks: its files count
+    ///     as that session's until the registration ends. A build without <c>fuse session</c> records null and a note.
+    /// </summary>
+    private static async Task<(List<ExternalWriterPair>? External, string? Skipped)> ExternalAsync(EvalRepo repo, SolutionInfo solution)
+    {
+        // Ending an unknown registration names it back when the command exists; without the command the usage answers.
+        var probe = await repo.FuseAsync("session", "end", "eval-probe-none");
+        if (!probe.Result.Output.Contains("no registered session named", StringComparison.Ordinal))
+            return (null, "no-session-command: this build has no fuse session, so no external writer ran");
+        foreach (var (renamedIn, method, brokenIn) in Candidates(solution).Take(4))
+        {
+            var renamedBytes = File.ReadAllBytes(renamedIn);
+            var brokenBytes = File.ReadAllBytes(brokenIn);
+            try
+            {
+                var renamed = RenameMethod(File.ReadAllText(renamedIn), method);
+                var broken = MultiAgentScenario.TextEdit(File.ReadAllText(brokenIn), MissingName);
+                if (renamed is null || broken == File.ReadAllText(brokenIn))
+                    continue;
+                await File.WriteAllTextAsync(renamedIn, renamed);
+                await File.WriteAllTextAsync(brokenIn, broken);
+                if (await MeasureExternalAsync(repo, renamedIn, method, brokenIn) is { } pair)
+                    return ([pair], null);
+            }
+            finally
+            {
+                File.WriteAllBytes(renamedIn, renamedBytes);
+                File.WriteAllBytes(brokenIn, brokenBytes);
+                await repo.FuseAsync("session", "end", "eval-ext");
+                // A check of the restored tree lets the engine forget the sessions that wrote these files.
+                await repo.FuseTimedAsync("check");
+            }
+        }
+
+        return (null, "no-candidate-pair: no public method has a caller in another project whose break the check reports");
+    }
+
     private static async Task<AttributionPair?> MeasureAsync(EvalRepo repo, string renamedIn, string method, string brokenIn, int index)
     {
         var ownOfA = $"'{method}'";
@@ -155,6 +196,46 @@ internal static partial class AttributionSuite
             aSessionMs + bSessionMs);
     }
 
+    /// <summary>
+    ///     Measures one external-writer pair: A's stop while the other writer's directory is registered to another session,
+    ///     and again after the registration ends. Null when A's check does not reach the other writer's file.
+    /// </summary>
+    private static async Task<ExternalWriterPair?> MeasureExternalAsync(EvalRepo repo, string renamedIn, string method, string brokenIn)
+    {
+        var ownOfA = $"'{method}'";
+        var relativeBroken = Path.GetRelativePath(repo.Root, brokenIn).Replace('\\', '/');
+
+        // Unmeasured checks first, so both arms find the projects loaded; the first also says whether the pair measures anything.
+        var reach = EvalRepo.ParseFuseErrors((await repo.FuseTimedAsync("check", renamedIn)).Output);
+        if (!reach.Any(e => e.StartsWith(relativeBroken + "(", StringComparison.Ordinal) && e.Contains(ownOfA, StringComparison.Ordinal)))
+            return null;
+        await repo.FuseTimedAsync("check", brokenIn);
+
+        // The external writer never sends a hook; its directory is registered as its session instead.
+        var pattern = Path.GetDirectoryName(relativeBroken)!.Replace('\\', '/') + "/**";
+        var begin = await repo.FuseAsync("session", "begin", "eval-ext", "--paths", pattern);
+        var note = begin.Result.ExitCode == 0 ? null : $"the registration was refused: {begin.Result.Output.Trim().Split('\n').Last().Trim()}";
+        const string sessionA = "eval-external-a";
+        await HookAsync(repo, sessionA, renamedIn);
+        var (blockedWhileRegistered, reasonWhileRegistered, msWithRegistration) = await StopAsync(repo, sessionA);
+        var otherWithRegistration = EvalRepo.ParseFuseErrors(reasonWhileRegistered).Count(e => e.Contains(MissingName, StringComparison.Ordinal));
+        await repo.FuseAsync("session", "end", "eval-ext");
+        var (blockedAfterEnd, _, msAfterEnd) = await StopAsync(repo, sessionA);
+        var pair = new ExternalWriterPair(
+            Path.GetRelativePath(repo.Root, renamedIn).Replace('\\', '/'),
+            method,
+            relativeBroken,
+            otherWithRegistration,
+            blockedWhileRegistered,
+            blockedAfterEnd,
+            null,
+            msWithRegistration,
+            msAfterEnd,
+            note);
+        Console.WriteLine($"[attribution] external {method} in {pair.RenamedIn}, {MissingName} in {pair.BrokenIn}: other while registered {otherWithRegistration}, blocked while registered {blockedWhileRegistered}, blocked after end {blockedAfterEnd}");
+        return pair;
+    }
+
     /// <summary>Runs the Claude Code post-edit hook for <paramref name="file"/>, from <paramref name="session"/> or from no session.</summary>
     private static async Task<(string Output, double Ms)> HookAsync(EvalRepo repo, string? session, string file)
     {
@@ -170,6 +251,22 @@ internal static partial class AttributionSuite
         var watch = Stopwatch.StartNew();
         var result = await repo.FuseHookAsync("claude", "post-edit", System.Text.Json.JsonSerializer.Serialize(payload));
         return (result.Output, watch.Elapsed.TotalMilliseconds);
+    }
+
+    /// <summary>Runs the Claude Code stop hook from <paramref name="session"/> or from no session, and reads whether it blocked and why.</summary>
+    private static async Task<(bool Blocked, string Reason, double Ms)> StopAsync(EvalRepo repo, string? session)
+    {
+        var payload = new Dictionary<string, object>
+        {
+            ["hook_event_name"] = "Stop",
+            ["cwd"] = repo.Root,
+        };
+        if (session is not null)
+            payload["session_id"] = session;
+        var watch = Stopwatch.StartNew();
+        var result = await repo.FuseHookAsync("claude", "stop", System.Text.Json.JsonSerializer.Serialize(payload));
+        var (blocked, reason) = EvalRepo.ParseStopBlock(result.Output);
+        return (blocked, reason, watch.Elapsed.TotalMilliseconds);
     }
 
     /// <summary>

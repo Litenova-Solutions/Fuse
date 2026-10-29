@@ -7,8 +7,10 @@ namespace Fuse.Evals;
 
 /// <summary>
 ///     Renders <c>site/assets/benefits.svg</c>, the chart the README and the results page show, from the newest correctness and
-///     selection result of every pinned open-source repository. It has two panels: <c>fuse check</c> against <c>dotnet build</c>, and
-///     <c>fuse test</c> against <c>dotnet test</c>. Each panel has one cell per repository, drawn like the landing page's
+///     selection result of every pinned open-source repository, and below them three tables from the newest correctness,
+///     selection and latency results: check latency on a warm engine, accuracy against the real build and test run, and
+///     engine memory. The first two panels are <c>fuse check</c> against <c>dotnet build</c>, and
+///     <c>fuse test</c> against <c>dotnet test</c>. Each has one cell per repository on a card, drawn like the landing page's
 ///     lanes: the dotnet command at full length, Fuse at its median time as a share of that, each with its time, and under
 ///     them how many times faster Fuse is, then for each command the range from its fastest to its slowest case, its mean
 ///     and its P95, so the median is not shown without the spread behind it. A header names Fuse with its logo, what it
@@ -35,17 +37,26 @@ internal static class ChartRenderer
     private const int TopMargin = 40;
     private const int HeaderHeight = 92;
     private const int PanelSubtitleBaseline = 46;
-    private const int PanelGridTop = 80;
+    private const int PanelGridTop = 96;
     private const int FirstLaneCenter = 25;
     private const int LaneSpacing = 22;
     private const int SpeedupBaseline = 77;
     private const int StatsBaseline = 97;
     private const int StatsSpacing = 17;
-    private const int CellHeight = 118;
-    private const int RowPitch = 146;
+    private const int CellHeight = 126;
+    private const int RowPitch = 166;
     private const int PanelSpacing = 26;
     private const int NoteOffset = 42;
     private const int BottomMargin = 26;
+
+    // A cell's card reaches this far past its text on each side and above the repository name; it ends with the cell.
+    private const int CardPad = 16;
+    private const int CardTop = 28;
+
+    // A table panel: its header row's baseline below the subtitle, and the distance between rows.
+    private const int TableHeaderBaseline = 82;
+    private const int TableRowPitch = 28;
+    private const int TableBottom = 14;
 
     private const string Style = """
           .bg { fill: #fcfcfb; stroke: #e4e3de; }
@@ -71,7 +82,17 @@ internal static class ChartRenderer
           .track { fill: #ebeae6; }
           .fill-slow { fill: #b4b3ad; }
           .fill-fuse { fill: #6d4aff; }
+          .card { fill: #f2f1ee; }
+          .th { font-size: 12px; fill: #5b5a55; font-weight: 600; }
+          .td { font-size: 13.5px; fill: #0b0b0b; font-variant-numeric: tabular-nums; }
+          .td.good { fill: #5b3fd6; font-weight: 600; }
+          .row-rule { stroke: #e4e3de; }
           @media (prefers-color-scheme: dark) {
+            .card { fill: #22221f; }
+            .th { fill: #b9b8af; }
+            .td { fill: #f4f4f0; }
+            .td.good { fill: #9b85ff; }
+            .row-rule { stroke: #34332f; }
             .bg { fill: #1a1a19; stroke: #34332f; }
             .tagline, .repo-url { fill: #b9b8af; }
             .site { fill: #9b85ff; }
@@ -86,6 +107,10 @@ internal static class ChartRenderer
         """;
 
     private sealed record Panel(string Key, string Title, string FuseCommand, string DotnetCommand);
+
+    /// <summary>A panel drawn as a table: one row per repository, one column per measure, each cell already formatted.</summary>
+    /// <param name="Rows">Each repository with its cells, and for each cell whether it shows the best value (a zero count), drawn in the accent color.</param>
+    private sealed record Table(string Title, string Subtitle, string[] Columns, List<(string Repo, string[] Cells, bool[] Good)> Rows);
 
     private sealed record Row(Panel Panel, string Repo, string Detail, double Fuse, double Dotnet, CaseStats FuseStats, CaseStats DotnetStats)
     {
@@ -133,6 +158,19 @@ internal static class ChartRenderer
             y = gridTop + ((panelRows.Count - 1) / 2) * RowPitch + CellHeight;
         }
 
+        var tables = ReadTables(Path.Combine(fuseRoot, "evals", "results"));
+        foreach (var table in tables)
+        {
+            if (drawn++ > 0)
+            {
+                y += PanelSpacing;
+                body.Append(CultureInfo.InvariantCulture, $"""<line class="rule" x1="{PadX}" y1="{y}" x2="{Width - PadX}" y2="{y}"/>""").Append('\n');
+                y += PanelSpacing;
+            }
+
+            y = AppendTable(body, table, y);
+        }
+
         var noteY = y + NoteOffset;
         body.Append(CultureInfo.InvariantCulture, $"""<text class="note" x="{PadX}" y="{noteY}">Bars are medians over the eval cases: each dotnet bar is 100 percent, each Fuse bar its share of it.</text>""").Append('\n');
         body.Append(CultureInfo.InvariantCulture, $"""<text class="note" x="{PadX}" y="{noteY + 18}">Under them: fastest to slowest case, mean and P95. On GitHub Actions windows-latest runners.</text>""").Append('\n');
@@ -143,7 +181,7 @@ internal static class ChartRenderer
         return string.Create(CultureInfo.InvariantCulture, $"""
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {Width} {height}" width="{Width}" height="{height}" role="img" aria-labelledby="t d">
             <title id="t">Fuse compared with dotnet build and dotnet test (fuse.codes)</title>
-            <desc id="d">{Escape(Description(rows))}</desc>
+            <desc id="d">{Escape(Description(rows, tables))}</desc>
             <style>
             {Style}
             </style>
@@ -191,6 +229,9 @@ internal static class ChartRenderer
         var share = Math.Min(1, row.Fuse / row.Dotnet);
         var trackLeft = x + LabelWidth + LaneGap;
         var right = x + CellWidth;
+
+        // A card behind the cell, like the site's surfaces.
+        svg.Append(CultureInfo.InvariantCulture, $"""<rect class="card" x="{x - CardPad}" y="{y - CardTop}" width="{CellWidth + 2 * CardPad}" height="{CellHeight + CardTop}" rx="10"/>""").Append('\n');
 
         svg.Append(CultureInfo.InvariantCulture, $"""<text class="repo" x="{x}" y="{y}">{Escape(row.Repo)}</text>""").Append('\n');
         if (row.Detail.Length > 0)
@@ -259,6 +300,102 @@ internal static class ChartRenderer
     }
 
     /// <summary>
+    ///     The table panels, from the newest result files: warm check latency and engine memory from the latency files, and
+    ///     accuracy from the correctness and selection files. A table with no repository to show is left out.
+    /// </summary>
+    private static List<Table> ReadTables(string results)
+    {
+        var latency = new List<(string Repo, string[] Cells, bool[] Good)>();
+        var memory = new List<(string Repo, string[] Cells, bool[] Good)>();
+        var accuracy = new List<(string Repo, string[] Cells, bool[] Good)>();
+        foreach (var repo in PinnedRepo.All)
+        {
+            var name = SplitLabel(repo.CheckLabel).Name;
+            if (Latest(results, $"latency-{repo.Name}-") is { } file)
+            {
+                latency.Add((name,
+                [
+                    Pair(file, "bodyEdit"),
+                    Pair(file, "signatureEdit"),
+                    Milliseconds(file.GetProperty("warmUnchanged").GetProperty("p50").GetDouble()),
+                ], [false, false, false]));
+                memory.Add((name,
+                [
+                    Megabytes(file, "engineWorkingSetMb"),
+                    Megabytes(file, "enginePeakWorkingSetMb"),
+                    Megabytes(file, "engineIdleWorkingSetMb"),
+                ], [false, false, false]));
+            }
+
+            if (Latest(results, $"correctness-{repo.Name}-") is { } correctness && Latest(results, $"selection-{repo.Name}-") is { } selection)
+            {
+                var cases = correctness.GetProperty("cases").GetInt32();
+                var falseGreen = correctness.GetProperty("falseGreen").GetInt32();
+                var falseRed = correctness.GetProperty("falseRedCases").GetInt32();
+                var missed = selection.GetProperty("missedCases").GetInt32();
+                var withFailures = selection.GetProperty("withFailures").GetInt32();
+                accuracy.Add((name,
+                [
+                    $"{falseGreen} of {cases} edits",
+                    $"{falseRed} of {cases} edits",
+                    $"{missed} of {withFailures} changes",
+                ], [falseGreen == 0, falseRed == 0, missed == 0]));
+            }
+        }
+
+        var tables = new List<Table>();
+        if (latency.Count > 0)
+            tables.Add(new Table("Check on a warm engine", "fuse check, P50 / P95 over the edits of each kind", ["Body edit", "Signature edit", "Nothing changed, P50"], latency));
+        if (accuracy.Count > 0)
+            tables.Add(new Table("Accuracy against the real build and test run", "Counted against dotnet build and dotnet test on the same edits", ["Build failed, Fuse passed", "Error the build contradicts", "Failing test not run"], accuracy));
+        if (memory.Count > 0)
+            tables.Add(new Table("Engine memory", "Working set of the engine process", ["After the checks", "Peak", "Idle"], memory));
+        return tables;
+    }
+
+    /// <summary>Draws a table panel from <paramref name="y"/>, its top, and returns where it ends.</summary>
+    private static int AppendTable(StringBuilder svg, Table table, int y)
+    {
+        const int repoWidth = 150;
+        var columnWidth = (Width - 2 * PadX - repoWidth) / table.Columns.Length;
+        svg.Append(CultureInfo.InvariantCulture, $"""<text class="panel" x="{PadX}" y="{y + 22}">{Escape(table.Title)}</text>""").Append('\n');
+        svg.Append(CultureInfo.InvariantCulture, $"""<text class="sub" x="{PadX}" y="{y + PanelSubtitleBaseline}">{Escape(table.Subtitle)}</text>""").Append('\n');
+
+        var header = y + TableHeaderBaseline;
+        var bottom = header + table.Rows.Count * TableRowPitch + TableBottom;
+        svg.Append(CultureInfo.InvariantCulture, $"""<rect class="card" x="{PadX - CardPad}" y="{header - CardTop + 6}" width="{Width - 2 * PadX + 2 * CardPad}" height="{bottom - header + CardTop - 6}" rx="10"/>""").Append('\n');
+        for (var c = 0; c < table.Columns.Length; c++)
+            svg.Append(CultureInfo.InvariantCulture, $"""<text class="th" x="{PadX + repoWidth + (c + 1) * columnWidth}" y="{header}" text-anchor="end">{Escape(table.Columns[c])}</text>""").Append('\n');
+
+        for (var r = 0; r < table.Rows.Count; r++)
+        {
+            var (repo, cells, good) = table.Rows[r];
+            var baseline = header + (r + 1) * TableRowPitch;
+            svg.Append(CultureInfo.InvariantCulture, $"""<line class="row-rule" x1="{PadX}" y1="{baseline - 19}" x2="{Width - PadX}" y2="{baseline - 19}"/>""").Append('\n');
+            svg.Append(CultureInfo.InvariantCulture, $"""<text class="repo" x="{PadX}" y="{baseline}">{Escape(repo)}</text>""").Append('\n');
+            for (var c = 0; c < cells.Length; c++)
+                svg.Append(CultureInfo.InvariantCulture, $"""<text class="td{(good[c] ? " good" : "")}" x="{PadX + repoWidth + (c + 1) * columnWidth}" y="{baseline}" text-anchor="end">{Escape(cells[c])}</text>""").Append('\n');
+        }
+
+        return bottom;
+    }
+
+    /// <summary>"355 / 467 ms": a latency kind's P50 and P95.</summary>
+    private static string Pair(JsonElement file, string kind)
+    {
+        var stats = file.GetProperty(kind);
+        return $"{Whole(stats.GetProperty("p50").GetDouble())} / {Milliseconds(stats.GetProperty("p95").GetDouble())}";
+    }
+
+    private static string Milliseconds(double value) => Whole(value) + " ms";
+
+    private static string Megabytes(JsonElement file, string field) => Whole(file.GetProperty(field).GetDouble()) + " MB";
+
+    /// <summary>A whole number rounded half up, with thousands separators.</summary>
+    private static string Whole(double value) =>
+        Math.Round((decimal)value, 0, MidpointRounding.AwayFromZero).ToString("N0", CultureInfo.InvariantCulture);
+
+    /// <summary>
     ///     The spread of one command's times: the result file's <paramref name="field"/>, or for a file written before it
     ///     had one, the same statistics computed from each case's <paramref name="perCase"/> divided by
     ///     <paramref name="divisor"/>.
@@ -292,7 +429,7 @@ internal static class ChartRenderer
         Math.Round((decimal)value, 1, MidpointRounding.AwayFromZero).ToString("0.0", CultureInfo.InvariantCulture) + "x";
 
     /// <summary>The chart's text for a reader who cannot see it: every time and every speedup, in words.</summary>
-    private static string Description(IReadOnlyList<Row> rows)
+    private static string Description(IReadOnlyList<Row> rows, IReadOnlyList<Table> tables)
     {
         var sentences = new List<string>();
         foreach (var panel in Panels)
@@ -306,6 +443,12 @@ internal static class ChartRenderer
             }).ToList();
             if (cells.Count > 0)
                 sentences.Add($"{panel.Title}, {panel.FuseCommand} against {panel.DotnetCommand}. {string.Join("; ", cells)}.");
+        }
+
+        foreach (var table in tables)
+        {
+            var cells = table.Rows.Select(r => $"{r.Repo}: " + string.Join(", ", r.Cells.Select((cell, c) => $"{table.Columns[c]} {cell}")));
+            sentences.Add($"{table.Title}, {table.Subtitle}. {string.Join("; ", cells)}.");
         }
 
         sentences.Insert(0, "Fuse, a faster .NET build and test loop for AI coding agents (fuse.codes, github.com/Litenova-Solutions/Fuse).");

@@ -25,10 +25,11 @@ public class CauseLinesTests
         var result = await engine.CheckAsync("Lib/Calc.cs");
 
         // A rename is a removal of the old declaration and an addition of a new one, and the errors in the callers name
-        // the old one, so the line does too.
-        var lines = PrintedCauses(result);
-        Assert.Equal(result.Errors.Count(e => e.Error.Path != "Lib/Calc.cs"), lines.Count);
-        Assert.All(lines, l => Assert.Equal("removed: public int Add(int a, int b)", l));
+        // the old one, so the group header does too, once for every caller.
+        var rendered = Render(result);
+        var callers = result.Errors.Count(e => e.Error.Path != "Lib/Calc.cs");
+        Assert.Contains($"removed: public int Add(int a, int b) ({callers} error(s))", rendered, StringComparison.Ordinal);
+        Assert.Empty(PrintedCauses(result));
         Assert.Equal(
             ["App/Program.cs", "Lib.Tests/CalcTests.cs"],
             result.Errors.Select(e => e.Error.Path).Order(StringComparer.Ordinal).ToArray());
@@ -54,14 +55,18 @@ public class CauseLinesTests
         engine.Repo.Write("Lib/Calc.cs", "namespace Lib;\n\npublic static class Keep\n{\n}\n");
         var result = await engine.CheckAsync("Lib/Calc.cs");
 
-        // The line names a declaration as it was at HEAD, on one line, never the members the class held.
-        var lines = PrintedCauses(result);
-        Assert.NotEmpty(lines);
-        Assert.All(lines, l =>
+        // The cause names a declaration as it was at HEAD, on one line, never the members the class held. Errors
+        // sharing one cause print it once as a group header, so both headers and cause lines are checked.
+        Assert.NotEmpty(result.Errors);
+        var mentions = Render(result).Split('\n')
+            .Where(l => l.StartsWith("removed: ", StringComparison.Ordinal) || l.StartsWith("  removed: ", StringComparison.Ordinal))
+            .Select(l => l.TrimStart())
+            .ToList();
+        Assert.NotEmpty(mentions);
+        Assert.All(mentions, l =>
         {
             Assert.StartsWith("removed: ", l, StringComparison.Ordinal);
             Assert.DoesNotContain("{", l, StringComparison.Ordinal);
-            Assert.DoesNotContain("\n", l, StringComparison.Ordinal);
         });
     }
 
@@ -75,9 +80,10 @@ public class CauseLinesTests
         // The interface member changed, so every call to Greet and every implementation of the interface is a candidate. The
         // parameter list is part of the key, so the change is the removal of the old member, which the callers used. A
         // changed type header is broad and gets no cause at all.
-        var lines = PrintedCauses(result);
-        Assert.NotEmpty(lines);
-        Assert.All(lines, l => Assert.Equal("removed: string Greet(string name)", l));
+        var lines = Render(result).Split('\n');
+        Assert.NotEmpty(result.Errors);
+        Assert.Contains(lines, l => l.StartsWith("removed: string Greet(string name) (", StringComparison.Ordinal) && l.EndsWith(" error(s))", StringComparison.Ordinal));
+        Assert.Empty(PrintedCauses(result));
     }
 
     [Fact]
@@ -111,10 +117,10 @@ public class CauseLinesTests
     }
 
     [Fact]
-    public void An_answer_is_capped_and_says_how_many_were_left_out()
+    public void Every_candidate_error_carries_its_cause_so_grouping_sees_them_all()
     {
-        // The fixture is too small for the cap to bite in a real check, so the cap is exercised on the function that
-        // applies it: 25 candidate errors, each with a declaration to name.
+        // The fixture is too small for 25 candidates in a real check, so the rule is exercised on the function that
+        // applies it: 25 candidate errors, each with a declaration to name, all keep their cause for grouping.
         var causes = new Dictionary<RepoPath, Cause>();
         var errors = new List<CompilerError>();
         for (var i = 0; i < 25; i++)
@@ -127,18 +133,17 @@ public class CauseLinesTests
         var attached = CauseLines.Attach(errors, new Reach.Precise(causes), Root, []);
 
         Assert.Equal(errors, attached.Select(e => e.Error));
-        Assert.Equal(CauseLines.MaxCauses, attached.Count(e => e.Cause is not null));
-        Assert.All(attached.Take(CauseLines.MaxCauses), e => Assert.NotNull(e.Cause));
-        Assert.All(attached.Skip(CauseLines.MaxCauses), e => Assert.Null(e.Cause));
-        Assert.All(attached.Skip(CauseLines.MaxCauses), e => Assert.True(e.IsCauseLeftOut));
-        Assert.Equal(15, attached.Count(e => e.IsCauseLeftOut));
+        Assert.All(attached, e => Assert.NotNull(e.Cause));
+        Assert.All(attached, e => Assert.False(e.IsCauseLeftOut));
         Assert.Equal(new Cause.Changed("public int Method0()"), attached[0].Cause);
+        Assert.Equal(new Cause.Changed("public int Method24()"), attached[24].Cause);
     }
 
     [Fact]
-    public void A_target_an_analyzer_error_and_a_file_nothing_reached_get_no_cause_and_do_not_count_toward_the_cap()
+    public void A_target_an_analyzer_error_and_a_file_nothing_reached_get_no_cause()
     {
         // Every path here has a cause in the reach, so only the rules, not a missing entry, keep the first three bare.
+        // The twelve candidates past them all keep theirs: the engine caps nothing, the client budgets the printed lines.
         var causes = new Dictionary<RepoPath, Cause>
         {
             [Root.PathOf("src/Target.cs")] = new Cause.Changed("public int Target()"),
@@ -150,7 +155,7 @@ public class CauseLinesTests
             new("src/Analyzed.cs", 1, 1, "CA1825", "from an analyzer", FromAnalyzer: true),
             new("src/Unreached.cs", 1, 1, "CS0103", "in a file no change reached"),
         };
-        for (var i = 0; i < CauseLines.MaxCauses + 2; i++)
+        for (var i = 0; i < 12; i++)
         {
             var path = $"src/Candidate{i}.cs";
             causes[Root.PathOf(path)] = new Cause.Removed($"public int Method{i}()");
@@ -160,10 +165,9 @@ public class CauseLinesTests
         var attached = CauseLines.Attach(errors, new Reach.Precise(causes), Root, [Root.PathOf("src/Target.cs")]);
 
         Assert.All(attached.Take(3), e => Assert.Null(e.Cause));
-        Assert.Equal(CauseLines.MaxCauses, attached.Count(e => e.Cause is not null));
+        Assert.Equal(12, attached.Count(e => e.Cause is not null));
         Assert.Equal(new Cause.Removed("public int Method0()"), attached[3].Cause);
-        Assert.All(attached.Take(3), e => Assert.False(e.IsCauseLeftOut));
-        Assert.Equal(2, attached.Count(e => e.IsCauseLeftOut));
+        Assert.All(attached, e => Assert.False(e.IsCauseLeftOut));
     }
 
     [Fact]
@@ -195,13 +199,13 @@ public class CauseLinesTests
     public async Task The_cause_line_is_indented_under_its_error()
     {
         await using var engine = await InProcessEngine.StartAsync();
-        engine.Repo.Replace("Lib/Calc.cs", "public int Add(", "public int Plus(");
+        engine.Repo.Replace("Lib/Calc.cs", "    public int Mul(int a, int b) => a * b;\n", "");
         var result = await engine.CheckAsync("Lib/Calc.cs");
 
         var lines = Render(result).Split('\n');
         var errorIndex = Array.FindIndex(lines, l => l.Contains("CS1061", StringComparison.Ordinal));
         Assert.True(errorIndex >= 0, $"no error line in: {string.Join(" | ", lines)}");
-        Assert.Equal("  removed: public int Add(int a, int b)", lines[errorIndex + 1]);
+        Assert.Equal("  removed: public int Mul(int a, int b)", lines[errorIndex + 1]);
     }
 
     [Fact]

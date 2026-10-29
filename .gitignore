@@ -7,3 +7,6 @@ obj/
 TestResults/
 evals/.work/
 .wrangler/
+
+# Local notes that stay out of the repository
+.agents/feedback/

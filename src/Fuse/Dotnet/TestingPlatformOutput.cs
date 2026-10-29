@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 
 namespace Fuse.Dotnet;
@@ -28,7 +29,7 @@ internal static partial class TestingPlatformOutput
         for (var i = summary + 1; i < lines.Length && (lines[i].Length == 0 || lines[i].StartsWith("  ", StringComparison.Ordinal)); i++)
         {
             if (CountLine().Match(lines[i]) is { Success: true } count)
-                counts[count.Groups["name"].Value] = int.Parse(count.Groups["value"].Value, System.Globalization.CultureInfo.InvariantCulture);
+                counts[count.Groups["name"].Value] = int.Parse(count.Groups["value"].Value, CultureInfo.InvariantCulture);
         }
 
         // A run with errors, such as an argument the test application rejects, did not run its tests to results.
@@ -37,6 +38,7 @@ internal static partial class TestingPlatformOutput
         counts.TryGetValue("skipped", out var skipped);
 
         var failures = new List<TestFailure>();
+        var records = new List<TestRecord>();
         for (var i = 0; i < summary; i++)
         {
             if (FailedLine().Match(lines[i]) is not { Success: true } header)
@@ -52,15 +54,49 @@ internal static partial class TestingPlatformOutput
             }
 
             i--;
-            failures.Add(new TestFailure(header.Groups["name"].Value, TrxReader.Trim(string.Join('\n', message), 12), TrxReader.Frames(string.Join('\n', stack), root)));
+            var name = header.Groups["name"].Value;
+            failures.Add(new TestFailure(name, TrxReader.Trim(string.Join('\n', message), 12), TrxReader.Frames(string.Join('\n', stack), root)));
+            // Passed tests print no names on this surface, so a platform run records failures only.
+            records.Add(new TestRecord(name, TestVerdict.Failed, Duration(header.Groups["duration"].Value)));
         }
 
-        return new TrxResults(succeeded, failed, skipped, failures);
+        return new TrxResults(succeeded, failed, skipped, failures) { Records = records };
+    }
+
+    /// <summary>A duration the platform prints after a failed test name, such as <c>12ms</c> or <c>1s 200ms</c>; unreadable reads as zero.</summary>
+    private static TimeSpan Duration(string text)
+    {
+        var total = TimeSpan.Zero;
+        foreach (Match part in DurationPart().Matches(text))
+        {
+            if (!int.TryParse(part.Groups["value"].Value, CultureInfo.InvariantCulture, out var value))
+                return TimeSpan.Zero;
+            try
+            {
+                total += part.Groups["unit"].Value switch
+                {
+                    "ms" => TimeSpan.FromMilliseconds(value),
+                    "s" => TimeSpan.FromSeconds(value),
+                    "m" => TimeSpan.FromMinutes(value),
+                    "h" => TimeSpan.FromHours(value),
+                    _ => TimeSpan.Zero,
+                };
+            }
+            catch (OverflowException)
+            {
+                return TimeSpan.Zero;
+            }
+        }
+
+        return total;
     }
 
     [GeneratedRegex(@"^  (?<name>[a-z]+): (?<value>\d+)")]
     private static partial Regex CountLine();
 
-    [GeneratedRegex(@"^failed (?<name>.+) \((?:\d+(?:ms|s|m|h) ?)+\)$")]
+    [GeneratedRegex(@"^failed (?<name>.+) \((?<duration>(?:\d+(?:ms|s|m|h) ?)+)\)$")]
     private static partial Regex FailedLine();
+
+    [GeneratedRegex(@"(?<value>\d+)(?<unit>ms|s|m|h)")]
+    private static partial Regex DurationPart();
 }

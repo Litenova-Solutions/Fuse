@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AI Policy | Fuse</title>
-<meta name="description" content="How AI tools and coding agents may be used to contribute to Fuse, and what a person stays responsible for.">
+<title>AI Contribution Policy | Fuse</title>
+<meta name="description" content="How Fuse accepts contributions written with AI assistance: the Assisted-by trailer, the human sign-off, and the checks every change must pass before merge.">
 <link rel="canonical" href="https://fuse.codes/docs/ai-policy">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 <meta name="author" content="Litenova Solutions">
@@ -13,24 +13,26 @@
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="Fuse">
 <meta property="og:locale" content="en_US">
-<meta property="og:title" content="AI Policy">
-<meta property="og:description" content="How AI tools and coding agents may be used to contribute to Fuse, and what a person stays responsible for.">
+<meta property="og:title" content="AI Contribution Policy">
+<meta property="og:description" content="How Fuse accepts contributions written with AI assistance: the Assisted-by trailer, the human sign-off, and the checks every change must pass before merge.">
 <meta property="og:url" content="https://fuse.codes/docs/ai-policy">
 <meta property="og:image" content="https://fuse.codes/assets/og.png">
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 7.0x to 31.0x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 8.1x to 27.7x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="AI Policy">
-<meta name="twitter:description" content="How AI tools and coding agents may be used to contribute to Fuse, and what a person stays responsible for.">
+<meta name="twitter:title" content="AI Contribution Policy">
+<meta name="twitter:description" content="How Fuse accepts contributions written with AI assistance: the Assisted-by trailer, the human sign-off, and the checks every change must pass before merge.">
 <meta name="twitter:image" content="https://fuse.codes/assets/og.png">
-<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 7.0x to 31.0x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 8.1x to 27.7x faster than dotnet build. dotnet tool install -g Fuse.">
 <link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
 <link rel="icon" href="../assets/fuse-icon.svg" type="image/svg+xml" sizes="any">
 <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
 <link rel="sitemap" type="application/xml" href="../sitemap.xml">
 <link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/docs.js" defer></script>
+<script src="../assets/highlight.js" defer></script>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -38,12 +40,12 @@
     {
       "@type": "TechArticle",
       "@id": "https://fuse.codes/docs/ai-policy#article",
-      "headline": "AI Policy",
-      "description": "How AI tools and coding agents may be used to contribute to Fuse, and what a person stays responsible for.",
+      "headline": "AI Contribution Policy",
+      "description": "How Fuse accepts contributions written with AI assistance: the Assisted-by trailer, the human sign-off, and the checks every change must pass before merge.",
       "url": "https://fuse.codes/docs/ai-policy",
       "mainEntityOfPage": "https://fuse.codes/docs/ai-policy",
       "inLanguage": "en",
-      "dateModified": "2026-10-17",
+      "dateModified": "2026-10-29",
       "image": "https://fuse.codes/assets/og.png",
       "isPartOf": {
         "@type": "WebSite",
@@ -97,23 +99,23 @@
 <a class="skip-link" href="#main">Skip to main content</a>
 <div class="wrap wide">
   <header class="site-header">
-    <a class="brand" href="../index.html"><img src="../assets/fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
+    <a class="brand" href="../"><img src="../assets/fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
     <nav aria-label="Main">
-      <a href="index.html" aria-current="page">Docs</a>
-      <a href="benchmarks.html">Benchmarks</a>
+      <a href="./" aria-current="page">Docs</a>
+      <a href="benchmarks">Benchmarks</a>
       <a class="gh" href="https://github.com/Litenova-Solutions/Fuse" aria-label="Fuse on GitHub"><svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg></a>
     </nav>
   </header>
 
   <div class="docs">
     <main id="main" class="page" tabindex="-1">
-    <p class="crumbs"><a href="index.html">Docs</a> / Contribute</p>
+    <p class="crumbs"><a href="./">Docs</a> / Contribute</p>
     <h1>AI Policy</h1>
     <p class="jump"><a href="#docs-nav">All documentation pages</a></p>
-    <p class="intro">Fuse is built for coding agents and is developed with them, so AI-assisted contributions are welcome. The policy asks one thing: a person stands behind every contribution, as if they had written it themselves.</p>
+    <p class="intro">Coding agents are both what Fuse is built for and part of how it is built, so contributions written with AI tools are welcome. The policy asks one thing of you: stand behind every contribution as if you had written each line yourself.</p>
     <div class="audience">
-      <p><b>This page is for</b> anyone who contributes to Fuse with the help of an AI tool, including a coding agent that edits files or runs commands.</p>
-      <p><b>It applies to</b> issues, pull requests, review comments, discussions and security reports.</p>
+      <p><b>This page is for</b> you if you contribute to Fuse with the help of an AI tool, including a coding agent that edits files or runs commands.</p>
+      <p><b>After you read it</b> you know what this policy asks of you in issues, pull requests, review comments, discussions and security reports.</p>
     </div>
 
     <nav class="toc" aria-label="On this page">
@@ -131,66 +133,66 @@
 
     <h2 id="a-person-is-responsible">A person is responsible <a class="anchor" href="#a-person-is-responsible" aria-label="Link to this section">#</a></h2>
     <ul>
-      <li>Every contribution comes from a person who has read it and answers for it. Maintainers judge a contribution by what it does, not by how it was written.</li>
-      <li>You understand every line of your pull request and can explain and change it when a reviewer asks. That an agent wrote a line does not answer a question about it.</li>
-      <li>A pull request passes the gates in <a href="https://github.com/Litenova-Solutions/Fuse/blob/main/CONTRIBUTING.md">Contributing</a>, its new tests run, and every example and number in its documentation follows <a href="https://github.com/Litenova-Solutions/Fuse/blob/main/AGENTS.md">AGENTS.md</a>. Output that an agent says it ran counts only when you ran it too.</li>
-      <li>Keep a pull request to one change. Split generated work that touches unrelated parts of the code.</li>
+      <li>A person sends every contribution, and that person has read it and answers for it. When maintainers review your contribution, they judge what it does, not how you wrote it.</li>
+      <li>You understand every line of your pull request, so you can explain and change each line when a reviewer asks. The fact that an agent wrote a line does not answer a reviewer's question about it.</li>
+      <li>Your pull request passes the gates that <a href="https://github.com/Litenova-Solutions/Fuse/blob/main/CONTRIBUTING.md">Contributing</a> names. Its new tests run, and every example and number in its documentation follows <a href="https://github.com/Litenova-Solutions/Fuse/blob/main/AGENTS.md">AGENTS.md</a>. When an agent says it ran a command, its output counts only when you ran the command too.</li>
+      <li>Keep your pull request to one change. When generated work touches unrelated parts of the code, split it.</li>
     </ul>
 
     <h2 id="sign-off">Sign-off <a class="anchor" href="#sign-off" aria-label="Link to this section">#</a></h2>
-    <p>The <code>Signed-off-by:</code> line certifies the <a href="https://github.com/Litenova-Solutions/Fuse/blob/main/DCO.txt">Developer Certificate of Origin</a>: that you have the right to submit the change under the Apache-2.0 license. Only a person can give that certification. Add the line only to a change you have reviewed, whether you run <code>git commit -s</code> or your agent runs it for you, and never sign off in an agent's name.</p>
-    <p>Check that generated code does not copy code under a license that is not compatible with Apache-2.0. When you recognize code from another project, say where it comes from.</p>
+    <p>The <code>Signed-off-by:</code> line is your certification of the <a href="https://github.com/Litenova-Solutions/Fuse/blob/main/DCO.txt">Developer Certificate of Origin</a>: you have the right to submit the change under the Apache-2.0 license. Only a person gives this certification. Add the line only to a change you have reviewed, whether you or your agent runs <code>git commit -s</code>. Never sign off in an agent's name.</p>
+    <p>Check that generated code copies nothing under a license that is not compatible with Apache-2.0. When you recognize code from another project, say which project it comes from.</p>
 
     <h2 id="disclosure">Disclosure <a class="anchor" href="#disclosure" aria-label="Link to this section">#</a></h2>
-    <p>Say in the pull request description which AI tools you used and for what: code, tests, documentation, or the description itself. The pull request template has a section for it. Completion of a single line in an editor needs no mention.</p>
-    <p>In a commit that an AI tool helped write, add an <code>Assisted-by:</code> trailer naming the tool and the model:</p>
+    <p>In the pull request description, say which AI tools you used and what each one did: code, tests, documentation, or the description itself. The pull request template holds a section for this disclosure. A single line that your editor completed needs no mention.</p>
+    <p>In a commit that an AI tool helped write, add an <code>Assisted-by:</code> trailer that names the tool and the model:</p>
     <pre data-label="Commit trailer"><code>Assisted-by: Claude Code (claude-opus-5-5)</code></pre>
 
     <h2 id="autonomous-agents">Autonomous agents <a class="anchor" href="#autonomous-agents" aria-label="Link to this section">#</a></h2>
-    <p>An agent must not open issues, pull requests or comments that no person reviewed before they were posted. Maintainers close such contributions without review.</p>
+    <p>An agent must not open issues, pull requests, or comments until a person has reviewed them. Maintainers close a contribution like that without review.</p>
 
     <h2 id="issues-and-security-reports">Issues and security reports <a class="anchor" href="#issues-and-security-reports" aria-label="Link to this section">#</a></h2>
-    <p>Reproduce a bug before you report it, and include the output of <code>fuse --version</code> and the output Fuse printed, copied from your terminal rather than described by a tool. Do not submit a vulnerability report that an AI tool produced unless you have confirmed the vulnerability yourself; <a href="https://github.com/Litenova-Solutions/Fuse/blob/main/SECURITY.md">Security</a> describes how to report one.</p>
+    <p>Reproduce a bug before you report it. Include the output of <code>fuse --version</code> and the output Fuse printed, copied from your terminal rather than described by a tool. Do not submit a vulnerability report that an AI tool produced unless you have confirmed the vulnerability yourself. <a href="https://github.com/Litenova-Solutions/Fuse/blob/main/SECURITY.md">Security</a> describes how to report one.</p>
 
     <h2 id="agents-working-in-this-repository">Agents working in this repository <a class="anchor" href="#agents-working-in-this-repository" aria-label="Link to this section">#</a></h2>
-    <p><a href="https://github.com/Litenova-Solutions/Fuse/blob/main/AGENTS.md">AGENTS.md</a> is the guide for coding agents: the layout, the build, test and format commands, and the rules the code and the documentation follow. Claude Code reads it through <code>CLAUDE.md</code>, and most other harnesses read <code>AGENTS.md</code> directly. An agent follows it the same way a person does.</p>
+    <p><a href="https://github.com/Litenova-Solutions/Fuse/blob/main/AGENTS.md">AGENTS.md</a> guides coding agents through the layout, the build, test and format commands, and the rules the code and the documentation follow. Claude Code reads it through <code>CLAUDE.md</code>, while most other harnesses read <code>AGENTS.md</code> directly. An agent follows that guide the same way you do.</p>
 
     <h2 id="maintainers">Maintainers <a class="anchor" href="#maintainers" aria-label="Link to this section">#</a></h2>
-    <p>Maintainers use AI tools under the same rules. A maintainer may close a contribution that does not follow this policy, and says which part it does not follow.</p>
+    <p>Maintainers follow the same rules when they use AI tools. A maintainer may close a contribution that does not follow this policy. The maintainer says which part it does not follow.</p>
 
     <nav class="pager" aria-label="Previous and next page">
-      <a href="evals.html"><span>Previous</span>Evals</a>
+      <a href="evals"><span>Previous</span>Evals</a>
     </nav>
     </main>
 
     <nav class="sidebar" id="docs-nav" aria-label="Documentation">
       <h2>Start here</h2>
       <ul>
-        <li><a href="index.html">Overview</a></li>
-        <li><a href="getting-started.html">Getting started</a></li>
-        <li><a href="harnesses.html">Connect your agent</a></li>
-        <li><a href="parallel-agents.html">Subagents and parallel agents</a></li>
+        <li><a href="./">Overview</a></li>
+        <li><a href="getting-started">Getting started</a></li>
+        <li><a href="harnesses">Connect your agent</a></li>
+        <li><a href="parallel-agents">Subagents and parallel agents</a></li>
       </ul>
       <h2>Understand</h2>
       <ul>
-        <li><a href="how-it-works.html">How it works</a></li>
-        <li><a href="limits.html">Limits</a></li>
-        <li><a href="benchmarks.html">Benchmarks</a></li>
-        <li><a href="faq.html">FAQ</a></li>
+        <li><a href="how-it-works">How it works</a></li>
+        <li><a href="limits">Limits</a></li>
+        <li><a href="benchmarks">Benchmarks</a></li>
+        <li><a href="faq">FAQ</a></li>
       </ul>
       <h2>Reference</h2>
       <ul>
-        <li><a href="commands.html">Commands</a></li>
-        <li><a href="messages.html">Messages and fixes</a></li>
-        <li><a href="troubleshooting.html">Troubleshooting</a></li>
-        <li><a href="changelog.html">Changelog</a></li>
+        <li><a href="commands">Commands</a></li>
+        <li><a href="messages">Messages and fixes</a></li>
+        <li><a href="troubleshooting">Troubleshooting</a></li>
+        <li><a href="changelog">Changelog</a></li>
       </ul>
       <h2>Contribute</h2>
       <ul>
         <li><a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/main/CONTRIBUTING.md">Contributing</a></li>
-        <li><a href="architecture.html">Architecture</a></li>
-        <li><a href="evals.html">Evals</a></li>
-        <li><a href="ai-policy.html" aria-current="page">AI policy</a></li>
+        <li><a href="architecture">Architecture</a></li>
+        <li><a href="evals">Evals</a></li>
+        <li><a href="ai-policy" aria-current="page">AI policy</a></li>
         <li><a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/main/SECURITY.md">Security</a></li>
       </ul>
     </nav>
@@ -198,7 +200,7 @@
 
   <footer class="site-footer">
     <a class="maker" href="https://www.litenova.solutions"><img src="../assets/litenova-mark.svg" alt="" width="20" height="20">Built by Litenova Solutions</a>
-    <nav aria-label="Footer"><a href="index.html">Docs</a><a href="changelog.html">Changelog</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
+    <nav aria-label="Footer"><a href="./">Docs</a><a href="changelog">Changelog</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
   </footer>
 </div>
 </body>

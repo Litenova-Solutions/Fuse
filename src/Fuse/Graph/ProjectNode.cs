@@ -40,6 +40,9 @@ internal sealed class ProjectNode
     /// <summary>The test framework its packages name, which spells a platform run's filter.</summary>
     public required TestFramework Framework { get; init; }
 
+    /// <summary>True when the project's packages include Testcontainers, whose tests need a container runtime running.</summary>
+    public required bool RequiresContainerRuntime { get; init; }
+
     /// <summary>
     ///     The absolute path of what a build of the project writes, one per target framework: the test application a
     ///     platform run without the <c>global.json</c> opt-in runs directly.

@@ -16,17 +16,28 @@ internal sealed class TargetResolver
     public TargetResolver(RepoWorkspace workspace) => _workspace = workspace;
 
     /// <summary>
-    ///     The files <paramref name="scope"/> names, which the sync reads from disk before the file watcher reports them.
-    ///     Every change names none: the change tracker already has them.
+    ///     The files a files scope names, which the sync reads from disk before the file watcher reports them. Every
+    ///     change names none: the change tracker already has them. A paths scope names its recently written sources
+    ///     instead (<see cref="ScopeExpansion.RecentlyWritten"/>).
     /// </summary>
     public static IReadOnlyList<RepoPath> NamedPaths(CheckScope scope) =>
         scope is CheckScope.Files files ? files.Paths : [];
 
     /// <summary>The targets of <paramref name="scope"/>, read after the sync so every change includes the latest edits.</summary>
-    public IReadOnlyList<RepoPath> Resolve(CheckScope scope)
+    /// <param name="excluded">The files a check of every change leaves out, or null to leave out none.</param>
+    public IReadOnlyList<RepoPath> Resolve(CheckScope scope, IReadOnlySet<RepoPath>? excluded = null)
+    {
+        if (scope is CheckScope.NamedPaths paths)
+            return ScopeExpansion.Expand(_workspace, paths.Named);
+        return ResolveRest(scope, excluded);
+    }
+
+    private List<RepoPath> ResolveRest(CheckScope scope, IReadOnlySet<RepoPath>? excluded)
     {
         var graph = _workspace.Graph;
         var paths = scope is CheckScope.Files ? NamedPaths(scope) : _workspace.Tracker.Changed;
+        if (excluded is not null && scope is CheckScope.AllChanges)
+            paths = paths.Where(p => !excluded.Contains(p)).ToList();
         return paths
             .Where(p => PathRules.IsSource(p.Absolute))
             .Distinct()

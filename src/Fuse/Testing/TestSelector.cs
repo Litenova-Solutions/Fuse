@@ -16,8 +16,9 @@ namespace Fuse.Testing;
 /// </remarks>
 internal sealed class TestSelector
 {
-    // Above this many reachable test classes, refining to methods rarely saves enough test time to pay for the walk.
-    private const int RefineThreshold = 40;
+    // Above this many reachable test classes the refinement rarely finishes within the walk's own 300-symbol and
+    // 8-second budget, and only a walk that finishes has visited every caller, which is what makes its answer safe.
+    private const int RefineThreshold = 100;
 
     private readonly RepoWorkspace _workspace;
     private readonly TimeProvider _time;
@@ -32,16 +33,16 @@ internal sealed class TestSelector
         _types = new TypeWalk(workspace);
     }
 
-    /// <summary>Selects tests for <paramref name="changedFiles"/>; the result maps each test project file to its selection.</summary>
+    /// <summary>Selects tests for <paramref name="changedFiles"/>; the result holds each test project file's selection.</summary>
     /// <param name="changedFiles">Changed files that an evaluated project owns.</param>
     /// <param name="cancellationToken">Cancels loading and both walks.</param>
-    public async Task<IReadOnlyDictionary<RepoPath, TestSelection>> SelectAsync(IReadOnlyList<RepoPath> changedFiles, CancellationToken cancellationToken)
+    public async Task<SelectionResult> SelectAsync(IReadOnlyList<RepoPath> changedFiles, CancellationToken cancellationToken)
     {
         var graph = _workspace.Graph;
         var changedProjects = changedFiles.SelectMany(graph.OwnersOf).DistinctBy(p => p.Path).ToList();
         var reachedProjects = changedProjects.Concat(changedProjects.SelectMany(graph.DependentsOf)).DistinctBy(p => p.Path).ToList();
         if (!reachedProjects.Any(p => p.IsTest))
-            return new Dictionary<RepoPath, TestSelection>();
+            return new SelectionResult(new Dictionary<RepoPath, TestSelection>(), 0, false);
         await _workspace.EnsureLoadedAsync(reachedProjects, cancellationToken).ConfigureAwait(false);
 
         var solution = _workspace.Current;
@@ -62,6 +63,9 @@ internal sealed class TestSelector
             seeds.AddRange(await walk.SeedAsync(path, cancellationToken).ConfigureAwait(false));
         }
 
+        if (walk.DroppedSameCode > 0)
+            _workspace.Log($"test selection: {walk.DroppedSameCode} of {walk.ChangedDeclarations} changed declaration(s) compile to the same code as HEAD; selecting no tests for them");
+
         // The projects the seeds selected whole start the class-level answer, and a whole selection from the type walk
         // replaces theirs. The type walk's methods add nothing to a whole project.
         var seededWhole = walk.Selections.Where(s => s.Value is TestSelection.Whole).ToList();
@@ -75,16 +79,18 @@ internal sealed class TestSelector
         // The class-level answer costs milliseconds. The member walk costs a reference search per symbol, so it runs only
         // when the class-level answer is small enough for the refinement to matter and the walk to finish.
         var classes = classLevel.Values.OfType<TestSelection.Methods>().Sum(m => m.Patterns.Count);
+        var allSameCode = walk.DroppedSameCode == walk.ChangedDeclarations;
         if (classes > RefineThreshold)
         {
             _workspace.Log($"test selection: {classes} test classes reachable; selecting at class level");
-            return classLevel;
+            return new SelectionResult(classLevel, walk.DroppedSameCode, allSameCode);
         }
 
-        if (!await walk.RunAsync(cancellationToken).ConfigureAwait(false))
+        var outcome = await walk.RunAsync(cancellationToken).ConfigureAwait(false);
+        if (!outcome.Completed)
         {
-            _workspace.Log("test selection: member walk over budget; selecting at class level");
-            return classLevel;
+            _workspace.Log($"test selection: member walk over budget in {outcome.Milliseconds} ms, {outcome.Symbols} symbol(s), {classes} test class(es) reachable, {PatternsOf(classLevel)} pattern(s) selected; selecting at class level");
+            return new SelectionResult(classLevel, walk.DroppedSameCode, allSameCode);
         }
 
         // A project the seeds selected whole reports the class-level answer's reason, so the summary gives the same
@@ -92,6 +98,11 @@ internal sealed class TestSelector
         var memberLevel = new Dictionary<RepoPath, TestSelection>(walk.Selections);
         foreach (var (path, _) in seededWhole)
             memberLevel[path] = classLevel[path];
-        return memberLevel;
+        _workspace.Log($"test selection: member walk completed in {outcome.Milliseconds} ms, {outcome.Symbols} symbol(s), {classes} test class(es) reachable, {PatternsOf(memberLevel)} pattern(s) selected; selecting at member level");
+        return new SelectionResult(memberLevel, walk.DroppedSameCode, allSameCode);
     }
+
+    /// <summary>How many test name patterns the selections hold.</summary>
+    private static int PatternsOf(IReadOnlyDictionary<RepoPath, TestSelection> selections) =>
+        selections.Values.OfType<TestSelection.Methods>().Sum(m => m.Patterns.Count);
 }

@@ -154,6 +154,11 @@ internal sealed class FixtureRepo : IDisposable
             File.Copy(file, destination, overwrite: true);
             File.SetLastWriteTimeUtc(destination, File.GetLastWriteTimeUtc(file));
         }
+
+        // Directory times last: creating the entries above stamps them again, and freshness reads a directory newer
+        // than the build output as a changed file set.
+        foreach (var directory in Directory.EnumerateDirectories(source, "*", SearchOption.AllDirectories))
+            Directory.SetLastWriteTimeUtc(System.IO.Path.Combine(target, System.IO.Path.GetRelativePath(source, directory)), Directory.GetLastWriteTimeUtc(directory));
     }
 
     /// <summary>

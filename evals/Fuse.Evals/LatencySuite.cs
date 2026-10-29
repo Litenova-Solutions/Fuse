@@ -5,6 +5,18 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Fuse.Evals;
 
+/// <summary>One edit that changes no compiled code: what a check and a test round cost for it.</summary>
+internal sealed record NoCodeEdit(
+    string Kind,
+    double? CheckMs,
+    int? FilesChecked,
+    int? CheckErrors,
+    double? TestMs,
+    int? TestsSelected,
+    int? TestsRun,
+    bool? NoCodeChange,
+    string? Note);
+
 /// <summary>
 ///     Times <c>fuse check</c> through the executable: a cold start, warm body edits, warm signature edits
 ///     that reach dependent projects, and warm checks of an unchanged tree (the client and sync overhead).
@@ -62,6 +74,49 @@ internal static class LatencySuite
             var run = await repo.FuseTimedAsync("check", file);
             body.Add(run.Milliseconds);
             bodyCalls.Add(await Timed(run));
+        }
+
+        // Five edits that change no compiled code, each on the pristine target on its own, measured as a check and, where
+        // the part runs tests, as a test round: what Fuse avoids for them.
+        var noCodeEdits = new List<NoCodeEdit>();
+        var noCodeCheckMs = new List<double>();
+        var noCodeCheckCalls = new List<TimedCall>();
+        var noCodeTestMs = new List<double>();
+        var noCodeTestCalls = new List<TimedCall>();
+        foreach (var (kind, changed, skipped) in NoCodeEdits(original, method))
+        {
+            if (changed is null)
+            {
+                noCodeEdits.Add(new NoCodeEdit(kind, null, null, null, null, null, null, null, skipped));
+                continue;
+            }
+
+            await File.WriteAllTextAsync(file, changed);
+            await Task.Delay(500);
+            var logStart = repo.EngineLogLines().Count;
+            var check = await repo.FuseTimedAsync("check", file);
+            var timedCheck = await Timed(check);
+            noCodeCheckMs.Add(check.Milliseconds);
+            noCodeCheckCalls.Add(timedCheck);
+            var checkCounts = CheckCounts.Parse(check.Output, repo.EngineLogLines().Skip(logStart).ToList(), timedCheck.Phases);
+            double? testMs = null;
+            int? testsSelected = null;
+            int? testsRun = null;
+            bool? noCode = null;
+            if (tests)
+            {
+                var test = await repo.FuseTimedAsync("test");
+                testMs = test.Milliseconds;
+                noCodeTestMs.Add(test.Milliseconds);
+                noCodeTestCalls.Add(await Timed(test));
+                testsSelected = TestPlanCounts.SelectedTests(test.Output);
+                var testCounts = TestPlanCounts.RunCounts(test.Output);
+                testsRun = testCounts.Failed + testCounts.Passed;
+                noCode = TestPlanCounts.CompilesToSameCode(test.Output);
+            }
+
+            noCodeEdits.Add(new NoCodeEdit(kind, check.Milliseconds, checkCounts.FilesChecked, EvalRepo.ParseFuseCount(check.Output), testMs, testsSelected, testsRun, noCode, null));
+            await File.WriteAllBytesAsync(file, originalBytes);
         }
 
         var signature = new List<double>();
@@ -144,6 +199,14 @@ internal static class LatencySuite
             signatureEditPhases = signatures ? signaturePhases : null,
             warmUnchangedPhases = signatures ? cleanPhases : null,
             testRoundPhases = tests ? testPhases : null,
+            noCodeChange = new
+            {
+                edits = noCodeEdits,
+                check = LatencyStats.Of(noCodeCheckMs),
+                testRound = tests ? LatencyStats.Of(noCodeTestMs) : null,
+                checkPhases = PhaseReport.Build(noCodeCheckCalls),
+                testRoundPhases = tests ? PhaseReport.Build(noCodeTestCalls) : null,
+            },
             multiAgent,
             engineWorkingSetMb = Math.Round(rss, 1),
             enginePeakWorkingSetMb = Math.Round(peak, 1),
@@ -154,6 +217,7 @@ internal static class LatencySuite
         Console.WriteLine($"[latency] body edit phases: {PhaseReport.Describe(summary.bodyEditPhases)}");
         if (summary.testRoundPhases is { } testRoundPhases)
             Console.WriteLine($"[latency] test round phases: {PhaseReport.Describe(testRoundPhases)}");
+        Console.WriteLine($"[latency] no-code edits: {noCodeEdits.Count(e => e.NoCodeChange == true)} of {noCodeEdits.Count(e => e.CheckMs is not null)} detected as the same code, {noCodeEdits.Sum(e => e.TestsRun ?? 0)} test(s) run");
         return summary;
     }
 
@@ -206,5 +270,91 @@ internal static class LatencySuite
         var m = Find(root, method);
         return root.ReplaceToken(m.Identifier, SyntaxFactory.Identifier(method + "Renamed" + i).WithTriviaFrom(m.Identifier)).ToFullString();
     }
-}
 
+    /// <summary>
+    ///     The five edits that change no compiled code: a comment, a local rename, a reformat, a using sort and whitespace.
+    ///     An edit the target does not allow comes back null with the reason, so the suite measures the rest instead of
+    ///     failing the repository.
+    /// </summary>
+    private static List<(string Kind, string? Text, string? Skipped)> NoCodeEdits(string original, string method) =>
+    [
+        ("comment", "// fuse evals: a comment changes no compiled code\n" + original, null),
+        ("local-rename", LocalRenameEdit(original), "no method in the target file declares a local variable"),
+        ("reformat", ReformatEdit(original, method), "the target method has no indented line"),
+        ("using-sort", UsingSortEdit(original), "the target file has fewer than two using directives"),
+        ("whitespace", WhitespaceEdit(original), null),
+    ];
+
+    /// <summary>Renames a local variable in the first method that declares one, or null when no method does.</summary>
+    private static string? LocalRenameEdit(string text)
+    {
+        var root = CSharpSyntaxTree.ParseText(text).GetRoot();
+        foreach (var method in root.DescendantNodes().OfType<MethodDeclarationSyntax>())
+        {
+            var declarator = method.DescendantNodes().OfType<VariableDeclaratorSyntax>()
+                .FirstOrDefault(v => v.Parent is VariableDeclarationSyntax { Parent: LocalDeclarationStatementSyntax });
+            if (declarator is null)
+                continue;
+            var name = declarator.Identifier.Text;
+            var renamed = name + "Evals";
+            // Only a name that stays unique in the method is renamed, so the edit still compiles.
+            if (method.DescendantTokens().Any(t => t.IsKind(SyntaxKind.IdentifierToken) && t.Text == renamed))
+                continue;
+            return root.ReplaceTokens(
+                method.DescendantTokens().Where(t => t.IsKind(SyntaxKind.IdentifierToken) && t.Text == name),
+                (token, _) => SyntaxFactory.Identifier(renamed).WithTriviaFrom(token)).ToFullString();
+        }
+
+        return null;
+    }
+
+    /// <summary>Indents one line of <paramref name="method"/> four more spaces, or null when it has no indented line.</summary>
+    private static string? ReformatEdit(string text, string method)
+    {
+        var root = CSharpSyntaxTree.ParseText(text).GetRoot();
+        var declaration = root.DescendantNodes().OfType<MethodDeclarationSyntax>().FirstOrDefault(m => m.Identifier.Text == method && m.Body is not null);
+        if (declaration?.Body is null)
+            return null;
+        var body = text.Substring(declaration.Body.Span.Start, declaration.Body.Span.Length);
+        var newline = body.IndexOf('\n');
+        while (newline >= 0)
+        {
+            var spaces = 0;
+            while (newline + 1 + spaces < body.Length && body[newline + 1 + spaces] == ' ')
+                spaces++;
+            if (spaces > 0)
+                return text.Insert(declaration.Body.Span.Start + newline + 1, "    ");
+            newline = body.IndexOf('\n', newline + 1);
+        }
+
+        return null;
+    }
+
+    /// <summary>Swaps the first two using directives with the same parent, or null when there are fewer than two.</summary>
+    private static string? UsingSortEdit(string text)
+    {
+        var root = CSharpSyntaxTree.ParseText(text).GetRoot();
+        var usings = root.DescendantNodes().OfType<UsingDirectiveSyntax>().ToList();
+        var first = usings.FirstOrDefault();
+        var second = first is null ? null : usings.FirstOrDefault(u => u != first && u.Parent == first.Parent);
+        if (first is null || second is null)
+            return null;
+        return root.ReplaceNodes(new[] { first, second }, (node, _) => node == first ? second.WithTriviaFrom(first) : first.WithTriviaFrom(second)).ToFullString();
+    }
+
+    /// <summary>Trails three spaces after the first non-empty line.</summary>
+    private static string WhitespaceEdit(string text)
+    {
+        var lines = text.Split('\n');
+        for (var i = 0; i < lines.Length; i++)
+        {
+            if (lines[i].Trim().Length > 0)
+            {
+                lines[i] = lines[i].TrimEnd('\r') + "   ";
+                break;
+            }
+        }
+
+        return string.Join('\n', lines);
+    }
+}

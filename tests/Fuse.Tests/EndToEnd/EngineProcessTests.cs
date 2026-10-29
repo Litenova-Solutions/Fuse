@@ -214,7 +214,7 @@ public class EngineProcessTests
             Assert.Contains("\"decision\":\"block\"", stop.Stdout, StringComparison.Ordinal);
             Assert.Contains("'Add'", stop.Stdout, StringComparison.Ordinal);
             Assert.DoesNotContain("'Greet'", stop.Stdout, StringComparison.Ordinal);
-            Assert.Contains("3 error(s) from other sessions' edits left out", stop.Stdout, StringComparison.Ordinal);
+            Assert.Contains("1 error(s) from other sessions' edits left out", stop.Stdout, StringComparison.Ordinal);
             Assert.Contains("no other session's edits cause them on their own", stop.Stdout, StringComparison.Ordinal);
 
             var stopB = await FuseProcess.RunAsync(repo.Path, Stop("b"), "hook", "claude", "stop");
@@ -291,7 +291,7 @@ public class EngineProcessTests
         using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });
         var result = await FuseProcess.RunAsync(repo.Path, """{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"dotnet test --no-build","description":"tests"}}""", "hook", "claude", "pre-shell");
         Assert.Equal(0, result.ExitCode);
-        Assert.Equal("""{"hookSpecificOutput":{"hookEventName":"PreToolUse","updatedInput":{"command":"fuse test --no-build","description":"tests"}}}""", result.Stdout);
+        Assert.Equal("""{"hookSpecificOutput":{"hookEventName":"PreToolUse","updatedInput":{"command":"fuse test --from-rewrite --no-build","description":"tests"}}}""", result.Stdout);
     }
 
     [Fact]
@@ -300,7 +300,7 @@ public class EngineProcessTests
         using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });
         var result = await FuseProcess.RunAsync(repo.Path, """{"tool_input":{"command":"dotnet build -c Release"}}""", "hook", "opencode", "pre-shell");
         Assert.Equal(0, result.ExitCode);
-        Assert.Equal("""{"command":"fuse build -c Release"}""", result.Stdout);
+        Assert.Equal("""{"command":"fuse build --from-rewrite -c Release"}""", result.Stdout);
     }
 
     [Fact]

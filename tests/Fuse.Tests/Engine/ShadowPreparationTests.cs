@@ -16,7 +16,7 @@ public class ShadowPreparationTests
     {
         await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + \"snapshot\".Length;");
-        await Task.Delay(400, TestContext.Current.CancellationToken);
+        await engine.SyncAsync("Lib/Calc.cs");
 
         var pending = await engine.Planner.SelectAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
         // The edit lands after the selection took its snapshot and before the emit, as a check from another client would.
@@ -33,7 +33,7 @@ public class ShadowPreparationTests
     {
         await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
-        await Task.Delay(400, TestContext.Current.CancellationToken);
+        await engine.SyncAsync("Lib/Calc.cs");
 
         var first = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
         var emits = engine.Planner.Emitter.Emits;
@@ -54,16 +54,16 @@ public class ShadowPreparationTests
     {
         await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + \"first\".Length;");
-        await Task.Delay(400, TestContext.Current.CancellationToken);
+        await engine.SyncAsync("Lib/Calc.cs");
         var first = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
         var emits = engine.Planner.Emitter.Emits;
 
         engine.Repo.Replace("Lib/Calc.cs", "\"first\"", "\"second\"");
-        await Task.Delay(400, TestContext.Current.CancellationToken);
+        await engine.SyncAsync("Lib/Calc.cs");
         var second = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
 
-        // Lib changed, and Lib.Tests depends on it, so both are emitted again.
-        Assert.Equal(emits + 2, engine.Planner.Emitter.Emits);
+        // Lib changed, but it declares the same as HEAD, so only Lib is emitted again and Lib.Tests keeps its image.
+        Assert.Equal(emits + 1, engine.Planner.Emitter.Emits);
         var lib = File.ReadAllBytes(ShadowFile(second, "Lib.dll"));
         Assert.Equal(ShadowFile(first, "Lib.dll"), ShadowFile(second, "Lib.dll"));
         Assert.True(HoldsString(lib, "second"), "the shadow Lib.dll does not hold the second edit");
@@ -75,14 +75,14 @@ public class ShadowPreparationTests
     {
         await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + \"first\".Length;");
-        await Task.Delay(400, TestContext.Current.CancellationToken);
+        await engine.SyncAsync("Lib/Calc.cs");
         var first = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
         var firstLib = ShadowFile(first, "Lib.dll");
         var held = Fuse.Paths.LocalState.HoldTestCopy(Path.GetDirectoryName(firstLib)!);
 
         // Another client plans while the first run still runs from its copy.
         engine.Repo.Replace("Lib/Calc.cs", "\"first\"", "\"second\"");
-        await Task.Delay(400, TestContext.Current.CancellationToken);
+        await engine.SyncAsync("Lib/Calc.cs");
         var second = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
         var secondLib = ShadowFile(second, "Lib.dll");
 

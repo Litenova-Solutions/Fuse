@@ -99,13 +99,22 @@ internal sealed class ChangeReach
         var routes = new List<Route>();
         // A change that several target frameworks see is followed once, from the first framework that has it.
         var seen = new HashSet<(DeclarationKey Key, Cause Cause)>();
+        var broadCauses = new List<(RepoPath File, Cause Cause)>();
+        var causeFiles = new Dictionary<Cause, RepoPath>();
+        var isBroad = false;
         foreach (var path in paths.OrderBy(p => p.Absolute, StringComparer.Ordinal))
         {
             if (!path.Absolute.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
             {
                 // A Razor component or view is used by its file name.
                 var name = Path.GetFileNameWithoutExtension(path.Absolute);
-                routes.Add(new Route.ByName(name, new Cause.Changed(name)));
+                var razorCause = new Cause.Changed(name);
+                if (!isBroad)
+                {
+                    routes.Add(new Route.ByName(name, razorCause));
+                    causeFiles.TryAdd(razorCause, path);
+                }
+
                 continue;
             }
 
@@ -113,18 +122,39 @@ internal sealed class ChangeReach
             {
                 var changes = SurfaceDiff.Compare(version.Before, version.After);
                 if (changes.HasBroadChange)
-                    return Broad(projects);
+                {
+                    isBroad = true;
+                    foreach (var broad in changes.Changes)
+                    {
+                        if (IsBroadChange(broad, version))
+                            broadCauses.Add((path, CauseOf(broad)));
+                    }
+
+                    continue;
+                }
+
+                if (isBroad)
+                    continue;
                 foreach (var change in changes.Changes)
                 {
                     var cause = CauseOf(change);
-                    if (seen.Add((change.Key, cause)) && !await AddRoutesAsync(routes, change, cause, version, cancellationToken).ConfigureAwait(false))
-                        return Broad(projects);
+                    if (!seen.Add((change.Key, cause)))
+                        continue;
+                    causeFiles.TryAdd(cause, path);
+                    if (!await AddRoutesAsync(routes, change, cause, version, cancellationToken).ConfigureAwait(false))
+                    {
+                        isBroad = true;
+                        broadCauses.Add((path, cause));
+                        break;
+                    }
                 }
             }
         }
 
+        if (isBroad)
+            return Broad(projects, broadCauses);
         var causes = await CausesAsync(routes, projects, cancellationToken).ConfigureAwait(false);
-        return new Reach.Precise(causes.ToDictionary(c => c.Key, c => c.Value[0]), causes);
+        return new Reach.Precise(causes.ToDictionary(c => c.Key, c => c.Value[0]), causes, causeFiles);
     }
 
     /// <summary>
@@ -275,9 +305,19 @@ internal sealed class ChangeReach
         _ => throw new UnreachableException($"a declaration change is added, changed or removed, not {change.GetType().Name}"),
     };
 
+    /// <summary>True when <paramref name="change"/> is one no reference search can bound, as <see cref="SurfaceDiff"/> decides.</summary>
+    private static bool IsBroadChange(DeclarationChange change, FileVersion version)
+    {
+        if (change.Key is DeclarationKey.GlobalUsing or DeclarationKey.AssemblyAttribute)
+            return true;
+        if ((version.After.Find(change.Key) ?? version.Before.Find(change.Key))?.Node is DelegateDeclarationSyntax)
+            return true;
+        return change is DeclarationChange.Changed { Key: DeclarationKey.NamedType };
+    }
+
     /// <summary>Every source file of <paramref name="projects"/>, for a change that a reference search cannot bound.</summary>
-    private Reach.Broad Broad(IReadOnlyList<Project> projects) =>
-        new(projects.SelectMany(p => p.Documents).Select(d => d.FilePath).OfType<string>().Select(_workspace.Root.PathOf).ToHashSet());
+    private Reach.Broad Broad(IReadOnlyList<Project> projects, IReadOnlyList<(RepoPath File, Cause Cause)> broadCauses) =>
+        new(projects.SelectMany(p => p.Documents).Select(d => d.FilePath).OfType<string>().Select(_workspace.Root.PathOf).ToHashSet(), broadCauses);
 
     private async Task<IEnumerable<RepoPath>> ReferencingFilesAsync(ISymbol symbol, string searchKey, Solution baseline, IImmutableSet<Document> documents, CancellationToken cancellationToken)
     {

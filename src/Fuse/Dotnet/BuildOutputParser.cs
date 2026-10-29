@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 
 namespace Fuse.Dotnet;
@@ -6,34 +7,41 @@ namespace Fuse.Dotnet;
 internal static partial class BuildOutputParser
 {
     /// <summary>Distinct error lines in first-seen order, with paths made relative to <paramref name="root"/>.</summary>
-    public static List<string> Errors(string output, string root)
+    public static List<string> Errors(string output, string root) =>
+        [.. Diagnostics(output, root).Select(d => d.ToString())];
+
+    /// <summary>Distinct errors in first-seen order, with paths made relative to <paramref name="root"/>.</summary>
+    public static List<BuildDiagnostic> Diagnostics(string output, string root)
     {
-        var result = new List<string>();
-        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var result = new List<BuildDiagnostic>();
+        var seen = new HashSet<BuildDiagnostic>();
         foreach (var raw in output.Split('\n'))
         {
             var line = raw.TrimEnd('\r').Trim();
             var match = FileDiagnostic().Match(line);
-            string? normalized = null;
+            BuildDiagnostic? diagnostic = null;
             if (match.Success && match.Groups["sev"].Value == "error")
             {
-                normalized = $"{Relative(match.Groups["file"].Value.Trim(), root)}({match.Groups["line"].Value},{match.Groups["col"].Value}): error {match.Groups["id"].Value}: {match.Groups["msg"].Value.Trim()}";
+                // A line or column no int holds is no diagnostic MSBuild wrote; it is left out rather than breaking the answer.
+                if (int.TryParse(match.Groups["line"].Value, CultureInfo.InvariantCulture, out var lineNumber)
+                    && int.TryParse(match.Groups["col"].Value, CultureInfo.InvariantCulture, out var column))
+                    diagnostic = new BuildDiagnostic(Relative(match.Groups["file"].Value.Trim(), root), lineNumber, column, match.Groups["id"].Value, match.Groups["msg"].Value.Trim());
             }
             else if (!match.Success)
             {
                 var general = GeneralError().Match(line);
                 if (general.Success)
-                    normalized = $"{Relative(general.Groups["origin"].Value.Trim(), root)}: error {general.Groups["id"].Value}: {general.Groups["msg"].Value.Trim()}";
+                    diagnostic = new BuildDiagnostic(Relative(general.Groups["origin"].Value.Trim(), root), null, null, general.Groups["id"].Value, general.Groups["msg"].Value.Trim());
             }
 
-            if (normalized is not null && seen.Add(normalized))
-                result.Add(normalized);
+            if (diagnostic is not null && seen.Add(diagnostic))
+                result.Add(diagnostic);
         }
 
         return result;
     }
 
-    private static string Relative(string path, string root)
+    internal static string Relative(string path, string root)
     {
         if (!Path.IsPathRooted(path))
             return path.Replace('\\', '/');
@@ -42,7 +50,7 @@ internal static partial class BuildOutputParser
     }
 
     [GeneratedRegex(@"^(?<file>[^\r\n]+?)\((?<line>\d+),(?<col>\d+)(?:,\d+,\d+)?\)\s*:\s*(?<sev>error|warning)\s+(?<id>[A-Za-z]+\d+)\s*:\s*(?<msg>.*?)(?:\s+\[[^\]]+\])?$")]
-    private static partial Regex FileDiagnostic();
+    internal static partial Regex FileDiagnostic();
 
     [GeneratedRegex(@"^(?<origin>[^\r\n]*?)\s*:\s*error\s+(?<id>[A-Za-z]+\d+)\s*:\s*(?<msg>.*?)(?:\s+\[[^\]]+\])?$")]
     private static partial Regex GeneralError();

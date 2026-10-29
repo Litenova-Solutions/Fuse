@@ -32,6 +32,30 @@ internal sealed record CorrectnessCase(
 
     /// <summary>How many bytes the cause lines account for.</summary>
     public int CauseBytes { get; init; }
+
+    /// <summary>How many files the check checked, or null when it did not answer.</summary>
+    public int? FilesChecked { get; init; }
+
+    /// <summary>How many documents binding the targets bound, one per target framework; 0 for a kept answer.</summary>
+    public int? DocumentsBound { get; init; }
+
+    /// <summary>Whether the check checked whole projects.</summary>
+    public bool WholeProjectsBound { get; init; }
+
+    /// <summary>Whether the check answered from the answer it kept, binding nothing.</summary>
+    public bool KeptAnswerHit { get; init; }
+
+    /// <summary>For how many files the check reused the errors of an earlier check, or null when it did not answer.</summary>
+    public int? FilesWithReusedErrors { get; init; }
+
+    /// <summary>How many errors the answer printed.</summary>
+    public int PrintedErrors { get; init; }
+
+    /// <summary>How many errors the answer counts, printed or not.</summary>
+    public int TotalErrors { get; init; }
+
+    /// <summary>How many errors the results file holds, for a capped answer; null when the answer printed every error.</summary>
+    public int? ResultsFileErrors { get; init; }
 }
 
 /// <summary>
@@ -57,26 +81,66 @@ internal static partial class CorrectnessSuite
         var warm = await repo.FuseAsync("check");
         Console.WriteLine($"[correctness] fuse warm-up: {warm.Result.Output.Trim().Split('\n').Last()} ({warm.Milliseconds:0} ms)");
 
+        // Every phase line already in the log belongs to an earlier call; draining them keeps each case to its own.
+        var taken = new HashSet<string>(StringComparer.Ordinal);
+        while (RequestPhases.TakeNewest(repo.EngineLogLines(), taken) is not null)
+        {
+        }
+
         var cases = new List<CorrectnessCase>();
         foreach (var planned in truth.Plan!)
         {
             var edits = planned.Edits;
             var item = truth.Cases[planned.Index];
             await CasePlanner.ApplyAsync(repo, planned);
+            var logStart = repo.EngineLogLines().Count;
             var fuse = await repo.FuseAsync(["check", .. edits.Select(e => Path.Combine(repo.Root, e.Path))]);
+            var logLines = repo.EngineLogLines().Skip(logStart).ToList();
+            var phases = RequestPhases.TakeNewest(repo.EngineLogLines(), taken);
+            var counts = CheckCounts.Parse(fuse.Result.Output, logLines, phases);
 
             // The cause lines `fuse check` prints under an error in a file this case did not edit.
             List<Match> Context() => [.. fuse.Result.Output.Split('\n').Select(l => CauseLine().Match(l.TrimEnd('\r'))).Where(m => m.Success)];
             var truthErrors = Subtract(item.Names, head.Names);
             var fuseErrors = EvalRepo.ParseFuseErrors(fuse.Result.Output);
             var fuseCount = EvalRepo.ParseFuseCount(fuse.Result.Output);
+            var printedErrors = fuseErrors.Count;
+            // A capped answer prints some errors and writes every one to its results file, so a file that holds them all
+            // is what the case is classified on; matching only the printed ones would count the rest as missed.
+            if (ResultsFileCounts.CappedResults(fuse.Result.Output) is { } cappedAnswer && ResultsFileCounts.ReadText(cappedAnswer.Path) is { } text
+                && ResultsFileCounts.EngineUnsentIn(text) == 0 && ResultsFileCounts.CheckErrorsIn(text) == cappedAnswer.Total)
+            {
+                fuseErrors = EvalRepo.ParseFuseErrors(text);
+            }
+
             var result = Classify(solution, planned.Index, edits, truthErrors, fuseErrors, fuseCount, fuse.Result.ExitCode, fuse.Milliseconds, item.Seconds,
                 fuse.Result.ExitCode is 0 or 1 ? null : fuse.Result.Output.Trim()) with
             {
                 CauseLines = Context().Count(m => m.Success),
                 OutputBytes = System.Text.Encoding.UTF8.GetByteCount(fuse.Result.Output),
                 CauseBytes = System.Text.Encoding.UTF8.GetByteCount(string.Join("\n", Context().Select(m => m.Value))),
+                FilesChecked = counts.FilesChecked,
+                DocumentsBound = counts.DocumentsBound,
+                WholeProjectsBound = counts.WholeProjectsBound,
+                KeptAnswerHit = counts.KeptAnswerHit,
+                FilesWithReusedErrors = counts.FilesWithReusedErrors,
+                PrintedErrors = printedErrors,
+                TotalErrors = fuseCount,
             };
+            // A capped answer proves its completeness with its results file: the file holds every error the summary
+            // counts. A missing file or a short count is a defect verdict, not a silent null. An answered check the
+            // engine logged nothing for is unmeasured, so a logging regression cannot silently zero the counts.
+            if (ResultsFileCounts.CappedResults(fuse.Result.Output) is { } capped)
+            {
+                var resultsText = ResultsFileCounts.ReadText(capped.Path);
+                var fileErrors = resultsText is null ? (int?)null : ResultsFileCounts.CheckErrorsIn(resultsText) + ResultsFileCounts.EngineUnsentIn(resultsText);
+                result = result with { ResultsFileErrors = fileErrors };
+                if (fileErrors != capped.Total)
+                    result = result with { Verdict = "results-incomplete" };
+            }
+
+            if (result.Verdict != "results-incomplete" && fuse.Result.ExitCode is 0 or 1 && (!counts.HasCheckLine || phases is null))
+                result = result with { Verdict = "unmeasured" };
             cases.Add(result);
             Console.WriteLine($"[correctness] {planned.Index + 1}/{truth.Count} {result.Verdict,-12} truth={truthErrors.Count,3} fuse={fuseCount,3} {fuse.Milliseconds,6:0} ms  {string.Join(" + ", edits.Select(e => $"{e.Kind} {e.Path}"))}");
 
@@ -109,10 +173,17 @@ internal static partial class CorrectnessSuite
             causeLines = cases.Sum(c => c.CauseLines),
             causeBytes = cases.Sum(c => c.CauseBytes),
             outputBytes = cases.Sum(c => c.OutputBytes),
+            filesChecked = cases.Sum(c => c.FilesChecked ?? 0),
+            documentsBound = cases.Sum(c => c.DocumentsBound ?? 0),
+            filesWithReusedErrors = cases.Sum(c => c.FilesWithReusedErrors ?? 0),
+            keptAnswerHits = cases.Count(c => c.KeptAnswerHit),
             partialMisses = cases.Count(c => c.Verdict == "partial"),
             exactAgreement = cases.Count(c => c.Verdict is "agree" or "agree-clean"),
             fileAgreement = cases.Count(c => c.FileAgreement),
             fuseUnanswered = cases.Count(c => c.FuseExit is not (0 or 1)),
+            unmeasuredCases = cases.Count(c => c.Verdict == "unmeasured"),
+            resultsIncompleteCases = cases.Count(c => c.Verdict == "results-incomplete"),
+            cappedCasesComplete = cases.Where(c => c.TotalErrors > c.PrintedErrors).All(c => c.Verdict != "results-incomplete"),
             fuseMedianMs = Median(cases.Select(c => c.FuseMilliseconds)),
             buildMedianSeconds = Median(cases.Select(c => c.BuildSeconds)),
             fuseStats = CaseStats.Of(cases.Select(c => c.FuseMilliseconds / 1000)),
@@ -222,8 +293,16 @@ internal static partial class CorrectnessSuite
         var id = Canonical().Match(error).Groups["id"].Value;
         if (id.Length == 0)
             return false;
-        return !id.StartsWith("CS", StringComparison.Ordinal) || IsDocumentation(error);
+        return !id.StartsWith("CS", StringComparison.Ordinal) || IsDocumentation(error) || FlowAnalysisIds.Contains(id);
     }
+
+    /// <summary>
+    ///     Flow analysis errors, which the compiler finds while compiling method bodies but places on a declaration (the
+    ///     method's or the constructor's name), so <see cref="InBody(string, string)"/> does not see them as body errors. In a Jellyfin case
+    ///     a removed using left Task unresolved in a signature; the build stopped at the declaration errors and never
+    ///     reported the CS0161 the semantic model does.
+    /// </summary>
+    private static readonly HashSet<string> FlowAnalysisIds = new(StringComparer.Ordinal) { "CS0161", "CS0171", "CS0177", "CS0843" };
 
     /// <summary>True for the compiler's XML documentation checks, CS1570 to CS1592.</summary>
     private static bool IsDocumentation(string error)

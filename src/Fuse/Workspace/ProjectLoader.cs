@@ -59,6 +59,10 @@ internal sealed class ProjectLoader : IDisposable
     /// <summary>The project files open in the loader, which a reload opens again.</summary>
     public List<RepoPath> LoadedPaths() => [.. _loaded.Keys];
 
+    /// <summary>Why <paramref name="node"/> did not load, or null when no load of it has failed.</summary>
+    public string? LoadFailureOf(ProjectNode node) =>
+        _loadFailures.TryGetValue(node.Path, out var failure) ? failure : null;
+
     /// <summary>Evaluates every project again and closes every project, so none stays open under the old evaluation. Compiles nothing.</summary>
     public async Task EvaluateAsync(CancellationToken cancellationToken)
     {

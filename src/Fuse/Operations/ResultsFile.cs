@@ -13,10 +13,11 @@ internal static class ResultsFile
     ///     directory, for the agent to read whole. Always replaces the previous file, even when the check found
     ///     nothing. Null when the file could not be written.
     /// </summary>
-    internal static string? WriteCheck(RepoRoot root, CheckReport report)
+    /// <param name="treeStamp">The stamp the header carries, or null for none.</param>
+    internal static string? WriteCheck(RepoRoot root, CheckReport report, string? treeStamp = null)
     {
         var text = new StringBuilder();
-        text.Append($"fuse check: {report.ErrorCount} error(s) introduced").Append('\n');
+        text.Append($"fuse check: {report.ErrorCount} error(s) introduced{treeStamp}").Append('\n');
         var generatedShown = new HashSet<string>(StringComparer.Ordinal);
         foreach (var reported in report.Errors)
             CheckOperation.AppendError(text, reported, generatedShown);
@@ -50,8 +51,21 @@ internal static class ResultsFile
         return Write(root, "last-test-results.txt", text.ToString());
     }
 
+    /// <summary>
+    ///     Every failure of <paramref name="runs"/>, as <c>last-test-results.txt</c> in the state directory, and the
+    ///     structured record beside it, which <c>fuse test --failed</c> reruns from. Always replaces both files, even
+    ///     when nothing failed. Null when the text file could not be written.
+    /// </summary>
+    internal static string? WriteTestsWithPaths(RepoRoot root, IEnumerable<(string Project, string Name, TrxResults Outcome)> runs)
+    {
+        var ordered = runs.ToList();
+        var path = WriteTests(root, ordered.Select(r => (r.Name, r.Outcome)));
+        LastTestResults.Write(root, ordered);
+        return path;
+    }
+
     /// <summary>Replaces <paramref name="name"/> in the state directory with <paramref name="text"/>; null when it cannot be written.</summary>
-    private static string? Write(RepoRoot root, string name, string text)
+    internal static string? Write(RepoRoot root, string name, string text)
     {
         try
         {

@@ -125,6 +125,7 @@ public class HostRuleTests
         IsExecutable = isExecutable,
         UsesTestingPlatform = false,
         Framework = TestFramework.Unknown,
+        RequiresContainerRuntime = false,
         TargetPaths = [],
     };
 }

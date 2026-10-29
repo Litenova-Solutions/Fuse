@@ -35,6 +35,7 @@ code { font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", m
 .hero code, .section-head code, .proof code, .page p code, .page li code, .page td code, .page th code {
   background: var(--chip-bg); color: var(--text); border: 1px solid var(--chip-line);
   padding: 0.08em 0.4em; border-radius: 0.35em; font-size: 0.86em;
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
 }
 .wrap { max-width: 56rem; margin: 0 auto; padding: 0 1rem; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -128,22 +129,6 @@ main:focus { outline: none; }
 @media (max-width: 720px) { .race { grid-template-columns: 1fr; } }
 
 /* Features: one wide block for the strongest feature, then a list of the rest, each a link to its page. */
-.spot { display: grid; grid-template-columns: 1.15fr 1fr; gap: 2.5rem; align-items: center; max-width: 52rem; margin: 0 auto 2.6rem; border: 1px solid var(--line); border-radius: 0.9rem; padding: 2rem 2.2rem; background: var(--surface); }
-.spot h3 { font-size: 1.3rem; letter-spacing: -0.01em; margin: 0 0 0.6rem; }
-.spot-text > p { color: var(--muted); font-size: 0.95rem; }
-.spot-stats { list-style: none; padding: 0; margin: 0 0 1.1rem; display: grid; gap: 0.4rem; font-size: 0.9rem; color: var(--muted); }
-.spot-stats b { color: var(--text); font-size: 1.05rem; margin-right: 0.25rem; }
-.spot-links { margin: 0; display: flex; flex-wrap: wrap; gap: 0.4rem 1.4rem; font-size: 0.9rem; }
-.spot-diagram { display: flex; flex-direction: column; align-items: center; font-size: 0.82rem; }
-.spot-diagram .nodes { display: flex; gap: 0.5rem; }
-.spot-diagram .nodes span { background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 0.25rem 0.75rem; }
-.spot-diagram .join { width: 66%; height: 1.4rem; border: 2px solid var(--slow); border-top: 0; border-radius: 0 0 0.5rem 0.5rem; position: relative; margin-bottom: 1.2rem; }
-.spot-diagram .join::after { content: ""; position: absolute; left: 50%; top: 100%; width: 2px; height: 1.2rem; background: var(--slow); transform: translateX(-1px); }
-.spot-diagram .join.single { width: 0; height: 0; border: 0; margin-bottom: 1.2rem; }
-.spot-diagram .box { width: 100%; max-width: 17rem; text-align: center; background: var(--bg); border: 1px solid var(--line); border-radius: 0.6rem; padding: 0.55rem 0.8rem; }
-.spot-diagram .box.engine { border: 2px solid var(--accent); }
-.spot-diagram .box b { display: block; }
-.spot-diagram .box span { color: var(--muted); font-size: 0.78rem; }
 .features { list-style: none; padding: 0; margin: 0 auto; max-width: 52rem; display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem; }
 .features a { display: flex; flex-direction: column; height: 100%; border: 1px solid var(--line); border-radius: 0.7rem; padding: 0.9rem 1rem; color: var(--text); background: var(--bg); }
 .features a:hover { border-color: var(--accent); text-decoration: none; }
@@ -152,7 +137,6 @@ main:focus { outline: none; }
 .features span code { font-size: 0.9em; }
 .features i { font-style: normal; color: var(--accent); font-size: 0.85rem; margin-top: 0.6rem; }
 @media (max-width: 720px) {
-  .spot { grid-template-columns: 1fr; padding: 1.4rem 1.2rem; gap: 1.8rem; }
   .features { grid-template-columns: 1fr; }
 }
 
@@ -180,6 +164,10 @@ th:first-child { position: sticky; left: 0; background: var(--bg); }
 /* On wide screens the results table uses the full width of the page frame, wider than the text column. */
 @media (min-width: 62rem) { .page .table-scroll { margin-left: -6rem; margin-right: -6rem; } }
 td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* Code in a table cell wraps, so a long output line does not force its column wide and crush the others. */
+.page td code, .page th code { white-space: normal; overflow-wrap: anywhere; }
+/* On a phone a long inline command wraps instead of widening the page. */
+@media (max-width: 40rem) { .page p code, .page li code { white-space: normal; overflow-wrap: anywhere; } }
 
 /* Footer */
 .site-footer { margin-top: 7rem; border-top: 1px solid var(--line); padding: 1.8rem 0 2.5rem; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.8rem 1.5rem; font-size: 0.85rem; color: var(--muted); }
@@ -287,3 +275,83 @@ pre .dim { color: var(--code-muted); user-select: none; }
 .pager .next-page { margin-left: auto; text-align: right; }
 
 .page .label { display: inline-block; font-size: 0.72rem; line-height: 1.6; color: var(--tag-text); background: var(--tag-bg); border: 1px solid var(--tag-line); border-radius: 999px; padding: 0 0.5rem; vertical-align: 0.1em; }
+
+/* A rail with the page's sections, beside the text on a wide screen (site/assets/docs.js builds it from the page's list). */
+.wrap.wide { max-width: 86rem; }
+.rail { display: none; }
+@media (min-width: 82rem) {
+  .docs.has-rail { grid-template-columns: 13rem minmax(0, 46rem) 13rem; gap: 3rem; }
+  .docs.has-rail .page > .toc { display: none; }
+  .rail { display: block; grid-column: 3; grid-row: 1; position: sticky; top: 1rem; max-height: calc(100vh - 2rem); overflow-y: auto; padding: 2.4rem 0 1rem; font-size: 0.84rem; }
+  .rail p { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; margin: 0 0 0.5rem; }
+  .rail ol { list-style: none; margin: 0; padding: 0; }
+  .rail li { margin: 0; }
+  .rail a { display: block; color: var(--muted); padding: 0.22rem 0.7rem; border-left: 2px solid var(--line); line-height: 1.4; }
+  .rail a:hover { color: var(--text); text-decoration: none; border-left-color: var(--slow); }
+  .rail a.current { color: var(--tag-text); font-weight: 600; border-left-color: var(--accent); background: var(--tag-bg); }
+}
+
+/* Color and hierarchy: a marker on each section, lead-ins that scan, table headers on a tint. */
+.docs .page h2 { padding-top: 1.4rem; border-top: 1px solid var(--line); }
+.docs .page h2::before { content: ""; display: inline-block; width: 0.32rem; height: 0.95em; background: var(--accent); border-radius: 2px; margin-right: 0.6rem; vertical-align: -0.08em; }
+.docs .page h3 { color: var(--tag-text); }
+.docs .page li > strong:first-child, .docs .page li > b:first-child { color: var(--tag-text); }
+.docs .page thead th { background: var(--tag-bg); color: var(--tag-text); border-bottom: 2px solid var(--tag-line); }
+.docs .page thead th:first-child { background: var(--tag-bg); }
+.docs .page tbody tr:hover > * { background: #faf9ff; }
+.docs .page .intro { color: var(--text); }
+
+/* The points of a long page, before its details. */
+.key { border: 1px solid var(--tag-line); background: linear-gradient(135deg, var(--tag-bg), #fbfaff 70%); border-radius: 0.7rem; padding: 0.9rem 1.1rem 0.6rem; margin: 0 0 1.6rem; font-size: 0.95rem; }
+.key > p:first-child { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; color: var(--tag-text); margin: 0 0 0.4rem; }
+.page .key ul { margin: 0 0 0.3rem; padding-left: 1.1rem; }
+.page .key li { margin-bottom: 0.35rem; }
+.page .key li::marker { color: var(--accent); }
+.callout.warn { border-left: 3px solid #e0a62e; }
+.callout.tip { border-left: 3px solid var(--accent); }
+
+/* A glossary reads as a two-column list of terms and what they mean. */
+.docs .page dl.terms { display: grid; grid-template-columns: minmax(8rem, 12rem) minmax(0, 1fr); border-top: 1px solid var(--line); }
+.docs .page dl.terms dt, .docs .page dl.terms dd { margin: 0; padding: 0.6rem 0.6rem; border-bottom: 1px solid var(--line); }
+.docs .page dl.terms dt { color: var(--tag-text); background: var(--tag-bg); }
+@media (max-width: 36rem) {
+  .docs .page dl.terms { grid-template-columns: minmax(0, 1fr); }
+  .docs .page dl.terms dt { border-bottom: 0; padding-bottom: 0.2rem; }
+}
+
+/* Landing refinements: a soft glow behind the hero, section labels as pills, each comparison on a card, the notes
+   under the charts in a tinted box. */
+.hero { position: relative; isolation: isolate; }
+.hero::before { content: ""; position: absolute; z-index: -1; top: -5rem; left: 50%; width: min(70rem, 100vw); height: 36rem; transform: translateX(-50%); pointer-events: none;
+  background: radial-gradient(ellipse 48% 55% at 50% 32%, rgba(109, 74, 255, 0.15), rgba(109, 74, 255, 0) 72%); }
+.section-head .kicker { display: inline-block; font-size: 0.74rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--tag-text); background: var(--tag-bg); border: 1px solid var(--tag-line); border-radius: 999px; padding: 0.18rem 0.8rem; margin: 0 0 0.9rem; }
+.repos { gap: 1.1rem; max-width: 52rem; }
+.repos > .repo:last-child:nth-child(odd) { width: calc((100% - 1.1rem) / 2); }
+.repo { background: var(--bg); border: 1px solid var(--line); border-radius: 0.9rem; padding: 1.1rem 1.2rem 1rem; box-shadow: 0 1px 2px rgba(11, 11, 11, 0.04); }
+.repo:hover { border-color: var(--tag-line); }
+.repo .x { margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px dashed var(--line); }
+.proof { max-width: 46rem; background: var(--tag-bg); border: 1px solid var(--tag-line); border-radius: 0.7rem; padding: 0.7rem 1.1rem; font-size: 0.88rem; margin-top: 2rem; }
+.features a { box-shadow: 0 1px 2px rgba(11, 11, 11, 0.04); }
+.repo .x b { color: var(--tag-text); font-size: 0.95rem; }
+
+/* Syntax colors for code blocks (site/assets/highlight.js), on the dark code background. */
+pre .tk-command { color: #b9a8ff; font-weight: 600; }
+pre .tk-flag { color: #7fd1c7; }
+pre .tk-string { color: #a8d8a0; }
+pre .tk-placeholder { color: #f2c97d; font-style: italic; }
+pre .tk-path { color: #8fb8ff; }
+pre .tk-comment, pre .tk-dim, pre .tk-prompt { color: var(--code-muted); }
+pre .tk-key { color: #b9a8ff; }
+pre .tk-number { color: #f2c97d; }
+pre .tk-literal { color: #f0a0c8; }
+pre .tk-error { color: #f28b82; font-weight: 600; }
+pre .tk-warning { color: #e5c07b; font-weight: 600; }
+pre .tk-id { color: #e5c07b; }
+pre .tk-cause { color: #9a9890; }
+pre .tk-summary { color: #d9cfff; }
+
+.features li.wide { grid-column: 1 / -1; }
+.features .ficon { display: inline-flex; align-items: center; justify-content: center; width: 2.2rem; height: 2.2rem; border-radius: 0.6rem; background: var(--tag-bg); border: 1px solid var(--tag-line); color: var(--accent); margin-bottom: 0.7rem; }
+.features a:hover .ficon { background: var(--accent); border-color: var(--accent); color: #fff; }
+.features .ficon { flex: none; align-self: flex-start; line-height: 0; }
+

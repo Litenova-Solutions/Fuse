@@ -53,7 +53,7 @@ done
 
 # Git Bash, the shell Claude Code runs hooks in on Windows, finds the command by name on the PATH.
 rewritten=$(echo '{"tool_input":{"command":"dotnet test"}}' | PATH="$tools:$PATH" fuse hook claude pre-shell)
-case "$rewritten" in *'"command":"fuse test"'*) ;; *) echo "check: pre-shell answered '$rewritten'"; exit 1 ;; esac
+case "$rewritten" in *'"command":"fuse test --from-rewrite"'*) ;; *) echo "check: pre-shell answered '$rewritten'"; exit 1 ;; esac
 
 file=$(cd Lib && pwd)/Broken.cs
 if command -v cygpath >/dev/null 2>&1; then file=$(cygpath -m "$file"); fi

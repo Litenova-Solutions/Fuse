@@ -30,6 +30,18 @@ public class ScopedCheckTests
     }
 
     [Fact]
+    public async Task A_directory_scope_right_after_an_edit_reads_the_edit_from_disk()
+    {
+        await using var engine = await InProcessEngine.StartAsync();
+        // No sync and no wait: the check itself reads the folder's recently written sources, as a files scope reads its files.
+        engine.Repo.Replace("Lib/Calc.cs", "public int Add(", "public int Plus(");
+
+        var scoped = await CheckPathsAsync(engine, engine.Repo.Full("Lib"));
+
+        Assert.Equal(["App/Program.cs", "Lib.Tests/CalcTests.cs"], scoped.Errors.Select(e => e.Error.Path).Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
     public async Task A_glob_scope_equals_the_same_files_named_one_by_one()
     {
         await using var engine = await InProcessEngine.StartAsync();

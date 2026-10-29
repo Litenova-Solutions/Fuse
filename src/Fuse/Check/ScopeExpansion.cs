@@ -82,6 +82,65 @@ internal static class ScopeExpansion
         return targets;
     }
 
+    /// <summary>
+    ///     The sources under <paramref name="named"/> written in the last <see cref="RecentWindow"/>, and every named file,
+    ///     for the sync to read from disk before the file watcher reports them, as a files scope does with its files. A
+    ///     check that runs right after an edit then sees it. Older files the watcher has reported already; a directory or
+    ///     pattern stops being searched past <see cref="MaxSearchedFiles"/> files.
+    /// </summary>
+    public static List<RepoPath> RecentlyWritten(RepoRoot root, IReadOnlyList<string> named)
+    {
+        var since = DateTime.UtcNow - RecentWindow;
+        var result = new List<RepoPath>();
+        foreach (var spec in named)
+        {
+            try
+            {
+                if (spec.Contains('*') || spec.Contains('?'))
+                {
+                    var display = DisplaySpec(root, spec);
+                    if (!PathPattern.Normalize(ToRepoRelative(root, spec, display), out var pattern))
+                        continue;
+                    var literal = pattern[..Math.Max(0, pattern[..pattern.IndexOfAny(['*', '?'])].LastIndexOf('/'))];
+                    var start = literal.Length == 0 ? root.Path : Path.Combine(root.Path, literal);
+                    result.AddRange(Recent(root, start, since).Where(p => PathPattern.Matches(pattern, p.Relative)));
+                }
+                else if (Directory.Exists(Absolute(root, spec)))
+                {
+                    result.AddRange(Recent(root, Absolute(root, spec), since));
+                }
+                else
+                {
+                    result.Add(root.PathOfNamed(spec));
+                }
+            }
+            catch (Exception e) when (e is FuseException or ArgumentException or PathTooLongException or IOException or UnauthorizedAccessException)
+            {
+                // A spec that cannot be read here is refused, or answered from the watcher, by the expansion after the sync.
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>How far back <see cref="RecentlyWritten"/> looks: far longer than the watcher takes to report a write.</summary>
+    private static readonly TimeSpan RecentWindow = TimeSpan.FromSeconds(10);
+
+    /// <summary>The most files <see cref="RecentlyWritten"/> looks at under one directory or pattern.</summary>
+    private const int MaxSearchedFiles = 20000;
+
+    private static List<RepoPath> Recent(RepoRoot root, string directory, DateTime since)
+    {
+        if (!Directory.Exists(directory))
+            return [];
+        var options = new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true };
+        return new DirectoryInfo(directory).EnumerateFiles("*", options)
+            .Take(MaxSearchedFiles)
+            .Where(f => PathRules.IsSource(f.FullName) && f.LastWriteTimeUtc >= since)
+            .Select(f => root.PathOf(f.FullName))
+            .ToList();
+    }
+
     /// <summary>The specs as the summary names them: repository-relative with forward slashes, in the order named.</summary>
     public static IReadOnlyList<string> DisplaySpecs(RepoRoot root, IReadOnlyList<string> named) =>
         [.. named.Select(s => DisplaySpec(root, s))];

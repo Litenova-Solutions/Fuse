@@ -105,7 +105,8 @@ internal sealed class Checker
         // Also drops what a cancelled check left behind: its binding times and its analyzer report are not this check's.
         _introduced.Begin(analyzers, reuse: scope is CheckScope.AllChanges);
         var syncing = phases.Start();
-        await _workspace.SyncAsync(TargetResolver.NamedPaths(scope), cancellationToken).ConfigureAwait(false);
+        IReadOnlyList<RepoPath> known = scope is CheckScope.NamedPaths scoped ? ScopeExpansion.RecentlyWritten(_workspace.Root, scoped.Named) : TargetResolver.NamedPaths(scope);
+        await _workspace.SyncAsync(known, cancellationToken).ConfigureAwait(false);
         phases.Add(Phase.Sync, syncing);
         // A file that matches HEAD again is no longer credited to the sessions that wrote it, whichever check sees it first.
         _sessions.Forget(_workspace.Tracker.Changed);

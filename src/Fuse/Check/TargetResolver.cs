@@ -17,7 +17,8 @@ internal sealed class TargetResolver
 
     /// <summary>
     ///     The files a files scope names, which the sync reads from disk before the file watcher reports them. Every
-    ///     change and a paths scope name none: the change tracker already has them.
+    ///     change names none: the change tracker already has them. A paths scope names its recently written sources
+    ///     instead (<see cref="ScopeExpansion.RecentlyWritten"/>).
     /// </summary>
     public static IReadOnlyList<RepoPath> NamedPaths(CheckScope scope) =>
         scope is CheckScope.Files files ? files.Paths : [];

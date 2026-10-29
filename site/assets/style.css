@@ -326,3 +326,12 @@ pre .dim { color: var(--code-muted); user-select: none; }
 .page .key li::marker { color: var(--accent); }
 .callout.warn { border-left: 3px solid #e0a62e; }
 .callout.tip { border-left: 3px solid var(--accent); }
+
+/* A glossary reads as a two-column list of terms and what they mean. */
+.docs .page dl.terms { display: grid; grid-template-columns: minmax(8rem, 12rem) minmax(0, 1fr); border-top: 1px solid var(--line); }
+.docs .page dl.terms dt, .docs .page dl.terms dd { margin: 0; padding: 0.6rem 0.6rem; border-bottom: 1px solid var(--line); }
+.docs .page dl.terms dt { color: var(--tag-text); background: var(--tag-bg); }
+@media (max-width: 36rem) {
+  .docs .page dl.terms { grid-template-columns: minmax(0, 1fr); }
+  .docs .page dl.terms dt { border-bottom: 0; padding-bottom: 0.2rem; }
+}

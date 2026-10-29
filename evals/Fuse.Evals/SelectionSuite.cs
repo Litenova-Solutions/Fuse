@@ -199,6 +199,12 @@ internal static partial class SelectionSuite
                 CandidatesBound = TestPlanCounts.CandidatesBound(logLines),
             });
             Console.WriteLine($"[selection] {cases.Count}/{truth.Plan.Count} {verdict,-10} truth-failing={truthFailing.Count} fuse ran={fuseFailed + fusePassed} fuse={fuseSeconds:0.0}s dotnet={item.Seconds:0.0}s  {edit.Kind} {edit.Path}");
+            // A missed case is read from the job log first, so its answer is printed whole rather than only its summary.
+            if (verdict == "missed")
+            {
+                foreach (var line in fuse.Result.Output.Replace("\r", "").Split('\n').TakeLast(40))
+                    Console.WriteLine($"[selection]   | {line}");
+            }
         }
 
         var (noCodeCases, noCodeCasesSkipped) = await NoCodeCasesAsync(repo, baselineFailing);

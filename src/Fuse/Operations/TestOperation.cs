@@ -463,9 +463,11 @@ internal static class TestOperation
                 .Where(t => scope?.Framework is not { } framework || HasSegment(t, framework))
                 .Where(File.Exists)
                 .ToList();
-            if (targets.Count == 0)
+            // A .NET Framework target builds an assembly with no runtimeconfig.json, which dotnet exec cannot start
+            // (hostpolicy.dll is not found), so a project with one runs through dotnet test, which starts it the right way.
+            if (targets.Count == 0 || targets.Any(t => t.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) && !File.Exists(Path.ChangeExtension(t, ".runtimeconfig.json"))))
             {
-                // The build wrote none of the applications evaluation named; dotnet test says so in its own words.
+                // dotnet test starts such a target itself, and says in its own words when the build wrote none.
                 var ran = await RunDotnetTestAsync(root, root.Path, ["--project", run.Project, "--no-restore", .. switches, .. run.FilterArguments], cancellationToken, testingPlatform: true, run: run).ConfigureAwait(false);
                 return FilteredNoTest(run, ran);
             }

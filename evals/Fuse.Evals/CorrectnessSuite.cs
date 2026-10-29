@@ -284,8 +284,16 @@ internal static partial class CorrectnessSuite
         var id = Canonical().Match(error).Groups["id"].Value;
         if (id.Length == 0)
             return false;
-        return !id.StartsWith("CS", StringComparison.Ordinal) || IsDocumentation(error);
+        return !id.StartsWith("CS", StringComparison.Ordinal) || IsDocumentation(error) || FlowAnalysisIds.Contains(id);
     }
+
+    /// <summary>
+    ///     Flow analysis errors, which the compiler finds while compiling method bodies but places on a declaration (the
+    ///     method's or the constructor's name), so <see cref="InBody(string, string)"/> does not see them as body errors. In a Jellyfin case
+    ///     a removed using left Task unresolved in a signature; the build stopped at the declaration errors and never
+    ///     reported the CS0161 the semantic model does.
+    /// </summary>
+    private static readonly HashSet<string> FlowAnalysisIds = new(StringComparer.Ordinal) { "CS0161", "CS0171", "CS0177", "CS0843" };
 
     /// <summary>True for the compiler's XML documentation checks, CS1570 to CS1592.</summary>
     private static bool IsDocumentation(string error)

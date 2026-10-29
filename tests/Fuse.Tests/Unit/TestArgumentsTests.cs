@@ -20,7 +20,7 @@ public class TestArgumentsTests
     }
 
     [Fact]
-    public void A_positional_directory_stays_positional()
+    public void A_positional_directory_is_a_project_on_the_platform_and_stays_positional_on_vstest()
     {
         var root = Directory.CreateTempSubdirectory("fuse-test-args");
         try
@@ -28,11 +28,17 @@ public class TestArgumentsTests
             var tests = root.CreateSubdirectory("Lib.Tests");
 
             Assert.Equal(
-                ["Lib.Tests"],
+                ["--project", "Lib.Tests"],
                 TestOperation.NormalizeArguments(root.FullName, ["Lib.Tests"]));
             Assert.Equal(
-                [tests.FullName, "--no-build"],
+                ["--project", tests.FullName, "--no-build"],
                 TestOperation.NormalizeArguments(root.FullName, [tests.FullName, "--no-build"]));
+            Assert.Equal(
+                ["Lib.Tests"],
+                TestOperation.NormalizeArguments(root.FullName, ["Lib.Tests"], testingPlatform: false));
+            Assert.Equal(
+                ["Lib.Tests/Lib.Tests.csproj", "--no-build"],
+                TestOperation.NormalizeArguments(root.FullName, ["Lib.Tests/Lib.Tests.csproj", "--no-build"], testingPlatform: false));
         }
         finally
         {

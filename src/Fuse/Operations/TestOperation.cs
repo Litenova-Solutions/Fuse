@@ -42,7 +42,7 @@ internal static class TestOperation
             using var argumentsLock = BuildLock.AcquireForClient(root);
             // On Microsoft.Testing.Platform the arguments go to the test application, which rejects VSTest's logger options.
             var testingPlatform = GlobalJson.UsesTestingPlatform(workingDirectory, root.Path);
-            var (outcome, process, log, resultsDirectory) = await RunDotnetTestAsync(root, workingDirectory, NormalizeArguments(workingDirectory, arguments), cancellationToken, testingPlatform).ConfigureAwait(false);
+            var (outcome, process, log, resultsDirectory) = await RunDotnetTestAsync(root, workingDirectory, NormalizeArguments(workingDirectory, arguments, testingPlatform), cancellationToken, testingPlatform).ConfigureAwait(false);
             const string summary = "ran the tests your dotnet test arguments name";
             return outcome is null
                 ? WithoutResults(process, root, ArgumentsRun, summary, Seconds(started), log, resultsDirectory)
@@ -665,12 +665,12 @@ internal static class TestOperation
 
     /// <summary>
     ///     The caller's <c>dotnet test</c> arguments with a positional path spelled the way the runner requires:
-    ///     Microsoft.Testing.Platform refuses a project or solution given positionally, so a first argument naming one
-    ///     becomes <c>--project</c> or <c>--solution</c> with the path. A directory stays positional, which
-    ///     <c>dotnet test</c> reads as the project it holds, as does an assembly, and arguments that already name a
-    ///     project or solution pass unchanged.
+    ///     Microsoft.Testing.Platform refuses a project, solution or directory given positionally, so on it a first
+    ///     argument naming one becomes <c>--project</c> or <c>--solution</c> with the path. VSTest reads a positional
+    ///     path and refuses <c>--project</c>, so on VSTest the path stays positional. An assembly stays positional on
+    ///     both, and arguments that already name a project or solution pass unchanged.
     /// </summary>
-    internal static string[] NormalizeArguments(string workingDirectory, IReadOnlyList<string> arguments)
+    internal static string[] NormalizeArguments(string workingDirectory, IReadOnlyList<string> arguments, bool testingPlatform = true)
     {
         string[] normalized = [.. arguments];
         for (var i = 0; i < normalized.Length; i++)
@@ -682,7 +682,8 @@ internal static class TestOperation
         }
 
         arguments = normalized;
-        if (arguments.Count == 0
+        if (!testingPlatform
+            || arguments.Count == 0
             || arguments.Any(a => a.StartsWith("--project", StringComparison.OrdinalIgnoreCase) || a.StartsWith("--solution", StringComparison.OrdinalIgnoreCase)))
             return [.. arguments];
         var first = arguments[0];
@@ -694,8 +695,21 @@ internal static class TestOperation
             ? "--solution"
             : first.EndsWith("proj", StringComparison.OrdinalIgnoreCase)
                 ? "--project"
-                : null;
+                : IsDirectory(workingDirectory, first) ? "--project" : null;
         return option is null ? [.. arguments] : [option, first, .. arguments.Skip(1)];
+    }
+
+    /// <summary>Whether <paramref name="path"/>, read from <paramref name="workingDirectory"/>, is a directory; a path that cannot be read as one is not.</summary>
+    private static bool IsDirectory(string workingDirectory, string path)
+    {
+        try
+        {
+            return Directory.Exists(Path.GetFullPath(path, workingDirectory));
+        }
+        catch (Exception e) when (e is ArgumentException or NotSupportedException or IOException)
+        {
+            return false;
+        }
     }
 
     /// <summary>

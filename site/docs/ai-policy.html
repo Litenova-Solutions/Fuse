@@ -111,10 +111,10 @@
     <p class="crumbs"><a href="index.html">Docs</a> / Contribute</p>
     <h1>AI Policy</h1>
     <p class="jump"><a href="#docs-nav">All documentation pages</a></p>
-    <p class="intro">Fuse is built for coding agents and is developed with them, so AI-assisted contributions are welcome. The policy asks one thing: a person stands behind every contribution, as if they had written it themselves.</p>
+    <p class="intro">Coding agents are both what Fuse is built for and part of how it is built, so contributions written with AI tools are welcome. The policy asks one thing of you: stand behind every contribution as if you had written each line yourself.</p>
     <div class="audience">
-      <p><b>This page is for</b> anyone who contributes to Fuse with the help of an AI tool, including a coding agent that edits files or runs commands.</p>
-      <p><b>It applies to</b> issues, pull requests, review comments, discussions and security reports.</p>
+      <p><b>This page is for</b> you if you contribute to Fuse with the help of an AI tool, including a coding agent that edits files or runs commands.</p>
+      <p><b>After you read it</b> you know what this policy asks of you in issues, pull requests, review comments, discussions and security reports.</p>
     </div>
 
     <nav class="toc" aria-label="On this page">
@@ -132,32 +132,32 @@
 
     <h2 id="a-person-is-responsible">A person is responsible <a class="anchor" href="#a-person-is-responsible" aria-label="Link to this section">#</a></h2>
     <ul>
-      <li>Every contribution comes from a person who has read it and answers for it. Maintainers judge a contribution by what it does, not by how it was written.</li>
-      <li>You understand every line of your pull request and can explain and change it when a reviewer asks. That an agent wrote a line does not answer a question about it.</li>
-      <li>A pull request passes the gates in <a href="https://github.com/Litenova-Solutions/Fuse/blob/main/CONTRIBUTING.md">Contributing</a>, its new tests run, and every example and number in its documentation follows <a href="https://github.com/Litenova-Solutions/Fuse/blob/main/AGENTS.md">AGENTS.md</a>. Output that an agent says it ran counts only when you ran it too.</li>
-      <li>Keep a pull request to one change. Split generated work that touches unrelated parts of the code.</li>
+      <li>A person sends every contribution, and that person has read it and answers for it. When maintainers review your contribution, they judge what it does, not how you wrote it.</li>
+      <li>You understand every line of your pull request, so you can explain and change each line when a reviewer asks. The fact that an agent wrote a line does not answer a reviewer's question about it.</li>
+      <li>Your pull request passes the gates that <a href="https://github.com/Litenova-Solutions/Fuse/blob/main/CONTRIBUTING.md">Contributing</a> names. Its new tests run, and every example and number in its documentation follows <a href="https://github.com/Litenova-Solutions/Fuse/blob/main/AGENTS.md">AGENTS.md</a>. When an agent says it ran a command, its output counts only when you ran the command too.</li>
+      <li>Keep your pull request to one change. When generated work touches unrelated parts of the code, split it.</li>
     </ul>
 
     <h2 id="sign-off">Sign-off <a class="anchor" href="#sign-off" aria-label="Link to this section">#</a></h2>
-    <p>The <code>Signed-off-by:</code> line certifies the <a href="https://github.com/Litenova-Solutions/Fuse/blob/main/DCO.txt">Developer Certificate of Origin</a>: that you have the right to submit the change under the Apache-2.0 license. Only a person can give that certification. Add the line only to a change you have reviewed, whether you run <code>git commit -s</code> or your agent runs it for you, and never sign off in an agent's name.</p>
-    <p>Check that generated code does not copy code under a license that is not compatible with Apache-2.0. When you recognize code from another project, say where it comes from.</p>
+    <p>The <code>Signed-off-by:</code> line is your certification of the <a href="https://github.com/Litenova-Solutions/Fuse/blob/main/DCO.txt">Developer Certificate of Origin</a>: you have the right to submit the change under the Apache-2.0 license. Only a person gives this certification. Add the line only to a change you have reviewed, whether you or your agent runs <code>git commit -s</code>. Never sign off in an agent's name.</p>
+    <p>Check that generated code copies nothing under a license that is not compatible with Apache-2.0. When you recognize code from another project, say which project it comes from.</p>
 
     <h2 id="disclosure">Disclosure <a class="anchor" href="#disclosure" aria-label="Link to this section">#</a></h2>
-    <p>Say in the pull request description which AI tools you used and for what: code, tests, documentation, or the description itself. The pull request template has a section for it. Completion of a single line in an editor needs no mention.</p>
-    <p>In a commit that an AI tool helped write, add an <code>Assisted-by:</code> trailer naming the tool and the model:</p>
+    <p>In the pull request description, say which AI tools you used and what each one did: code, tests, documentation, or the description itself. The pull request template holds a section for this disclosure. A single line that your editor completed needs no mention.</p>
+    <p>In a commit that an AI tool helped write, add an <code>Assisted-by:</code> trailer that names the tool and the model:</p>
     <pre data-label="Commit trailer"><code>Assisted-by: Claude Code (claude-opus-5-5)</code></pre>
 
     <h2 id="autonomous-agents">Autonomous agents <a class="anchor" href="#autonomous-agents" aria-label="Link to this section">#</a></h2>
-    <p>An agent must not open issues, pull requests or comments that no person reviewed before they were posted. Maintainers close such contributions without review.</p>
+    <p>An agent must not open issues, pull requests, or comments until a person has reviewed them. Maintainers close a contribution like that without review.</p>
 
     <h2 id="issues-and-security-reports">Issues and security reports <a class="anchor" href="#issues-and-security-reports" aria-label="Link to this section">#</a></h2>
-    <p>Reproduce a bug before you report it, and include the output of <code>fuse --version</code> and the output Fuse printed, copied from your terminal rather than described by a tool. Do not submit a vulnerability report that an AI tool produced unless you have confirmed the vulnerability yourself; <a href="https://github.com/Litenova-Solutions/Fuse/blob/main/SECURITY.md">Security</a> describes how to report one.</p>
+    <p>Reproduce a bug before you report it. Include the output of <code>fuse --version</code> and the output Fuse printed, copied from your terminal rather than described by a tool. Do not submit a vulnerability report that an AI tool produced unless you have confirmed the vulnerability yourself. <a href="https://github.com/Litenova-Solutions/Fuse/blob/main/SECURITY.md">Security</a> describes how to report one.</p>
 
     <h2 id="agents-working-in-this-repository">Agents working in this repository <a class="anchor" href="#agents-working-in-this-repository" aria-label="Link to this section">#</a></h2>
-    <p><a href="https://github.com/Litenova-Solutions/Fuse/blob/main/AGENTS.md">AGENTS.md</a> is the guide for coding agents: the layout, the build, test and format commands, and the rules the code and the documentation follow. Claude Code reads it through <code>CLAUDE.md</code>, and most other harnesses read <code>AGENTS.md</code> directly. An agent follows it the same way a person does.</p>
+    <p><a href="https://github.com/Litenova-Solutions/Fuse/blob/main/AGENTS.md">AGENTS.md</a> guides coding agents through the layout, the build, test and format commands, and the rules the code and the documentation follow. Claude Code reads it through <code>CLAUDE.md</code>, while most other harnesses read <code>AGENTS.md</code> directly. An agent follows that guide the same way you do.</p>
 
     <h2 id="maintainers">Maintainers <a class="anchor" href="#maintainers" aria-label="Link to this section">#</a></h2>
-    <p>Maintainers use AI tools under the same rules. A maintainer may close a contribution that does not follow this policy, and says which part it does not follow.</p>
+    <p>Maintainers follow the same rules when they use AI tools. A maintainer may close a contribution that does not follow this policy. The maintainer says which part it does not follow.</p>
 
     <nav class="pager" aria-label="Previous and next page">
       <a href="evals.html"><span>Previous</span>Evals</a>

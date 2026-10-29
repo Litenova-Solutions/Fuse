@@ -17,7 +17,7 @@ Read [AGENTS.md](AGENTS.md) first: it covers the repository layout, the build, t
     ```
 
     A test you add must run: confirm that the test count went up.
-4. If the change touches checking, test selection or the path of a request, run the eval [Evals](https://fuse.codes/docs/evals#what-to-run) names for it, for example `dotnet run --project evals/Fuse.Evals -c Release -- correctness fixture`, and attach its result to the pull request.
+4. If the change touches checking, test selection or the path of a request, run the eval [Evals](https://fuse.codes/docs/evals#what-to-run) names for it as a targeted run through the GitHub CLI, for example `gh workflow run evals.yml --ref <branch> -f repos='["NodaTime"]' -f suites='["latency"]'`, and attach its result file to the pull request. Evals run on GitHub Actions, never on your machine: a local machine runs other work, so its numbers are not comparable. Commit the result files from the run's artifacts.
 5. Sign off every commit with the Developer Certificate of Origin: `git commit -s` adds the `Signed-off-by:` line that [DCO.txt](DCO.txt) describes. The DCO check fails a pull request with a commit whose sign-off does not match its author; `git rebase --signoff` adds the line to commits you already made.
 6. Open a pull request that says what changed and why, and which AI tools you used, as the [AI policy](https://fuse.codes/docs/ai-policy) asks. The template lists the gates and the sign-off.
 

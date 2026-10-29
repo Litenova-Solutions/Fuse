@@ -12,8 +12,8 @@ AI agents check their work by running `dotnet build` and `dotnet test`, often do
 
 Fuse fixes that. It keeps your solution loaded in the background, and after each edit it tells the agent:
 
-- which compiler errors the edit caused, 7.0x to 43.7x faster than `dotnet build` at the median on four open-source repositories
-- which affected tests fail, up to 4.9x faster than `dotnet test`
+- which compiler errors the edit caused, 8.0x to 27.7x faster than `dotnet build` at the median on four open-source repositories
+- which affected tests fail, up to 2.9x faster than `dotnet test`
 
 Run `fuse init` once. After that, the agent's tool (Claude Code, Cursor, Codex and others) runs Fuse by itself.
 
@@ -23,7 +23,7 @@ Run `fuse init` once. After that, the agent's tool (Claude Code, Cursor, Codex a
 
 ## What you get
 
-- **Only new errors.** Errors that were already in the last commit are not reported, so the agent does not chase problems it did not cause.
+- **Only new errors.** Errors that were already in HEAD, the commit you have checked out, are not reported, so the agent does not chase problems it did not cause.
 - **Breaks in other projects.** Rename a method and Fuse lists every broken caller, in every project, with the change that broke it.
 - **Only affected tests.** Tests the change cannot reach do not run. When only `.cs` files changed, the tests run without a rebuild.
 - **Short output.** At most 20 errors or 10 test failures, plus one summary line. Nothing at all when the edit is clean.
@@ -34,8 +34,8 @@ Run `fuse init` once. After that, the agent's tool (Claude Code, Cursor, Codex a
 
 ## What it costs
 
-- **Memory.** Fuse keeps the loaded projects in memory until it has been idle for 30 minutes: 339 MB to 1,019 MB once idle in the [benchmarks](https://fuse.codes/docs/benchmarks), up to 1,763 MB while it checks, and more on a machine with more memory. Each git worktree uses its own.
-- **A slow first check across projects.** The first edit that affects other projects has to load them. On Jellyfin (40 projects) that took up to 131.4 s; the median signature edit took 86 ms.
+- **Memory.** Fuse keeps the loaded projects in memory until it has been idle for 30 minutes: 319 MB to 512 MB once idle in the [benchmarks](https://fuse.codes/docs/benchmarks), up to 1,091 MB while it checks, and more on a machine with more memory. Each git worktree uses its own.
+- **A slow first check across projects.** The first edit that affects other projects has to load them. On Jellyfin (40 projects) that took up to 68.9 s; the median signature edit took 58 ms.
 - **One check at a time.** Agents in the same repository wait for each other's checks.
 - **Not a full build.** Fuse checks C# only and picks tests by reading the code, so a few cases still need `fuse build` or `fuse test --all`. [Limits](https://fuse.codes/docs/limits) lists them.
 
@@ -102,7 +102,7 @@ fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations chan
 | --- | --- |
 | `fuse init [--instructions]` | Registers Fuse's hooks with the harnesses this repository uses; `--instructions` also adds a Fuse section to `AGENTS.md` |
 | `fuse uninit` | Removes what `fuse init` wrote, keeping every other entry, then stops this repository's engine and deletes its state |
-| `fuse check [paths...]` | Reports the errors your changes caused since the last commit, in every project; with directories or patterns it checks one slice |
+| `fuse check [paths...]` | Reports the errors your changes caused since HEAD, in every project; with directories or patterns it checks one slice |
 | `fuse test [args...]` | Runs the tests affected by your changes |
 | `fuse test --all` | Runs every test |
 | `fuse test --failed` | Reruns the tests that failed in the last run |

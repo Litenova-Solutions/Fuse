@@ -11,7 +11,7 @@ name: Evals
 #
 # The correctness and selection suites run in evals-suite.yml, called once per suite and repository: truth jobs split
 # into shards, then a measure job. Each call waits only for its own truth, so a small repository's results do not wait
-# for the Community Toolkit's truth. The truth does not change while the repository's tree, the seed, the SDK and the eval
+# for a large repository's truth. The truth does not change while the repository's tree, the seed, the SDK and the eval
 # code stay the same, so it is kept in the Actions cache and a later run skips those jobs.
 #
 # Each measure job and each latency merge job uploads evals-<repo>-<suite>: results/ holds the file to commit to evals/results,

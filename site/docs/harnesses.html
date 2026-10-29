@@ -117,6 +117,17 @@
       <p><b>After reading it</b> you can check the settings <code>fuse init</code> wrote, know which Fuse behavior your harness gets, and connect an MCP host by hand.</p>
     </div>
 
+    <div class="key">
+      <p>In short</p>
+      <ul>
+        <li>One command, <code>fuse init</code>, detects the harnesses a repository uses and writes each one's hook settings.</li>
+        <li>Three hooks connect an agent: <code>post-edit</code> reports the errors an edit introduced, <code>pre-shell</code> rewrites <code>dotnet build</code> and <code>dotnet test</code> to <code>fuse build</code> and <code>fuse test</code>, and <code>stop</code> checks every change before the agent finishes.</li>
+        <li>In Cursor, GitHub Copilot CLI, Codex and Muse Code, only one plain <code>dotnet build</code> or <code>dotnet test</code> is rewritten.</li>
+        <li>VS Code agent mode and any other MCP host run Fuse as an MCP server instead of hooks.</li>
+        <li>Running <code>fuse init</code> again updates only its own entries and leaves everything else alone.</li>
+      </ul>
+    </div>
+
     <nav class="toc" aria-label="On this page">
       <p>On this page</p>
       <ol>
@@ -251,7 +262,9 @@ fuse: Muse Code loads hooks from an installed plugin: run `muse plugins install 
       <li><strong>stop</strong> answers <code>{"decision":"block","reason":"..."}</code> with the errors, and prints nothing when there are none. It runs for the <code>Stop</code> event and, since Fuse 5.4.0, for <code>SubagentStop</code>, so a subagent is sent back for the errors its own edits cause before it hands its work back, and its parent counts its edits as its own once it has stopped (<a href="how-it-works.html#check">the stop hook and subagents</a>). Run <code>fuse init</code> again to add <code>SubagentStop</code> to settings an earlier version wrote.</li>
     </ul>
     <p>If the settings' <code>permissions.allow</code> list lets the agent run <code>dotnet build</code> or <code>dotnet test</code> without asking (<code>Bash(dotnet:*)</code>, <code>Bash(dotnet *)</code>, or a rule that starts with <code>Bash(dotnet build</code> or <code>Bash(dotnet test</code>), <code>fuse init</code> adds <code>Bash(fuse build:*)</code>, <code>Bash(fuse test:*)</code> or both. Otherwise the rewritten command would ask for permission where the original did not. A narrower rule, such as one for <code>dotnet test</code> on one project, still adds the rule for every <code>fuse test</code>.</p>
-    <p>Cursor also runs the hooks in Claude Code's settings. A Claude Code hook whose payload comes from Cursor does nothing, so that the Cursor hooks answer in a Cursor session; create <code>.cursor/</code> and run <code>fuse init</code> again to get them.</p>
+    <div class="callout tip">
+      <p><b>Cursor also runs the hooks in Claude Code's settings.</b> A Claude Code hook whose payload comes from Cursor does nothing, so that the Cursor hooks answer in a Cursor session; create <code>.cursor/</code> and run <code>fuse init</code> again to get them.</p>
+    </div>
 
     <h2 id="cursor">Cursor <a class="anchor" href="#cursor" aria-label="Link to this section">#</a></h2>
     <pre data-label=".cursor/hooks.json"><code>{
@@ -500,7 +513,9 @@ muse plugins approve fuse</code></pre>
     <p>Fuse registers no <code>SubagentStop</code> hook for Muse: Muse fires that event for its own helper agents many times in a turn. A Muse subagent's stop is therefore not checked (<a href="#sessions">Sessions</a>).</p>
 
     <h2 id="sessions">Sessions: several agents in one working tree <a class="anchor" href="#sessions" aria-label="Link to this section">#</a></h2>
-    <p>A session is one agent's run as its harness identifies it in a hook's payload. When the post-edit payload names one, the post-edit hook tells that agent only the errors its own edits cause, and leaves out, with a count, the errors other agents' edits in the same working tree caused without it (<a href="how-it-works.html#check">how an error is attributed</a>). Fuse prefixes each id with the harness's name, so two harnesses never share a session. The stop hook checks every change and, when the payload names a session, blocks only on the errors that session's edits cause and those in changes no session is credited with. The pre-shell hook passes the session to <code>fuse test</code>, which then runs the tests that session's edits affect (<a href="how-it-works.html#test-selection">a session's own tests</a>).</p>
+    <p>A session is one agent's run as its harness identifies it in a hook's payload. When the post-edit payload names one, the post-edit hook tells that agent only the errors its own edits cause, and leaves out, with a count, the errors other agents' edits in the same working tree caused without it (<a href="how-it-works.html#check">how an error is attributed</a>).</p>
+    <p>Fuse prefixes each id with the harness's name, so two harnesses never share a session. The stop hook checks every change and, when the payload names a session, blocks only on the errors that session's edits cause and those in changes no session is credited with.</p>
+    <p>The pre-shell hook passes the session to <code>fuse test</code>, which then runs the tests that session's edits affect (<a href="how-it-works.html#test-selection">a session's own tests</a>).</p>
     <div class="table-scroll" role="region" aria-label="Session id per harness" tabindex="0">
       <table>
         <thead><tr><th scope="col">Harness</th><th scope="col">Session id Fuse reads</th><th scope="col">A subagent</th></tr></thead>
@@ -519,7 +534,12 @@ muse plugins approve fuse</code></pre>
     <p><a href="parallel-agents.html">Subagents and parallel agents</a> shows how to set up and check work that several agents share.</p>
 
     <h2 id="vs-code-agent-mode">VS Code agent mode <a class="anchor" href="#vs-code-agent-mode" aria-label="Link to this section">#</a></h2>
-    <p>VS Code runs no hooks, so <code>fuse init</code> registers Fuse's MCP server instead. The agent then has three tools, <code>fuse_check</code>, <code>fuse_test</code> and <code>fuse_build</code>, and calls them when it decides to, rather than after every edit. <code>fuse_check</code> takes the files to check and <code>max_errors</code>, which shows at most that many errors from 1 to 100000 instead of the default 20. <code>fuse_test</code> takes <code>all</code> to run every test and <code>failed</code> to rerun the tests that failed in the last recorded run; the two cannot be combined. <code>fuse_build</code> takes <code>target</code>, the project or solution to build.</p>
+    <p>VS Code runs no hooks, so <code>fuse init</code> registers Fuse's MCP server instead. The agent then has three tools, <code>fuse_check</code>, <code>fuse_test</code> and <code>fuse_build</code>, and calls them when it decides to, rather than after every edit.</p>
+    <ul>
+      <li><code>fuse_check</code> takes the files to check and <code>max_errors</code>, which shows at most that many errors from 1 to 100000 instead of the default 20.</li>
+      <li><code>fuse_test</code> takes <code>all</code> to run every test and <code>failed</code> to rerun the tests that failed in the last recorded run; the two cannot be combined.</li>
+      <li><code>fuse_build</code> takes <code>target</code>, the project or solution to build.</li>
+    </ul>
     <pre data-label=".vscode/mcp.json"><code>{
   "servers": {
     "fuse": {
@@ -636,7 +656,12 @@ muse plugins approve fuse</code></pre>
     </ul>
 
     <h2 id="tested-versions">Tested versions <a class="anchor" href="#tested-versions" aria-label="Link to this section">#</a></h2>
-    <p>Fuse 5.0.0 was run by hand end to end with Claude Code 2.1.282 and with OpenCode 2.0.15. Fuse 5.2.4's sessions were run end to end with Claude Code 2.1.288, with two sessions at once and with two subagents of one session, and with OpenCode 2.0.21, with up to four sessions at once and with two subagents of one session. Fuse 5.4.0 was run end to end with Muse Code 1.4.10 on Windows: the post-edit report, the rewritten <code>dotnet build</code> and the blocked stop each reached the model. Every harness's answers and the files <code>fuse init</code> writes have unit tests. The Cursor, Gemini CLI, Codex and Copilot CLI adapters, and the OpenCode 1 plugin format, follow each harness's documented hook format, and the plugin's JavaScript has no tests of its own.</p>
+    <ul>
+      <li>Fuse 5.0.0 was run by hand end to end with Claude Code 2.1.282 and with OpenCode 2.0.15.</li>
+      <li>Fuse 5.2.4's sessions were run end to end with Claude Code 2.1.288, with two sessions at once and with two subagents of one session, and with OpenCode 2.0.21, with up to four sessions at once and with two subagents of one session.</li>
+      <li>Fuse 5.4.0 was run end to end with Muse Code 1.4.10 on Windows: the post-edit report, the rewritten <code>dotnet build</code> and the blocked stop each reached the model.</li>
+    </ul>
+    <p>Every harness's answers and the files <code>fuse init</code> writes have unit tests. The Cursor, Gemini CLI, Codex and Copilot CLI adapters, and the OpenCode 1 plugin format, follow each harness's documented hook format, and the plugin's JavaScript has no tests of its own.</p>
 
     <nav class="pager" aria-label="Previous and next page">
       <a href="getting-started.html"><span>Previous</span>Getting started</a>

@@ -14,14 +14,14 @@ namespace Fuse.Mcp;
 /// </summary>
 internal static class McpCommand
 {
-    private static readonly Tool[] Tools =
+    internal static readonly Tool[] Tools =
     [
         new()
         {
             Name = "fuse_check",
             Title = "Check C# changes",
             Description = "Compiler and analyzer errors the working tree has and HEAD does not: in the named files, or in every changed file when none are named, and in the files of dependent projects that use a changed declaration. Run after editing C# files. Once Fuse has loaded the repository it answers much faster than dotnet build.",
-            InputSchema = Schema("""{"type":"object","properties":{"files":{"type":"array","items":{"type":"string"},"description":"Files to check, absolute or relative to the repository root. Omit to check every file that differs from HEAD."},"max_errors":{"type":"integer","description":"Show at most this many errors (default 20)."}}}}"""),
+            InputSchema = Schema("""{"type":"object","properties":{"files":{"type":"array","items":{"type":"string"},"description":"Files to check, absolute or relative to the repository root. Omit to check every file that differs from HEAD."},"max_errors":{"type":"integer","description":"Show at most this many errors (default 20)."}}}"""),
             Annotations = new ToolAnnotations { ReadOnlyHint = true, IdempotentHint = true, OpenWorldHint = false },
         },
         new()

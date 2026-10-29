@@ -351,3 +351,16 @@ pre .tk-cause { color: #9a9890; }
 pre .tk-summary { color: #d9cfff; }
 
 .features li.wide { grid-column: 1 / -1; }
+.features .ficon { display: inline-flex; align-items: center; justify-content: center; width: 2.2rem; height: 2.2rem; border-radius: 0.6rem; background: var(--tag-bg); border: 1px solid var(--tag-line); color: var(--accent); margin-bottom: 0.7rem; }
+.features a:hover .ficon { background: var(--accent); border-color: var(--accent); color: #fff; }
+.features .ficon { flex: none; align-self: flex-start; line-height: 0; }
+
+/* Newer measurements on the landing page: one figure per card. */
+.stat-cards { list-style: none; padding: 0; margin: 0 auto; max-width: 52rem; display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.1rem; }
+.stat-cards a { display: flex; flex-direction: column; height: 100%; border: 1px solid var(--line); border-radius: 0.9rem; padding: 1.1rem 1.2rem 1rem; background: var(--bg); color: var(--text); box-shadow: 0 1px 2px rgba(11, 11, 11, 0.04); }
+.stat-cards a:hover { border-color: var(--accent); text-decoration: none; }
+.stat-cards b { font-size: 1.9rem; letter-spacing: -0.03em; line-height: 1.15; color: var(--tag-text); margin-bottom: 0.35rem; }
+.stat-cards span { color: var(--muted); font-size: 0.9rem; line-height: 1.5; flex: 1; }
+.stat-cards span code { font-size: 0.88em; }
+.stat-cards i { font-style: normal; color: var(--accent); font-size: 0.85rem; margin-top: 0.7rem; }
+@media (max-width: 720px) { .stat-cards { grid-template-columns: 1fr; } }

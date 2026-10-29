@@ -225,17 +225,31 @@
       </div>
       <p class="proof">In 40 generated changes, 24 of which made tests fail, <code>fuse test</code> ran every failing test except 1 hedging test in a Polly case. See <a href="docs/benchmarks.html">Benchmarks</a>.</p>
     </section>
+    <section class="section" aria-labelledby="more-heading">
+      <div class="section-head">
+        <p class="kicker">Beyond the Median</p>
+        <h2 id="more-heading">Measured Where Agents Struggle</h2>
+        <p>Four newer evals: a repeated check, two agents in one tree, a large uncommitted tree and a slow analyzer.</p>
+      </div>
+      <ul class="stat-cards">
+        <li><a href="docs/benchmarks.html#speed-and-accuracy"><b>27 to 44 ms</b><span>for a check when nothing changed since the last one, on a warm engine, across the four repositories.</span><i>Benchmarks -&gt;</i></a></li>
+        <li><a href="docs/benchmarks.html#another-writers-errors"><b>20 to 0</b><span>of another agent's errors shown to an agent in the same tree, without and with sessions, while it still gets all 64 of its own.</span><i>Another writer's errors -&gt;</i></a></li>
+        <li><a href="docs/benchmarks.html#a-large-tree"><b>1,500 files</b><span>changed and checked in one cold check of 39.2 s, in a tree of 6,002 files and 31 projects.</span><i>A large tree -&gt;</i></a></li>
+        <li><a href="docs/benchmarks.html#slow-analyzer"><b>46 ms</b><span>for the post-edit hook beside an analyzer that takes 4,001 ms; <code>fuse check</code> runs that analyzer in 2.14 s and reports its error.</span><i>A slow analyzer -&gt;</i></a></li>
+      </ul>
+    </section>
+
     <section class="section" aria-labelledby="features-heading">
       <div class="section-head">
         <p class="kicker">Built for Agents</p>
         <h2 id="features-heading">Features</h2>
       </div>
       <ul class="features">
-        <li class="wide" id="parallel"><a href="docs/parallel-agents.html"><b>Parallel agents in one working tree</b><span>Agents that build at once fail on each other's files in <code>obj</code> and <code>bin</code>, so each usually gets its own git worktree. With Fuse they share one working tree and one engine, and their builds take turns: 0 locked-file errors in 60 builds run 3 at a time, and 150 of 150 checks answered with 3 or 4 agents editing at once.</span><i>Subagents and parallel agents -&gt;</i></a></li>
-        <li><a href="docs/how-it-works.html#test-selection"><b>Affected tests</b><span>Runs only the tests the changed code can reach, and skips the rebuild when only <code>.cs</code> files changed.</span><i>How tests are selected -&gt;</i></a></li>
-        <li><a href="docs/harnesses.html"><b>Supported agents</b><span>Claude Code, Cursor, Codex, Gemini CLI, GitHub Copilot CLI, OpenCode and Muse Code. One <code>fuse init</code> sets up the hooks that check every edit.</span><i>Connect your agent -&gt;</i></a></li>
-        <li><a href="docs/how-it-works.html#privacy"><b>Runs locally</b><span>Fuse sends no telemetry, makes no network calls of its own, and has no settings to maintain.</span><i>Privacy and footprint -&gt;</i></a></li>
-        <li><a href="docs/how-it-works.html#failure-handling"><b>Silent when it cannot answer</b><span>If Fuse cannot answer, the hook prints nothing and the agent continues. Fuse never edits your code.</span><i>When Fuse cannot answer -&gt;</i></a></li>
+        <li class="wide" id="parallel"><a href="docs/parallel-agents.html"><span class="ficon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="5.5" r="2.3"/><circle cx="12" cy="5.5" r="2.3"/><circle cx="19" cy="5.5" r="2.3"/><path d="M5 7.8v1.7a3 3 0 0 0 3 3h8a3 3 0 0 0 3-3V7.8M12 7.8v8.2"/><rect x="7.5" y="16" width="9" height="5.5" rx="1.5"/></svg></span><b>Parallel agents in one working tree</b><span>Agents that build at once fail on each other's files in <code>obj</code> and <code>bin</code>, so each usually gets its own git worktree. With Fuse they share one working tree and one engine, and their builds take turns: 0 locked-file errors in 60 builds run 3 at a time, and 150 of 150 checks answered with 3 or 4 agents editing at once.</span><i>Subagents and parallel agents -&gt;</i></a></li>
+        <li><a href="docs/how-it-works.html#test-selection"><span class="ficon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/></svg></span><b>Affected tests</b><span>Runs only the tests the changed code can reach, and skips the rebuild when only <code>.cs</code> files changed.</span><i>How tests are selected -&gt;</i></a></li>
+        <li><a href="docs/harnesses.html"><span class="ficon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2.5v4.5M15 2.5v4.5"/><path d="M6 7h12v3.5a6 6 0 0 1-12 0z"/><path d="M12 16.5v5"/></svg></span><b>Supported agents</b><span>Claude Code, Cursor, Codex, Gemini CLI, GitHub Copilot CLI, OpenCode and Muse Code. One <code>fuse init</code> sets up the hooks that check every edit.</span><i>Connect your agent -&gt;</i></a></li>
+        <li><a href="docs/how-it-works.html#privacy"><span class="ficon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10.5" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.7" r="1.2" fill="currentColor"/></svg></span><b>Runs locally</b><span>Fuse sends no telemetry, makes no network calls of its own, and has no settings to maintain.</span><i>Privacy and footprint -&gt;</i></a></li>
+        <li><a href="docs/how-it-works.html#failure-handling"><span class="ficon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6.5 9H3.5v6h3l4.5 4z"/><path d="m15.5 9.5 5 5M20.5 9.5l-5 5"/></svg></span><b>Silent when it cannot answer</b><span>If Fuse cannot answer, the hook prints nothing and the agent continues. Fuse never edits your code.</span><i>When Fuse cannot answer -&gt;</i></a></li>
       </ul>
       <p class="proof"><b>The cost is memory.</b> Fuse uses 319 MB to 512 MB once idle in the benchmarks, and more on a machine with more memory. <a href="docs/index.html#what-fuse-costs">What Fuse costs</a></p>
     </section>

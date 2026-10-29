@@ -111,23 +111,23 @@
     <p class="crumbs"><a href="index.html">Docs</a> / Contribute</p>
     <h1>Evals</h1>
     <p class="jump"><a href="#docs-nav">All documentation pages</a></p>
-    <p class="intro">The evals in <code>evals/Fuse.Evals</code> measure whether Fuse is right and how fast it is, by comparing every answer with a real <code>dotnet build</code> or <code>dotnet test</code>. This page explains what each suite measures and how to run it.</p>
+    <p class="intro">The evals in <code>evals/Fuse.Evals</code> check Fuse's answers against a real <code>dotnet build</code> or <code>dotnet test</code>, so every claim about accuracy and speed rests on a measured comparison. This page describes what each suite measures and how you run it.</p>
     <div class="audience">
-      <p><b>This page is for</b> a contributor whose change touches checking, test selection or performance, and who has to show its effect, and for anyone who wants to know how the published numbers were produced.</p>
-      <p><b>After reading it</b> you can run the suite a change needs, read its result file, and update the pages that quote the numbers. <a href="benchmarks.html">Benchmarks</a> has the published numbers.</p>
+      <p><b>This page is for</b> a contributor whose change touches checking, test selection or performance and who must show its effect, and for anyone who wants to know how the published numbers were produced.</p>
+      <p><b>After reading it</b> you can run the suite your change needs, read its result file, and update the pages that quote its numbers. <a href="benchmarks.html">Benchmarks</a> has the published numbers.</p>
     </div>
 
     <div class="key">
       <p>In short</p>
       <ul>
-        <li>Every suite runs the real <code>fuse</code> executable and compares its answers with a real <code>dotnet build</code> or <code>dotnet test</code>.</li>
-        <li>Correctness, test selection and latency are the main suites, and attribution, analyzers, scale and stale are lighter suites that need no truth.</li>
-        <li>The recorded numbers come from GitHub Actions runners that run nothing else, because times depend on what else the machine is doing.</li>
-        <li>Each run writes one JSON file to <code>evals/results</code>, and a short run's file becomes the newest, so commit result files only from full runs.</li>
-        <li>Run the suite your change touches, and attach the result to the pull request.</li>
+        <li>Every suite runs the real <code>fuse</code> executable and checks each answer against a real <code>dotnet build</code> or <code>dotnet test</code>.</li>
+        <li>Correctness, test selection and latency are the main suites. Attribution, analyzers, scale and stale are lighter suites that need no truth.</li>
+        <li>Times depend on what else the machine is doing, so the recorded numbers come from GitHub Actions runners that run nothing else.</li>
+        <li>Each run writes one JSON file to <code>evals/results</code>, and that file becomes the newest for its suite and repository, so commit result files only from full runs.</li>
+        <li>Run the suite your change touches and attach the result to the pull request.</li>
       </ul>
     </div>
-    <p><code>evals/Fuse.Evals</code> is a console project with three main suites, correctness, test selection and latency, and the lighter attribution, analyzers, scale and stale suites. Every benchmark goes through the <code>fuse</code> executable, the way an agent calls it, and every answer is compared with the truth from a real <code>dotnet build</code> or <code>dotnet test</code>. Each run of a suite writes one JSON file to <code>evals/results</code>, and the published numbers, the chart and the site quote the newest file of each suite and repository.</p>
+    <p><code>evals/Fuse.Evals</code> is the console project that runs the evals. It holds 3 main suites, correctness, test selection and latency, and the lighter attribution, analyzers, scale and stale suites. Every benchmark calls the <code>fuse</code> executable, the way an agent calls it, and compares each answer with the truth from a real <code>dotnet build</code> or <code>dotnet test</code>. Each run of a suite writes one JSON file to <code>evals/results</code>. The published numbers, the chart and the site quote the newest file of each suite and repository.</p>
 
     <nav class="toc" aria-label="On this page">
       <p>On this page</p>
@@ -144,7 +144,7 @@
     </nav>
 
     <h2 id="run-an-eval">Run an eval <a class="anchor" href="#run-an-eval" aria-label="Link to this section">#</a></h2>
-    <p>Build Fuse first; the suites run <code>src/Fuse/bin/Release/net10.0/fuse</code> (or <code>fuse.exe</code>), and the Debug build when there is no Release build.</p>
+    <p>Build Fuse before you run a suite. The suites run <code>src/Fuse/bin/Release/net10.0/fuse</code> (or <code>fuse.exe</code>), or the Debug build when there is no Release build.</p>
     <pre data-label="bash"><code>dotnet build Fuse.slnx -c Release
 dotnet run --project evals/Fuse.Evals -c Release -- correctness fixture --mutations 2</code></pre>
     <pre data-label="Output"><code>repo &lt;fuse&gt;\evals\.work\fixture, solution Fixture.sln: 3 code project(s), 2 test project(s); fuse &lt;fuse&gt;\src\Fuse\bin\Release\net10.0\fuse.exe
@@ -155,9 +155,9 @@ dotnet run --project evals/Fuse.Evals -c Release -- correctness fixture --mutati
 [correctness] 2/2 agree        truth=  2 fuse=  4    505 ms  remove-member src/Services/OrderService.cs
 [correctness] fixture: 2 cases, 1 breaking, false green 0, false-red cases 0, unverifiable errors 2, deferred by csc 0, message mismatches 0, partial 0, exact 2, file agreement 2, tree clean True
 wrote evals\results\correctness-fixture-20260929-0452.json</code></pre>
-    <p><code>&lt;fuse&gt;</code> stands for the path of the Fuse checkout, shortened here. In the second case the build reported 2 errors in <code>Services</code> and Fuse reported 4: the build's 2, and 2 in projects that reference <code>Services</code>. MSBuild skipped those projects because <code>Services</code> failed, so the suite counted Fuse's errors there as unverifiable rather than contradicted.</p>
+    <p>Here <code>&lt;fuse&gt;</code> stands for the path of the Fuse checkout, shortened to fit. In the second case the build reported 2 errors in <code>Services</code>, and Fuse reported those 2 plus 2 more in projects that reference <code>Services</code>. MSBuild skipped those projects because <code>Services</code> failed, so the suite counted Fuse's extra errors as unverifiable rather than contradicted.</p>
     <div class="callout warn">
-      <p><b>Delete the result file of a short run.</b> Every run writes a new file, which becomes the newest for its suite and repository and the one <code>chart</code> reads. Commit a result file only from a full run.</p>
+      <p><b>Delete the result file of a short run.</b> Every run writes a new file. That file becomes the newest for its suite and repository, and <code>chart</code> reads it, so commit a result file only from a full run.</p>
     </div>
 
     <h2 id="commands">Commands <a class="anchor" href="#commands" aria-label="Link to this section">#</a></h2>
@@ -194,33 +194,33 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
   clean: deletes %LOCALAPPDATA%/fuse/evals, which holds every checkout; the generated fixture in
          evals/.work/fixture and the result files in evals/results stay</code></pre>
     <ul>
-      <li><strong><code>&lt;suite&gt; &lt;repo&gt;</code></strong> runs <code>correctness</code>, <code>selection</code>, <code>latency</code>, <code>attribution</code>, <code>analyzers</code>, <code>scale</code> or <code>stale</code>, or <code>all</code>, which is the first three in that order, on one repository. <code>&lt;repo&gt;</code> is <code>fixture</code>, <code>analyzer-fixture</code>, <code>scale-fixture</code>, the name of a pinned repository that has been cloned, or a path to any git repository.
+      <li><strong><code>&lt;suite&gt; &lt;repo&gt;</code></strong> runs <code>correctness</code>, <code>selection</code>, <code>latency</code>, <code>attribution</code>, <code>analyzers</code>, <code>scale</code> or <code>stale</code>, or <code>all</code>, which runs the first 3 in that order, on one repository. <code>&lt;repo&gt;</code> is <code>fixture</code>, <code>analyzer-fixture</code>, <code>scale-fixture</code>, the name of a pinned repository that has been cloned, or a path to any git repository.
         <ul>
-          <li><code>--mutations N</code>: the number of cases, 30 by default for correctness and 10 for selection. The latency suite has a fixed size.</li>
-          <li><code>--seed S</code>: the seed of the random choice of edits, 1 by default, so a run with the same seed on the same commit makes the same edits.</li>
-          <li><code>--solution path</code>: the solution the truth side builds, relative to the repository. The default is the pinned solution, or the only <code>.sln</code> or <code>.slnx</code> file in the repository root.</li>
+          <li><code>--mutations N</code>: the number of cases: 30 by default for correctness and 10 for selection. The latency suite has a fixed size.</li>
+          <li><code>--seed S</code>: the seed for the random choice of edits, 1 by default. A run with the same seed on the same commit makes the same edits.</li>
+          <li><code>--solution path</code>: the solution the truth side builds, relative to the repository root. By default it is the pinned solution, or the only <code>.sln</code> or <code>.slnx</code> file in the repository root.</li>
           <li><code>--fuse path</code>: the <code>fuse</code> executable to measure.</li>
-          <li><code>--cache file</code>, <code>--truth-dir dir</code>, <code>--cache-out file</code>: where the truth comes from and goes, as <a href="#the-truth-side">The truth side</a> describes. By default the truth is read from and written to <code>evals/.work/truth/&lt;suite&gt;-&lt;repo&gt;.json</code>.</li>
-          <li><code>--part</code>: for the latency suite, what to measure: <code>all</code>, the default; <code>checks</code>, the checks alone, which the managed client's run on GitHub Actions uses; <code>main</code>, the checks and the test rounds; or <code>agents</code>, the multi-agent scenario, after the cold checks and the body edits it is compared with. A part leaves what it does not measure null.</li>
-          <li><code>--failed-rounds</code>: for the selection suite on the fixture, three fix-and-rerun rounds with <code>fuse test --failed</code> after the cases, and a fourth round with the results files deleted, which runs nothing. On any other repository, or without the flag, the result file records why the rounds were skipped instead.</li>
-          <li><code>--projects N --files M --changed K</code>: for the scale suite, the size of the generated fixture: class libraries, class files per library, and changed files. The defaults are 30, 200 and 1500; a smoke run is <code>--projects 2 --files 10 --changed 5</code>.</li>
+          <li><code>--cache file</code>, <code>--truth-dir dir</code>, <code>--cache-out file</code>: where the truth comes from and where it goes, as <a href="#the-truth-side">The truth side</a> describes. By default the suite reads the truth from <code>evals/.work/truth/&lt;suite&gt;-&lt;repo&gt;.json</code> and writes the missing answers back to it.</li>
+          <li><code>--part</code>: for the latency suite, what to measure. <code>all</code> is the default. <code>checks</code> measures the checks alone, which the managed client's run on GitHub Actions uses. <code>main</code> measures the checks and the test rounds. <code>agents</code> measures the multi-agent scenario, after the cold checks and the body edits it is compared with. A part leaves what it does not measure null.</li>
+          <li><code>--failed-rounds</code>: for the selection suite on the fixture, 3 fix-and-rerun rounds with <code>fuse test --failed</code> after the cases, then a fourth round with the results files deleted, which runs nothing. On any other repository, or without the flag, the result file records why the rounds were skipped instead.</li>
+          <li><code>--projects N --files M --changed K</code>: for the scale suite, the size of the generated fixture: class libraries, class files per library, and changed files. The defaults are 30, 200 and 1500. A smoke run is <code>--projects 2 --files 10 --changed 5</code>.</li>
         </ul>
       </li>
-      <li><strong><code>truth &lt;suite&gt; &lt;repo&gt;</code></strong> runs one shard of the truth side of the correctness or selection suite and writes it to <code>--out</code>. <code>--shard K --shards N</code> picks shard K of N, numbered from 0; <code>--cache file</code> skips what that file already holds.</li>
+      <li><strong><code>truth &lt;suite&gt; &lt;repo&gt;</code></strong> runs one shard of the truth side of the correctness or selection suite and writes it to <code>--out</code>. <code>--shard K --shards N</code> picks shard K of N, numbered from 0. <code>--cache file</code> skips what that file already holds.</li>
       <li><strong><code>key &lt;suite&gt; &lt;repo&gt;</code></strong> prints the key the truth of that suite on that repository is cached under.</li>
-      <li><strong><code>clone &lt;repo&gt;</code></strong> checks <code>FluentValidation</code>, <code>NodaTime</code>, <code>Jellyfin</code> or <code>Polly</code> out at its pinned commit in <code>fuse/evals/repos/&lt;repo&gt;</code> under the user's local application data (<code>%LOCALAPPDATA%</code> on Windows). A checkout already at that commit is left alone. The checkouts live outside the Fuse repository because a repository without its own <code>Directory.Packages.props</code> would inherit Fuse's and fail to restore.</li>
+      <li><strong><code>clone &lt;repo&gt;</code></strong> checks <code>FluentValidation</code>, <code>NodaTime</code>, <code>Jellyfin</code> or <code>Polly</code> out at its pinned commit in <code>fuse/evals/repos/&lt;repo&gt;</code> under the user's local application data (<code>%LOCALAPPDATA%</code> on Windows). It leaves a checkout that is already at that commit alone. The checkouts live outside the Fuse repository because a repository without its own <code>Directory.Packages.props</code> would inherit Fuse's and fail to restore.</li>
       <li><strong><code>chart</code></strong> renders <code>site/assets/benefits.svg</code> from the newest correctness and selection file of each repository:
         <ul>
-          <li>one panel for <code>fuse check</code> against <code>dotnet build</code> and one for <code>fuse test</code> against <code>dotnet test</code>, with every time and speedup rounded as the results are, and each command's range, mean and P95 under its median.</li>
+          <li>one panel for <code>fuse check</code> against <code>dotnet build</code> and one for <code>fuse test</code> against <code>dotnet test</code>. Every time and speedup is rounded as the results are, and each command's range, mean and P95 print under its median.</li>
           <li>a header with the Fuse logo, what Fuse is, its website and repository.</li>
           <li>a last line with the version and date measured and the benchmarks page, so the chart says what it is when shared on its own.</li>
         </ul>
       </li>
-      <li><strong><code>clean</code></strong> deletes <code>fuse/evals</code> under the local application data, which holds the checkouts. The result files stay, and so does the generated fixture under <code>evals/.work/fixture</code>; delete that folder by hand to regenerate it.</li>
+      <li><strong><code>clean</code></strong> deletes <code>fuse/evals</code> under the local application data, which holds the checkouts. The result files stay, and so does the generated fixture under <code>evals/.work/fixture</code>. Delete that folder by hand to regenerate it.</li>
     </ul>
-    <p>Before a suite runs, the tool restores the solution and every project under the repository that the solution leaves out, because Fuse reads every project in the working tree and does not answer while one is unrestored.</p>
+    <p>Before a suite runs, the eval tool restores the solution and every project under the repository that the solution leaves out, because Fuse reads every project in the working tree and does not answer while one is unrestored.</p>
     <div class="callout warn">
-      <p><b>The suites discard changes.</b> Every suite needs a clean working tree, fails otherwise, and discards each change it makes with <code>git checkout -- .</code> and <code>git clean -fdq</code>. Run the suites only on a checkout you do not work in.</p>
+      <p><b>The suites discard changes.</b> Every suite needs a clean working tree and fails without one. It discards each change it makes with <code>git checkout -- .</code> and <code>git clean -fdq</code>, so run the suites only on a checkout you do not work in.</p>
     </div>
 
     <h2 id="repositories">Repositories <a class="anchor" href="#repositories" aria-label="Link to this section">#</a></h2>
@@ -237,42 +237,42 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
         </tbody>
       </table>
     </div>
-    <p><code>evals/Fuse.Evals/PinnedRepo.cs</code> holds the pins and the labels the chart draws. The four open-source repositories are the published set.</p>
+    <p><code>evals/Fuse.Evals/PinnedRepo.cs</code> holds the pins and the labels the chart draws. The 4 open-source repositories are the published set.</p>
     <ul>
-      <li>FluentValidation is the small one: a library, an extension project that depends on it, one test project for three target frameworks, and a benchmark project.</li>
-      <li>The generated fixture, five projects with 22 tests, is for a quick run on your own machine and is not published.</li>
-      <li>Jellyfin is pinned to its final commit before it moved to Roslyn 5, because from then on its analyzer project needs a newer compiler than the SDK the evals run on.</li>
-      <li>Polly is measured because its test projects reach separate layers of the code, which lets test selection narrow, and because its tests run on Microsoft.Testing.Platform (xUnit v3), which the other three do not use.</li>
+      <li>FluentValidation is the small one: a library, an extension project that depends on it, one test project for 3 target frameworks, and a benchmark project.</li>
+      <li>The generated fixture, 5 projects with 22 tests, is for a quick run on your own machine. Its numbers are not published.</li>
+      <li>Jellyfin is pinned to its final commit before it moved to Roslyn 5, because from then on its analyzer project needs a newer compiler than the SDK the evals use.</li>
+      <li>Polly is measured for 2 reasons: its test projects reach separate layers of the code, which lets test selection narrow, and its tests run on Microsoft.Testing.Platform (xUnit v3), which the other 3 do not use.</li>
     </ul>
-    <p>The fixture is generated in <code>evals/.work/fixture</code> on its first use and reused afterwards: two libraries (<code>Core</code>, and <code>Services</code>, which references it), a console app (<code>App</code>, which references <code>Services</code>) and two xUnit test projects (<code>Core.Tests</code> and <code>Services.Tests</code>), committed to git and built. It writes its own <code>global.json</code>, <code>Directory.Build.props</code>, <code>Directory.Build.targets</code> and <code>Directory.Packages.props</code>, so Fuse's own build settings do not apply to it. Its commit id changes each time it is generated, while its content stays the same.</p>
-    <p>The scale fixture is generated in <code>evals/.work/scale-fixture</code> on its first use the same way: 30 class libraries of 200 nearly identical, self-contained classes each (<code>Gen00</code> to <code>Gen29</code>, <code>Class000</code> to <code>Class199</code>), and one test project (<code>Scale.Tests</code>) that references them, committed to git and built. Nothing needs a package beyond the SDK. The <code>--projects</code>, <code>--files</code> and <code>--changed</code> options resize it; the sizes are kept in <code>.scale-params</code> in the fixture, and a run whose sizes disagree with that file deletes the fixture and generates it again.</p>
+    <p>The fixture is generated in <code>evals/.work/fixture</code> on its first use and reused afterwards: 2 libraries (<code>Core</code>, and <code>Services</code>, which references it), a console app (<code>App</code>, which references <code>Services</code>) and 2 xUnit test projects (<code>Core.Tests</code> and <code>Services.Tests</code>), committed to git and built. It writes its own <code>global.json</code>, <code>Directory.Build.props</code>, <code>Directory.Build.targets</code> and <code>Directory.Packages.props</code>, so Fuse's own build settings do not apply to it. Each generation gets a new commit id, while its content stays the same.</p>
+    <p>The scale fixture is generated in <code>evals/.work/scale-fixture</code> on its first use, the same way: 30 class libraries of 200 nearly identical, self-contained classes each (<code>Gen00</code> to <code>Gen29</code>, <code>Class000</code> to <code>Class199</code>), and one test project (<code>Scale.Tests</code>) that references them, committed to git and built. No project needs a package beyond the SDK. The <code>--projects</code>, <code>--files</code> and <code>--changed</code> options resize it. The sizes are kept in <code>.scale-params</code> in the fixture, and a run whose sizes disagree with that file deletes the fixture and generates it again.</p>
 
     <h2 id="suites">Suites <a class="anchor" href="#suites" aria-label="Link to this section">#</a></h2>
     <h3 id="the-truth-side">The truth side <a class="anchor" href="#the-truth-side" aria-label="Link to this section">#</a></h3>
-    <p>The correctness and selection suites compare Fuse with a truth side: a real <code>dotnet build</code> or <code>dotnet test</code> of HEAD and of each case. The truth does not depend on Fuse, so it is a stage of its own, and a run measures only Fuse when the truth is already known.</p>
+    <p>The correctness and selection suites compare Fuse with a truth side: a real <code>dotnet build</code> or <code>dotnet test</code> of HEAD and of each case. The truth does not depend on Fuse, so it is a stage of its own. A run measures only Fuse when the truth is already known.</p>
     <ul>
       <li><strong>The plan.</strong> The cases are drawn from the repository's tree, the seed and the requested count alone, never from Fuse's answers, so every machine draws the same cases.</li>
-      <li><strong>The truth file.</strong> The plan and the answers for HEAD and each case are kept in one file per suite and repository, with the place each answer was measured. Its key is the suite, the repository's git tree, the seed, the count, the SDK version, and a hash of the eval code that draws the cases and runs the truth side; a change to any of them starts a new file.</li>
-      <li><strong>Shards.</strong> <code>truth</code> fills one shard of the file. In the selection suite with more than one shard, shard 0 runs HEAD's full test run alone and the cases go round the other shards; otherwise shard 0 also runs HEAD and the cases go round every shard. The suite run merges the shard files and runs whatever is still missing.</li>
+      <li><strong>The truth file.</strong> The plan and the answers for HEAD and each case are kept in one file per suite and repository, together with where each answer was measured. Its key is the suite, the repository's git tree, the seed, the count, the SDK version, and a hash of the eval code that draws the cases and runs the truth side. A change to any of them starts a new file.</li>
+      <li><strong>Shards.</strong> <code>truth</code> fills one shard of the file. In the selection suite with more than 1 shard, shard 0 runs HEAD's full test run alone, and the cases go round the other shards. Otherwise shard 0 also runs HEAD, and the cases go round every shard. The suite run merges the shard files and runs whatever is still missing.</li>
     </ul>
 
     <h3 id="correctness">Correctness <a class="anchor" href="#correctness" aria-label="Link to this section">#</a></h3>
     <p>The correctness suite measures whether <code>fuse check</code> reports the errors a real build reports.</p>
     <ol>
       <li>The truth side builds the solution at HEAD and keeps the errors HEAD already has.</li>
-      <li>Each case is one generated edit, or with a probability of 0.3, two or three edits in different projects: removing, renaming or re-parameterizing a method, making it private, duplicating its signature, changing its return type, removing a <code>using</code> directive, or deleting a file.</li>
-      <li>The truth side runs <code>dotnet build</code> on the solution with the case's edits, and takes the build's errors beyond HEAD's as the truth.</li>
-      <li>The suite builds HEAD, then for each case makes the edits, runs <code>fuse check</code> on the edited files, resets the tree, and matches Fuse's errors with the truth by position (file, line and column).</li>
+      <li>Each case is one generated edit, or, with a probability of 0.3, 2 or 3 edits in different projects. Each edit removes, renames or re-parameterizes a method, makes it private, duplicates its signature, changes its return type, removes a <code>using</code> directive, or deletes a file.</li>
+      <li>The truth side runs <code>dotnet build</code> on the solution with the case's edits and takes the build's errors beyond HEAD's as the truth.</li>
+      <li>The suite builds HEAD. Then, for each case, it makes the edits, runs <code>fuse check</code> on the edited files, resets the tree, and matches Fuse's errors with the truth by position (file, line and column).</li>
     </ol>
-    <p>A Fuse error at a truth position with a different id or message is a message mismatch. A Fuse error with no truth at its position is unverifiable when it is in a project MSBuild skipped because a project it references failed, deferred when the compiler skipped it (see <a href="benchmarks.html#reading-the-numbers">Benchmarks</a>), which includes the flow analysis errors the compiler places on a declaration (CS0161, CS0171, CS0177 and CS0843), and contradicted otherwise. A truth error without a Fuse error at its position is missed. Each case gets a verdict:</p>
+    <p>A Fuse error at a truth position with a different id or message is a message mismatch. A Fuse error with no truth at its position is unverifiable when it sits in a project MSBuild skipped because a project it references failed. It is deferred when the compiler skipped it (see <a href="benchmarks.html#reading-the-numbers">Benchmarks</a>), which covers the flow analysis errors the compiler places on a declaration (CS0161, CS0171, CS0177 and CS0843). Otherwise it is contradicted. A truth error without a Fuse error at its position is missed. Each case gets a verdict:</p>
     <div class="table-scroll" role="region" aria-label="Correctness verdicts" tabindex="0">
     <table>
       <thead><tr><th scope="col">Verdict</th><th scope="col">Meaning</th></tr></thead>
       <tbody>
         <tr><th scope="row"><code>agree</code></th><td>Fuse reported every error the build did.</td></tr>
         <tr><th scope="row"><code>agree-clean</code></th><td>No error on either side.</td></tr>
-        <tr><th scope="row"><code>partial</code></th><td>Some errors missed.</td></tr>
-        <tr><th scope="row"><code>false-red</code></th><td>An error contradicted.</td></tr>
+        <tr><th scope="row"><code>partial</code></th><td>Fuse missed some errors.</td></tr>
+        <tr><th scope="row"><code>false-red</code></th><td>One of Fuse's errors is contradicted.</td></tr>
         <tr><th scope="row"><code>false-green</code></th><td>The build reported introduced errors and Fuse reported none.</td></tr>
         <tr><th scope="row"><code>fuse-unanswered</code></th><td>Fuse did not answer.</td></tr>
         <tr><th scope="row"><code>results-incomplete</code></th><td>The answer was capped and its results file does not hold every error the summary counts.</td></tr>
@@ -281,53 +281,60 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
     </table>
     </div>
 
-    <p>Each case also records what the check cost: how many files it checked, how many documents binding them bound, whether it bound whole projects, whether it answered from the answer it kept, and for how many files it reused the errors of an earlier check.</p>
-    <p>A capped answer proves its completeness with its results file: the file holds every error the summary counts, and a missing file or a short count is a <code>results-incomplete</code> verdict rather than a silent gap. When the file is complete, the case is classified on the file's errors, not on the ones the answer printed, so an error the answer left out of its printed list is not counted as missed.</p>
+    <p>Each case also records what the check cost: how many files it checked, how many documents it bound for them, whether it bound whole projects, whether it answered from the answer it kept, and for how many files it reused the errors of an earlier check.</p>
+    <p>A capped answer proves its completeness with its results file: the file holds every error the summary counts. A missing file or a short count is a <code>results-incomplete</code> verdict rather than a silent gap. When the file is complete, the case is classified on the file's errors, not on the ones the answer printed, so an error the answer left out of its printed list is not counted as missed.</p>
 
     <h3 id="test-selection">Test selection <a class="anchor" href="#test-selection" aria-label="Link to this section">#</a></h3>
     <p>The selection suite measures whether <code>fuse test</code> runs every test a change makes fail.</p>
     <ol>
       <li>The truth side builds the solution at HEAD, runs every test project with <code>dotnet test</code> one at a time, and stops when a test project writes no results, because a missing project would hide misses.</li>
-      <li>Each case is one behavior edit in a method body of a code project: flipping a comparison, shifting an integer constant by one, dropping a statement, or negating a boolean return. An edit with which the solution does not build is skipped when the plan is drawn.</li>
-      <li>For each case, the truth side runs one <code>dotnet test</code> of the whole solution, as a user runs it after an edit: it builds what changed and runs the test projects in parallel. Its time is the <code>dotnet test</code> time the benchmarks quote. The truth is the tests that fail after the edit and did not fail at HEAD. A case whose run produced fewer result units than HEAD's, TRX files or executed test assemblies on Microsoft.Testing.Platform, is listed in <code>projectsWithoutResults</code>.</li>
-      <li>The suite builds HEAD, then for each case makes the edit, waits 500 ms, runs <code>fuse test</code>, and resets the tree.</li>
+      <li>Each case is one behavior edit in a method body of a code project. The edit flips a comparison, shifts an integer constant by one, drops a statement, or negates a boolean return. When the plan is drawn, it skips an edit with which the solution does not build.</li>
+      <li>For each case, the truth side runs one <code>dotnet test</code> of the whole solution, as a user runs it after an edit: it builds what changed and runs the test projects in parallel. Its time is the <code>dotnet test</code> time the benchmarks quote. The truth is the tests that fail after the edit and did not fail at HEAD. A case whose run produced fewer result units than HEAD's run is listed in <code>projectsWithoutResults</code>. A result unit is a TRX file, or an executed test assembly on Microsoft.Testing.Platform.</li>
+      <li>The suite builds HEAD. Then, for each case, it makes the edit, waits 500 ms, runs <code>fuse test</code>, and resets the tree.</li>
     </ol>
-    <p>A case is <code>caught</code> when every truth failure is among the failures <code>fuse test</code> printed, <code>missed</code> when one is not, <code>no-failure</code> when the edit failed no test, <code>unverified</code> when a truth failure is not printed because <code>fuse test</code> cut its list of names (<code>... and N more</code>), and <code>results-incomplete</code> when a capped answer's results file does not hold every failure the summary counts.</p>
-    <p>Each case also records what the run planned and ran: how many tests it selected and ran, how many test projects it planned and how many ran, how many ran without MSBuild and how many built with it, how many ran whole and why, which filters collapsed, and how many test processes the plan implies. It records whether the edit changed compiled code, and how many symbols the member walk visited.</p>
-    <p>On the fixture the suite then measures two edits that change no compiled code, a comment and a local rename, each with <code>fuse test</code> on its own: what it selected and ran for it. On any other repository the result file records why those cases were skipped instead.</p>
-    <p>With <code>--failed-rounds</code> on the fixture, the suite ends with three fix-and-rerun rounds: three tests broken across two projects, one fixed, then the rest fixed, each fix followed by a full <code>fuse test</code> and a rerun with <code>fuse test --failed</code>, and a fourth round with the results files deleted, which runs nothing. Each round records how many tests failed before it, how many the full run selected, how many the rerun ran, and how many it avoided, with both times. Without the flag, on any other repository, or on a build without <code>fuse test --failed</code>, the result file records why the rounds were skipped instead.</p>
+    <p>A case gets one verdict:</p>
+    <ul>
+      <li><code>caught</code>: every truth failure is among the failures <code>fuse test</code> printed.</li>
+      <li><code>missed</code>: one truth failure is not among them.</li>
+      <li><code>no-failure</code>: the edit failed no test.</li>
+      <li><code>unverified</code>: a truth failure is not printed because <code>fuse test</code> cut its list of names (<code>... and N more</code>).</li>
+      <li><code>results-incomplete</code>: a capped answer's results file does not hold every failure the summary counts.</li>
+    </ul>
+    <p>Each case also records what the run planned and ran: how many tests it selected and ran, how many test projects it planned and how many ran, how many ran without MSBuild and how many built with it, how many ran whole and why, which filters collapsed, and how many test processes the plan implies. It also records whether the edit changed compiled code, and how many symbols the member walk visited.</p>
+    <p>On the fixture the suite then measures 2 edits that change no compiled code, a comment and a local rename, each with <code>fuse test</code> on its own. It records what the run selected and ran for each. On any other repository the result file records why those cases were skipped instead.</p>
+    <p>With <code>--failed-rounds</code> on the fixture, the suite ends with 3 fix-and-rerun rounds. The rounds break 3 tests across 2 projects, fix one, then fix the rest. Each fix is followed by a full <code>fuse test</code> and a rerun with <code>fuse test --failed</code>, and a fourth round with the results files deleted runs nothing. Each round records how many tests failed before it, how many the full run selected, how many the rerun ran, and how many it avoided, with both times. Without the flag, on any other repository, or on a build without <code>fuse test --failed</code>, the result file records why the rounds were skipped instead.</p>
 
     <h3 id="latency">Latency <a class="anchor" href="#latency" aria-label="Link to this section">#</a></h3>
     <p>The latency suite times <code>fuse check</code> and <code>fuse test</code> the way an agent waits for them, and reads the engine's phase line for each call from <code>engine.log</code>.</p>
     <ol>
-      <li>It builds HEAD, as a repository an agent works in has been built, and picks a public method with a block body in one of the two code projects with the most dependents, the one whose name the other projects mention most.</li>
-      <li>It times a check of the clean tree with a cold engine, and a check of a body edit with a cold engine, which loads the owning project.</li>
+      <li>It builds HEAD, as a repository an agent works in has been built. It picks a public method with a block body in one of the 2 code projects with the most dependents: the one whose name the other projects mention most.</li>
+      <li>It times a check of the clean tree with a cold engine. It then times a check of a body edit with a cold engine, which loads the owning project.</li>
       <li>It times 15 body edits (a statement added to the method) and 10 signature edits (the method renamed), each followed by <code>fuse check</code> on the file, then 10 checks of the unchanged tree and 5 <code>fuse test</code> rounds after body edits.</li>
-      <li>Between the body and signature edits it measures five edits that change no compiled code, each on the pristine target on its own: a comment, a local rename, a reformat, a using sort and trailing whitespace. Each is measured as a check and, where the part runs tests, as a test round. An edit the target does not allow, such as a using sort in a file with fewer than two usings, is recorded with its reason instead of failing the repository.</li>
-      <li>It reads the engine's working set and its peak, waits 50 seconds for the engine to return the memory its requests freed, reads the working set again, then runs the multi-agent scenario. Run as <code>--part agents</code>, it first runs one unmeasured <code>fuse test</code> round, so the scenario starts from an engine that has loaded the test projects, as it does after the test rounds.</li>
+      <li>Between the body and signature edits it measures 5 edits that change no compiled code, each on the pristine target on its own: a comment, a local rename, a reformat, a using sort and trailing whitespace. Each is measured as a check and, where the part runs tests, as a test round. It records an edit the target does not allow, such as a using sort in a file with fewer than 2 usings, with its reason instead of failing the repository.</li>
+      <li>It reads the engine's working set and its peak, then waits 50 seconds for the engine to return the memory its requests freed. It reads the working set again and runs the multi-agent scenario. Run as <code>--part agents</code>, it first runs one unmeasured <code>fuse test</code> round, so the scenario starts from an engine that has loaded the test projects, as it does after the test rounds.</li>
     </ol>
 
     <h3 id="multi-agent-scenario">Multi-agent scenario <a class="anchor" href="#multi-agent-scenario" aria-label="Link to this section">#</a></h3>
-    <p>The latency suite ends with seven scenarios for several agents in one repository:</p>
+    <p>The latency suite ends with 7 scenarios for several agents in one repository:</p>
     <ul>
-      <li><strong>Writers.</strong> Up to four clients each edit a file in a different code project ten times and check it, all at once, while a fifth client checks and runs the tests three times. The engine's <code>gate</code> phase shows whether requests queue behind each other, and <code>gateByHolder</code> groups those waits by what held the request lock longest during each one.</li>
-      <li><strong>Builds.</strong> Three clients run <code>fuse build</code> at once, five times. A collision is an output line with MSB3021, MSB3026, MSB3027 or CS2012, and the pass bar is zero.</li>
-      <li><strong>Rounds.</strong> Three <code>fuse test</code> rounds: a body edit in one project, a body edit in a second project whose tests differ, and a second edit to the same file. The result records which test projects each round planned.</li>
-      <li><strong>Scopes.</strong> The same body edit in a file a test project uses, planned four ways: a plain <code>fuse test</code>, a test directory, a test project and <code>--no-build</code>; then every test with <code>fuse test --all</code>; then a code directory that names no test project, which the product refuses. Each form records what it planned and selected and how it ran, so the plans compare form against form.</li>
-      <li><strong>Attribution.</strong> One pair of writers from the <a href="#attribution-suite">attribution suite</a>, recorded with the other scenarios.</li>
-      <li><strong>Stops.</strong> A body edit in one file of each code project, up to 20, then a <code>fuse check</code> of every change, as a stop hook makes, and five more, each after another body edit in the first file.
+      <li><strong>Writers.</strong> Up to 4 clients each edit a file in a different code project 10 times and check it, all at once, while a fifth client checks and runs the tests 3 times. The engine's <code>gate</code> phase shows whether requests queue behind each other. <code>gateByHolder</code> groups those waits by what held the request lock longest during each one.</li>
+      <li><strong>Builds.</strong> The scenario runs <code>fuse build</code> from 3 clients at once, 5 times. A collision is an output line with MSB3021, MSB3026, MSB3027 or CS2012. The pass bar is 0.</li>
+      <li><strong>Rounds.</strong> The scenario runs 3 <code>fuse test</code> rounds: a body edit in one project, a body edit in a second project whose tests differ, and a second edit to the same file. The result records which test projects each round planned.</li>
+      <li><strong>Scopes.</strong> The same body edit in a file a test project uses, planned 4 ways: a plain <code>fuse test</code>, a test directory, a test project and <code>--no-build</code>; then every test with <code>fuse test --all</code>; then a code directory that names no test project, which the product refuses. Each form records what it planned and selected and how it ran, so you can compare the plans form against form.</li>
+      <li><strong>Attribution.</strong> One pair of writers from the <a href="#attribution-suite">attribution suite</a>, recorded here with the other scenarios.</li>
+      <li><strong>Stops.</strong> The scenario makes a body edit in one file of each code project, up to 20, then runs a <code>fuse check</code> of every change, as a stop hook does, and 5 more checks, each after another body edit in the first file.
         <ul>
-          <li>A repeat compiles the file that changed and can keep the others' errors from the earlier check (<a href="how-it-works.html#check">errors kept from an earlier check</a>); the result records the most files one repeat kept, from the engine log's <code>check:</code> line.</li>
-          <li>It also records three checks of the same tree with no edit in between (<code>stopsUnchangedRepeat</code>), which answer from the kept answer, each with its wall time and how many documents it bound, 0 for a kept answer.</li>
+          <li>A repeat compiles the file that changed and can keep the others' errors from the earlier check (<a href="how-it-works.html#check">errors kept from an earlier check</a>). The result records the most files one repeat kept, from the engine log's <code>check:</code> line.</li>
+          <li>It also records 3 checks of the same tree with no edit in between (<code>stopsUnchangedRepeat</code>), which answer from the kept answer. Each records its wall time and how many documents it bound: 0 for a kept answer.</li>
         </ul>
       </li>
-      <li><strong>Tests.</strong> A body edit in a file a test project uses, then one <code>fuse test</code> that is not measured, so the engine and the copies are ready, one <code>fuse test</code> on its own, and two started together, each after another body edit. Two runs that took turns would take about twice as long as one; runs without MSBuild from their own copies (<a href="how-it-works.html#without-msbuild">each run holds its own copy</a>) overlap.</li>
+      <li><strong>Tests.</strong> The scenario makes a body edit in a file a test project uses, runs one <code>fuse test</code> that is not measured so the engine and the copies are ready, then one <code>fuse test</code> on its own and 2 started together, each after another body edit. Runs that took turns would take about twice as long as one run; runs without MSBuild from their own copies (<a href="how-it-works.html#without-msbuild">each run holds its own copy</a>) overlap.</li>
     </ul>
 
     <h3 id="attribution-suite">Attribution suite <a class="anchor" href="#attribution-suite" aria-label="Link to this section">#</a></h3>
     <p>The attribution suite measures whether an agent that shares a working tree with another is told the other's errors (<a href="how-it-works.html#check">sessions</a>). It needs no truth and runs no tests, so it takes minutes on a repository.</p>
-    <p>Up to three times, writer A renames a public method in one of the two code projects with the most dependents, and writer B adds a statement naming an undeclared variable to a file in another project that calls the method, a different file each time. Each writer's edit then goes through the Claude Code post-edit hook, once without a session id and once with one per writer.</p>
-    <p>The result file counts, over the errors the answers print:</p>
+    <p>Up to 3 times, writer A renames a public method in one of the 2 code projects with the most dependents, and writer B adds a statement naming an undeclared variable to a file in another project that calls the method, a different file each time. Each writer's edit then goes through the Claude Code post-edit hook twice: once without a session id and once with one per writer.</p>
+    <p>The result file counts the following over the errors the answers print:</p>
     <ul>
       <li>each writer's own errors and the other writer's errors in each arm.</li>
       <li>the errors the answers left to the other session.</li>
@@ -335,26 +342,26 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
     </ul>
     <pre data-label="bash"><code>dotnet run --project evals/Fuse.Evals -c Release -- attribution fixture</code></pre>
     <p>With sessions, a writer should be told none of the other's errors and all of its own. A run that tells a writer the other's error, or loses one of its own, is a defect.</p>
-    <p>Each run ends with one pair where the second writer never sends a hook: its directory is registered as its session with <code>fuse session begin</code> instead, and writer A's stop is measured while the registration holds and again after <code>fuse session end</code>. While registered, A's stop should leave the external writer's errors to it; after the end they count as no session's again. On a build without <code>fuse session</code> the result file records why the pair was skipped instead. Registrations expire after 4 hours, which the suite does not wait out, so expiry is never measured.</p>
+    <p>Each run ends with one pair where the second writer never sends a hook. Its directory is registered as its session with <code>fuse session begin</code> instead, and writer A's stop is measured while the registration holds and again after <code>fuse session end</code>. While registered, A's stop should leave the external writer's errors to it; after the end they count as no session's again. On a build without <code>fuse session</code> the result file records why the pair was skipped instead. Registrations expire after 4 hours, which the suite does not wait out, so expiry is never measured.</p>
 
     <h3 id="analyzers-suite">Analyzers suite <a class="anchor" href="#analyzers-suite" aria-label="Link to this section">#</a></h3>
-    <p>The analyzers suite measures what an analyzer that reads the whole project costs (<a href="how-it-works.html#check">compilation-wide analyzers</a>). It generates <code>analyzer-fixture</code> under <code>evals/.work</code>: an analyzer project whose compilation start binds every invocation of the project again and again until two seconds have passed, standing in for a package of such analyzers on any runner, and an app project of 300 files that uses it, its rule <code>SLOW001</code> at error severity.</p>
-    <p>It runs one cold check, then five post-edit hooks and five checks of one edited file, and two checks of twenty edited files. It then adds a class the analyzer forbids, with a compiler error in it, and reads the engine's peak and idle memory. It needs no truth and runs no tests, so it takes minutes.</p>
+    <p>The analyzers suite measures what an analyzer that reads the whole project costs (<a href="how-it-works.html#check">compilation-wide analyzers</a>). It generates <code>analyzer-fixture</code> under <code>evals/.work</code>. The fixture holds an analyzer project whose compilation start binds every invocation of the project again and again until 2 seconds have passed, standing in for a package of such analyzers on any runner, and an app project of 300 files that uses it, with its rule <code>SLOW001</code> at error severity.</p>
+    <p>It runs one cold check, then 5 post-edit hooks and 5 checks of one edited file, and 2 checks of 20 edited files. It then adds a class the analyzer forbids, with a compiler error in it, and reads the engine's peak and idle memory. It needs no truth and runs no tests, so it takes minutes.</p>
     <pre data-label="bash"><code>dotnet run --project evals/Fuse.Evals -c Release -- analyzers analyzer-fixture</code></pre>
     <p>The engine should find the analyzer compilation-wide, <code>fuse check</code> should report both errors, and the post-edit hook should report the compiler error, leave out <code>SLOW001</code> and name the analyzer. A run where any of these fails is a defect.</p>
 
     <h3 id="scale-suite">Scale suite <a class="anchor" href="#scale-suite" aria-label="Link to this section">#</a></h3>
-    <p>The scale suite measures what a check of a large tree costs, on the generated <code>scale-fixture</code> (<a href="#repositories">Repositories</a>). It changes 1,500 files, spread evenly across the projects, kills the engine, and runs one cold <code>fuse check</code> of every change: its wall time, the files it checked, and the engine's peak and idle memory. It needs no truth and runs no tests. The fixture is a linear scale-down of an observed tree of about 15,000 files with about 3,700 changed, so the full-scale number is an extrapolation, quoted with the factor, never as measured.</p>
+    <p>The scale suite measures what a check of a large tree costs, on the generated <code>scale-fixture</code> (<a href="#repositories">Repositories</a>). It changes 1,500 files, spread evenly across the projects, kills the engine, and runs one cold <code>fuse check</code> of every change. It records the wall time, the files checked, and the engine's peak and idle memory. It needs no truth and runs no tests. The fixture is a linear scale-down of an observed tree of about 15,000 files with about 3,700 changed, so the full-scale number is an extrapolation, quoted with the factor, never as measured.</p>
     <pre data-label="bash"><code>dotnet run --project evals/Fuse.Evals -c Release -- scale scale-fixture</code></pre>
     <p>A body edit in one class binds no other file, so the check loads the changed files' owners and no dependent. The verdict is <code>answered</code> when the check exited 0 or 1, <code>out-of-memory</code> when it named it or the engine died with exit 2, and <code>unanswered</code> otherwise.</p>
 
     <h3 id="stale-suite">Stale suite <a class="anchor" href="#stale-suite" aria-label="Link to this section">#</a></h3>
-    <p>The stale suite measures whether a fixed post-edit error is delivered again. It breaks one file with a statement naming an undeclared name, reports it through the Claude Code post-edit hook, fixes it without another hook, checks, and then asks the stop hook. Stale is an error the stop delivers that the current tree no longer has. It needs no truth and runs no tests, and it runs only on your own machine: the workflow has no job for it.</p>
+    <p>The stale suite measures whether a fixed post-edit error is delivered again. It breaks one file with a statement naming an undeclared name, reports it through the Claude Code post-edit hook, fixes it without another hook, checks, and then asks the stop hook. Stale is an error the stop delivers that the current tree no longer has. It needs no truth and runs no tests. It runs only on your own machine: the workflow has no job for it.</p>
     <pre data-label="bash"><code>dotnet run --project evals/Fuse.Evals -c Release -- stale fixture</code></pre>
     <p>The stop should deliver no stale error: the fix is already on disk when it runs, so anything it delivers beyond the current tree's errors is a defect. The result file records the post-edit, check and stop errors, whether the stop blocked, the stale errors it delivered, and whether it rechecked.</p>
 
     <h2 id="on-github-actions">On GitHub Actions <a class="anchor" href="#on-github-actions" aria-label="Link to this section">#</a></h2>
-    <p>Times depend on what else the machine is doing, so the recorded results come from <code>.github/workflows/evals.yml</code>, which runs every job that measures on a fresh <code>windows-latest</code> runner that runs nothing else. Add the <code>evals</code> label to a pull request to run the latency and analyzers suites on the four open-source repositories.</p>
+    <p>Times depend on what else the machine is doing, so the recorded results come from <code>.github/workflows/evals.yml</code>, which runs every job that measures on a fresh <code>windows-latest</code> runner that runs nothing else. Add the <code>evals</code> label to a pull request to run the latency and analyzers suites on the 4 open-source repositories.</p>
     <p>Start the workflow from the Actions tab to choose:</p>
     <ul>
       <li>its <code>repos</code> input names the repositories as a JSON array, default <code>["FluentValidation", "NodaTime", "Jellyfin", "Polly"]</code>, and its <code>suites</code> input names the suites as a JSON array, default <code>["correctness", "selection", "latency"]</code>.</li>
@@ -366,8 +373,8 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
     <p><a href="#what-to-run">What to run</a> says which suites a change needs.</p>
     <ul>
       <li><strong>Build.</strong> One job builds Fuse and publishes the native client, and every other job downloads that build, so every result file records the same <code>fuseBuild</code>.</li>
-      <li><strong>Latency.</strong> Two jobs per repository run the latency suite with the native client: one the checks and the test rounds, followed by the checks alone with the managed client on the same runner, the other the multi-agent scenario. A merge job puts the multi-agent result into the first job's file.</li>
-      <li><strong>Truth.</strong> The truth side of the correctness and selection suites runs in shards, one job each, more of them on the larger repositories. For correctness there is 1 shard on the fixture and FluentValidation, 2 on NodaTime and Polly, and 4 on Jellyfin; for selection 1 on the fixture and FluentValidation, 4 on NodaTime and Polly, and 6 on Jellyfin. A shard whose truth is already in the Actions cache under its key does nothing.</li>
+      <li><strong>Latency.</strong> Per repository, 2 jobs run the latency suite with the native client: one runs the checks and the test rounds, followed by the checks alone with the managed client on the same runner, and the other runs the multi-agent scenario. A merge job puts the multi-agent result into the first job's file.</li>
+      <li><strong>Truth.</strong> The truth side of the correctness and selection suites runs in shards, one job each, more of them on the larger repositories. For correctness there is 1 shard on the fixture and FluentValidation, 2 on NodaTime and Polly, and 4 on Jellyfin. For selection there is 1 on the fixture and FluentValidation, 4 on NodaTime and Polly, and 6 on Jellyfin. A shard whose truth is already in the Actions cache under its key does nothing.</li>
       <li><strong>Scale.</strong> One job generates the scale fixture, changes a quarter of its files, and measures one cold check with the native client, uploading <code>evals-scale-fixture-scale</code>. Like the attribution job, it runs only when the suites input names it.</li>
       <li><strong>Measure.</strong> One job per suite and repository merges the shards with the cached truth, measures Fuse on its own runner, writes the result file, and saves the merged truth to the cache. Each suite and repository is its own call of <code>.github/workflows/evals-suite.yml</code>, so a measure job starts as soon as its own shards finish, not when the slowest repository's do.</li>
     </ul>
@@ -378,13 +385,13 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
       <li><code>engine-logs/</code>, the engine and hook logs of the measured repository.</li>
       <li><code>runner.txt</code>, which names the runner image, processor, memory and SDK.</li>
     </ul>
-    <p>The merged latency artifact <code>evals-&lt;repo&gt;-latency</code> holds <code>results/</code> and <code>managed/</code>, the managed client's latency file, which goes to <code>evals/results/managed</code> in the same way and is the comparison <a href="benchmarks.html#native-client">Benchmarks</a> quotes, with <code>runner.txt</code> and <code>runner-agents.txt</code>, the runner of the multi-agent scenario; the per-part latency artifacts also hold <code>engine-logs/</code>. Each truth shard's artifact holds its shard and its own <code>runner.txt</code>.</p>
+    <p>The merged latency artifact <code>evals-&lt;repo&gt;-latency</code> holds <code>results/</code> and <code>managed/</code>, the managed client's latency file. The managed file goes to <code>evals/results/managed</code> in the same way, and it is the comparison <a href="benchmarks.html#native-client">Benchmarks</a> quotes. The artifact also holds <code>runner.txt</code> and <code>runner-agents.txt</code>, the runner of the multi-agent scenario. The per-part latency artifacts also hold <code>engine-logs/</code>. Each truth shard's artifact holds its shard and its own <code>runner.txt</code>.</p>
     <div class="callout tip">
-      <p>Runners of the same image can have different processors, so compare two builds within one job, as the latency jobs do, rather than across jobs.</p>
+      <p>Runners of the same image can have different processors, so compare 2 builds within one job, as the latency jobs do, rather than across jobs.</p>
     </div>
 
     <h2 id="result-files">Result files <a class="anchor" href="#result-files" aria-label="Link to this section">#</a></h2>
-    <p>A suite writes <code>evals/results/&lt;suite&gt;-&lt;repo&gt;-&lt;yyyyMMdd-HHmm&gt;.json</code>, with the local time of the run. The repository keeps only the newest file of each suite and repository; older files stay in git history. Every file records:</p>
+    <p>A suite writes <code>evals/results/&lt;suite&gt;-&lt;repo&gt;-&lt;yyyyMMdd-HHmm&gt;.json</code>, with the local time of the run. The repository keeps only the newest file of each suite and repository. Older files stay in git history. Every file records:</p>
     <ul>
       <li><code>suite</code>, <code>repo</code>: what ran on which repository.</li>
       <li><code>commit</code>: the commit the repository was measured at.</li>
@@ -467,7 +474,7 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
           <li><code>attribution</code> (one pair, as attribution files hold them; null when no method has a caller in another project whose break the check reports).</li>
           <li><code>stops</code> (<code>changedFiles</code>, the files that differ from HEAD; <code>firstMs</code>, the first check of them; <code>repeat</code>, the repeated checks as <code>p50</code>, <code>p95</code>, <code>max</code> and <code>n</code>; <code>mostReused</code>, the most files one repeat kept the errors of).</li>
           <li><code>stopsUnchangedRepeat</code> (each an object with <code>ms</code> and <code>documentsBound</code>).</li>
-          <li><code>tests</code> (<code>edit</code>, the edited file; <code>aloneMs</code>, one <code>fuse test</code> on its own; <code>pairWallMs</code>, from the start of two clients started together until both ended; <code>pairEach</code>, each of the two runs; <code>notPassed</code>, the runs of the three that exited with a code other than 0).</li>
+          <li><code>tests</code> (<code>edit</code>, the edited file; <code>aloneMs</code>, one <code>fuse test</code> on its own; <code>pairWallMs</code>, from the start of 2 clients started together until both ended; <code>pairEach</code>, each of the 2 runs; <code>notPassed</code>, the runs of the 3 that exited with a code other than 0).</li>
         </ul>
       </li>
       <li>files from before 5.4.0 have no <code>stops</code> and <code>tests</code>.</li>
@@ -486,12 +493,41 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
         </ul>
       </li>
     </ul>
-    <p><strong>Attribution files</strong> hold <code>pairs</code>, each with the <code>renamedIn</code> file, the <code>method</code>, the <code>brokenIn</code> file, <code>ownWithoutSessions</code>, <code>otherWithoutSessions</code>, <code>ownWithSessions</code>, <code>otherWithSessions</code>, <code>leftToOtherSessions</code>, and <code>msWithoutSessions</code> and <code>msWithSessions</code>, the wall time of both writers' hooks in each arm; the same counts summed over the pairs; the statistics of each arm's time; <code>external</code>, a list holding one pair with the <code>renamedIn</code> file, the <code>method</code>, the <code>brokenIn</code> file, <code>otherWithRegistration</code>, <code>blockedWhileRegistered</code>, <code>blockedAfterEnd</code>, <code>expiredShielding</code> (always null: registrations expire after 4 hours, which the suite does not wait out), <code>msWithRegistration</code>, <code>msAfterEnd</code> and <code>note</code>, with <code>externalSkipped</code>; and <code>treeCleanAfter</code>.</p>
-    <p><strong>Scale files</strong> hold <code>filesTotal</code>, <code>filesChanged</code>, <code>projectsTotal</code> and <code>projectsLoaded</code>; <code>checkMs</code>, <code>filesChecked</code> and <code>wholeProjectsBound</code>; <code>enginePeakWorkingSetMb</code> and <code>engineIdleWorkingSetMb</code>; <code>scaleFactor</code> (15000 divided by the files, 2.5 at the recorded size), <code>checkMsPer1kChanged</code> and <code>verdict</code>. Full-scale numbers are extrapolated with the factor, never quoted as measured.</p>
-    <p><strong>Stale files</strong> hold the <code>target</code> file; <code>postEditErrors</code> and <code>postEditMs</code>; <code>checkErrors</code> and <code>checkMs</code>; <code>stopErrors</code>, <code>stopMs</code> and <code>stopBlocked</code>; <code>staleDelivered</code> (stop errors absent from a fresh check; 0 means the stop rechecked), <code>staleLines</code> and <code>rechecked</code>.</p>
-    <p><strong>Analyzers files</strong> hold <code>files</code>, the app project's file count; <code>compilationWide</code>, whether the engine log names the analyzer compilation-wide, and <code>planLine</code>, that log line; <code>coldCheckMs</code>; <code>postEditHook</code>, <code>checkOneFile</code> and <code>checkManyFiles</code> (over <code>manyFiles</code> files), each <code>p50</code>, <code>p95</code>, <code>max</code> and <code>n</code> in milliseconds; <code>reportedByCheck</code> and <code>leftOutByHook</code>, the two answers to the forbidden class; and <code>enginePeakWorkingSetMb</code> and <code>engineIdleWorkingSetMb</code>.</p>
+    <p><strong>Attribution files</strong> hold:</p>
+    <ul>
+      <li><code>pairs</code>, each with the <code>renamedIn</code> file, the <code>method</code>, the <code>brokenIn</code> file, <code>ownWithoutSessions</code>, <code>otherWithoutSessions</code>, <code>ownWithSessions</code>, <code>otherWithSessions</code>, <code>leftToOtherSessions</code>, and <code>msWithoutSessions</code> and <code>msWithSessions</code>, the wall time of both writers' hooks in each arm.</li>
+      <li>the same counts summed over the pairs.</li>
+      <li>the statistics of each arm's time.</li>
+      <li><code>external</code>, a list holding one pair with the <code>renamedIn</code> file, the <code>method</code>, the <code>brokenIn</code> file, <code>otherWithRegistration</code>, <code>blockedWhileRegistered</code>, <code>blockedAfterEnd</code>, <code>expiredShielding</code> (always null: registrations expire after 4 hours, which the suite does not wait out), <code>msWithRegistration</code>, <code>msAfterEnd</code> and <code>note</code>, with <code>externalSkipped</code>.</li>
+      <li><code>treeCleanAfter</code>.</li>
+    </ul>
+    <p><strong>Scale files</strong> hold:</p>
+    <ul>
+      <li><code>filesTotal</code>, <code>filesChanged</code>, <code>projectsTotal</code> and <code>projectsLoaded</code>.</li>
+      <li><code>checkMs</code>, <code>filesChecked</code> and <code>wholeProjectsBound</code>.</li>
+      <li><code>enginePeakWorkingSetMb</code> and <code>engineIdleWorkingSetMb</code>.</li>
+      <li><code>scaleFactor</code> (15000 divided by the files, 2.5 at the recorded size), <code>checkMsPer1kChanged</code> and <code>verdict</code>.</li>
+    </ul>
+    <p>Full-scale numbers are extrapolated with the factor, never quoted as measured.</p>
+    <p><strong>Stale files</strong> hold:</p>
+    <ul>
+      <li>the <code>target</code> file.</li>
+      <li><code>postEditErrors</code> and <code>postEditMs</code>.</li>
+      <li><code>checkErrors</code> and <code>checkMs</code>.</li>
+      <li><code>stopErrors</code>, <code>stopMs</code> and <code>stopBlocked</code>.</li>
+      <li><code>staleDelivered</code> (stop errors absent from a fresh check; 0 means the stop rechecked), <code>staleLines</code> and <code>rechecked</code>.</li>
+    </ul>
+    <p><strong>Analyzers files</strong> hold:</p>
+    <ul>
+      <li><code>files</code>, the app project's file count.</li>
+      <li><code>compilationWide</code>, whether the engine log names the analyzer compilation-wide, and <code>planLine</code>, that log line.</li>
+      <li><code>coldCheckMs</code>.</li>
+      <li><code>postEditHook</code>, <code>checkOneFile</code> and <code>checkManyFiles</code> (over <code>manyFiles</code> files), each <code>p50</code>, <code>p95</code>, <code>max</code> and <code>n</code> in milliseconds.</li>
+      <li><code>reportedByCheck</code> and <code>leftOutByHook</code>, the 2 answers to the forbidden class.</li>
+      <li><code>enginePeakWorkingSetMb</code> and <code>engineIdleWorkingSetMb</code>.</li>
+    </ul>
     <p><code>fuseStats</code> and <code>dotnetStats</code> describe how the Fuse command's and the dotnet command's times spread over the cases, in seconds: <code>n</code>, <code>fastest</code>, <code>median</code>, <code>mean</code>, <code>standardDeviation</code> (the sample standard deviation), <code>p95</code>, <code>slowest</code> and <code>total</code>. The chart and <a href="benchmarks.html">Benchmarks</a> quote them next to each median.</p>
-    <p>Medians are over the cases, and the average of the two middle values for an even count. Percentiles use the nearest-rank method: P95 of 10 or 15 samples is the slowest one.</p>
+    <p>Medians are over the cases, and the average of the 2 middle values for an even count. Percentiles use the nearest-rank method: P95 of 10 or 15 samples is the slowest one.</p>
 
     <h2 id="what-to-run">What to run <a class="anchor" href="#what-to-run" aria-label="Link to this section">#</a></h2>
     <div class="table-scroll" role="region" aria-label="What to run" tabindex="0">
@@ -504,10 +540,10 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
       </tbody>
     </table>
     </div>
-    <p>Attach the result to the pull request, as <a href="https://github.com/Litenova-Solutions/Fuse/blob/main/CONTRIBUTING.md">Contributing</a> asks. The published set in <a href="benchmarks.html">Benchmarks</a> is <code>all</code> on each of the four open-source repositories: twelve files.</p>
+    <p>Attach the result to the pull request, as <a href="https://github.com/Litenova-Solutions/Fuse/blob/main/CONTRIBUTING.md">Contributing</a> asks. The published set in <a href="benchmarks.html">Benchmarks</a> is <code>all</code> on each of the 4 open-source repositories: 12 files.</p>
 
     <h2 id="quoting-the-numbers">Quoting the numbers <a class="anchor" href="#quoting-the-numbers" aria-label="Link to this section">#</a></h2>
-    <p>The rule in <a href="https://github.com/Litenova-Solutions/Fuse/blob/main/AGENTS.md">AGENTS.md</a> binds every page that quotes a benchmark: numbers come from files in <code>evals/results</code>, and each results table names the files it comes from. Counts are quoted exactly. Times, sizes and percentages are rounded half up: seconds to two decimals below 10 s and one decimal from 10 s, milliseconds and megabytes to whole numbers, percentages to at most one decimal. A speedup is the <code>dotnet</code> median divided by the Fuse median, to one decimal.</p>
+    <p>The rule in <a href="https://github.com/Litenova-Solutions/Fuse/blob/main/AGENTS.md">AGENTS.md</a> binds every page that quotes a benchmark. Numbers come from files in <code>evals/results</code>, and each results table names the files it comes from. Counts are quoted exactly. Times, sizes and percentages are rounded half up: seconds to 2 decimals below 10 s and 1 decimal from 10 s, milliseconds and megabytes to whole numbers, percentages to at most 1 decimal. A speedup is the <code>dotnet</code> median divided by the Fuse median, to 1 decimal.</p>
     <p>After committing the result files of a full run, delete the older file of the same suite and repository, run <code>chart</code>, and update every page that quotes the numbers:</p>
     <ul>
       <li>the root <code>README.md</code>;</li>

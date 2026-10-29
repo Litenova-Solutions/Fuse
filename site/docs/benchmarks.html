@@ -43,7 +43,7 @@
       "url": "https://fuse.codes/docs/benchmarks",
       "mainEntityOfPage": "https://fuse.codes/docs/benchmarks",
       "inLanguage": "en",
-      "dateModified": "2026-10-17",
+      "dateModified": "2026-10-29",
       "image": "https://fuse.codes/assets/og.png",
       "isPartOf": {
         "@type": "WebSite",
@@ -114,6 +114,9 @@
     <div class="audience">
       <p><b>This page is for</b> anyone deciding whether to rely on Fuse, and contributors comparing a change with the published numbers.</p>
       <p><b>After reading it</b> you know how fast and how accurate Fuse was, on what, how much the times spread, and where each number comes from. <a href="evals.html">Evals</a> explains how the numbers are produced and how to reproduce them.</p>
+    </div>
+    <div class="callout">
+      <p><b>The 6.0.0 results are not measured yet.</b> Every number on this page is from Fuse 5.4.0, from the files its sources name. The next run records more per check (files checked, documents bound, kept answers, errors reused from an earlier check), per test run (projects planned and run, runs without MSBuild against runs with it, whole-project runs and why, selected against run tests, tests avoided where the changes compile to the same code as HEAD, and failed-rerun rounds), per no-code edit and scope form, and the new scale, stale and external-writer scenarios. <a href="evals.html#result-files">Evals</a> names every new field; this page quotes them once the files exist.</p>
     </div>
     <p>The four repositories are <a href="https://github.com/FluentValidation/FluentValidation">FluentValidation</a>, a validation library, the small one; <a href="https://github.com/nodatime/nodatime">NodaTime</a>, a date and time library; <a href="https://github.com/jellyfin/jellyfin">Jellyfin</a>, a media server; and the <a href="https://github.com/CommunityToolkit/dotnet">.NET Community Toolkit</a>, a set of libraries with one source generator for each supported compiler version. The evals in <code>evals/Fuse.Evals</code> run the <code>fuse</code> executable the way an agent does, and compare every answer with a real <code>dotnet build</code> or <code>dotnet test</code>. Each job ran on its own GitHub Actions <code>windows-latest</code> runner, with 4 logical processors and 16 GB of memory, that ran nothing else (<a href="evals.html#on-github-actions">Evals</a>). On Windows x64 the <code>fuse</code> command is the native client, so the evals measure it.</p>
 

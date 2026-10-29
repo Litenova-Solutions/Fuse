@@ -43,7 +43,7 @@
       "url": "https://fuse.codes/docs/getting-started",
       "mainEntityOfPage": "https://fuse.codes/docs/getting-started",
       "inLanguage": "en",
-      "dateModified": "2026-10-17",
+      "dateModified": "2026-10-29",
       "image": "https://fuse.codes/assets/og.png",
       "isPartOf": {
         "@type": "WebSite",
@@ -145,7 +145,7 @@
     <pre data-label="bash"><code>fuse init</code></pre>
     <pre class="out" data-label="Output"><code>wrote .claude/settings.json
 wrote .gitignore
-fuse: hooks registered; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors</code></pre>
+fuse: hooks registered by Fuse 6.0.0; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors</code></pre>
     <p><code>fuse init</code> finds the agent tools your repository uses, such as <code>.cursor/</code> or <code>.gemini/</code>, and adds Fuse's hooks to each. With none found, it sets up Claude Code. Run it again at any time; it only replaces its own entries. That is the whole setup, and <a href="commands.html#fuse-uninit"><code>fuse uninit</code></a> takes it out again.</p>
     <p>The first Fuse command in a repository starts a background process that loads your solution. It stays running until it has been idle for 30 minutes, and every later command and hook reuses it.</p>
 
@@ -153,14 +153,14 @@ fuse: hooks registered; after each edit your agent gets the compiler errors the 
     <p>Rename a public method that another project calls, then run:</p>
     <pre data-label="bash"><code>fuse check</code></pre>
     <p>Fuse reports every caller the rename broke, in every project. For example, renaming <code>Calc.Add</code> in a library called by <code>App</code> and <code>Lib.Tests</code> prints:</p>
-    <pre class="out" data-label="Output"><code>App/Program.cs(3,30): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)
-  removed: public int Add(int a, int b)
+    <pre class="out" data-label="Output"><code>removed: public int Add(int a, int b) (2 error(s))
+App/Program.cs(3,30): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)
 Lib.Tests/CalcTests.cs(6,54): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)
-  removed: public int Add(int a, int b)
-fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations changed, 2 dependent project(s) checked</code></pre>
+fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations changed, 2 dependent project(s) checked; tree 9f2c41aa07b3 over 1 changed file(s)</code></pre>
     <ul>
       <li>Only errors your change caused are listed. Errors that were already in the last commit are left out.</li>
-      <li>The indented line under each error names the change that caused it, here the removed <code>Add</code>.</li>
+      <li>The header names the change that broke them, here the removed <code>Add</code>; errors that share a cause print under one header.</li>
+      <li>The tree stamp names the tree the check ended on, with its short hash and how many files differ from HEAD.</li>
       <li>The exit code is 0 when there is nothing to fix, 1 when there is, and 2 when Fuse could not answer.</li>
     </ul>
     <p>A change inside a method body cannot break other files, so Fuse checks only the edited file and answers faster.</p>

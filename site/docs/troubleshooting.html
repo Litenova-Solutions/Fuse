@@ -43,7 +43,7 @@
       "url": "https://fuse.codes/docs/troubleshooting",
       "mainEntityOfPage": "https://fuse.codes/docs/troubleshooting",
       "inLanguage": "en",
-      "dateModified": "2026-10-17",
+      "dateModified": "2026-10-29",
       "image": "https://fuse.codes/assets/og.png",
       "isPartOf": {
         "@type": "WebSite",
@@ -121,6 +121,7 @@
       <p>On this page</p>
       <ol>
         <li><a href="#a-hook-prints-nothing">A hook prints nothing</a></li>
+        <li><a href="#a-stale-looking-answer">A stale-looking answer</a></li>
         <li><a href="#the-agent-does-not-see-the-hooks">The agent does not see the hooks</a></li>
         <li><a href="#after-updating-from-5-0-0">dotnet build and dotnet test run unchanged after updating from 5.0.0</a></li>
         <li><a href="#restore-needed">Restore needed</a></li>
@@ -132,7 +133,9 @@
         <li><a href="#a-build-waits">A build waits</a></li>
         <li><a href="#a-slow-build">A slow build</a></li>
         <li><a href="#a-command-in-the-build-fails">A command in the build fails</a></li>
+        <li><a href="#a-locked-file">A locked file</a></li></li>
         <li><a href="#an-error-about-generated-code">An error about generated code</a></li>
+        <li><a href="#reading-fuse-status">Reading fuse status</a></li>
         <li><a href="#where-the-logs-are">Where the logs are</a></li>
         <li><a href="#reading-engine-log">Reading engine.log</a></li>
         <li><a href="#stopping-or-restarting-the-engine">Stopping or restarting the engine</a></li>
@@ -145,6 +148,14 @@
       <li>Run <code>fuse check</code> in the repository. If it reports errors that the hook did not, the hook did not run or did not reach the engine; see <a href="#the-agent-does-not-see-the-hooks">The agent does not see the hooks</a>.</li>
       <li>Read <code>hook.log</code>. It holds only a payload that is not valid JSON and an exception inside the hook, with the harness and the event. A timeout or an answer the engine could not give is not written there; <code>fuse check</code> in the same repository shows it.</li>
       <li>Read the end of <code>engine.log</code>. A post-edit check appears as a <code>CheckFiles</code> request with the edited file names, and a stop check as <code>CheckChanges</code> (<a href="#reading-a-phase-line">reading a phase line</a>).</li>
+    </ol>
+
+    <h2 id="a-stale-looking-answer">A stale-looking answer <a class="anchor" href="#a-stale-looking-answer" aria-label="Link to this section">#</a></h2>
+    <p>An answer that names an error you already fixed is usually not stale: it was true when it was computed. A harness that runs the post-edit hook in the background delivers its answer late, after you made more edits, so the hook checks the tree again before it returns errors, and drops the answer when the current tree no longer reports it (<a href="how-it-works.html#check">confirmed before it is delivered</a>). To tell the cases apart:</p>
+    <ol>
+      <li>Run <code>fuse check</code>. When it no longer reports the error, the tree moved after the answer was computed; nothing is wrong.</li>
+      <li>Read <code>hook.log</code>. A background post-edit delivery is logged as <code>&lt;harness&gt; post-edit delivered: ...</code> and a drop as <code>&lt;harness&gt; post-edit dropped: ... (a check of the current tree did not report it)</code>, each with the answer's summary line. A stop that blocked is logged as <code>&lt;harness&gt; stop blocked: ...</code>, which tells it apart from a late post-edit delivery.</li>
+      <li>Read the end of <code>engine.log</code>. <code>check: kept answer</code> means the answer was reused because nothing it depends on changed; when the tree had moved, the check would have bound again instead.</li>
     </ol>
 
     <h2 id="the-agent-does-not-see-the-hooks">The agent does not see the hooks <a class="anchor" href="#the-agent-does-not-see-the-hooks" aria-label="Link to this section">#</a></h2>
@@ -204,9 +215,22 @@
     <pre class="out" data-label="Output"><code>Api/Api.csproj(40,5): error MSB3073: The command "dotnet getdocument --assembly Api.dll" exited with code 11.</code></pre>
     <p>A target ran a command, such as a code generator, and it exited with a code other than 0. The lines under the error, indented by two spaces, are the last lines the command printed: an exception's type and message and its first stack frame usually say what to fix. When no line follows the error, the command printed nothing, or its target runs on a node whose lines Fuse could not match to the command; run the command the error quotes yourself to see its output.</p>
 
+    <h2 id="a-locked-file">A locked file <a class="anchor" href="#a-locked-file" aria-label="Link to this section">#</a></h2>
+    <pre class="out" data-label="Output"><code>  locked: Lib/bin/Debug/net10.0/Lib.dll is held by MyApp (pid 1234); stop that process, then run the build again</code></pre>
+    <p>The build failed with MSB3021, MSB3026 or MSB3027 because another process holds a file it writes. The indented line under the error names the file and the holder MSBuild reported, with what unblocks it: stop that process and run the build again, or <code>dotnet build-server shutdown</code> when the holder is a build server. When MSBuild names no holder, the line reads <code>locked: &lt;file&gt; is being used by another process; stop the running application or build that holds it, then run the build again</code>. The fix is the same when two builds overlap: run builds and tests through <code>fuse build</code> and <code>fuse test</code>, which take the <a href="how-it-works.html#builds-and-the-build-lock">build lock</a>.</p>
+
     <h2 id="an-error-about-generated-code">An error about generated code <a class="anchor" href="#an-error-about-generated-code" aria-label="Link to this section">#</a></h2>
     <pre class="out" data-label="Output"><code>  generated: Api.Client/obj/Contract/Client.cs declares it, and Fuse reads that file as the last build wrote it; if it is generated from changed code, run fuse build to write it again</code></pre>
     <p>The error is about a type or member a file the build generates declares, and Fuse reads that file as the last build wrote it (<a href="how-it-works.html#check">errors about generated code</a>). When you changed the code the file is generated from, such as an API's controllers, run <code>fuse build</code>, which writes the file again; the next check reads the new file. When the error remains after the build, it is a real error in the code that uses the generated file.</p>
+
+    <h2 id="reading-fuse-status">Reading fuse status <a class="anchor" href="#reading-fuse-status" aria-label="Link to this section">#</a></h2>
+    <p><code>fuse status</code> reports whether an engine runs for the repository and how many files differ from HEAD, without starting an engine. It prints three lines: the engine, the tree, and the large-tree limits. Read them this way:</p>
+    <ul>
+      <li><strong>The engine line.</strong> <code>fuse: engine running for &lt;root&gt; (pid &lt;n&gt;), &lt;m&gt; MB; idle exits after 30 min</code> names the running engine. <code>fuse: no engine runs for &lt;root&gt;; the next check starts one</code> means none runs, which is normal after 30 idle minutes. <code>fuse: engine for &lt;root&gt; did not answer in 2 s</code> means a pipe exists but no answer arrived in time, so the tree below was read from git instead; run <code>fuse stop</code> and let the next command start a fresh engine.</li>
+      <li><strong>The tree line.</strong> <code>fuse: N changed file(s) since HEAD; tree &lt;12 hex&gt;; HEAD &lt;12 hex&gt;</code> counts what differs from HEAD with the tree stamp. Past 300 changed files a warning line follows: checks reseed from git and reload projects, so commit soon.</li>
+      <li><strong>The limits line.</strong> <code>fuse: large-tree limits: past 300 changed files a sync reloads projects; past 500 files in reach a check binds whole projects; ...</code> names the two points where a large tree slows checks down. When checks feel slow and the count is past either, commit or run <code>fuse stop</code> and let the next check reload.</li>
+    </ul>
+    <p><code>fuse status --json</code> prints the same as one object with <code>engine</code>, <code>pid</code>, <code>memoryMB</code>, <code>changedFiles</code>, <code>head</code>, <code>tree</code>, <code>reloadAt</code> and <code>wholeProjectAt</code>.</p>
 
     <h2 id="where-the-logs-are">Where the logs are <a class="anchor" href="#where-the-logs-are" aria-label="Link to this section">#</a></h2>
     <p>Fuse keeps its files for a repository in a state directory in the user's local application data, never in the repository:</p>
@@ -228,6 +252,9 @@
       <li><code>build.lock</code>: the <a href="how-it-works.html#builds-and-the-build-lock">build lock</a>.</li>
       <li><code>results</code>, <code>shadow</code> and <code>analyzers</code>: test results while a run lasts, the copies used for test runs without MSBuild (<code>shadow/&lt;project&gt;/g1</code> and so on, one per run that runs at the same time), and the copies of the repository's own analyzers.</li>
       <li><code>build-*.log</code>: the <a href="how-it-works.html#build-log">file log</a> of a build that is running, deleted once the build ends.</li>
+      <li><code>sessions.tsv</code> and <code>registered-sessions.tsv</code>: which session wrote each changed file, and the sessions a launcher registered with <code>fuse session begin</code>.</li>
+      <li><code>baseline</code>, <code>test-result-cache.json</code> and <code>last-test-results.json</code>: HEAD's kept errors by commit and configuration, the kept test passes by class, and the last run's per-test verdicts, which <code>fuse test --failed</code> reruns.</li>
+      <li><code>last-check-results.txt</code>, <code>last-build-results.txt</code> and <code>last-test-results.txt</code>: every error, diagnostic or failure the last run found, named by a capped summary.</li>
       <li><code>root</code>: the repository's path. Once a day a starting engine deletes the state directories whose repository no longer exists and that nothing wrote to for a day.</li>
     </ul>
     <p>The engine itself runs from a copy of the tool in <code>fuse/engine/&lt;version&gt;-&lt;module id&gt;</code> in the same local application data. A starting engine deletes the copies of other builds that no running engine holds.</p>
@@ -262,8 +289,8 @@
     <pre class="out" data-label="Format"><code>phases id=&lt;client process id&gt;-&lt;n&gt; kind=&lt;request&gt; [gateHolder=&lt;holder&gt;] &lt;phase&gt;=&lt;ms&gt; ... total=&lt;ms&gt;</code></pre>
     <ul>
       <li><code>id</code> names the client process and its request count, so a line can be matched to the command that sent it.</li>
-      <li><code>kind</code> is the request: <code>CheckChanges</code> (every change), <code>CheckFiles</code> (named files, which is what a post-edit hook sends), <code>PlanAffectedTests</code> (<code>fuse test</code>) or <code>PlanAllTests</code> (<code>fuse test --all</code>).</li>
-      <li><code>gateHolder</code>, when the request waited for the request lock, names what held the lock longest during the wait: another request's <code>kind</code>, <code>Preload</code> (the background load choosing its next project) or <code>Initialization</code>. It is left out when nothing held the lock.</li>
+      <li><code>kind</code> is the request: <code>CheckChanges</code> (every change), <code>CheckFiles</code> (named files, which is what a post-edit hook sends), <code>CheckPaths</code> (a scoped check over folders or patterns), <code>PlanAffectedTests</code> (<code>fuse test</code>), <code>PlanAllTests</code> (<code>fuse test --all</code>) or <code>PlanFailedTests</code> (<code>fuse test --failed</code>), plus the session, build-plan, report and status requests, which are short.</li>
+      <li><code>gateHolder</code>, when the request waited for the request lock, names what held the lock longest during the wait: another request's <code>kind</code>, <code>Preload</code> (the background load or the baseline warm choosing its next project), <code>SettledPoll</code> or <code>SettledPlan</code> (the settled planner syncing or selecting), or <code>Initialization</code>. It is left out when nothing held the lock.</li>
       <li>The phases follow in the order they ran, in milliseconds.</li>
     </ul>
     <table>
@@ -280,6 +307,28 @@
         <tr><th scope="row"><code>total</code></th><td>The whole request from the moment it held the request lock, including a test plan's <code>mirror</code> and <code>emit</code>. It is counted in system clock ticks, so on Windows a request that took less than about 16 ms shows <code>total=0.0</code>.</td></tr>
       </tbody>
     </table>
+
+    <h3 id="kept-answers-and-background-work">Kept answers and background work <a class="anchor" href="#kept-answers-and-background-work" aria-label="Link to this section">#</a></h3>
+    <p>These lines record what a check reused and what the engine did between requests. Each links to the mechanism it comes from.</p>
+    <ul>
+      <li><code>check: kept answer</code> — the check answered from an earlier check without compiling anything, because nothing it depends on changed (<a href="how-it-works.html#check">answers kept from an earlier check</a>).</li>
+      <li><code>check: kept answer skipped, N changed file(s) past 500</code> — past 500 changed files the kept answer costs more hashing than it saves, so the check ran as usual.</li>
+      <li><code>check: N changed file(s) could not be read from disk, so this answer is not kept</code> — the check answered from its snapshot, but the answer is not reused, because a changed file could not be read or still disagreed with disk.</li>
+      <li><code>baseline: N stored result(s) read for HEAD &lt;12 hex&gt;; M computed</code> — per check that read the store: how many HEAD results came from disk and how many were bound again.</li>
+      <li><code>baseline warm: &lt;project&gt; compilation-wide analyzers done in &lt;ms&gt; ms</code> and <code>baseline warm: skipped, HEAD moved again</code> — the background warm after HEAD moved, per project warmed and when a newer commit cut it short.</li>
+      <li><code>preloaded &lt;project&gt; compilation in &lt;ms&gt; ms</code> — the background load built a dependent's compilation after loading it.</li>
+      <li><code>settled plan: prepared shadow runs for N test project(s) in M ms</code> — the tree stayed quiet for 5 seconds, so the engine selected the affected tests and emitted them ahead of the next <code>fuse test</code>. <code>settled plan skipped: ...</code> names why a preparation did not run. When neither line appears, the tree never settled.</li>
+      <li><code>check coverage: reached &lt;names&gt;; current holds &lt;names&gt;; baseline holds &lt;names&gt;</code> — which reached projects each view held, written only when a view missed one (with <code>; recovered after rebuilding the views</code> when the rebuild fixed it) or when the reach named a file on disk with no document (<code>; candidates without a document: &lt;paths&gt;</code>).</li>
+      <li><code>touched set passed 2000 paths; re-evaluating projects and resetting it</code> — the next sync re-evaluates the projects, because the applied-paths set grew past its bound.</li>
+      <li><code>; sessions: &lt;id&gt; N file(s), ...</code> — the tail of a <code>check:</code> line: how many changed files each session wrote, most files first, at most 10 sessions before <code>, and M more</code>.</li>
+      <li><code>test selection: D of C changed declaration(s) compile to the same code as HEAD; selecting no tests for them</code> — how many changed declarations seeded no tests (<a href="how-it-works.html#test-selection">same code</a>).</li>
+      <li><code>test selection: member walk completed in M ms, S symbol(s), C test class(es) reachable, P pattern(s) selected; selecting at member level</code> — and the <code>over budget</code> variant ending in <code>selecting at class level</code>, plus <code>test selection: N test classes reachable; selecting at class level</code> past the 100-class gate.</li>
+      <li><code>test selection: &lt;Test&gt;: N of M test class(es) start &lt;App&gt;; selecting them whole, the rest by name</code> — and the <code>may start</code>, <code>no test class found</code> and <code>test project is not loaded</code> variants, each ending in <code>running the project whole</code>.</li>
+      <li><code>test plan: &lt;project&gt;: not emitting &lt;project&gt; again; ... compiles to the same declarations as HEAD</code> — per dependent whose shadow image was kept.</li>
+      <li><code>test plan: container runtime present; N gated project(s) planned</code> — a plan ran while a container runtime answered, so gated projects were planned, not left out.</li>
+      <li><code>test result cache: ignoring ...</code> — why a stored cache file was not read: another version, another build, no entries, or unreadable.</li>
+      <li><code>registered session &lt;name&gt; expired; its files count as no session's now</code> — a <code>fuse session begin</code> registration reached its 4 hours.</li>
+    </ul>
 
     <h2 id="stopping-or-restarting-the-engine">Stopping or restarting the engine <a class="anchor" href="#stopping-or-restarting-the-engine" aria-label="Link to this section">#</a></h2>
     <p>The engine exits on its own after 30 minutes without a request, when its repository directory is deleted, and when a client of another build connects. Ending the engine's process is safe: it holds no lock and writes nothing into the repository, and the next command or hook starts a fresh engine.</p>

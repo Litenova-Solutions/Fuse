@@ -28,6 +28,7 @@ Run `fuse init` once. After that, the agent's tool (Claude Code, Cursor, Codex a
 - **Only affected tests.** Tests the change cannot reach do not run. When only `.cs` files changed, the tests run without a rebuild.
 - **Short output.** At most 20 errors or 10 test failures, plus one summary line. Nothing at all when the edit is clean.
 - **Made for subagents.** All agents in a repository share one Fuse process, so the solution is loaded once. Builds through Fuse take turns, so parallel builds do not fail on locked files. Each git worktree gets its own process.
+- **Made for judges and workers.** External writers register their paths as sessions, the judge checks one slice with `fuse check <folder>`, and `--json` errors split into briefs.
 - **Safe.** If Fuse fails, the hook stays silent and the agent carries on. Fuse never edits your code, runs locally and has no telemetry.
 - **No configuration.** `fuse init` is the only setup.
 
@@ -80,7 +81,7 @@ fuse init
 ```text
 wrote .claude/settings.json
 wrote .gitignore
-fuse: hooks registered; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors
+fuse: hooks registered by Fuse 6.0.0; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors
 ```
 
 That is the whole setup. The agent now hears from Fuse only when an edit caused an error.
@@ -91,21 +92,24 @@ The commands print exactly what the agent receives, so you can try Fuse in a ter
 
 ```text
 $ fuse check
+removed: public int Add(int a, int b) (2 error(s))
 App/Program.cs(3,30): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)
-  removed: public int Add(int a, int b)
 Lib.Tests/CalcTests.cs(6,54): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)
-  removed: public int Add(int a, int b)
-fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations changed, 2 dependent project(s) checked
+fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations changed, 2 dependent project(s) checked; tree 9f2c41aa07b3 over 1 changed file(s)
 ```
 
 | Command | What it does |
 | --- | --- |
 | `fuse init [--instructions]` | Registers Fuse's hooks with the harnesses this repository uses; `--instructions` also adds a Fuse section to `AGENTS.md` |
 | `fuse uninit` | Removes what `fuse init` wrote, keeping every other entry, then stops this repository's engine and deletes its state |
-| `fuse check [files...]` | Reports the errors your changes caused since the last commit, in every project |
+| `fuse check [paths...]` | Reports the errors your changes caused since the last commit, in every project; with directories or patterns it checks one slice |
 | `fuse test [args...]` | Runs the tests affected by your changes |
 | `fuse test --all` | Runs every test |
-| `fuse build [args...]` | Runs `dotnet build` and prints its errors |
+| `fuse test --failed` | Reruns the tests that failed in the last run |
+| `fuse build [args...] [--changed]` | Runs `dotnet build` and prints its errors; `--changed` builds only the changed projects and their dependents |
+| `fuse status [--json]` | Shows the engine and the changed files |
+| `fuse session begin <name> --paths <pattern>...` | Registers an external writer as a session for its paths, so a judge's stop leaves its errors to it |
+| `fuse session end <name>` | Ends the registration |
 | `fuse stop [--all]` | Stops this repository's engine, or every engine; the next command starts a new one |
 | `fuse mcp` | Serves `fuse_check`, `fuse_test` and `fuse_build` over stdio to an MCP host |
 

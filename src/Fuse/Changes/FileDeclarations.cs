@@ -260,12 +260,6 @@ internal sealed class FileDeclarations
 
     private static string Qualify(string container, string name) => container.Length == 0 ? name : container + "." + name;
 
-    /// <summary>Text of a node with all trivia collapsed, so formatting and comments never register as changes.</summary>
-    /// <summary>
-    ///     The node's tokens separated by single spaces. A line break inside a token, in a multi-line string, reads as LF,
-    ///     because a checkout with <c>core.autocrlf</c> writes CRLF where HEAD has LF and that is not an edit
-    ///     (<see cref="Repo.HeadComparison"/> ignores it too).
-    /// </summary>
     /// <summary>
     ///     The parameter list of a method-like declaration as its tokens read, names and defaults included, or empty when
     ///     the node declares no parameter list. The surface leaves names and defaults out, but the shadow emitter compares
@@ -286,6 +280,11 @@ internal sealed class FileDeclarations
         return Flat(list);
     }
 
+    /// <summary>
+    ///     The node's tokens separated by single spaces. A line break inside a token, in a multi-line string, reads as LF,
+    ///     because a checkout with <c>core.autocrlf</c> writes CRLF where HEAD has LF and that is not an edit
+    ///     (<see cref="Repo.HeadComparison"/> ignores it too).
+    /// </summary>
     private static string Flat(SyntaxNode? node)
     {
         if (node is null)

@@ -1,3 +1,4 @@
+using System.Text;
 using Fuse.Failures;
 using Fuse.Paths;
 using Fuse.Repo;
@@ -25,6 +26,37 @@ public class ChangeTrackerTests
         Assert.Equal([repo.PathOf("Lib/Calc.cs")], patch.Paths);
         Assert.Empty(patch.VanishedDirectories);
         Assert.Equal([repo.PathOf("Lib/Calc.cs")], tracker.Changed);
+    }
+
+    [Fact]
+    public async Task A_change_event_on_a_directory_is_not_a_changed_file_and_head_reads_stay_in_step()
+    {
+        using var repo = Repo();
+        var watched = new WatchedPaths(repo.Root);
+        using var tracker = await StartAsync(repo, watched);
+        repo.Replace("Lib/Calc.cs", "public class Calc {}", "public class Calc { public int A => 1; }");
+        // Windows reports a change on the folder whose listing changed, beside the file's own event.
+        watched.Record(repo.Full("Lib"), appearedOrVanished: false);
+        watched.Record(repo.Full("Lib/Calc.cs"), appearedOrVanished: false);
+
+        await tracker.SyncAsync([], TestContext.Current.CancellationToken);
+
+        Assert.Equal(0, tracker.NonSourceChanged);
+        Assert.Equal([repo.PathOf("Lib/Calc.cs")], tracker.Changed);
+        Assert.Equal("namespace Lib;\n\npublic class Calc {}\n", Encoding.UTF8.GetString(tracker.ReadHead(repo.PathOf("Lib/Calc.cs"))!));
+    }
+
+    [Fact]
+    public async Task A_head_read_of_a_directory_leaves_the_next_read_in_step()
+    {
+        using var repo = Repo();
+        using var tracker = await StartAsync(repo, new WatchedPaths(repo.Root));
+
+        // Git answers a directory with its tree; the reader must consume it, or every later read is misaligned.
+        Assert.Null(tracker.ReadHead(repo.PathOf("Lib")));
+
+        Assert.Equal("namespace Lib;\n\npublic class Calc {}\n", Encoding.UTF8.GetString(tracker.ReadHead(repo.PathOf("Lib/Calc.cs"))!));
+        Assert.Equal("<Project Sdk=\"Microsoft.NET.Sdk\" />\n", Encoding.UTF8.GetString(tracker.ReadHead(repo.PathOf("Lib/Lib.csproj"))!));
     }
 
     [Fact]

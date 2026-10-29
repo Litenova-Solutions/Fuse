@@ -222,6 +222,13 @@ internal sealed class ChangeTracker : IDisposable
     {
         if (_watched.IsIgnored(path))
             return;
+        // The watcher reports a change on a directory when its listing changes; the directory is not a changed file.
+        if (Directory.Exists(path.Absolute))
+        {
+            _nonSources.Remove(path);
+            return;
+        }
+
         if (DiffersFromHead(path))
             _nonSources.Add(path);
         else

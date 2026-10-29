@@ -151,7 +151,7 @@
         </div>
         <div class="term fuse-term" data-total="0.47">
           <div class="term-bar"><span>With <code>fuse check</code></span><span class="clock">0.47 s</span></div>
-          <pre><code><span class="ln prompt"><span class="dim">$ </span>fuse check</span><span class="ln err" data-at="0.47">App/Program.cs(3,30): error CS1061: 'Calc' does not contain a definition for 'Add' ...</span><span class="ln cause" data-at="0.47">  removed: public int Add(int a, int b)</span><span class="ln err" data-at="0.47">Lib.Tests/CalcTests.cs(6,54): error CS1061: 'Calc' does not contain a definition for 'Add' ...</span><span class="ln cause" data-at="0.47">  removed: public int Add(int a, int b)</span><span class="ln sum" data-at="0.47">fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations changed, 2 dependent project(s) checked</span></code></pre>
+          <pre><code><span class="ln prompt"><span class="dim">$ </span>fuse check</span><span class="ln" data-at="0.47">removed: public int Add(int a, int b) (2 error(s))</span><span class="ln err" data-at="0.47">App/Program.cs(3,30): error CS1061: 'Calc' does not contain a definition for 'Add' ...</span><span class="ln err" data-at="0.47">Lib.Tests/CalcTests.cs(6,54): error CS1061: 'Calc' does not contain a definition for 'Add' ...</span><span class="ln sum" data-at="0.47">fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations changed, 2 dependent project(s) checked; tree 9f2c41aa07b3 over 1 changed file(s)</span></code></pre>
         </div>
       </div>
       <p class="race-note">Played at real speed with the median times on Jellyfin, 40 projects: 0.47 s and 20.4 s. Each error once, with the change that caused it, and nothing at all when the edit compiles. <button type="button" class="replay" hidden>Replay</button></p>
@@ -223,7 +223,7 @@
           <p class="x"><b>4.9x</b> faster at the median</p>
         </div>
       </div>
-      <p class="proof">In 40 generated changes, 26 of which made tests fail, <code>fuse test</code> ran every failing test except 3 timing-dependent tests the changes could not reach. <a href="docs/benchmarks.html">How it was benchmarked</a></p>
+      <p class="proof">In 40 generated changes, 26 of which made tests fail, <code>fuse test</code> ran every failing test except 1 timing-dependent test the change could not reach. <a href="docs/benchmarks.html">How it was benchmarked</a></p>
     </section>
     <section class="section" aria-labelledby="features-heading">
       <div class="section-head">

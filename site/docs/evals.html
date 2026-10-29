@@ -177,7 +177,7 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
          the test rounds; agents, the multi-agent scenario after the cold checks and body edits
   --failed-rounds: for selection on fixture, three fix-and-rerun rounds with fuse test --failed afterwards
   --projects, --files, --changed: for scale, the fixture size: projects, files per project, changed files
-  clone: NodaTime | Jellyfin | Polly, checked out at the pinned commit under
+  clone: FluentValidation | NodaTime | Jellyfin | Polly, checked out at the pinned commit under
          %LOCALAPPDATA%/fuse/evals/repos (outside this repository, so its build settings do not leak in)
   clean: deletes %LOCALAPPDATA%/fuse/evals, which holds every checkout; the generated fixture in
          evals/.work/fixture and the result files in evals/results stay</code></pre>
@@ -196,7 +196,7 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
       </li>
       <li><strong><code>truth &lt;suite&gt; &lt;repo&gt;</code></strong> runs one shard of the truth side of the correctness or selection suite and writes it to <code>--out</code>. <code>--shard K --shards N</code> picks shard K of N, numbered from 0; <code>--cache file</code> skips what that file already holds.</li>
       <li><strong><code>key &lt;suite&gt; &lt;repo&gt;</code></strong> prints the key the truth of that suite on that repository is cached under.</li>
-      <li><strong><code>clone &lt;repo&gt;</code></strong> checks <code>NodaTime</code>, <code>Jellyfin</code> or <code>Polly</code> out at its pinned commit in <code>fuse/evals/repos/&lt;repo&gt;</code> under the user's local application data (<code>%LOCALAPPDATA%</code> on Windows). A checkout already at that commit is left alone. The checkouts live outside the Fuse repository because a repository without its own <code>Directory.Packages.props</code> would inherit Fuse's and fail to restore.</li>
+      <li><strong><code>clone &lt;repo&gt;</code></strong> checks <code>FluentValidation</code>, <code>NodaTime</code>, <code>Jellyfin</code> or <code>Polly</code> out at its pinned commit in <code>fuse/evals/repos/&lt;repo&gt;</code> under the user's local application data (<code>%LOCALAPPDATA%</code> on Windows). A checkout already at that commit is left alone. The checkouts live outside the Fuse repository because a repository without its own <code>Directory.Packages.props</code> would inherit Fuse's and fail to restore.</li>
       <li><strong><code>chart</code></strong> renders <code>site/assets/benefits.svg</code> from the newest correctness and selection file of each repository: one panel for <code>fuse check</code> against <code>dotnet build</code> and one for <code>fuse test</code> against <code>dotnet test</code>, with every time and speedup rounded as the results are, each command's range, mean and P95 under its median, a header with the Fuse logo, what Fuse is, its website and repository, and a last line with the version and date measured and the benchmarks page, so the chart says what it is when shared on its own.</li>
       <li><strong><code>clean</code></strong> deletes <code>fuse/evals</code> under the local application data, which holds the checkouts. The result files stay, and so does the generated fixture under <code>evals/.work/fixture</code>; delete that folder by hand to regenerate it.</li>
     </ul>
@@ -359,7 +359,7 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
     <ul>
       <li>the root <code>README.md</code>;</li>
       <li><code>site/index.html</code>, <code>site/docs/benchmarks.html</code> and <code>site/docs/index.html</code>;</li>
-      <li>the questions in <code>site/docs/how-it-works.html</code>, and the load time in the Timeout section of <code>site/docs/messages.html</code>;</li>
+      <li>the attribution costs in <code>site/docs/how-it-works.html</code>, and the load time in the Timeout section of <code>site/docs/messages.html</code>;</li>
       <li><code>site/assets/og.png</code>, whose text quotes the check speedup.</li>
     </ul>
 

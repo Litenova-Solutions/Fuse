@@ -133,7 +133,7 @@
         <li><a href="#a-build-waits">A build waits</a></li>
         <li><a href="#a-slow-build">A slow build</a></li>
         <li><a href="#a-command-in-the-build-fails">A command in the build fails</a></li>
-        <li><a href="#a-locked-file">A locked file</a></li></li>
+        <li><a href="#a-locked-file">A locked file</a></li>
         <li><a href="#an-error-about-generated-code">An error about generated code</a></li>
         <li><a href="#reading-fuse-status">Reading fuse status</a></li>
         <li><a href="#where-the-logs-are">Where the logs are</a></li>
@@ -163,7 +163,6 @@
       <li><strong>The harness's folder did not exist when <code>fuse init</code> ran.</strong> <code>fuse init</code> writes settings only for the harnesses it detects (<a href="harnesses.html#detection">detection</a>). Create the folder, for example <code>.cursor/</code>, and run <code>fuse init</code> again.</li>
       <li><strong>The harness cannot find <code>fuse</code>.</strong> Every hook runs the command <code>fuse</code>, so the tools directory (<code>~/.dotnet/tools</code>, or <code>%USERPROFILE%\.dotnet\tools</code> on Windows) has to be on the <code>PATH</code> of the process that starts the harness, not only in your terminal.</li>
       <li><strong>Cursor with only Claude Code settings.</strong> Cursor also runs Claude Code's hooks, and Fuse ignores those in a Cursor session so that the Cursor hooks answer. Create <code>.cursor/</code> and run <code>fuse init</code> again.</li>
-      <li><strong>Cursor or GitHub Copilot CLI and <code>dotnet test</code>.</strong> These two harnesses have no pre-shell hook, so their <code>dotnet build</code> and <code>dotnet test</code> run unchanged. Have the agent run <code>fuse test</code> and <code>fuse build</code> instead.</li>
       <li><strong>Muse Code runs no Fuse hook.</strong> Muse loads hooks only from an installed and approved plugin, so writing the bundle is not enough. Run <code>muse plugins install .muse/plugins/fuse --scope project</code> and <code>muse plugins approve fuse</code> in the repository, after trusting the workspace in Muse, and <code>muse plugins update fuse</code> after a later <code>fuse init</code>. <code>muse plugins list</code> shows <code>fuse</code> with <code>active=true</code> once it runs (<a href="harnesses.html#muse-code">Muse Code</a>).</li>
     </ul>
 
@@ -253,7 +252,7 @@
       <li><code>results</code>, <code>shadow</code> and <code>analyzers</code>: test results while a run lasts, the copies used for test runs without MSBuild (<code>shadow/&lt;project&gt;/g1</code> and so on, one per run that runs at the same time), and the copies of the repository's own analyzers.</li>
       <li><code>build-*.log</code>: the <a href="how-it-works.html#build-log">file log</a> of a build that is running, deleted once the build ends.</li>
       <li><code>sessions.tsv</code> and <code>registered-sessions.tsv</code>: which session wrote each changed file, and the sessions a launcher registered with <code>fuse session begin</code>.</li>
-      <li><code>baseline</code>, <code>test-result-cache.json</code> and <code>last-test-results.json</code>: HEAD's kept errors by commit and configuration, the kept test passes by class, and the last run's per-test verdicts, which <code>fuse test --failed</code> reruns.</li>
+      <li><code>baseline</code> and <code>last-test-results.json</code>: HEAD's kept errors by commit and configuration, and the last run's per-test verdicts, which <code>fuse test --failed</code> reruns.</li>
       <li><code>last-check-results.txt</code>, <code>last-build-results.txt</code> and <code>last-test-results.txt</code>: every error, diagnostic or failure the last run found, named by a capped summary.</li>
       <li><code>root</code>: the repository's path. Once a day a starting engine deletes the state directories whose repository no longer exists and that nothing wrote to for a day.</li>
     </ul>
@@ -322,10 +321,8 @@
       <li><code>; sessions: &lt;id&gt; N file(s), ...</code> — the tail of a <code>check:</code> line: how many changed files each session wrote, most files first, at most 10 sessions before <code>, and M more</code>.</li>
       <li><code>test selection: D of C changed declaration(s) compile to the same code as HEAD; selecting no tests for them</code> — how many changed declarations seeded no tests (<a href="how-it-works.html#test-selection">same code</a>).</li>
       <li><code>test selection: member walk completed in M ms, S symbol(s), C test class(es) reachable, P pattern(s) selected; selecting at member level</code> — and the <code>over budget</code> variant ending in <code>selecting at class level</code>, plus <code>test selection: N test classes reachable; selecting at class level</code> past the 100-class gate.</li>
-      <li><code>test selection: &lt;Test&gt;: N of M test class(es) start &lt;App&gt;; selecting them whole, the rest by name</code> — and the <code>may start</code>, <code>no test class found</code> and <code>test project is not loaded</code> variants, each ending in <code>running the project whole</code>.</li>
       <li><code>test plan: &lt;project&gt;: not emitting &lt;project&gt; again; ... compiles to the same declarations as HEAD</code> — per dependent whose shadow image was kept.</li>
       <li><code>test plan: container runtime present; N gated project(s) planned</code> — a plan ran while a container runtime answered, so gated projects were planned, not left out.</li>
-      <li><code>test result cache: ignoring ...</code> — why a stored cache file was not read: another version, another build, no entries, or unreadable.</li>
       <li><code>registered session &lt;name&gt; expired; its files count as no session's now</code> — a <code>fuse session begin</code> registration reached its 4 hours.</li>
     </ul>
 

@@ -127,6 +127,7 @@
         <li><a href="#loadfailed">LoadFailed</a></li>
         <li><a href="#timeout">Timeout</a></li>
         <li><a href="#invalidpath">InvalidPath</a></li>
+        <li><a href="#noregisteredsession">NoRegisteredSession</a></li>
         <li><a href="#internal">Internal</a></li>
         <li><a href="#usage-failures">Usage failures</a></li>
         <li><a href="#no-failures-to-rerun">No failures to rerun</a></li>
@@ -178,7 +179,7 @@ fuse: the request is cancelled</code></pre>
         <tr><td>The other post-edit hooks</td><td class="num">50 s</td></tr>
       </tbody>
     </table>
-    <p>A request that reaches projects the engine has not loaded waits for them to load; in the <a href="benchmarks.html">benchmarks</a> the slowest such load took 25,747 ms, for Jellyfin's dependent projects. The second line is the engine's answer when a request is cancelled while it runs.</p>
+    <p>A request that reaches projects the engine has not loaded waits for them to load; in the <a href="benchmarks.html">benchmarks</a> the slowest such load took 33,339 ms, for Jellyfin's dependent projects. The second line is the engine's answer when a request is cancelled while it runs.</p>
     <p><strong>Fix.</strong> Run the command again; the engine keeps loading in between. <a href="troubleshooting.html#a-command-times-out">Troubleshooting</a> shows how to see what it is doing.</p>
 
     <h2 id="invalidpath">InvalidPath <a class="anchor" href="#invalidpath" aria-label="Link to this section">#</a></h2>
@@ -188,14 +189,18 @@ fuse: none of the files named in the check is a C# source file of a project in t
 fuse: none of the paths given names a test project in this repository: &lt;paths&gt;
 fuse: "&lt;spec&gt;" in the check matches no changed C# source file of a project in this repository
 fuse: the paths named in the check expand to &lt;N&gt; source files, more than the 2000 a scoped check covers; name a smaller folder or pattern
-fuse: no registered session named &lt;name&gt;
 fuse: "&lt;name&gt;" is not a valid session name; use 1 to 64 letters, digits, -, _ or .
 fuse: "&lt;pattern&gt;" is not a valid path pattern; use forward slashes, * and ? inside a segment, ** as a whole segment, no .. segment
 fuse: a session holds at most 32 path patterns, not &lt;N&gt;; name fewer
 fuse: at most 64 sessions can be registered at once; end one with fuse session end &lt;name&gt;
 fuse: "&lt;pattern&gt;" is outside this repository; name a pattern inside it</code></pre>
-    <p><strong>Cause.</strong> <code>fuse check</code> and the <code>fuse_check</code> tool print it when a file argument is empty or blank, is not a string, or is not a path (for example because it holds a NUL character), and check nothing. The third form means every named file is something Fuse cannot check: a path that does not exist, a file of another language, or a C# file outside every project. It lists up to five of them. When at least one named file is a C# source of a project, the check runs on those, and its <code>file(s) checked</code> count leaves the others out. The fourth form is <code>fuse test</code> with arguments that only name where the tests are, when none of them is a test project file, a solution listing one, or a directory holding one. The fifth and sixth forms are a scoped <code>fuse check</code>: one directory or pattern matched no changed C# source a project owns, or one file is no C# source of a project, refusing the whole call even when the other specs matched, or the specs expanded past 2000 sources. The rest are <code>fuse session</code>: ending a name that is not registered, a name or pattern the engine cannot register, more than 32 patterns on one session, more than 64 sessions at once, or a pattern outside the repository.</p>
+    <p><strong>Cause.</strong> <code>fuse check</code> and the <code>fuse_check</code> tool print it when a file argument is empty or blank, is not a string, or is not a path (for example because it holds a NUL character), and check nothing. The third form means every named file is something Fuse cannot check: a path that does not exist, a file of another language, or a C# file outside every project. It lists up to five of them. When at least one named file is a C# source of a project, the check runs on those, and its <code>file(s) checked</code> count leaves the others out. The fourth form is <code>fuse test</code> with arguments that only name where the tests are, when none of them is a test project file, a solution listing one, or a directory holding one. The fifth and sixth forms are a scoped <code>fuse check</code>: one directory or pattern matched no changed C# source a project owns, or one file is no C# source of a project, refusing the whole call even when the other specs matched, or the specs expanded past 2000 sources. The rest are <code>fuse session</code>: a name or pattern the engine cannot register, more than 32 patterns on one session, more than 64 sessions at once, or a pattern outside the repository.</p>
     <p><strong>Fix.</strong> Name each file by its path, relative or absolute, and check that the path is spelled as it is on disk. For a scoped check, name a smaller folder or pattern. For a session, pick a name of 1 to 64 letters, digits, <code>-</code>, <code>_</code> or <code>.</code>, and patterns inside the repository.</p>
+
+    <h2 id="noregisteredsession">NoRegisteredSession <a class="anchor" href="#noregisteredsession" aria-label="Link to this section">#</a></h2>
+    <pre class="out" data-label="Message"><code>fuse: no registered session named &lt;name&gt;</code></pre>
+    <p><strong>Cause.</strong> <code>fuse session end</code> prints it when no session with that name is registered, and ends nothing.</p>
+    <p><strong>Fix.</strong> Check that the name is spelled as it was begun, or register it with <code>fuse session begin</code>.</p>
 
     <h2 id="internal">Internal <a class="anchor" href="#internal" aria-label="Link to this section">#</a></h2>
     <pre class="out" data-label="Message"><code>fuse: internal error: &lt;message&gt; (details in &lt;state directory&gt;/engine.log)

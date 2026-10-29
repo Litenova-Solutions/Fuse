@@ -181,7 +181,7 @@ fuse: 1 failed, 0 passed in 2.8 s; ran 1 test(s) affected by your changes out of
     <p>You ran the commands by hand. Your agent does not need to: the hooks run them for it.</p>
     <ul>
       <li><strong>After each edit</strong> the agent gets the output of <code>fuse check</code> for that edit. A clean edit prints nothing.</li>
-      <li><strong>When the agent runs <code>dotnet build</code> or <code>dotnet test</code></strong>, the hook changes it to <code>fuse build</code> or <code>fuse test</code>. Cursor and GitHub Copilot CLI cannot do this; there the agent can call <code>fuse</code> directly.</li>
+      <li><strong>When the agent runs <code>dotnet build</code> or <code>dotnet test</code></strong>, the hook changes it to <code>fuse build</code> or <code>fuse test</code>.</li>
       <li><strong>Before the agent finishes</strong>, Fuse checks all its changes and sends it back once if errors remain.</li>
     </ul>
     <p>To see exactly what Claude Code's agent would receive after an edit, pass the hook the JSON Claude Code sends (bash):</p>

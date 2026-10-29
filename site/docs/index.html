@@ -124,7 +124,7 @@
     <h2 id="the-problem">Why Fuse exists <a class="anchor" href="#the-problem" aria-label="Link to this section">#</a></h2>
     <p>An AI agent checks its work by running <code>dotnet build</code> and <code>dotnet test</code>, often dozens of times in one task. That is slow and noisy:</p>
     <ul>
-      <li><strong>Every build starts from scratch.</strong> The median build took 1.14 s to 6.45 s on the benchmark repositories, and the agent waits for it after every edit.</li>
+      <li><strong>Every build starts from scratch.</strong> The median build took 2.38 s to 20.4 s on the benchmark repositories, and the agent waits for it after every edit.</li>
       <li><strong>A build lists every error.</strong> Errors that were there before the agent started show up too, and the agent has to guess which ones are its own.</li>
       <li><strong>A test run runs every test</strong> and prints the passing ones too.</li>
       <li><strong>Subagents make it worse.</strong> Several builds at once use a lot of memory and fail on each other's locked files in <code>obj</code> and <code>bin</code>.</li>
@@ -156,7 +156,7 @@
       <li><strong>A slow first check across projects.</strong> The first edit that affects other projects has to load them. On Jellyfin (40 projects) that took up to 131.4 s; the median signature edit took 86 ms.</li>
       <li><strong>One check at a time.</strong> Agents in the same repository wait for each other's checks.</li>
       <li><strong>Not a full build.</strong> Fuse checks C# only and picks tests by reading the code, so a few cases still need <code>fuse build</code> or <code>fuse test --all</code>. <a href="limits.html">Limits</a> lists them.</li>
-      <li><strong>Two harnesses without build rewriting.</strong> In Cursor and GitHub Copilot CLI, the agent's own <code>dotnet build</code> runs unchanged and does not take turns with Fuse's builds.</li>
+
     </ul>
 
     <h2 id="words">Words these pages use <a class="anchor" href="#words" aria-label="Link to this section">#</a></h2>

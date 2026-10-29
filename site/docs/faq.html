@@ -186,7 +186,7 @@
           "name": "How is Fuse different from dotnet build?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "dotnet build starts MSBuild, builds the projects and lists every error, including errors that already exist. Fuse keeps the solution compiled in memory and reports only the errors an edit introduced, so it answers sooner: in the benchmarks the median check took between 0.07 and 1.04 seconds where the median dotnet build took between 1.78 and 12.8 seconds. It does not replace the build; fuse build runs the real dotnet build."
+            "text": "dotnet build starts MSBuild, builds the projects and lists every error, including errors that already exist. Fuse keeps the solution compiled in memory and reports only the errors an edit introduced, so it answers sooner: in the benchmarks the median check took between 0.19 and 0.60 seconds where the median dotnet build took between 2.38 and 20.4 seconds. It does not replace the build; fuse build runs the real dotnet build."
           }
         },
         {
@@ -333,7 +333,7 @@
     </div>
 
     <h3 id="how-is-fuse-different-from-dotnet-build">How is Fuse different from dotnet build? <a class="anchor" href="#how-is-fuse-different-from-dotnet-build" aria-label="Link to this section">#</a></h3>
-    <p><code>dotnet build</code> starts MSBuild, builds the projects and lists every error, including errors that already exist. Fuse keeps the solution compiled in memory and reports only the errors an edit introduced, so it answers sooner: in the benchmarks the median check took between 0.07 and 1.04 seconds where the median <code>dotnet build</code> took between 1.78 and 12.8 seconds. It does not replace the build; <code>fuse build</code> runs the real <code>dotnet build</code>.</p>
+    <p><code>dotnet build</code> starts MSBuild, builds the projects and lists every error, including errors that already exist. Fuse keeps the solution compiled in memory and reports only the errors an edit introduced, so it answers sooner: in the benchmarks the median check took between 0.19 and 0.60 seconds where the median <code>dotnet build</code> took between 2.38 and 20.4 seconds. It does not replace the build; <code>fuse build</code> runs the real <code>dotnet build</code>.</p>
 
     <h3 id="how-is-fuse-different-from-a-language-server">How is Fuse different from a language server (LSP)? <a class="anchor" href="#how-is-fuse-different-from-a-language-server" aria-label="Link to this section">#</a></h3>
     <p>A language server gives an editor, or an agent's harness, the errors, warnings, completion and navigation for the files it has open, over the Language Server Protocol (LSP). For C# that is <a href="https://github.com/razzmatazz/csharp-language-server">csharp-ls</a>, which Claude Code's <a href="https://code.claude.com/docs/en/plugins/code-intelligence">csharp-lsp plugin</a> runs, or the Roslyn language server behind the C# extension for VS Code, which OpenCode runs. In a harness that runs one, the agent gets the diagnostics of the file it just edited. Fuse answers a narrower question, which errors did the changes introduce, and differs in four ways:</p>

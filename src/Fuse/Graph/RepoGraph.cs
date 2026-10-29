@@ -270,11 +270,11 @@ internal sealed class RepoGraph
         };
     }
 
-    /// <summary>The test framework <paramref name="packages"/> name, or <see cref="TestFramework.Unknown"/> when none of them is one Fuse knows.</summary>
     /// <summary>True when <paramref name="packages"/> name a Testcontainers package, whose tests need a container runtime running.</summary>
     private static bool InfraOf(HashSet<string> packages) =>
         packages.Any(p => p.Equals("Testcontainers", StringComparison.OrdinalIgnoreCase) || p.StartsWith("Testcontainers.", StringComparison.OrdinalIgnoreCase));
 
+    /// <summary>The test framework <paramref name="packages"/> name, or <see cref="TestFramework.Unknown"/> when none of them is one Fuse knows.</summary>
     private static TestFramework FrameworkOf(HashSet<string> packages)
     {
         if (packages.Any(p => p.Equals("xunit.v3", StringComparison.OrdinalIgnoreCase) || p.StartsWith("xunit.v3.", StringComparison.OrdinalIgnoreCase)))

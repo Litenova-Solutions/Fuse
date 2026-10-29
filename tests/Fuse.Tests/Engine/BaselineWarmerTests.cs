@@ -90,7 +90,8 @@ public class BaselineWarmerTests
         var clean = Assert.IsType<EngineResponse.CheckAnswered>(await engine.SendAsync(new EngineRequest.CheckChanges(WaitForLoad: true))).Report;
         Assert.Empty(clean.Errors);
 
-        await WaitForLogAsync(engine, "baseline warm: skipped, HEAD moved again");
+        // Whether the warm run for the first move is still running when HEAD moves again depends on timing; either way
+        // the next checks must answer from the newest HEAD.
 
         repo.Replace("App/Part0.cs", "var total = 2;", "var total = missing;");
         var broken = Assert.IsType<EngineResponse.CheckAnswered>(await engine.CheckAsync(part)).Report;

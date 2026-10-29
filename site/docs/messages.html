@@ -111,21 +111,21 @@
     <p class="crumbs"><a href="index.html">Docs</a> / Reference</p>
     <h1>Messages and Fixes</h1>
     <p class="jump"><a href="#docs-nav">All documentation pages</a></p>
-    <p class="intro">When Fuse cannot answer, it prints <code>fuse:</code> and one of the messages on this page, and exits with 2. Each message names its fix. Usage failures also exit with 2. The rerun and container lines at the end are answers: each names its own exit code.</p>
+    <p class="intro">When Fuse cannot answer, it prints <code>fuse:</code> and one of the messages on this page. It then exits with 2. Each message names its fix. On a usage failure, the command also exits with 2. The rerun lines and the container lines at the end are answers, and each names its own exit code.</p>
     <div class="audience">
-      <p><b>This page is for</b> anyone who got one of these messages from a command, an MCP tool, or a hook, and wants to know what caused it and what to run.</p>
-      <p><b>If there was no message at all</b>, for example a hook that says nothing, read <a href="troubleshooting.html">Troubleshooting</a> instead.</p>
+      <p><b>This page is for</b> anyone who gets one of these messages from a command, an MCP tool, or a hook, and wants to know what caused it and what to run.</p>
+      <p><b>If you see no message at all</b>, for example from a hook that says nothing, read <a href="troubleshooting.html">Troubleshooting</a> instead.</p>
     </div>
     <div class="key">
       <p>In short</p>
       <ul>
-        <li>When Fuse cannot answer, it prints <code>fuse:</code> plus one of the messages on this page and exits with 2.</li>
-        <li>Each message names its fix, and text in angle brackets varies.</li>
-        <li>The MCP server returns every message as an error result, while a hook reports only <code>RestoreNeeded</code> and stays silent on the rest.</li>
-        <li>Usage failures also exit with 2, and the rerun and container lines at the end are answers with their own exit codes.</li>
+        <li>When Fuse cannot answer, it prints <code>fuse:</code> plus one of the messages on this page. It then exits with 2.</li>
+        <li>Each message names its fix. Text in angle brackets varies.</li>
+        <li>The MCP server returns every message as an error result. A hook reports only <code>RestoreNeeded</code> and stays silent on the rest.</li>
+        <li>On a usage failure, the command also exits with 2. The rerun lines and the container lines at the end are answers with their own exit codes.</li>
       </ul>
     </div>
-    <p>Each message has a code, which the MCP server and the hooks act on. The MCP server returns every one as an error result. A hook reports <code>RestoreNeeded</code>, because the agent can fix it by running the command, and stays silent on the rest, because a hook never breaks the agent's session. Text in angle brackets varies.</p>
+    <p>Each message has a code. The MCP server and the hooks act on that code. The MCP server returns each message as an error result. A hook reports <code>RestoreNeeded</code>, because the agent can fix it by running the command. It stays silent on the rest, because a hook never breaks the agent's session. Text in angle brackets varies.</p>
 
     <nav class="toc" aria-label="On this page">
       <p>On this page</p>
@@ -148,24 +148,24 @@
 
     <h2 id="notarepository">NotARepository <a class="anchor" href="#notarepository" aria-label="Link to this section">#</a></h2>
     <pre class="out" data-label="Message"><code>fuse: not inside a git repository; Fuse compares your changes with HEAD, so it needs one</code></pre>
-    <p><strong>Cause.</strong> <code>fuse check</code>, <code>fuse test</code>, <code>fuse status</code>, <code>fuse session</code>, <code>fuse stop</code>, <code>fuse init</code> and <code>fuse uninit</code> print it on standard error, and <code>fuse mcp</code> returns it, when the working directory is in no git repository. For an MCP server, that is the directory it was started in. <code>fuse build</code> runs outside a repository; only <code>fuse build --changed</code> needs one.</p>
+    <p><strong>Cause.</strong> When the working directory is not inside a git repository, <code>fuse check</code>, <code>fuse test</code>, <code>fuse status</code>, <code>fuse session</code>, <code>fuse stop</code>, <code>fuse init</code> and <code>fuse uninit</code> print this message on standard error, and <code>fuse mcp</code> returns this message. For an MCP server, the working directory is the directory where you started it. <code>fuse build</code> runs outside a repository. Only <code>fuse build --changed</code> needs a repository.</p>
     <p><strong>Fix.</strong> Run the command inside the repository, or run <code>git init</code> and commit.</p>
 
     <h2 id="noprojects">NoProjects <a class="anchor" href="#noprojects" aria-label="Link to this section">#</a></h2>
     <pre class="out" data-label="Message"><code>fuse: no C# projects (.csproj) in this repository, so Fuse has nothing to check
 fuse: no C# project could be evaluated: &lt;path&gt;: &lt;MSBuild message&gt;</code></pre>
-    <p><strong>Cause.</strong> Git knows no <code>.csproj</code> file in the repository (the second line is <code>fuse init</code>'s), the project files git knows are missing from disk, or MSBuild could evaluate none of them.</p>
-    <p><strong>Fix.</strong> Add or commit a project. For the second line, fix the project file the message names, which <code>dotnet build</code> also fails on.</p>
+    <p><strong>Cause.</strong> Git tracks no <code>.csproj</code> file in the repository, the project files it tracks are missing from disk, or MSBuild could evaluate none of them. The second line is the one <code>fuse init</code> prints.</p>
+    <p><strong>Fix.</strong> Add or commit a project. For the second line, fix the project file the message names, because <code>dotnet build</code> fails on it too.</p>
 
     <h2 id="loading">Loading <a class="anchor" href="#loading" aria-label="Link to this section">#</a></h2>
     <pre class="out" data-label="Message"><code>fuse: Fuse is still loading this repository; the next check will include these changes</code></pre>
-    <p><strong>Cause.</strong> The engine answers a check with this while it is still evaluating the repository or loading the projects that own uncommitted changes, when the check asked not to wait. Only the post-edit hook of a harness other than Claude Code asks that, because the agent waits for that hook, and it stays silent on this answer.</p>
-    <p><strong>Fix.</strong> None; the stop hook and the next check cover the changes.</p>
+    <p><strong>Cause.</strong> The engine answers a check with this message while it is still evaluating the repository or loading the projects that own the files with uncommitted changes, but only when the check asks not to wait. Only the post-edit hook of a harness other than Claude Code asks not to wait, because the agent waits for that hook. It stays silent on this answer.</p>
+    <p><strong>Fix.</strong> There is no fix. The stop hook and the next check cover the changes.</p>
 
     <h2 id="restoreneeded">RestoreNeeded <a class="anchor" href="#restoreneeded" aria-label="Link to this section">#</a></h2>
     <pre class="out" data-label="Message"><code>fuse: restore needed: run `dotnet restore Lib/Lib.csproj` (Lib/Lib.csproj not restored)</code></pre>
-    <p><strong>Cause.</strong> A project the request needs, or a project it references, has no <code>project.assets.json</code>, the file <code>dotnet restore</code> writes. The message names the first such project, adds <code>and the same for each project listed</code> when there are more, and lists up to three. It names a project rather than the solution, because a solution can leave out the project that is missing its restore.</p>
-    <p><strong>Fix.</strong> Run the command it names for each project listed. Fuse never restores on its own. Every hook reports this message too, so an agent sees it and can run the command.</p>
+    <p><strong>Cause.</strong> A project the request needs, or one that project references, has no <code>project.assets.json</code>, the file <code>dotnet restore</code> writes. The message names the first such project and lists up to three. When there are more, it adds <code>and the same for each project listed</code>. The message names a project rather than the solution, because the solution can leave out the project that needs the restore.</p>
+    <p><strong>Fix.</strong> Run the command the message names for each project listed. Fuse never restores on its own. Every hook reports this message too, so an agent sees it and can run the command.</p>
 
     <h2 id="loadfailed">LoadFailed <a class="anchor" href="#loadfailed" aria-label="Link to this section">#</a></h2>
     <pre class="out" data-label="Message"><code>fuse: could not load &lt;project&gt;: &lt;message&gt;
@@ -174,16 +174,16 @@ fuse: Fuse could not evaluate the repository's projects: &lt;message&gt;
 fuse: git failed &lt;action&gt; in &lt;root&gt; (&lt;git's message&gt;); the repository may be damaged, see `git status` and `git fsck`
 fuse: git cannot read &lt;path&gt; at HEAD; the repository may be damaged (run `git fsck`)
 fuse: git cannot list the repository's files (&lt;git's message&gt;); see `git status`</code></pre>
-    <p><strong>Cause.</strong> A project could not be loaded (a missing project reference or an SDK that does not resolve, which <code>dotnet build</code> also fails on), the evaluation failed, or git could not read the repository. A NuGet restore warning, such as a package advisory, does not count as a failure. The second line means a check reached a project the engine's views do not hold, even after rebuilding them once; the check fails rather than answer partially. Hooks stay silent on it.</p>
-    <p><strong>Fix.</strong> Run <code>dotnet build</code> on the project to see the same failure, or <code>git status</code> and <code>git fsck</code> for the git messages. For the second line, run the command again.</p>
+    <p><strong>Cause.</strong> Either Fuse could not load a project or evaluate the repository's projects, or git could not read the repository. A missing project reference or an SDK that does not resolve causes the first, and <code>dotnet build</code> fails on those projects too. A NuGet restore warning, such as a package advisory, does not cause this message. The second line means a check reached a project the engine's views do not hold, even after rebuilding them once. The check ends with no answer instead of a partial one. Hooks stay silent on this message.</p>
+    <p><strong>Fix.</strong> Run <code>dotnet build</code> on the project to see the same failure. For the git messages, run <code>git status</code> and <code>git fsck</code>. For the second line, run the command again.</p>
 
     <h2 id="timeout">Timeout <a class="anchor" href="#timeout" aria-label="Link to this section">#</a></h2>
     <pre class="out" data-label="Message"><code>fuse: the Fuse engine did not answer within &lt;seconds&gt; s
 fuse: the request is cancelled</code></pre>
-    <p><strong>Cause.</strong> The engine did not answer within the command's limit:</p>
+    <p><strong>Cause.</strong> The engine did not answer within the client's limit:</p>
     <div class="table-scroll" role="region" aria-label="Timeout" tabindex="0">
     <table>
-      <thead><tr><th scope="col">Caller</th><th scope="col">Limit</th></tr></thead>
+      <thead><tr><th scope="col">Client</th><th scope="col">Limit</th></tr></thead>
       <tbody>
         <tr><td><code>fuse check</code>, <code>fuse test</code> and the MCP tools</td><td class="num">600 s</td></tr>
         <tr><td>The Claude Code post-edit hook and every stop hook</td><td class="num">280 s</td></tr>
@@ -191,8 +191,8 @@ fuse: the request is cancelled</code></pre>
       </tbody>
     </table>
     </div>
-    <p>A request that reaches projects the engine has not loaded waits for them to load. The second line is the engine's answer when a request is cancelled while it runs.</p>
-    <p><strong>Fix.</strong> Run the command again; the engine keeps loading in between. <a href="troubleshooting.html#a-command-times-out">Troubleshooting</a> shows how to see what it is doing.</p>
+    <p>A request that reaches projects the engine has not loaded waits for them to load. The engine answers with the second line when a request is cancelled while it runs.</p>
+    <p><strong>Fix.</strong> Run the command again. The engine keeps loading in between. <a href="troubleshooting.html#a-command-times-out">Troubleshooting</a> shows how to see what it is doing.</p>
 
     <h2 id="invalidpath">InvalidPath <a class="anchor" href="#invalidpath" aria-label="Link to this section">#</a></h2>
     <pre class="out" data-label="Message"><code>fuse: a file named in the check is empty; name each file by its path
@@ -206,19 +206,19 @@ fuse: "&lt;pattern&gt;" is not a valid path pattern; use forward slashes, * and 
 fuse: a session holds at most 32 path patterns, not &lt;N&gt;; name fewer
 fuse: at most 64 sessions can be registered at once; end one with fuse session end &lt;name&gt;
 fuse: "&lt;pattern&gt;" is outside this repository; name a pattern inside it</code></pre>
-    <p><strong>Cause.</strong> <code>fuse check</code> and the <code>fuse_check</code> tool print it when a file argument is empty or blank, is not a string, or is not a path (for example because it holds a NUL character), and check nothing. The other forms mean:</p>
+    <p><strong>Cause.</strong> When a file argument is empty or blank, is not a string, or is not a path (for example because it holds a NUL character), <code>fuse check</code> and the <code>fuse_check</code> tool print this message and check nothing. The other lines mean:</p>
     <ul>
-      <li>The third form means every named file is something Fuse cannot check: a path that does not exist, a file of another language, or a C# file outside every project. It lists up to five of them. When at least one named file is a C# source of a project, the check runs on those, and its <code>file(s) checked</code> count leaves the others out.</li>
-      <li>The fourth form is <code>fuse test</code> with arguments that only name where the tests are, when none of them is a test project file, a solution listing one, or a directory holding one.</li>
-      <li>The fifth and sixth forms are a scoped <code>fuse check</code>: one directory or pattern matched no changed C# source a project owns, or one file is no C# source of a project, refusing the whole call even when the other specs matched, or the specs expanded past 2000 sources.</li>
-      <li>The rest are <code>fuse session</code>: a name or pattern the engine cannot register, more than 32 patterns on one session, more than 64 sessions at once, or a pattern outside the repository.</li>
+      <li>The third line means every named file is something Fuse cannot check: a path that does not exist, a file of another language, or a C# file outside every project. It lists up to five of them. When at least one named file is a C# source of a project, the check runs on those, and its <code>file(s) checked</code> count leaves the others out.</li>
+      <li>The fourth line answers <code>fuse test</code> with arguments that only name where the tests are, when none of them is a test project file, a solution listing one, or a directory holding one.</li>
+      <li>The fifth and sixth lines answer a scoped <code>fuse check</code>. The fifth means one directory or pattern matches no changed C# source that a project owns, or one file is no C# source of a project. Fuse refuses the whole call even when the other specs match. The sixth means the specs expand past 2000 sources.</li>
+      <li>The rest answer <code>fuse session</code>: a name or pattern the engine cannot register, more than 32 patterns on one session, more than 64 sessions at once, or a pattern outside the repository.</li>
     </ul>
-    <p><strong>Fix.</strong> Name each file by its path, relative or absolute, and check that the path is spelled as it is on disk. For a scoped check, name a smaller folder or pattern. For a session, pick a name of 1 to 64 letters, digits, <code>-</code>, <code>_</code> or <code>.</code>, and patterns inside the repository.</p>
+    <p><strong>Fix.</strong> Name each file by its path, relative or absolute. Check that the path is spelled as it is on disk. For a scoped check, name a smaller folder or pattern. For a session, pick a name of 1 to 64 letters, digits, <code>-</code>, <code>_</code> or <code>.</code>, and patterns inside the repository.</p>
 
     <h2 id="noregisteredsession">NoRegisteredSession <a class="anchor" href="#noregisteredsession" aria-label="Link to this section">#</a></h2>
     <pre class="out" data-label="Message"><code>fuse: no registered session named &lt;name&gt;</code></pre>
-    <p><strong>Cause.</strong> <code>fuse session end</code> prints it when no session with that name is registered, and ends nothing.</p>
-    <p><strong>Fix.</strong> Check that the name is spelled as it was begun, or register it with <code>fuse session begin</code>.</p>
+    <p><strong>Cause.</strong> When no session with that name is registered, <code>fuse session end</code> prints this message and ends no session.</p>
+    <p><strong>Fix.</strong> Check that the name matches the one you began with, or register that name with <code>fuse session begin</code>.</p>
 
     <h2 id="internal">Internal <a class="anchor" href="#internal" aria-label="Link to this section">#</a></h2>
     <pre class="out" data-label="Message"><code>fuse: internal error: &lt;message&gt; (details in &lt;state directory&gt;/engine.log)
@@ -228,8 +228,8 @@ fuse: could not connect to the Fuse engine: &lt;message&gt;
 fuse: could not start the Fuse engine: &lt;message&gt;
 fuse: the Fuse engine sent no check result (&lt;response&gt;); run the command again
 fuse: the Fuse engine sent no test plan (&lt;response&gt;); run the command again</code></pre>
-    <p><strong>Cause.</strong> Something failed inside Fuse. <code>could not connect to the Fuse engine: it did not start within 15 s</code> means the engine process did not open its pipe.</p>
-    <p><strong>Fix.</strong> Read the lines of <code>engine.log</code> the message names, then run the command again. <a href="troubleshooting.html#internal-errors">Troubleshooting</a> lists the details to collect for a bug report.</p>
+    <p><strong>Cause.</strong> Something went wrong inside Fuse. <code>could not connect to the Fuse engine: it did not start within 15 s</code> means the engine process did not open its pipe.</p>
+    <p><strong>Fix.</strong> Read the lines of <code>engine.log</code> the message names. Then run the command again. <a href="troubleshooting.html#internal-errors">Troubleshooting</a> lists the details to collect for a bug report.</p>
 
     <h2 id="usage-failures">Usage failures <a class="anchor" href="#usage-failures" aria-label="Link to this section">#</a></h2>
     <pre class="out" data-label="Message"><code>fuse: check takes files and [--max-errors &lt;n&gt;|--all-errors] [--json]; '&lt;token&gt;' is not one
@@ -243,16 +243,16 @@ fuse: --failed reruns the tests that failed last time and cannot be combined wit
 fuse: status takes [--json]; '&lt;token&gt;' is not one
 fuse: max_errors takes a count of 1 to 100000
 fuse: failed reruns the tests that failed last time and cannot be combined with all; set only one of them</code></pre>
-    <p><strong>Cause.</strong> The arguments did not parse, so the command ran nothing: no root lookup, no engine start, no build and no lock. The refusals are:</p>
+    <p><strong>Cause.</strong> Fuse could not parse the arguments, so the command ran nothing: no root lookup, no engine start, no build and no lock. The refusals are:</p>
     <ul>
-      <li><code>fuse check</code> refuses every <code>--</code> option it does not take; <code>fuse build</code> and <code>fuse test</code> pass unknown tokens to <code>dotnet</code> and refuse only a near miss of one of their own options, naming the option it meant.</li>
-      <li>A <code>--max-errors</code> with no count or 0 is refused, as is one with text that is no count of 1 to 100000, as are <code>--all-errors</code> with <code>--max-errors</code>, <code>--all</code> and <code>--failed</code> with any other argument, and anything but <code>--json</code> to <code>fuse status</code>.</li>
-      <li>A <code>fuse test --session</code> with no id prints <code>fuse: --session takes the session's id</code>; you never pass that flag yourself, the pre-shell hook does.</li>
-      <li>The last two lines are the MCP server's, returned as error results.</li>
+      <li><code>fuse check</code> refuses every <code>--</code> option it does not take. <code>fuse build</code> and <code>fuse test</code> pass unknown tokens to <code>dotnet</code> and refuse only a near miss of one of their own options, naming the option you meant.</li>
+      <li>The command refuses a <code>--max-errors</code> with no count or 0, or with text that is no count of 1 to 100000. It also refuses <code>--all-errors</code> with <code>--max-errors</code>, <code>--all</code> and <code>--failed</code> with any other argument, and anything but <code>--json</code> to <code>fuse status</code>.</li>
+      <li>A <code>fuse test --session</code> with no id prints <code>fuse: --session takes the session's id</code>. You never pass that flag yourself: the pre-shell hook passes it.</li>
+      <li>The last two lines are the MCP server's, and it returns them as error results.</li>
     </ul>
-    <p>On the command line each refusal prints on standard error and exits with 2; the <code>--session</code>, <code>--all</code> and <code>--failed</code> lines print alone, and the rest print with the command's usage.</p>
-    <p><code>fuse init</code>, <code>fuse uninit</code>, <code>fuse stop</code>, <code>fuse mcp</code> and <code>fuse session</code> with arguments they do not take print only their usage there: <code>usage: fuse init [--instructions]</code>, <code>usage: fuse uninit</code>, and <code>usage: fuse session begin &lt;name&gt; --paths &lt;pattern&gt; [&lt;pattern&gt;...] | fuse session end &lt;name&gt;</code>, while <code>fuse stop</code> and <code>fuse mcp</code> print their own usage block. So does an unknown command, which prints the top-level usage.</p>
-    <p><strong>Fix.</strong> Read the usage line and run the command again.</p>
+    <p>On the command line, the command prints each refusal on standard error and exits with 2. The command prints the <code>--session</code>, <code>--all</code> and <code>--failed</code> lines alone, and the rest with its usage.</p>
+    <p><code>fuse init</code>, <code>fuse uninit</code>, <code>fuse stop</code>, <code>fuse mcp</code> and <code>fuse session</code> with arguments they do not take print only their usage on standard error. Three of them print one line: <code>usage: fuse init [--instructions]</code>, <code>usage: fuse uninit</code>, and <code>usage: fuse session begin &lt;name&gt; --paths &lt;pattern&gt; [&lt;pattern&gt;...] | fuse session end &lt;name&gt;</code>. The other two, <code>fuse stop</code> and <code>fuse mcp</code>, print their own usage block instead. An unknown command does the same: it prints the top-level usage.</p>
+    <p><strong>Fix.</strong> Read the usage line. Then run the command again.</p>
 
     <h2 id="no-failures-to-rerun">No failures to rerun <a class="anchor" href="#no-failures-to-rerun" aria-label="Link to this section">#</a></h2>
     <pre class="out" data-label="Message"><code>fuse: no test run is recorded yet; run fuse test first
@@ -260,21 +260,29 @@ fuse: the last test run was from dotnet test arguments, so its failures cannot b
 fuse: the last test run had no failures
 fuse: none of the tests that failed last time is in a test project in this repository
 fuse: none of the &lt;N&gt; test(s) that failed last time ran; they may have been renamed or removed</code></pre>
-    <p><strong>Cause.</strong> <code>fuse test --failed</code> reruns the failures of the last recorded run, and there is nothing to rerun: no run is recorded yet, the last run came from your own <code>dotnet test</code> arguments, which are recorded without their project and cannot be rerun, the last run had no failures, the failed tests are in no test project of this repository anymore, or none of them ran, because they were renamed or removed. The first, second and fourth lines exit with 2, the third with 0, and the last with 1.</p>
-    <p><strong>Fix.</strong> Run <code>fuse test</code> or <code>fuse test --all</code> to record a run, then rerun its failures.</p>
+    <p><strong>Cause.</strong> <code>fuse test --failed</code> reruns the failures of the last recorded run. There is nothing to rerun when:</p>
+    <ul>
+      <li>No run is recorded yet.</li>
+      <li>The last run came from your own <code>dotnet test</code> arguments, which Fuse records without their project, so it cannot rerun them.</li>
+      <li>The last run had no failures.</li>
+      <li>The failed tests are no longer in a test project of this repository.</li>
+      <li>None of the failed tests ran, because you renamed or removed them.</li>
+    </ul>
+    <p>The command exits with 2 for the first, second and fourth lines, with 0 for the third, and with 1 for the last.</p>
+    <p><strong>Fix.</strong> Run <code>fuse test</code> or <code>fuse test --all</code> to record a run. Then rerun its failures.</p>
 
     <h2 id="no-container-runtime">No container runtime <a class="anchor" href="#no-container-runtime" aria-label="Link to this section">#</a></h2>
     <pre class="out" data-label="Message"><code>fuse: no test ran: &lt;N&gt; test(s) selected in &lt;P&gt; need a container runtime, and none is running; start Docker or Podman and run fuse test again</code></pre>
-    <p><strong>Cause.</strong> Every selected test needs a container runtime and neither Docker nor Podman answered, so no process started. The command exits with 1. The affected and <code>--all</code> plans leave such projects out and name them in the summary (<a href="commands.html#fuse-test">fuse test</a>); this line is for a plan with nothing else to run.</p>
-    <p><strong>Fix.</strong> Start Docker or Podman and run <code>fuse test</code> again.</p>
+    <p><strong>Cause.</strong> Every selected test needs a container runtime and neither Docker nor Podman answered, so no process started. The command exits with 1. The affected and <code>--all</code> plans leave out projects that need a container runtime and name them in the summary (<a href="commands.html#fuse-test">fuse test</a>). This line is for a plan with nothing else to run.</p>
+    <p><strong>Fix.</strong> Start Docker or Podman. Then run <code>fuse test</code> again.</p>
 
     <h2 id="other-lines">Other lines on standard error <a class="anchor" href="#other-lines" aria-label="Link to this section">#</a></h2>
     <div class="callout tip">
-      <p>These two lines are not failures: the command goes on after printing them.</p>
+      <p>These two lines mean nothing failed: the command goes on after printing them.</p>
     </div>
     <pre class="out" data-label="Message"><code>fuse: waiting for another build or test in this repository
 fuse: running without the per-repository build lock: &lt;reason&gt;</code></pre>
-    <p><code>fuse build</code> and <code>fuse test</code> print the first once when another client holds the <a href="how-it-works.html#builds-and-the-build-lock">build lock</a>, and keep waiting. They print the second when the state directory cannot be written, and build without the lock.</p>
+    <p>When another build or test holds the <a href="how-it-works.html#builds-and-the-build-lock">build lock</a>, <code>fuse build</code> and <code>fuse test</code> print the first once and keep waiting. When the state directory cannot be written, they print the second and build without the lock.</p>
 
     <nav class="pager" aria-label="Previous and next page">
       <a href="commands.html"><span>Previous</span>Commands</a>

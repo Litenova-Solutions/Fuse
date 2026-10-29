@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using Fuse.Check;
 using Fuse.Check.Model;
-using Fuse.Dotnet;
 using Fuse.Failures;
 using Fuse.Paths;
 using Fuse.Protocol;
@@ -37,7 +36,7 @@ internal sealed class RequestRouter : IDisposable
         _workspace = new RepoWorkspace(root, log.Write);
         _sessions = new SessionEdits(root, Path.Combine(root.StateDirectory, "sessions.tsv"), Path.Combine(root.StateDirectory, "registered-sessions.tsv"), log: log.Write);
         _checker = new Checker(_workspace, _sessions);
-        _planner = new TestPlanner(_workspace, EngineVersion.Build);
+        _planner = new TestPlanner(_workspace);
         _preloader = new Preloader(_workspace, _requestLock, log.Write);
         _warmer = new BaselineWarmer(_workspace, _checker, _requestLock, log.Write);
         _requestLog = new RequestLog(log);
@@ -98,8 +97,6 @@ internal sealed class RequestRouter : IDisposable
             return await SessionAsync(request, cancellationToken).ConfigureAwait(false);
         if (request is EngineRequest.Ping or EngineRequest.ShutDown)
             return new EngineResponse.Acknowledged();
-        if (request is EngineRequest.ReportTestResults report)
-            return ReportTestResults(report);
 
         // The client's wait started before this request queued, so the analyzers' share of it is counted from here.
         using var analyzerDeadline = new CancellationTokenSource();
@@ -426,39 +423,8 @@ internal sealed class RequestRouter : IDisposable
         }
     }
 
-    /// <summary>
-    ///     Keeps the reported passes of one plan's shadow runs. It needs no workspace sync and never holds the request
-    ///     lock, so a report never waits behind a test run. A failed report loses one round of caching and nothing else.
-    /// </summary>
-    private EngineResponse.Acknowledged ReportTestResults(EngineRequest.ReportTestResults report)
-    {
-        try
-        {
-            _planner.ReportResults(report.PlanId, [.. report.Results.Select(r => (r.Project, r.Test, ToVerdict(r.Verdict)))]);
-        }
-        catch (Exception e) when (e is not OperationCanceledException)
-        {
-            _log.Write($"test result report failed: {e}");
-        }
-
-        return new EngineResponse.Acknowledged();
-    }
-
-    /// <summary>The reported verdict as the planner reads it.</summary>
-    private static TestVerdict ToVerdict(ReportedVerdict verdict) => verdict switch
-    {
-        ReportedVerdict.Passed => TestVerdict.Passed,
-        ReportedVerdict.Failed => TestVerdict.Failed,
-        _ => TestVerdict.Skipped,
-    };
-
-    /// <summary>The answer to a test plan request, carrying the plan's id and how many tests it answered from the cache.</summary>
-    private EngineResponse AnswerPlan(TestPlanResult result)
-    {
-        var answered = (EngineResponse.PlanAnswered)ResponseMapper.Answered(result);
-        var (planId, cachedTests) = _planner.WireInfoFor(result);
-        return answered with { Plan = answered.Plan with { PlanId = planId, CachedTests = cachedTests } };
-    }
+    /// <summary>The answer to a test plan request.</summary>
+    private static EngineResponse AnswerPlan(TestPlanResult result) => ResponseMapper.Answered(result);
 
     /// <summary>
     ///     Checks the paths <paramref name="check"/> names. A path that is empty is answered with

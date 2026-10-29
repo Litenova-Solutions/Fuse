@@ -11,7 +11,7 @@ namespace Fuse.Testing;
 /// </summary>
 internal sealed class PendingPlan
 {
-    private PendingPlan(TestPlanResult? answered, RepoGraph graph, IReadOnlyList<(ProjectNode Node, string? Filter, string[] FilterArguments, IReadOnlyList<Project> Variants)> projects, int selected, int total, string summary, bool buildOnly = false)
+    private PendingPlan(TestPlanResult? answered, RepoGraph graph, IReadOnlyList<(ProjectNode Node, string? Filter, string[] FilterArguments, IReadOnlyList<Project> Variants)> projects, int selected, int total, string summary, bool buildOnly = false, int gatedTests = 0, string[]? gatedProjects = null)
     {
         Answered = answered;
         Graph = graph;
@@ -20,6 +20,8 @@ internal sealed class PendingPlan
         Total = total;
         Summary = summary;
         BuildOnly = buildOnly;
+        GatedTests = gatedTests;
+        GatedProjects = gatedProjects ?? [];
     }
 
     /// <summary>The plan, when it needs no shadow preparation: nothing to run, or every test, which builds with MSBuild.</summary>
@@ -46,10 +48,16 @@ internal sealed class PendingPlan
     /// <summary>True when every run builds with MSBuild (a configuration or framework was named), so nothing is emitted.</summary>
     public bool BuildOnly { get; }
 
+    /// <summary>How many selected tests need a container runtime that is not running, so they run in no run.</summary>
+    public int GatedTests { get; }
+
+    /// <summary>The projects those tests are in, in ordinal order.</summary>
+    public string[] GatedProjects { get; }
+
     /// <summary>A plan that is already answered and prepares nothing.</summary>
     public static PendingPlan Of(TestPlanResult answered, RepoGraph graph) => new(answered, graph, [], 0, answered.TotalTests, answered.Summary);
 
     /// <summary>A plan whose shadow runs are still to be prepared.</summary>
-    public static PendingPlan ToPrepare(RepoGraph graph, IReadOnlyList<(ProjectNode Node, string? Filter, string[] FilterArguments, IReadOnlyList<Project> Variants)> projects, int selected, int total, string summary, bool buildOnly = false) =>
-        new(null, graph, projects, selected, total, summary, buildOnly);
+    public static PendingPlan ToPrepare(RepoGraph graph, IReadOnlyList<(ProjectNode Node, string? Filter, string[] FilterArguments, IReadOnlyList<Project> Variants)> projects, int selected, int total, string summary, bool buildOnly = false, int gatedTests = 0, string[]? gatedProjects = null) =>
+        new(null, graph, projects, selected, total, summary, buildOnly, gatedTests, gatedProjects);
 }

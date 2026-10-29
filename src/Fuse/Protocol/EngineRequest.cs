@@ -24,7 +24,6 @@ namespace Fuse.Protocol;
 [JsonDerivedType(typeof(PlanAffectedTests), nameof(PlanAffectedTests))]
 [JsonDerivedType(typeof(PlanAllTests), nameof(PlanAllTests))]
 [JsonDerivedType(typeof(PlanFailedTests), nameof(PlanFailedTests))]
-[JsonDerivedType(typeof(ReportTestResults), nameof(ReportTestResults))]
 [JsonDerivedType(typeof(PlanChangedBuild), nameof(PlanChangedBuild))]
 [JsonDerivedType(typeof(Status), nameof(Status))]
 internal abstract record EngineRequest
@@ -249,40 +248,6 @@ internal abstract record EngineRequest
             var hash = new HashCode();
             foreach (var project in Projects)
                 hash.Add(project);
-            return hash.ToHashCode();
-        }
-    }
-
-    /// <summary>Every test outcome of the shadow runs of one plan, so the engine keeps the classes that passed.</summary>
-    public sealed record ReportTestResults(ReportedTestResult[] Results) : EngineRequest
-    {
-        /// <summary>The outcomes. A line without the list reads as one that names none, which keeps nothing.</summary>
-        public ReportedTestResult[] Results { get; init; } = Results ?? [];
-
-        private readonly string _planId = "";
-
-        /// <summary>
-        ///     The plan the outcomes ran from, which names the content they ran against. A line without it reads as
-        ///     empty, which no plan has.
-        /// </summary>
-        public string PlanId
-        {
-            get => _planId;
-            init => _planId = value ?? "";
-        }
-
-        public bool Equals(ReportTestResults? other) =>
-            other is not null
-            && EqualityContract == other.EqualityContract
-            && PlanId == other.PlanId
-            && Results.SequenceEqual(other.Results);
-
-        public override int GetHashCode()
-        {
-            var hash = new HashCode();
-            hash.Add(PlanId);
-            foreach (var result in Results)
-                hash.Add(result);
             return hash.ToHashCode();
         }
     }

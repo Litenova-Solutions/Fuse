@@ -38,7 +38,7 @@ internal static class Program
                  the test rounds; agents, the multi-agent scenario after the cold checks and body edits
           --failed-rounds: for selection on fixture, three fix-and-rerun rounds with fuse test --failed afterwards
           --projects, --files, --changed: for scale, the fixture size: projects, files per project, changed files
-          clone: NodaTime | Jellyfin | CommunityToolkit, checked out at the pinned commit under
+          clone: NodaTime | Jellyfin | Polly, checked out at the pinned commit under
                  %LOCALAPPDATA%/fuse/evals/repos (outside this repository, so its build settings do not leak in)
           clean: deletes %LOCALAPPDATA%/fuse/evals, which holds every checkout; the generated fixture in
                  evals/.work/fixture and the result files in evals/results stay

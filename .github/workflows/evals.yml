@@ -36,8 +36,8 @@ on:
   workflow_dispatch:
     inputs:
       repos:
-        description: Repositories to measure, as a JSON array (FluentValidation, NodaTime, Jellyfin, CommunityToolkit, or fixture for the generated solution).
-        default: '["FluentValidation", "NodaTime", "Jellyfin", "CommunityToolkit"]'
+        description: Repositories to measure, as a JSON array (FluentValidation, NodaTime, Jellyfin, Polly, or fixture for the generated solution).
+        default: '["FluentValidation", "NodaTime", "Jellyfin", "Polly"]'
         required: true
       suites:
         description: Suites to run, as a JSON array (correctness, selection, latency, attribution, analyzers, scale).
@@ -75,19 +75,18 @@ jobs:
       - id: matrix
         shell: python
         env:
-          REPOS: ${{ inputs.repos || '["FluentValidation", "NodaTime", "Jellyfin", "CommunityToolkit"]' }}
+          REPOS: ${{ inputs.repos || '["FluentValidation", "NodaTime", "Jellyfin", "Polly"]' }}
           SUITES: ${{ inputs.suites || '["latency", "analyzers"]' }}
         run: |
           import json, os
           repos = json.loads(os.environ["REPOS"])
           suites = json.loads(os.environ["SUITES"])
-          # Truth shards per repository, from the 5.4.0 run's dotnet times. A selection case on the Community Toolkit
-          # takes about 15 minutes of dotnet test and HEAD's full run as long, so each of its 10 cases and HEAD get a
-          # shard of their own. A Jellyfin case takes about 4 minutes and HEAD 14, so its shards hold two cases each. A
+          # Truth shards per repository, from the 5.4.0 run's dotnet times; Polly's are a first estimate, to rebalance
+          # from its first run's truth job times. A Jellyfin case takes about 4 minutes and HEAD 14, so its shards hold two cases each. A
           # correctness case is one build, so its shards hold about eight cases on the larger repositories.
           shards = {
-              "correctness": {"fixture": 1, "FluentValidation": 1, "NodaTime": 2, "Jellyfin": 4, "CommunityToolkit": 4},
-              "selection": {"fixture": 1, "FluentValidation": 1, "NodaTime": 4, "Jellyfin": 6, "CommunityToolkit": 11},
+              "correctness": {"fixture": 1, "FluentValidation": 1, "NodaTime": 2, "Jellyfin": 4, "Polly": 2},
+              "selection": {"fixture": 1, "FluentValidation": 1, "NodaTime": 4, "Jellyfin": 6, "Polly": 4},
           }
           staged = [s for s in ("correctness", "selection") if s in suites]
           latency = [r for r in repos] if "latency" in suites else []
@@ -97,7 +96,7 @@ jobs:
           # One call of evals-suite.yml per suite and repository, so a repository's measure job waits only for its own
           # truth. Jobs start in matrix order when the runners are all busy, so the longest go first: selection before
           # correctness, and the largest repositories first.
-          order = {"CommunityToolkit": 0, "Jellyfin": 1, "NodaTime": 2, "FluentValidation": 3, "fixture": 4}
+          order = {"Jellyfin": 0, "NodaTime": 1, "Polly": 2, "FluentValidation": 3, "fixture": 4}
           measure = [{"suite": s, "repo": r, "shards": shards[s].get(r, 1), "shard_list": json.dumps(list(range(shards[s].get(r, 1))))} for s in staged for r in repos]
           measure.sort(key=lambda m: (m["suite"] != "selection", order.get(m["repo"], 4)))
           with open(os.environ["GITHUB_OUTPUT"], "a") as out:

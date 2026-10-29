@@ -52,6 +52,7 @@ Update with `dotnet tool update -g Fuse`. The hook settings `fuse init` writes a
 ### Documentation
 
 - [Commands](https://fuse.codes/docs/commands) documents every new flag, command and output form. [How it works](https://fuse.codes/docs/how-it-works) explains grouping, the test cache, container gating, the stop scope and same-code selection. [Limits](https://fuse.codes/docs/limits) covers the new bounds, the cache caveat and the files a check does not see. [Troubleshooting](https://fuse.codes/docs/troubleshooting) adds the new engine-log lines, the locked-file holder and the missing container runtime. [Messages](https://fuse.codes/docs/messages) covers the new refusals. [Evals](https://fuse.codes/docs/evals) documents the scale and stale suites, the failed rounds and the new result fields. [Connect your agent](https://fuse.codes/docs/harnesses) and [Subagents and parallel agents](https://fuse.codes/docs/parallel-agents) cover the refreshed instructions and external writers.
+- The evals measure [Polly](https://github.com/App-vNext/Polly) in place of the .NET Community Toolkit: a layered library whose six xUnit v3 test projects run on Microsoft.Testing.Platform. Results for it are published once its first run is committed. [Evals](https://fuse.codes/docs/evals) lists the pinned repositories.
 
 ## 5.6.0
 

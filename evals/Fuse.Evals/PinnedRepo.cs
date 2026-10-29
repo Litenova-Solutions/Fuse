@@ -33,10 +33,11 @@ internal sealed record PinnedRepo(
         // Pinned to the final commit before Jellyfin moved to Roslyn 5: its in-repo analyzer is built against a newer
         // compiler than any SDK that resolves on a machine whose newest SDK is 10.0.112, and Roslyn refuses that (CS9057).
         new("Jellyfin", "https://github.com/jellyfin/Jellyfin", "1d7c6af520da5c84ceac1c21a1d2da34837540ac", "Jellyfin.sln", "Jellyfin, 40 projects", "Jellyfin, 2,535 tests"),
-        // The .NET Community Toolkit: 26 projects, 13 of them test projects, layered as Common, Diagnostics,
-        // HighPerformance and Mvvm, with one generator and code-fix set per supported Roslyn version. It is the fourth
-        // repository because its test projects reach disjoint slices of the code, so affected-test selection can narrow.
-        new("CommunityToolkit", "https://github.com/CommunityToolkit/dotnet", "b135626dd54d33b8f05f2ff31591592c004aa848", "dotnet.slnx", "Community Toolkit, 26 projects", "Community Toolkit, 12,449 tests"),
+        // Polly: 15 projects layered on Polly.Core (Polly, Extensions, RateLimiting, Testing), six xUnit v3 test projects
+        // on Microsoft.Testing.Platform targeting net8.0 to net10.0, and analyzers that read additional files. It is the
+        // fourth repository because its test projects reach disjoint layers of the code, so affected-test selection can
+        // narrow, and because it runs the testing platform the other three do not.
+        new("Polly", "https://github.com/App-vNext/Polly", "31d7ac300743b10163d00ef72fccea88f3acabad", "Polly.slnx", "Polly, 15 projects", "Polly, xUnit v3 on the testing platform"),
     ];
 
     /// <summary>Deletes <see cref="StateDirectory"/>, which holds the checkouts; the generated fixture is not in it.</summary>

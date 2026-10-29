@@ -1,10 +1,10 @@
 # Changelog
 
-The list of changes in each release, which the release workflow publishes as the release notes. The [changelog page](https://fuse.codes/docs/changelog) explains each release with its upgrade steps and says which versions are supported. Each release groups its changes as Added, Changed, Removed, Fixed, Security and Documentation, listing only the groups it has. Versions before 6.0.0 are deprecated.
+The list of changes in each release, which the release workflow publishes as the release notes. The [changelog page](https://fuse.codes/docs/changelog) explains each release with its upgrade steps and says which versions are supported. Each release groups its changes as Added, Changed, Removed, Fixed, Security and Documentation, listing only the groups it has. Versions before 5.0.0 are deprecated.
 
-## 6.0.0
+## 5.7.0
 
-Compared with 5.6.0. This is a major release: the engine answers new pipe requests, does new work in the background, and keeps new state files, and check and test answers have new output shapes. `fuse check` scopes to directories and patterns, sessions can be registered for external writers, and the stop hook checks only the stopping session's files. `fuse test` reruns the tests that failed last time, runs them first, and answers repeated passes from a cache. `fuse build` grows `--changed` and `--warnings`, and `fuse status` is new.
+Compared with 5.6.0. Check and test answers have new output shapes, and the engine does more work in the background and keeps new state files. `fuse check` scopes to directories and patterns, sessions can be registered for external writers, and the stop hook checks only the stopping session's files. `fuse test` reruns the tests that failed last time, runs them first, and answers repeated passes from a cache. `fuse build` grows `--changed` and `--warnings`, and `fuse status` is new.
 
 Update with `dotnet tool update -g Fuse`. The hook settings `fuse init` writes are unchanged, so it does not need to run again; run `fuse init --instructions` again to refresh the Fuse section in `AGENTS.md`. The first command after updating restarts the engine for the new protocol, and no request fails. A script that parses `fuse check` or `fuse test` output must accept the new group headers and the tree stamp at the end of the summary.
 

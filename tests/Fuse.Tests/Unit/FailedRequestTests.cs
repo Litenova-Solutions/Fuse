@@ -11,7 +11,7 @@ public class FailedRequestTests
         [
             new EngineRequest.FailedProject("/repo/Lib.Tests/Lib.Tests.csproj", ["Lib.Tests.CalcTests.Multiplies", "Lib.Tests.CalcTests.Adds"]),
         ])
-        { BuildId = "6.0.0/abc" };
+        { BuildId = "5.7.0/abc" };
 
         var line = ProtocolJson.Serialize(request);
         var read = ProtocolJson.ReadRequest(line);

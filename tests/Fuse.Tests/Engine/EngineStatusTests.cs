@@ -38,9 +38,9 @@ public class EngineStatusTests
     public void A_status_request_writes_and_reads_back()
     {
         var request = Assert.IsType<EngineRequest.Status>(
-            ProtocolJson.ReadRequest(ProtocolJson.Serialize(new EngineRequest.Status { BuildId = "6.0.0/abc" })));
+            ProtocolJson.ReadRequest(ProtocolJson.Serialize(new EngineRequest.Status { BuildId = "5.7.0/abc" })));
 
-        Assert.Equal("6.0.0/abc", request.BuildId);
+        Assert.Equal("5.7.0/abc", request.BuildId);
     }
 
     [Fact]

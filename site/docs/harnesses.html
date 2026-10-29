@@ -185,7 +185,7 @@ wrote .opencode/plugins/fuse.js
 wrote .muse/plugins/fuse/.muse-plugin/plugin.json
 wrote .vscode/mcp.json
 wrote .gitignore
-fuse: hooks registered by Fuse 6.0.0; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors
+fuse: hooks registered by Fuse 5.7.0; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors
 fuse: Muse Code loads hooks from an installed plugin: run `muse plugins install .muse/plugins/fuse --scope project` and `muse plugins approve fuse` once, and `muse plugins update fuse` after a later fuse init</code></pre>
     <p>The settings blocks below are the files that run wrote, and current builds write them as shown.</p>
     <p><code>fuse init --instructions</code> also writes a Fuse section into <code>AGENTS.md</code>, and into <code>CLAUDE.md</code> and <code>GEMINI.md</code> when they exist, so each agent knows the commands from the start (<a href="commands.html#fuse-init-instructions">fuse init --instructions</a>).</p>

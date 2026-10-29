@@ -11,9 +11,9 @@ public class CheckMaxErrorsTests
     public void A_check_request_carries_its_cap_and_reads_it_back()
     {
         var changes = Assert.IsType<EngineRequest.CheckChanges>(
-            ProtocolJson.ReadRequest(ProtocolJson.Serialize(new EngineRequest.CheckChanges(true) { MaxErrors = 50, BuildId = "6.0.0/abc" })));
+            ProtocolJson.ReadRequest(ProtocolJson.Serialize(new EngineRequest.CheckChanges(true) { MaxErrors = 50, BuildId = "5.7.0/abc" })));
         var files = Assert.IsType<EngineRequest.CheckFiles>(
-            ProtocolJson.ReadRequest(ProtocolJson.Serialize(new EngineRequest.CheckFiles(["Lib/Calc.cs"], true) { MaxErrors = int.MaxValue, BuildId = "6.0.0/abc" })));
+            ProtocolJson.ReadRequest(ProtocolJson.Serialize(new EngineRequest.CheckFiles(["Lib/Calc.cs"], true) { MaxErrors = int.MaxValue, BuildId = "5.7.0/abc" })));
 
         Assert.Equal(50, changes.MaxErrors);
         Assert.True(changes.WaitForLoad);

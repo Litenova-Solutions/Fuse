@@ -145,7 +145,7 @@
     <pre data-label="bash"><code>fuse init</code></pre>
     <pre class="out" data-label="Output"><code>wrote .claude/settings.json
 wrote .gitignore
-fuse: hooks registered by Fuse 6.0.0; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors</code></pre>
+fuse: hooks registered by Fuse 5.7.0; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors</code></pre>
     <p><code>fuse init</code> finds the agent tools your repository uses, such as <code>.cursor/</code> or <code>.gemini/</code>, and adds Fuse's hooks to each. With none found, it sets up Claude Code. Run it again at any time; it only replaces its own entries. That is the whole setup, and <a href="commands.html#fuse-uninit"><code>fuse uninit</code></a> takes it out again.</p>
     <p>The first Fuse command in a repository starts a background process that loads your solution. It stays running until it has been idle for 30 minutes, and every later command and hook reuses it.</p>
 

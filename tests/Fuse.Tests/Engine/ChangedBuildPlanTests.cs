@@ -87,9 +87,9 @@ public class ChangedBuildPlanTests
     public void A_plan_request_writes_and_reads_back()
     {
         var request = Assert.IsType<EngineRequest.PlanChangedBuild>(
-            ProtocolJson.ReadRequest(ProtocolJson.Serialize(new EngineRequest.PlanChangedBuild { BuildId = "6.0.0/abc" })));
+            ProtocolJson.ReadRequest(ProtocolJson.Serialize(new EngineRequest.PlanChangedBuild { BuildId = "5.7.0/abc" })));
 
-        Assert.Equal("6.0.0/abc", request.BuildId);
+        Assert.Equal("5.7.0/abc", request.BuildId);
     }
 
     [Fact]

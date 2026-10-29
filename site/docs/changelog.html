@@ -110,7 +110,7 @@
     <p class="crumbs"><a href="index.html">Docs</a> / Reference</p>
     <h1>Changelog</h1>
     <p class="jump"><a href="#docs-nav">All documentation pages</a></p>
-    <p class="intro">This page lists what changed in each Fuse release, newest first, and what to do when you upgrade to it. Each release groups its changes as Added, Changed, Removed, Fixed, Security and Documentation. Only Fuse 6 is supported; every version before 6.0.0 is deprecated.</p>
+    <p class="intro">This page lists what changed in each Fuse release, newest first, and what to do when you upgrade to it. Each release groups its changes as Added, Changed, Removed, Fixed, Security and Documentation. Only Fuse 5 is supported; every version before 5.0.0 is deprecated.</p>
     <div class="audience">
       <p><b>This page is for</b> someone upgrading Fuse, or deciding whether to, who wants to know what will behave differently.</p>
       <p><b>After reading it</b>, follow the upgrade steps of each release between the version you have and the latest one. <code>fuse --version</code> prints the version you have.</p>
@@ -120,7 +120,7 @@
       <p>On this page</p>
       <ol>
         <li><a href="#supported-versions">Supported versions</a></li>
-        <li><a href="#v6-0-0">6.0.0</a></li>
+        <li><a href="#v5-7-0">5.7.0</a></li>
         <li><a href="#v5-6-0">5.6.0</a></li>
         <li><a href="#v5-5-0">5.5.0</a></li>
         <li><a href="#v5-4-0">5.4.0</a></li>
@@ -137,28 +137,28 @@
     </nav>
 
     <h2 id="supported-versions">Supported versions <a class="anchor" href="#supported-versions" aria-label="Link to this section">#</a></h2>
-    <p>Fixes, security fixes included, ship in patch releases of the latest 6.x minor version, as the <a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/main/SECURITY.md">security policy</a> says.</p>
+    <p>Fixes, security fixes included, ship in patch releases of the latest 5.x minor version, as the <a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/main/SECURITY.md">security policy</a> says.</p>
     <table>
       <thead><tr><th scope="col">Version</th><th scope="col">Status</th></tr></thead>
       <tbody>
-        <tr><th scope="row">6.0.x</th><td>Supported. The latest release.</td></tr>
-        <tr><th scope="row">5.6.x</th><td>No longer fixed. Upgrade to 6.0.0 with the <a href="#upgrading-to-6-0-0">steps below</a>.</td></tr>
-        <tr><th scope="row">5.5.x</th><td>No longer fixed. Upgrade to 6.0.0 with the <a href="#upgrading-to-5-6-0">steps for 5.6.0</a> and <a href="#upgrading-to-6-0-0">6.0.0</a>.</td></tr>
-        <tr><th scope="row">5.4.x</th><td>No longer fixed. Upgrade to 6.0.0 with the <a href="#upgrading-to-5-5-0">steps for 5.5.0</a>, <a href="#upgrading-to-5-6-0">5.6.0</a> and <a href="#upgrading-to-6-0-0">6.0.0</a>.</td></tr>
-        <tr><th scope="row">5.3.x</th><td>No longer fixed. Upgrade to 6.0.0 with the <a href="#upgrading-to-5-4-0">steps for 5.4.0</a>, <a href="#upgrading-to-5-5-0">5.5.0</a>, <a href="#upgrading-to-5-6-0">5.6.0</a> and <a href="#upgrading-to-6-0-0">6.0.0</a>.</td></tr>
-        <tr><th scope="row">5.2.x</th><td>No longer fixed. Upgrade to 6.0.0 with the <a href="#upgrading-to-5-3-0">steps for 5.3.0</a>, <a href="#upgrading-to-5-4-0">5.4.0</a>, <a href="#upgrading-to-5-5-0">5.5.0</a>, <a href="#upgrading-to-5-6-0">5.6.0</a> and <a href="#upgrading-to-6-0-0">6.0.0</a>.</td></tr>
-        <tr><th scope="row">5.1.x</th><td>No longer fixed. Upgrade to 6.0.0 with the <a href="#upgrading-from-5-1-0">steps below</a>.</td></tr>
-        <tr><th scope="row">5.0.x</th><td>No longer fixed. Upgrade to 5.1.0 with the <a href="#upgrading-from-5-0-0">steps below</a>, then to 6.0.0.</td></tr>
+        <tr><th scope="row">5.7.x</th><td>Supported. The latest release.</td></tr>
+        <tr><th scope="row">5.6.x</th><td>No longer fixed. Upgrade to 5.7.0 with the <a href="#upgrading-to-5-7-0">steps below</a>.</td></tr>
+        <tr><th scope="row">5.5.x</th><td>No longer fixed. Upgrade to 5.7.0 with the <a href="#upgrading-to-5-6-0">steps for 5.6.0</a> and <a href="#upgrading-to-5-7-0">5.7.0</a>.</td></tr>
+        <tr><th scope="row">5.4.x</th><td>No longer fixed. Upgrade to 5.7.0 with the <a href="#upgrading-to-5-5-0">steps for 5.5.0</a>, <a href="#upgrading-to-5-6-0">5.6.0</a> and <a href="#upgrading-to-5-7-0">5.7.0</a>.</td></tr>
+        <tr><th scope="row">5.3.x</th><td>No longer fixed. Upgrade to 5.7.0 with the <a href="#upgrading-to-5-4-0">steps for 5.4.0</a>, <a href="#upgrading-to-5-5-0">5.5.0</a>, <a href="#upgrading-to-5-6-0">5.6.0</a> and <a href="#upgrading-to-5-7-0">5.7.0</a>.</td></tr>
+        <tr><th scope="row">5.2.x</th><td>No longer fixed. Upgrade to 5.7.0 with the <a href="#upgrading-to-5-3-0">steps for 5.3.0</a>, <a href="#upgrading-to-5-4-0">5.4.0</a>, <a href="#upgrading-to-5-5-0">5.5.0</a>, <a href="#upgrading-to-5-6-0">5.6.0</a> and <a href="#upgrading-to-5-7-0">5.7.0</a>.</td></tr>
+        <tr><th scope="row">5.1.x</th><td>No longer fixed. Upgrade to 5.7.0 with the <a href="#upgrading-from-5-1-0">steps below</a>.</td></tr>
+        <tr><th scope="row">5.0.x</th><td>No longer fixed. Upgrade to 5.1.0 with the <a href="#upgrading-from-5-0-0">steps below</a>, then to 5.7.0.</td></tr>
         <tr><th scope="row">1.0.0 to 4.4.0</th><td>Deprecated and unsupported. These versions are a different program under the same name; <a href="#moving-from-4-x">Moving from 4.x</a> says what to remove.</td></tr>
       </tbody>
     </table>
     <p>To upgrade the tool itself to the latest release:</p>
     <pre data-label="Shell"><code>dotnet tool update -g Fuse</code></pre>
 
-    <h2 id="v6-0-0">6.0.0 <a class="anchor" href="#v6-0-0" aria-label="Link to this section">#</a></h2>
+    <h2 id="v5-7-0">5.7.0 <a class="anchor" href="#v5-7-0" aria-label="Link to this section">#</a></h2>
     <p>Released 2026-10-29. Compared with 5.6.0.</p>
-    <p>This is a major release: the engine answers new pipe requests, does new work in the background, and keeps new state files, and check and test answers have new output shapes. <code>fuse check</code> scopes to directories and patterns, sessions can be registered for external writers, and the stop hook checks only the stopping session's files. <code>fuse test</code> reruns the tests that failed last time, runs them first, and answers repeated passes from a cache. <code>fuse build</code> grows <code>--changed</code> and <code>--warnings</code>, and <code>fuse status</code> is new.</p>
-    <h3 id="upgrading-to-6-0-0">Upgrading to 6.0.0 <a class="anchor" href="#upgrading-to-6-0-0" aria-label="Link to this section">#</a></h3>
+    <p>Check and test answers have new output shapes, and the engine does more work in the background and keeps new state files. <code>fuse check</code> scopes to directories and patterns, sessions can be registered for external writers, and the stop hook checks only the stopping session's files. <code>fuse test</code> reruns the tests that failed last time, runs them first, and answers repeated passes from a cache. <code>fuse build</code> grows <code>--changed</code> and <code>--warnings</code>, and <code>fuse status</code> is new.</p>
+    <h3 id="upgrading-to-5-7-0">Upgrading to 5.7.0 <a class="anchor" href="#upgrading-to-5-7-0" aria-label="Link to this section">#</a></h3>
     <p>Update the tool with <code>dotnet tool update -g Fuse</code>. The hook settings <code>fuse init</code> writes are unchanged, so it does not need to run again. If you ran <code>fuse init --instructions</code>, run it again to refresh the Fuse section in <code>AGENTS.md</code> with the container pre-flight and C# scope bullets. The first command after updating restarts the engine for the new protocol, and no request fails.</p>
     <p>What behaves differently:</p>
     <ul>
@@ -169,7 +169,7 @@
       <li><strong>Rewritten commands print a notice.</strong> A <code>dotnet test</code> or <code>dotnet build</code> the pre-shell hook rewrites prints a notice on standard error first. A command you type yourself prints none.</li>
     </ul>
 
-    <h3 id="v6-0-0-added">Added <a class="anchor" href="#v6-0-0-added" aria-label="Link to this section">#</a></h3>
+    <h3 id="v5-7-0-added">Added <a class="anchor" href="#v5-7-0-added" aria-label="Link to this section">#</a></h3>
     <ul>
       <li>Every command takes <code>--help</code> and <code>-h</code>, which print that command's usage to standard output and exit 0, running nothing. <code>fuse hook --help</code> prints its usage to standard error and exits 0 without reading stdin. An unknown option is refused with exit 2 and the command's usage; for <code>fuse build</code> and <code>fuse test</code> only a near miss of a Fuse option is refused (<code>fuse: '&lt;token&gt;' is not a fuse build option; did you mean '&lt;option&gt;'?</code> for builds, and the same form for tests), and every other token goes to <code>dotnet</code> unchanged. <a href="commands.html">Commands</a> shows each usage.</li>
       <li><code>fuse build</code> and <code>fuse check</code> take <code>--max-errors &lt;n&gt;</code>, <code>--all-errors</code> and <code>--json</code>. The default answer shows 20 errors; <code>--max-errors</code> takes 1 to 100000, and <code>--all-errors</code> shows every error. <code>--json</code> prints one JSON object per error (<code>file</code>, <code>line</code>, <code>column</code>, <code>code</code>, <code>message</code>, with <code>line</code> and <code>column</code> left out for a general error; a check adds <code>cause</code> and <code>generated</code> when present, and a locked build error adds <code>lockedBy</code>) with the text summary as the last line, and a JSON summary never names a file. A capped build summary ends with <code>; all N in &lt;state&gt;/last-build-results.txt</code>; that file holds every error and warning, and in JSON mode the errors are also in <code>last-build-results.json</code>. A failed build with no parseable error prints the output tail before the summary, as text mode does. The <code>fuse_check</code> tool takes <code>max_errors</code> (1 to 100000, default 20). <a href="commands.html#fuse-check">Commands</a> shows the check forms and the <a href="commands.html#fuse-build">build forms</a>.</li>
@@ -187,7 +187,7 @@
       <li>The evals gain a <code>scale</code> suite and a <code>stale</code> suite. <code>scale</code> measures one cold check of 1,500 changed files in 6,000 over 30 projects plus one test project on a generated fixture, resizable with <code>--projects</code>, <code>--files</code> and <code>--changed</code>; full-scale numbers are extrapolated with the result's factor, never quoted as measured. <code>stale</code> breaks one file through the post-edit hook, fixes it, and checks whether the stop hook delivers a stale error. The selection suite takes <code>--failed-rounds</code> for fix-and-rerun rounds with <code>fuse test --failed</code>, and the result files record kept answers, reused errors, result-file completeness, member-walk scope and cache hits. <a href="evals.html">Evals</a> describes the suites and fields.</li>
     </ul>
 
-    <h3 id="v6-0-0-changed">Changed <a class="anchor" href="#v6-0-0-changed" aria-label="Link to this section">#</a></h3>
+    <h3 id="v5-7-0-changed">Changed <a class="anchor" href="#v5-7-0-changed" aria-label="Link to this section">#</a></h3>
     <ul>
       <li>Check errors that share a cause print under one header naming it once: <code>changed: &lt;declaration&gt; (N error(s))</code>, or <code>(N error(s), first M shown)</code> when the cap cuts the group. Member error lines keep their shape at column 0, and <code>last-check-results.txt</code> stays flat with every error. A script that reads check output line by line must accept the header lines. <a href="how-it-works.html#check">How it works</a> explains the groups (<a href="https://github.com/Litenova-Solutions/Fuse/issues/126">#126</a>).</li>
       <li>Test failures that share their message's first line print under one header: <code>N failure(s) with the same first message line: ...</code>, with the first line cut at 160 characters in the header only. Members keep their full <code>FAILED</code> detail, and past 10 failures in detail the rest are names under <code>also failed (N):</code>. <code>last-test-results.txt</code> stays flat and full. <a href="commands.html#fuse-test">Commands</a> shows the form (<a href="https://github.com/Litenova-Solutions/Fuse/issues/126">#126</a>).</li>
@@ -205,7 +205,7 @@
       <li><code>fuse init</code> prints the version that registered the hooks: <code>fuse: hooks registered by Fuse &lt;version&gt;; ...</code>, or <code>fuse: MCP server registered in .vscode/mcp.json by Fuse &lt;version&gt;; ...</code>. Re-running after an upgrade prints the new version even when every file is <code>unchanged</code>. The <code>--instructions</code> section gains the container pre-flight bullet and the C# scope bullet; run <code>fuse init --instructions</code> again to get them. <a href="harnesses.html">Connect your agent</a> shows the section.</li>
     </ul>
 
-    <h3 id="v6-0-0-fixed">Fixed <a class="anchor" href="#v6-0-0-fixed" aria-label="Link to this section">#</a></h3>
+    <h3 id="v5-7-0-fixed">Fixed <a class="anchor" href="#v5-7-0-fixed" aria-label="Link to this section">#</a></h3>
     <ul>
       <li>A background post-edit answer with errors is confirmed by a second check against the current tree before the hook returns it; when the tree no longer reports the errors, the hook exits 0 silent instead of delivering an already-fixed error. Deliveries and drops are logged in <code>hook.log</code>. The hook wait now covers at most two checks: the first answer plus one confirmation. <a href="how-it-works.html#check">How it works</a> explains the confirmation.</li>
       <li>When a reached project is missing from the engine's views after one recovery rebuild, the check fails with <code>fuse: could not load &lt;project&gt;: the check reached &lt;name&gt; but the engine's view does not hold it (the projects the view holds are named in engine.log)</code> and exit 2, instead of answering without that project's errors. Hooks stay silent on it. <code>engine.log</code> gains a <code>check coverage:</code> line naming which reached projects each view held. <a href="troubleshooting.html">Troubleshooting</a> explains the line (<a href="https://github.com/Litenova-Solutions/Fuse/issues/82">#82</a>).</li>
@@ -213,7 +213,7 @@
       <li>When <code>fuse test</code> passes the command through to <code>dotnet test</code>, a positional directory stays positional on VSTest, which refuses <code>--project</code>; only on Microsoft.Testing.Platform is a first argument naming a project, solution or directory spelled as <code>--project</code> or <code>--solution</code>. In 5.6.0 the spelling applied on VSTest too. <a href="commands.html#fuse-test">Commands</a> describes when arguments pass through (<a href="https://github.com/Litenova-Solutions/Fuse/issues/122">#122</a>).</li>
     </ul>
 
-    <h3 id="v6-0-0-documentation">Documentation <a class="anchor" href="#v6-0-0-documentation" aria-label="Link to this section">#</a></h3>
+    <h3 id="v5-7-0-documentation">Documentation <a class="anchor" href="#v5-7-0-documentation" aria-label="Link to this section">#</a></h3>
     <ul>
       <li><a href="commands.html">Commands</a> documents every new flag, command and output form. <a href="how-it-works.html">How it works</a> explains grouping, the test cache, container gating, the stop scope and same-code selection. <a href="limits.html">Limits</a> covers the new bounds, the cache caveat and the files a check does not see. <a href="troubleshooting.html">Troubleshooting</a> adds the new engine-log lines, the locked-file holder and the missing container runtime. <a href="messages.html">Messages</a> covers the new refusals. <a href="evals.html">Evals</a> documents the scale and stale suites, the failed rounds and the new result fields. <a href="harnesses.html">Connect your agent</a> and <a href="parallel-agents.html">Subagents and parallel agents</a> cover the refreshed instructions and external writers.</li>
       <li>The evals measure <a href="https://github.com/App-vNext/Polly">Polly</a> in place of the .NET Community Toolkit: a layered library whose six xUnit v3 test projects run on Microsoft.Testing.Platform. Results for it are published once its first run is committed. <a href="evals.html">Evals</a> lists the pinned repositories.</li>

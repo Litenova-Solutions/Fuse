@@ -81,7 +81,7 @@ fuse init
 ```text
 wrote .claude/settings.json
 wrote .gitignore
-fuse: hooks registered by Fuse 6.0.0; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors
+fuse: hooks registered by Fuse 5.7.0; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors
 ```
 
 That is the whole setup. The agent now hears from Fuse only when an edit caused an error.

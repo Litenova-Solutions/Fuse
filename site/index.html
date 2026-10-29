@@ -230,23 +230,33 @@
         <p class="kicker">Built for Agents</p>
         <h2 id="features-heading">Features</h2>
       </div>
-      <div class="spot">
-        <div class="spot-text">
+      <div class="par">
+        <div class="par-head">
           <h3>Parallel agents in one working tree</h3>
-          <p>Subagents edit, check and test the same repository at the same time, without each needing a separate git worktree. They share one Fuse engine, which loads the solution once, and builds through Fuse take turns, so no build fails on another agent's locked files.</p>
-          <ul class="spot-stats">
-            <li><b>0</b> locked-file errors in 60 builds run 3 at a time</li>
-            <li><b>150 of 150</b> checks answered with 3 or 4 agents editing at once</li>
-          </ul>
-          <p class="spot-links"><a href="docs/how-it-works.html#process-model">How agents share the engine -&gt;</a> <a href="docs/limits.html#what-a-check-does-not-see">Limits with several agents -&gt;</a></p>
+          <p>Subagents edit, check and test the same repository at the same time, without a git worktree each. They share one Fuse engine, which loads the solution once, and builds through Fuse take turns, so no build fails on another agent's locked files.</p>
         </div>
-        <div class="spot-diagram" aria-hidden="true">
-          <div class="nodes"><span>Agent</span><span>Subagent</span><span>Subagent</span></div>
-          <div class="join"></div>
-          <div class="box engine"><b>One Fuse engine</b><span>solution loaded once, builds take turns</span></div>
-          <div class="join single"></div>
-          <div class="box"><b>One working tree</b><span>no worktree per agent</span></div>
+        <div class="par-compare">
+          <figure class="par-lanes bad">
+            <figcaption><b>Without Fuse</b>Each agent runs <code>dotnet build</code> on its own</figcaption>
+            <div class="par-row"><span class="who">Agent</span><span class="par-track"><i class="blk build" style="left:3%;width:58%">dotnet build</i></span></div>
+            <div class="par-row"><span class="who">Subagent</span><span class="par-track"><i class="blk fail" style="left:16%;width:46%">file in use</i></span></div>
+            <div class="par-row"><span class="who">Subagent</span><span class="par-track"><i class="blk fail" style="left:30%;width:46%">file in use</i></span></div>
+            <p class="par-note">The builds write the same <code>obj</code> and <code>bin</code> folders at once, and each agent loads the solution again.</p>
+          </figure>
+          <figure class="par-lanes good">
+            <figcaption><b>Through Fuse</b>One engine for every agent</figcaption>
+            <div class="par-row"><span class="who">Agent</span><span class="par-track"><i class="tick" style="left:2%"></i><i class="tick" style="left:9%"></i><i class="blk build ok" style="left:15%;width:26%">build</i><i class="tick" style="left:80%"></i></span></div>
+            <div class="par-row"><span class="who">Subagent</span><span class="par-track"><i class="tick" style="left:5%"></i><i class="tick" style="left:22%"></i><i class="blk build ok" style="left:42%;width:26%">build</i><i class="tick" style="left:88%"></i></span></div>
+            <div class="par-row"><span class="who">Subagent</span><span class="par-track"><i class="tick" style="left:12%"></i><i class="tick" style="left:31%"></i><i class="tick" style="left:50%"></i><i class="blk build ok" style="left:69%;width:26%">build</i></span></div>
+            <p class="par-note"><span class="key-tick"></span>checks answered by the warm engine at any time; builds wait for the build lock and run one after another.</p>
+          </figure>
         </div>
+        <ul class="par-stats">
+          <li><b>0</b><span>locked-file errors in 60 builds run 3 at a time</span></li>
+          <li><b>150 of 150</b><span>checks answered with 3 or 4 agents editing at once</span></li>
+          <li><b>1</b><span>engine per repository, with the solution loaded once</span></li>
+        </ul>
+        <p class="spot-links"><a href="docs/parallel-agents.html">Subagents and parallel agents -&gt;</a> <a href="docs/how-it-works.html#process-model">How agents share the engine -&gt;</a> <a href="docs/limits.html#what-a-check-does-not-see">Limits with several agents -&gt;</a></p>
       </div>
       <ul class="features">
         <li><a href="docs/how-it-works.html#test-selection"><b>Affected tests</b><span>Runs only the tests the changed code can reach, and skips the rebuild when only <code>.cs</code> files changed.</span><i>How tests are selected -&gt;</i></a></li>

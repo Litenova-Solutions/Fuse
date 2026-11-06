@@ -9,10 +9,12 @@ namespace Fuse.Check;
 
 /// <summary>
 ///     Computes the errors of one file (in every target framework it compiles for) or of whole projects, including
-///     errors from analyzers that can report errors. Baseline results whose analyzers finished are cached until the
-///     baseline's content changes, because it does not change between edits. What one check counts and how it runs
-///     analyzers live in its <see cref="CheckContext"/>, so checks that run at the same time share the caches below
-///     and nothing else.
+///     errors from analyzers that can report errors. Whole projects bind document by document: a document's model is
+///     kept only while its errors are read, and the compilation-wide analyzers keep their one run over the whole
+///     compilation. Baseline results whose analyzers finished are kept in the disk store, so a baseline compilation
+///     is built only on a store miss or for the files reach searches, and its analyzer runs are released when the
+///     check that built them ends. What one check counts and how it runs analyzers live in its
+///     <see cref="CheckContext"/>, so checks that run at the same time share the caches below and nothing else.
 /// </summary>
 internal sealed class DiagnosticCollector
 {
@@ -177,6 +179,13 @@ internal sealed class DiagnosticCollector
                 _baselineFiles[(generation, path)] = new BaselineFile(stored.Errors, stored.CompilationWide);
                 return (stored.Errors, true);
             }
+
+            if (StoredProjectErrorsFor(baseline, baselineKey, path) is { } fromProject)
+            {
+                context.CountStoreHit();
+                _baselineFiles[(generation, path)] = new BaselineFile(fromProject, CompilationWide: true);
+                return (fromProject, true);
+            }
         }
 
         var (errors, finished) = await ForFileAsync(baseline, path, baseline: true, context, cancellationToken).ConfigureAwait(false);
@@ -188,6 +197,51 @@ internal sealed class DiagnosticCollector
         }
 
         return (errors, finished);
+    }
+
+    /// <summary>
+    ///     HEAD's stored errors in <paramref name="path"/> from the stored results of the projects that compile it, or
+    ///     null when none of those projects is stored. The stored project results hold the errors of every file, so a
+    ///     file reads its own from them without a baseline compilation.
+    /// </summary>
+    private IReadOnlyList<CompilerError>? StoredProjectErrorsFor(Solution baseline, string baselineKey, RepoPath path)
+    {
+        var result = new List<CompilerError>();
+        var stored = false;
+        foreach (var id in baseline.GetDocumentIdsWithFilePath(path.Absolute))
+        {
+            if (baseline.GetProject(id.ProjectId) is not { } project || _store.ProjectKeyFor(project) is not { } storedKey)
+                continue;
+            if (_store.TryReadProject(baselineKey, storedKey) is not { } errors)
+                continue;
+            stored = true;
+            result.AddRange(errors.Where(e => e.Path == path.Relative));
+        }
+
+        return stored ? Distinct(result) : null;
+    }
+
+    /// <summary>
+    ///     HEAD's stored errors in every file of <paramref name="project"/> from its stored file results, or null when
+    ///     a file of the project has none. A project with generated documents is left out: its generated errors are
+    ///     in no file result of a document the project holds.
+    /// </summary>
+    private async Task<IReadOnlyList<CompilerError>?> StoredFileErrorsForAsync(Project project, string baselineKey, bool compilationWide, CancellationToken cancellationToken)
+    {
+        if ((await project.GetSourceGeneratedDocumentsAsync(cancellationToken).ConfigureAwait(false)).Length > 0)
+            return null;
+        var paths = project.Documents.Select(d => d.FilePath).OfType<string>().Select(_root.PathOf).Distinct().ToList();
+        if (paths.Count == 0)
+            return null;
+        var result = new List<CompilerError>();
+        foreach (var path in paths)
+        {
+            if (_store.TryReadFile(baselineKey, path) is not { } stored || (compilationWide && !stored.CompilationWide))
+                return null;
+            result.AddRange(stored.Errors);
+        }
+
+        return Distinct(result);
     }
 
     /// <summary>
@@ -216,6 +270,14 @@ internal sealed class DiagnosticCollector
                 _baselineProjects[(generation, project.Id)] = stored;
                 return (stored, true);
             }
+        }
+
+        if (baselineKey is not null
+            && await StoredFileErrorsForAsync(project, baselineKey, context.Run.CompilationWide, cancellationToken).ConfigureAwait(false) is { } fromFiles)
+        {
+            context.CountStoreHit();
+            _baselineProjects[(generation, project.Id)] = fromFiles;
+            return (fromFiles, true);
         }
 
         var (errors, finished) = await ForProjectAsync(project, baseline: true, context, cancellationToken).ConfigureAwait(false);
@@ -260,6 +322,88 @@ internal sealed class DiagnosticCollector
         // The shutdown token stops the wait, never the run: a run outlives the warm that started it, as it outlives a check.
         await CompilationWideAsync(baselineProject, baseline: true, withAnalyzers, plan.CompilationWideAnalyzers, context, shutdown).ConfigureAwait(false);
         return true;
+    }
+
+    /// <summary>
+    ///     Fills the disk store with HEAD's errors in <paramref name="baselineProject"/>, for the background warm
+    ///     after HEAD moved, and releases the baseline compilation it built. The errors are stored per file and per
+    ///     project, so the first check that needs them reads the store instead of binding HEAD. A project whose
+    ///     stored results are already in the store is left alone, and no baseline compilation is built for it.
+    /// </summary>
+    /// <param name="baselineKey">The store key of this baseline, or null when nothing is kept for it.</param>
+    /// <returns>True when the project has compilation-wide analyzers whose results were stored.</returns>
+    public Task<bool> FillBaselineStoreAsync(Project baselineProject, int generation, CancellationToken shutdown, string? baselineKey = null) =>
+        FillBaselineStoreAsync(baselineProject, generation, Legacy, shutdown, baselineKey);
+
+    /// <summary>Same as the call without a context, for <paramref name="context"/>.</summary>
+    /// <param name="baselineKey">The store key of this baseline, or null when nothing is kept for it.</param>
+    /// <returns>True when the project has compilation-wide analyzers whose results were stored.</returns>
+    public async Task<bool> FillBaselineStoreAsync(Project baselineProject, int generation, CheckContext context, CancellationToken shutdown, string? baselineKey = null)
+    {
+        ForgetOlderBaseline(generation);
+        if (generation != _cachedGeneration)
+            return false;
+        if (baselineKey is not null && StoreHoldsProject(baselineProject, baselineKey, context.Run.CompilationWide))
+            return false;
+
+        var compilationWide = false;
+        var compilation = await baselineProject.GetCompilationAsync(shutdown).ConfigureAwait(false);
+        if (compilation is not null && _analyzers.For(baselineProject, compilation) is { } withAnalyzers
+            && await FirstModelAsync(baselineProject, shutdown).ConfigureAwait(false) is { } probe)
+        {
+            var plan = await _analyzers.PlanAsync(baselineProject, withAnalyzers, probe, shutdown).ConfigureAwait(false);
+            compilationWide = !plan.CompilationWide.IsEmpty;
+        }
+
+        var (errors, finished) = await ForProjectAsync(baselineProject, baseline: true, context, shutdown).ConfigureAwait(false);
+        if (finished && baselineKey is not null)
+        {
+            foreach (var path in baselineProject.Documents.Select(d => d.FilePath).OfType<string>().Select(_root.PathOf).Distinct())
+                _store.WriteFile(baselineKey, path, [.. errors.Where(e => e.Path == path.Relative)], context.Run.CompilationWide);
+            if (_store.ProjectKeyFor(baselineProject) is { } storedKey)
+                _store.WriteProject(baselineKey, storedKey, errors);
+        }
+
+        ReleaseBaselineProject(baselineProject, generation);
+        return compilationWide && finished;
+    }
+
+    /// <summary>
+    ///     True when the store already holds a finished result for every file of <paramref name="project"/>, or the
+    ///     stored result of the project itself, so filling it would bind HEAD for nothing.
+    /// </summary>
+    private bool StoreHoldsProject(Project project, string baselineKey, bool compilationWide)
+    {
+        if (_store.ProjectKeyFor(project) is { } storedKey && _store.TryReadProject(baselineKey, storedKey) is not null)
+            return true;
+        var paths = project.Documents.Select(d => d.FilePath).OfType<string>().Select(_root.PathOf).Distinct().ToList();
+        return paths.Count > 0
+            && paths.All(path => _store.TryReadFile(baselineKey, path) is { } stored && (stored.CompilationWide || !compilationWide));
+    }
+
+    /// <summary>
+    ///     Releases what a fill or a check built over the baseline of <paramref name="baselineProject"/>: its kept
+    ///     baseline results go, and its analyzer runs stop when no pinned check waits on them. The stored results
+    ///     stay, so the next check reads them from the store instead of binding HEAD again.
+    /// </summary>
+    public void ReleaseBaselineProject(Project baselineProject, int generation)
+    {
+        _baselineProjects.TryRemove((generation, baselineProject.Id), out _);
+        foreach (var path in baselineProject.Documents.Select(d => d.FilePath).OfType<string>().Select(_root.PathOf).Distinct())
+            _baselineFiles.TryRemove((generation, path), out _);
+        _analyses.Release(baselineProject.Id, baseline: true);
+    }
+
+    /// <summary>
+    ///     Releases the kept baseline results and the baseline analyzer runs, when the check that built them ends.
+    ///     Runs a pinned check waits on stop when its last pin goes (<see cref="CompilationAnalyses"/>). The stored
+    ///     results stay, so a later check reads HEAD's errors from the store.
+    /// </summary>
+    public void ReleaseBaseline()
+    {
+        _baselineFiles.Clear();
+        _baselineProjects.Clear();
+        _analyses.StopAll(baseline: true);
     }
 
     /// <summary>The semantic model of the project's first document, as the probe that plans its analyzers.</summary>
@@ -307,8 +451,11 @@ internal sealed class DiagnosticCollector
         (await ForProjectAsync(project, baseline: false, context, cancellationToken).ConfigureAwait(false)).Errors;
 
     /// <remarks>
-    ///     A project whose analyzers pass the deadline is answered with its compiler errors alone. Bound whole, every
-    ///     analyzer runs, compilation-wide or not: the run reads the whole compilation anyway.
+    ///     The project binds document by document: each document's model is kept only while its errors are read, so
+    ///     a project with many files never holds a model for every file at once. The compilation-wide analyzers keep
+    ///     their one run over the whole compilation, which every document of the project shares. Bound whole, every
+    ///     analyzer runs, compilation-wide or not. A project whose analyzers pass the deadline is answered with the
+    ///     compiler errors the stream read, and counts as unfinished once, by its name.
     /// </remarks>
     /// <returns>The project's errors, and whether its analyzers finished.</returns>
     private async Task<(IReadOnlyList<CompilerError> Errors, bool AnalyzersFinished)> ForProjectAsync(Project project, bool baseline, CheckContext context, CancellationToken cancellationToken)
@@ -318,32 +465,41 @@ internal sealed class DiagnosticCollector
         context.AddUpdateTicks(System.Diagnostics.Stopwatch.GetTimestamp() - updated);
         if (compilation is null)
             return ([], true);
-        // With analyzers, one run produces compiler and analyzer diagnostics together. An analyzer's error is marked as
-        // one by its id, so it equals the same error found when its file is bound alone, which a check of the targets
-        // also reports.
-        var withAnalyzers = _analyzers.For(project, compilation);
-        if (withAnalyzers is null)
+
+        var documents = project.Documents.ToList();
+        documents.AddRange(await project.GetSourceGeneratedDocumentsAsync(cancellationToken).ConfigureAwait(false));
+        if (documents.Count == 0)
             return (CompilerErrors(compilation, cancellationToken), true);
-        var analyzerIds = withAnalyzers.Analyzers.SelectMany(a => a.SupportedDiagnostics).Select(d => d.Id).ToHashSet(StringComparer.Ordinal);
-        using var analyzing = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, context.Run.Deadline);
-        try
+
+        var result = new List<CompilerError>();
+        var finished = true;
+        foreach (var document in documents)
         {
-            var diagnostics = await _analyses.RunAsync(project.Id, baseline, withAnalyzers, everyAnalyzer: true, withAnalyzers.GetAllDiagnosticsAsync, context, analyzing.Token).ConfigureAwait(false);
-            return (Distinct(diagnostics.Where(IsError).Select(d => ToCompilerError(d, fromAnalyzer: analyzerIds.Contains(d.Id))).OfType<CompilerError>()), true);
+            // The model of this document is the only one the stream holds; the next iteration drops it.
+            var (errors, documentFinished) = await ForDocumentAsync(document, baseline, context, cancellationToken, wholeProject: true).ConfigureAwait(false);
+            result.AddRange(errors);
+            finished &= documentFinished;
         }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+
+        if (finished && _analyzers.For(project, compilation) is { } withAnalyzers
+            && await FirstModelAsync(project, cancellationToken).ConfigureAwait(false) is { } probe)
         {
-            if (!baseline)
-                context.MarkUnfinished(project.Name);
-            return (CompilerErrors(compilation, cancellationToken), false);
+            var plan = await _analyzers.PlanAsync(project, withAnalyzers, probe, cancellationToken).ConfigureAwait(false);
+            if (!plan.CompilationWide.IsEmpty)
+            {
+                var all = await CompilationWideAsync(project, baseline, withAnalyzers, plan.CompilationWideAnalyzers, context, cancellationToken).ConfigureAwait(false);
+                result.AddRange(all.Where(d => d.Location.SourceTree is null && IsError(d)).Select(d => ToCompilerError(d, fromAnalyzer: true)).OfType<CompilerError>());
+            }
         }
+
+        return (Distinct(result), finished);
     }
 
     private List<CompilerError> CompilerErrors(Compilation compilation, CancellationToken cancellationToken) =>
         Distinct(compilation.GetDiagnostics(cancellationToken).Where(IsError).Select(d => ToCompilerError(d, fromAnalyzer: false)).OfType<CompilerError>());
 
     /// <returns>The document's errors, and whether the analyzers the check runs all finished on it.</returns>
-    private async Task<(IReadOnlyList<CompilerError> Errors, bool AnalyzersFinished)> ForDocumentAsync(Document document, bool baseline, CheckContext context, CancellationToken cancellationToken)
+    private async Task<(IReadOnlyList<CompilerError> Errors, bool AnalyzersFinished)> ForDocumentAsync(Document document, bool baseline, CheckContext context, CancellationToken cancellationToken, bool wholeProject = false)
     {
         // A working-tree file whose text and whose project's declarations are as they were at an earlier check has the same
         // compiler and per-file analyzer errors, so they are reused; the compilation-wide analyzers read every file's
@@ -358,7 +514,7 @@ internal sealed class DiagnosticCollector
             context.AddUpdateTicks(System.Diagnostics.Stopwatch.GetTimestamp() - updating);
             if (model is null)
                 return (cached.Errors, true);
-            var (compilationWide, _, compilationWideFinished) = await RunAnalyzersAsync(document.Project, model, baseline, perFile: false, context, cancellationToken).ConfigureAwait(false);
+            var (compilationWide, _, compilationWideFinished) = await RunAnalyzersAsync(document.Project, model, baseline, perFile: false, context, cancellationToken, wholeProject).ConfigureAwait(false);
             return ([.. cached.Errors, .. compilationWide.Select(d => ToCompilerError(d.Diagnostic, fromAnalyzer: true)).OfType<CompilerError>()], compilationWideFinished);
         }
 
@@ -371,7 +527,7 @@ internal sealed class DiagnosticCollector
         var started = System.Diagnostics.Stopwatch.GetTimestamp();
         var compiler = semanticModel.GetDiagnostics(cancellationToken: cancellationToken).Where(IsError).Select(d => ToCompilerError(d, fromAnalyzer: false)).OfType<CompilerError>().ToList();
         context.AddCompilerTicks(System.Diagnostics.Stopwatch.GetTimestamp() - started);
-        var (fromAnalyzers, perFileFinished, finished) = await RunAnalyzersAsync(document.Project, semanticModel, baseline, perFile: true, context, cancellationToken).ConfigureAwait(false);
+        var (fromAnalyzers, perFileFinished, finished) = await RunAnalyzersAsync(document.Project, semanticModel, baseline, perFile: true, context, cancellationToken, wholeProject).ConfigureAwait(false);
         var analyzerErrors = fromAnalyzers.Select(d => (Error: ToCompilerError(d.Diagnostic, fromAnalyzer: true), d.PerFile)).Where(d => d.Error is not null).ToList();
         if (key is not null && perFileFinished)
             _currentFiles[document.Id] = new CachedFile(key, [.. compiler, .. analyzerErrors.Where(d => d.PerFile).Select(d => d.Error!)]);
@@ -401,7 +557,7 @@ internal sealed class DiagnosticCollector
     ///     every analyzer the check runs finished.
     /// </returns>
     private async Task<(List<(Diagnostic Diagnostic, bool PerFile)> Errors, bool PerFileFinished, bool Finished)> RunAnalyzersAsync(
-        Project project, SemanticModel model, bool baseline, bool perFile, CheckContext context, CancellationToken cancellationToken)
+        Project project, SemanticModel model, bool baseline, bool perFile, CheckContext context, CancellationToken cancellationToken, bool wholeProject = false)
     {
         var withAnalyzers = _analyzers.For(project, model.Compilation);
         if (withAnalyzers is null)
@@ -434,7 +590,7 @@ internal sealed class DiagnosticCollector
                 context.AddAnalyzerTicks(System.Diagnostics.Stopwatch.GetTimestamp() - started);
             }
 
-            if (!plan.CompilationWide.IsEmpty && !run.CompilationWide)
+            if (!plan.CompilationWide.IsEmpty && !run.CompilationWide && !wholeProject)
             {
                 foreach (var (analyzer, _) in plan.CompilationWide)
                     context.MarkLeftOut(AnalyzerSelector.Name(analyzer));
@@ -452,7 +608,7 @@ internal sealed class DiagnosticCollector
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
             if (!baseline)
-                context.MarkUnfinished(_root.PathOf(model.SyntaxTree.FilePath).Relative);
+                context.MarkUnfinished(wholeProject ? project.Name : _root.PathOf(model.SyntaxTree.FilePath).Relative);
         }
 
         return ([.. result.Where(d => IsError(d.Diagnostic))], perFileFinished, finished);

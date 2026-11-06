@@ -16,10 +16,11 @@ namespace Fuse.Testing;
 ///     (<see cref="ShadowEmitter"/>). It records the sync, the selection, the mirror and the emit as phases.
 /// </summary>
 /// <remarks>
-///     A plan has two parts. <see cref="SelectAsync"/> syncs the workspace and selects the tests, and runs under the
-///     request lock, because it brings the shared solutions up to date. <see cref="PrepareAsync"/> mirrors build output and
-///     emits the changed assemblies into the shadow folders, and runs after the lock is released, against the snapshot
-///     <see cref="SelectAsync"/> took, so a check from another client is not kept waiting behind the emit.
+///     A plan has two parts. <see cref="SelectAsync"/> syncs the workspace under its writer lock, pins the
+///     generation that sync publishes and selects the tests from that generation alone, so a plan holds no
+///     request lock while it selects and blocks no check. <see cref="PrepareAsync"/> mirrors build output and
+///     emits the changed assemblies into the shadow folders, against the generation <see cref="SelectAsync"/>
+///     pinned, with an emitter of its own, so plans for different sessions prepare at once.
 /// </remarks>
 internal sealed class TestPlanner
 {
@@ -29,8 +30,13 @@ internal sealed class TestPlanner
     private readonly RepoWorkspace _workspace;
     private readonly TestSelector _selector;
     private readonly TestCounter _counter = new();
+    private readonly ShadowEmitter.SharedState _shadow = new();
     private readonly TimeProvider _time;
     private readonly Func<bool> _containerProbe;
+
+    /// <summary>Guards the container runtime probe and the answer it gave, which concurrent plans read together.</summary>
+    private readonly Lock _runtimeGate = new();
+
     private DateTime _runtimeCheckedAt = DateTime.MinValue;
     private bool _runtimePresent;
 
@@ -40,20 +46,20 @@ internal sealed class TestPlanner
     {
         _workspace = workspace;
         _selector = new TestSelector(workspace, TimeProvider.System);
-        Emitter = new ShadowEmitter(workspace);
+        Emitter = new ShadowEmitter(workspace, _shadow);
         _time = time ?? TimeProvider.System;
         _containerProbe = containerProbe ?? ContainerRuntime.IsRunning;
     }
 
-    /// <summary>The emitter every plan prepares its shadow runs with, which keeps emitted assemblies between plans.</summary>
+    /// <summary>
+    ///     The emitter state every plan of this planner shares: the emitted assemblies kept between plans and the
+    ///     shadow files they wrote. Each plan prepares with an emitter of its own over this state, and a test reads
+    ///     its counts here.
+    /// </summary>
     public ShadowEmitter Emitter { get; }
 
-    /// <summary>
-    ///     Admits one shadow preparation at a time, so two plans never write one shadow folder at once and the emitter's
-    ///     cache serves one plan at a time. <c>fuse test</c> already holds <c>build.lock</c> around its plan; this holds for
-    ///     any client. A test holds it to keep a plan in its preparation, after the plan has released the request lock.
-    /// </summary>
-    public SemaphoreSlim Preparation { get; } = new(1, 1);
+    /// <summary>An emitter for one plan, bound to the generation that plan pinned and sharing this planner's emitter state.</summary>
+    private ShadowEmitter EmitterFor(Generation generation) => new(_workspace, generation, _shadow);
 
     /// <summary>Selects the tests and prepares their shadow runs, as one call; the engine calls the two parts itself.</summary>
     /// <param name="scope">The affected tests, or every test.</param>
@@ -66,8 +72,9 @@ internal sealed class TestPlanner
     }
 
     /// <summary>
-    ///     Syncs the workspace and selects the tests in each test project, taking the snapshot the plan answers for. The
-    ///     caller holds the request lock.
+    ///     Syncs the workspace and selects the tests in each test project, from the generation that sync pins. The
+    ///     sync itself holds the workspace writer lock; the selection reads only the pinned generation, so it
+    ///     holds no request lock and a sync that publishes a later generation cannot change its answer.
     /// </summary>
     /// <param name="scope">The affected tests, or every test.</param>
     /// <param name="phases">Collects the <see cref="Phase.Sync"/> and <see cref="Phase.Selection"/> phases.</param>
@@ -75,9 +82,9 @@ internal sealed class TestPlanner
     public async Task<PendingPlan> SelectAsync(TestScope scope, PhaseTimes phases, CancellationToken cancellationToken)
     {
         var syncing = phases.Start();
-        await _workspace.SyncAsync([], cancellationToken).ConfigureAwait(false);
+        var generation = await _workspace.SyncAndPinAsync([], cancellationToken).ConfigureAwait(false);
         phases.Add(Phase.Sync, syncing);
-        var graph = _workspace.Graph;
+        var graph = generation.Graph;
         var testProjects = graph.Projects.Where(p => p.IsTest).ToList();
         // Paths the command named limit the plan to the test projects they name; the summary says which.
         var named = scope is TestScope.Affected { NamedPaths.Length: > 0 } namedScope
@@ -88,7 +95,7 @@ internal sealed class TestPlanner
         var namedNote = named is null ? "" : $"; in {string.Join(", ", testProjects.Select(p => p.Name))}";
         var total = testProjects.Sum(p => _counter.TestsIn(p).Count);
         if (testProjects.Count == 0)
-            return PendingPlan.Of(new TestPlanResult([], 0, 0, "no test projects in this repository"), graph);
+            return PendingPlan.Of(new TestPlanResult([], 0, 0, "no test projects in this repository"), generation);
 
         if (scope is TestScope.All)
         {
@@ -118,14 +125,14 @@ internal sealed class TestPlanner
             var allSummary = $"ran every test in {plain.Count} test project(s)";
             if (gatedTests > 0)
                 allSummary += $"; skipped {gatedTests} test(s) in {string.Join(", ", gatedProjects)} (no container runtime)";
-            return PendingPlan.Of(new TestPlanResult(everything, total - gatedTests, total, allSummary) { ContainerGatedTests = gatedTests, ContainerGatedProjects = gatedProjects }, graph);
+            return PendingPlan.Of(new TestPlanResult(everything, total - gatedTests, total, allSummary) { ContainerGatedTests = gatedTests, ContainerGatedProjects = gatedProjects }, generation);
         }
 
         // A plan for one session leaves out the files only other sessions wrote: the tests their changes affect are
         // theirs to run.
         var leftOut = scope is TestScope.Affected affected ? affected.LeftOut : new HashSet<RepoPath>();
-        var owned = _workspace.Tracker.Changed.Where(p => graph.OwnersOf(p).Count > 0).ToList();
-        var allNonSources = _workspace.Tracker.NonSources.ToList();
+        var owned = generation.Changed.Where(p => graph.OwnersOf(p).Count > 0).ToList();
+        var allNonSources = generation.NonSources.ToList();
         var changedNonSources = allNonSources.Where(p => !leftOut.Contains(p)).ToList();
         var outside = changedNonSources.Where(p => graph.NonSourceOwnersOf(p).Count == 0 && graph.ContainingProject(p) is null).OrderBy(p => p.Relative, StringComparer.Ordinal).ToList();
         var changedSources = owned.Where(p => !leftOut.Contains(p)).ToList();
@@ -133,12 +140,14 @@ internal sealed class TestPlanner
         var others = (owned.Count - changedSources.Count) + (allNonSources.Count - changedNonSources.Count);
         var othersNote = others > 0 ? $"; left out {others} changed file(s) only other sessions wrote" : "";
         if (changed.Count == 0 && others > 0)
-            return PendingPlan.Of(new TestPlanResult([], 0, total, $"no C# changes by this session since HEAD, so no test is affected{othersNote}{namedNote} (fuse test --all runs everything)"), graph);
+            return PendingPlan.Of(new TestPlanResult([], 0, total, $"no C# changes by this session since HEAD, so no test is affected{othersNote}{namedNote} (fuse test --all runs everything)"), generation);
         if (changed.Count == 0)
-            return PendingPlan.Of(new TestPlanResult([], 0, total, $"no C# changes since HEAD, so no test is affected{namedNote} (fuse test --all runs everything)"), graph);
+            return PendingPlan.Of(new TestPlanResult([], 0, total, $"no C# changes since HEAD, so no test is affected{namedNote} (fuse test --all runs everything)"), generation);
 
         var timer = Stopwatch.StartNew();
-        var outcome = await _selector.SelectAsync(changed, cancellationToken).ConfigureAwait(false);
+        var (outcome, loaded) = await _selector.SelectAsync(changed, generation, cancellationToken).ConfigureAwait(false);
+        generation = loaded;
+        graph = generation.Graph;
         var selections = outcome.Selections;
         phases.Add(Phase.Selection, timer);
         _workspace.Log($"test plan: selection in {timer.ElapsedMilliseconds} ms: {string.Join("; ", selections.Select(s => $"{Path.GetFileNameWithoutExtension(s.Key.Absolute)} {Describe(s.Value)}"))}");
@@ -149,7 +158,7 @@ internal sealed class TestPlanner
         var reasons = new HashSet<string>(StringComparer.Ordinal);
         var collapsed = new List<string>();
         var platformCollapsed = new List<string>();
-        var snapshot = _workspace.Current;
+        var snapshot = generation.Current;
         var buildOnly = scope is TestScope.Affected { BuildOnly: true };
         bool? runtimePresent = null;
         var containerGatedTests = 0;
@@ -225,9 +234,9 @@ internal sealed class TestPlanner
             _workspace.Log($"test plan: left out {containerGatedTests} test(s) in {string.Join(", ", containerGatedProjects)} (no container runtime)");
 
         if (projects.Count == 0 && outside.Count > 0 && containerGatedTests == 0)
-            return PendingPlan.Of(new TestPlanResult([], 0, total, OutsideSummary(outside, othersNote, namedNote)), graph);
+            return PendingPlan.Of(new TestPlanResult([], 0, total, OutsideSummary(outside, othersNote, namedNote)), generation);
         if (selections.Count == 0 && outcome.AllSameCode)
-            return PendingPlan.Of(new TestPlanResult([], 0, total, $"no test is affected by the changes (out of {total}); the changes compile to the same code as HEAD; fuse test --all runs everything"), graph);
+            return PendingPlan.Of(new TestPlanResult([], 0, total, $"no test is affected by the changes (out of {total}); the changes compile to the same code as HEAD; fuse test --all runs everything"), generation);
 
         var summary = new StringBuilder($"ran {selected} test(s) affected by your changes out of {total}");
         if (reasons.Count > 0)
@@ -243,14 +252,15 @@ internal sealed class TestPlanner
         if (outside.Count > 0)
             summary.Append($"; {outside.Count} non-C# file(s) outside every project changed ({OutsideSample(outside)}); a test that reads them by path is not selected");
         summary.Append(outside.Count > 0 ? "; fuse test --all covers them" : "; fuse test --all runs everything");
-        return PendingPlan.ToPrepare(graph, projects, selected, total, summary.ToString(), scope is TestScope.Affected { BuildOnly: true }, containerGatedTests, [.. containerGatedProjects]);
+        return PendingPlan.ToPrepare(generation, EmitterFor(generation), projects, selected, total, summary.ToString(), scope is TestScope.Affected { BuildOnly: true }, containerGatedTests, [.. containerGatedProjects]);
     }
 
     /// <summary>
-    ///     Prepares the shadow runs of a plan <see cref="SelectAsync"/> made, from the snapshot it took, and answers the
-    ///     plan. It reads no workspace state, so the caller runs it after the request lock is released.
+    ///     Prepares the shadow runs of a plan <see cref="SelectAsync"/> made, from the generation it pinned, and
+    ///     answers the plan. It reads only that generation and the plan's own emitter, so plans prepare at the
+    ///     same time without a lock between them.
     /// </summary>
-    /// <param name="pending">The plan, with its snapshot.</param>
+    /// <param name="pending">The plan, with its generation.</param>
     /// <param name="phases">Collects the <see cref="Phase.Mirror"/> and <see cref="Phase.Emit"/> phases.</param>
     /// <param name="cancellationToken">Cancels emitting.</param>
     public async Task<TestPlanResult> PrepareAsync(PendingPlan pending, PhaseTimes phases, CancellationToken cancellationToken)
@@ -258,7 +268,7 @@ internal sealed class TestPlanner
         if (pending.Answered is not null)
             return pending.Answered;
 
-        await Preparation.WaitAsync(cancellationToken).ConfigureAwait(false);
+        var emitter = pending.Emitter ?? EmitterFor(pending.Generation);
         try
         {
             var preparing = Stopwatch.StartNew();
@@ -269,7 +279,7 @@ internal sealed class TestPlanner
                 if (node.UsesTestingPlatform)
                     runs.Add(new PlannedRun(node.Path, node.Name, new RunMode.Build(), filter, true, RunSettingsOf(node), filterArguments, [.. node.TargetPaths]));
                 else
-                    runs.AddRange(await RunsOfAsync(node, filter, variants, pending.Graph, emitting, preparing, pending.BuildOnly, cancellationToken).ConfigureAwait(false));
+                    runs.AddRange(await RunsOfAsync(emitter, node, filter, variants, pending.Graph, emitting, preparing, pending.BuildOnly, cancellationToken).ConfigureAwait(false));
             }
 
             // Everything in the preparation but the emit is the mirror: judging which assemblies are stale, and the copy.
@@ -298,7 +308,7 @@ internal sealed class TestPlanner
         }
         finally
         {
-            Preparation.Release();
+            emitter.ReleaseCopies();
         }
     }
 
@@ -306,7 +316,7 @@ internal sealed class TestPlanner
     ///     The runs of one VSTest project: a shadow run per target framework when every one of them can have one, and
     ///     otherwise one build with MSBuild for the project, which runs every target framework.
     /// </summary>
-    private async Task<IReadOnlyList<PlannedRun>> RunsOfAsync(ProjectNode node, string? filter, IReadOnlyList<Project> variants, RepoGraph graph, Stopwatch emitting, Stopwatch timer, bool buildOnly, CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<PlannedRun>> RunsOfAsync(ShadowEmitter emitter, ProjectNode node, string? filter, IReadOnlyList<Project> variants, RepoGraph graph, Stopwatch emitting, Stopwatch timer, bool buildOnly, CancellationToken cancellationToken)
     {
         // A configuration or framework was named: only a build with MSBuild honors it, so no shadow run is prepared.
         if (buildOnly)
@@ -315,7 +325,7 @@ internal sealed class TestPlanner
         var shadows = new List<RunMode.Shadow>();
         foreach (var variant in variants)
         {
-            if (await Emitter.PrepareAsync(variant, graph, _workspace.Log, emitting, cancellationToken).ConfigureAwait(false) is not RunMode.Shadow shadow)
+            if (await emitter.PrepareAsync(variant, graph, _workspace.Log, emitting, cancellationToken).ConfigureAwait(false) is not RunMode.Shadow shadow)
             {
                 shadows.Clear();
                 break;
@@ -406,12 +416,15 @@ internal sealed class TestPlanner
     /// <summary>True when a container runtime answers, probed at most once every <see cref="RuntimeProbeLifetime"/>.</summary>
     private bool ContainerRuntimePresent()
     {
-        var now = _time.GetUtcNow().UtcDateTime;
-        if (now - _runtimeCheckedAt < RuntimeProbeLifetime)
+        lock (_runtimeGate)
+        {
+            var now = _time.GetUtcNow().UtcDateTime;
+            if (now - _runtimeCheckedAt < RuntimeProbeLifetime)
+                return _runtimePresent;
+            _runtimePresent = _containerProbe();
+            _runtimeCheckedAt = now;
             return _runtimePresent;
-        _runtimePresent = _containerProbe();
-        _runtimeCheckedAt = now;
-        return _runtimePresent;
+        }
     }
 
     /// <summary>
@@ -425,8 +438,8 @@ internal sealed class TestPlanner
 
     /// <summary>
     ///     Selects the recorded failures <paramref name="byProject"/> names for a rerun, in the test projects they are
-    ///     still in. Projects that are gone or hold no tests are left out and named in the summary, as are the paths
-    ///     <paramref name="unknown"/> holds that name no file. The caller holds the request lock.
+    ///     still in, from the generation its sync pins. Projects that are gone or hold no tests are left out and
+    ///     named in the summary, as are the paths <paramref name="unknown"/> holds that name no file.
     /// </summary>
     /// <param name="byProject">Recorded failure names by test project file.</param>
     /// <param name="unknown">Recorded project paths that name no file.</param>
@@ -435,13 +448,13 @@ internal sealed class TestPlanner
     public async Task<PendingPlan> SelectFailedAsync(IReadOnlyDictionary<RepoPath, string[]> byProject, IReadOnlyList<string> unknown, PhaseTimes phases, CancellationToken cancellationToken)
     {
         var syncing = phases.Start();
-        await _workspace.SyncAsync([], cancellationToken).ConfigureAwait(false);
+        var generation = await _workspace.SyncAndPinAsync([], cancellationToken).ConfigureAwait(false);
         phases.Add(Phase.Sync, syncing);
-        var graph = _workspace.Graph;
+        var graph = generation.Graph;
         var testProjects = graph.Projects.Where(p => p.IsTest).ToList();
         var total = testProjects.Sum(p => _counter.TestsIn(p).Count);
         if (testProjects.Count == 0)
-            return PendingPlan.Of(new TestPlanResult([], 0, 0, "no test projects in this repository"), graph);
+            return PendingPlan.Of(new TestPlanResult([], 0, 0, "no test projects in this repository"), generation);
 
         var timer = Stopwatch.StartNew();
         var leftOut = unknown.Where(p => p.Length > 0).Select(p => Path.GetFileNameWithoutExtension(p) ?? "").Where(n => n.Length > 0).ToList();
@@ -466,7 +479,7 @@ internal sealed class TestPlanner
         var platformCollapsed = new List<string>();
         var reasons = new HashSet<string>(StringComparer.Ordinal);
         var selected = 0;
-        var snapshot = _workspace.Current;
+        var snapshot = generation.Current;
         foreach (var (node, names) in reruns)
         {
             TestSelection selection = new TestSelection.Methods([.. names]);
@@ -504,8 +517,8 @@ internal sealed class TestPlanner
         foreach (var name in leftOut.Distinct(StringComparer.Ordinal).OrderBy(n => n, StringComparer.Ordinal))
             summary.Append("; left out ").Append(name).Append(", which is not a test project in this repository");
         if (reruns.Count == 0)
-            return PendingPlan.Of(new TestPlanResult([], 0, total, summary.ToString()), graph);
-        return PendingPlan.ToPrepare(graph, projects, selected, total, summary.ToString());
+            return PendingPlan.Of(new TestPlanResult([], 0, total, summary.ToString()), generation);
+        return PendingPlan.ToPrepare(generation, EmitterFor(generation), projects, selected, total, summary.ToString());
     }
 
 }

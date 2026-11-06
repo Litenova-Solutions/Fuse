@@ -117,6 +117,12 @@ internal sealed class Checker
                 // The writer published a generation that holds the reached project this pin lacked. The next
                 // attempt pins it and answers from it alone.
             }
+            finally
+            {
+                // The check ends here: what it built over HEAD goes, and a later check reads HEAD's errors from
+                // the store the finished results were written to.
+                _introduced.ReleaseBaseline();
+            }
         }
     }
 
@@ -288,11 +294,11 @@ internal sealed class Checker
     }
 
     /// <summary>
-    ///     Warms the baseline compilation-wide analyzer results of <paramref name="node"/>, one target framework at a
-    ///     time, for the background warm after HEAD moved. It fills the same shared runs a check waits for, and reports
-    ///     nothing.
+    ///     Fills the store with the baseline errors of <paramref name="node"/>, one target framework at a time, for
+    ///     the background warm after HEAD moved, and releases each baseline compilation it built. The first check
+    ///     that needs HEAD's errors then reads the store instead of binding HEAD, and reports nothing.
     /// </summary>
-    /// <returns>True when any target framework of the node has compilation-wide analyzers that were warmed.</returns>
+    /// <returns>True when any target framework of the node has compilation-wide analyzers whose results were stored.</returns>
     public async Task<bool> WarmBaselineAsync(ProjectNode node, CancellationToken cancellationToken)
     {
         var generation = _workspace.PinGeneration();
@@ -302,7 +308,7 @@ internal sealed class Checker
         {
             if (_workspace.PinGeneration().BaselineGeneration != generation.BaselineGeneration)
                 return warmed;
-            warmed |= await _introduced.WarmBaselineAsync(project, generation.BaselineGeneration, context, cancellationToken).ConfigureAwait(false);
+            warmed |= await _introduced.FillBaselineStoreAsync(project, generation, context, cancellationToken).ConfigureAwait(false);
         }
 
         return warmed;

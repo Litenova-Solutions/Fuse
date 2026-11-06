@@ -6,9 +6,9 @@ using Fuse.Workspace;
 namespace Fuse.Engine;
 
 /// <summary>
-///     Warms, in the background and one project at a time, the baseline compilation-wide analyzer results after HEAD
-///     moved, so the first check that needs them finds them running or done instead of starting them. Only loaded
-///     projects are warmed; the warm loads none itself. Requests take precedence: the request lock admits them between
+///     Fills, in the background and one project at a time, the disk store with HEAD's errors after HEAD
+///     moved, so the first check that needs them reads the store instead of binding HEAD. Each project it fills is
+///     released when its errors are stored, so the warm holds no baseline compilation. Only loaded projects are filled; the warm loads none itself. Requests take precedence: the request lock admits them between
 ///     projects.
 /// </summary>
 internal sealed class BaselineWarmer

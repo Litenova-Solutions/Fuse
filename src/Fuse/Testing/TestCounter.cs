@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using Fuse.Graph;
 using Fuse.Paths;
@@ -7,10 +8,13 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Fuse.Testing;
 
-/// <summary>Counts test methods by parsing test project sources, so the summary can say "38 of 2,914" without discovery.</summary>
+/// <summary>
+///     Counts test methods by parsing test project sources, so the summary can say "38 of 2,914" without discovery.
+///     The counts it keeps live in a concurrent dictionary, so plans that count at the same time share them.
+/// </summary>
 internal sealed class TestCounter
 {
-    private readonly Dictionary<RepoPath, (DateTime Stamp, List<string> Tests)> _cache = [];
+    private readonly ConcurrentDictionary<RepoPath, (DateTime Stamp, List<string> Tests)> _cache = new();
 
     /// <summary>Fully qualified names (<c>Ns.Outer+Inner.Method</c>) of the test methods in <paramref name="project"/>.</summary>
     public IReadOnlyList<string> TestsIn(ProjectNode project)

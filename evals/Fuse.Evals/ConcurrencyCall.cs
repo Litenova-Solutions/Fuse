@@ -11,9 +11,9 @@ namespace Fuse.Evals;
 /// <param name="WallMs">Wall time the client waited for the answer, in milliseconds.</param>
 /// <param name="ExitCode">The fuse or hook process exit code.</param>
 /// <param name="Errors">Introduced errors the answer reported; for a test plan, the tests that failed.</param>
-/// <param name="TimedOut">Whether the answer says the engine did not answer in time.</param>
-/// <param name="Busy">Whether the answer is a <c>Busy</c> answer.</param>
-/// <param name="Unanswered">Whether Fuse could not answer: exit code 2 for a command, or a timed-out hook answer.</param>
+/// <param name="TimedOut">Whether the engine did not answer in time; for a hook, read from the engine log, since hooks stay silent.</param>
+/// <param name="Busy">Whether the answer is a <c>Busy</c> answer; for a hook, read from the engine log.</param>
+/// <param name="Unanswered">Whether Fuse could not answer: exit code 2 for a command, or a timed-out hook answer from the engine log.</param>
 internal sealed record ConcurrencyCall(
     string Kind,
     string Session,

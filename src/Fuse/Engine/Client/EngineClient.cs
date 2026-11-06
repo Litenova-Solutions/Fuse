@@ -28,6 +28,7 @@ internal static class EngineClient
     public static async Task<EngineResponse> SendAsync(RepoRoot root, EngineRequest request, TimeSpan timeout, CancellationToken cancellationToken)
     {
         request = request with { BuildId = EngineVersion.Build, RequestId = NextRequestId(), WaitMs = (long)timeout.TotalMilliseconds };
+        var sendStarted = Environment.TickCount64;
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         deadline.CancelAfter(timeout);
         try
@@ -65,6 +66,22 @@ internal static class EngineClient
                     }
 
                     return new EngineResponse.Unanswered(ErrorCode.Internal, $"the Fuse engine closed the connection (see {Path.Combine(root.StateDirectory, "engine.log")})");
+                }
+
+                if (response is EngineResponse.Busy busy)
+                {
+                    // The engine refused the request at once instead of queueing it past the wait. Send it again
+                    // after the estimate, within this request's own wait; past the wait the answer is Busy, which
+                    // the command line prints and a hook leaves silent, as it leaves every answer but a missing
+                    // restore and introduced errors.
+                    var remainingMs = timeout.TotalMilliseconds - (Environment.TickCount64 - sendStarted);
+                    if (remainingMs <= 0)
+                        return new EngineResponse.Unanswered(ErrorCode.Busy, ErrorMessages.Busy(busy.Position, busy.EstimatedWaitMs));
+                    var delayMs = Math.Clamp(busy.EstimatedWaitMs, 50, 5000);
+                    if (delayMs >= remainingMs)
+                        return new EngineResponse.Unanswered(ErrorCode.Busy, ErrorMessages.Busy(busy.Position, busy.EstimatedWaitMs));
+                    await Task.Delay(TimeSpan.FromMilliseconds(delayMs), deadline.Token).ConfigureAwait(false);
+                    continue;
                 }
 
                 if (response is EngineResponse.Restart)

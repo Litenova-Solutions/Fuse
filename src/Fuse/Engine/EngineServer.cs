@@ -287,6 +287,11 @@ internal static class EngineServer
                     log.Write("repository removed; exiting");
                     await shutdown.CancelAsync().ConfigureAwait(false);
                 }
+                else if (ShouldExitForMachine(root, router, state))
+                {
+                    log.Write("memory: machine is short and this engine has been idle the longest; exiting");
+                    await shutdown.CancelAsync().ConfigureAwait(false);
+                }
                 else if (state.ShouldExit)
                 {
                     log.Write("idle; exiting");
@@ -301,6 +306,20 @@ internal static class EngineServer
         catch (OperationCanceledException)
         {
         }
+    }
+
+    /// <summary>
+    ///     True when the machine runs short and this engine is the idlest on it: it records its working set, reads
+    ///     every engine's record, and yields only when no busier engine would yield first.
+    /// </summary>
+    private static bool ShouldExitForMachine(RepoRoot root, RequestRouter router, IdleClock state)
+    {
+        if (state.ActiveCount > 0 || state.IdleDuration < IdleClock.ReleaseAfter)
+            return false;
+        router.Budget.Record(root.StateDirectory, state.IdleDuration);
+        var engines = MemoryBudget.ReadMachine(Fuse.Paths.LocalState.Repositories);
+        var total = GC.GetGCMemoryInfo().TotalAvailableMemoryBytes;
+        return MemoryBudget.ShouldExitIdlest(engines, Environment.ProcessId, total);
     }
 
     /// <summary>

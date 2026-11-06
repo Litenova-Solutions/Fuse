@@ -20,6 +20,7 @@ namespace Fuse.Protocol;
 [JsonDerivedType(typeof(Restart), nameof(Restart))]
 [JsonDerivedType(typeof(ChangedBuildAnswered), nameof(ChangedBuildAnswered))]
 [JsonDerivedType(typeof(StatusAnswered), nameof(StatusAnswered))]
+[JsonDerivedType(typeof(Busy), nameof(Busy))]
 internal abstract record EngineResponse
 {
     private EngineResponse()
@@ -48,4 +49,9 @@ internal abstract record EngineResponse
 
     /// <summary>The answer to <see cref="EngineRequest.Status"/>: the engine and the tree it watches.</summary>
     public sealed record StatusAnswered(EngineStatus Engine) : EngineResponse;
+
+    /// <summary>The engine is busy and the request did not start: its queue position and how long the scheduler estimates before a reader takes it.</summary>
+    /// <param name="Position">How many requests will start before this one, counting the next reader as 1.</param>
+    /// <param name="EstimatedWaitMs">The estimated wait before a reader takes the request, in milliseconds.</param>
+    public sealed record Busy(int Position, long EstimatedWaitMs) : EngineResponse;
 }

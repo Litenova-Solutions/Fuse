@@ -7,7 +7,7 @@ namespace Fuse.Check;
 
 /// <summary>
 ///     Binds the candidates a reach names and keeps their introduced errors. Past <see cref="WholeProjectThreshold"/>
-///     candidates it binds every reached project whole instead. It reads the generation it is given and counts in
+///     candidates it binds every reached project whole, document by document, instead. It reads the generation it is given and counts in
 ///     the context it is given, so bindings for different checks run at the same time without sharing either.
 /// </summary>
 internal sealed class CandidateBinding

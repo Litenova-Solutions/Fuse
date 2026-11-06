@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Globalization;
 using System.Security.Cryptography;
@@ -24,12 +25,13 @@ namespace Fuse.Testing;
 ///         on the project, which builds it with MSBuild.
 ///     </para>
 ///     <para>
-///         One emitter serves every plan of the engine. It keeps the emitted images in an <see cref="EmitCache"/>, and
-///         remembers each shadow file it wrote, up to a limit for each map it keeps, so an image that is already in place is not written again and the copy
-///         from build output never overwrites a file it is about to emit. It also remembers what a kept dependent's
-///         referenced projects declared when its image was written, so the image is kept only while they declare the
-///         same. It runs after the request lock is released, against the snapshot the plan took under it;
-///         <see cref="TestPlanner"/> prepares one plan at a time.
+///         One emitter serves one plan, bound to the generation that plan pinned. Emitters share one state: the
+///         emitted images in an <see cref="EmitCache"/>, and each shadow file an emitter wrote, up to a limit for
+///         each map the state keeps, so an image that is already in place is not written again and the copy
+///         from build output never overwrites a file it is about to emit. The state also remembers what a kept
+///         dependent's referenced projects declared when its image was written, so the image is kept only while
+///         they declare the same. Each plan holds the copy it writes until its preparation ends, so plans that
+///         prepare at the same time write copies of their own.
 ///     </para>
 ///     <para>
 ///         A test run holds the copy it runs from until it ends, and a plan never writes a copy a run holds: it prepares a
@@ -47,34 +49,92 @@ internal sealed class ShadowEmitter
 
     private readonly RepoWorkspace _workspace;
     private readonly RepoRoot _root;
-    private readonly EmitCache _cache = new();
+    private readonly SharedState _shared;
+    private readonly Solution? _baseline;
 
-    /// <summary>Each shadow file this emitter wrote, with the bytes it wrote and the length and time the file had after.</summary>
-    private readonly Dictionary<string, Written> _written = new(StringComparer.OrdinalIgnoreCase);
-    private readonly List<string> _writtenOrder = [];
+    /// <summary>The copies this plan holds while it prepares them, released when its preparation ends.</summary>
+    private readonly List<IDisposable> _holds = [];
 
-    /// <summary>For each dependent this emitter wrote, the declaration fingerprint of each project it references, as it was when the dependent was written.</summary>
-    private readonly Dictionary<ProjectId, Dictionary<ProjectId, string>> _fingerprints = new();
-    private readonly List<ProjectId> _fingerprintOrder = [];
+    /// <summary>The copy this plan claimed for each shadow folder, so every target framework of one test project prepares into the same copy.</summary>
+    private readonly Dictionary<string, string> _copies = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>What the emitters of one planner share, so an image one plan emits serves the next and concurrent plans agree on what each shadow file holds.</summary>
+    internal sealed class SharedState
+    {
+        /// <summary>The emitted images kept between plans.</summary>
+        internal EmitCache Cache { get; } = new();
+
+        /// <summary>Each shadow file an emitter wrote, with the bytes it wrote and the length and time the file had after.</summary>
+        internal ConcurrentDictionary<string, Written> Written { get; } = new(StringComparer.OrdinalIgnoreCase);
+        /// <summary>The written files in the order they were last written in, for <see cref="WrittenGate"/>.</summary>
+        internal List<string> WrittenOrder { get; } = [];
+
+        /// <summary>Guards <see cref="WrittenOrder"/>, the order the written files were last written in.</summary>
+        internal Lock WrittenGate { get; } = new();
+
+        /// <summary>For each dependent an emitter wrote, the declaration fingerprint of each project it references, as it was when the dependent was written.</summary>
+        internal ConcurrentDictionary<ProjectId, Dictionary<ProjectId, string>> Fingerprints { get; } = new();
+        /// <summary>The dependents in the order they were last written in, for <see cref="FingerprintGate"/>.</summary>
+        internal List<ProjectId> FingerprintOrder { get; } = [];
+
+        /// <summary>Guards <see cref="FingerprintOrder"/>, the order the dependents were last written in.</summary>
+        internal Lock FingerprintGate { get; } = new();
+
+        /// <summary>Serializes the choice of a shadow copy, so two plans never choose the copy the other is writing.</summary>
+        internal Lock Allocation { get; } = new();
+    }
+
+
+
+
+
 
     public ShadowEmitter(RepoWorkspace workspace)
+        : this(workspace, null, new SharedState())
+    {
+    }
+
+    /// <summary>An emitter over <paramref name="shared"/> state whose declarations compare against the workspace's baseline.</summary>
+    internal ShadowEmitter(RepoWorkspace workspace, SharedState shared)
+        : this(workspace, null, shared)
+    {
+    }
+
+    /// <summary>An emitter for one plan: it compares declarations against <paramref name="generation"/>'s baseline and shares <paramref name="shared"/> with the planner's other plans.</summary>
+    internal ShadowEmitter(RepoWorkspace workspace, Generation generation, SharedState shared)
+        : this(workspace, generation.Baseline, shared)
+    {
+    }
+
+    private ShadowEmitter(RepoWorkspace workspace, Solution? baseline, SharedState shared)
     {
         _workspace = workspace;
         _root = workspace.Root;
+        _baseline = baseline;
+        _shared = shared;
+    }
+
+    /// <summary>Releases the copies this plan held while it prepared them, so a later plan may write them again.</summary>
+    internal void ReleaseCopies()
+    {
+        foreach (var hold in _holds)
+            hold.Dispose();
+        _holds.Clear();
+        _copies.Clear();
     }
 
     /// <summary>How many assemblies were emitted since the engine started, as opposed to taken from the cache.</summary>
-    public int Emits => _cache.Emits;
+    public int Emits => _shared.Cache.Emits;
 
     /// <summary>How many shadow files' written bytes are remembered.</summary>
-    public int KeptWritten => _written.Count;
+    public int KeptWritten => _shared.Written.Count;
 
     /// <summary>How many dependents' declaration fingerprints are remembered.</summary>
-    public int KeptFingerprints => _fingerprints.Count;
+    public int KeptFingerprints => _shared.Fingerprints.Count;
 
     /// <summary>Returns a shadow run of the prepared test assembly, or a build with MSBuild when a shadow run is not safe.</summary>
-    /// <param name="testProject">The Roslyn project for one target framework of the test project, from the plan's snapshot.</param>
-    /// <param name="graph">The project graph the plan's snapshot was taken with.</param>
+    /// <param name="testProject">The Roslyn project for one target framework of the test project, from the plan's generation.</param>
+    /// <param name="graph">The project graph of the plan's generation.</param>
     /// <param name="log">Receives the reason when a shadow run is refused.</param>
     /// <param name="emitting">Runs while assemblies are emitted and written, so the caller can tell the emit from the rest.</param>
     /// <param name="cancellationToken">Cancels emitting.</param>
@@ -156,7 +216,7 @@ internal sealed class ShadowEmitter
         }
         while (grew);
 
-        var shadow = CopyFolder(Path.Combine(_root.StateDirectory, "shadow", $"{testProject.Name.Replace('(', '-').Replace(")", "")}"), log);
+        var shadow = HoldCopy(Path.Combine(_root.StateDirectory, "shadow", $"{testProject.Name.Replace('(', '-').Replace(")", "")}"), log);
         // A kept dependent is emitted again when the shadow folder does not already hold the image this emitter wrote,
         // as on a fresh copy: the build output it would be copied from can predate HEAD. It is also emitted again when a
         // referenced project declares differently than when the kept image was written, even while it declares the same
@@ -201,7 +261,7 @@ internal sealed class ShadowEmitter
             emitting.Start();
             try
             {
-                var image = await _cache.GetAsync(project, cancellationToken).ConfigureAwait(false);
+                var image = await _shared.Cache.GetAsync(project, cancellationToken).ConfigureAwait(false);
                 if (image is null)
                 {
                     log($"{project.Name}: does not compile; building with MSBuild to report the errors");
@@ -227,13 +287,13 @@ internal sealed class ShadowEmitter
     ///     or a parameter list that reads differently, whose names and defaults callers can name or inline although the
     ///     surface leaves them out. Anything undecidable counts as a change, so the project's dependents are emitted again.
     /// </summary>
-    /// <param name="project">A project of the snapshot the plan took.</param>
+    /// <param name="project">A project of the generation the plan pinned.</param>
     /// <param name="cancellationToken">Cancels reading file contents.</param>
     private async Task<bool> DeclaresChangeAsync(Project project, CancellationToken cancellationToken)
     {
         try
         {
-            var baseline = _workspace.Baseline;
+            var baseline = _baseline ?? _workspace.Baseline;
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var document in project.Documents)
             {
@@ -291,7 +351,7 @@ internal sealed class ShadowEmitter
     /// </summary>
     private async Task<bool> FingerprintsMatchAsync(Project dependent, IReadOnlyList<ProjectId> dependedOn, Solution solution, Dictionary<ProjectId, string?> current, CancellationToken cancellationToken)
     {
-        if (!_fingerprints.TryGetValue(dependent.Id, out var recorded))
+        if (!_shared.Fingerprints.TryGetValue(dependent.Id, out var recorded))
             return false;
         foreach (var id in dependedOn)
         {
@@ -319,14 +379,17 @@ internal sealed class ShadowEmitter
                 recorded[reference.ProjectId] = fingerprint;
         }
 
-        _fingerprints[project.Id] = recorded;
-        _fingerprintOrder.Remove(project.Id);
-        _fingerprintOrder.Add(project.Id);
-        while (_fingerprints.Count > MaxFingerprintEntries && _fingerprintOrder.Count > 0)
+        lock (_shared.FingerprintGate)
         {
-            var oldest = _fingerprintOrder[0];
-            _fingerprintOrder.RemoveAt(0);
-            _fingerprints.Remove(oldest);
+            _shared.Fingerprints[project.Id] = recorded;
+            _shared.FingerprintOrder.Remove(project.Id);
+            _shared.FingerprintOrder.Add(project.Id);
+            while (_shared.Fingerprints.Count > MaxFingerprintEntries && _shared.FingerprintOrder.Count > 0)
+            {
+                var oldest = _shared.FingerprintOrder[0];
+                _shared.FingerprintOrder.RemoveAt(0);
+                _shared.Fingerprints.TryRemove(oldest, out _);
+            }
         }
     }
 
@@ -365,37 +428,67 @@ internal sealed class ShadowEmitter
         }
     }
 
-    /// <summary>Whether this emitter wrote <paramref name="path"/> and the file still holds those bytes.</summary>
+    /// <summary>Whether an emitter wrote <paramref name="path"/> and the file still holds those bytes.</summary>
     private bool HoldsWritten(string path)
     {
-        if (!_written.TryGetValue(path, out var written))
+        if (!_shared.Written.TryGetValue(path, out var written))
             return false;
         var file = new FileInfo(path);
         return file.Exists && file.Length == written.Length && file.LastWriteTimeUtc == written.WrittenUtc;
     }
 
     /// <summary>
-    ///     Writes <paramref name="bytes"/> to a shadow file, unless this emitter already wrote those same bytes there and the
+    ///     Writes <paramref name="bytes"/> to a shadow file, unless an emitter already wrote those same bytes there and the
     ///     file still has the length and time it had after.
     /// </summary>
     private async Task WriteAsync(string path, byte[] bytes, CancellationToken cancellationToken)
     {
         var file = new FileInfo(path);
-        if (_written.TryGetValue(path, out var written) && ReferenceEquals(written.Bytes, bytes)
+        if (_shared.Written.TryGetValue(path, out var written) && ReferenceEquals(written.Bytes, bytes)
             && file.Exists && file.Length == written.Length && file.LastWriteTimeUtc == written.WrittenUtc)
             return;
 
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         await File.WriteAllBytesAsync(path, bytes, cancellationToken).ConfigureAwait(false);
         file.Refresh();
-        _written[path] = new Written(bytes, file.Length, file.LastWriteTimeUtc);
-        _writtenOrder.Remove(path);
-        _writtenOrder.Add(path);
-        while (_written.Count > MaxWrittenEntries && _writtenOrder.Count > 0)
+        lock (_shared.WrittenGate)
         {
-            var oldest = _writtenOrder[0];
-            _writtenOrder.RemoveAt(0);
-            _written.Remove(oldest);
+            _shared.Written[path] = new Written(bytes, file.Length, file.LastWriteTimeUtc);
+            _shared.WrittenOrder.Remove(path);
+            _shared.WrittenOrder.Add(path);
+            while (_shared.Written.Count > MaxWrittenEntries && _shared.WrittenOrder.Count > 0)
+            {
+                var oldest = _shared.WrittenOrder[0];
+                _shared.WrittenOrder.RemoveAt(0);
+                _shared.Written.TryRemove(oldest, out _);
+            }
+        }
+
+
+
+        {
+
+
+
+        }
+    }
+
+    /// <summary>
+    ///     Chooses the copy of <paramref name="project"/> this plan prepares and holds it until the plan's
+    ///     preparation ends, so a plan preparing at the same time chooses another copy and neither writes the
+    ///     copy the other answers with. The choice itself is serialized in the shared state, briefly.
+    /// </summary>
+    private string HoldCopy(string project, Action<string> log)
+    {
+        lock (_shared.Allocation)
+        {
+            if (_copies.TryGetValue(project, out var claimed))
+                return claimed;
+            var chosen = CopyFolder(project, log);
+            Directory.CreateDirectory(chosen);
+            _holds.Add(LocalState.HoldTestCopy(chosen));
+            _copies[project] = chosen;
+            return chosen;
         }
     }
 
@@ -569,5 +662,5 @@ internal sealed class ShadowEmitter
     }
 
     /// <summary>A shadow file this emitter wrote: the bytes, and the length and last write time the file had after.</summary>
-    private sealed record Written(byte[] Bytes, long Length, DateTime WrittenUtc);
+    internal sealed record Written(byte[] Bytes, long Length, DateTime WrittenUtc);
 }

@@ -14,10 +14,10 @@ namespace Fuse.Evals;
 /// <param name="GateByHolder">Queue times grouped by what held the request lock longest during each wait.</param>
 /// <param name="Calls">Every caller in the wave, in the order they were handed out.</param>
 /// <param name="Errors">Introduced errors every answer reported; for a test plan, the tests that failed.</param>
-/// <param name="Timeouts">Answers that say the engine did not answer in time.</param>
-/// <param name="BusyAnswers">Answers that are a <c>Busy</c> answer.</param>
-/// <param name="Unanswered">Answers Fuse could not give: exit code 2 for a command, or a timed-out hook answer.</param>
-/// <param name="StopTimeouts">Stop-hook answers that did not answer in time.</param>
+/// <param name="Timeouts">Answers that say the engine did not answer in time; for hooks, read from the engine log.</param>
+/// <param name="BusyAnswers">Answers that are a <c>Busy</c> answer; for hooks, read from the engine log.</param>
+/// <param name="Unanswered">Answers Fuse could not give: exit code 2 for a command, or a timed-out hook answer from the engine log.</param>
+/// <param name="StopTimeouts">Stop-hook answers that did not answer in time, read from the engine log.</param>
 /// <param name="StatusTimeouts">Status probes that did not answer in time, fired with the wave.</param>
 /// <param name="ByKind">The same wall, queue, engine and answer counts for each form of caller.</param>
 /// <param name="Status">The status probes fired with the wave.</param>

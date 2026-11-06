@@ -12,7 +12,8 @@ namespace Fuse.Evals;
 ///     <c>fuse status</c> probe per caller fired with each wave. Each wave records the callers' wall times, the
 ///     queue time and engine time of its requests, the errors it reported, its timeouts, its
 ///     <c>Busy</c> answers and the engine's peak working set; the suite records the cold-start time before the
-///     waves and the engine's idle working set after them. It needs no truth: a test-plan caller runs
+///     waves and the engine's idle working set after them. Hooks stay silent on timeouts and <c>Busy</c> answers,
+///     so those come from the engine log. It needs no truth: a test-plan caller runs
 ///     <c>fuse test</c> as an agent does, and its plan is in its phase line.
 /// </summary>
 internal static class ConcurrencySuite
@@ -116,24 +117,35 @@ internal static class ConcurrencySuite
             var phases = new List<RequestPhases>();
             while (RequestPhases.TakeNewest(lines, taken) is { } phase)
                 phases.Add(phase);
+            // Hooks report neither timeouts nor Busy answers in their output, so their signals are read back from
+            // the engine log by session; commands carry theirs in their output, as CallAsync recorded them.
+            var signals = ConcurrencySignals.Parse(lines, results.Select(c => c.Session).ToList());
+            var reconciled = results.Select(c => c.Kind is PostEdit or Stop
+                ? c with
+                {
+                    TimedOut = signals.TimedOutSessions.Contains(c.Session),
+                    Busy = signals.BusySessions.Contains(c.Session),
+                    Unanswered = signals.TimedOutSessions.Contains(c.Session),
+                }
+                : c).ToArray();
             var engines = await repo.EngineProcessesAsync();
             var peak = engines.Count > 0 ? Math.Round(engines.Max(e => e.PeakWorkingSet) / (1024.0 * 1024.0), 1) : 0;
             var callerPhases = phases.Where(p => CallerKind(p.Kind) is not null).ToList();
             var level = new ConcurrencyLevel(
                 callers,
                 wallMs,
-                LatencyStats.Of([.. results.Select(c => c.WallMs)]),
+                LatencyStats.Of([.. reconciled.Select(c => c.WallMs)]),
                 LatencyStats.Of(GateTimes(callerPhases)),
                 LatencyStats.Of(EngineTimes(callerPhases)),
                 GateByHolder(callerPhases),
-                [.. results],
-                results.Sum(c => c.Errors),
-                results.Count(c => c.TimedOut),
-                results.Count(c => c.Busy),
-                results.Count(c => c.Unanswered),
-                results.Count(c => c.Kind == Stop && c.TimedOut),
+                [.. reconciled],
+                reconciled.Sum(c => c.Errors),
+                reconciled.Count(c => c.TimedOut),
+                reconciled.Count(c => c.Busy),
+                reconciled.Count(c => c.Unanswered),
+                reconciled.Count(c => c.Kind == Stop && c.TimedOut),
                 status.Count(p => p.TimedOut),
-                ByKind(results, phases),
+                ByKind(reconciled, phases),
                 StatusOf(status, phases),
                 peak);
             Console.WriteLine($"[concurrency] {callers} caller(s) in {wallMs:0} ms: queue P50 {level.Queue.P50:0} / P95 {level.Queue.P95:0} ms, engine P50 {level.Engine.P50:0} / P95 {level.Engine.P95:0} ms, {level.Errors} error(s), {level.Timeouts} timeout(s), {level.BusyAnswers} Busy answer(s), {level.Unanswered} unanswered, status {level.StatusTimeouts} timeout(s), engine peak {peak:0} MB");
@@ -252,9 +264,12 @@ internal static class ConcurrencySuite
             errors = TestPlanCounts.RunCounts(output).Failed + EvalRepo.ParseFuseErrors(output).Count;
         }
 
-        var timedOut = IsTimedOut(output);
+        // A hook stays silent on a timeout and on a Busy answer, so its output carries neither; the wave reads
+        // those signals back from the engine log and reconciles the hook callers there.
+        var timedOut = kind is PostEdit or Stop ? false : IsTimedOut(output);
+        var busy = kind is PostEdit or Stop ? false : IsBusy(output);
         // A post-edit hook reports its errors with exit code 2 to wake the agent, which is an answer, not an unanswered one.
-        var unanswered = kind is PostEdit or Stop ? timedOut : exitCode == 2 || timedOut;
+        var unanswered = kind is PostEdit or Stop ? false : exitCode == 2 || timedOut;
         return new ConcurrencyCall(
             kind,
             session,
@@ -263,7 +278,7 @@ internal static class ConcurrencySuite
             exitCode,
             errors,
             timedOut,
-            IsBusy(output),
+            busy,
             unanswered);
     }
 
@@ -336,11 +351,11 @@ internal static class ConcurrencySuite
             ["session_id"] = session,
         });
 
-    /// <summary>Whether an answer says the engine did not answer in time, as a command's timeout and a status probe's wait both word it.</summary>
+    /// <summary>Whether a command answer says the engine did not answer in time, as a command's timeout and a status probe's wait both word it. Hooks stay silent, so theirs come from the engine log.</summary>
     private static bool IsTimedOut(string output) =>
         output.Contains("did not answer", StringComparison.OrdinalIgnoreCase) || output.Contains("timed out", StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>Whether an answer is a <c>Busy</c> answer, which a hook gives silently and so never counts here.</summary>
+    /// <summary>Whether a command answer is a <c>Busy</c> answer. Hooks give <c>Busy</c> answers silently, so theirs come from the engine log.</summary>
     private static bool IsBusy(string output) => output.Contains("busy", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>

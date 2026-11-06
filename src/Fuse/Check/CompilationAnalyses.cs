@@ -113,6 +113,26 @@ internal sealed class CompilationAnalyses
         older?.Cancel();
     }
 
+    /// <summary>
+    ///     Stops the runs of <paramref name="project"/> on one side and forgets its newest wrapper, for a fill or a
+    ///     check that releases the compilation it built. A run a pinned check waits on is stopped when its last pin
+    ///     goes instead.
+    /// </summary>
+    public void Release(ProjectId project, bool baseline)
+    {
+        CancellationTokenSource? stop = null;
+        lock (_lock)
+        {
+            if (_latest.TryGetValue((project, baseline), out var latest))
+            {
+                stop = ScheduleStopLocked(latest);
+                _latest.Remove((project, baseline));
+            }
+        }
+
+        stop?.Cancel();
+    }
+
     /// <summary>Stops every run of the baseline, or of the current solution and its views, for a baseline or configuration that changed. A run a pinned check waits on is stopped when its last pin goes instead.</summary>
     public void StopAll(bool baseline)
     {

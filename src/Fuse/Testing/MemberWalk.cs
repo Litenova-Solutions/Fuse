@@ -28,7 +28,7 @@ namespace Fuse.Testing;
 ///         test project that depends on the application; a library member a framework calls through an external interface
 ///         or base class is reached through its type.
 ///     </para>
-///     <para>One walk serves one request, over the solution of that request.</para>
+///     <para>One walk serves one selection, over the current solution of the generation that selection pinned.</para>
 /// </remarks>
 internal sealed class MemberWalk
 {
@@ -37,7 +37,9 @@ internal sealed class MemberWalk
     private const int MaxSymbols = 300;
     private static readonly TimeSpan Budget = TimeSpan.FromSeconds(8);
 
-    private readonly RepoWorkspace _workspace;
+    private readonly RepoRoot _root;
+    private readonly RepoGraph _graph;
+    private readonly Solution _baseline;
     private readonly Solution _solution;
     private readonly ImmutableHashSet<Project> _reachedProjects;
     private readonly ImmutableHashSet<Document> _reachedDocuments;
@@ -47,13 +49,16 @@ internal sealed class MemberWalk
     private readonly Queue<ISymbol> _queue = new();
     private readonly SelectionBuilder _selections = new();
 
-    /// <param name="workspace">Gives the HEAD text of a changed file and the project graph.</param>
-    /// <param name="solution">The current solution, with the reached projects loaded.</param>
+    /// <param name="root">Turns the paths Roslyn reports into repository paths.</param>
+    /// <param name="generation">The generation the walk reads: its graph, and its baseline for the HEAD text of a changed file.</param>
+    /// <param name="solution">The generation's current solution, with the reached projects loaded.</param>
     /// <param name="reachedProjects">The Roslyn projects of the changed projects and their dependents; references outside it are not searched.</param>
     /// <param name="time">Measures the walk against its 8 second budget.</param>
-    public MemberWalk(RepoWorkspace workspace, Solution solution, IReadOnlyList<Project> reachedProjects, TimeProvider time)
+    public MemberWalk(RepoRoot root, Generation generation, Solution solution, IReadOnlyList<Project> reachedProjects, TimeProvider time)
     {
-        _workspace = workspace;
+        _root = root;
+        _graph = generation.Graph;
+        _baseline = generation.Baseline;
         _solution = solution;
         _reachedProjects = [.. reachedProjects];
         _reachedDocuments = [.. reachedProjects.SelectMany(p => p.Documents)];
@@ -78,7 +83,6 @@ internal sealed class MemberWalk
     public async Task<List<(Document Document, SyntaxNode Node)>> SeedAsync(RepoPath path, CancellationToken cancellationToken)
     {
         var seeds = new List<(Document, SyntaxNode)>();
-        var headText = _workspace.HeadText(path);
         foreach (var id in _solution.GetDocumentIdsWithFilePath(path.Absolute))
         {
             var document = _solution.GetDocument(id);
@@ -88,6 +92,9 @@ internal sealed class MemberWalk
             var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
             if (model is null || root is null)
                 continue;
+            var baselineDocument = _baseline.GetDocument(id);
+            var headText = baselineDocument is null ? null : await baselineDocument.GetTextAsync(cancellationToken).ConfigureAwait(false);
+
             var before = headText is null
                 ? null
                 : await CSharpSyntaxTree.ParseText(headText, (CSharpParseOptions)root.SyntaxTree.Options, cancellationToken: cancellationToken).GetRootAsync(cancellationToken).ConfigureAwait(false);
@@ -96,7 +103,7 @@ internal sealed class MemberWalk
             {
                 ChangedDeclarations++;
                 if (changed is not CompilationUnitSyntax
-                    && await CompiledCode.SameAsHeadAsync(document, changed, model, _workspace.Baseline, cancellationToken).ConfigureAwait(false))
+                    && await CompiledCode.SameAsHeadAsync(document, changed, model, _baseline, cancellationToken).ConfigureAwait(false))
                 {
                     DroppedSameCode++;
                     continue;
@@ -172,11 +179,11 @@ internal sealed class MemberWalk
     /// </summary>
     public void SelectDependentsWhole(ProjectNode project, string reason)
     {
-        foreach (var test in HostRule.DependentTestProjects(_workspace.Graph, project))
+        foreach (var test in HostRule.DependentTestProjects(_graph, project))
             SelectWhole(test, reason);
     }
 
-    private ProjectNode? NodeOf(Project project) => project.FilePath is null ? null : _workspace.Graph.Find(_workspace.Root.PathOf(project.FilePath));
+    private ProjectNode? NodeOf(Project project) => project.FilePath is null ? null : _graph.Find(_root.PathOf(project.FilePath));
 
     private ProjectId? FindProjectId(ISymbol symbol) =>
         symbol.ContainingAssembly is { } assembly ? _byAssembly.GetValueOrDefault(assembly.Name) : null;

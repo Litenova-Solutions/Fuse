@@ -20,6 +20,12 @@ internal sealed record EngineStatus(int Pid, long WorkingSetBytes, int ChangedFi
     /// <summary>How long the last completed sync's reload took in milliseconds, or null when that sync patched files without reloading.</summary>
     public long? ReloadMs { get; init; }
 
-    /// <summary>What holds the request lock while this answer is read from the last completed sync, or null when it is read from a sync it ran.</summary>
+    /// <summary>What holds a reader while this answer is read, or null when no reader runs.</summary>
     public string? GateHolder { get; init; }
+
+    /// <summary>The per-engine memory ceiling in bytes, past which the engine answers Busy instead of growing. A line without it reads as 0.</summary>
+    public long MemoryCeilingBytes { get; init; }
+
+    /// <summary>The GC memory load in bytes when this status was read. A line without it reads as 0.</summary>
+    public long MemoryLoadBytes { get; init; }
 }

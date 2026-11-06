@@ -61,5 +61,11 @@ internal sealed class IdleClock
     public bool TakeRelease() =>
         Volatile.Read(ref _active) == 0 && IdleFor >= ReleaseAfter && Interlocked.Exchange(ref _released, 1) == 0;
 
+    /// <summary>How many requests are running.</summary>
+    public int ActiveCount => Volatile.Read(ref _active);
+
+    /// <summary>How long no request has run, which the machine memory budget compares between engines.</summary>
+    public TimeSpan IdleDuration => IdleFor;
+
     private TimeSpan IdleFor => _time.GetElapsedTime(Interlocked.Read(ref _lastRequest));
 }

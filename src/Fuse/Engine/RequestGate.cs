@@ -3,16 +3,16 @@ using System.Diagnostics;
 namespace Fuse.Engine;
 
 /// <summary>
-///     The engine's request lock: it admits one holder at a time, and tells each holder what held the lock longest while
-///     it waited, so a phase line can say what a long <c>gate</c> wait was spent behind.
-/// </summary>
+///     The lock the background load and the first evaluation hold while they choose their work: it admits one holder
+///     at a time, and tells each holder what held it longest while it waited. Requests take a reader from the
+///     scheduler instead, so this lock never serializes a check.</summary>
 /// <remarks>
-///     Every holder names itself on entry: a request by its case (<c>CheckFiles</c>, <c>PlanAffectedTests</c> and so on),
-///     the background load as <see cref="Preload"/> and the first evaluation as <see cref="Initialization"/>. When a
-///     holder exits, the time it held the lock is added, per waiter, to the part of that waiter's wait it overlapped.
-///     A priority waiter (<see cref="EnterPriorityAsync"/>) runs before every normal waiter that is already queued,
-///     in arrival order among priority waiters; it still waits for the holder that is already running, so a
-///     registration never begins or ends in the middle of a check.
+///     Every holder names itself on entry: the background load as <see cref="Preload"/> and the first evaluation
+///     as <see cref="Initialization"/>. When a holder exits, the time it held the lock is added, per waiter, to
+///     the part of that waiter's wait it overlapped. A priority waiter runs before every normal waiter queued.
+///     It still waits for the holder that is already running.
+///     Priority waiters keep arrival order among themselves.
+///     No request waits on this lock.
 /// </remarks>
 internal sealed class RequestGate : IDisposable
 {

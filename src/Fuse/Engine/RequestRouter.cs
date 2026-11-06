@@ -13,8 +13,8 @@ using Fuse.Workspace;
 namespace Fuse.Engine;
 
 /// <summary>
-///     Owns the warm workspace and answers requests: it initializes the workspace, admits one request at a time through
-///     the request lock (<see cref="RequestGate"/>), and routes each to the feature that answers it.
+///     Owns the warm workspace and answers requests: it initializes the workspace, admits requests through the
+///     scheduler (<see cref="Scheduler"/>) to a bounded pool of readers, and routes each to the feature that answers it.
 /// </summary>
 internal sealed class RequestRouter : IDisposable
 {
@@ -23,6 +23,8 @@ internal sealed class RequestRouter : IDisposable
     private readonly Checker _checker;
     private readonly TestPlanner _planner;
     private readonly RequestGate _requestLock = new();
+    private readonly Scheduler _scheduler;
+    private readonly MemoryBudget _budget;
     private readonly Preloader _preloader;
     private readonly BaselineWarmer _warmer;
     private readonly RequestLog _requestLog;
@@ -32,12 +34,16 @@ internal sealed class RequestRouter : IDisposable
     private readonly Lock _statusLock = new();
 
     private readonly HashSet<RepoPath> _touchedPaths = [];
-    private EngineStatus? _lastStatus;
     private int _touchedConfigurationGeneration;
     private Task? _initialization;
     private CancellationToken _shutdown;
 
     public RequestRouter(RepoRoot root, EngineLog log)
+        : this(root, log, new Scheduler(Scheduler.DefaultReaderCount), new MemoryBudget())
+    {
+    }
+
+    internal RequestRouter(RepoRoot root, EngineLog log, Scheduler scheduler, MemoryBudget budget)
     {
         _log = log;
         _workspace = new RepoWorkspace(root, log.Write);
@@ -47,6 +53,8 @@ internal sealed class RequestRouter : IDisposable
         _preloader = new Preloader(_workspace, _requestLock, log.Write);
         _warmer = new BaselineWarmer(_workspace, _checker, _requestLock, log.Write);
         _requestLog = new RequestLog(log);
+        _scheduler = scheduler;
+        _budget = budget;
     }
 
     /// <summary>Evaluates projects, then preloads the projects that already have uncommitted changes.</summary>
@@ -95,16 +103,31 @@ internal sealed class RequestRouter : IDisposable
     }
 
     /// <summary>
-    ///     Answers one request. A ping or a shutdown is answered at once; a status answer is read from the last
-    ///     completed sync at once when the request lock is held, naming the holder, and otherwise syncs ahead of queued
-    ///     checks; a session registration waits ahead of queued checks and still holds the lock, so none begins or ends
-    ///     mid-check; a check or a test plan waits for initialization (a check that does not wait for the load is refused
-    ///     while loading), then for the request lock, then runs. A check's wait and analyzer budget start when it holds
-    ///     the lock, not when it queued. A check holds the lock until it is answered; a test plan holds it through the
-    ///     sync and the selection, and releases it before it mirrors and emits into the shadow folders from the snapshot
-    ///     it took. A changed-build plan syncs under the lock without loading a project.
+    ///     Answers one request. A ping or a shutdown is answered at once; a status answer bypasses the scheduler
+    ///     and reads the newest generation; a session registration bypasses it too, under its own lock. A check or
+    ///     a test plan waits for initialization (a check that does not wait for the load is refused while loading),
+    ///     then for a reader in its lane, then runs. A check whose content key matches one in flight shares it.
+    ///     A request that will not start before its wait ends, and one past the memory ceiling, is answered Busy
+    ///     at once. A check's wait and analyzer budget start when a reader takes it, not when it queued. A check
+    ///     holds a reader until it is answered; a test plan holds one through the sync and the selection, and
+    ///     releases it before it mirrors and emits from the snapshot it took. A changed-build plan syncs without loading a project.
     /// </summary>
     public async Task<EngineResponse> HandleAsync(EngineRequest request, CancellationToken cancellationToken)
+    {
+        var key = CoalesceKey(request);
+        if (key is null)
+            return await ScheduledAsync(request, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            return await _scheduler.RunCoalescedAsync(key, token => ScheduledAsync(request, token), cancellationToken).ConfigureAwait(false);
+        }
+        catch (SchedulerBusyException busy)
+        {
+            return new EngineResponse.Busy(busy.Position, busy.EstimatedWaitMs);
+        }
+    }
+
+    private async Task<EngineResponse> ScheduledAsync(EngineRequest request, CancellationToken cancellationToken)
     {
         if (request is EngineRequest.Ping or EngineRequest.ShutDown)
             return new EngineResponse.Acknowledged();
@@ -142,9 +165,29 @@ internal sealed class RequestRouter : IDisposable
                 ? $"no C# project could be evaluated: {_workspace.Graph.Failures[0]}"
                 : ErrorMessages.NoProjects);
 
+        var lane = Scheduler.LaneFor(request);
+        var budget = _budget.Assess();
+        if (budget.Shed.Count > 0)
+            _log.Write($"memory: working set {budget.WorkingSetBytes / (1024 * 1024)} MB of {budget.CeilingBytes / (1024 * 1024)} MB, shedding {string.Join(", ", budget.Shed)}");
+        if (budget.IsPastCeiling)
+        {
+            var (position, estimate) = _scheduler.EstimateFor(lane);
+            return new EngineResponse.Busy(Math.Max(1, position), Math.Max(estimate, 1000));
+        }
+
         var phases = new PhaseTimes();
         var queued = Stopwatch.StartNew();
-        var gateHolder = await _requestLock.EnterAsync(RequestLog.KindOf(request), cancellationToken).ConfigureAwait(false);
+        SchedulerLease lease;
+        try
+        {
+            lease = await _scheduler.EnterAsync(lane, RequestLog.KindOf(request), request.WaitMs, cancellationToken).ConfigureAwait(false);
+        }
+        catch (SchedulerBusyException busy)
+        {
+            return new EngineResponse.Busy(busy.Position, busy.EstimatedWaitMs);
+        }
+
+        var gateHolder = lease.GateHolder;
         phases.Add(Phase.Gate, queued);
         var configurationBefore = _workspace.ConfigurationGeneration;
         var started = Environment.TickCount64;
@@ -191,7 +234,8 @@ internal sealed class RequestRouter : IDisposable
                 var pendingFailed = await _planner.SelectFailedAsync(byProject, unknown, phases, cancellationToken).ConfigureAwait(false);
                 RememberStatus(configurationBefore, phases);
                 held = false;
-                Release();
+                lease.Dispose();
+                ScheduleBackground();
                 return AnswerPlan(await _planner.PrepareAsync(pendingFailed, phases, cancellationToken).ConfigureAwait(false));
             }
 
@@ -201,15 +245,16 @@ internal sealed class RequestRouter : IDisposable
                     new TestScope.Affected { LeftOut = await OnlyOtherSessionsWroteAsync(session, cancellationToken).ConfigureAwait(false), NamedPaths = sessioned.Projects, BuildOnly = sessioned.BuildOnly },
                 EngineRequest.PlanAffectedTests plan => new TestScope.Affected { NamedPaths = plan.Projects, BuildOnly = plan.BuildOnly },
                 EngineRequest.PlanAllTests => new TestScope.All(),
-                _ => throw new UnreachableException($"{request.GetType().Name} is answered before the request lock"),
+                _ => throw new UnreachableException($"{request.GetType().Name} is answered before the scheduler"),
             };
             var pending = await _planner.SelectAsync(scope, phases, cancellationToken).ConfigureAwait(false);
 
-            // The shadow preparation reads only the snapshot the selection took, which is immutable, so it runs after the
-            // lock is released and a check from another client does not wait behind the emit.
+            // The shadow preparation reads only the snapshot the selection took, which is immutable, so it runs after a reader is released and a check from another client does not wait behind the emit.
+            // The snapshot is immutable, so no reader is held while it runs.
             RememberStatus(configurationBefore, phases);
             held = false;
-            Release();
+            lease.Dispose();
+            ScheduleBackground();
             return AnswerPlan(await _planner.PrepareAsync(pending, phases, cancellationToken).ConfigureAwait(false));
         }
         catch (FuseException e)
@@ -233,7 +278,10 @@ internal sealed class RequestRouter : IDisposable
             finally
             {
                 if (held)
-                    Release();
+                {
+                    lease.Dispose();
+                    ScheduleBackground();
+                }
             }
         }
     }
@@ -269,12 +317,81 @@ internal sealed class RequestRouter : IDisposable
         return _sessions.OnlyOtherSessionsWrote(generation.Changed, session);
     }
 
-    /// <summary>Releases the request lock and lets the background load and warm continue.</summary>
-    private void Release()
+    /// <summary>Lets the background load and warm continue, unless the memory budget sheds background work at this boundary.</summary>
+    private void ScheduleBackground()
     {
-        _requestLock.Exit();
+        if (_budget.Assess().Shed.Contains(MemoryBudget.ShedStep.Background))
+        {
+            _log.Write("memory: background load and warm shed at this request boundary");
+            return;
+        }
+
         _preloader.Schedule(_shutdown);
         _warmer.Schedule(_shutdown);
+    }
+
+    /// <summary>
+    ///     The content key a check coalesces by, or null when it does not coalesce: its scope, session, analyzer
+    ///     mode and the generation content hash the kept answer keys by. A tree past the kept-answer bound, or a
+    ///     changed file that cannot be read, coalesces nothing.
+    /// </summary>
+    private string? CoalesceKey(EngineRequest request)
+    {
+        string scopeKey;
+        string? session;
+        bool compilationWide;
+        int maxErrors;
+        bool stamp;
+        switch (request)
+        {
+            case EngineRequest.CheckChanges changes:
+                scopeKey = "all";
+                session = SessionEdits.IsValid(changes.Session) ? changes.Session : null;
+                compilationWide = true;
+                maxErrors = changes.MaxErrors;
+                stamp = changes.StampTree;
+                break;
+            case EngineRequest.CheckFiles files:
+                scopeKey = "files:" + string.Join(",", files.Files.Order(StringComparer.Ordinal));
+                session = SessionEdits.IsValid(files.Session) ? files.Session : null;
+                compilationWide = !files.LeaveOutCompilationWide;
+                maxErrors = files.MaxErrors;
+                stamp = files.StampTree;
+                break;
+            case EngineRequest.CheckPaths paths:
+                scopeKey = "paths:" + string.Join(",", paths.Paths.Order(StringComparer.Ordinal));
+                session = SessionEdits.IsValid(paths.Session) ? paths.Session : null;
+                compilationWide = true;
+                maxErrors = paths.MaxErrors;
+                stamp = paths.StampTree;
+                break;
+            default:
+                return null;
+        }
+
+        Generation generation;
+        try
+        {
+            generation = _workspace.PinGeneration();
+        }
+        catch (Exception e) when (e is InvalidOperationException or ObjectDisposedException)
+        {
+            return null;
+        }
+
+        if (generation.Changed.Count > 500)
+            return null;
+        var capKey = maxErrors == 0 ? "cap:default" : $"cap:{maxErrors}";
+        var kept = KeptCheck.KeyFor(
+            capKey + ":" + scopeKey,
+            session,
+            compilationWide,
+            generation.Head ?? "",
+            generation.ConfigurationGeneration,
+            generation.BaselineGeneration,
+            _sessions.RecordsHash(),
+            generation.Changed.Select(path => (path.Relative, path.Absolute)));
+        return kept is null ? null : $"{scopeKey}|{session ?? ""}|{compilationWide}|{stamp}|{kept}";
     }
 
     /// <summary>True while the projects are evaluated and first loaded, or while a background load runs.</summary>
@@ -285,6 +402,12 @@ internal sealed class RequestRouter : IDisposable
 
     /// <summary>The request lock, for a test that holds it while it asks for status or queues a check behind it.</summary>
     internal RequestGate RequestLock => _requestLock;
+
+    /// <summary>The scheduler that admits checks and plans to the reader pool, for a test that holds a reader or reads the queue.</summary>
+    internal Scheduler Scheduler => _scheduler;
+
+    /// <summary>The per-engine memory budget, for a test that reads the ceiling and for the engine's idle watch.</summary>
+    internal MemoryBudget Budget => _budget;
 
     /// <summary>
     ///     Stores the status of the sync that just completed, counted the way the code counts each threshold: changed
@@ -316,22 +439,17 @@ internal sealed class RequestRouter : IDisposable
                 TreeStamp.Of(ChangedPairs(changed)))
             {
                 ChangedSourcesInReach = changed.Count(path => generation.Graph.OwnersOf(path).Count > 0),
+                GateHolder = _scheduler.CurrentHolder,
+                MemoryCeilingBytes = _budget.CeilingBytes,
+                MemoryLoadBytes = _budget.Assess().MemoryLoadBytes,
                 TouchedCount = _touchedPaths.Count,
                 ReloadMs = reloadMs,
             };
-            _lastStatus = status;
             return status;
         }
     }
 
-    /// <summary>The last completed sync's status with the current holder named, or null when no sync has completed.</summary>
-    private EngineStatus? LastStatus(string holder)
-    {
-        lock (_statusLock)
-            return _lastStatus is { } status ? status with { GateHolder = holder } : null;
-    }
-
-    /// <summary>Stores the status after a gated sync, naming its reload when the configuration generation moved during it.</summary>
+    /// <summary>Stores the status after a sync, naming its reload when the configuration generation moved during it.</summary>
     private void RememberStatus(int configurationBefore, PhaseTimes phases)
     {
         long? reloadMs = null;
@@ -342,6 +460,7 @@ internal sealed class RequestRouter : IDisposable
         }
 
         CaptureStatus(reloadMs);
+        _scheduler.PublishGeneration(_workspace.PinGeneration().Number);
     }
 
     /// <summary>
@@ -372,19 +491,13 @@ internal sealed class RequestRouter : IDisposable
     }
 
     /// <summary>
-    ///     Answers what the tree holds. When the request lock is held and a sync has completed, it answers at once from
-    ///     that sync and names the holder; it never waits behind a check. Otherwise it waits ahead of queued checks,
-    ///     syncs, and reads the process, its working set and the changed files. It never loads a project and never
-    ///     refuses a repository without one.
+    ///     Answers what the tree holds, bypassing the scheduler entirely: it syncs under the workspace writer and
+    ///     reads the newest generation the sync publishes, naming the reader that runs meanwhile when one does; it
+    ///     never waits behind a queued check, and never loads a project and never refuses a repository without one.
+    ///     Its status carries the engine's working set, its memory ceiling and its GC memory load.
     /// </summary>
     private async Task<EngineResponse> StatusAsync(EngineRequest request, CancellationToken cancellationToken)
     {
-        if (_requestLock.CurrentHolder is { } heldBy && LastStatus(heldBy) is { } lastCompleted)
-        {
-            _requestLog.Write(request, new PhaseTimes(), tookMs: 0, heldBy);
-            return new EngineResponse.StatusAnswered(lastCompleted);
-        }
-
         var initialization = _initialization ?? Task.CompletedTask;
         if (!initialization.IsCompleted)
         {
@@ -402,18 +515,11 @@ internal sealed class RequestRouter : IDisposable
                 return new EngineResponse.Unanswered(ErrorCode.LoadFailed, $"Fuse could not evaluate the repository's projects: {e.Message}");
             }
 
-            // The holder that kept status from a sync of its own may have finished while initialization ran.
-            if (_requestLock.CurrentHolder is { } holderAfterInit && LastStatus(holderAfterInit) is { } lastAfterInit)
-            {
-                _requestLog.Write(request, new PhaseTimes(), tookMs: 0, holderAfterInit);
-                return new EngineResponse.StatusAnswered(lastAfterInit);
-            }
         }
 
         var phases = new PhaseTimes();
-        var queued = Stopwatch.StartNew();
-        var gateHolder = await _requestLock.EnterPriorityAsync(RequestLog.KindOf(request), cancellationToken).ConfigureAwait(false);
-        phases.Add(Phase.Gate, queued);
+        phases.Add(Phase.Gate, 0);
+        var gateHolder = _scheduler.CurrentHolder;
         var configurationBefore = _workspace.ConfigurationGeneration;
         var started = Environment.TickCount64;
         try
@@ -444,13 +550,13 @@ internal sealed class RequestRouter : IDisposable
             }
             finally
             {
-                Release();
+                ScheduleBackground();
             }
         }
     }
 
     /// <summary>
-    ///     Plans a build of the changed projects: it syncs under the request lock like a check, then plans from the
+    ///     Plans a build of the changed projects: it syncs like a check, then plans from the
     ///     graph and the changed files. It never loads a project.
     /// </summary>
     private async Task<EngineResponse> PlanChangedBuildAsync(PhaseTimes phases, CancellationToken cancellationToken)
@@ -517,27 +623,20 @@ internal sealed class RequestRouter : IDisposable
     }
 
     /// <summary>
-    ///     Answers a session registration through the request lock, ahead of queued checks, so no registration begins or
-    ///     ends mid-check: a check takes its session exclusion at the start and re-reads writers later, and a registration
-    ///     between the two would shield errors neither read shielded. It waits for no initialization beyond the lock,
-    ///     which the first evaluation holds; a registration needs no workspace.
+    ///     Answers a session registration without the scheduler, at once: <see cref="SessionEdits"/> applies it under
+    ///     its own lock, so a check that reads its writers under that lock sees the registration whole or not at all.
+    ///     It waits for no initialization and holds no reader; a registration needs no workspace.
+    ///     A check answered after it counts its files as that session's from that answer on.
     /// </summary>
-    private async Task<EngineResponse> SessionAsync(EngineRequest request, CancellationToken cancellationToken)
+    private Task<EngineResponse> SessionAsync(EngineRequest request, CancellationToken cancellationToken)
     {
-        await _requestLock.EnterPriorityAsync(RequestLog.KindOf(request), cancellationToken).ConfigureAwait(false);
-        try
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(request switch
         {
-            return request switch
-            {
-                EngineRequest.BeginSession begin => BeginSession(begin),
-                EngineRequest.EndSession end => EndSession(end),
-                _ => throw new UnreachableException($"{request.GetType().Name} is not a session request"),
-            };
-        }
-        finally
-        {
-            Release();
-        }
+            EngineRequest.BeginSession begin => BeginSession(begin),
+            EngineRequest.EndSession end => EndSession(end),
+            _ => throw new UnreachableException($"{request.GetType().Name} is not a session request"),
+        });
     }
 
     /// <summary>The answer to a test plan request.</summary>
@@ -566,6 +665,7 @@ internal sealed class RequestRouter : IDisposable
 
     public void Dispose()
     {
+        _scheduler.Dispose();
         _workspace.Dispose();
         _requestLock.Dispose();
     }

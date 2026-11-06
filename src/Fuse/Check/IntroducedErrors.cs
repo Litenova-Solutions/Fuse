@@ -55,6 +55,17 @@ internal sealed class IntroducedErrors
         _collector.WarmBaselineProjectAsync(project, generation, context, cancellationToken);
 
     /// <summary>
+    ///     Fills the store with HEAD's errors in <paramref name="project"/> of <paramref name="generation"/> for
+    ///     <paramref name="context"/>, and releases the baseline compilation it built.
+    /// </summary>
+    /// <returns>True when the project has compilation-wide analyzers whose results were stored.</returns>
+    public Task<bool> FillBaselineStoreAsync(Project project, Generation generation, CheckContext context, CancellationToken cancellationToken) =>
+        _collector.FillBaselineStoreAsync(project, generation.BaselineGeneration, context, cancellationToken, BaselineKey(generation));
+
+    /// <summary>Releases the kept baseline results and the baseline analyzer runs, when the check that built them ends.</summary>
+    public void ReleaseBaseline() => _collector.ReleaseBaseline();
+
+    /// <summary>
     ///     Writes how many stored baseline results the check read and how many it computed, when it read the store.
     /// </summary>
     public void LogBaseline() => LogBaseline(_collector.TakeBaselineReport());

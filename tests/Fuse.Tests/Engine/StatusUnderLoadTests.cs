@@ -105,7 +105,6 @@ public class StatusUnderLoadTests
 
     private static string EngineLogRequestId() => Guid.NewGuid().ToString("N");
 
-    /// <summary>Waits until a status from a sync of its own sees <paramref name="expected"/> changed files, after the lock is free again.</summary>
     /// <summary>Waits until a status from a sync of its own names a tree other than <paramref name="otherTree"/>.</summary>
     private static async Task<EngineStatus> PollStatusWithTreeAsync(RequestRouter router, string otherTree)
     {

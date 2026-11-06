@@ -35,7 +35,7 @@ public class SummaryCacheTests
 
         var consumer = CSharpCompilation.Create(
             "Consumer",
-            [CSharpSyntaxTree.ParseText("public class Use { public C Make() => new C(); }\n")],
+            [CSharpSyntaxTree.ParseText("public class Use { public C Make() => new C(); }\n", cancellationToken: TestContext.Current.CancellationToken)],
             [reference],
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
         var type = consumer.GetTypeByMetadataName("C");

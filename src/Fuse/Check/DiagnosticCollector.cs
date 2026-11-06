@@ -642,7 +642,7 @@ internal sealed class DiagnosticCollector
     ///     default value or a constant is part of it, because callers inline them. Null when a document has no
     ///     path or its declarations cannot be read.
     /// </summary>
-    private async Task<string?> DeclarationFingerprintCoreAsync(Project project, CancellationToken cancellationToken)
+    private static async Task<string?> DeclarationFingerprintCoreAsync(Project project, CancellationToken cancellationToken)
     {
         var documents = project.Documents.ToList();
         documents.AddRange(await project.GetSourceGeneratedDocumentsAsync(cancellationToken).ConfigureAwait(false));

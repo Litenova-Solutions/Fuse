@@ -91,7 +91,7 @@ public class ConcurrentCheckTests
         Assert.All(reports, report => Assert.Equal("CS0103", Assert.Single(report.Errors).Error.Id));
     }
 
-    public async Task Concurrent_direct_checks_of_the_same_file_answer_the_same()
+    public static async Task Concurrent_direct_checks_of_the_same_file_answer_the_same()
     {
         await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * missingValue;");

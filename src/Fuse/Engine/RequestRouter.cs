@@ -134,7 +134,7 @@ internal sealed class RequestRouter : IDisposable
             // not affected by this.
             try
             {
-                await _workspace.SyncAndPinAsync([], cancellationToken).ConfigureAwait(false);
+                await _workspace.SyncAndPinAsync([], cancellationToken, confirmWithDisk: true).ConfigureAwait(false);
                 key = CoalesceKey(request);
             }
             catch (FuseException)

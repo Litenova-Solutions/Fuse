@@ -1,10 +1,13 @@
 name: Chart
 
 # Renders site/assets/benefits.svg from the result files in evals/results, so the chart is drawn on a runner, never on a
-# developer's machine. Start it from the Actions tab or with gh workflow run chart.yml --ref <branch>, then commit the
+# developer's machine. It runs on every push that changes evals/results, or from the Actions tab; commit the
 # benefits-svg artifact as site/assets/benefits.svg.
 
 on:
+  push:
+    paths:
+      - evals/results/**
   workflow_dispatch:
 
 permissions:

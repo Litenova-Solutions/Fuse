@@ -143,6 +143,9 @@ public class SchedulerEngineTests
     [Fact]
     public async Task The_client_answers_busy_when_its_wait_runs_out()
     {
+        // The fake engine serves one connection at a time and recreates its pipe between them; on macOS a client's
+        // connection lands in those gaps, which no real engine has, so the case runs on Linux and Windows.
+        Assert.SkipWhen(OperatingSystem.IsMacOS(), "the single-instance fake pipe server resets connections between instances on macOS");
         using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });
         using var engine = new BusyEngine(repo.Root, busyAnswers: 100);
 

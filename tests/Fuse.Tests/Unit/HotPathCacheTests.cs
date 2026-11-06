@@ -152,7 +152,8 @@ public class HotPathCacheTests
     [Fact]
     public void Pipe_existence_is_kept_for_a_hundred_milliseconds_per_name()
     {
-        var name = "fuse-hotpath-" + Guid.NewGuid().ToString("N");
+        // Short: a Unix pipe is a socket file under the temp folder, whose path macOS limits to 104 bytes.
+        var name = "fuse-hp-" + Guid.NewGuid().ToString("N")[..8];
         var now = Environment.TickCount64;
 
         Assert.False(EngineClient.PipeExists(name, now));

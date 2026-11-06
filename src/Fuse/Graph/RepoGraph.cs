@@ -138,7 +138,18 @@ internal sealed class RepoGraph
         return result;
     }
 
-    /// <summary>Evaluates every project file git knows about (tracked or untracked, not ignored).</summary>
+    /// <summary>
+    ///     The graph the stored form holds for <paramref name="projects"/>, for <see cref="GraphCache"/> alone.
+    ///     Its owners, dependents and closures are derived as an evaluated graph's are.
+    /// </summary>
+    internal static RepoGraph FromStored(IReadOnlyList<ProjectNode> projects, IReadOnlyList<string> failures) =>
+        new(projects, failures);
+
+    /// <summary>
+    ///     Every project file git knows about (tracked or untracked, not ignored), evaluated, or read from the
+    ///     stored graph (<see cref="GraphCache"/>) when the project files and their imports are as they were when
+    ///     it was stored, so a fresh engine answers without evaluating again.
+    /// </summary>
     public static async Task<RepoGraph> EvaluateAsync(RepoRoot root, CancellationToken cancellationToken)
     {
         // -z gives one NUL-separated path per project file, exactly as it is on disk; without it git C-quotes a path that
@@ -156,8 +167,12 @@ internal sealed class RepoGraph
             .Distinct()
             .ToList();
 
+        if (GraphCache.TryLoad(root, paths) is { } stored)
+            return stored;
         MsBuildSetup.EnsureRegistered();
-        return Evaluate(root, paths, cancellationToken);
+        var graph = Evaluate(root, paths, cancellationToken);
+        GraphCache.Store(root, graph);
+        return graph;
     }
 
     private static RepoGraph Evaluate(RepoRoot root, List<RepoPath> paths, CancellationToken cancellationToken)

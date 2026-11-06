@@ -42,6 +42,12 @@ internal static partial class StatusOperation
     /// </summary>
     internal const int TouchedLimit = 2000;
 
+    /// <summary>
+    ///     The shortened idle, in minutes, after which an engine leaves when another engine needs memory. It
+    ///     mirrors the engine's shortened idle, for the engine line.
+    /// </summary>
+    internal const int ShortenedIdleMinutes = 5;
+
     /// <param name="root">The repository to report on.</param>
     /// <param name="json">True for one JSON object instead of text.</param>
     /// <param name="cancellationToken">Cancels the wait for the answer.</param>
@@ -86,7 +92,7 @@ internal static partial class StatusOperation
             int? inReach = engine is null ? null : engine.ChangedSourcesInReach;
             int? touched = engine is null ? null : engine.TouchedCount;
             return new OperationResult(Outcome.Clean, JsonSerializer.Serialize(
-                new StatusLine(state, engine?.Pid, memoryMB, count, head, tree, inReach, touched, TouchedLimit, KeptAnswerAt, WholeProjectAt, ReloadAt, ReloadAt, engine?.ReloadMs, engine?.GateHolder, memoryCeilingBytes, memoryLoadBytes),
+                new StatusLine(state, engine?.Pid, memoryMB, count, head, tree, inReach, touched, TouchedLimit, KeptAnswerAt, WholeProjectAt, ReloadAt, ReloadAt, engine?.ReloadMs, engine?.GateHolder, memoryCeilingBytes, memoryLoadBytes, engine?.WorkingSetBytes),
                 StatusJson.Default.StatusLine));
         }
         var text = new StringBuilder();
@@ -102,7 +108,7 @@ internal static partial class StatusOperation
     {
         if (engine is not null)
         {
-            var line = $"fuse: engine running for {root.Path} (pid {engine.Pid}), {engine.WorkingSetBytes / (1024 * 1024)} MB; idle exits after 30 min";
+            var line = $"fuse: engine running for {root.Path} (pid {engine.Pid}), {engine.WorkingSetBytes / (1024 * 1024)} MB of {engine.MemoryCeilingBytes / (1024 * 1024)} MB budget (GC load {engine.MemoryLoadBytes / (1024 * 1024)} MB); idle exits after 30 min, or {ShortenedIdleMinutes} min when another engine needs memory";
             return engine.GateHolder is { } holder
                 ? $"{line}; {holder} holds a reader"
                 : line;
@@ -169,7 +175,7 @@ internal static partial class StatusOperation
     ///     <c>head</c>, <c>tree</c> and <c>reloadAt</c> names stay beside the names the branch added, so a reader of either
     ///     set finds its limit.
     /// </summary>
-    private sealed record StatusLine(string Engine, int? Pid, int? MemoryMB, int ChangedFiles, string? Head, string Tree, int? ChangedSourcesInReach, int? TouchedPaths, int TouchedLimit, int KeptAnswerAt, int WholeProjectAt, int SyncReloadAt, int ReloadAt, long? ReloadMs, string? GateHolder, long? MemoryCeilingBytes, long? MemoryLoadBytes);
+    private sealed record StatusLine(string Engine, int? Pid, int? MemoryMB, int ChangedFiles, string? Head, string Tree, int? ChangedSourcesInReach, int? TouchedPaths, int TouchedLimit, int KeptAnswerAt, int WholeProjectAt, int SyncReloadAt, int ReloadAt, long? ReloadMs, string? GateHolder, long? MemoryCeilingBytes, long? MemoryLoadBytes, long? MemoryWorkingSetBytes);
 
     [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonSerializable(typeof(StatusLine))]

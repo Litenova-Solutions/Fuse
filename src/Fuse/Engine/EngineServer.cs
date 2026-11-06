@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using Fuse.Check;
 using Fuse.Failures;
+using Fuse.Graph;
 using Fuse.Paths;
 using Fuse.Protocol;
 using Fuse.Telemetry;
@@ -16,7 +17,7 @@ namespace Fuse.Engine;
 ///     The engine process: one per repository root, guarded by a named mutex, serving one request per pipe
 ///     connection. It returns its free memory once idle for <see cref="IdleClock.ReleaseAfter"/>, and exits after
 ///     <see cref="IdleClock.ExitAfter"/> without requests, after it drains for a client of another build, or when the
-///     repository disappears.
+///     repository disappears. When another engine needs memory, the engine that has been idle the longest leaves after the shortened idle instead, and comes back from the stored graph.
 /// </summary>
 internal static class EngineServer
 {
@@ -139,6 +140,7 @@ internal static class EngineServer
             LocalState.RecordRoot(root);
             BaselineStore.Prune(root.SharedStateDirectory);
             SummaryCache.Prune(root.SharedStateDirectory);
+            GraphCache.Prune(root.SharedStateDirectory);
             LocalState.RemoveUnusedEngineCopies(LocalState.EngineCopies, AppContext.BaseDirectory, DateTime.UtcNow);
             var removed = LocalState.RemoveStateOfMissingRepositories(LocalState.Repositories, DateTime.UtcNow);
             if (removed > 0)
@@ -284,6 +286,7 @@ internal static class EngineServer
             while (!shutdown.IsCancellationRequested)
             {
                 await Task.Delay(TimeSpan.FromSeconds(15), shutdown.Token).ConfigureAwait(false);
+                router.Budget.Record(root.StateDirectory, state.IdleDuration);
                 if (!Directory.Exists(root.Path))
                 {
                     log.Write("repository removed; exiting");
@@ -292,6 +295,11 @@ internal static class EngineServer
                 else if (ShouldExitForMachine(root, router, state))
                 {
                     log.Write("memory: machine is short and this engine has been idle the longest; exiting");
+                    await shutdown.CancelAsync().ConfigureAwait(false);
+                }
+                else if (ShouldExitShortenedForMachine(state))
+                {
+                    log.Write("memory: another engine needs memory and this engine has been idle the longest; exiting after shortened idle");
                     await shutdown.CancelAsync().ConfigureAwait(false);
                 }
                 else if (state.ShouldExit)
@@ -329,11 +337,30 @@ internal static class EngineServer
     ///     repository allocates gigabytes that the background collector frees without returning, so an idle engine would
     ///     otherwise keep the size it peaked at.
     /// </summary>
+    /// <summary>
+    ///     An engine leaves after the shortened idle when another engine needs memory; that decision is below.
+    /// </summary>
+
     private static void ReleaseMemory(EngineLog log)
     {
         var before = Environment.WorkingSet;
         GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, blocking: true, compacting: true);
         log.Write($"released memory: working set {before / (1024 * 1024)} MB before, {Environment.WorkingSet / (1024 * 1024)} MB after");
+    }
+
+    /// <summary>
+    ///     True when another engine needs memory and this engine has been idle the longest past the shortened
+    ///     idle: it leaves after <see cref="IdleClock.ExitAfterShortened"/> instead of
+    ///     <see cref="IdleClock.ExitAfter"/>, and comes back fast from the stored graph and the summaries. The
+    ///     working set was recorded for this tick in <see cref="WatchIdleAsync"/>, so this only reads.
+    /// </summary>
+    private static bool ShouldExitShortenedForMachine(IdleClock state)
+    {
+        if (state.ActiveCount > 0 || !state.ShouldExitShortened)
+            return false;
+        var engines = MemoryBudget.ReadMachine(Fuse.Paths.LocalState.Repositories);
+        var total = GC.GetGCMemoryInfo().TotalAvailableMemoryBytes;
+        return MemoryBudget.MachineNeedsMemory(engines, total) && MemoryBudget.IsIdlest(engines, Environment.ProcessId);
     }
 
     private static async Task WriteAsync(Stream stream, EngineResponse response, CancellationToken cancellationToken)

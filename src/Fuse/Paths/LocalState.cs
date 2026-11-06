@@ -31,6 +31,12 @@ internal static partial class LocalState
     /// <summary>The folder holding one state directory per repository.</summary>
     public static string Repositories => Path.Combine(BaseDirectory, "repos");
 
+    /// <summary>The file an engine records its working set and idle time in, inside its state directory, for the machine budget.</summary>
+    public const string EngineMemoryFile = "engine-memory.txt";
+
+    /// <summary>The directory the stored project graphs are kept in, under a shared directory.</summary>
+    public static string GraphDirectory(string sharedStateDirectory) => Path.Combine(sharedStateDirectory, "graph");
+
     /// <summary>
     ///     Marks <paramref name="copy"/> as used by this process until the returned handle is disposed, with a lock file
     ///     that no other process can open while it is held, on Windows and on Unix alike.

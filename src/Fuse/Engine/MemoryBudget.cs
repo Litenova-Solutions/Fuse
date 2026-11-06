@@ -1,3 +1,5 @@
+using Fuse.Paths;
+
 namespace Fuse.Engine;
 
 /// <summary>
@@ -61,7 +63,7 @@ internal sealed class MemoryBudget
             Directory.CreateDirectory(stateDirectory);
             var snapshot = Assess();
             File.WriteAllText(
-                Path.Combine(stateDirectory, "engine-memory.txt"),
+                Path.Combine(stateDirectory, LocalState.EngineMemoryFile),
                 $"{Environment.ProcessId}\t{snapshot.WorkingSetBytes}\t{(long)idle.TotalMilliseconds}\t{DateTime.UtcNow.Ticks}");
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
@@ -81,7 +83,7 @@ internal sealed class MemoryBudget
             return records;
         foreach (var directory in Directory.EnumerateDirectories(repositories))
         {
-            var file = Path.Combine(directory, "engine-memory.txt");
+            var file = Path.Combine(directory, LocalState.EngineMemoryFile);
             try
             {
                 if (!File.Exists(file))
@@ -94,6 +96,8 @@ internal sealed class MemoryBudget
                     || !long.TryParse(parts[3], out var ticks))
                     continue;
                 if (DateTime.UtcNow.Ticks - ticks > TimeSpan.FromMinutes(1).Ticks)
+                    continue;
+                if (pid <= 0 || workingSet < 0 || idleMs < 0)
                     continue;
                 records.Add(new EngineRecord(pid, workingSet, TimeSpan.FromMilliseconds(idleMs)));
             }
@@ -114,10 +118,41 @@ internal sealed class MemoryBudget
     {
         if (totalAvailable <= 0 || engines.Count == 0)
             return false;
-        if (engines.Sum(e => e.WorkingSetBytes) <= totalAvailable * 0.9)
+        if (!IsMachineShort(engines, totalAvailable))
             return false;
+        // The idlest engine yields; a busier engine stays.
+        return IsIdlest(engines, pid);
+    }
+
+    /// <summary>True when the engines on the machine hold more than 90 percent of the memory the GC reports, so the machine runs short.</summary>
+    public static bool IsMachineShort(IReadOnlyList<EngineRecord> engines, long totalAvailable) =>
+        totalAvailable > 0 && engines.Sum(e => e.WorkingSetBytes) > totalAvailable * 0.9;
+
+    /// <summary>True when the engines on the machine hold more than 70 percent of the memory the GC reports, so another engine needs memory an idle engine holds.</summary>
+    public static bool MachineNeedsMemory(IReadOnlyList<EngineRecord> engines, long totalAvailable) =>
+        totalAvailable > 0 && engines.Sum(e => e.WorkingSetBytes) > totalAvailable * 0.7;
+
+    /// <summary>
+    ///     True when <paramref name="pid"/> yields first: it has been idle at least as long as every other engine,
+    ///     and among engines idle as long it holds the most, with the highest process id last, so only one engine
+    ///     yields at a time and a busier engine stays.
+    /// </summary>
+    public static bool IsIdlest(IReadOnlyList<EngineRecord> engines, int pid)
+    {
         var self = engines.FirstOrDefault(e => e.Pid == pid);
-        return self is not null && engines.All(e => self.Idle >= e.Idle);
+        if (self is null)
+            return false;
+        foreach (var other in engines)
+        {
+            if (other.Pid == pid)
+                continue;
+            if (other.Idle > self.Idle)
+                return false;
+            if (other.Idle == self.Idle && (other.WorkingSetBytes > self.WorkingSetBytes || (other.WorkingSetBytes == self.WorkingSetBytes && other.Pid > pid)))
+                return false;
+        }
+
+        return true;
     }
 
     /// <summary>One step the engine sheds, in the order it sheds them.</summary>

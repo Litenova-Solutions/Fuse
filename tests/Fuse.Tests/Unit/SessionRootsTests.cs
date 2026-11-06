@@ -39,7 +39,7 @@ public class SessionRootsTests
             var second = SessionRoots.FileFor(directory, "claude:b");
 
             Assert.NotEqual(first, second);
-            Assert.True(first.StartsWith(Path.Combine(directory, "session-roots"), StringComparison.Ordinal));
+            Assert.StartsWith(Path.Combine(directory, "session-roots"), first, StringComparison.Ordinal);
         });
 
     private static void InTempDirectory(Action<string> test)

@@ -418,7 +418,7 @@ internal static partial class BuildOperation
     /// <param name="treeStamp">The stamp a <c>fuse build</c> summary carries, or null to print none.</param>
     /// <param name="fileTotal">How many errors the results file holds when it holds more than this build's, or null.</param>
     /// <param name="restoreTarget">What a lock refresh restores, relative to the root, or null to derive it from the repository.</param>
-    private static OperationResult RenderCore(string root, IReadOnlyList<BuildDiagnostic> diagnostics, IReadOnlyList<(string Command, List<string> Lines)> commands, List<BuildWarning> warnings, int warningsCount, string? times, int exitCode, string tail, double seconds, string operation, BuildOptions options, string? resultsPath, string? treeStamp, int? fileTotal, string? restoreTarget)
+    private static OperationResult RenderCore(string root, List<BuildDiagnostic> diagnostics, IReadOnlyList<(string Command, List<string> Lines)> commands, List<BuildWarning> warnings, int warningsCount, string? times, int exitCode, string tail, double seconds, string operation, BuildOptions options, string? resultsPath, string? treeStamp, int? fileTotal, string? restoreTarget)
     {
         var text = new StringBuilder();
         if (options.Json)

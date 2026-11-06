@@ -133,8 +133,8 @@ internal static class LastTestResults
             var flattened = new List<(int Run, TestRecord Record)>();
             for (var i = 0; i < runs.Count; i++)
             {
-                foreach (var record in runs[i].Outcome.Records)
-                    flattened.Add((i, record));
+                foreach (var testRecord in runs[i].Outcome.Records)
+                    flattened.Add((i, testRecord));
             }
 
             var kept = flattened.Where(t => t.Record.Verdict == TestVerdict.Failed).Concat(flattened.Where(t => t.Record.Verdict != TestVerdict.Failed)).Take(MaxTests).ToList();
@@ -144,8 +144,8 @@ internal static class LastTestResults
             {
                 var (project, name, outcome) = runs[i];
                 var records = new JsonArray();
-                foreach (var record in byRun.GetValueOrDefault(i) ?? [])
-                    records.Add((JsonNode)RecordNode(record));
+                foreach (var testRecord in byRun.GetValueOrDefault(i) ?? [])
+                    records.Add((JsonNode)RecordNode(testRecord));
                 var failures = new JsonArray();
                 foreach (var failure in outcome.Failures.Take(MaxStoredFailures))
                     failures.Add((JsonNode)FailureNode(failure));

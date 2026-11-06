@@ -207,7 +207,7 @@ internal static class SessionOperation
     }
 
     /// <summary>The process id a <c>--pid</c> in <paramref name="words"/> names, which is <c>--pid</c> and its id or one <c>--pid=</c> word, or the refusal for any other words.</summary>
-    private static (int? Pid, string? Refusal) PidFrom(IReadOnlyList<string> words)
+    private static (int? Pid, string? Refusal) PidFrom(List<string> words)
     {
         if (words.Count == 1 && words[0].StartsWith("--pid=", StringComparison.Ordinal))
             return PidValue(words[0]["--pid=".Length..]);

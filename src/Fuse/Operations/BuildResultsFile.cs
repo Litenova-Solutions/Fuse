@@ -151,7 +151,7 @@ internal static class BuildResultsFile
                     node["times"] = run.Times;
                 if (run.RestoreTarget is not null)
                     node["restoreTarget"] = run.RestoreTarget;
-                stored.Add(node);
+                stored.Add((JsonNode)node);
             }
 
             var record = new JsonObject

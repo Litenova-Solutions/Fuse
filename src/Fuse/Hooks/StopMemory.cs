@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Fuse.Paths;
 using Fuse.Protocol;
 
@@ -12,7 +13,7 @@ namespace Fuse.Hooks;
 ///     wrote after that block, lets the agent finish instead of blocking it on errors it cannot act on. An error in a
 ///     file the session wrote after the block blocks again, so work the session itself did is never let through.
 /// </summary>
-internal static class StopMemory
+internal static partial class StopMemory
 {
     /// <summary>One blocked stop: the error set it held, the tree it ended on, and when it blocked.</summary>
     /// <param name="Errors">The blocked errors, each as <see cref="KeyOf"/> writes it, in ordinal order.</param>
@@ -32,7 +33,7 @@ internal static class StopMemory
             var path = BlockedFile(stateDirectory, session);
             if (!File.Exists(path))
                 return null;
-            return JsonSerializer.Deserialize<Snapshot>(File.ReadAllText(path));
+            return JsonSerializer.Deserialize(File.ReadAllText(path), SnapshotJson.Default.Snapshot);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException)
         {
@@ -49,7 +50,7 @@ internal static class StopMemory
         try
         {
             Directory.CreateDirectory(stateDirectory);
-            File.WriteAllText(BlockedFile(stateDirectory, session), JsonSerializer.Serialize(snapshot));
+            File.WriteAllText(BlockedFile(stateDirectory, session), JsonSerializer.Serialize(snapshot, SnapshotJson.Default.Snapshot));
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
@@ -157,4 +158,9 @@ internal static class StopMemory
 
     private static string Hash(string session) =>
         Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(session)))[..16];
+
+    [JsonSerializable(typeof(Snapshot))]
+    private sealed partial class SnapshotJson : JsonSerializerContext
+    {
+    }
 }

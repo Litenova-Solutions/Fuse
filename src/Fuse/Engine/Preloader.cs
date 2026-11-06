@@ -63,8 +63,9 @@ internal sealed class Preloader
             await _requestLock.EnterAsync(RequestGate.Preload, shutdown).ConfigureAwait(false);
             try
             {
-                var graph = _workspace.Graph;
-                next = _workspace.Tracker.Changed
+                var generation = _workspace.PinGeneration();
+                var graph = generation.Graph;
+                next = generation.Changed
                     .SelectMany(graph.OwnersOf)
                     .SelectMany(graph.DependentsOf)
                     .FirstOrDefault(p => !_workspace.IsLoaded(p) && !(_failed.TryGetValue(p.Path, out var failed) && failed == AttemptOf(p, graph)));
@@ -76,7 +77,7 @@ internal sealed class Preloader
 
             if (next is null)
                 return;
-            var attempt = AttemptOf(next, _workspace.Graph);
+            var attempt = AttemptOf(next, _workspace.PinGeneration().Graph);
             try
             {
                 await _workspace.PreloadAsync(next, shutdown).ConfigureAwait(false);

@@ -21,11 +21,15 @@ internal static class ScopeExpansion
     /// <param name="workspace">The repository, whose change tracker is the universe a directory or a glob matches in.</param>
     /// <param name="named">Absolute file and directory paths and absolute glob patterns, in the order named.</param>
     /// <exception cref="FuseException">A directory, a glob or a file matches nothing checkable, or the expansion is too large.</exception>
-    public static List<RepoPath> Expand(RepoWorkspace workspace, IReadOnlyList<string> named)
+    public static List<RepoPath> Expand(RepoWorkspace workspace, IReadOnlyList<string> named) =>
+        Expand(workspace, workspace.PinGeneration(), named);
+
+    /// <summary>The targets of the specs <paramref name="named"/> in <paramref name="generation"/>.</summary>
+    public static List<RepoPath> Expand(RepoWorkspace workspace, Generation generation, IReadOnlyList<string> named)
     {
         var root = workspace.Root;
-        var graph = workspace.Graph;
-        var changed = workspace.Tracker.Changed;
+        var graph = generation.Graph;
+        var changed = generation.Changed;
         var union = new HashSet<RepoPath>();
         foreach (var spec in named)
         {

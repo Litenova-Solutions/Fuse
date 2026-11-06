@@ -7,7 +7,9 @@ namespace Fuse.Check;
 
 /// <summary>
 ///     The answers of recent checks by what the tree held when they ran, so a check with nothing changed since is
-///     answered without binding anything again. It lives in memory only; an engine that restarts checks again.
+///     answered without binding anything again. It lives in memory only; an engine that restarts checks again. The
+///     store is locked, so checks that run at the same time keep and take answers without corrupting it, under the
+///     same content key each would compute alone.
 /// </summary>
 internal sealed class KeptCheck
 {
@@ -16,13 +18,18 @@ internal sealed class KeptCheck
 
     private readonly Dictionary<string, CheckResult> _answers = new(StringComparer.Ordinal);
     private readonly List<string> _order = [];
+    private readonly Lock _lock = new();
 
     /// <summary>The kept answer for <paramref name="key"/>, or false when nothing is kept for it.</summary>
     public bool TryGet(string key, out CheckResult result)
     {
-        var found = _answers.TryGetValue(key, out var value);
-        result = value!;
-        return found;
+        lock (_lock)
+        {
+            var found = _answers.TryGetValue(key, out var value);
+
+            result = value!;
+            return found;
+        }
     }
 
     /// <summary>
@@ -34,22 +41,25 @@ internal sealed class KeptCheck
     {
         if (result.AnalyzersUnfinished > 0)
             return;
-        if (_answers.ContainsKey(key))
+        lock (_lock)
         {
+            if (_answers.ContainsKey(key))
+            {
+                _answers[key] = result;
+                _order.Remove(key);
+                _order.Add(key);
+                return;
+            }
+
+            if (_order.Count >= MaxEntries)
+            {
+                _answers.Remove(_order[0]);
+                _order.RemoveAt(0);
+            }
+
             _answers[key] = result;
-            _order.Remove(key);
             _order.Add(key);
-            return;
         }
-
-        if (_order.Count >= MaxEntries)
-        {
-            _answers.Remove(_order[0]);
-            _order.RemoveAt(0);
-        }
-
-        _answers[key] = result;
-        _order.Add(key);
     }
 
     /// <summary>

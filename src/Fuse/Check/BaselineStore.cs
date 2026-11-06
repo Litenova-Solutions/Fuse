@@ -265,7 +265,7 @@ internal sealed partial class BaselineStore
         {
             var directory = Path.GetDirectoryName(file)!;
             Directory.CreateDirectory(directory);
-            var staging = file + ".tmp-" + Environment.ProcessId;
+            var staging = file + ".tmp-" + Environment.ProcessId + "-" + Guid.NewGuid().ToString("N");
             File.WriteAllText(staging, JsonSerializer.Serialize(result, StoreJson.Default.StoredResult));
             // The worktrees of one repository share the store, so a write takes the key's lock while it replaces the
             // file. A write that cannot take the lock is dropped; the baseline is computed again.

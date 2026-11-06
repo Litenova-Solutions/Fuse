@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Fuse.Failures;
 using Fuse.Paths;
 
@@ -24,8 +25,8 @@ internal sealed class ChangeTracker : IDisposable
     private readonly HeadResolver _head;
     private readonly WatchedPaths _watched;
     private readonly GitBlobReader _blobs;
-    private readonly HashSet<RepoPath> _changed = [];
-    private readonly HashSet<RepoPath> _nonSources = [];
+    private readonly ConcurrentDictionary<RepoPath, byte> _changed = new();
+    private readonly ConcurrentDictionary<RepoPath, byte> _nonSources = new();
 
     /// <summary>
     ///     What a sync took from the watcher and did not fold in because its reseed failed, or null. The next sync takes it
@@ -51,8 +52,8 @@ internal sealed class ChangeTracker : IDisposable
     /// <summary>The commit the baseline is taken from, or null in a repository without commits.</summary>
     public string? Head { get; private set; }
 
-    /// <summary>The C# and Razor files that differ from HEAD, including deleted ones.</summary>
-    public IReadOnlyCollection<RepoPath> Changed => _changed;
+    /// <summary>The C# and Razor files that differ from HEAD, including deleted ones, as a snapshot a reader can enumerate while a sync folds.</summary>
+    public IReadOnlyCollection<RepoPath> Changed => [.. _changed.Keys.OrderBy(p => p.Relative, StringComparer.Ordinal)];
 
     /// <summary>How many changed files are not sources; the check names them instead of reading them.</summary>
     public int NonSourceChanged { get; private set; }
@@ -61,7 +62,7 @@ internal sealed class ChangeTracker : IDisposable
     public IReadOnlyList<RepoPath> NonSourceSample { get; private set; } = [];
 
     /// <summary>The files that differ from HEAD and are not sources, including deleted ones.</summary>
-    public IReadOnlyCollection<RepoPath> NonSources => _nonSources;
+    public IReadOnlyCollection<RepoPath> NonSources => [.. _nonSources.Keys.OrderBy(p => p.Relative, StringComparer.Ordinal)];
 
     /// <summary>Reads git state and starts watching. Call once before <see cref="SyncAsync"/>.</summary>
     public async Task InitializeAsync(CancellationToken cancellationToken)
@@ -69,7 +70,7 @@ internal sealed class ChangeTracker : IDisposable
         var head = await _head.ResolveAsync(Head, cancellationToken).ConfigureAwait(false);
         var (seeded, nonSources) = await SeedAsync(cancellationToken).ConfigureAwait(false);
         Head = head;
-        _changed.UnionWith(seeded);
+        foreach (var seededPath in seeded) _changed[seededPath] = 0;
         SetNonSources(nonSources);
         _watched.Start();
     }
@@ -104,7 +105,7 @@ internal sealed class ChangeTracker : IDisposable
         {
             var ignored = await GitStatus.IgnoredPathsAsync(_root, watchedNonSources, cancellationToken).ConfigureAwait(false);
             watchedNonSources.ExceptWith(ignored);
-            _nonSources.ExceptWith(ignored);
+            foreach (var ignoredPath in ignored) _nonSources.TryRemove(ignoredPath, out _);
         }
 
         // After HEAD moves or the watcher loses events, the reported paths are not the whole change, and past the limit
@@ -128,12 +129,12 @@ internal sealed class ChangeTracker : IDisposable
                 throw;
             }
 
-            paths.UnionWith(_changed);
+            paths.UnionWith(_changed.Keys);
             Head = head;
             _changed.Clear();
-            _changed.UnionWith(seeded);
+            foreach (var seededPath in seeded) _changed[seededPath] = 0;
             SetNonSources(nonSources);
-            paths.UnionWith(_changed);
+            paths.UnionWith(_changed.Keys);
             if (headMoved)
                 return new SyncResult.Reevaluate(paths, head is null ? "HEAD has no commit" : $"HEAD moved to {head[..Math.Min(12, head.Length)]}");
             if (watched.WatcherErrors.Count > 0)
@@ -145,8 +146,8 @@ internal sealed class ChangeTracker : IDisposable
 
         foreach (var directory in watched.VanishedDirectories)
         {
-            watchedNonSources.UnionWith(_nonSources.Where(c => c.IsUnder(directory)));
-            paths.UnionWith(_changed.Where(c => c.IsUnder(directory)));
+            watchedNonSources.UnionWith(_nonSources.Keys.Where(c => c.IsUnder(directory)));
+            paths.UnionWith(_changed.Keys.Where(c => c.IsUnder(directory)));
         }
 
         foreach (var path in paths)
@@ -171,7 +172,7 @@ internal sealed class ChangeTracker : IDisposable
     private void SetNonSources(List<RepoPath> nonSources)
     {
         _nonSources.Clear();
-        _nonSources.UnionWith(nonSources);
+        foreach (var nonSourcePath in nonSources) _nonSources[nonSourcePath] = 0;
         NoteNonSources();
     }
 
@@ -226,7 +227,7 @@ internal sealed class ChangeTracker : IDisposable
     private void NoteNonSources()
     {
         NonSourceChanged = _nonSources.Count;
-        NonSourceSample = [.. _nonSources.OrderBy(p => p.Relative, StringComparer.Ordinal).Take(MaxNonSourceSample)];
+        NonSourceSample = [.. _nonSources.Keys.OrderBy(p => p.Relative, StringComparer.Ordinal).Take(MaxNonSourceSample)];
     }
 
     private void RefreshNonSource(RepoPath path)
@@ -236,14 +237,14 @@ internal sealed class ChangeTracker : IDisposable
         // The watcher reports a change on a directory when its listing changes; the directory is not a changed file.
         if (Directory.Exists(path.Absolute))
         {
-            _nonSources.Remove(path);
+            _nonSources.TryRemove(path, out _);
             return;
         }
 
         if (DiffersFromHead(path))
-            _nonSources.Add(path);
+            _nonSources[path] = 0;
         else
-            _nonSources.Remove(path);
+            _nonSources.TryRemove(path, out _);
     }
 
     private void Refresh(RepoPath path)
@@ -251,9 +252,9 @@ internal sealed class ChangeTracker : IDisposable
         if (_watched.IsIgnored(path))
             return;
         if (DiffersFromHead(path))
-            _changed.Add(path);
+            _changed[path] = 0;
         else
-            _changed.Remove(path);
+            _changed.TryRemove(path, out _);
     }
 
     private bool DiffersFromHead(RepoPath path)

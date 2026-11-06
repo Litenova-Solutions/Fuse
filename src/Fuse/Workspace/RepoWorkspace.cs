@@ -16,7 +16,10 @@ namespace Fuse.Workspace;
 /// <remarks>
 ///     It composes the parts and adds no rule of its own: <see cref="ChangeTracker"/> tracks which files differ from
 ///     HEAD, <see cref="ProjectLoader"/> evaluates the projects and opens them, <see cref="SolutionViews"/> holds both
-///     views, and <see cref="WorkspaceSync"/> keeps them current.
+///     views, and <see cref="WorkspaceSync"/> keeps them current. One writer lock serializes every sync and every
+///     load that folds a project into the views, and each round that changes a view, the graph or the changed set
+///     publishes a <see cref="Generation"/>. A reader pins a generation and reads only it, so it never sees a
+///     half-applied sync and never waits for the writer after its pin.
 /// </remarks>
 internal sealed class RepoWorkspace : IDisposable
 {
@@ -24,6 +27,12 @@ internal sealed class RepoWorkspace : IDisposable
     private readonly ProjectLoader _projects;
     private readonly SolutionViews _views;
     private readonly WorkspaceSync _sync;
+
+    /// <summary>Serializes sync and load, the writer rounds. A round holds it until it publishes its generation.</summary>
+    private readonly SemaphoreSlim _writer = new(1, 1);
+
+    private Generation? _generation;
+    private long _generationNumber;
 
     public RepoWorkspace(RepoRoot root, Action<string> log)
     {
@@ -55,36 +64,128 @@ internal sealed class RepoWorkspace : IDisposable
 
     public void Log(string message) => _log(message);
 
+    /// <summary>
+    ///     The newest published generation. A check pins it when it starts work and holds it to the end, so the
+    ///     views, graph and changed set it reads belong at one instant.
+    /// </summary>
+    public Generation PinGeneration() => Volatile.Read(ref _generation) ?? PublishInitial();
+
     /// <summary>Evaluates the project graph and starts tracking changes. Compiles nothing.</summary>
     public async Task InitializeAsync(CancellationToken cancellationToken)
     {
-        await Tracker.InitializeAsync(cancellationToken).ConfigureAwait(false);
-        await _sync.EvaluateAsync(cancellationToken).ConfigureAwait(false);
+        await _writer.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await Tracker.InitializeAsync(cancellationToken).ConfigureAwait(false);
+            await _sync.EvaluateAsync(cancellationToken).ConfigureAwait(false);
+            PublishLocked();
+        }
+        finally
+        {
+            _writer.Release();
+        }
     }
 
     /// <inheritdoc cref="WorkspaceSync.SyncAsync"/>
-    public Task SyncAsync(IEnumerable<RepoPath> knownPaths, CancellationToken cancellationToken) =>
-        _sync.SyncAsync(knownPaths, cancellationToken);
+    public async Task SyncAsync(IEnumerable<RepoPath> knownPaths, CancellationToken cancellationToken)
+    {
+        await SyncAndPinAsync(knownPaths, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Syncs the workspace under the writer lock and pins the generation that sync published.</summary>
+    /// <param name="knownPaths">Files just written by the agent, checked even before their watcher event arrives.</param>
+    /// <param name="cancellationToken">Cancels re-evaluation.</param>
+    public async Task<Generation> SyncAndPinAsync(IEnumerable<RepoPath> knownPaths, CancellationToken cancellationToken)
+    {
+        var known = knownPaths as IReadOnlyCollection<RepoPath> ?? [.. knownPaths];
+        await _writer.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await _sync.SyncAsync(known, cancellationToken).ConfigureAwait(false);
+            return PublishLocked();
+        }
+        finally
+        {
+            _writer.Release();
+        }
+    }
 
     /// <summary>Loads <paramref name="projects"/> and everything they reference, and makes them part of both views.</summary>
     /// <exception cref="FuseException">A project has not been restored or failed to load.</exception>
-    public Task EnsureLoadedAsync(IEnumerable<ProjectNode> projects, CancellationToken cancellationToken) =>
-        _sync.EnsureLoadedAsync(projects, cancellationToken);
+    public async Task EnsureLoadedAsync(IEnumerable<ProjectNode> projects, CancellationToken cancellationToken)
+    {
+        await EnsureLoadedAndPinAsync(projects, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Loads <paramref name="projects"/> under the writer lock and pins the generation that load published.</summary>
+    /// <exception cref="FuseException">A project has not been restored or failed to load.</exception>
+    public async Task<Generation> EnsureLoadedAndPinAsync(IEnumerable<ProjectNode> projects, CancellationToken cancellationToken)
+    {
+        var requested = projects as IReadOnlyCollection<ProjectNode> ?? [.. projects];
+        await _writer.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await _sync.EnsureLoadedAsync(requested, cancellationToken).ConfigureAwait(false);
+            return PublishLocked();
+        }
+        finally
+        {
+            _writer.Release();
+        }
+    }
 
     /// <summary>Applies each of <paramref name="paths"/> to both views again: its disk content to <see cref="Current"/> and its HEAD content to <see cref="Baseline"/>.</summary>
     /// <param name="paths">The files to apply; each is also touched.</param>
     /// <param name="cancellationToken">Cancels reading file contents.</param>
-    public Task PatchViewsAsync(IReadOnlyCollection<RepoPath> paths, CancellationToken cancellationToken) =>
-        _sync.PatchViewsAsync(paths, cancellationToken);
+    public async Task PatchViewsAsync(IReadOnlyCollection<RepoPath> paths, CancellationToken cancellationToken)
+    {
+        await PatchAndPinAsync(paths, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Applies each of <paramref name="paths"/> under the writer lock and pins the generation it published.</summary>
+    /// <param name="paths">The files to apply; each is also touched.</param>
+    /// <param name="cancellationToken">Cancels reading file contents.</param>
+    public async Task<Generation> PatchAndPinAsync(IReadOnlyCollection<RepoPath> paths, CancellationToken cancellationToken)
+    {
+        await _writer.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await _sync.PatchViewsAsync(paths, cancellationToken).ConfigureAwait(false);
+            return PublishLocked();
+        }
+        finally
+        {
+            _writer.Release();
+        }
+    }
 
     /// <summary>Derives both views from the loader's solution again, re-applying every touched and every changed file.</summary>
     /// <param name="cancellationToken">Cancels reading file contents.</param>
-    public Task RebuildViewsAsync(CancellationToken cancellationToken) =>
-        _sync.RebuildAsync(cancellationToken);
+    public async Task RebuildViewsAsync(CancellationToken cancellationToken)
+    {
+        await RebuildAndPinAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Derives both views again under the writer lock and pins the generation it published, for a reader whose pinned generation lacks a reached project.</summary>
+    /// <param name="cancellationToken">Cancels reading file contents.</param>
+    public async Task<Generation> RebuildAndPinAsync(CancellationToken cancellationToken)
+    {
+        await _writer.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await _sync.RebuildAsync(cancellationToken).ConfigureAwait(false);
+            return PublishLocked();
+        }
+        finally
+        {
+            _writer.Release();
+        }
+    }
 
     /// <summary>
     ///     Loads <paramref name="project"/> into the loader without touching <see cref="Current"/> or
-    ///     <see cref="Baseline"/>, so it can run while requests are served; the next request folds it into both views.
+    ///     <see cref="Baseline"/>, so it can run while requests are served; the next writer round folds it into both
+    ///     views. The loader's own lock serializes the load itself, because MSBuild evaluation is not thread-safe.
     /// </summary>
     /// <exception cref="FuseException">The project has not been restored or failed to load.</exception>
     public Task PreloadAsync(ProjectNode project, CancellationToken cancellationToken) =>
@@ -110,9 +211,76 @@ internal sealed class RepoWorkspace : IDisposable
     public Task<Solution> CurrentWithHeadContentAsync(IEnumerable<RepoPath> paths, CancellationToken cancellationToken) =>
         _views.CurrentWithHeadContentAsync(paths, cancellationToken);
 
+    /// <summary>
+    ///     <paramref name="generation"/>'s current view with each of <paramref name="paths"/> at its HEAD content, for a
+    ///     reader that pinned that generation. Neither published view changes.
+    /// </summary>
+    public Task<Solution> CurrentWithHeadContentAsync(Generation generation, IEnumerable<RepoPath> paths, CancellationToken cancellationToken) =>
+        _views.CurrentWithHeadContentAsync(generation.Current, paths, cancellationToken);
+
+    /// <summary>
+    ///     Publishes the state the writer just left as the newest generation, or keeps the current one when nothing
+    ///     it holds changed. The caller holds the writer lock.
+    /// </summary>
+    private Generation PublishLocked()
+    {
+        var current = _views.Current;
+        var baseline = _views.Baseline;
+        var graph = _projects.Graph;
+        var changed = Tracker.Changed;
+        var nonSources = Tracker.NonSources;
+        var head = Tracker.Head;
+        var configuration = _projects.ConfigurationGeneration;
+        var baselineGeneration = _views.BaselineGeneration;
+        if (_generation is { } published
+            && ReferenceEquals(published.Current, current)
+            && ReferenceEquals(published.Baseline, baseline)
+            && ReferenceEquals(published.Graph, graph)
+            && published.Head == head
+            && published.ConfigurationGeneration == configuration
+            && published.BaselineGeneration == baselineGeneration
+            && published.Changed.SequenceEqual(changed)
+            && published.NonSources.SequenceEqual(nonSources))
+            return published;
+
+        var next = new Generation(
+            _generationNumber++,
+            head,
+            current,
+            baseline,
+            graph,
+            [.. changed],
+            [.. nonSources],
+            Tracker.NonSourceChanged,
+            [.. Tracker.NonSourceSample],
+            configuration,
+            baselineGeneration);
+        Volatile.Write(ref _generation, next);
+        return next;
+    }
+
+    private Generation PublishInitial()
+    {
+        var empty = new AdhocWorkspace().CurrentSolution;
+        var next = new Generation(
+            _generationNumber++,
+            Tracker.Head,
+            (Solution?)_views.Current ?? empty,
+            (Solution?)_views.Baseline ?? empty,
+            _projects.Graph!,
+            [.. Tracker.Changed],
+            [.. Tracker.NonSources],
+            Tracker.NonSourceChanged,
+            [.. Tracker.NonSourceSample],
+            _projects.ConfigurationGeneration,
+            _views.BaselineGeneration);
+        return Interlocked.CompareExchange(ref _generation, next, null) ?? next;
+    }
+
     public void Dispose()
     {
         _projects.Dispose();
         Tracker.Dispose();
+        _writer.Dispose();
     }
 }

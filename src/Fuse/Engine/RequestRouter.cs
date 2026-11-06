@@ -65,11 +65,12 @@ internal sealed class RequestRouter : IDisposable
             await _workspace.InitializeAsync(cancellationToken).ConfigureAwait(false);
             // A file an earlier engine recorded that matches HEAD now was reverted or committed while no engine watched;
             // forgotten here, its sessions are not still credited when the file is written again before the first check.
-            _sessions.Forget(_workspace.Tracker.Changed);
+            _sessions.Forget(_workspace.PinGeneration().Changed);
             var live = _sessions.LiveRegistrations();
             if (live.Count > 0)
                 _log.Write($"registered sessions live: {string.Join(", ", live.Select(r => r.Session[SessionEdits.RegisteredPrefix.Length..]).Order(StringComparer.Ordinal))}");
-            var owners = _workspace.Tracker.Changed.SelectMany(_workspace.Graph.OwnersOf).DistinctBy(p => p.Path).ToList();
+            var initial = _workspace.PinGeneration();
+            var owners = initial.Changed.SelectMany(initial.Graph.OwnersOf).DistinctBy(p => p.Path).ToList();
             if (owners.Count > 0)
             {
                 try
@@ -263,9 +264,9 @@ internal sealed class RequestRouter : IDisposable
     /// </summary>
     private async Task<IReadOnlySet<RepoPath>> OnlyOtherSessionsWroteAsync(string session, CancellationToken cancellationToken)
     {
-        await _workspace.SyncAsync([], cancellationToken).ConfigureAwait(false);
+        var generation = await _workspace.SyncAndPinAsync([], cancellationToken).ConfigureAwait(false);
         // Scoping lives in SessionEdits, so a plan and a stop check leave out the same files.
-        return _sessions.OnlyOtherSessionsWrote(_workspace.Tracker.Changed, session);
+        return _sessions.OnlyOtherSessionsWrote(generation.Changed, session);
     }
 
     /// <summary>Releases the request lock and lets the background load and warm continue.</summary>
@@ -293,16 +294,17 @@ internal sealed class RequestRouter : IDisposable
     /// <param name="reloadMs">How long that sync's reload took, or null when it patched without reloading.</param>
     private EngineStatus CaptureStatus(long? reloadMs)
     {
-        var changed = _workspace.Tracker.Changed;
+        var generation = _workspace.PinGeneration();
+        var changed = generation.Changed;
         lock (_statusLock)
         {
-            if (_workspace.ConfigurationGeneration != _touchedConfigurationGeneration)
+            if (generation.ConfigurationGeneration != _touchedConfigurationGeneration)
             {
                 // The touched set resets only when it passed its limit and the next sync re-evaluated; a reload that
                 // did not pass it keeps the paths it already held.
                 if (_touchedPaths.Count > SolutionViews.MaxTouchedPaths)
                     _touchedPaths.Clear();
-                _touchedConfigurationGeneration = _workspace.ConfigurationGeneration;
+                _touchedConfigurationGeneration = generation.ConfigurationGeneration;
             }
 
             _touchedPaths.UnionWith(changed);
@@ -310,10 +312,10 @@ internal sealed class RequestRouter : IDisposable
                 Environment.ProcessId,
                 Environment.WorkingSet,
                 changed.Count,
-                _workspace.Tracker.Head,
+                generation.Head,
                 TreeStamp.Of(ChangedPairs(changed)))
             {
-                ChangedSourcesInReach = changed.Count(path => _workspace.Graph.OwnersOf(path).Count > 0),
+                ChangedSourcesInReach = changed.Count(path => generation.Graph.OwnersOf(path).Count > 0),
                 TouchedCount = _touchedPaths.Count,
                 ReloadMs = reloadMs,
             };
@@ -454,12 +456,12 @@ internal sealed class RequestRouter : IDisposable
     private async Task<EngineResponse> PlanChangedBuildAsync(PhaseTimes phases, CancellationToken cancellationToken)
     {
         var syncing = phases.Start();
-        await _workspace.SyncAsync([], cancellationToken).ConfigureAwait(false);
+        var generation = await _workspace.SyncAndPinAsync([], cancellationToken).ConfigureAwait(false);
         phases.Add(Phase.Sync, syncing);
         var projectFiles = (await GitStatus.ChangedPathsAsync(_workspace.Root, cancellationToken).ConfigureAwait(false))
             .Where(path => PathRules.IsProjectFile(path.Absolute))
             .ToList();
-        return new EngineResponse.ChangedBuildAnswered(ChangedBuildPlanner.Plan(_workspace.Graph, _workspace.Tracker.Changed, projectFiles));
+        return new EngineResponse.ChangedBuildAnswered(ChangedBuildPlanner.Plan(generation.Graph, generation.Changed, projectFiles));
     }
 
     /// <summary>
@@ -470,7 +472,8 @@ internal sealed class RequestRouter : IDisposable
     {
         if (!stamp || response is not EngineResponse.CheckAnswered answered)
             return response;
-        var changed = _workspace.Tracker.Changed;
+        var generation = _workspace.PinGeneration();
+        var changed = generation.Changed;
         return new EngineResponse.CheckAnswered(answered.Report with { Tree = TreeStamp.Of(ChangedPairs(changed)), TreeFiles = changed.Count });
     }
 

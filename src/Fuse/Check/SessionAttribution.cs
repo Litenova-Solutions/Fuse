@@ -60,9 +60,13 @@ internal sealed class SessionAttribution
     /// <param name="errors">Every error the check found, before the cap on reported errors.</param>
     /// <param name="session">The session the check is answered to.</param>
     /// <param name="cancellationToken">Cancels the binding.</param>
-    public async Task<(List<CompilerError> Told, int FilesNotAttributed)?> ToldAsync(IReadOnlyList<CompilerError> errors, string session, CancellationToken cancellationToken)
+    public Task<(List<CompilerError> Told, int FilesNotAttributed)?> ToldAsync(IReadOnlyList<CompilerError> errors, string session, CancellationToken cancellationToken) =>
+        ToldAsync(errors, session, _workspace.PinGeneration(), new CheckContext(AnalyzerRun.Full, reuse: true), cancellationToken);
+
+    /// <summary>The errors of <paramref name="errors"/> that <paramref name="session"/> is told about in <paramref name="generation"/> for <paramref name="context"/>.</summary>
+    public async Task<(List<CompilerError> Told, int FilesNotAttributed)?> ToldAsync(IReadOnlyList<CompilerError> errors, string session, Generation generation, CheckContext context, CancellationToken cancellationToken)
     {
-        var writers = _edits.WritersOf(_workspace.Tracker.Changed);
+        var writers = _edits.WritersOf(generation.Changed);
         var onlyOthers = writers.Where(w => !w.Value.Any(s => _edits.IsOwnEdit(s, session))).Select(w => w.Key).ToList();
         // With no file that only other sessions wrote, every error is this session's or everyone's.
         if (errors.Count == 0 || onlyOthers.Count == 0)
@@ -86,14 +90,14 @@ internal sealed class SessionAttribution
                 continue;
             }
 
-            withoutOthers ??= await _workspace.CurrentWithHeadContentAsync(onlyOthers, cancellationToken).ConfigureAwait(false);
-            var alone = Keys(await _introduced.InFileOfAsync(withoutOthers, path, cancellationToken).ConfigureAwait(false));
+            withoutOthers ??= await _workspace.CurrentWithHeadContentAsync(generation, onlyOthers, cancellationToken).ConfigureAwait(false);
+            var alone = Keys(await _introduced.InFileOfAsync(withoutOthers, path, generation, context, cancellationToken).ConfigureAwait(false));
             var undecided = file.Where(e => !alone.Contains(Key(e))).ToList();
             if (undecided.Count == 0)
                 continue;
 
-            withoutThis ??= await _workspace.CurrentWithHeadContentAsync(onlyThis, cancellationToken).ConfigureAwait(false);
-            var byOthers = Keys(await _introduced.InFileOfAsync(withoutThis, path, cancellationToken).ConfigureAwait(false));
+            withoutThis ??= await _workspace.CurrentWithHeadContentAsync(generation, onlyThis, cancellationToken).ConfigureAwait(false);
+            var byOthers = Keys(await _introduced.InFileOfAsync(withoutThis, path, generation, context, cancellationToken).ConfigureAwait(false));
             notTold.UnionWith(undecided.Where(e => byOthers.Contains(Key(e))));
         }
 

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text;
 using Fuse.Paths;
 using Fuse.Repo;
@@ -23,6 +24,7 @@ internal sealed class SolutionViews
     private readonly ProjectLoader _projects;
     private readonly AnalyzerShadow _analyzers;
     private readonly HashSet<RepoPath> _touched = [];
+    private readonly Lock _touchedLock = new();
 
     /// <summary>The most paths the touched set holds. Past it the next sync re-evaluates the projects and resets the set, so it stays bounded however long the engine runs.</summary>
     internal const int MaxTouchedPaths = 2000;
@@ -31,7 +33,7 @@ internal sealed class SolutionViews
     ///     Each generated file of the views (<see cref="GeneratedFiles"/>), with the length and last write time it had when
     ///     its content was last applied to both views.
     /// </summary>
-    private readonly Dictionary<RepoPath, (long Length, DateTime WrittenUtc)> _generated = [];
+    private readonly ConcurrentDictionary<RepoPath, (long Length, DateTime WrittenUtc)> _generated = new();
 
     /// <summary>
     ///     The documents of the views that lie in a <c>bin</c> or <c>obj</c> folder of their project: files a build
@@ -44,7 +46,7 @@ internal sealed class SolutionViews
     ///     The content of each generated file that differed from what the loader read for it, as last applied, so a view
     ///     derived again from the loader gets it back without reading the file again.
     /// </summary>
-    private readonly Dictionary<RepoPath, SourceText> _rewritten = [];
+    private readonly ConcurrentDictionary<RepoPath, SourceText> _rewritten = new();
 
     /// <summary>
     ///     The loader's solution both views were last derived from, or null after <see cref="Clear"/>. It is set only
@@ -107,13 +109,28 @@ internal sealed class SolutionViews
     ///     applies them again. A path stays remembered after it matches HEAD again, because the loader may still hold its
     ///     older content.
     /// </summary>
-    public void Touch(IEnumerable<RepoPath> paths) => _touched.UnionWith(paths);
+    public void Touch(IEnumerable<RepoPath> paths)
+    {
+        lock (_touchedLock)
+            _touched.UnionWith(paths);
+    }
 
     /// <summary>True when the touched set holds more than <see cref="MaxTouchedPaths"/> paths, so the next sync re-evaluates the projects and resets it.</summary>
-    public bool TouchedOverflows => _touched.Count > MaxTouchedPaths;
+    public bool TouchedOverflows
+    {
+        get
+        {
+            lock (_touchedLock)
+                return _touched.Count > MaxTouchedPaths;
+        }
+    }
 
     /// <summary>Empties the touched set. Called only when the projects are evaluated again, which reopens them from disk.</summary>
-    public void ResetTouched() => _touched.Clear();
+    public void ResetTouched()
+    {
+        lock (_touchedLock)
+            _touched.Clear();
+    }
 
     /// <summary>Derives both views from the loader's solution again, re-applying every touched and every changed file.</summary>
     /// <remarks>
@@ -132,7 +149,10 @@ internal sealed class SolutionViews
         var current = _analyzers.Apply(loaded);
         var baseline = current;
         var head = _tracker.Head;
-        foreach (var path in _touched.Concat(_tracker.Changed).Distinct())
+        List<RepoPath> touched;
+        lock (_touchedLock)
+            touched = [.. _touched];
+        foreach (var path in touched.Concat(_tracker.Changed).Distinct())
         {
             current = await WithDiskContentAsync(current, path, cancellationToken).ConfigureAwait(false);
             baseline = await WithHeadContentAsync(baseline, path, cancellationToken).ConfigureAwait(false);
@@ -249,7 +269,8 @@ internal sealed class SolutionViews
         var baseline = Baseline;
         foreach (var path in paths)
         {
-            _touched.Add(path);
+            lock (_touchedLock)
+                _touched.Add(path);
             current = await WithDiskContentAsync(current, path, cancellationToken).ConfigureAwait(false);
             baseline = await WithHeadContentAsync(baseline, path, cancellationToken).ConfigureAwait(false);
         }
@@ -267,8 +288,17 @@ internal sealed class SolutionViews
     ///     left out. Neither view changes; the result shares every other document with <see cref="Current"/>, so only the
     ///     projects that compile those files bind again.
     /// </summary>
+    /// <param name="view">The current view to derive from, as a pinned generation holds it.</param>
     /// <param name="paths">The files to put back at HEAD content.</param>
     /// <param name="cancellationToken">Cancels reading file contents.</param>
+    public async Task<Solution> CurrentWithHeadContentAsync(Solution view, IEnumerable<RepoPath> paths, CancellationToken cancellationToken)
+    {
+        var solution = view;
+        foreach (var path in paths)
+            solution = await WithHeadContentAsync(solution, path, cancellationToken).ConfigureAwait(false);
+        return solution;
+    }
+
     public async Task<Solution> CurrentWithHeadContentAsync(IEnumerable<RepoPath> paths, CancellationToken cancellationToken)
     {
         var solution = Current;

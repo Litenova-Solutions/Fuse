@@ -67,7 +67,7 @@ internal sealed class BaselineWarmer
             await _requestLock.EnterAsync(RequestGate.Preload, shutdown).ConfigureAwait(false);
             try
             {
-                generation = _workspace.BaselineGeneration;
+                generation = _workspace.PinGeneration().BaselineGeneration;
                 if (generation != _warmedGeneration)
                 {
                     _warmedGeneration = generation;
@@ -75,7 +75,7 @@ internal sealed class BaselineWarmer
                 }
 
                 next = null;
-                foreach (var candidate in _workspace.Graph.Projects)
+                foreach (var candidate in _workspace.PinGeneration().Graph.Projects)
                 {
                     if (_workspace.IsLoaded(candidate) && !_warmedProjects.Contains(candidate.Path))
                     {
@@ -109,7 +109,7 @@ internal sealed class BaselineWarmer
                 return;
             }
 
-            if (_workspace.BaselineGeneration != generation)
+            if (_workspace.PinGeneration().BaselineGeneration != generation)
             {
                 _log("baseline warm: skipped, HEAD moved again");
                 return;

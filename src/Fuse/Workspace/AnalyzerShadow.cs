@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 using Fuse.Paths;
@@ -25,7 +26,8 @@ internal sealed class AnalyzerShadow
     /// <summary>Copies older than this are removed when an engine starts; younger ones may still be in use.</summary>
     private static readonly TimeSpan CopyLifetime = TimeSpan.FromDays(7);
 
-    private readonly Dictionary<RepoPath, (string Stamp, AnalyzerFileReference Reference)> _references = [];
+    private readonly ConcurrentDictionary<RepoPath, (string Stamp, AnalyzerFileReference Reference)> _references = new();
+    private readonly Lock _applyLock = new();
     private Solution? _lastInput;
     private Solution? _lastOutput;
 
@@ -60,6 +62,7 @@ internal sealed class AnalyzerShadow
     /// </summary>
     public Solution Apply(Solution solution)
     {
+        using var applyScope = _applyLock.EnterScope();
         if (ReferenceEquals(solution, _lastInput) && _lastOutput is not null)
             return _lastOutput;
 

@@ -107,6 +107,23 @@ internal sealed class RepoRoot
         && (absolute.Length == Path.Length || absolute[Path.Length] == System.IO.Path.DirectorySeparatorChar || absolute[Path.Length] == System.IO.Path.AltDirectorySeparatorChar);
 
     /// <summary>
+    ///     <paramref name="value"/> with every spelling of the root's path taken out, compared the way the file system
+    ///     does, so a value that names a path under the root reads alike in every worktree of the repository.
+    /// </summary>
+    public string WithoutRoot(string value)
+    {
+        var masked = value;
+        foreach (var spelling in new[] { Path, Path.Replace('\\', '/'), Path.Replace('/', '\\') }.Distinct(StringComparer.Ordinal))
+        {
+            int index;
+            while ((index = masked.IndexOf(spelling, RepoPath.Comparison)) >= 0)
+                masked = masked[..index] + masked[(index + spelling.Length)..];
+        }
+
+        return masked;
+    }
+
+    /// <summary>
     ///     The canonical git common directory of the repository <paramref name="root"/>: its <c>.git</c> directory, or
     ///     for a worktree or submodule the directory its <c>.git</c> file's <c>commondir</c> file names. Null when it
     ///     cannot be read.

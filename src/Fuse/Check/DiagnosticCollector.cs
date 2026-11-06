@@ -1,5 +1,8 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
+using System.Security.Cryptography;
+using System.Text;
+using Fuse.Changes;
 using Fuse.Check.Model;
 using Fuse.Paths;
 using Microsoft.CodeAnalysis;
@@ -30,6 +33,15 @@ internal sealed class DiagnosticCollector
 
     /// <summary>The compiler and per-file analyzer errors of each working-tree file at the last check that bound it, by the key they were found under.</summary>
     private readonly ConcurrentDictionary<DocumentId, CachedFile> _currentFiles = new();
+
+    /// <summary>The most projects whose declaration fingerprints are kept; past it they are read again.</summary>
+    private const int MaxDeclarationFingerprints = 512;
+
+    /// <summary>
+    ///     The declaration fingerprint of a project, by the project and the checksums of the document texts it was
+    ///     read from, so a project whose documents are as they were is not read again for every file of a check.
+    /// </summary>
+    private readonly ConcurrentDictionary<string, string> _declarationFingerprints = new(StringComparer.Ordinal);
 
     private readonly Lock _configurationLock = new();
     private int _currentFilesGeneration = -1;
@@ -84,6 +96,7 @@ internal sealed class DiagnosticCollector
             if (generation == _currentFilesGeneration)
                 return;
             _currentFiles.Clear();
+            _declarationFingerprints.Clear();
             _currentFilesGeneration = generation;
             _analyses.StopAll(baseline: false);
             _analyses.StopAll(baseline: true);
@@ -536,24 +549,87 @@ internal sealed class DiagnosticCollector
 
     /// <summary>
     ///     What a working-tree file's compiler and per-file analyzer errors depend on: its text, the declarations of
-    ///     every project in the solution (each project's own semantic version, which a change inside a method body
-    ///     leaves as it is), and the project configuration. Every project in the solution counts, not only the ones
-    ///     this file's project references as projects: a reference outside the change cone is supplied by a summary
-    ///     instead, so a dependent version taken from the references would change when a body-only edit in that
-    ///     project moves it into the cone and the reference becomes source again, although no declaration changed.
-    ///     Counting a project this file cannot see only ever binds it again, never reuses it wrongly.
+    ///     every project in the solution, and the project configuration. Every project in the solution counts, not
+    ///     only the ones this file's project references as projects. The declarations are read from syntax, as a
+    ///     fingerprint of each declaration's identity, surface and parameter lists, because a version taken from
+    ///     Roslyn changes when a reference outside the change cone stops being supplied by a summary and becomes
+    ///     source again, although no declaration changed: that switch forks the project, and its semantic version
+    ///     is the newer of its declarations' version and the forked project's own version. A change inside a
+    ///     method body leaves the fingerprint as it is, and a declaration change anywhere in the solution moves
+    ///     it. Counting a project this file cannot see only ever binds it again, never reuses it wrongly. Null
+    ///     when a project's declarations cannot be read, so its files are bound rather than reused.
     /// </summary>
-    private async Task<FileKey> KeyAsync(Document document, CancellationToken cancellationToken)
+    private async Task<FileKey?> KeyAsync(Document document, CancellationToken cancellationToken)
     {
         var text = await document.GetTextAsync(cancellationToken).ConfigureAwait(false);
         var declarations = new HashCode();
         foreach (var project in document.Project.Solution.Projects.OrderBy(p => p.Id.Id.ToString("N"), StringComparer.Ordinal))
         {
             declarations.Add(project.Id);
-            declarations.Add(await project.GetSemanticVersionAsync(cancellationToken).ConfigureAwait(false));
+            if (await DeclarationFingerprintAsync(project, cancellationToken).ConfigureAwait(false) is not { } fingerprint)
+                return null;
+            declarations.Add(fingerprint, StringComparer.Ordinal);
         }
 
         return new FileKey(Convert.ToHexString(text.GetChecksum().AsSpan()), declarations.ToHashCode(), _configurationGeneration());
+    }
+
+    /// <summary>
+    ///     The declarations <paramref name="project"/> holds now: every declaration's identity, surface and
+    ///     parameter lists, over its documents and its source-generated documents in path order, hashed. A
+    ///     default value or a constant is part of it, because callers inline them. Null when a document has no
+    ///     path or its declarations cannot be read, which the caller treats as no reuse for its files.
+    /// </summary>
+    private async Task<string?> DeclarationFingerprintAsync(Project project, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await DeclarationFingerprintCoreAsync(project, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            return null;
+        }
+    }
+
+    private async Task<string?> DeclarationFingerprintCoreAsync(Project project, CancellationToken cancellationToken)
+    {
+        var documents = project.Documents.ToList();
+        documents.AddRange(await project.GetSourceGeneratedDocumentsAsync(cancellationToken).ConfigureAwait(false));
+        if (documents.Any(d => d.FilePath is null))
+            return null;
+        documents = [.. documents.OrderBy(d => d.FilePath, StringComparer.Ordinal)];
+        var memo = new StringBuilder();
+        foreach (var document in documents)
+        {
+            memo.Append(document.Id).Append(':');
+            memo.Append(Convert.ToHexString((await document.GetTextAsync(cancellationToken).ConfigureAwait(false)).GetChecksum().AsSpan())).Append('\n');
+        }
+
+        var memoKey = project.Id.Id.ToString("N") + ":" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(memo.ToString())));
+        if (_declarationFingerprints.TryGetValue(memoKey, out var kept))
+            return kept;
+        var builder = new StringBuilder();
+        foreach (var document in documents)
+        {
+            if (await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false) is not { } root)
+                return null;
+            foreach (var declaration in FileDeclarations.Of(root).All)
+            {
+                builder.Append(declaration.Key).Append('\n');
+                builder.Append(declaration.Surface ?? "<none>").Append('\n');
+                foreach (var part in declaration.Parts)
+                    builder.Append(FileDeclarations.FlatParameters(part)).Append('\n');
+            }
+
+            builder.Append('\0');
+        }
+
+        var fingerprint = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(builder.ToString())));
+        if (_declarationFingerprints.Count > MaxDeclarationFingerprints)
+            _declarationFingerprints.Clear();
+        _declarationFingerprints[memoKey] = fingerprint;
+        return fingerprint;
     }
 
     /// <summary>
@@ -705,7 +781,7 @@ internal sealed class DiagnosticCollector
     /// <summary>HEAD's errors in one file from a run whose analyzers finished, and whether that run included the compilation-wide analyzers.</summary>
     private sealed record BaselineFile(IReadOnlyList<CompilerError> Errors, bool CompilationWide);
 
-    /// <summary>What a working-tree file's errors were found under: its text's checksum, a hash of every project's semantic version and the configuration generation.</summary>
+    /// <summary>What a working-tree file's errors were found under: its text's checksum, a hash of every project's declaration fingerprints and the configuration generation.</summary>
     private sealed record FileKey(string Checksum, int Declarations, int Configuration);
 
     /// <summary>A working-tree file's compiler and per-file analyzer errors, and the key they were found under.</summary>

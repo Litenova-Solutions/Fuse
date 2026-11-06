@@ -127,7 +127,7 @@ internal sealed partial class BaselineStore
                     foreach (var key in options.Keys.Order(StringComparer.Ordinal))
                     {
                         if (options.TryGetValue(key, out var value))
-                            lines.Add("option:" + node.Path.Relative + "|" + project.Name + "|" + key + "=" + MaskWorktreeRoot(value, root));
+                            lines.Add("option:" + node.Path.Relative + "|" + project.Name + "|" + key + "=" + root.WithoutRoot(value));
                     }
                 }
             }
@@ -196,25 +196,6 @@ internal sealed partial class BaselineStore
         {
             return null;
         }
-    }
-
-    /// <summary>
-    ///     <paramref name="value"/> with every spelling of <paramref name="root"/>'s path taken out, leaving the part
-    ///     under the root, so an analyzer option that MSBuild set from the project directory (the generated editorconfig's
-    ///     <c>build_property.ProjectDir</c> and its kin) keys alike in every worktree. A value that names no path under
-    ///     the root is returned as it is.
-    /// </summary>
-    private static string MaskWorktreeRoot(string value, RepoRoot root)
-    {
-        var masked = value;
-        foreach (var spelling in new[] { root.Path, root.Path.Replace('\\', '/'), root.Path.Replace('/', '\\') }.Distinct(StringComparer.Ordinal))
-        {
-            int index;
-            while ((index = masked.IndexOf(spelling, RepoPath.Comparison)) >= 0)
-                masked = masked[..index] + masked[(index + spelling.Length)..];
-        }
-
-        return masked;
     }
 
     /// <summary>

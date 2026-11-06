@@ -31,7 +31,10 @@ namespace Fuse.Testing;
 ///         from build output never overwrites a file it is about to emit. The state also remembers what a kept
 ///         dependent's referenced projects declared when its image was written, so the image is kept only while
 ///         they declare the same. Each plan holds the copy it writes until its preparation ends, so plans that
-///         prepare at the same time write copies of their own.
+///         prepare at the same time write copies of their own. A copy a plan answered with is kept after its
+///         preparation ends, while a plan that was already under way could still take it for its own answer and
+///         no run has held it since; a later plan that starts after it may use it again, and an older copy goes
+///         only at such a plan, once no run holds it and a run has held it since it was answered with.
 ///     </para>
 ///     <para>
 ///         A test run holds the copy it runs from until it ends, and a plan never writes a copy a run holds: it prepares a
@@ -58,6 +61,9 @@ internal sealed class ShadowEmitter
     /// <summary>The copy this plan claimed for each shadow folder, so every target framework of one test project prepares into the same copy.</summary>
     private readonly Dictionary<string, string> _copies = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Where this plan stands in the shared order of plans, taken when its emitter was made; a copy answered after it is not this plan's to use or remove.</summary>
+    private readonly long _sequence;
+
     /// <summary>What the emitters of one planner share, so an image one plan emits serves the next and concurrent plans agree on what each shadow file holds.</summary>
     internal sealed class SharedState
     {
@@ -82,6 +88,19 @@ internal sealed class ShadowEmitter
 
         /// <summary>Serializes the choice of a shadow copy, so two plans never choose the copy the other is writing.</summary>
         internal Lock Allocation { get; } = new();
+
+        /// <summary>The places in the order of plans and of the answers they gave taken so far, for <see cref="Answered"/>.</summary>
+        private long _sequence;
+
+        /// <summary>The next place in the order of plans and of the answers they gave.</summary>
+        internal long NextSequence() => Interlocked.Increment(ref _sequence);
+
+        /// <summary>
+        ///     Each copy a plan answered with, with the place in the order its preparation ended. A copy stays
+        ///     here until a plan that is not preparing it finds a run holding it, which says its answer was taken;
+        ///     from then on a later plan may remove it once no run holds it.
+        /// </summary>
+        internal ConcurrentDictionary<string, long> Answered { get; } = new(StringComparer.OrdinalIgnoreCase);
     }
 
 
@@ -112,15 +131,26 @@ internal sealed class ShadowEmitter
         _root = workspace.Root;
         _baseline = baseline;
         _shared = shared;
+        _sequence = shared.NextSequence();
     }
 
-    /// <summary>Releases the copies this plan held while it prepared them, so a later plan may write them again.</summary>
+    /// <summary>
+    ///     Releases the copies this plan held while it prepared them, so a later plan may write them again. Each
+    ///     copy is first recorded as one this plan answered with, under the same lock that chooses copies, so a
+    ///     plan that is already under way keeps it for this plan's answer instead of using or removing it.
+    /// </summary>
     internal void ReleaseCopies()
     {
-        foreach (var hold in _holds)
-            hold.Dispose();
-        _holds.Clear();
-        _copies.Clear();
+        lock (_shared.Allocation)
+        {
+            var answered = _shared.NextSequence();
+            foreach (var copy in _copies.Values)
+                _shared.Answered[copy] = answered;
+            foreach (var hold in _holds)
+                hold.Dispose();
+            _holds.Clear();
+            _copies.Clear();
+        }
     }
 
     /// <summary>How many assemblies were emitted since the engine started, as opposed to taken from the cache.</summary>
@@ -494,9 +524,11 @@ internal sealed class ShadowEmitter
 
     /// <summary>
     ///     The folder a plan prepares a test project's shadow run in, under <paramref name="project"/>: the newest copy when
-    ///     no test run holds it, so the files already in place are not written again, or a new copy when a run still runs
-    ///     from it (<see cref="LocalState.HoldTestCopy"/>), so the run keeps the files it started with. Every older copy no
-    ///     run holds is deleted.
+    ///     no test run holds it and no plan answered with it while this plan was under way, so the files already in
+    ///     place are not written again, or a new copy when a run still runs from it
+    ///     (<see cref="LocalState.HoldTestCopy"/>) or a plan under way at the same time answered with it, so each
+    ///     answer keeps the files it names. Every older copy is deleted once no run holds it, a run has held it
+    ///     since a plan answered with it, and it is not the copy chosen here.
     /// </summary>
     /// <remarks>
     ///     Copies are numbered folders, <c>g1</c>, <c>g2</c> and so on, the newest with the highest number. Anything else in
@@ -504,7 +536,7 @@ internal sealed class ShadowEmitter
     ///     The client holds <c>build.lock</c> from before it asks for a plan until it holds the copies the plan names, so
     ///     no run takes a copy between this choice and the plan's answer.
     /// </remarks>
-    private static string CopyFolder(string project, Action<string> log)
+    private string CopyFolder(string project, Action<string> log)
     {
         Directory.CreateDirectory(project);
         var copies = new List<(int Number, string Path)>();
@@ -519,18 +551,32 @@ internal sealed class ShadowEmitter
 
         var newest = copies.Count == 0 ? (Number: 0, Path: null) : copies.MaxBy(c => c.Number);
         var chosen = newest.Path;
-        if (chosen is null || LocalState.IsInUse(chosen))
+        var held = chosen is not null && LocalState.IsInUse(chosen);
+        var answered = chosen is not null && _shared.Answered.TryGetValue(chosen, out var answeredAt) && answeredAt > _sequence;
+        if (chosen is null || held || answered)
         {
             chosen = Path.Combine(project, $"g{newest.Number + 1}");
             Directory.CreateDirectory(chosen);
-            if (newest.Path is not null)
+            if (held)
                 log($"{Path.GetFileName(project)}: a test run still runs from {Path.GetFileName(newest.Path)}, so this plan copies into {Path.GetFileName(chosen)}");
         }
 
         foreach (var (_, path) in copies)
         {
-            if (path != chosen && !LocalState.IsInUse(path))
-                TryDelete(path);
+            if (path == chosen)
+                continue;
+            if (LocalState.IsInUse(path))
+            {
+                // A run holding a copy a plan answered with has taken that answer, so a later choice may
+                // remove the copy once nothing holds it; a plan preparing it answers with it again at the
+                // end of its preparation, which records it anew.
+                _shared.Answered.TryRemove(path, out _);
+                continue;
+            }
+
+            if (_shared.Answered.ContainsKey(path))
+                continue;
+            TryDelete(path);
         }
 
         return chosen;

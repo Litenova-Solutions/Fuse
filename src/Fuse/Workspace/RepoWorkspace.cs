@@ -105,13 +105,14 @@ internal sealed class RepoWorkspace : IDisposable
     /// <summary>Syncs the workspace under the writer lock and pins the generation that sync published.</summary>
     /// <param name="knownPaths">Files just written by the agent, checked even before their watcher event arrives.</param>
     /// <param name="cancellationToken">Cancels re-evaluation.</param>
-    public async Task<Generation> SyncAndPinAsync(IEnumerable<RepoPath> knownPaths, CancellationToken cancellationToken)
+    /// <param name="confirmWithDisk">True to confirm the changed set against disk when the watcher reported nothing, for a check of every change.</param>
+    public async Task<Generation> SyncAndPinAsync(IEnumerable<RepoPath> knownPaths, CancellationToken cancellationToken, bool confirmWithDisk = false)
     {
         var known = knownPaths as IReadOnlyCollection<RepoPath> ?? [.. knownPaths];
         await _writer.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            await _sync.SyncAsync(known, cancellationToken).ConfigureAwait(false);
+            await _sync.SyncAsync(known, cancellationToken, confirmWithDisk).ConfigureAwait(false);
             return PublishLocked();
         }
         finally

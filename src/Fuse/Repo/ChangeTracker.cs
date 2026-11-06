@@ -78,11 +78,12 @@ internal sealed class ChangeTracker : IDisposable
     /// <summary>Folds every change seen since the last call into <see cref="Changed"/> and says how the workspace follows it.</summary>
     /// <param name="knownPaths">Files a hook reports as written, checked even if their watcher event has not arrived.</param>
     /// <param name="cancellationToken">Cancels a reseed from git.</param>
+    /// <param name="confirmWithDisk">True to confirm the changed set against git when the watcher reported nothing.</param>
     /// <exception cref="FuseException">
     ///     git cannot resolve HEAD, list the changes or read a file at HEAD. When listing the changes for a reseed fails,
     ///     <see cref="Head"/> and <see cref="Changed"/> stay as they were and the next call seeds again.
     /// </exception>
-    public async Task<SyncResult> SyncAsync(IEnumerable<RepoPath> knownPaths, CancellationToken cancellationToken)
+    public async Task<SyncResult> SyncAsync(IEnumerable<RepoPath> knownPaths, CancellationToken cancellationToken, bool confirmWithDisk = false)
     {
         var head = await _head.ResolveAsync(Head, cancellationToken).ConfigureAwait(false);
         var headMoved = !string.Equals(head, Head, StringComparison.Ordinal);
@@ -108,15 +109,12 @@ internal sealed class ChangeTracker : IDisposable
             foreach (var ignoredPath in ignored) _nonSources.TryRemove(ignoredPath, out _);
         }
 
-
-
-
-        // The watcher reported nothing since the last sync and no caller named a file: a write it has not
-        // reported yet, as a shell command's write on macOS can be late, is in no set yet, so the changed set
-        // is confirmed against disk through git, as a reseed reads it. Every file that changed before the
-        // confirmation or after it goes back, so a file whose membership stayed while its content moved is
-        // applied again too.
-        if (!headMoved && paths.Count == 0 && watchedNonSources.Count == 0
+        // A check of every change asked for confirmation, and the watcher reported nothing since the last sync and no
+        // caller named a file: a write it has not reported yet, as a shell command's write on macOS can be late, is in
+        // no set yet, so the changed set is confirmed against disk through git, as a reseed reads it. Every file that
+        // changed before the confirmation or after it goes back, so a file whose membership stayed while its content
+        // moved is applied again too. Other syncs never pay for git.
+        if (confirmWithDisk && !headMoved && paths.Count == 0 && watchedNonSources.Count == 0
             && watched.ProjectFiles.Count == 0 && watched.VanishedDirectories.Count == 0 && watched.WatcherErrors.Count == 0)
         {
             HashSet<RepoPath> seeded;
@@ -133,9 +131,10 @@ internal sealed class ChangeTracker : IDisposable
                 throw;
             }
 
+            // Reconciled in place, never emptied, so a reader between the two steps never sees a tree with no changes.
             var confirmed = new HashSet<RepoPath>(_changed.Keys);
-            _changed.Clear();
             foreach (var seededPath in seeded) _changed[seededPath] = 0;
+            foreach (var stale in confirmed.Where(p => !seeded.Contains(p))) _changed.TryRemove(stale, out _);
             SetNonSources(seededNonSources);
             confirmed.UnionWith(_changed.Keys);
             return new SyncResult.Patch(confirmed, watched.VanishedDirectories);

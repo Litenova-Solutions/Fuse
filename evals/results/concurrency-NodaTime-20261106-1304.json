@@ -1,0 +1,1080 @@
+{
+  "suite": "concurrency",
+  "repo": "NodaTime",
+  "commit": "fcd80e11216ba403ccce0abbcedc41ba37bb352e",
+  "fuseBuild": "6.0.0/b24b111aad3943d6982f25f88c8d43dd",
+  "coldStartMs": 4735.1166,
+  "levels": [
+    {
+      "callers": 1,
+      "wallMs": 834.337,
+      "wall": {
+        "p50": 828,
+        "p95": 828,
+        "max": 828,
+        "n": 1
+      },
+      "queue": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 1
+      },
+      "engine": {
+        "p50": 640,
+        "p95": 640,
+        "max": 640,
+        "n": 1
+      },
+      "gateByHolder": {},
+      "calls": [
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-1-1",
+          "file": "src/NodaTime/AnnualDate.cs",
+          "wallMs": 828.0123,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        }
+      ],
+      "errors": 0,
+      "timeouts": 0,
+      "busyAnswers": 0,
+      "unanswered": 0,
+      "stopTimeouts": 0,
+      "statusTimeouts": 0,
+      "byKind": {
+        "post-edit": {
+          "calls": 1,
+          "wall": {
+            "p50": 828,
+            "p95": 828,
+            "max": 828,
+            "n": 1
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 1
+          },
+          "engine": {
+            "p50": 640,
+            "p95": 640,
+            "max": 640,
+            "n": 1
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "scoped": {
+          "calls": 0,
+          "wall": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 0
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 0
+          },
+          "engine": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 0
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "stop": {
+          "calls": 0,
+          "wall": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 0
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 0
+          },
+          "engine": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 0
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "test-plan": {
+          "calls": 0,
+          "wall": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 0
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 0
+          },
+          "engine": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 0
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        }
+      },
+      "status": {
+        "calls": 1,
+        "wall": {
+          "p50": 124.6,
+          "p95": 124.6,
+          "max": 124.6,
+          "n": 1
+        },
+        "queue": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 1
+        },
+        "engine": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 1
+        },
+        "timeouts": 0,
+        "busyAnswers": 0,
+        "unanswered": 0
+      },
+      "enginePeakWorkingSetMb": 255.5
+    },
+    {
+      "callers": 4,
+      "wallMs": 117453.5396,
+      "wall": {
+        "p50": 16220.7,
+        "p95": 117452.8,
+        "max": 117452.8,
+        "n": 4
+      },
+      "queue": {
+        "p50": 0,
+        "p95": 6873.9,
+        "max": 6873.9,
+        "n": 4
+      },
+      "engine": {
+        "p50": 9828,
+        "p95": 26765,
+        "max": 26765,
+        "n": 4
+      },
+      "gateByHolder": {
+        "PlanAffectedTests": {
+          "p50": 0,
+          "p95": 6873.9,
+          "max": 6873.9,
+          "n": 3
+        }
+      },
+      "calls": [
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-4-1",
+          "file": "src/NodaTime/AnnualDate.cs",
+          "wallMs": 6988.2579,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "scoped",
+          "session": "eval-concurrency-4-2",
+          "file": "src/NodaTime.Benchmarks/BclTests/DateTimeBenchmarks.cs",
+          "wallMs": 16829.0313,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "stop",
+          "session": "eval-concurrency-4-3",
+          "file": "src/NodaTime.Benchmarks.Custom/ConcurrencyCommandBase.cs",
+          "wallMs": 16220.6649,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "test-plan",
+          "session": "eval-concurrency-4-4",
+          "file": "src/NodaTime.NzdPrinter/Program.cs",
+          "wallMs": 117452.7951,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        }
+      ],
+      "errors": 0,
+      "timeouts": 0,
+      "busyAnswers": 0,
+      "unanswered": 0,
+      "stopTimeouts": 0,
+      "statusTimeouts": 3,
+      "byKind": {
+        "post-edit": {
+          "calls": 1,
+          "wall": {
+            "p50": 6988.3,
+            "p95": 6988.3,
+            "max": 6988.3,
+            "n": 1
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 1
+          },
+          "engine": {
+            "p50": 6906,
+            "p95": 6906,
+            "max": 6906,
+            "n": 1
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "scoped": {
+          "calls": 1,
+          "wall": {
+            "p50": 16829,
+            "p95": 16829,
+            "max": 16829,
+            "n": 1
+          },
+          "queue": {
+            "p50": 6873.9,
+            "p95": 6873.9,
+            "max": 6873.9,
+            "n": 1
+          },
+          "engine": {
+            "p50": 9828,
+            "p95": 9828,
+            "max": 9828,
+            "n": 1
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "stop": {
+          "calls": 1,
+          "wall": {
+            "p50": 16220.7,
+            "p95": 16220.7,
+            "max": 16220.7,
+            "n": 1
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 1
+          },
+          "engine": {
+            "p50": 16110,
+            "p95": 16110,
+            "max": 16110,
+            "n": 1
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "test-plan": {
+          "calls": 1,
+          "wall": {
+            "p50": 117452.8,
+            "p95": 117452.8,
+            "max": 117452.8,
+            "n": 1
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 1
+          },
+          "engine": {
+            "p50": 26765,
+            "p95": 26765,
+            "max": 26765,
+            "n": 1
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        }
+      },
+      "status": {
+        "calls": 4,
+        "wall": {
+          "p50": 2191.6,
+          "p95": 2702.9,
+          "max": 2702.9,
+          "n": 4
+        },
+        "queue": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 4
+        },
+        "engine": {
+          "p50": 1719,
+          "p95": 2016,
+          "max": 2016,
+          "n": 4
+        },
+        "timeouts": 3,
+        "busyAnswers": 0,
+        "unanswered": 3
+      },
+      "enginePeakWorkingSetMb": 628.4
+    },
+    {
+      "callers": 10,
+      "wallMs": 125715.5127,
+      "wall": {
+        "p50": 955.1,
+        "p95": 121846.7,
+        "max": 121846.7,
+        "n": 10
+      },
+      "queue": {
+        "p50": 0,
+        "p95": 629.5,
+        "max": 629.5,
+        "n": 10
+      },
+      "engine": {
+        "p50": 765,
+        "p95": 4532,
+        "max": 4532,
+        "n": 10
+      },
+      "gateByHolder": {
+        "CheckChanges": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 4
+        },
+        "CheckPaths": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 2
+        },
+        "PlanAffectedTests": {
+          "p50": 578,
+          "p95": 629.5,
+          "max": 629.5,
+          "n": 2
+        }
+      },
+      "calls": [
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-10-1",
+          "file": "src/NodaTime/AnnualDate.cs",
+          "wallMs": 3640.4377,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "scoped",
+          "session": "eval-concurrency-10-2",
+          "file": "src/NodaTime.Benchmarks/BclTests/DateTimeBenchmarks.cs",
+          "wallMs": 3679.602,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "stop",
+          "session": "eval-concurrency-10-3",
+          "file": "src/NodaTime.Benchmarks.Custom/ConcurrencyCommandBase.cs",
+          "wallMs": 4740.2772,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "test-plan",
+          "session": "eval-concurrency-10-4",
+          "file": "src/NodaTime.NzdPrinter/Program.cs",
+          "wallMs": 74667.429,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-10-5",
+          "file": "src/NodaTime.Testing/FakeClock.cs",
+          "wallMs": 386.2196,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "scoped",
+          "session": "eval-concurrency-10-6",
+          "file": "src/NodaTime.Tools.Common/FileUtility.cs",
+          "wallMs": 189.7636,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "stop",
+          "session": "eval-concurrency-10-7",
+          "file": "src/NodaTime.Tools.DumpTimeZoneInfo/Program.cs",
+          "wallMs": 955.0699,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "test-plan",
+          "session": "eval-concurrency-10-8",
+          "file": "src/NodaTime.Tools.ValidateHistoricalNzd/Program.cs",
+          "wallMs": 121846.6934,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-10-9",
+          "file": "src/NodaTime.TzValidate.NodaDump/Options.cs",
+          "wallMs": 799.5878,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "scoped",
+          "session": "eval-concurrency-10-10",
+          "file": "src/NodaTime.TzValidate.NzdCompatibility/Options.cs",
+          "wallMs": 861.2574,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        }
+      ],
+      "errors": 0,
+      "timeouts": 0,
+      "busyAnswers": 0,
+      "unanswered": 0,
+      "stopTimeouts": 0,
+      "statusTimeouts": 1,
+      "byKind": {
+        "post-edit": {
+          "calls": 3,
+          "wall": {
+            "p50": 799.6,
+            "p95": 3640.4,
+            "max": 3640.4,
+            "n": 3
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 578,
+            "max": 578,
+            "n": 3
+          },
+          "engine": {
+            "p50": 31,
+            "p95": 3453,
+            "max": 3453,
+            "n": 3
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "scoped": {
+          "calls": 3,
+          "wall": {
+            "p50": 861.3,
+            "p95": 3679.6,
+            "max": 3679.6,
+            "n": 3
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 629.5,
+            "max": 629.5,
+            "n": 3
+          },
+          "engine": {
+            "p50": 16,
+            "p95": 3547,
+            "max": 3547,
+            "n": 3
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "stop": {
+          "calls": 2,
+          "wall": {
+            "p50": 955.1,
+            "p95": 4740.3,
+            "max": 4740.3,
+            "n": 2
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 2
+          },
+          "engine": {
+            "p50": 765,
+            "p95": 4532,
+            "max": 4532,
+            "n": 2
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "test-plan": {
+          "calls": 2,
+          "wall": {
+            "p50": 74667.4,
+            "p95": 121846.7,
+            "max": 121846.7,
+            "n": 2
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 2
+          },
+          "engine": {
+            "p50": 3625,
+            "p95": 3781,
+            "max": 3781,
+            "n": 2
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        }
+      },
+      "status": {
+        "calls": 10,
+        "wall": {
+          "p50": 340.3,
+          "p95": 3633,
+          "max": 3633,
+          "n": 10
+        },
+        "queue": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 10
+        },
+        "engine": {
+          "p50": 15,
+          "p95": 1984,
+          "max": 1984,
+          "n": 10
+        },
+        "timeouts": 1,
+        "busyAnswers": 0,
+        "unanswered": 1
+      },
+      "enginePeakWorkingSetMb": 793.9
+    },
+    {
+      "callers": 20,
+      "wallMs": 270683.7617,
+      "wall": {
+        "p50": 645.5,
+        "p95": 221063.1,
+        "max": 269714.5,
+        "n": 20
+      },
+      "queue": {
+        "p50": 0,
+        "p95": 268.1,
+        "max": 450.7,
+        "n": 20
+      },
+      "engine": {
+        "p50": 219,
+        "p95": 2922,
+        "max": 3860,
+        "n": 20
+      },
+      "gateByHolder": {
+        "CheckChanges": {
+          "p50": 89,
+          "p95": 268.1,
+          "max": 268.1,
+          "n": 3
+        },
+        "CheckFiles": {
+          "p50": 0,
+          "p95": 450.7,
+          "max": 450.7,
+          "n": 4
+        },
+        "CheckPaths": {
+          "p50": 0,
+          "p95": 177.1,
+          "max": 177.1,
+          "n": 4
+        },
+        "PlanAffectedTests": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 1
+        }
+      },
+      "calls": [
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-20-1",
+          "file": "src/NodaTime/AnnualDate.cs",
+          "wallMs": 391.1051,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "scoped",
+          "session": "eval-concurrency-20-2",
+          "file": "src/NodaTime.Benchmarks/BclTests/DateTimeBenchmarks.cs",
+          "wallMs": 674.137,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "stop",
+          "session": "eval-concurrency-20-3",
+          "file": "src/NodaTime.Benchmarks.Custom/ConcurrencyCommandBase.cs",
+          "wallMs": 784.9918,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "test-plan",
+          "session": "eval-concurrency-20-4",
+          "file": "src/NodaTime.NzdPrinter/Program.cs",
+          "wallMs": 78174.5571,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-20-5",
+          "file": "src/NodaTime.Testing/FakeClock.cs",
+          "wallMs": 169.3066,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "scoped",
+          "session": "eval-concurrency-20-6",
+          "file": "src/NodaTime.Tools.Common/FileUtility.cs",
+          "wallMs": 183.8259,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "stop",
+          "session": "eval-concurrency-20-7",
+          "file": "src/NodaTime.Tools.DumpTimeZoneInfo/Program.cs",
+          "wallMs": 288.4148,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "test-plan",
+          "session": "eval-concurrency-20-8",
+          "file": "src/NodaTime.Tools.ValidateHistoricalNzd/Program.cs",
+          "wallMs": 269714.4707,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-20-9",
+          "file": "src/NodaTime.TzValidate.NodaDump/Options.cs",
+          "wallMs": 617.2825,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "scoped",
+          "session": "eval-concurrency-20-10",
+          "file": "src/NodaTime.TzValidate.NzdCompatibility/Options.cs",
+          "wallMs": 764.3796,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "stop",
+          "session": "eval-concurrency-20-11",
+          "file": "src/NodaTime.TzdbCompiler/CompilerOptions.cs",
+          "wallMs": 559.9042,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "test-plan",
+          "session": "eval-concurrency-20-12",
+          "file": "src/NodaTime/CalendarSystem.cs",
+          "wallMs": 172950.5461,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-20-13",
+          "file": "src/NodaTime.Benchmarks/BclTests/DateTimeOffsetBenchmarks.cs",
+          "wallMs": 675.2597,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "scoped",
+          "session": "eval-concurrency-20-14",
+          "file": "src/NodaTime.Benchmarks.Custom/ConcurrentNewString.cs",
+          "wallMs": 728.8661,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "stop",
+          "session": "eval-concurrency-20-15",
+          "file": "src/NodaTime.Testing/Preconditions.cs",
+          "wallMs": 645.4931,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "test-plan",
+          "session": "eval-concurrency-20-16",
+          "file": "src/NodaTime.TzValidate.NodaDump/Program.cs",
+          "wallMs": 221063.0784,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-20-17",
+          "file": "src/NodaTime.TzValidate.NzdCompatibility/Program.cs",
+          "wallMs": 363.7094,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "scoped",
+          "session": "eval-concurrency-20-18",
+          "file": "src/NodaTime.TzdbCompiler/Program.cs",
+          "wallMs": 295.7129,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "stop",
+          "session": "eval-concurrency-20-19",
+          "file": "src/NodaTime/Calendars/BadiYearMonthDayCalculator.cs",
+          "wallMs": 300.4278,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "test-plan",
+          "session": "eval-concurrency-20-20",
+          "file": "src/NodaTime.Benchmarks/BclTests/TimeZoneInfoBenchmarks.cs",
+          "wallMs": 124300.0003,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        }
+      ],
+      "errors": 0,
+      "timeouts": 0,
+      "busyAnswers": 0,
+      "unanswered": 0,
+      "stopTimeouts": 0,
+      "statusTimeouts": 0,
+      "byKind": {
+        "post-edit": {
+          "calls": 5,
+          "wall": {
+            "p50": 391.1,
+            "p95": 675.3,
+            "max": 675.3,
+            "n": 5
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 177.1,
+            "max": 177.1,
+            "n": 5
+          },
+          "engine": {
+            "p50": 219,
+            "p95": 406,
+            "max": 406,
+            "n": 5
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "scoped": {
+          "calls": 5,
+          "wall": {
+            "p50": 674.1,
+            "p95": 764.4,
+            "max": 764.4,
+            "n": 5
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 450.7,
+            "max": 450.7,
+            "n": 5
+          },
+          "engine": {
+            "p50": 94,
+            "p95": 328,
+            "max": 328,
+            "n": 5
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "stop": {
+          "calls": 5,
+          "wall": {
+            "p50": 559.9,
+            "p95": 785,
+            "max": 785,
+            "n": 5
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 268.1,
+            "max": 268.1,
+            "n": 5
+          },
+          "engine": {
+            "p50": 203,
+            "p95": 578,
+            "max": 578,
+            "n": 5
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "test-plan": {
+          "calls": 5,
+          "wall": {
+            "p50": 172950.5,
+            "p95": 269714.5,
+            "max": 269714.5,
+            "n": 5
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 5
+          },
+          "engine": {
+            "p50": 2485,
+            "p95": 3860,
+            "max": 3860,
+            "n": 5
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        }
+      },
+      "status": {
+        "calls": 20,
+        "wall": {
+          "p50": 157.8,
+          "p95": 327.3,
+          "max": 403.5,
+          "n": 20
+        },
+        "queue": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 20
+        },
+        "engine": {
+          "p50": 0,
+          "p95": 31,
+          "max": 32,
+          "n": 20
+        },
+        "timeouts": 0,
+        "busyAnswers": 0,
+        "unanswered": 0
+      },
+      "enginePeakWorkingSetMb": 793.9
+    }
+  ],
+  "enginePeakWorkingSetMb": 793.9,
+  "engineIdleWorkingSetMb": 305.6,
+  "treeCleanAfter": true
+}

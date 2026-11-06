@@ -4,7 +4,8 @@ namespace Fuse.Paths;
 
 /// <summary>
 ///     Fuse's folders in the user's local application data: the engine copies, one per build, and a state directory per
-///     repository (<see cref="RepoRoot.StateDirectory"/>). Each is removed once nothing uses it, because a new build and a
+///     repository (<see cref="RepoRoot.StateDirectory"/>) and a shared directory per git common directory
+///     (<see cref="RepoRoot.SharedStateDirectory"/>). Each is removed once nothing uses it, because a new build and a
 ///     repository that is deleted, such as a temporary one, would otherwise each leave one behind for good.
 /// </summary>
 internal static partial class LocalState
@@ -29,6 +30,12 @@ internal static partial class LocalState
 
     /// <summary>The folder holding one state directory per repository.</summary>
     public static string Repositories => Path.Combine(BaseDirectory, "repos");
+
+    /// <summary>The file an engine records its working set and idle time in, inside its state directory, for the machine budget.</summary>
+    public const string EngineMemoryFile = "engine-memory.txt";
+
+    /// <summary>The directory the stored project graphs are kept in, under a shared directory.</summary>
+    public static string GraphDirectory(string sharedStateDirectory) => Path.Combine(sharedStateDirectory, "graph");
 
     /// <summary>
     ///     Marks <paramref name="copy"/> as used by this process until the returned handle is disposed, with a lock file
@@ -67,24 +74,34 @@ internal static partial class LocalState
     }
 
     /// <summary>
-    ///     Creates <paramref name="root"/>'s state directory if needed and records which repository it belongs to, so a
-    ///     later cleanup can tell when the repository is gone. Every process that creates the directory calls this: a
-    ///     client that only builds or a hook that only logs leaves a directory the cleanup must be able to remove too.
+    ///     Creates <paramref name="root"/>'s state directory and its shared directory if needed and records which
+    ///     repository each belongs to, so a later cleanup can tell when the repository is gone. Every process that
+    ///     creates a directory calls this: a client that only builds or a hook that only logs leaves a directory the
+    ///     cleanup must be able to remove too.
     /// </summary>
     /// <remarks>
-    ///     The directory's name derives from the root, so the recorded text never changes once written. Writing it is best
+    ///     Each directory's name derives from what it records, so the recorded text never changes once written. Writing
     ///     effort: another process may be writing the same text, and a directory that cannot be written is reported by
     ///     whatever the caller writes next.
     /// </remarks>
     public static void RecordRoot(RepoRoot root)
     {
-        System.IO.Directory.CreateDirectory(root.StateDirectory);
-        var recorded = Path.Combine(root.StateDirectory, RootFile);
+        Record(root.StateDirectory, root.Path);
+        // The shared directory belongs to the common directory, so the cleanup removes it once the repository is
+        // gone; every worktree records the same text.
+        if (!root.SharedStateDirectory.Equals(root.StateDirectory, StringComparison.Ordinal))
+            Record(root.SharedStateDirectory, root.GitCommonDirectory ?? root.Path);
+    }
+
+    private static void Record(string directory, string content)
+    {
+        System.IO.Directory.CreateDirectory(directory);
+        var recorded = Path.Combine(directory, RootFile);
         if (File.Exists(recorded))
             return;
         try
         {
-            File.WriteAllText(recorded, root.Path);
+            File.WriteAllText(recorded, content);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {

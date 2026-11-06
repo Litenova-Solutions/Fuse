@@ -18,6 +18,12 @@ internal static class ErrorMessages
     /// </summary>
     public const string NoProjects = "no C# projects (.csproj) in this repository, so Fuse has nothing to check";
 
+    /// <summary>The message for <see cref="ErrorCode.Busy"/>: the queue position and the estimated wait in seconds, rounded up.</summary>
+    public static string Busy(int position, long estimatedWaitMs) =>
+        estimatedWaitMs > 0
+            ? $"the engine is busy: {position} request(s) ahead, about {(estimatedWaitMs + 999) / 1000} s; try again"
+            : $"the engine is busy: {position} request(s) ahead; try again";
+
     /// <summary>
     ///     The message for <see cref="ErrorCode.InvalidPath"/> when a check names a file by an empty or blank string. The
     ///     command line and the MCP server refuse such an argument before they send anything, and the engine refuses such

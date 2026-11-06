@@ -47,7 +47,7 @@ internal static class TreeStamp
         string hash;
         try
         {
-            hash = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(file.Absolute)));
+            hash = Convert.ToHexString(SHA256.HashData(SharedRead.AllBytes(file.Absolute)));
         }
         catch (Exception e) when (e is FileNotFoundException or DirectoryNotFoundException)
         {

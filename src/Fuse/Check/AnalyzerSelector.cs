@@ -42,17 +42,24 @@ internal sealed class AnalyzerSelector
     ///     on one file, timed on a second run, is compilation-wide. The probe runs on a wrapper of its own that times the analyzers; the wrapper
     ///     every check uses does not, because timing every analyzer callback costs time on every file.
     /// </summary>
-    public Task<AnalyzerPlan> PlanAsync(Project project, CompilationWithAnalyzers analyzers, SemanticModel probe, CancellationToken cancellationToken)
+    public async Task<AnalyzerPlan> PlanAsync(Project project, CompilationWithAnalyzers analyzers, SemanticModel probe, CancellationToken cancellationToken)
     {
         var generation = _configurationGeneration();
+        Task<AnalyzerPlan> plan;
         lock (_planning)
         {
             if (_plans.TryGetValue(project.Id, out var known) && known.Generation == generation && !known.Plan.IsCanceled && !known.Plan.IsFaulted)
-                return known.Plan;
-            var plan = Task.Run(() => MakePlanAsync(project, analyzers, probe, cancellationToken), cancellationToken);
-            _plans[project.Id] = (generation, plan);
-            return plan;
+                plan = known.Plan;
+            else
+            {
+                // The plan is shared, so it runs under no one check's token: one check passing its deadline
+                // leaves it going for the checks that share it, and each caller stops only its own wait.
+                plan = Task.Run(() => MakePlanAsync(project, analyzers, probe, CancellationToken.None), CancellationToken.None);
+                _plans[project.Id] = (generation, plan);
+            }
         }
+
+        return await plan.WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<AnalyzerPlan> MakePlanAsync(Project project, CompilationWithAnalyzers analyzers, SemanticModel probe, CancellationToken cancellationToken)

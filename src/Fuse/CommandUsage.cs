@@ -20,6 +20,8 @@ internal static class CommandUsage
           fuse session begin <name> --paths <pattern> [<pattern>...]
                                     register an external writer as a session for its path patterns
           fuse session end <name>   end the registration
+          fuse watch --session <name>
+                                    print that session's newest errors each time the engine checks them
           fuse stop [--all]         stop this repository's engine (--all: every engine); the next command starts one
           fuse mcp                  stdio MCP server (fuse_check, fuse_test, fuse_build) for MCP hosts that run no hooks
           fuse hook <harness> <event>   the command registered hooks run
@@ -69,9 +71,15 @@ internal static class CommandUsage
         """;
 
     internal const string Session = """
-        fuse session begin <name> --paths <pattern> [<pattern>...] | fuse session end <name>
+        fuse session begin <name> [--pid <pid>] --paths <pattern> [<pattern>...]
+        fuse session begin --from <file>
+        fuse session end <name>
           register an external writer as a session for its path patterns, so a judge's stop leaves that writer's
           half-written errors to it; end the registration when the writer stops.
+          --pid   end the registration on its own when that process exits
+          --from  register every session a file names, one "<name><TAB><pattern>" per line
+          A writer that runs fuse itself can set FUSE_SESSION=<name> instead: fuse check, fuse test and fuse mcp
+          then answer as that session, and a check that names files credits them to it.
         """;
 
     internal const string Init = """

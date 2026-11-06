@@ -22,12 +22,13 @@ public class StatusProcessTests
             var lines = status.Stdout.Split('\n');
             Assert.Equal(3, lines.Length);
             Assert.StartsWith($"fuse: engine running for {repo.Root.Path} (pid ", lines[0], StringComparison.Ordinal);
-            Assert.Contains(" MB; idle exits after 30 min", lines[0], StringComparison.Ordinal);
+            Assert.Contains(" MB budget (GC load ", lines[0], StringComparison.Ordinal);
+            Assert.Contains("; idle exits after 30 min, or 5 min when another engine needs memory", lines[0], StringComparison.Ordinal);
             var tree = Regex.Match(lines[1], "^fuse: 0 changed file\\(s\\) since HEAD; tree ([0-9a-f]{12}); HEAD ([0-9a-f]{12})$");
             Assert.True(tree.Success, lines[1]);
             Assert.Equal(cleanTree, tree.Groups[1].Value);
             Assert.Equal(
-                "fuse: large-tree limits: past 300 changed files a sync reloads projects; past 500 files in reach a check binds whole projects; commit or run fuse stop and let the next check reload when checks feel slow",
+                "fuse: 0 changed C# source(s) in a project; 0 of 2000 touched paths before projects re-evaluate; past 500 changed files a check skips its kept answer; past 500 files in reach a check binds whole projects",
                 lines[2]);
 
             var json = await FuseProcess.RunAsync(repo.Path, null, "status", "--json");
@@ -40,6 +41,11 @@ public class StatusProcessTests
             Assert.Equal(0, root.GetProperty("changedFiles").GetInt32());
             Assert.Equal(tree.Groups[2].Value, root.GetProperty("head").GetString()![..12]);
             Assert.Equal(cleanTree, root.GetProperty("tree").GetString());
+            Assert.Equal(0, root.GetProperty("changedSourcesInReach").GetInt32());
+            Assert.Equal(0, root.GetProperty("touchedPaths").GetInt32());
+            Assert.Equal(2000, root.GetProperty("touchedLimit").GetInt32());
+            Assert.Equal(500, root.GetProperty("keptAnswerAt").GetInt32());
+            Assert.Equal(300, root.GetProperty("syncReloadAt").GetInt32());
             Assert.Equal(300, root.GetProperty("reloadAt").GetInt32());
             Assert.Equal(500, root.GetProperty("wholeProjectAt").GetInt32());
 

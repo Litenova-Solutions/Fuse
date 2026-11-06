@@ -27,15 +27,15 @@ internal static partial class DiagnosticJson
     /// <summary>One introduced error as one JSON object.</summary>
     public static string CheckLine(ReportedError reported) =>
         JsonSerializer.Serialize(
-            new DiagnosticLine(reported.Error.Path, reported.Error.Line, reported.Error.Column, reported.Error.Id, reported.Error.Message, CauseOf(reported.Cause), reported.GeneratedFile),
+            new DiagnosticLine(reported.Error.Path, reported.Error.Line, reported.Error.Column, reported.Error.Id, reported.Error.Message, CauseOf(reported.Cause), reported.GeneratedFile, reported.CausedBy),
             Relaxed.DiagnosticLine);
 
     /// <summary>The cause as the text answer prints it under the error, or null for none.</summary>
     private static string? CauseOf(ReportedCause? cause) =>
         cause is null ? null : $"{(cause.Kind == CauseKind.Removed ? "removed" : "changed")}: {cause.Declaration}";
 
-    /// <summary>One diagnostic line: the build fields, then the cause and generated file a check adds, and the holder a locked file names.</summary>
-    private sealed record DiagnosticLine(string File, int? Line, int? Column, string Code, string Message, string? Cause = null, string? Generated = null, string? LockedBy = null);
+    /// <summary>One diagnostic line: the build fields, then the cause, generated file and causing session a check adds, and the holder a locked file names.</summary>
+    private sealed record DiagnosticLine(string File, int? Line, int? Column, string Code, string Message, string? Cause = null, string? Generated = null, string? CausedBy = null, string? LockedBy = null);
 
     [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonSerializable(typeof(DiagnosticLine))]

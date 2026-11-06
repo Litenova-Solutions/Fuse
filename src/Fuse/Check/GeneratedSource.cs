@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Fuse.Check.Model;
 using Fuse.Paths;
 using Microsoft.CodeAnalysis;
@@ -21,7 +22,7 @@ internal sealed class GeneratedSource
     private readonly RepoRoot _root;
 
     /// <summary>Whether each declaring file seen so far is generated, by absolute path.</summary>
-    private readonly Dictionary<string, bool> _generated = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, bool> _generated = new(StringComparer.Ordinal);
 
     public GeneratedSource(RepoRoot root) => _root = root;
 
@@ -112,11 +113,8 @@ internal sealed class GeneratedSource
     /// </summary>
     private bool IsGenerated(string path)
     {
-        lock (_generated)
-        {
-            if (_generated.TryGetValue(path, out var known))
-                return known;
-        }
+        if (_generated.TryGetValue(path, out var known))
+            return known;
 
         var generated = false;
         for (var directory = Path.GetDirectoryName(path); directory is not null; directory = Path.GetDirectoryName(directory))
@@ -128,8 +126,7 @@ internal sealed class GeneratedSource
             }
         }
 
-        lock (_generated)
-            _generated[path] = generated;
+        _generated[path] = generated;
         return generated;
     }
 }

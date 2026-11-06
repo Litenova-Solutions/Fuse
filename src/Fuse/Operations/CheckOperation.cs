@@ -51,10 +51,11 @@ internal static class CheckOperation
     /// <param name="timeout">How long to wait for the answer.</param>
     /// <param name="cancellationToken">Cancels the check.</param>
     /// <param name="includeTreeStamp">True to stamp the summary and the results file with the tree the check ended on, for <c>fuse check</c>; hook and MCP answers stay unstamped.</param>
+    /// <param name="session">The session the check is answered to (<c>FUSE_SESSION</c>), or null to report every error.</param>
     public static async Task<(OperationResult Result, EngineResponse Response)> RunScopedAsync(
-        RepoRoot root, IReadOnlyList<string> specs, int maxErrors, bool json, TimeSpan timeout, CancellationToken cancellationToken, bool includeTreeStamp = false)
+        RepoRoot root, IReadOnlyList<string> specs, int maxErrors, bool json, TimeSpan timeout, CancellationToken cancellationToken, bool includeTreeStamp = false, string? session = null)
     {
-        var request = new EngineRequest.CheckPaths([.. specs], WaitForLoad: true) { MaxErrors = RequestedFor(maxErrors, json), StampTree = includeTreeStamp };
+        var request = new EngineRequest.CheckPaths([.. specs], WaitForLoad: true) { MaxErrors = RequestedFor(maxErrors, json), StampTree = includeTreeStamp, Session = session };
         var response = await EngineClient.SendAsync(root, request, timeout, cancellationToken).ConfigureAwait(false);
         if (response is not EngineResponse.CheckAnswered answered)
             return (OperationResult.Unanswered(response, "check result"), response);

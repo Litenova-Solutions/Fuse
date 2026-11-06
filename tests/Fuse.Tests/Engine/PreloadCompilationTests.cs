@@ -1,18 +1,17 @@
 using Fuse.Check.Model;
 using Fuse.Engine;
 using Fuse.Tests.Fixtures;
-using Fuse.Workspace;
 
 namespace Fuse.Tests.Engine;
 
 /// <summary>
-///     The background load of dependents also builds their compilations, so the first check that binds them reuses what
-///     is already built, and a later signature edit still reports the errors in those dependents.
+///     The background load of dependents loads their projects without building their compilations, so a later check
+///     builds what it binds, and a signature edit still reports the errors in those dependents.
 /// </summary>
 public class PreloadCompilationTests
 {
     [Fact]
-    public async Task A_background_load_also_builds_the_dependents_compilation()
+    public async Task A_background_load_loads_the_dependent_without_building_its_compilation()
     {
         await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
@@ -22,16 +21,15 @@ public class PreloadCompilationTests
         preloader.Schedule(CancellationToken.None);
         try
         {
-            await WaitForLogAsync(engine, "preloaded App compilation in ");
-            await engine.CheckAsync("Lib/Calc.cs");
+            await WaitForLogAsync(engine, "loaded App in ");
+            await preloader.WaitAsync();
 
             var app = engine.Workspace.Graph.Find(engine.Repo.PathOf("App/App.csproj"))!;
-            var warmed = await engine.Workspace.PreloadCompilationAsync(app, TestContext.Current.CancellationToken);
-            var viewed = RepoWorkspace.ProjectsFor(engine.Workspace.Current, app).Single();
-            var compilation = await viewed.GetCompilationAsync(TestContext.Current.CancellationToken);
-
-            Assert.Single(warmed);
-            Assert.Same(warmed[0], compilation);
+            Assert.True(engine.Workspace.IsLoaded(app));
+            lock (engine.Log)
+                Assert.DoesNotContain(engine.Log, line => line.Contains("preloaded", StringComparison.Ordinal));
+            var report = await engine.CheckAsync("Lib/Calc.cs");
+            Assert.Empty(report.Errors);
         }
         finally
         {
@@ -40,7 +38,7 @@ public class PreloadCompilationTests
     }
 
     [Fact]
-    public async Task A_signature_edit_after_the_warm_still_reports_the_broken_caller()
+    public async Task A_signature_edit_after_the_load_still_reports_the_broken_caller()
     {
         await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
@@ -48,7 +46,7 @@ public class PreloadCompilationTests
         using var gate = new RequestGate();
         var preloader = new Preloader(engine.Workspace, gate, engine.Workspace.Log);
         preloader.Schedule(CancellationToken.None);
-        await WaitForLogAsync(engine, "preloaded App compilation in ");
+        await WaitForLogAsync(engine, "loaded App in ");
         await preloader.WaitAsync();
 
         engine.Repo.Replace("Lib/Calc.cs", "public int Add(", "public int Plus(");

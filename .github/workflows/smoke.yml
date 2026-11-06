@@ -1,0 +1,123 @@
+name: Smoke
+
+# Packs the Fuse tool, installs it from the packages and drives it on a generated multi-project
+# repository (.github/smoke/smoke.sh): fuse init, the hooks, checks, sessions, FUSE_SESSION,
+# 10 and 20 concurrent checks with status probes, fuse stop, fuse test and fuse build. Package
+# (.github/workflows/package.yml) checks that each platform's package installs; this workflow
+# checks what the installed command does. It runs 4 jobs, and each
+# workflow stays within the repository's 20 concurrent jobs on its own.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: '1'
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+
+jobs:
+  smoke:
+    name: Smoke (${{ matrix.rid }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: linux-x64
+            runner: ubuntu-latest
+            pack: docker
+            image: mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net10.0-cross-amd64
+            sysroot: /crossrootfs/x64
+          - rid: win-x64
+            runner: windows-latest
+            pack: windows
+          - rid: osx-arm64
+            runner: macos-latest
+            pack: direct
+          # The ARM runner packs a framework-dependent linux-arm64 package, as package.yml packs
+          # the musl packages: the cross-build image for linux-arm64 runs on an x64 host.
+          - rid: linux-arm64
+            runner: ubuntu-24.04-arm
+            pack: managed-rid
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Git identity for the generated repository
+        run: |
+          git config --global user.email "ci@fuse.invalid"
+          git config --global user.name "Fuse CI"
+
+      - name: Pack the pointer package
+        run: dotnet pack src/Fuse/Fuse.csproj -c Release -p:PublishAot=true -o artifacts
+
+      - name: Pack in the cross-build image
+        if: matrix.pack == 'docker'
+        env:
+          RID: ${{ matrix.rid }}
+          IMAGE: ${{ matrix.image }}
+          SYSROOT: ${{ matrix.sysroot }}
+        run: |
+          dotnet_root=$(dirname "$(readlink -f "$(command -v dotnet)")")
+          nuget="$HOME/.nuget/packages"
+          mkdir -p "$nuget" artifacts
+          docker run --rm --user "$(id -u):$(id -g)" \
+            -v "$PWD:$PWD" -v "$dotnet_root:$dotnet_root:ro" -v "$nuget:$nuget" -w "$PWD" \
+            -e HOME=/tmp -e DOTNET_ROOT="$dotnet_root" -e NUGET_PACKAGES="$nuget" -e DOTNET_NOLOGO=1 -e DOTNET_CLI_TELEMETRY_OPTOUT=1 \
+            "$IMAGE" \
+            "$dotnet_root/dotnet" pack src/Fuse/Fuse.csproj -c Release -r "$RID" -p:SysRoot="$SYSROOT" -p:LinkerFlavor=lld -o artifacts
+
+      - name: Publish the native client and pack it as the shim
+        if: matrix.pack == 'windows'
+        run: |
+          dotnet publish src/Fuse/Fuse.csproj -c Release -r win-x64 -o artifacts/native
+          dotnet pack src/Fuse/Fuse.csproj -c Release -r win-x64 -p:PublishAot=false -p:UseAppHost=false \
+            -p:PackAsToolShimRuntimeIdentifiers=win-x64 -p:NativeClientShim="$(cygpath -w "$PWD/artifacts/native/fuse.exe")" -o artifacts
+
+      - name: Pack
+        if: matrix.pack == 'direct'
+        run: dotnet pack src/Fuse/Fuse.csproj -c Release -r ${{ matrix.rid }} -o artifacts
+
+      - name: Pack the framework-dependent package
+        if: matrix.pack == 'managed-rid'
+        run: dotnet pack src/Fuse/Fuse.csproj -c Release -r ${{ matrix.rid }} -p:PublishAot=false -p:SelfContained=false -p:UseAppHost=false -o artifacts
+
+      - name: Install the tool from the packages and drive it
+        run: |
+          version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props | head -1)
+          bash .github/smoke/smoke.sh artifacts "$version"
+
+      - name: Keep the engine logs
+        if: always()
+        run: |
+          mkdir -p out/engine-logs
+          bases=("$HOME/.local/share" "$HOME/Library/Application Support")
+          if [ -n "${LOCALAPPDATA:-}" ]; then
+            if command -v cygpath >/dev/null 2>&1; then bases+=("$(cygpath -u "$LOCALAPPDATA")"); else bases+=("$LOCALAPPDATA"); fi
+          fi
+          for base in "${bases[@]}"; do
+            [ -d "$base/fuse/repos" ] || continue
+            for d in "$base"/fuse/repos/*/; do
+              [ -d "$d" ] || continue
+              n=$(basename "$d"); mkdir -p "out/engine-logs/$n"
+              cp "$d"engine.log "$d"hook.log "$d"root "out/engine-logs/$n/" 2>/dev/null || true
+            done
+          done
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: smoke-${{ matrix.rid }}
+          path: out/
+          if-no-files-found: ignore

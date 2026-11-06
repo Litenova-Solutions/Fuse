@@ -45,7 +45,7 @@
       "url": "https://fuse.codes/docs/troubleshooting",
       "mainEntityOfPage": "https://fuse.codes/docs/troubleshooting",
       "inLanguage": "en",
-      "dateModified": "2026-10-29",
+      "dateModified": "2026-11-06",
       "image": "https://fuse.codes/assets/og.png",
       "isPartOf": {
         "@type": "WebSite",
@@ -341,7 +341,7 @@
     <ul>
       <li><code>id</code> names the client process and its request count, so that you can match a line to the command that sent it.</li>
       <li><code>kind</code> is the request: <code>CheckChanges</code> (every change), <code>CheckFiles</code> (named files, which is what a post-edit hook sends), <code>CheckPaths</code> (a scoped check over folders or patterns), <code>PlanAffectedTests</code> (<code>fuse test</code>), <code>PlanAllTests</code> (<code>fuse test --all</code>), or <code>PlanFailedTests</code> (<code>fuse test --failed</code>), plus the session, build-plan and status requests, which are short.</li>
-      <li>When the request waited for the request lock, <code>gateHolder</code> names what held the lock longest during the wait: another request's <code>kind</code>, <code>Preload</code> (the background load or the baseline warm choosing its next project), or <code>Initialization</code>. The line leaves it out when nothing held the lock.</li>
+      <li><code>gate</code> is the queue time before a reader took the request, apart from the total from dequeue. <code>gateHolder</code> on a status answer names what holds a reader while the answer is read. A Busy or unanswered answer logs its own line with the request kind, the code and the session.</li>
       <li>The phases follow in the order they ran, in milliseconds.</li>
     </ul>
     <div class="table-scroll" role="region" aria-label="Phase line fields" tabindex="0">
@@ -356,8 +356,8 @@
         <tr><th scope="row"><code>bindUpdate</code>, <code>bindCompiler</code>, <code>bindAnalyzers</code>, <code>bindFrameworks</code></th><td>The parts of <code>bindTargets</code>: updating the compilation while binding, reading the compiler errors, running the analyzers, and how many documents were bound, one per target framework.</td></tr>
         <tr><th scope="row"><code>attribution</code></th><td>For a post-edit check answered to a session while another session has written files of its own: compiling the files with errors again, to leave out the errors other sessions' edits caused (<a href="how-it-works#check">sessions</a>). Absent otherwise.</td></tr>
         <tr><th scope="row"><code>selection</code></th><td>Selecting the tests, including loading the projects they need.</td></tr>
-        <tr><th scope="row"><code>mirror</code>, <code>emit</code></th><td>Preparing the copies for runs without MSBuild, after the request lock is released: deciding which assemblies changed and copying the build output, then emitting the changed assemblies and writing them into the copies. An assembly that has not changed since the previous plan is not emitted again.</td></tr>
-        <tr><th scope="row"><code>total</code></th><td>The whole request from the moment it held the request lock, including a test plan's <code>mirror</code> and <code>emit</code>. The total is counted in system clock ticks, so on Windows a request that took less than about 16 ms shows <code>total=0.0</code>.</td></tr>
+        <tr><th scope="row"><code>mirror</code>, <code>emit</code></th><td>Preparing the copies for runs without MSBuild, with the plan's own emitter: deciding which assemblies changed and copying the build output, then emitting the changed assemblies and writing them into the copies. An assembly that has not changed since the previous plan is not emitted again.</td></tr>
+        <tr><th scope="row"><code>total</code></th><td>The whole request from the moment a reader took it, including a test plan's <code>mirror</code> and <code>emit</code>. The total is counted in system clock ticks, so on Windows a request that took less than about 16 ms shows <code>total=0.0</code>.</td></tr>
       </tbody>
     </table>
     </div>

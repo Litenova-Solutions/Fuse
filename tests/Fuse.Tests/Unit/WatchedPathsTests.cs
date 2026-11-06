@@ -190,6 +190,35 @@ public class WatchedPathsTests
         Assert.Empty(watched.Drain().WatcherErrors);
     }
 
+    [Fact]
+    public async Task Git_check_ignore_names_only_the_ignored_paths_in_one_batched_call()
+    {
+        using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string>
+        {
+            [".gitignore"] = "ignored/\n",
+            ["Lib/Calc.cs"] = "public class Calc {}\n",
+        });
+        repo.Write("ignored/data.json", "{}\n");
+        repo.Write("ignored/with space.json", "{}\n");
+        repo.Write("notes/keep.json", "{}\n");
+
+        var ignored = await GitStatus.IgnoredPathsAsync(repo.Root, [repo.PathOf("ignored/data.json"), repo.PathOf("ignored/with space.json"), repo.PathOf("notes/keep.json"), repo.PathOf("Lib/Calc.cs")], TestContext.Current.CancellationToken);
+
+        Assert.Equal([repo.PathOf("ignored/data.json"), repo.PathOf("ignored/with space.json")], ignored.OrderBy(p => p.Relative, StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public async Task Git_check_ignore_names_no_path_when_none_is_ignored()
+    {
+        using var repo = Repo();
+        repo.Write("notes/keep.json", "{}\n");
+
+        var ignored = await GitStatus.IgnoredPathsAsync(repo.Root, [repo.PathOf("notes/keep.json")], TestContext.Current.CancellationToken);
+
+        Assert.Empty(ignored);
+        Assert.Empty(await GitStatus.IgnoredPathsAsync(repo.Root, [], TestContext.Current.CancellationToken));
+    }
+
     private static FixtureRepo Repo() => FixtureRepo.CreateEmpty(new Dictionary<string, string>
     {
         ["Lib/Lib.csproj"] = "<Project Sdk=\"Microsoft.NET.Sdk\" />\n",

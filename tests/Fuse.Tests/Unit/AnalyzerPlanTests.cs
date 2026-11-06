@@ -70,8 +70,8 @@ public class AnalyzerPlanTests
         }
 
         Assert.Empty(lines);
-        // The two probes' syntax and semantic calls, each on a wrapper of its own, then two per-file calls on each file.
-        Assert.Equal(8, moderate.Starts);
+        // The two probes' syntax and semantic calls, each on a wrapper of its own, then one per-file call on each file.
+        Assert.Equal(6, moderate.Starts);
     }
 
     [Fact]

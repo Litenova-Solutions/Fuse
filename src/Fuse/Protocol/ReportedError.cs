@@ -13,4 +13,11 @@ internal sealed record ReportedError(CompilerError Error, ReportedCause? Cause =
 {
     /// <summary>The repository-relative path of the generated file that declares what the error is about, or null.</summary>
     public string? GeneratedFile { get; init; }
+
+    /// <summary>
+    ///     The session that wrote the file holding the cause's declaration, when one session wrote it, so a reader of
+    ///     the JSON answer can route the error to the session that can fix it. Null when the error has no cause, or
+    ///     its cause's file has no writer or several writers.
+    /// </summary>
+    public string? CausedBy { get; init; }
 }

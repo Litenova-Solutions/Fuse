@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Runtime.CompilerServices;
 using Fuse.Check;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -149,6 +150,28 @@ public class CompilationAnalysesTests
 
         Assert.True(startedAgain);
         Assert.Empty(again);
+    }
+
+    [Fact]
+    public async Task A_compilation_whose_run_finished_is_not_kept_by_its_project_entry()
+    {
+        var analyses = new CompilationAnalyses();
+        var weak = await RunOnceAsync(analyses);
+
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+
+        Assert.False(weak.TryGetTarget(out _));
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static async Task<WeakReference<CompilationWithAnalyzers>> RunOnceAsync(CompilationAnalyses analyses)
+    {
+        var analyzers = NewCompilation();
+        var weak = new WeakReference<CompilationWithAnalyzers>(analyzers);
+        await analyses.RunAsync(Project, baseline: false, analyzers, everyAnalyzer: false, _ => Task.FromResult(ImmutableArray<Diagnostic>.Empty), TestContext.Current.CancellationToken);
+        return weak;
     }
 
     private static CompilationWithAnalyzers NewCompilation() =>

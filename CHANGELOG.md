@@ -4,6 +4,45 @@ This file lists the changes in each release. The release workflow publishes each
 
 The [changelog page](https://fuse.codes/docs/changelog) explains each release with its upgrade steps and says which versions are supported. Each release groups its changes as Added, Changed, Removed, Fixed, Security and Documentation, listing only the groups it has. Versions before 5.0.0 are deprecated.
 
+## 6.0.0
+
+Released 2026-11-06. Compared with 5.7.0, this release rewrites how the engine answers many agents at once: checks, test plans and builds no longer take turns behind one lock. No upgrade steps are required. A 5.x engine drains its queued and running requests and restarts as 6.0.0 on the next request, because every request carries its build.
+
+### Added
+
+- `FUSE_SESSION` names a caller's session for `fuse check`, `fuse test` and `fuse mcp`. A worker that runs Fuse without hooks is answered about its own errors, and a check that names files credits them to it. `fuse build` carries no session. See [Commands](https://fuse.codes/docs/commands#fuse-session).
+- `fuse session begin NAME --pid PID --paths PATTERN` ends the registration when that process exits, with the 4-hour expiry as the fallback. The success line names the process.
+- `fuse session begin --from FILE` registers every session in a file of name, tab and pattern lines in one call. The whole file is checked before any registration is sent.
+- `fuse watch --session NAME` streams each stored answer for a session as it changes, with its generation and tree stamp.
+- `causedBy` in `fuse check --json`: the one session that wrote the file holding an error's cause's declaration, when exactly one did. The text answer prints none.
+- A Busy answer when a request will not start before its wait ends, or past the engine's memory ceiling: queue position and estimated wait at once. The command line retries within its wait, a hook stays silent, and an MCP call sends it as a progress notification first. See [Messages and fixes](https://fuse.codes/docs/messages#busy).
+- Build and test reuse: a build whose tree stamp, project set and arguments equal the last finished build's, and a test run whose plan and tree stamp equal a finished run's, print that result with a reuse line.
+- An NU1403 refresh line under the first package content hash failure, naming the one restore that refreshes the lock files. Fuse prints it and never runs it.
+- A concurrency eval suite (1, 4, 10 and 20 simultaneous callers) and a CI smoke workflow over fixture repositories. No result file from the suite is committed yet, so no number is quoted. See [Evals](https://fuse.codes/docs/evals#concurrency-suite).
+
+### Changed
+
+- Checks and test plans run in parallel on pinned generations, in lanes (interactive hooks, then commands and MCP calls, then background work). A wait starts when a reader takes the request. Identical checks in flight share one computation. Status, ping and session registrations bypass the queue. See [How Fuse works](https://fuse.codes/docs/how-it-works).
+- A background check re-checks each live session's fresh files after each generation. Answers live in a content-keyed result store and as `sessions/NAME.json`.
+- Session attribution keeps one view per live session (at most 8) and tries a declaration filter first. Answers are unchanged.
+- Projects outside the change cone come from a metadata summary of their HEAD compilation, private members and generated code included. HEAD's errors come from the disk store, worktrees on the same commit share the baseline store, summaries and stored graph, and past 500 candidates a check streams one document at a time. A differential test proof holds answers with and without summaries identical.
+- Memory is bounded: capped caches, no preloaded compilations, a fixed shed order past a 2 GB per-engine budget, a Busy answer past the ceiling, and a 5-minute idle exit (at once when the machine runs short and the engine is the idlest) when another engine needs memory.
+- Test selection reads non-C# files by their project, through reach. Test plans prepare at the same time. An ignored file is not counted as a non-C# change.
+- A blocked stop that repeats its last blocked answer on unchanged errors lets the stop through. A later blocked stop starts with a delta line. A block only on files the session never wrote ends by naming `fuse session begin` and `FUSE_SESSION`. A stop checks every root that session touched.
+- `fuse status` never waits behind a check. Its first line carries the memory budget, its third counts the limits as the code counts them, and no line tells you to commit. `--json` adds `memoryWorkingSetBytes`, `memoryCeilingBytes`, `memoryLoadBytes`, `changedSourcesInReach`, `touchedPaths`, `touchedLimit`, `keptAnswerAt`, `syncReloadAt`, `reloadMs` and `gateHolder`. See [Commands](https://fuse.codes/docs/commands#fuse-status).
+- An engine of another build drains its queued and running requests before it exits.
+- `engine.log` logs every Busy and unanswered answer with its kind, code and session. The phase line records queue time apart from the work.
+
+### Fixed
+
+- A comment-only or whitespace-only edit reads as the same code and selects no tests.
+- A stop hook's block line reaches `hook.log` on every harness.
+- Worktrees on the same commit no longer poison each other's baseline store: worktree paths are masked in restore keys, values and the graph key.
+
+### Documentation
+
+- [Subagents and parallel agents](https://fuse.codes/docs/parallel-agents), [Commands](https://fuse.codes/docs/commands), [How Fuse works](https://fuse.codes/docs/how-it-works), [Limits](https://fuse.codes/docs/limits), [Messages and fixes](https://fuse.codes/docs/messages), [Evals](https://fuse.codes/docs/evals) and [Architecture](https://fuse.codes/docs/architecture) describe the new behavior.
+
 ## 5.7.0
 
 Compared with 5.6.0. Check and test answers use new output shapes, and the engine does more work in the background and keeps new state files. `fuse check` accepts directories and patterns, a launcher can register an external writer as a session, and the stop hook checks only the stopping session's files. `fuse test` reruns the tests that failed last time and runs them first. `fuse build` gains `--changed` and `--warnings`, and `fuse status` is new.

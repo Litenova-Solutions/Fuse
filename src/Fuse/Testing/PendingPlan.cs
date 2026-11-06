@@ -1,20 +1,23 @@
 using Fuse.Graph;
 using Fuse.Testing.Model;
+using Fuse.Workspace;
 using Microsoft.CodeAnalysis;
 
 namespace Fuse.Testing;
 
 /// <summary>
-///     A plan whose selections are made under the request lock and whose shadow runs are not prepared yet. It holds the
-///     snapshot the selections were made from: each test project's Roslyn projects and the graph, which are immutable, so
-///     <see cref="TestPlanner.PrepareAsync"/> can run after the lock is released and still answer for that snapshot.
+///     A plan whose selections are made and whose shadow runs are not prepared yet. It holds the generation the
+///     selections were made from: each test project's Roslyn projects and the graph, which are immutable, and an
+///     emitter bound to that generation, so <see cref="TestPlanner.PrepareAsync"/> prepares it while other plans
+///     select and prepare from generations of their own.
 /// </summary>
 internal sealed class PendingPlan
 {
-    private PendingPlan(TestPlanResult? answered, RepoGraph graph, IReadOnlyList<(ProjectNode Node, string? Filter, string[] FilterArguments, IReadOnlyList<Project> Variants)> projects, int selected, int total, string summary, bool buildOnly = false, int gatedTests = 0, string[]? gatedProjects = null)
+    private PendingPlan(TestPlanResult? answered, Generation generation, ShadowEmitter? emitter, IReadOnlyList<(ProjectNode Node, string? Filter, string[] FilterArguments, IReadOnlyList<Project> Variants)> projects, int selected, int total, string summary, bool buildOnly = false, int gatedTests = 0, string[]? gatedProjects = null)
     {
         Answered = answered;
-        Graph = graph;
+        Generation = generation;
+        Emitter = emitter;
         Projects = projects;
         Selected = selected;
         Total = total;
@@ -27,12 +30,18 @@ internal sealed class PendingPlan
     /// <summary>The plan, when it needs no shadow preparation: nothing to run, or every test, which builds with MSBuild.</summary>
     public TestPlanResult? Answered { get; }
 
+    /// <summary>The generation the selections were made from, whose views the shadow runs are emitted from.</summary>
+    public Generation Generation { get; }
+
+    /// <summary>The emitter this plan prepares its shadow runs with, bound to <see cref="Generation"/>.</summary>
+    public ShadowEmitter? Emitter { get; }
+
     /// <summary>The project graph the selections were made with.</summary>
-    public RepoGraph Graph { get; }
+    public RepoGraph Graph => Generation.Graph;
 
     /// <summary>
     ///     Each test project to run, in the order the plan lists them, with its filter and its Roslyn project per target
-    ///     framework from the snapshot. A project on Microsoft.Testing.Platform has no variants: it builds with MSBuild.
+    ///     framework from the pinned generation. A project on Microsoft.Testing.Platform has no variants: it builds with MSBuild.
     /// </summary>
     public IReadOnlyList<(ProjectNode Node, string? Filter, string[] FilterArguments, IReadOnlyList<Project> Variants)> Projects { get; }
 
@@ -55,9 +64,9 @@ internal sealed class PendingPlan
     public string[] GatedProjects { get; }
 
     /// <summary>A plan that is already answered and prepares nothing.</summary>
-    public static PendingPlan Of(TestPlanResult answered, RepoGraph graph) => new(answered, graph, [], 0, answered.TotalTests, answered.Summary);
+    public static PendingPlan Of(TestPlanResult answered, Generation generation) => new(answered, generation, null, [], 0, answered.TotalTests, answered.Summary);
 
-    /// <summary>A plan whose shadow runs are still to be prepared.</summary>
-    public static PendingPlan ToPrepare(RepoGraph graph, IReadOnlyList<(ProjectNode Node, string? Filter, string[] FilterArguments, IReadOnlyList<Project> Variants)> projects, int selected, int total, string summary, bool buildOnly = false, int gatedTests = 0, string[]? gatedProjects = null) =>
-        new(null, graph, projects, selected, total, summary, buildOnly, gatedTests, gatedProjects);
+    /// <summary>A plan whose shadow runs are still to be prepared, with the emitter that prepares them.</summary>
+    public static PendingPlan ToPrepare(Generation generation, ShadowEmitter emitter, IReadOnlyList<(ProjectNode Node, string? Filter, string[] FilterArguments, IReadOnlyList<Project> Variants)> projects, int selected, int total, string summary, bool buildOnly = false, int gatedTests = 0, string[]? gatedProjects = null) =>
+        new(null, generation, emitter, projects, selected, total, summary, buildOnly, gatedTests, gatedProjects);
 }

@@ -20,16 +20,33 @@ internal static partial class StatusOperation
     private static readonly TimeSpan EngineWait = TimeSpan.FromSeconds(2);
 
     /// <summary>
-    ///     Past this many changed files a sync reloads the projects from git, which is the slowdown the warning names.
-    ///     It mirrors the tracker's patch limit.
+    ///     Past this many changed C# sources in one sync a sync reloads the projects. It mirrors the tracker's patch
+    ///     limit, counted per sync from the sources that sync holds, not from every file changed since HEAD.
     /// </summary>
     internal const int ReloadAt = 300;
+
+    /// <summary>
+    ///     Past this many changed files a check skips its kept answer. It mirrors the check's kept-answer limit.
+    /// </summary>
+    internal const int KeptAnswerAt = 500;
 
     /// <summary>
     ///     Past this many files in reach of a change a check binds whole projects, which the limits line names. It
     ///     mirrors the check's whole-project threshold.
     /// </summary>
     internal const int WholeProjectAt = 500;
+
+    /// <summary>
+    ///     Past this many distinct touched paths the next sync re-evaluates every project and resets the touched set.
+    ///     It mirrors the views' touched limit.
+    /// </summary>
+    internal const int TouchedLimit = 2000;
+
+    /// <summary>
+    ///     The shortened idle, in minutes, after which an engine leaves when another engine needs memory. It
+    ///     mirrors the engine's shortened idle, for the engine line.
+    /// </summary>
+    internal const int ShortenedIdleMinutes = 5;
 
     /// <param name="root">The repository to report on.</param>
     /// <param name="json">True for one JSON object instead of text.</param>
@@ -70,23 +87,32 @@ internal static partial class StatusOperation
         {
             var state = engine is not null ? "running" : silentEngine ? "unknown" : "stopped";
             int? memoryMB = engine is null ? null : (int)(engine.WorkingSetBytes / (1024 * 1024));
+            long? memoryCeilingBytes = engine?.MemoryCeilingBytes;
+            long? memoryLoadBytes = engine?.MemoryLoadBytes;
+            int? inReach = engine is null ? null : engine.ChangedSourcesInReach;
+            int? touched = engine is null ? null : engine.TouchedCount;
             return new OperationResult(Outcome.Clean, JsonSerializer.Serialize(
-                new StatusLine(state, engine?.Pid, memoryMB, count, head, tree, ReloadAt, WholeProjectAt),
+                new StatusLine(state, engine?.Pid, memoryMB, count, head, tree, inReach, touched, TouchedLimit, KeptAnswerAt, WholeProjectAt, ReloadAt, ReloadAt, engine?.ReloadMs, engine?.GateHolder, memoryCeilingBytes, memoryLoadBytes, engine?.WorkingSetBytes),
                 StatusJson.Default.StatusLine));
         }
         var text = new StringBuilder();
         text.Append(EngineLine(root, engine, silentEngine)).Append('\n');
         text.Append(TreeLine(count, tree, head)).Append('\n');
-        if (count > ReloadAt)
-            text.Append($"fuse: warning: {count} changed files is past the {ReloadAt}-file reload point; checks reseed from git and reload projects, so they slow down - commit soon").Append('\n');
-        text.Append($"fuse: large-tree limits: past {ReloadAt} changed files a sync reloads projects; past {WholeProjectAt} files in reach a check binds whole projects; commit or run fuse stop and let the next check reload when checks feel slow");
+        text.Append(LimitsLine(engine));
+        if (engine?.ReloadMs is { } reloadMs)
+            text.Append('\n').Append($"fuse: last sync reload took {reloadMs} ms");
         return new OperationResult(Outcome.Clean, text.ToString());
     }
 
     private static string EngineLine(RepoRoot root, EngineStatus? engine, bool silentEngine)
     {
         if (engine is not null)
-            return $"fuse: engine running for {root.Path} (pid {engine.Pid}), {engine.WorkingSetBytes / (1024 * 1024)} MB; idle exits after 30 min";
+        {
+            var line = $"fuse: engine running for {root.Path} (pid {engine.Pid}), {engine.WorkingSetBytes / (1024 * 1024)} MB of {engine.MemoryCeilingBytes / (1024 * 1024)} MB budget (GC load {engine.MemoryLoadBytes / (1024 * 1024)} MB); idle exits after 30 min, or {ShortenedIdleMinutes} min when another engine needs memory";
+            return engine.GateHolder is { } holder
+                ? $"{line}; {holder} holds a reader"
+                : line;
+        }
         if (silentEngine)
             return $"fuse: engine for {root.Path} did not answer in {(int)EngineWait.TotalSeconds} s";
         return $"fuse: no engine runs for {root.Path}; the next check starts one";
@@ -94,6 +120,11 @@ internal static partial class StatusOperation
 
     private static string TreeLine(int count, string tree, string? head) =>
         $"fuse: {count} changed file(s) since HEAD; tree {tree}" + (head is null ? "" : $"; HEAD {head[..Math.Min(12, head.Length)]}");
+
+    private static string LimitsLine(EngineStatus? engine) =>
+        engine is not null
+            ? $"fuse: {engine.ChangedSourcesInReach} changed C# source(s) in a project; {engine.TouchedCount} of {TouchedLimit} touched paths before projects re-evaluate; past {KeptAnswerAt} changed files a check skips its kept answer; past {WholeProjectAt} files in reach a check binds whole projects"
+            : $"fuse: large-tree limits: past {ReloadAt} changed C# sources in one sync a sync reloads projects; past {KeptAnswerAt} changed files a check skips its kept answer; past {WholeProjectAt} files in reach a check binds whole projects; past {TouchedLimit} touched paths projects re-evaluate";
 
     /// <summary>
     ///     Asks the running engine what the tree holds, through its pipe directly: the usual send would start an
@@ -139,8 +170,12 @@ internal static partial class StatusOperation
         }
     }
 
-    /// <summary>One status answer: the engine, then the tree, then the limits.</summary>
-    private sealed record StatusLine(string Engine, int? Pid, int? MemoryMB, int ChangedFiles, string? Head, string Tree, int ReloadAt, int WholeProjectAt);
+    /// <summary>
+    ///     One status answer: the engine, then the tree, then the limits counted as the code counts them. The documented
+    ///     <c>head</c>, <c>tree</c> and <c>reloadAt</c> names stay beside the names the branch added, so a reader of either
+    ///     set finds its limit.
+    /// </summary>
+    private sealed record StatusLine(string Engine, int? Pid, int? MemoryMB, int ChangedFiles, string? Head, string Tree, int? ChangedSourcesInReach, int? TouchedPaths, int TouchedLimit, int KeptAnswerAt, int WholeProjectAt, int SyncReloadAt, int ReloadAt, long? ReloadMs, string? GateHolder, long? MemoryCeilingBytes, long? MemoryLoadBytes, long? MemoryWorkingSetBytes);
 
     [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonSerializable(typeof(StatusLine))]

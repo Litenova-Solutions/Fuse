@@ -14,7 +14,7 @@ namespace Fuse.Graph;
 ///     import misses and evaluates again. A missing, unreadable or stale stored graph is no graph at all: the
 ///     caller evaluates, which always answers as the stored form would.
 /// </summary>
-internal static class GraphCache
+internal static partial class GraphCache
 {
     /// <summary>The stored form's version. A stored graph of another version is left unread.</summary>
     private const int FormatVersion = 1;

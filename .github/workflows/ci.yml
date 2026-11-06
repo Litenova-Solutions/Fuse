@@ -82,7 +82,11 @@ jobs:
       - name: Test
         shell: bash
         run: dotnet test --solution Fuse.slnx -c Release --no-build --hangdump --hangdump-timeout 20m ${{ matrix.shard.filter }}
-- name: Tests still running at a hang        if: failure()        shell: bash        run: cat TestResults/*_hang.log 2>/dev/null || true
+
+      - name: Tests still running at a hang
+        if: failure()
+        shell: bash
+        run: cat TestResults/*_hang.log 2>/dev/null || true
 
   targeted:
     name: Test ${{ inputs.filter }} (${{ matrix.os }})

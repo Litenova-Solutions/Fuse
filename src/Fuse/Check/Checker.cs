@@ -373,7 +373,7 @@ internal sealed class Checker
         byte[]? bytes;
         try
         {
-            bytes = File.Exists(path.Absolute) ? File.ReadAllBytes(path.Absolute) : null;
+            bytes = File.Exists(path.Absolute) ? SharedRead.AllBytes(path.Absolute) : null;
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {

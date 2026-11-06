@@ -468,7 +468,7 @@ internal sealed class SummaryCache
         return result;
     }
 
-    private static string HashFile(string path) => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path)));
+    private static string HashFile(string path) => Convert.ToHexString(SHA256.HashData(SharedRead.AllBytes(path)));
 
     /// <summary>
     ///     How <paramref name="absolute"/> is named in a key: its repository-relative form when it lies inside the

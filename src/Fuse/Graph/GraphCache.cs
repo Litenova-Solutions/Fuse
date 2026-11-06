@@ -242,7 +242,7 @@ internal static partial class GraphCache
     private static string FileFor(string sharedStateDirectory, string key) =>
         Path.Combine(DirectoryFor(sharedStateDirectory), key, "graph.json");
 
-    private static string HashFile(string path) => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path)));
+    private static string HashFile(string path) => Convert.ToHexString(SHA256.HashData(SharedRead.AllBytes(path)));
 
     /// <summary>
     ///     The text <paramref name="file"/> holds, opened for shared reading, so a write from another worktree's

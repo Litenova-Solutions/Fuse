@@ -156,7 +156,7 @@ internal sealed partial class BaselineStore
         return result;
     }
 
-    private static string HashFile(string path) => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path)));
+    private static string HashFile(string path) => Convert.ToHexString(SHA256.HashData(SharedRead.AllBytes(path)));
 
     /// <summary>
     ///     How <paramref name="absolute"/> is named in the key: its repository-relative form with forward slashes when

@@ -210,7 +210,7 @@ internal sealed class IntroducedErrors
 
         foreach (var path in added)
         {
-            var lines = Lines(await File.ReadAllTextAsync(path.Absolute, cancellationToken).ConfigureAwait(false));
+            var lines = Lines(await SharedRead.AllTextAsync(path.Absolute, cancellationToken).ConfigureAwait(false));
             var best = headLines
                 .Where(h => !renames.ContainsValue(h.Key))
                 .Select(h => (Path: h.Key, Similarity: Similarity(lines, h.Value)))

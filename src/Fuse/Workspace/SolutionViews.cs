@@ -511,7 +511,7 @@ internal sealed class SolutionViews
                 stamp = (file.Length, file.LastWriteTimeUtc);
                 if (_generated.TryGetValue(path, out var known) && known == stamp)
                     continue;
-                text = Decode(File.ReadAllBytes(path.Absolute));
+                text = Decode(SharedRead.AllBytes(path.Absolute));
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
@@ -759,7 +759,7 @@ internal sealed class SolutionViews
         try
         {
             if (File.Exists(path.Absolute))
-                text = Decode(File.ReadAllBytes(path.Absolute));
+                text = Decode(SharedRead.AllBytes(path.Absolute));
         }
         catch (IOException)
         {

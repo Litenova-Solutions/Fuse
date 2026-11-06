@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using Fuse.Check.Model;
+using Fuse.Paths;
 
 namespace Fuse.Check;
 
@@ -102,7 +103,7 @@ internal sealed class KeptCheck
         {
             lines = changedFiles
                 .OrderBy(f => f.Relative, StringComparer.Ordinal)
-                .Select(f => $"{f.Relative}={Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(f.Absolute)))}")
+                .Select(f => $"{f.Relative}={Convert.ToHexString(SHA256.HashData(SharedRead.AllBytes(f.Absolute)))}")
                 .ToList();
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)

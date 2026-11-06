@@ -288,7 +288,7 @@ internal sealed class ChangeTracker : IDisposable
         try
         {
             if (File.Exists(path.Absolute))
-                onDisk = File.ReadAllBytes(path.Absolute);
+                onDisk = SharedRead.AllBytes(path.Absolute);
         }
         catch (IOException)
         {

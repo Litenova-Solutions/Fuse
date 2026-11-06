@@ -421,7 +421,7 @@ internal sealed class ChangeReach
         TextDocument? document = id is null ? null : current.GetDocument(id) ?? (TextDocument?)current.GetAdditionalDocument(id);
         return document is not null
             ? await document.GetTextAsync(cancellationToken).ConfigureAwait(false)
-            : SolutionViews.Decode(await File.ReadAllBytesAsync(path.Absolute, cancellationToken).ConfigureAwait(false));
+            : SolutionViews.Decode(await SharedRead.AllBytesAsync(path.Absolute, cancellationToken).ConfigureAwait(false));
     }
 
     private static Task<SyntaxNode> ParseAsync(SourceText text, CancellationToken cancellationToken) =>

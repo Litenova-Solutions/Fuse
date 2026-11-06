@@ -38,7 +38,7 @@ internal sealed partial class BaselineStore
     ///     additional files and its analyzer configuration options, plus every editorconfig and globalconfig file, so a
     ///     result is read only when all of those are as they were. Paths inside the repository are named by their
     ///     repository-relative form and restore output is hashed with its worktree paths masked, so worktrees of one
-///     repository on the same commit share one key.
+    ///     repository on the same commit share one key.
     /// </summary>
     public static string? KeyFor(string? head, Solution baseline, RepoGraph graph, RepoRoot root)
     {

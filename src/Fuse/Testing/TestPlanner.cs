@@ -391,13 +391,12 @@ internal sealed class TestPlanner
     private static string? RunSettingsOf(ProjectNode node) =>
         node.UsesTestingPlatform && node.Framework is not (TestFramework.MSTest or TestFramework.NUnit) ? null : node.RunSettings;
 
-    /// <summary>A selection as the engine log gives it: "all", or how many patterns it has.</summary>
     /// <summary>The summary for a plan that selects nothing because every non-C# change is outside every project.</summary>
     private static string OutsideSummary(List<RepoPath> outside, string othersNote, string namedNote) =>
         $"{outside.Count} non-C# file(s) outside every project changed ({OutsideSample(outside)}); a test that reads them by path is not selected{othersNote}{namedNote}; fuse test --all covers them";
 
     /// <summary>The first outside files by relative path, with the rest elided past three.</summary>
-    private static string OutsideSample(IReadOnlyList<RepoPath> outside) =>
+    private static string OutsideSample(List<RepoPath> outside) =>
         string.Join(", ", outside.Take(3).Select(p => p.Relative)) + (outside.Count > 3 ? ", ..." : "");
 
     /// <summary>A selection as the engine log gives it: "all", or how many patterns it has.</summary>

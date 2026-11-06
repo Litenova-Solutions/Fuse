@@ -118,7 +118,7 @@ internal abstract record EngineRequest
         /// <summary>
         ///     The session that wrote <see cref="Files"/>, as its harness identifies it, or null when the client knows none.
         ///     The engine records that the session wrote the files, and answers with the errors that session's edits cause,
-        ///     leaving out those other sessions' edits caused without it. Only the post-edit hook sends one.
+        ///     leaving out those other sessions' edits caused without it. The post-edit hook sends one, and so does a check run with FUSE_SESSION set.
         /// </summary>
         public string? Session { get; init; }
 

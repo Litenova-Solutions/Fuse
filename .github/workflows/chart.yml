@@ -1,0 +1,30 @@
+name: Chart
+
+# Renders site/assets/benefits.svg from the result files in evals/results, so the chart is drawn on a runner, never on a
+# developer's machine. Start it from the Actions tab or with gh workflow run chart.yml --ref <branch>, then commit the
+# benefits-svg artifact as site/assets/benefits.svg.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  chart:
+    name: Render the benchmark chart
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Render
+        run: dotnet run --project evals/Fuse.Evals -c Release -- chart
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: benefits-svg
+          path: site/assets/benefits.svg

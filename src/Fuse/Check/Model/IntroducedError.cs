@@ -18,4 +18,10 @@ internal sealed record IntroducedError(CompilerError Error, Cause? Cause = null,
     ///     reads that file as the last build left it, so the error may only mean the build has not written it again.
     /// </summary>
     public string? GeneratedFile { get; init; }
+
+    /// <summary>
+    ///     The session that wrote the file holding the declaration change that caused the error, when exactly one session
+    ///     wrote it, or null. A judge routes the error to that session.
+    /// </summary>
+    public string? CausedBy { get; init; }
 }

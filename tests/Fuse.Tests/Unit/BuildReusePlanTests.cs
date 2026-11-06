@@ -36,11 +36,11 @@ public class BuildReusePlanTests
         Assert.Equal(4.5, stored.Seconds);
         Assert.Equal("2 tests; without MSBuild", stored.Summary);
         Assert.Equal((2, 1, 0), (stored.Aggregate.Passed, stored.Aggregate.Failed, stored.Aggregate.Skipped));
-        Assert.Equal([failure], stored.Aggregate.Failures);
+        AssertFailure(failure, Assert.Single(stored.Aggregate.Failures));
         var run = Assert.Single(stored.Runs);
         Assert.Equal((project, "Lib.Tests"), (run.Project, run.Name));
         Assert.Equal((2, 1, 0), (run.Outcome.Passed, run.Outcome.Failed, run.Outcome.Skipped));
-        Assert.Equal([failure], run.Outcome.Failures);
+        AssertFailure(failure, Assert.Single(run.Outcome.Failures));
         Assert.Equal(
             [("Lib.Tests.CalcTests.Multiplies", TestVerdict.Failed, 3.0), ("Lib.Tests.CalcTests.Adds", TestVerdict.Passed, 1.0)],
             run.Outcome.Records.Select(t => (t.Name, t.Verdict, t.Duration.TotalMilliseconds)));
@@ -143,5 +143,17 @@ public class BuildReusePlanTests
         Assert.StartsWith("fuse: test run reused from ", answer.Text, StringComparison.Ordinal);
         Assert.DoesNotContain("FAILED", answer.Text, StringComparison.Ordinal);
         Assert.Contains("1 failed, 0 passed", answer.Text, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    ///     One failure as a stored run holds it: name, message and frames in order. A failure record compares its
+    ///     frame list by the instance it holds, and a run read back from disk holds a new one, so the round trip is
+    ///     read field by field instead of by the record.
+    /// </summary>
+    private static void AssertFailure(TestFailure expected, TestFailure actual)
+    {
+        Assert.Equal(expected.Name, actual.Name);
+        Assert.Equal(expected.Message, actual.Message);
+        Assert.Equal(expected.Frames, actual.Frames);
     }
 }

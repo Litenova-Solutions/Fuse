@@ -59,6 +59,12 @@ internal sealed class TestSelector
         var nonSourceOwners = new Dictionary<RepoPath, IReadOnlyList<ProjectNode>>();
         foreach (var path in changedFiles.Where(p => !PathRules.IsSource(p.Absolute)))
         {
+            // A project file defines how its project evaluates, and the sync has already evaluated it again; it is
+            // not a file the project holds for its tests to read, so it selects no project whole. That keeps a
+            // project's own file, such as the one a fixture rewrites to name a container package, from widening
+            // the selection its code changes give.
+            if (PathRules.IsProjectFile(path.Absolute))
+                continue;
             var owners = graph.NonSourceOwnersOf(path);
             if (owners.Count == 0 && graph.ContainingProject(path) is { } containing)
                 owners = [containing];
@@ -122,7 +128,13 @@ internal sealed class TestSelector
         // The class-level answer costs milliseconds. The member walk costs a reference search per symbol, so it runs only
         // when the class-level answer is small enough for the refinement to matter and the walk to finish.
         var classes = classLevel.Values.OfType<TestSelection.Methods>().Sum(m => m.Patterns.Count);
-        var allSameCode = walk.ChangedDeclarations > 0 && walk.DroppedSameCode == walk.ChangedDeclarations;
+        // Every changed declaration the walks were seeded with compiled to the same code, or none was: a comment or
+        // whitespace edit differs from HEAD in no declaration the code differs by, which is the same answer. A changed
+        // non-C# file is not that answer, so it keeps the summary the plan gives it instead.
+        var allSameCode = walk.DroppedSameCode == walk.ChangedDeclarations
+                          && changedFiles.Count > 0
+                          && changedFiles.All(p => PathRules.IsSource(p.Absolute))
+                          && (walk.ChangedDeclarations > 0 || changedFiles.All(p => solution.GetDocumentIdsWithFilePath(p.Absolute).Length > 0));
         if (classes > RefineThreshold)
         {
             _workspace.Log($"test selection: {classes} test classes reachable; selecting at class level");

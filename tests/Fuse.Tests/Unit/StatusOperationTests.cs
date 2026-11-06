@@ -57,6 +57,7 @@ public class StatusOperationTests
         Assert.Equal(500, root.GetProperty("keptAnswerAt").GetInt32());
         Assert.Equal(500, root.GetProperty("wholeProjectAt").GetInt32());
         Assert.Equal(300, root.GetProperty("syncReloadAt").GetInt32());
+        Assert.Equal(300, root.GetProperty("reloadAt").GetInt32());
         Assert.False(root.TryGetProperty("reloadMs", out _));
         Assert.False(root.TryGetProperty("gateHolder", out _));
     }

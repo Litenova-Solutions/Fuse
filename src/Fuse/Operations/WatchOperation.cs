@@ -51,13 +51,13 @@ internal static class WatchOperation
                     {
                         printed = content;
                         waiting = false;
-                        await output.FlushAsync().ConfigureAwait(false);
+                        await output.FlushAsync(cancellationToken).ConfigureAwait(false);
                     }
                 }
                 else if (content is null && !waiting)
                 {
                     await output.WriteLineAsync($"fuse: watching session {session}; no stored answer yet").ConfigureAwait(false);
-                    await output.FlushAsync().ConfigureAwait(false);
+                    await output.FlushAsync(cancellationToken).ConfigureAwait(false);
                     waiting = true;
                 }
 
@@ -119,9 +119,9 @@ internal static class WatchOperation
                 return line;
             if (error.TryGetProperty("path", out var path) && error.TryGetProperty("id", out var id) && error.TryGetProperty("message", out var message))
             {
-                var line = error.TryGetProperty("line", out var l) && l.ValueKind == JsonValueKind.Number ? l.GetInt32() : 0;
+                var lineNumber = error.TryGetProperty("line", out var l) && l.ValueKind == JsonValueKind.Number ? l.GetInt32() : 0;
                 var column = error.TryGetProperty("column", out var c) && c.ValueKind == JsonValueKind.Number ? c.GetInt32() : 0;
-                return $"{path.GetString()}({line},{column}): error {id.GetString()}: {message.GetString()}";
+                return $"{path.GetString()}({lineNumber},{column}): error {id.GetString()}: {message.GetString()}";
             }
         }
 

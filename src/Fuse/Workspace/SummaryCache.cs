@@ -139,8 +139,8 @@ internal sealed class SummaryCache
                         return false;
                     lines.Add("reference:" + referencePath + "=" + info.Length + "@" + info.LastWriteTimeUtc.Ticks);
                     break;
-                case CompilationReference compilation:
-                    lines.Add("compilation-reference:" + compilation.Compilation.AssemblyName);
+                case CompilationReference compilationReference:
+                    lines.Add("compilation-reference:" + compilationReference.Compilation.AssemblyName);
                     break;
                 case { Display: { } display }:
                     lines.Add("reference-display:" + display);
@@ -160,7 +160,7 @@ internal sealed class SummaryCache
                     lines.Add("analyzer:" + analyzerPath + "=" + HashFile(file.FullPath));
                     break;
                 case AnalyzerImageReference image:
-                    foreach (var analyzer in image.Analyzers.OrderBy(a => a.GetType().FullName, StringComparer.Ordinal))
+                    foreach (var analyzer in image.GetAnalyzersForAllLanguages().OrderBy(a => a.GetType().FullName, StringComparer.Ordinal))
                     {
                         var location = analyzer.GetType().Assembly.Location;
                         if (string.IsNullOrEmpty(location) || !File.Exists(location))
@@ -181,23 +181,25 @@ internal sealed class SummaryCache
                 lines.Add("option:" + project.Name + "|" + key + "=" + value);
         }
 
-        var compilation = project.CompilationOptions;
-        lines.Add("compilation:" + compilation.OutputKind + "|" + compilation.Platform + "|" + compilation.OptimizationLevel + "|" + compilation.CheckOverflow + "|" + compilation.Deterministic + "|" + compilation.MetadataImportOptions + "|" + compilation.WarningLevel);
-        if (compilation is CSharpCompilationOptions csharp)
+        if (project.CompilationOptions is not { } compilationOptions)
+            return false;
+        lines.Add("compilation:" + compilationOptions.OutputKind + "|" + compilationOptions.Platform + "|" + compilationOptions.OptimizationLevel + "|" + compilationOptions.CheckOverflow + "|" + compilationOptions.Deterministic + "|" + compilationOptions.MetadataImportOptions + "|" + compilationOptions.WarningLevel);
+        if (compilationOptions is CSharpCompilationOptions csharp)
             lines.Add("csharp-compilation:" + csharp.AllowUnsafe + "|" + csharp.NullableContextOptions);
-        var parse = project.ParseOptions;
-        lines.Add("parse:" + parse.DocumentationMode + "|" + string.Join(",", parse.PreprocessorSymbolNames.Order(StringComparer.Ordinal)) + "|" + string.Join(",", parse.Features.OrderBy(f => f.Key, StringComparer.Ordinal).Select(f => f.Key + "=" + f.Value)));
-        if (parse is CSharpParseOptions csharpParse)
+        if (project.ParseOptions is not { } parseOptions)
+            return false;
+        lines.Add("parse:" + parseOptions.DocumentationMode + "|" + string.Join(",", parseOptions.PreprocessorSymbolNames.Order(StringComparer.Ordinal)) + "|" + string.Join(",", parseOptions.Features.OrderBy(f => f.Key, StringComparer.Ordinal).Select(f => f.Key + "=" + f.Value)));
+        if (parseOptions is CSharpParseOptions csharpParse)
             lines.Add("csharp-parse:" + csharpParse.LanguageVersion);
         return true;
     }
 
-    /// <summary>One text a summary depends on, by the checksum Roslyn computed for it. Null when its file cannot be named in the key.</summary>
+    /// <summary>One text a summary depends on, by the content hash Roslyn computed for it. Null when its file cannot be named in the key.</summary>
     private async Task<string?> TextLineAsync(string kind, TextDocument document, CancellationToken cancellationToken)
     {
         var text = await document.GetTextAsync(cancellationToken).ConfigureAwait(false);
         var named = document.FilePath is { } file ? KeyPathFor(file) : document.Name;
-        return named is null ? null : kind + ":" + named + "=" + Convert.ToHexString(text.Checksum.ToArray());
+        return named is null ? null : kind + ":" + named + "=" + Convert.ToHexString(text.GetContentHash().ToArray());
     }
 
     /// <summary>

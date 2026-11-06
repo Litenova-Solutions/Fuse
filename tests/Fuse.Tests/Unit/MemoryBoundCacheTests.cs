@@ -1,6 +1,8 @@
+using System.Text;
 using Fuse.Testing;
 using Fuse.Tests.Fixtures;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Text;
 
 namespace Fuse.Tests.Unit;
 
@@ -22,12 +24,16 @@ public class MemoryBoundCacheTests
             var projects = new List<Project>();
             for (var i = 0; i < EmitCache.MaxEntries + 4; i++)
             {
+                // The build output of one project, as a build writes it: an assembly a build produced, not the
+                // runtime's own core library, whose image no project's build output ever is.
                 var output = Path.Combine(directory, $"P{i}.dll");
-                File.Copy(typeof(object).Assembly.Location, output);
+                File.Copy(typeof(MemoryBoundCacheTests).Assembly.Location, output);
+                var source = Path.Combine(directory, $"C{i}.cs");
+                File.WriteAllText(source, "public class C { }");
                 var info = ProjectInfo.Create(ProjectId.CreateNewId(), VersionStamp.Default, "P", "P", LanguageNames.CSharp, outputFilePath: output)
                     .WithMetadataReferences([MetadataReference.CreateFromFile(typeof(object).Assembly.Location)]);
                 solution = solution.AddProject(info)
-                    .AddDocument(DocumentId.CreateNewId(info.Id), "C.cs", "public class C { }", filePath: "C.cs");
+                    .AddDocument(DocumentId.CreateNewId(info.Id), "C.cs", SourceText.From("public class C { }", Encoding.UTF8), filePath: source);
                 var project = solution.GetProject(info.Id)!;
                 projects.Add(project);
                 Assert.NotNull(await cache.GetAsync(project, TestContext.Current.CancellationToken));

@@ -75,7 +75,7 @@ internal static class McpCommand
     {
         IProgress<ProgressNotificationValue>? progress = null;
         if (request.Params?.ProgressToken is { } token)
-            progress = new TokenProgress(request.Server, token);
+            progress = new SessionProgress(request.Server, token);
         return await CallAsync(request.Params, Environment.CurrentDirectory, cancellationToken, progress).ConfigureAwait(false);
     }
 
@@ -162,5 +162,11 @@ internal static class McpCommand
     {
         using var document = JsonDocument.Parse(json);
         return document.RootElement.Clone();
+    }
+
+    /// <summary>Sends each progress value to the client as a progress notification for the request's token, without waiting for it.</summary>
+    private sealed class SessionProgress(McpSession session, ProgressToken token) : IProgress<ProgressNotificationValue>
+    {
+        public void Report(ProgressNotificationValue value) => _ = session.NotifyProgressAsync(token, value, null, CancellationToken.None);
     }
 }

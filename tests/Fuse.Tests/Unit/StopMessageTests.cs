@@ -69,6 +69,24 @@ public class StopMessageTests
     }
 
     [Fact]
+    public void An_error_the_sessions_own_edit_caused_in_a_file_it_never_wrote_keeps_the_fix_line()
+    {
+        ReportedError[] errors =
+        [
+            new ReportedError(new CompilerError("App/Program.cs", 3, 1, "CS1061", "no Add"), new ReportedCause(CauseKind.Removed, "public int Add(int a, int b)")) { CausedBy = "claude:a" },
+        ];
+        var report = Report(errors, [], 0);
+        var checkText = "App/Program.cs(3,1): error CS1061: no Add\nfuse: 1 error(s) introduced in 1 file(s) (App)";
+
+        var text = StopMessage.Build(checkText, report, null, new HashSet<string>(StringComparer.Ordinal), "claude:a");
+
+        Assert.EndsWith(HookCommand.StopReason, text, StringComparison.Ordinal);
+        Assert.DoesNotContain(StopMessage.GuidanceLine, text, StringComparison.Ordinal);
+        Assert.True(StopMessage.CausedBySession(errors, "claude:a"));
+        Assert.False(StopMessage.CausedBySession(errors, "claude:b"));
+    }
+
+    [Fact]
     public void A_stop_with_no_session_keeps_its_reason_and_adds_guidance()
     {
         ReportedError[] errors = [Error("Lib/Calc.cs", 7)];

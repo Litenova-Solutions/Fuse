@@ -86,7 +86,7 @@ internal static partial class StatusOperation
             int? inReach = engine is null ? null : engine.ChangedSourcesInReach;
             int? touched = engine is null ? null : engine.TouchedCount;
             return new OperationResult(Outcome.Clean, JsonSerializer.Serialize(
-                new StatusLine(state, engine?.Pid, memoryMB, count, inReach, touched, TouchedLimit, KeptAnswerAt, WholeProjectAt, ReloadAt, engine?.ReloadMs, engine?.GateHolder, memoryCeilingBytes, memoryLoadBytes),
+                new StatusLine(state, engine?.Pid, memoryMB, count, head, tree, inReach, touched, TouchedLimit, KeptAnswerAt, WholeProjectAt, ReloadAt, ReloadAt, engine?.ReloadMs, engine?.GateHolder, memoryCeilingBytes, memoryLoadBytes),
                 StatusJson.Default.StatusLine));
         }
         var text = new StringBuilder();
@@ -164,8 +164,12 @@ internal static partial class StatusOperation
         }
     }
 
-    /// <summary>One status answer: the engine, then the tree, then the limits counted as the code counts them.</summary>
-    private sealed record StatusLine(string Engine, int? Pid, int? MemoryMB, int ChangedFiles, int? ChangedSourcesInReach, int? TouchedPaths, int TouchedLimit, int KeptAnswerAt, int WholeProjectAt, int SyncReloadAt, long? ReloadMs, string? GateHolder, long? MemoryCeilingBytes, long? MemoryLoadBytes);
+    /// <summary>
+    ///     One status answer: the engine, then the tree, then the limits counted as the code counts them. The documented
+    ///     <c>head</c>, <c>tree</c> and <c>reloadAt</c> names stay beside the names the branch added, so a reader of either
+    ///     set finds its limit.
+    /// </summary>
+    private sealed record StatusLine(string Engine, int? Pid, int? MemoryMB, int ChangedFiles, string? Head, string Tree, int? ChangedSourcesInReach, int? TouchedPaths, int TouchedLimit, int KeptAnswerAt, int WholeProjectAt, int SyncReloadAt, int ReloadAt, long? ReloadMs, string? GateHolder, long? MemoryCeilingBytes, long? MemoryLoadBytes);
 
     [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonSerializable(typeof(StatusLine))]

@@ -269,7 +269,7 @@ internal sealed class Checker
         var reused = context.TakeReused();
         _workspace.Log($"check: binding {compilerMs} ms, analyzers {analyzerMs} ms (summed over files); {targets.Count} target(s) in {targetsMs} ms, {changedTargets.Count} with declaration changes, {filesChecked} file(s) bound{(reused > 0 ? $" ({reused} with errors reused from an earlier check)" : "")}, {timer.ElapsedMilliseconds} ms total{(wholeProjects ? WholeProjectsLog(wholeCauses) : "")}{(leftToOthers > 0 ? $", {leftToOthers} error(s) left to other sessions" : "")}{(notAttributed > 0 ? $", {notAttributed} file(s) not attributed" : "")}{(unfinished > 0 ? $", analyzers unfinished in {unfinished}" : "")}{(leftOut.Count > 0 ? $", left out {string.Join(", ", leftOut)}" : "")}{SessionCounts(generation)}");
         _introduced.LogBaseline(context);
-        var reported = CauseLines.Attach(ordered, reach, root, targets);
+        var reported = CauseLines.Attach(ordered, reach, root, targets, _sessions.WritersOf(generation.Changed));
         reported = [.. reported.Take(maxReported == 0 ? MaxReported : maxReported)];
         reported = await _generated.AttachAsync(generation.Current, reported, cancellationToken).ConfigureAwait(false);
         var result = new CheckResult(

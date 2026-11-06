@@ -189,7 +189,7 @@ internal sealed partial class BaselineStore
         {
             if (JsonNode.Parse(File.ReadAllText(path)) is not { } assets)
                 return HashFile(path);
-            MaskWorktreePaths(assets, root.Path);
+            MaskWorktreePaths(assets, root);
             return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(assets.ToJsonString())));
         }
         catch (Exception e) when (e is ArgumentException or JsonException)
@@ -198,8 +198,13 @@ internal sealed partial class BaselineStore
         }
     }
 
-    /// <summary>Replaces every string under <paramref name="node"/> that names a path under <paramref name="root"/> with its repository-relative form.</summary>
-    private static void MaskWorktreePaths(JsonNode node, string root)
+    /// <summary>
+    ///     Replaces every string under <paramref name="node"/> that names a path under <paramref name="root"/> with its
+    ///     repository-relative form. That holds for the name of a property as well as for its value: restore output names
+    ///     a referenced project as the property name of its entry, with its project path as a value under it, so a
+    ///     worktree's own path would reach the key through the name alone.
+    /// </summary>
+    private static void MaskWorktreePaths(JsonNode node, RepoRoot root)
     {
         if (node is JsonObject obj)
         {
@@ -210,6 +215,13 @@ internal sealed partial class BaselineStore
                 else if (obj[key] is { } child)
                     MaskWorktreePaths(child, root);
             }
+
+            var pairs = obj.ToList();
+            if (pairs.All(pair => MaskedPath(pair.Key, root) is null))
+                return;
+            obj.Clear();
+            foreach (var pair in pairs)
+                obj[MaskedPath(pair.Key, root) ?? pair.Key] = pair.Value;
         }
         else if (node is JsonArray array)
         {
@@ -224,15 +236,8 @@ internal sealed partial class BaselineStore
     }
 
     /// <summary>The repository-relative form of <paramref name="value"/> when it names a path under <paramref name="root"/>, or null otherwise.</summary>
-    private static string? MaskedPath(string value, string root)
-    {
-        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-        if (value.Length > root.Length
-            && value.StartsWith(root, comparison)
-            && (value[root.Length] == Path.DirectorySeparatorChar || value[root.Length] == Path.AltDirectorySeparatorChar))
-            return value[(root.Length + 1)..].Replace('\\', '/');
-        return null;
-    }
+    private static string? MaskedPath(string value, RepoRoot root) =>
+        value.Length > root.Path.Length && root.Contains(value) ? root.PathOf(value).Relative : null;
 
     /// <summary>
     ///     What identifies a project's stored result: its project file and the Roslyn project's name, which a target

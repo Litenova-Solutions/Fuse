@@ -45,6 +45,7 @@ public class StatusProcessTests
             Assert.Equal(2000, root.GetProperty("touchedLimit").GetInt32());
             Assert.Equal(500, root.GetProperty("keptAnswerAt").GetInt32());
             Assert.Equal(300, root.GetProperty("syncReloadAt").GetInt32());
+            Assert.Equal(300, root.GetProperty("reloadAt").GetInt32());
             Assert.Equal(500, root.GetProperty("wholeProjectAt").GetInt32());
 
             repo.Replace("Lib/Calc.cs", "public int Add(int a, int b) => a + b;", "public int Add(int a, int b) => a - b;");

@@ -202,17 +202,14 @@ internal static class HookCommand
             return null;
         // A missing restore is not an error the changes introduced; its message already names the command to run.
         if (result.Outcome != Outcome.ProblemsFound)
-        {
-            Log(root.Path, $"{harness.Name} stop blocked: {SummaryLine(result.Text)}");
-            return harness.BlockStop(result.Text);
-        }
+            return BlockStop(harness, root, result.Text, result.Text);
 
         if (response is not EngineResponse.CheckAnswered answered)
-            return harness.BlockStop(StopMessage.Build(result.Text, ReportOf(response), null, new HashSet<string>(StringComparer.Ordinal), session));
+            return BlockStop(harness, root, result.Text, StopMessage.Build(result.Text, ReportOf(response), null, new HashSet<string>(StringComparer.Ordinal), session));
 
         var report = answered.Report;
         if (session is null)
-            return harness.BlockStop(StopMessage.Build(result.Text, report, null, new HashSet<string>(StringComparer.Ordinal), null));
+            return BlockStop(harness, root, result.Text, StopMessage.Build(result.Text, report, null, new HashSet<string>(StringComparer.Ordinal), null));
         var previous = StopMemory.Load(root, session);
         var editedFiles = StopMemory.AllWritten(root, session);
         var writtenSince = previous is null ? new HashSet<string>(StringComparer.Ordinal) : StopMemory.WrittenSince(root, session, previous.BlockedAt);
@@ -224,9 +221,18 @@ internal static class HookCommand
         }
 
         StopMemory.Save(root, session, StopMemory.SnapshotFor(report.Errors, report.Tree, DateTimeOffset.UtcNow));
-        // A stop that blocks is told apart from a background post-edit the harness delivers late by this line.
-        Log(root.Path, $"{harness.Name} stop blocked: {SummaryLine(result.Text)}");
-        return harness.BlockStop(StopMessage.Build(result.Text, report, previous, editedFiles, session));
+        return BlockStop(harness, root, result.Text, StopMessage.Build(result.Text, report, previous, editedFiles, session));
+    }
+
+    /// <summary>
+    ///     Blocks the stop with <paramref name="blockText"/>, naming the errors in <c>hook.log</c> first, so a blocked
+    ///     stop is told apart from a background post-edit the harness delivers late on every path that blocks: with or
+    ///     without a session, with or without a report behind the answer.
+    /// </summary>
+    private static HookAnswer BlockStop(Harness harness, RepoRoot root, string resultText, string blockText)
+    {
+        Log(root.Path, $"{harness.Name} stop blocked: {SummaryLine(resultText)}");
+        return harness.BlockStop(blockText);
     }
 
     /// <summary>The report behind a check answer, or an empty one for an answer that carries none, so the stop text still prints its lines.</summary>

@@ -371,7 +371,7 @@ internal sealed class RequestRouter : IDisposable
     }
 
     /// <summary>The request a background re-check of <paramref name="session"/> sends: its files, answered to it, with every analyzer and a tree stamp.</summary>
-    private static EngineRequest BackgroundRequest(BackgroundCheck.SessionFiles session) =>
+    private static EngineRequest.CheckFiles BackgroundRequest(BackgroundCheck.SessionFiles session) =>
         new EngineRequest.CheckFiles([.. session.Files.Select(f => f.Absolute)], WaitForLoad: true) { Session = session.Session, StampTree = true };
 
     /// <summary>The content key a background re-check of <paramref name="session"/> coalesces and is stored by.</summary>

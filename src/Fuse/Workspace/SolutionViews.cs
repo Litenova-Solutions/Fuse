@@ -33,13 +33,18 @@ internal sealed class SolutionViews
     private readonly HashSet<RepoPath> _touched = [];
     private readonly Lock _touchedLock = new();
 
-    /// <summary>The views with some files at HEAD content that are kept for sessions, least recently derived last. <see cref="ClearSessionViews"/> sheds them.</summary>
-    private readonly List<(Solution Source, string Paths, Solution View)> _sessionViews = [];
+    /// <summary>
+    ///     The views with some files at HEAD content that are kept for sessions, least recently used first. A patch
+    ///     applies its files to each of them, a rebuild derives each of them again, and
+    ///     <see cref="ClearSessionViews"/> sheds them, so a view a session's check reads is the view the last sync
+    ///     left, with its compilations carried forward.
+    /// </summary>
+    private readonly List<SessionViewEntry> _sessionViews = [];
 
     /// <summary>Guards <see cref="_sessionViews"/>, which checks that run at the same time derive and shed.</summary>
     private readonly Lock _sessionViewsLock = new();
 
-    /// <summary>The most session views kept; past it the view derived least recently goes, and a later session derives it again from source.</summary>
+    /// <summary>The most session views kept; past it the view used least recently goes, and a later session derives it again from the current view, which answers the same.</summary>
     internal const int MaxSessionViews = 8;
 
     /// <summary>The summary each baseline project was last supplied by, for the version of that project it was supplied for, so a view derived again does not key or emit it again.</summary>
@@ -271,7 +276,7 @@ internal sealed class SolutionViews
     ///     an alias or an embedded interop type, a reference to a project the graph or the baseline does not hold,
     ///     and a project with no summary kept all stay as they are: a doubt falls back to source.
     /// </summary>
-    private Solution WithSummaries(Solution source, Solution baseline, IReadOnlySet<RepoPath> cone, Func<Project, MetadataReference?> summaryFor)
+    private Solution WithSummaries(Solution source, Solution baseline, HashSet<RepoPath> cone, Func<Project, MetadataReference?> summaryFor)
     {
         if (_projects.Graph is not { } graph)
             return source;
@@ -282,7 +287,7 @@ internal sealed class SolutionViews
             List<MetadataReference>? added = null;
             foreach (var reference in project.ProjectReferences)
             {
-                if (reference.ProjectId == project.Id || !reference.Properties.Aliases.IsEmpty || reference.Properties.EmbedInteropTypes)
+                if (reference.ProjectId == project.Id || !reference.Aliases.IsEmpty || reference.EmbedInteropTypes)
                     continue;
                 if (source.GetProject(reference.ProjectId)?.FilePath is not { } referencedFile)
                     continue;
@@ -465,6 +470,7 @@ internal sealed class SolutionViews
         _sourceBaseline = baseline;
         await RefreshGeneratedAsync(cancellationToken).ConfigureAwait(false);
         await RefreshSummaryViewsAsync(cancellationToken).ConfigureAwait(false);
+        await RederiveSessionViewsAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -481,6 +487,8 @@ internal sealed class SolutionViews
     {
         if (_generatedFiles.Count == 0)
             return;
+        var before = Current;
+        var applied = new List<(RepoPath Path, SourceText Text)>();
         var current = _sourceCurrent!;
         var baseline = _sourceBaseline!;
         foreach (var path in _generatedFiles)
@@ -503,11 +511,12 @@ internal sealed class SolutionViews
             }
 
             _generated[path] = stamp;
-            var before = current;
+            var previous = current;
             current = await WithContentAsync(current, path, text, cancellationToken).ConfigureAwait(false);
             baseline = await WithContentAsync(baseline, path, text, cancellationToken).ConfigureAwait(false);
-            if (!ReferenceEquals(before, current))
+            if (!ReferenceEquals(previous, current))
                 _rewritten[path] = text;
+            applied.Add((path, text));
         }
 
         _sourceCurrent = current;
@@ -518,6 +527,17 @@ internal sealed class SolutionViews
         }
 
         await RefreshSummaryViewsAsync(cancellationToken).ConfigureAwait(false);
+        foreach (var entry in SessionViewsFrom(before))
+        {
+            var view = entry.View;
+            foreach (var (path, text) in applied)
+            {
+                if (!entry.HeadPaths.Contains(path))
+                    view = await WithContentAsync(view, path, text, cancellationToken).ConfigureAwait(false);
+            }
+
+            StoreSessionView(entry, WithReferencesFrom(view, Current));
+        }
     }
 
     /// <summary>The documents of <paramref name="solution"/> that lie in a <c>bin</c> or <c>obj</c> folder of their project.</summary>
@@ -549,6 +569,7 @@ internal sealed class SolutionViews
     {
         if (paths.Count == 0 || _projects.Solution is null)
             return;
+        var before = Current;
         var current = _sourceCurrent!;
         var baseline = _sourceBaseline!;
         foreach (var path in paths)
@@ -567,27 +588,47 @@ internal sealed class SolutionViews
         }
 
         await RefreshSummaryViewsAsync(cancellationToken).ConfigureAwait(false);
+        // The writer keeps each session view in step with the tree it just patched: a patched file takes its disk
+        // content in a view, unless that view holds the file at HEAD, where it stays. Document ids are preserved, so
+        // the errors a check kept for a file still hit in the view it is decided in.
+        foreach (var entry in SessionViewsFrom(before))
+        {
+            var view = entry.View;
+            foreach (var path in paths)
+            {
+                if (!entry.HeadPaths.Contains(path))
+                    view = await WithDiskContentAsync(view, path, cancellationToken).ConfigureAwait(false);
+            }
+
+            StoreSessionView(entry, WithReferencesFrom(view, Current));
+        }
     }
 
     /// <summary>
     ///     <see cref="Current"/> with each of <paramref name="paths"/> at its HEAD content, and a file HEAD does not have
     ///     left out. Neither view changes; the result shares every other document with <see cref="Current"/>, so only the
-    ///     projects that compile those files bind again. The result is kept as a session view for the same view and paths,
-    ///     up to <see cref="MaxSessionViews"/>, and shed by <see cref="ClearSessionViews"/>.
+    ///     projects that compile those files bind again. The result is kept as a session view for the same view and
+    ///     paths, up to <see cref="MaxSessionViews"/> kept with the one used least recently going first, and shed by
+    ///     <see cref="ClearSessionViews"/>. A patch keeps a kept view in step with the tree, so a view read after a
+    ///     sync is the one that sync left; a session whose view went derives it from the current view again and is
+    ///     answered the same, only slower.
     /// </summary>
     /// <param name="view">The current view to derive from, as a pinned generation holds it.</param>
     /// <param name="paths">The files to put back at HEAD content.</param>
     /// <param name="cancellationToken">Cancels reading file contents.</param>
     public async Task<Solution> CurrentWithHeadContentAsync(Solution view, IEnumerable<RepoPath> paths, CancellationToken cancellationToken)
     {
-        var listed = paths as IReadOnlyCollection<RepoPath> ?? [.. paths];
+        var listed = (paths as IReadOnlyCollection<RepoPath> ?? [.. paths]).Distinct().ToList();
         var key = string.Join("\n", listed.Select(p => p.Relative).Order(StringComparer.Ordinal));
         lock (_sessionViewsLock)
         {
-            foreach (var (source, pathsKey, kept) in _sessionViews)
+            var kept = _sessionViews.FindIndex(v => ReferenceEquals(v.Source, view) && v.Paths == key);
+            if (kept >= 0)
             {
-                if (ReferenceEquals(source, view) && pathsKey == key)
-                    return kept;
+                var entry = _sessionViews[kept];
+                _sessionViews.RemoveAt(kept);
+                _sessionViews.Add(entry);
+                return entry.View;
             }
         }
 
@@ -598,7 +639,7 @@ internal sealed class SolutionViews
         {
             if (!_sessionViews.Any(v => ReferenceEquals(v.Source, view) && v.Paths == key))
             {
-                _sessionViews.Add((view, key, solution));
+                _sessionViews.Add(new SessionViewEntry(view, key, listed, solution));
                 while (_sessionViews.Count > MaxSessionViews)
                     _sessionViews.RemoveAt(0);
             }
@@ -606,6 +647,76 @@ internal sealed class SolutionViews
 
         return solution;
     }
+
+    /// <summary>The kept session views derived from <paramref name="source"/>, as a snapshot the writer then updates one by one.</summary>
+    private List<SessionViewEntry> SessionViewsFrom(Solution source)
+    {
+        lock (_sessionViewsLock)
+            return [.. _sessionViews.Where(v => ReferenceEquals(v.Source, source))];
+    }
+
+    /// <summary>Replaces <paramref name="entry"/> with its view updated to <paramref name="view"/> of the current view, keeping its place in the order of use.</summary>
+    private void StoreSessionView(SessionViewEntry entry, Solution view)
+    {
+        lock (_sessionViewsLock)
+        {
+            var index = _sessionViews.IndexOf(entry);
+            if (index >= 0)
+                _sessionViews[index] = entry with { Source = Current, View = view };
+        }
+    }
+
+    /// <summary>
+    ///     Derives every kept session view from the current view again, after a rebuild derived that view from the
+    ///     loader. The projects a rebuild opens have compilations of their own to build, so a view derived here binds
+    ///     them as a first check after the rebuild does; its files at HEAD are the same.
+    /// </summary>
+    private async Task RederiveSessionViewsAsync(CancellationToken cancellationToken)
+    {
+        List<SessionViewEntry> entries;
+        lock (_sessionViewsLock)
+            entries = [.. _sessionViews];
+        foreach (var entry in entries)
+        {
+            var view = Current;
+            foreach (var path in entry.HeadPaths)
+                view = await WithHeadContentAsync(view, path, cancellationToken).ConfigureAwait(false);
+            StoreSessionView(entry, view);
+        }
+    }
+
+    /// <summary>
+    ///     <paramref name="view"/> with each project's references taken from the same project of
+    ///     <paramref name="source"/>: the summaries a project's references are supplied by follow the change cone as
+    ///     the tree view has it, while the view's own documents, the files it holds at HEAD among them, stay.
+    /// </summary>
+    private static Solution WithReferencesFrom(Solution view, Solution source)
+    {
+        var result = view;
+        foreach (var project in view.Projects)
+        {
+            if (source.GetProject(project.Id) is not { } from)
+                continue;
+            if (!project.ProjectReferences.SequenceEqual(from.ProjectReferences))
+                result = result.WithProjectReferences(project.Id, from.ProjectReferences);
+            var supplied = project.MetadataReferences;
+            var wanted = from.MetadataReferences;
+            var differs = supplied.Length != wanted.Length;
+            for (var i = 0; !differs && i < supplied.Length; i++)
+                differs = !ReferenceEquals(supplied[i], wanted[i]);
+            if (differs)
+                result = result.WithProjectMetadataReferences(project.Id, wanted);
+        }
+
+        return result;
+    }
+
+    /// <summary>One kept session view: the view it was derived from, the files it holds at HEAD, and the view itself.</summary>
+    /// <param name="Source">The current view the kept view is in step with; a view of another source is derived again.</param>
+    /// <param name="Paths">The files the view holds at HEAD, as one key in the order their relative paths sort.</param>
+    /// <param name="HeadPaths">The files the view holds at HEAD.</param>
+    /// <param name="View">The kept view.</param>
+    private sealed record SessionViewEntry(Solution Source, string Paths, IReadOnlyList<RepoPath> HeadPaths, Solution View);
 
     public async Task<Solution> CurrentWithHeadContentAsync(IEnumerable<RepoPath> paths, CancellationToken cancellationToken) =>
         await CurrentWithHeadContentAsync(Current, paths, cancellationToken).ConfigureAwait(false);

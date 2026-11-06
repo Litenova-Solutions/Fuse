@@ -83,5 +83,5 @@ public class CausedByTests
         new Dictionary<RepoPath, Cause> { [Root.PathOf(Error.Path)] = Cause },
         CauseFiles: new Dictionary<Cause, RepoPath> { [Cause] = Root.PathOf("Lib/Calc.cs") });
 
-    private static IReadOnlySet<string> Sessions(params string[] sessions) => new HashSet<string>(sessions, StringComparer.Ordinal);
+    private static HashSet<string> Sessions(params string[] sessions) => new HashSet<string>(sessions, StringComparer.Ordinal);
 }

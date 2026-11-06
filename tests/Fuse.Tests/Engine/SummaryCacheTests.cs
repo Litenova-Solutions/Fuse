@@ -26,7 +26,7 @@ public class SummaryCacheTests
         var reference = await cache.GetOrEmitAsync(project, "test-key", cancellationToken);
 
         Assert.NotNull(reference);
-        var file = Assert.IsType<PortableExecutableReference>(reference).FilePath;
+        var file = Assert.IsType<PortableExecutableReference>(reference, exactMatch: false).FilePath;
         Assert.NotNull(file);
         Assert.Contains("summaries", file, StringComparison.Ordinal);
         Assert.True(File.Exists(file));
@@ -59,7 +59,7 @@ public class SummaryCacheTests
         var sound = ProjectWith(repo, "public class C { public int M() => 1; }\n");
         var reference = await cache.GetOrEmitAsync(sound, "sound-key", cancellationToken);
         Assert.NotNull(reference);
-        var file = Assert.IsType<PortableExecutableReference>(reference).FilePath!;
+        var file = Assert.IsType<PortableExecutableReference>(reference, exactMatch: false).FilePath!;
         File.WriteAllText(file, "not an image");
 
         Assert.Null(new SummaryCache(repo.Root, _ => { }).TryGet("sound-key", sound));

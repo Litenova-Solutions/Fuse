@@ -62,7 +62,7 @@ public class SummaryEquivalenceTests
 
         Assert.Equal(fromSource, withSummaries);
         Assert.Equal("", fromSource.Errors);
-        Assert.True(fromSource.Reach.StartsWith("broad:", StringComparison.Ordinal));
+        Assert.StartsWith("broad:", fromSource.Reach, StringComparison.Ordinal);
         Assert.Contains("App/Report.cs", fromSource.Reach, StringComparison.Ordinal);
         Assert.Contains("App.Tests/ReportTests.cs", fromSource.Reach, StringComparison.Ordinal);
         Assert.DoesNotContain("Strict/Thing.cs", fromSource.Reach, StringComparison.Ordinal);

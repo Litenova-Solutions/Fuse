@@ -1,12 +1,4 @@
-        code=$(cat "$dir/check-$i.code")
-        if [ "$distinct" = 1 ]; then
-            # A caller with a session of its own is told only its own errors, so it answers 0 or 1, never a failure.
-            { [ "$code" = 0 ] || [ "$code" = 1 ]; } || fail "concurrent check $i of $count exited $code, expected 0 or 1: $(cat "$dir/check-$i.out")"
-            grep -q "^fuse: " "$dir/check-$i.out" || fail "concurrent check $i of $count printed no summary: $(cat "$dir/check-$i.out")"
-        else
-            [ "$code" = 1 ] || fail "concurrent check $i of $count exited $code, expected 1: $(cat "$dir/check-$i.out")"
-            grep -q smokeMissingLib "$dir/check-$i.out" || fail "concurrent check $i of $count printed no smokeMissingLib: $(cat "$dir/check-$i.out")"
-        fi#!/usr/bin/env bash
+#!/usr/bin/env bash
 # Drives the installed Fuse tool end to end on a generated multi-project repository, the way the smoke
 # workflow (.github/workflows/smoke.yml) packs and installs it: fuse init, the post-edit and stop hooks
 # answered from payloads on standard input, fuse check (every change, named files and a scoped check),

@@ -479,6 +479,9 @@ internal sealed class RequestRouter : IDisposable
         }
 
         _sessions.Record(session, paths);
+        // The next sync takes these files whoever runs it, so a credit is never forgotten as if its file matched HEAD
+        // because an answer was served from the result store before the watcher reported the write.
+        _workspace.Tracker.ReportWritten(paths);
     }
 
     /// <summary>

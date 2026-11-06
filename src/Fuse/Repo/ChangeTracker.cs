@@ -304,6 +304,16 @@ internal sealed class ChangeTracker : IDisposable
         return HeadComparison.Differs(atHead, onDisk);
     }
 
+    /// <summary>
+    ///     Reports <paramref name="paths"/> as written, as the watcher would, so the next sync verifies them whichever
+    ///     request runs it. A hook that credits a session with a file calls this.
+    /// </summary>
+    public void ReportWritten(IEnumerable<RepoPath> paths)
+    {
+        foreach (var path in paths)
+            _watched.Record(path.Absolute, appearedOrVanished: false);
+    }
+
     public void Dispose()
     {
         _watched.Dispose();

@@ -13,7 +13,7 @@ namespace Fuse.Engine;
 ///     locked, so checks that run at the same time keep and take answers under the same content key each would
 ///     compute alone.
 /// </summary>
-internal sealed class ResultStore
+internal sealed partial class ResultStore
 {
     /// <summary>The most answers kept in memory; past it the answer unused the longest goes.</summary>
     private const int MaxEntries = 32;

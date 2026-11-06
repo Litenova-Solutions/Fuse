@@ -27,7 +27,8 @@ public class DequeueDeadlineTests
             repo.Replace("Lib/Calc.cs", "public int Add(int a, int b) => a + b;", "public int Add(int a, int b) => a + Missing();");
 
             lease = await scheduler.EnterAsync(SchedulerLane.Command, "CheckFiles", 0, TestContext.Current.CancellationToken);
-            otherLease = await scheduler.EnterAsync(SchedulerLane.Command, "CheckFiles", 0, TestContext.Current.CancellationToken);
+            // Commands take at most all readers but one, so the second holder is interactive and the pool is full.
+            otherLease = await scheduler.EnterAsync(SchedulerLane.Interactive, "CheckFiles", 0, TestContext.Current.CancellationToken);
             var queued = router.HandleAsync(
                 new EngineRequest.CheckFiles(["Lib/Calc.cs"], WaitForLoad: true)
                 {

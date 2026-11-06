@@ -276,6 +276,13 @@ internal sealed class SummaryCache
     public MetadataReference? TryGet(string key, Project project) =>
         project.FilePath is null || !IsKey(key) ? null : ReferenceFor(PathFor(key, project), project.AssemblyName);
 
+    /// <summary>
+    ///     Drops every reference kept for a summary image, so the image its metadata was mapped from is no
+    ///     longer held by this cache. A later <see cref="TryGet"/> or <see cref="GetOrEmitAsync"/> recreates
+    ///     the reference from the file and answers the same.
+    /// </summary>
+    public void ReleaseReferences() => _references.Clear();
+
     /// <summary>True when <paramref name="key"/> can name one directory of the cache: letters, digits, dashes and underscores only.</summary>
     internal static bool IsKey(string? key) =>
         !string.IsNullOrEmpty(key) && key.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_');

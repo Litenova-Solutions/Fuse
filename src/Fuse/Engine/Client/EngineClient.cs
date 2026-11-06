@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.IO.Pipes;
 using System.Text;
 using Fuse.Failures;
@@ -11,6 +12,11 @@ namespace Fuse.Engine.Client;
 internal static class EngineClient
 {
     private static readonly TimeSpan StartTimeout = TimeSpan.FromSeconds(15);
+
+    /// <summary>How long a pipe existence answer is kept, so a round trip that asks twice in quick succession enumerates the pipes once.</summary>
+    private static readonly long PipeExistsCacheMs = 100;
+
+    private static readonly ConcurrentDictionary<string, (bool Exists, long ExpiresAt)> PipeExistence = new(StringComparer.Ordinal);
 
     private static int _counter;
 
@@ -158,20 +164,34 @@ internal static class EngineClient
         return complete ? null : "the answer leaves out part of the result";
     }
 
-    /// <summary>True when an engine's pipe exists, checked without connecting (a connection attempt waits for a timeout).</summary>
-    internal static bool PipeExists(string name)
+    /// <summary>
+    ///     True when an engine's pipe exists, checked without connecting (a connection attempt waits for a
+    ///     timeout). An answer is kept per pipe name for 100 ms, so a post-edit round trip and a background
+    ///     post-edit's confirmation round trip enumerate the pipes at most once between them.
+    /// </summary>
+    internal static bool PipeExists(string name) => PipeExists(name, Environment.TickCount64);
+
+    /// <summary>True when an engine's pipe exists, as of <paramref name="now"/> in <see cref="Environment.TickCount64"/> milliseconds.</summary>
+    internal static bool PipeExists(string name, long now)
     {
+        if (PipeExistence.TryGetValue(name, out var kept) && now < kept.ExpiresAt)
+            return kept.Exists;
+        bool exists;
         try
         {
             if (OperatingSystem.IsWindows())
-                return Directory.EnumerateFiles(@"\\.\pipe\", name).Any();
+                exists = Directory.EnumerateFiles(@"\\.\pipe\", name).Any();
             // .NET implements named pipes on Unix as domain sockets in the temp directory.
-            return File.Exists(Path.Combine(Path.GetTempPath(), "CoreFxPipe_" + name));
+            else
+                exists = File.Exists(Path.Combine(Path.GetTempPath(), "CoreFxPipe_" + name));
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException)
         {
             return true; // Cannot tell; try to connect.
         }
+
+        PipeExistence[name] = (exists, now + PipeExistsCacheMs);
+        return exists;
     }
 
     private static async Task<NamedPipeClientStream> ConnectAsync(RepoRoot root, CancellationToken cancellationToken)

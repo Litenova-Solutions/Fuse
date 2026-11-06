@@ -182,6 +182,7 @@ internal sealed class SolutionViews
         {
             _summaryReferences.Clear();
             _appliedSummaries.Clear();
+            _summaries.ReleaseReferences();
         }
 
         _baselineHead = _tracker.Head;

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
@@ -17,9 +18,19 @@ internal sealed class KeptCheck
     /// <summary>The most answers kept; past it the answer unused the longest goes.</summary>
     private const int MaxEntries = 8;
 
+    /// <summary>The most file hashes kept; past it the hash unused the longest goes.</summary>
+    internal const int MaxFileHashEntries = 128;
+
+    private static readonly ConcurrentDictionary<string, (long Length, long WrittenTicks, string Hash)> FileHashes = new(StringComparer.Ordinal);
+    private static readonly List<string> FileHashOrder = [];
+    private static readonly Lock FileHashLock = new();
+
     private readonly Dictionary<string, CheckResult> _answers = new(StringComparer.Ordinal);
     private readonly List<string> _order = [];
     private readonly Lock _lock = new();
+
+    /// <summary>How many file hashes are kept, by absolute path.</summary>
+    internal static int CachedFileHashes => FileHashes.Count;
 
     /// <summary>Drops every kept answer, when the memory budget sheds kept answers and caches at a request boundary. The next check of each scope runs again.</summary>
     public void Clear()
@@ -103,7 +114,7 @@ internal sealed class KeptCheck
         {
             lines = changedFiles
                 .OrderBy(f => f.Relative, StringComparer.Ordinal)
-                .Select(f => $"{f.Relative}={Convert.ToHexString(SHA256.HashData(SharedRead.AllBytes(f.Absolute)))}")
+                .Select(f => $"{f.Relative}={FileHashFor(f.Absolute)}")
                 .ToList();
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
@@ -123,5 +134,59 @@ internal sealed class KeptCheck
         };
         parts.AddRange(lines);
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join("\n", parts))));
+    }
+
+    /// <summary>
+    ///     The hex SHA-256 of the file at <paramref name="absolute"/>, kept by its absolute path with its length
+    ///     and last write time in ticks. A file whose stamp is as it was when its hash was kept is not read or
+    ///     hashed again. A hash is kept only when the file still has the stamp it had before the read,
+    ///     so a write during the read keeps nothing. Past <see cref="MaxFileHashEntries"/> the hash unused the
+    ///     longest goes, as in <see cref="ChangeReach"/>.
+    /// </summary>
+    private static string FileHashFor(string absolute)
+    {
+        var stamp = StampOf(absolute);
+        lock (FileHashLock)
+        {
+            if (FileHashes.TryGetValue(absolute, out var kept) && kept.Length == stamp.Length && kept.WrittenTicks == stamp.WrittenTicks)
+            {
+                FileHashOrder.Remove(absolute);
+                FileHashOrder.Add(absolute);
+                return kept.Hash;
+            }
+        }
+
+        var hash = Convert.ToHexString(SHA256.HashData(SharedRead.AllBytes(absolute)));
+        try
+        {
+            if (StampOf(absolute) != stamp)
+                return hash;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return hash;
+        }
+
+        lock (FileHashLock)
+        {
+            FileHashes[absolute] = (stamp.Length, stamp.WrittenTicks, hash);
+            FileHashOrder.Remove(absolute);
+            FileHashOrder.Add(absolute);
+            while (FileHashes.Count > MaxFileHashEntries && FileHashOrder.Count > 0)
+            {
+                var oldest = FileHashOrder[0];
+                FileHashOrder.RemoveAt(0);
+                FileHashes.TryRemove(oldest, out _);
+            }
+        }
+
+        return hash;
+    }
+
+    /// <summary>The length and last write time in ticks of the file at <paramref name="absolute"/>.</summary>
+    private static (long Length, long WrittenTicks) StampOf(string absolute)
+    {
+        var info = new FileInfo(absolute);
+        return (info.Length, info.LastWriteTimeUtc.Ticks);
     }
 }

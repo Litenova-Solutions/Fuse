@@ -61,6 +61,7 @@ internal sealed class SessionEdits
     private readonly Dictionary<RepoPath, HashSet<string>> _writers = [];
     private readonly HashSet<string> _stopped = new(StringComparer.Ordinal);
     private readonly List<RegisteredSession> _registrations = [];
+    private string? _recordsHash;
 
     /// <param name="root">The repository, which turns a recorded path back into a <see cref="RepoPath"/>.</param>
     /// <param name="file">The file the record is kept in, or null to keep it in memory only.</param>
@@ -208,18 +209,26 @@ internal sealed class SessionEdits
             ForgetUnchanged(changed);
     }
 
-    /// <summary>A hash of the record as it is now, in the order the file keeps it, so a kept answer is answered again only while the record reads the same.</summary>
+    /// <summary>
+    ///     A hash of the record as it is now, in the order the file keeps it, so a kept answer is answered again
+    ///     only while the record reads the same. The hash is kept until a write clears it, so a repeat reads no
+    ///     sorted record and hashes nothing again. Expired registrations are pruned first, as they were, so a
+    ///     registration that ended by time or by its process exiting still changes the hash: pruning scans only
+    ///     the registrations, at most <see cref="MaxLiveRegistrations"/>, and not the writers.
+    /// </summary>
     internal string RecordsHash()
     {
         lock (_lock)
         {
             PruneExpired();
+            if (_recordsHash is not null)
+                return _recordsHash;
             var lines = _writers.OrderBy(w => w.Key.Relative, StringComparer.Ordinal)
                 .SelectMany(w => w.Value.Order(StringComparer.Ordinal).Select(session => $"{w.Key.Relative}\t{session}"))
                 .Concat(_stopped.Order(StringComparer.Ordinal).Select(session => $"\t{session}"))
                 .Concat(_registrations.OrderBy(r => r.Session, StringComparer.Ordinal)
                     .Select(r => $"{r.Session}\t{r.Expires.UtcTicks}\t{r.Pid?.ToString(CultureInfo.InvariantCulture) ?? ""}\t{string.Join("\t", r.Patterns.Order(StringComparer.Ordinal))}"));
-            return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join("\n", lines))));
+            return _recordsHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join("\n", lines))));
         }
     }
 
@@ -354,6 +363,7 @@ internal sealed class SessionEdits
     /// <summary>Replaces the file with the record as it is now, through a temporary file so a reader never sees half of it.</summary>
     private void Write()
     {
+        _recordsHash = null;
         if (_file is null)
             return;
         try
@@ -423,6 +433,7 @@ internal sealed class SessionEdits
     /// <summary>Replaces the registrations file with the registrations as they are now. The caller holds the lock.</summary>
     private void WriteRegistrations()
     {
+        _recordsHash = null;
         if (_registrationsFile is null)
             return;
         try

@@ -255,6 +255,12 @@ internal sealed class Checker
                 ordered = told;
                 phases.Add(Phase.Attribution, attributing);
             }
+
+            // With at most one session writing, no other session's check needs the attribution views, each
+            // of which roots a solution and its compilations: a later check derives its view again and
+            // answers the same.
+            if (_sessions.WritersOf(generation.Changed).Values.SelectMany(sessions => sessions).Distinct(StringComparer.Ordinal).Take(2).Count() <= 1)
+                await _workspace.ClearSessionViewsAsync(cancellationToken).ConfigureAwait(false);
         }
 
         var projects = ordered

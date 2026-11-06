@@ -110,7 +110,7 @@ internal sealed class Checker
         {
             try
             {
-                return await CheckOnceAsync(scope, session, analyzers, phases, cancellationToken, maxReported).ConfigureAwait(false);
+                return await CheckOnceAsync(scope, session, analyzers, phases, maxReported, cancellationToken).ConfigureAwait(false);
             }
             catch (CoverageRestartException) when (restart < MaxCoverageRestarts)
             {
@@ -120,7 +120,7 @@ internal sealed class Checker
         }
     }
 
-    private async Task<CheckResult> CheckOnceAsync(CheckScope scope, string? session, AnalyzerRun analyzers, PhaseTimes phases, CancellationToken cancellationToken, int maxReported)
+    private async Task<CheckResult> CheckOnceAsync(CheckScope scope, string? session, AnalyzerRun analyzers, PhaseTimes phases, int maxReported, CancellationToken cancellationToken)
     {
         var context = new CheckContext(analyzers, reuse: scope is CheckScope.AllChanges);
         _introduced.BeginContext(context);
@@ -446,7 +446,7 @@ internal sealed class Checker
     }
 
     /// <summary>The relative paths of <paramref name="precise"/>'s candidates on disk with no document in the pinned view, in order.</summary>
-    private List<string> CandidatesWithoutDocument(Reach.Precise precise, Generation generation)
+    private static List<string> CandidatesWithoutDocument(Reach.Precise precise, Generation generation)
     {
         var current = generation.Current;
         return [.. precise.Causes.Keys
@@ -456,7 +456,7 @@ internal sealed class Checker
     }
 
     /// <summary>Which reached projects each view holds a project for, in reached order, as the coverage line names them.</summary>
-    private string HeldLine(IReadOnlyList<ProjectNode> reached, Generation generation)
+    private static string HeldLine(IReadOnlyList<ProjectNode> reached, Generation generation)
     {
         var current = generation.Current;
         var baseline = generation.Baseline;

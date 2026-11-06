@@ -46,7 +46,7 @@ internal sealed class IntroducedErrors
     /// <inheritdoc cref="DiagnosticCollector.TakeAnalyzerReport"/>
     public (int Unfinished, IReadOnlyList<string> LeftOut) TakeAnalyzerReport() => _collector.TakeAnalyzerReport();
 
-    /// <inheritdoc cref="DiagnosticCollector.WarmBaselineProjectAsync"/>
+    /// <inheritdoc cref="DiagnosticCollector.WarmBaselineProjectAsync(Project, int, CancellationToken)"/>
     public Task<bool> WarmBaselineAsync(Project project, int generation, CancellationToken cancellationToken) =>
         _collector.WarmBaselineProjectAsync(project, generation, cancellationToken);
 
@@ -180,7 +180,7 @@ internal sealed class IntroducedErrors
     ///     HEAD text shares at least half of the larger file's lines, the threshold git's rename detection uses, so the
     ///     errors HEAD had in it are not reported as introduced under its new name.
     /// </summary>
-    private async Task<Dictionary<RepoPath, RepoPath>> RenamesAsync(Generation generation, CancellationToken cancellationToken)
+    private static async Task<Dictionary<RepoPath, RepoPath>> RenamesAsync(Generation generation, CancellationToken cancellationToken)
     {
         var renames = new Dictionary<RepoPath, RepoPath>();
         var baseline = generation.Baseline;

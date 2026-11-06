@@ -37,7 +37,7 @@ internal sealed class TargetResolver
         return ResolveRest(scope, generation, excluded);
     }
 
-    private List<RepoPath> ResolveRest(CheckScope scope, Generation generation, IReadOnlySet<RepoPath>? excluded)
+    private static List<RepoPath> ResolveRest(CheckScope scope, Generation generation, IReadOnlySet<RepoPath>? excluded)
     {
         var graph = generation.Graph;
         var paths = scope is CheckScope.Files ? NamedPaths(scope) : generation.Changed;

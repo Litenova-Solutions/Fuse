@@ -413,7 +413,7 @@ internal sealed class ChangeReach
     private static async Task<FileDeclarations> DeclarationsOfAsync(Document? document, CancellationToken cancellationToken) =>
         document is not null && await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false) is { } root ? FileDeclarations.Of(root) : FileDeclarations.Empty;
 
-    private async Task<SourceText?> CurrentTextAsync(RepoPath path, Solution current, CancellationToken cancellationToken)
+    private static async Task<SourceText?> CurrentTextAsync(RepoPath path, Solution current, CancellationToken cancellationToken)
     {
         if (!File.Exists(path.Absolute))
             return null;

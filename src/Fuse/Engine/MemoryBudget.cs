@@ -18,12 +18,16 @@ internal sealed class MemoryBudget
     private readonly Func<long> _memoryLoad;
     private readonly Func<long> _totalAvailable;
 
+    /// <summary>True when the load and the total come from the GC together, so one <see cref="GC.GetGCMemoryInfo"/> call a request boundary reads both.</summary>
+    private readonly bool _sharedMemoryInfo;
+
     public MemoryBudget(long ceilingBytes = DefaultCeilingBytes, Func<long>? workingSet = null, Func<long>? memoryLoad = null, Func<long>? totalAvailable = null)
     {
         CeilingBytes = Math.Max(1, ceilingBytes);
         _workingSet = workingSet ?? (() => Environment.WorkingSet);
         _memoryLoad = memoryLoad ?? (() => GC.GetGCMemoryInfo().MemoryLoadBytes);
         _totalAvailable = totalAvailable ?? (() => GC.GetGCMemoryInfo().TotalAvailableMemoryBytes);
+        _sharedMemoryInfo = memoryLoad is null && totalAvailable is null;
     }
 
     /// <summary>The ceiling in bytes, past which a request is answered Busy.</summary>
@@ -33,8 +37,19 @@ internal sealed class MemoryBudget
     public Snapshot Assess()
     {
         var workingSet = _workingSet();
-        var load = _memoryLoad();
-        var total = _totalAvailable();
+        long load;
+        long total;
+        if (_sharedMemoryInfo)
+        {
+            var info = GC.GetGCMemoryInfo();
+            load = info.MemoryLoadBytes;
+            total = info.TotalAvailableMemoryBytes;
+        }
+        else
+        {
+            load = _memoryLoad();
+            total = _totalAvailable();
+        }
         var byCeiling = CeilingBytes == 0 ? 0 : (double)workingSet / CeilingBytes;
         var byMachine = total > 0 ? (double)load / total : 0;
         // The engine sheds what it holds by its own working set against its ceiling. The machine's load, which every

@@ -18,6 +18,9 @@ internal sealed class IntroducedErrors
     private readonly RepoWorkspace _workspace;
     private readonly DiagnosticCollector _collector;
     private readonly Lock _baselineKeyLock = new();
+    private readonly Lock _renamesLock = new();
+    private Generation? _renamesGeneration;
+    private Dictionary<RepoPath, RepoPath>? _renames;
     private int _baselineKeyGeneration = -1;
     private string? _baselineKeyHead;
     private string? _baselineKey;
@@ -108,7 +111,7 @@ internal sealed class IntroducedErrors
     public async Task<List<CompilerError>> InFilesAsync(IReadOnlyCollection<RepoPath> paths, Generation generation, CheckContext context, CancellationToken cancellationToken)
     {
         var results = new ConcurrentBag<CompilerError>();
-        var renames = await RenamesAsync(generation, cancellationToken).ConfigureAwait(false);
+        var renames = await RenamesOfAsync(generation, cancellationToken).ConfigureAwait(false);
         await Parallel.ForEachAsync(
             paths,
             new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = cancellationToken },
@@ -128,14 +131,14 @@ internal sealed class IntroducedErrors
     {
         var generation = _workspace.PinGeneration();
         var context = new CheckContext(AnalyzerRun.Full, reuse: true);
-        var renames = await RenamesAsync(generation, cancellationToken).ConfigureAwait(false);
+        var renames = await RenamesOfAsync(generation, cancellationToken).ConfigureAwait(false);
         return [.. await InFileAsync(view, generation, path, renames, context, cancellationToken).ConfigureAwait(false)];
     }
 
     /// <summary>The introduced errors in <paramref name="path"/> as <paramref name="view"/> has it, against <paramref name="generation"/>'s baseline for <paramref name="context"/>.</summary>
     public async Task<List<CompilerError>> InFileOfAsync(Solution view, RepoPath path, Generation generation, CheckContext context, CancellationToken cancellationToken)
     {
-        var renames = await RenamesAsync(generation, cancellationToken).ConfigureAwait(false);
+        var renames = await RenamesOfAsync(generation, cancellationToken).ConfigureAwait(false);
         return [.. await InFileAsync(view, generation, path, renames, context, cancellationToken).ConfigureAwait(false)];
     }
 
@@ -147,7 +150,7 @@ internal sealed class IntroducedErrors
     public async Task<List<CompilerError>> InProjectAsync(ProjectNode node, Generation generation, CheckContext context, CancellationToken cancellationToken)
     {
         var result = new List<CompilerError>();
-        var renames = await RenamesAsync(generation, cancellationToken).ConfigureAwait(false);
+        var renames = await RenamesOfAsync(generation, cancellationToken).ConfigureAwait(false);
         var renamedFrom = renames.ToDictionary(r => r.Value.Relative, r => r.Key.Relative, StringComparer.Ordinal);
         foreach (var project in RepoWorkspace.ProjectsFor(generation.Current, node))
         {
@@ -183,6 +186,29 @@ internal sealed class IntroducedErrors
         if (leftOut)
             context.MarkUnfinished(path.Relative);
         return introduced;
+    }
+
+    /// <summary>
+    ///     The renames of <paramref name="generation"/>, computed once for the generation a check pins: the targets,
+    ///     the candidates and the session views of one check asked for them one after another, and each asking read
+    ///     the HEAD text of every deleted file and the disk text of every added one again.
+    /// </summary>
+    private async Task<Dictionary<RepoPath, RepoPath>> RenamesOfAsync(Generation generation, CancellationToken cancellationToken)
+    {
+        lock (_renamesLock)
+        {
+            if (ReferenceEquals(_renamesGeneration, generation) && _renames is not null)
+                return _renames;
+        }
+
+        var renames = await RenamesAsync(generation, cancellationToken).ConfigureAwait(false);
+        lock (_renamesLock)
+        {
+            _renamesGeneration = generation;
+            _renames = renames;
+        }
+
+        return renames;
     }
 
     /// <summary>

@@ -87,6 +87,37 @@ internal static partial class StopMemory
     internal static void NoteWritten(RepoRoot root, string session, IEnumerable<string> relativePaths) =>
         NoteWritten(root.StateDirectory, session, relativePaths, DateTimeOffset.UtcNow);
 
+    /// <summary>
+    ///     Records <paramref name="relativePaths"/> as written by <paramref name="session"/> at <paramref name="at"/>, once
+    ///     per file since <paramref name="since"/>: a file that already has a written time after <paramref name="since"/>
+    ///     is not recorded again, so a post-edit hook for a file the session already wrote after its last blocked stop
+    ///     writes no state file. A file with no written time after <paramref name="since"/> is recorded, so a stop
+    ///     still tells a file written after that block from one written before it.
+    /// </summary>
+    internal static void NoteWrittenOnce(string stateDirectory, string session, IEnumerable<string> relativePaths, DateTimeOffset since, DateTimeOffset at)
+    {
+        var paths = relativePaths.Distinct(StringComparer.Ordinal).ToList();
+        if (paths.Count == 0)
+            return;
+        var latest = new Dictionary<string, DateTimeOffset>(StringComparer.Ordinal);
+        foreach (var (writtenAt, path) in ReadWritten(stateDirectory, session))
+        {
+            if (!latest.TryGetValue(path, out var held) || writtenAt > held)
+                latest[path] = writtenAt;
+        }
+
+        var missing = paths.Where(p => !latest.TryGetValue(p, out var held) || held <= since).ToList();
+        if (missing.Count > 0)
+            NoteWritten(stateDirectory, session, missing, at);
+    }
+
+    /// <summary>Records <paramref name="relativePaths"/> as written by <paramref name="session"/> in <paramref name="root"/> at most once since its last blocked stop.</summary>
+    internal static void NoteWrittenOnce(RepoRoot root, string session, IEnumerable<string> relativePaths)
+    {
+        var since = Load(root, session)?.BlockedAt ?? DateTimeOffset.MinValue;
+        NoteWrittenOnce(root.StateDirectory, session, relativePaths, since, DateTimeOffset.UtcNow);
+    }
+
     /// <summary>Every repository-relative path <paramref name="session"/> has written in the state directory, with forward slashes as written.</summary>
     internal static HashSet<string> AllWritten(string stateDirectory, string session) =>
         [.. ReadWritten(stateDirectory, session).Select(w => w.Path)];

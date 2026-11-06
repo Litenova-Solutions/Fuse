@@ -56,12 +56,16 @@ internal sealed class CandidateBinding
         candidates.ExceptWith(targets);
 
         var graph = generation.Graph;
+        // The candidates reuse the errors an earlier check kept for them, under the same check's counts:
+        // they are not the files an edit just wrote, so the reuse key costs less than binding them again,
+        // and a state a check already bound (the tree as it was before the edit, most often) answers from it.
+        var binding = context.WithReuse();
         if (candidates.Count <= WholeProjectThreshold)
-            return (await _introduced.InFilesAsync(candidates, generation, context, cancellationToken).ConfigureAwait(false), targets.Count + candidates.Count(c => graph.OwnersOf(c).Count > 0), false, []);
+            return (await _introduced.InFilesAsync(candidates, generation, binding, cancellationToken).ConfigureAwait(false), targets.Count + candidates.Count(c => graph.OwnersOf(c).Count > 0), false, []);
 
         var errors = new List<CompilerError>();
         foreach (var node in reached)
-            errors.AddRange(await _introduced.InProjectAsync(node, generation, context, cancellationToken).ConfigureAwait(false));
+            errors.AddRange(await _introduced.InProjectAsync(node, generation, binding, cancellationToken).ConfigureAwait(false));
         // The targets outside the reached projects were bound one by one, before this step.
         var files = new HashSet<RepoPath>(targets);
         foreach (var path in reached.SelectMany(n => RepoWorkspace.ProjectsFor(generation.Current, n)).SelectMany(p => p.Documents).Select(d => d.FilePath).OfType<string>())

@@ -526,7 +526,7 @@ internal sealed class DiagnosticCollector
         // compiler and per-file analyzer errors, so they are reused; the compilation-wide analyzers read every file's
         // bodies, so their part is never reused this way.
         context.CountDocumentBound();
-        var key = baseline || !context.Reuse || document is SourceGeneratedDocument ? null : await KeyAsync(document, cancellationToken).ConfigureAwait(false);
+        var key = baseline || !context.Reuse || document is SourceGeneratedDocument ? null : await KeyAsync(document, context, cancellationToken).ConfigureAwait(false);
         if (key is not null && _currentFiles.TryGetValue(document.Id, out var cached) && cached.Key == key)
         {
             context.CountReused();
@@ -569,19 +569,33 @@ internal sealed class DiagnosticCollector
     ///     it. Counting a project this file cannot see only ever binds it again, never reuses it wrongly. Null
     ///     when a project's declarations cannot be read, so its files are bound rather than reused.
     /// </summary>
-    private async Task<FileKey?> KeyAsync(Document document, CancellationToken cancellationToken)
+    private async Task<FileKey?> KeyAsync(Document document, CheckContext context, CancellationToken cancellationToken)
     {
         var text = await document.GetTextAsync(cancellationToken).ConfigureAwait(false);
-        var declarations = new HashCode();
-        foreach (var project in document.Project.Solution.Projects.OrderBy(p => p.Id.Id.ToString("N"), StringComparer.Ordinal))
-        {
-            declarations.Add(project.Id);
-            if (await DeclarationFingerprintAsync(project, cancellationToken).ConfigureAwait(false) is not { } fingerprint)
-                return null;
-            declarations.Add(fingerprint, StringComparer.Ordinal);
-        }
+        // The hash of every project's declarations is the check's, computed once for its solution: every
+        // candidate of the check reads it instead of hashing the declarations of every project again.
+        var declarations = await context.DeclarationsHashAsync(
+            document.Project.Solution,
+            _configurationGeneration(),
+            ComputeAsync,
+            cancellationToken).ConfigureAwait(false);
+        return declarations is { } value
+            ? new FileKey(Convert.ToHexString(text.GetChecksum().AsSpan()), value, _configurationGeneration())
+            : null;
 
-        return new FileKey(Convert.ToHexString(text.GetChecksum().AsSpan()), declarations.ToHashCode(), _configurationGeneration());
+        async Task<int?> ComputeAsync()
+        {
+            var hash = new HashCode();
+            foreach (var project in document.Project.Solution.Projects.OrderBy(p => p.Id.Id.ToString("N"), StringComparer.Ordinal))
+            {
+                hash.Add(project.Id);
+                if (await DeclarationFingerprintAsync(project, cancellationToken).ConfigureAwait(false) is not { } fingerprint)
+                    return null;
+                hash.Add(fingerprint, StringComparer.Ordinal);
+            }
+
+            return hash.ToHashCode();
+        }
     }
 
     /// <summary>
@@ -699,10 +713,11 @@ internal sealed class DiagnosticCollector
                 plan = await _analyzers.PlanAsync(project, withAnalyzers, model, analyzing.Token).ConfigureAwait(false);
                 if (perFile && !plan.PerFile.IsEmpty)
                 {
-                    var syntax = withAnalyzers.GetAnalyzerSyntaxDiagnosticsAsync(model.SyntaxTree, plan.PerFile, analyzing.Token);
-                    var semantic = withAnalyzers.GetAnalyzerSemanticDiagnosticsAsync(model, filterSpan: null, plan.PerFile, analyzing.Token);
-                    result.AddRange((await syntax.ConfigureAwait(false)).Select(d => (d, true)));
-                    result.AddRange((await semantic.ConfigureAwait(false)).Select(d => (d, true)));
+                    // One analysis of the model, not one of its tree and one of the model: each of the two
+                    // starts its own analyzer driver over the file, so the analyzers' compilation start
+                    // actions and their driver setup ran twice for every file a check bound.
+                    var analysis = await withAnalyzers.GetAnalysisResultAsync(model, filterSpan: null, plan.PerFile, analyzing.Token).ConfigureAwait(false);
+                    result.AddRange(analysis.GetAllDiagnostics().Select(d => (d, true)));
                 }
 
                 perFileFinished = true;

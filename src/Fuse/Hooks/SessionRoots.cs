@@ -22,9 +22,17 @@ internal static class SessionRoots
         try
         {
             var path = FileFor(baseDirectory, session);
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            if (File.Exists(path) && File.ReadAllLines(path).Contains(rootPath, StringComparer.Ordinal))
-                return;
+            if (File.Exists(path))
+            {
+                // The root is held once, so a post-edit in a repository the session already touched writes nothing.
+                if (File.ReadLines(path).Contains(rootPath, StringComparer.Ordinal))
+                    return;
+            }
+            else
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            }
+
             File.AppendAllText(path, rootPath + Environment.NewLine);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)

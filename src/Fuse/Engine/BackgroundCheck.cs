@@ -14,6 +14,9 @@ internal sealed class BackgroundCheck : IDisposable
     /// <summary>How long schedules gather before a run starts, so a burst of edits is one re-check per session.</summary>
     private static readonly TimeSpan DefaultDebounce = TimeSpan.FromMilliseconds(500);
 
+    /// <summary>The most sessions a run remembers it checked; past it the memory goes and a later run checks a session again.</summary>
+    private const int MaxCheckedSessions = 128;
+
     private readonly Func<IReadOnlyList<SessionFiles>> _sessions;
     private readonly Func<SessionFiles, string?> _keyFor;
     private readonly ResultStore _results;
@@ -218,7 +221,11 @@ internal sealed class BackgroundCheck : IDisposable
     private void MarkChecked(SessionFiles session, string files)
     {
         lock (_lock)
+        {
+            if (!_checked.ContainsKey(session.Session) && _checked.Count >= MaxCheckedSessions)
+                _checked.Clear();
             _checked[session.Session] = (session.Generation, files);
+        }
     }
 
     /// <summary>One live session and the files it wrote in one generation: its name as checks answer to it, that generation, and its files in the order the router checks them.</summary>

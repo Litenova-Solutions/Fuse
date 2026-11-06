@@ -26,6 +26,9 @@ internal sealed partial class ResultStore
     private readonly List<string> _order = [];
     private readonly Dictionary<string, Entry> _bySession = new(StringComparer.Ordinal);
 
+    /// <summary>The sessions with a kept answer, in the order they last kept one; past <see cref="MaxEntries"/> the one that kept one longest ago goes, so a session answer holds no report past the answers the store holds.</summary>
+    private readonly List<string> _sessionOrder = [];
+
     public ResultStore(string stateDirectory, Action<string>? log = null)
     {
         _stateDirectory = stateDirectory;
@@ -65,7 +68,9 @@ internal sealed partial class ResultStore
     ///     past the cap, and writes it as the session file of <paramref name="session"/> when it names one. A
     ///     result whose analyzers did not finish is kept for nothing: it holds only what finished in time, so a
     ///     repeat runs the check again. A session keeps the answer of its newest generation: an answer of an
-    ///     older generation that finishes late writes no session file over the newer one.
+    ///     older generation that finishes late writes no session file over the newer one. At most
+    ///     <see cref="MaxEntries"/> sessions hold a report in memory; a session past that holds its answer in
+    ///     its session file alone.
     /// </summary>
     /// <param name="generation">The generation the answer was pinned from.</param>
     /// <param name="tree">The tree stamp of the changed files the answer covers.</param>
@@ -100,6 +105,17 @@ internal sealed partial class ResultStore
                 && (!_bySession.TryGetValue(session, out var newest) || generation >= newest.Generation))
             {
                 _bySession[session] = entry;
+                _sessionOrder.Remove(session);
+                _sessionOrder.Add(session);
+                // The session file on disk keeps the answer a reader streams, so the report held for the
+                // session that kept one longest ago goes with the answers past the cap.
+                while (_sessionOrder.Count > MaxEntries)
+                {
+                    var oldest = _sessionOrder[0];
+                    _sessionOrder.RemoveAt(0);
+                    _bySession.Remove(oldest);
+                }
+
                 write = true;
             }
         }
@@ -116,6 +132,7 @@ internal sealed partial class ResultStore
             _answers.Clear();
             _order.Clear();
             _bySession.Clear();
+            _sessionOrder.Clear();
         }
     }
 

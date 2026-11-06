@@ -117,8 +117,10 @@ internal static class HookCommand
         var session = payload.Session is { } id ? $"{harness.Name}:{id}" : null;
         if (session is not null)
         {
+            // Both records are held once per file and root for the session, so a post-edit for a file and a
+            // repository the session already touched writes no state file before its check runs.
             SessionRoots.Record(session, root);
-            StopMemory.NoteWritten(root, session, files.Select(f => Path.GetRelativePath(root.Path, f).Replace('\\', '/')));
+            StopMemory.NoteWrittenOnce(root, session, files.Select(f => Path.GetRelativePath(root.Path, f).Replace('\\', '/')));
         }
         var started = Environment.TickCount64;
         TimeSpan Remaining() => LongWait - TimeSpan.FromMilliseconds(Environment.TickCount64 - started);

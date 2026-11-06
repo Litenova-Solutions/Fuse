@@ -123,8 +123,8 @@ internal sealed class RequestRouter : IDisposable
         // a repeat of the check that first named the session takes the same key as the check that computed the
         // answer and finds it kept, instead of hashing a record its own request had not written yet.
         NoteSession(request);
-        var key = CoalesceKey(request);
-        if (key is not null && request is EngineRequest.CheckChanges && _initialization is not { IsCompleted: false })
+        string? key;
+        if (request is EngineRequest.CheckChanges && _initialization is not { IsCompleted: false })
         {
             // A check of every change answers for the files on disk, not for the tree the watcher last
             // reported: a shell write it has not reported yet is in no generation yet, and the kept answer of
@@ -145,6 +145,13 @@ internal sealed class RequestRouter : IDisposable
                 // not be confirmed.
                 key = null;
             }
+        }
+        else
+        {
+            // The key is taken once, from the request and the generation it pins: a check of every change
+            // takes it after its sync above, from the generation that sync published, and no request reads
+            // and hashes every changed file twice before its phase timer starts.
+            key = CoalesceKey(request);
         }
 
         if (key is not null && _results.TryGet(key, out var stored))
@@ -185,7 +192,7 @@ internal sealed class RequestRouter : IDisposable
         return response;
     }
 
-    private async Task<EngineResponse> ScheduledAsync(EngineRequest request, CancellationToken cancellationToken, SchedulerLane? laneOverride = null, bool creditSession = true)
+    private async Task<EngineResponse> ScheduledAsync(EngineRequest request, CancellationToken cancellationToken, SchedulerLane? laneOverride = null)
     {
         if (request is EngineRequest.Ping or EngineRequest.ShutDown)
             return new EngineResponse.Acknowledged();
@@ -194,8 +201,8 @@ internal sealed class RequestRouter : IDisposable
         if (request is EngineRequest.BeginSession or EngineRequest.EndSession)
             return await SessionAsync(request, cancellationToken).ConfigureAwait(false);
 
-        if (creditSession)
-            NoteSession(request);
+        // The session is credited once, in HandleAsync before the key is taken. A background re-check
+        // reaches this call without HandleAsync and credits nothing.
 
         var initialization = _initialization ?? Task.CompletedTask;
         if (!initialization.IsCompleted && request is EngineRequest.CheckChanges { WaitForLoad: false } or EngineRequest.CheckFiles { WaitForLoad: false } or EngineRequest.CheckPaths { WaitForLoad: false })
@@ -447,7 +454,7 @@ internal sealed class RequestRouter : IDisposable
             // recording the session it answers to would credit a registered session's files to it in the record
             // itself, so its files would still count as that session's after the registration ended or expired
             // and a judge's stop would go on leaving their errors out.
-            response = await _scheduler.RunCoalescedAsync(key, token => ScheduledAsync(request, token, SchedulerLane.Background, creditSession: false), generation.Token).ConfigureAwait(false);
+            response = await _scheduler.RunCoalescedAsync(key, token => ScheduledAsync(request, token, SchedulerLane.Background), generation.Token).ConfigureAwait(false);
         }
         catch (SchedulerBusyException busy)
         {

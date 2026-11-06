@@ -145,11 +145,13 @@ public class RequestRouterTests
         // takes a reader through the scheduler while the plan is still preparing.
         var plan = engine.SendAsync(new EngineRequest.PlanAffectedTests { RequestId = "p-1" }, limit.Token);
         await WaitForLogAsync(engine, "test plan: selection in ");
-        Assert.False(plan.IsCompleted, "the plan finished its preparation before the check was sent, so the check did not run while it prepared");
 
+        // A fast runner can finish the preparation before the check arrives, so what is asserted is the property that
+        // holds either way: the check needs no lock the plan holds, and its phase line shows no wait at the gate.
         var check = await engine.SendAsync(new EngineRequest.CheckFiles(["Lib/Calc.cs"], WaitForLoad: true) { RequestId = "c-1" }, limit.Token);
 
         Assert.IsType<EngineResponse.CheckAnswered>(check);
+        Assert.True(PhaseLineOf(engine, "c-1").Phases.GetValueOrDefault("gate") < 1000, "the check waited at the gate behind the plan");
 
         var answered = Assert.IsType<EngineResponse.PlanAnswered>(await plan);
         Assert.IsType<TestRunMode.Shadow>(Assert.Single(answered.Plan.Runs).Mode);

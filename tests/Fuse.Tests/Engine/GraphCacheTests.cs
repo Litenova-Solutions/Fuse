@@ -1,5 +1,4 @@
 using Fuse.Graph;
-using Fuse.Paths;
 using Fuse.Tests.Fixtures;
 
 namespace Fuse.Tests.Engine;

@@ -167,9 +167,10 @@ internal sealed class RepoGraph
             .Distinct()
             .ToList();
 
+        // Registered before the stored graph is read too: the workspace loads projects through MSBuild either way.
+        MsBuildSetup.EnsureRegistered();
         if (GraphCache.TryLoad(root, paths) is { } stored)
             return stored;
-        MsBuildSetup.EnsureRegistered();
         var graph = Evaluate(root, paths, cancellationToken);
         GraphCache.Store(root, graph);
         return graph;

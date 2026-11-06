@@ -8,14 +8,14 @@ namespace Fuse.Engine;
 /// <summary>
 ///     Fills, in the background and one project at a time, the disk store with HEAD's errors after HEAD
 ///     moved, so the first check that needs them reads the store instead of binding HEAD. Each project it fills is
-///     released when its errors are stored, so the warm holds no baseline compilation. Only loaded projects are filled; the warm loads none itself. Requests take precedence: the request lock admits them between
+///     released when its errors are stored, so the warm holds no baseline compilation. Only loaded projects are filled; the warm loads none itself. Requests take precedence: it holds the gate only while it chooses a project, between
 ///     projects.
 /// </summary>
 internal sealed class BaselineWarmer
 {
     private readonly RepoWorkspace _workspace;
     private readonly Checker _checker;
-    private readonly RequestGate _requestLock;
+    private readonly RequestGate _gate;
     private readonly Action<string> _log;
 
     /// <summary>Makes starting a warm run one step, so two requests that finish together cannot both start one.</summary>
@@ -31,13 +31,13 @@ internal sealed class BaselineWarmer
 
     /// <param name="workspace">The workspace whose baseline generations are warmed.</param>
     /// <param name="checker">The checker that warms one project.</param>
-    /// <param name="requestLock">The request lock. It is held only while the next project is chosen, never during a warm.</param>
+    /// <param name="gate">The gate it holds only while the next project is chosen, never during a warm; requests take a reader from the scheduler and never wait on it.</param>
     /// <param name="log">Where each warmed project and each skipped run is written.</param>
-    public BaselineWarmer(RepoWorkspace workspace, Checker checker, RequestGate requestLock, Action<string> log)
+    public BaselineWarmer(RepoWorkspace workspace, Checker checker, RequestGate gate, Action<string> log)
     {
         _workspace = workspace;
         _checker = checker;
-        _requestLock = requestLock;
+        _gate = gate;
         _log = log;
     }
 
@@ -63,8 +63,8 @@ internal sealed class BaselineWarmer
         while (!shutdown.IsCancellationRequested)
         {
             ProjectNode? next;
-            // The request lock only protects choosing the next project; the warm itself runs outside it, so requests are served while a project warms.
-            await _requestLock.EnterAsync(RequestGate.Preload, shutdown).ConfigureAwait(false);
+            // The gate only protects choosing the next project; the warm itself runs outside it, so requests are served while a project warms.
+            await _gate.EnterAsync(RequestGate.Preload, shutdown).ConfigureAwait(false);
             try
             {
                 generation = _workspace.PinGeneration().BaselineGeneration;
@@ -86,7 +86,7 @@ internal sealed class BaselineWarmer
             }
             finally
             {
-                _requestLock.Exit();
+                _gate.Exit();
             }
 
             if (next is null)

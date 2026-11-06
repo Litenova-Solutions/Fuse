@@ -20,6 +20,16 @@ internal sealed class KeptCheck
     private readonly List<string> _order = [];
     private readonly Lock _lock = new();
 
+    /// <summary>Drops every kept answer, when the memory budget sheds kept answers and caches at a request boundary. The next check of each scope runs again.</summary>
+    public void Clear()
+    {
+        lock (_lock)
+        {
+            _answers.Clear();
+            _order.Clear();
+        }
+    }
+
     /// <summary>The kept answer for <paramref name="key"/>, or false when nothing is kept for it.</summary>
     public bool TryGet(string key, out CheckResult result)
     {

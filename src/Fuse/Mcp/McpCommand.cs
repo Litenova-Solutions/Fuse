@@ -3,6 +3,7 @@ using Fuse.Failures;
 using Fuse.Operations;
 using Fuse.Paths;
 using Fuse.Protocol;
+using ModelContextProtocol;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
@@ -52,7 +53,7 @@ internal static class McpCommand
             Handlers = new McpServerHandlers
             {
                 ListToolsHandler = (_, _) => ValueTask.FromResult(new ListToolsResult { Tools = Tools }),
-                CallToolHandler = async (request, ct) => await CallAsync(request.Params, Environment.CurrentDirectory, ct).ConfigureAwait(false),
+                CallToolHandler = async (request, ct) => await CallWithProgressAsync(request, ct).ConfigureAwait(false),
             },
         };
         // The transport reads through Console.In, which follows the console input code page rather than UTF-8, so a path
@@ -63,19 +64,30 @@ internal static class McpCommand
         return 0;
     }
 
-    /// <summary>Answers one tool call for the repository that contains <paramref name="workingDirectory"/>.</summary>
+    /// <summary>Answers one tool call with its server, for the repository that contains the server's working directory.</summary>
     /// <remarks>
     ///     A <c>fuse_check</c> file that is empty, not a string or not a path is refused with the <c>InvalidPath</c> message
     ///     and <c>isError</c>, before anything is sent to the engine. A <c>max_errors</c> that is no count of 1 to
     ///     100000 is refused the same way, as is a <c>fuse_test</c> call with both <c>all</c> and <c>failed</c>.
     /// </remarks>
-    internal static async Task<CallToolResult> CallAsync(CallToolRequestParams? request, string workingDirectory, CancellationToken cancellationToken)
+    /// A Busy answer is sent as a progress notification on the call's progress token before its final answer.
+    private static async Task<CallToolResult> CallWithProgressAsync(RequestContext<CallToolRequestParams> request, CancellationToken cancellationToken)
+    {
+        IProgress<ProgressNotificationValue>? progress = null;
+        if (request.Params?.ProgressToken is { } token)
+            progress = new TokenProgress(request.Server, token);
+        return await CallAsync(request.Params, Environment.CurrentDirectory, cancellationToken, progress).ConfigureAwait(false);
+    }
+
+    /// <summary>Answers one tool call for the repository that contains <paramref name="workingDirectory"/>, reporting a Busy answer to <paramref name="progress"/> before its final answer when it is given one.</summary>
+    internal static async Task<CallToolResult> CallAsync(CallToolRequestParams? request, string workingDirectory, CancellationToken cancellationToken, IProgress<ProgressNotificationValue>? progress = null)
     {
         var root = RepoRoot.Find(workingDirectory);
         if (root is null)
             return Text($"fuse: {ErrorMessages.NotARepository}", isError: true);
         var arguments = request?.Arguments ?? new Dictionary<string, JsonElement>();
         OperationResult result;
+        EngineResponse? answered = null;
         switch (request?.Name)
         {
             case "fuse_check":
@@ -97,7 +109,7 @@ internal static class McpCommand
 
                 // FUSE_SESSION names the caller's session in its environment, as a hook names one in its payload: with files
                 // it credits them to the session, and without files it answers for that session alone.
-                (result, _) = await CheckOperation.RunAsync(root, files, session: SessionOperation.EnvironmentSession, waitForLoad: true, compilationWideAnalyzers: true, TimeSpan.FromMinutes(10), cancellationToken, maxErrors).ConfigureAwait(false);
+                (result, answered) = await CheckOperation.RunAsync(root, files, session: SessionOperation.EnvironmentSession, waitForLoad: true, compilationWideAnalyzers: true, TimeSpan.FromMinutes(10), cancellationToken, maxErrors).ConfigureAwait(false);
                 break;
             case "fuse_test":
                 var all = arguments.TryGetValue("all", out var flag) && flag.ValueKind == JsonValueKind.True;
@@ -114,7 +126,33 @@ internal static class McpCommand
                 return Text($"fuse: unknown tool {request?.Name}; the tools are fuse_check, fuse_test and fuse_build", isError: true);
         }
 
+        // A Busy answer goes out as progress first, with its position and estimate in its message, so a host
+        // shows why the call waits before it reads the final error.
+        if (progress is not null && BusyProgress(result, answered) is { } busyProgress)
+            progress.Report(busyProgress);
         return Text(result.Text, isError: result.Outcome == Outcome.Unanswered);
+    }
+
+    /// <summary>
+    ///     The progress a Busy answer is sent as, or null when <paramref name="result"/> is no Busy answer: its
+    ///     message, which names the queue position and the estimated wait. A check carries its engine answer, so
+    ///     its code decides; a test or a build answer is read from the Busy wording every surface prints.
+    /// </summary>
+    internal static ProgressNotificationValue? BusyProgress(OperationResult result, EngineResponse? answered)
+    {
+        if (result.Outcome != Outcome.Unanswered)
+            return null;
+        string? message = answered switch
+        {
+            EngineResponse.Unanswered { Code: ErrorCode.Busy } unanswered => unanswered.Message,
+            EngineResponse.Busy busy => ErrorMessages.Busy(busy.Position, busy.EstimatedWaitMs),
+            _ => result.Text.Contains("the engine is busy:", StringComparison.Ordinal) ? result.Text : null,
+        };
+        if (message is null)
+            return null;
+        if (message.StartsWith("fuse: ", StringComparison.Ordinal))
+            message = message["fuse: ".Length..];
+        return new ProgressNotificationValue { Progress = 0, Message = message };
     }
 
     private static CallToolResult Text(string text, bool isError) =>

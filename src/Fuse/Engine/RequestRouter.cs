@@ -29,6 +29,8 @@ internal sealed class RequestRouter : IDisposable
     private readonly BaselineWarmer _warmer;
     private readonly RequestLog _requestLog;
     private readonly SessionEdits _sessions;
+    private readonly ResultStore _results;
+    private readonly BackgroundCheck _background;
 
     /// <summary>Guards the last completed sync's status and the distinct touched paths it counted.</summary>
     private readonly Lock _statusLock = new();
@@ -55,6 +57,8 @@ internal sealed class RequestRouter : IDisposable
         _requestLog = new RequestLog(log);
         _scheduler = scheduler;
         _budget = budget;
+        _results = new ResultStore(root.StateDirectory, log.Write);
+        _background = new BackgroundCheck(LiveSessionFiles, BackgroundKey, _results, RunBackgroundCheckAsync, log.Write);
     }
 
     /// <summary>Evaluates projects, then preloads the projects that already have uncommitted changes.</summary>
@@ -98,16 +102,17 @@ internal sealed class RequestRouter : IDisposable
             _requestLock.Exit();
         }
 
-        _preloader.Schedule(_shutdown);
-        _warmer.Schedule(_shutdown);
+        ScheduleBackground();
     }
 
     /// <summary>
     ///     Answers one request. A ping or a shutdown is answered at once; a status answer bypasses the scheduler
     ///     and reads the newest generation; a session registration bypasses it too, under its own lock. A check or
     ///     a test plan waits for initialization (a check that does not wait for the load is refused while loading),
-    ///     then for a reader in its lane, then runs. A check whose content key matches one in flight shares it.
-    ///     A request that will not start before its wait ends, and one past the memory ceiling, is answered Busy
+    ///     then for a reader in its lane, then runs. A check whose content key matches one in flight shares it;
+    ///     one whose key the result store already keeps is answered from it, stamped or not as it asked. Every
+    ///     check answer is kept by its key and, for a session, as its session file, and every Unanswered and
+    ///     Busy answer is logged with its kind, its code and its session. A request that will not start before its wait ends, and one past the memory ceiling, is answered Busy
     ///     at once. A check's wait and analyzer budget start when a reader takes it, not when it queued. A check
     ///     holds a reader until it is answered; a test plan holds one through the sync and the selection, and
     ///     releases it before it mirrors and emits from the snapshot it took. A changed-build plan syncs without loading a project.
@@ -115,19 +120,46 @@ internal sealed class RequestRouter : IDisposable
     public async Task<EngineResponse> HandleAsync(EngineRequest request, CancellationToken cancellationToken)
     {
         var key = CoalesceKey(request);
-        if (key is null)
-            return await ScheduledAsync(request, cancellationToken).ConfigureAwait(false);
+        if (key is not null && _results.TryGet(key, out var stored))
+        {
+            NoteSession(request);
+            var phases = new PhaseTimes();
+            phases.Add(Phase.Gate, 0);
+            _requestLog.Write(request, phases, 0, null);
+            return ForRequest(request, new EngineResponse.CheckAnswered(stored));
+        }
+
+        EngineResponse response;
         try
         {
-            return await _scheduler.RunCoalescedAsync(key, token => ScheduledAsync(request, token), cancellationToken).ConfigureAwait(false);
+            response = key is null
+                ? await ScheduledAsync(request, cancellationToken).ConfigureAwait(false)
+                : await _scheduler.RunCoalescedAsync(key, token => ScheduledAsync(request, token), cancellationToken).ConfigureAwait(false);
         }
         catch (SchedulerBusyException busy)
         {
-            return new EngineResponse.Busy(busy.Position, busy.EstimatedWaitMs);
+            response = new EngineResponse.Busy(busy.Position, busy.EstimatedWaitMs);
+            _requestLog.WriteUnanswered(request, response);
+            return response;
         }
+        catch (OperationCanceledException)
+        {
+            _requestLog.WriteUnanswered(request, new EngineResponse.Unanswered(ErrorCode.Timeout, "the request is cancelled"));
+            throw;
+        }
+
+        if (response is EngineResponse.Unanswered or EngineResponse.Busy)
+            _requestLog.WriteUnanswered(request, response);
+        if (key is not null)
+        {
+            response = ForRequest(request, response);
+            StoreAnswer(key, request, response);
+        }
+
+        return response;
     }
 
-    private async Task<EngineResponse> ScheduledAsync(EngineRequest request, CancellationToken cancellationToken)
+    private async Task<EngineResponse> ScheduledAsync(EngineRequest request, CancellationToken cancellationToken, SchedulerLane? laneOverride = null)
     {
         if (request is EngineRequest.Ping or EngineRequest.ShutDown)
             return new EngineResponse.Acknowledged();
@@ -136,12 +168,7 @@ internal sealed class RequestRouter : IDisposable
         if (request is EngineRequest.BeginSession or EngineRequest.EndSession)
             return await SessionAsync(request, cancellationToken).ConfigureAwait(false);
 
-        // Recorded before anything can refuse the check, so a check answered "still loading" still credits the session
-        // with its files.
-        if (request is EngineRequest.CheckFiles { Session: { } writer } written && SessionEdits.IsValid(writer))
-            RecordSession(writer, written.Files);
-        if (request is EngineRequest.CheckChanges { IsStopping: true, Session: { } stopping } && SessionEdits.IsValid(stopping))
-            _sessions.MarkStopped(stopping);
+        NoteSession(request);
 
         var initialization = _initialization ?? Task.CompletedTask;
         if (!initialization.IsCompleted && request is EngineRequest.CheckChanges { WaitForLoad: false } or EngineRequest.CheckFiles { WaitForLoad: false } or EngineRequest.CheckPaths { WaitForLoad: false })
@@ -165,10 +192,21 @@ internal sealed class RequestRouter : IDisposable
                 ? $"no C# project could be evaluated: {_workspace.Graph.Failures[0]}"
                 : ErrorMessages.NoProjects);
 
-        var lane = Scheduler.LaneFor(request);
+        var lane = laneOverride ?? Scheduler.LaneFor(request);
         var budget = _budget.Assess();
         if (budget.Shed.Count > 0)
             _log.Write($"memory: working set {budget.WorkingSetBytes / (1024 * 1024)} MB of {budget.CeilingBytes / (1024 * 1024)} MB, shedding {string.Join(", ", budget.Shed)}");
+        if (budget.Shed.Contains(MemoryBudget.ShedStep.KeptAnswersAndCaches))
+        {
+            _results.Clear();
+            _checker.ClearKeptAnswers();
+        }
+        if (budget.Shed.Contains(MemoryBudget.ShedStep.SessionViews))
+            await _workspace.ClearSessionViewsAsync(_shutdown).ConfigureAwait(false);
+        if (budget.Shed.Contains(MemoryBudget.ShedStep.HeadCompilations))
+            await _workspace.ClearHeadCompilationsAsync(_shutdown).ConfigureAwait(false);
+        if (budget.Shed.Contains(MemoryBudget.ShedStep.IdleConeProjects))
+            await _workspace.ClearIdleConeProjectsAsync(_shutdown).ConfigureAwait(false);
         if (budget.IsPastCeiling)
         {
             var (position, estimate) = _scheduler.EstimateFor(lane);
@@ -286,6 +324,114 @@ internal sealed class RequestRouter : IDisposable
         }
     }
 
+    /// <summary>
+    ///     Credits the session a request carries with the files it names and marks a stopping session stopped.
+    ///     Recorded before anything can refuse the check, so a check answered "still loading" still credits the
+    ///     session with its files, and before a kept answer is served, so its record is the one that key held.
+    /// </summary>
+    private void NoteSession(EngineRequest request)
+    {
+        if (request is EngineRequest.CheckFiles { Session: { } writer } written && SessionEdits.IsValid(writer))
+            RecordSession(writer, written.Files);
+        if (request is EngineRequest.CheckChanges { IsStopping: true, Session: { } stopping } && SessionEdits.IsValid(stopping))
+            _sessions.MarkStopped(stopping);
+    }
+
+    /// <summary>
+    ///     A kept or shared answer as <paramref name="request"/> asked for it: stamped with the tree it ends on
+    ///     when the request asked for a stamp, and without one when it did not, whatever the check that computed
+    ///     it asked for. The errors a stamp names are the same either way.
+    /// </summary>
+    private EngineResponse ForRequest(EngineRequest request, EngineResponse response)
+    {
+        if (response is not EngineResponse.CheckAnswered answered)
+            return response;
+        var stamp = request switch
+        {
+            EngineRequest.CheckChanges changes => changes.StampTree,
+            EngineRequest.CheckFiles files => files.StampTree,
+            EngineRequest.CheckPaths paths => paths.StampTree,
+            _ => false,
+        };
+        if (stamp)
+            return Stamped(response, stamp: true);
+        return answered.Report.Tree is null
+            ? response
+            : new EngineResponse.CheckAnswered(answered.Report with { Tree = null, TreeFiles = 0 });
+    }
+
+    /// <summary>Keeps a check answer by its content key, as the session file of the session it was answered to.</summary>
+    private void StoreAnswer(string key, EngineRequest request, EngineResponse response)
+    {
+        if (response is not EngineResponse.CheckAnswered answered)
+            return;
+        var generation = _workspace.PinGeneration();
+        var tree = answered.Report.Tree ?? TreeStamp.Of(ChangedPairs(generation.Changed));
+        _results.Keep(key, RequestLog.SessionOf(request), generation.Number, tree, answered.Report);
+    }
+
+    /// <summary>The request a background re-check of <paramref name="session"/> sends: its files, answered to it, with every analyzer and a tree stamp.</summary>
+    private static EngineRequest BackgroundRequest(BackgroundCheck.SessionFiles session) =>
+        new EngineRequest.CheckFiles([.. session.Files.Select(f => f.Absolute)], WaitForLoad: true) { Session = session.Session, StampTree = true };
+
+    /// <summary>The content key a background re-check of <paramref name="session"/> coalesces and is stored by.</summary>
+    private string? BackgroundKey(BackgroundCheck.SessionFiles session) => CoalesceKey(BackgroundRequest(session));
+
+    /// <summary>
+    ///     The live sessions of the newest generation and the files each wrote in it, from its writers without a
+    ///     sync: a session with no changed file in it is not re-checked.
+    /// </summary>
+    private IReadOnlyList<BackgroundCheck.SessionFiles> LiveSessionFiles()
+    {
+        var generation = _workspace.PinGeneration();
+        var bySession = new Dictionary<string, List<RepoPath>>(StringComparer.Ordinal);
+        foreach (var (path, sessions) in _sessions.WritersOf(generation.Changed))
+        {
+            foreach (var session in sessions)
+            {
+                if (!bySession.TryGetValue(session, out var files))
+                    bySession[session] = files = [];
+                files.Add(path);
+            }
+        }
+
+        return [.. bySession.OrderBy(s => s.Key, StringComparer.Ordinal)
+            .Select(s => new BackgroundCheck.SessionFiles(s.Key, generation.Number, [.. s.Value.OrderBy(f => f.Relative, StringComparer.Ordinal)]))];
+    }
+
+    /// <summary>
+    ///     Re-checks one live session's files in the background lane, sharing a foreground check of the same
+    ///     content key already in flight and storing the answer for the checks that follow it. A Busy or
+    ///     unanswered background check stores nothing; the next generation asks again.
+    /// </summary>
+    private async Task RunBackgroundCheckAsync(BackgroundCheck.SessionFiles session, CancellationToken cancellationToken)
+    {
+        var request = BackgroundRequest(session);
+        var key = CoalesceKey(request);
+        if (key is null || _results.TryGet(key, out _))
+            return;
+        // The scheduler's background token ties the run to its generation too: a newer one cancels both.
+        using var generation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _scheduler.BackgroundToken);
+        EngineResponse response;
+        try
+        {
+            response = await _scheduler.RunCoalescedAsync(key, token => ScheduledAsync(request, token, SchedulerLane.Background), generation.Token).ConfigureAwait(false);
+        }
+        catch (SchedulerBusyException busy)
+        {
+            response = new EngineResponse.Busy(busy.Position, busy.EstimatedWaitMs);
+        }
+        catch (OperationCanceledException)
+        {
+            // A newer generation cancelled this run; its run re-checks these files.
+            return;
+        }
+
+        if (response is EngineResponse.Unanswered or EngineResponse.Busy)
+            _requestLog.WriteUnanswered(request, response);
+        StoreAnswer(key, request, ForRequest(request, response));
+    }
+
     /// <summary>Records that <paramref name="session"/> wrote <paramref name="files"/>. A name that is not a valid path is left to the check to refuse.</summary>
     private void RecordSession(string session, IReadOnlyList<string> files)
     {
@@ -317,17 +463,29 @@ internal sealed class RequestRouter : IDisposable
         return _sessions.OnlyOtherSessionsWrote(generation.Changed, session);
     }
 
-    /// <summary>Lets the background load and warm continue, unless the memory budget sheds background work at this boundary.</summary>
+    /// <summary>
+    ///     Lets the background load, warm and re-check continue after the newest generation, unless the memory
+    ///     budget sheds background work at this boundary, which stops the re-check that is running too.
+    /// </summary>
     private void ScheduleBackground()
     {
         if (_budget.Assess().Shed.Contains(MemoryBudget.ShedStep.Background))
         {
+            _background.CancelCurrent();
             _log.Write("memory: background load and warm shed at this request boundary");
             return;
         }
 
         _preloader.Schedule(_shutdown);
         _warmer.Schedule(_shutdown);
+        try
+        {
+            _background.Schedule(_workspace.PinGeneration().Number, _shutdown);
+        }
+        catch (Exception e) when (e is InvalidOperationException or ObjectDisposedException)
+        {
+            // The workspace is going away with the router; no generation is left to re-check.
+        }
     }
 
     /// <summary>
@@ -341,7 +499,6 @@ internal sealed class RequestRouter : IDisposable
         string? session;
         bool compilationWide;
         int maxErrors;
-        bool stamp;
         switch (request)
         {
             case EngineRequest.CheckChanges changes:
@@ -349,21 +506,18 @@ internal sealed class RequestRouter : IDisposable
                 session = SessionEdits.IsValid(changes.Session) ? changes.Session : null;
                 compilationWide = true;
                 maxErrors = changes.MaxErrors;
-                stamp = changes.StampTree;
                 break;
             case EngineRequest.CheckFiles files:
                 scopeKey = "files:" + string.Join(",", files.Files.Order(StringComparer.Ordinal));
                 session = SessionEdits.IsValid(files.Session) ? files.Session : null;
                 compilationWide = !files.LeaveOutCompilationWide;
                 maxErrors = files.MaxErrors;
-                stamp = files.StampTree;
                 break;
             case EngineRequest.CheckPaths paths:
                 scopeKey = "paths:" + string.Join(",", paths.Paths.Order(StringComparer.Ordinal));
                 session = SessionEdits.IsValid(paths.Session) ? paths.Session : null;
                 compilationWide = true;
                 maxErrors = paths.MaxErrors;
-                stamp = paths.StampTree;
                 break;
             default:
                 return null;
@@ -391,20 +545,28 @@ internal sealed class RequestRouter : IDisposable
             generation.BaselineGeneration,
             _sessions.RecordsHash(),
             generation.Changed.Select(path => (path.Relative, path.Absolute)));
-        return kept is null ? null : $"{scopeKey}|{session ?? ""}|{compilationWide}|{stamp}|{kept}";
+        // The stamp a request asks for is no part of the key: it names the same errors, and each waiter of a
+        // shared check is stamped, or not, for itself when it is answered.
+        return kept is null ? null : $"{scopeKey}|{session ?? ""}|{compilationWide}|{kept}";
     }
 
     /// <summary>True while the projects are evaluated and first loaded, or while a background load runs.</summary>
     public bool IsLoading => _initialization is { IsCompleted: false } || _preloader.IsRunning;
 
-    /// <summary>The planner the router answers test plans with, for a test that holds a plan in its shadow preparation.</summary>
+    /// <summary>The planner the router answers test plans with, for a test that answers a plan alongside a check.</summary>
     internal TestPlanner Planner => _planner;
 
-    /// <summary>The request lock, for a test that holds it while it asks for status or queues a check behind it.</summary>
+    /// <summary>The gate the first evaluation and the background load hold while they choose work, for a test that holds it while a background choice is made.</summary>
     internal RequestGate RequestLock => _requestLock;
 
     /// <summary>The scheduler that admits checks and plans to the reader pool, for a test that holds a reader or reads the queue.</summary>
     internal Scheduler Scheduler => _scheduler;
+
+    /// <summary>The result store answers are kept in, for a test that reads a kept answer or a session file.</summary>
+    internal ResultStore Results => _results;
+
+    /// <summary>The background re-check of live sessions, for a test that waits for a run to finish.</summary>
+    internal BackgroundCheck Background => _background;
 
     /// <summary>The per-engine memory budget, for a test that reads the ceiling and for the engine's idle watch.</summary>
     internal MemoryBudget Budget => _budget;
@@ -661,10 +823,11 @@ internal sealed class RequestRouter : IDisposable
     ///     Waits for the background load and warm to stop, after the shutdown token has been cancelled, so the workspace
     ///     is never disposed under a project that is still loading or warming.
     /// </summary>
-    public Task WaitForPreloadAsync() => Task.WhenAll(_preloader.WaitAsync(), _warmer.WaitAsync());
+    public Task WaitForPreloadAsync() => Task.WhenAll(_preloader.WaitAsync(), _warmer.WaitAsync(), _background.WaitAsync());
 
     public void Dispose()
     {
+        _background.Dispose();
         _scheduler.Dispose();
         _workspace.Dispose();
         _requestLock.Dispose();

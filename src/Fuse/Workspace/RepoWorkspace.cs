@@ -40,7 +40,7 @@ internal sealed class RepoWorkspace : IDisposable
         _log = log;
         Tracker = new ChangeTracker(root);
         _projects = new ProjectLoader(root, log);
-        _views = new SolutionViews(root, Tracker, _projects);
+        _views = new SolutionViews(root, Tracker, _projects, log);
         _sync = new WorkspaceSync(Tracker, _projects, _views, log);
     }
 
@@ -59,6 +59,16 @@ internal sealed class RepoWorkspace : IDisposable
 
     /// <inheritdoc cref="ProjectLoader.ConfigurationGeneration"/>
     public int ConfigurationGeneration => _projects.ConfigurationGeneration;
+
+    /// <summary>The summaries the views supply references to projects outside the change cone from.</summary>
+    public SummaryCache Summaries => _views.Summaries;
+
+    /// <inheritdoc cref="SolutionViews.UseSummaries"/>
+    public bool UseSummaries
+    {
+        get => _views.UseSummaries;
+        set => _views.UseSummaries = value;
+    }
 
     public RepoRoot Root { get; }
 
@@ -203,6 +213,53 @@ internal sealed class RepoWorkspace : IDisposable
     /// </remarks>
     public static IEnumerable<Project> ProjectsFor(Solution solution, ProjectNode node) =>
         solution.Projects.Where(p => node.Path.Matches(p.FilePath));
+
+    /// <summary>Sheds the session views under the writer lock, as the memory budget's shed order calls for after kept answers and caches.</summary>
+    /// <param name="cancellationToken">Cancels waiting for the writer lock.</param>
+    public async Task ClearSessionViewsAsync(CancellationToken cancellationToken)
+    {
+        await _writer.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            _views.ClearSessionViews();
+        }
+        finally
+        {
+            _writer.Release();
+        }
+    }
+
+    /// <summary>Sheds the HEAD compilations under the writer lock and publishes the generation it leaves, as the memory budget's shed order calls for after session views.</summary>
+    /// <param name="cancellationToken">Cancels waiting for the writer lock.</param>
+    public async Task ClearHeadCompilationsAsync(CancellationToken cancellationToken)
+    {
+        await _writer.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            _views.ClearHeadCompilations();
+            PublishLocked();
+        }
+        finally
+        {
+            _writer.Release();
+        }
+    }
+
+    /// <summary>Sheds the idle cone projects under the writer lock and publishes the generation it leaves, as the memory budget's shed order calls for last.</summary>
+    /// <param name="cancellationToken">Cancels waiting for the writer lock.</param>
+    public async Task ClearIdleConeProjectsAsync(CancellationToken cancellationToken)
+    {
+        await _writer.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            _views.ClearIdleConeProjects();
+            PublishLocked();
+        }
+        finally
+        {
+            _writer.Release();
+        }
+    }
 
     /// <inheritdoc cref="SolutionViews.HeadText"/>
     public SourceText? HeadText(RepoPath path) => _views.HeadText(path);

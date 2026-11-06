@@ -20,6 +20,8 @@ internal static class CommandUsage
           fuse session begin <name> --paths <pattern> [<pattern>...]
                                     register an external writer as a session for its path patterns
           fuse session end <name>   end the registration
+          fuse watch --session <name>
+                                    print that session's newest errors each time the engine checks them
           fuse stop [--all]         stop this repository's engine (--all: every engine); the next command starts one
           fuse mcp                  stdio MCP server (fuse_check, fuse_test, fuse_build) for MCP hosts that run no hooks
           fuse hook <harness> <event>   the command registered hooks run

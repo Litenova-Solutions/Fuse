@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Text;
+using Fuse.Graph;
 using Fuse.Paths;
 using Fuse.Repo;
 using Microsoft.CodeAnalysis;
@@ -15,7 +16,12 @@ namespace Fuse.Workspace;
 /// <remarks>
 ///     Both views are immutable <see cref="Solution"/> snapshots, replaced whole, so a request reads a pair that belongs
 ///     together. The baseline's content only changes when HEAD moves or projects reload, so diagnostics computed from it
-///     stay cached across checks.
+///     stay cached across checks. In each view a reference to a project outside the change cone (the projects that own
+///     changed files, and the dependents a declaration change reaches) is supplied by that project's summary when one
+///     is kept (<see cref="SummaryCache"/>), so binding a project in the cone does not build the compilation of every
+///     project it references. The referenced project stays in the view with its documents, so reach, coverage and
+///     test selection keep reading its documents; a project with no summary kept binds from source exactly as it
+///     would without one.
 /// </remarks>
 internal sealed class SolutionViews
 {
@@ -23,8 +29,45 @@ internal sealed class SolutionViews
     private readonly ChangeTracker _tracker;
     private readonly ProjectLoader _projects;
     private readonly AnalyzerShadow _analyzers;
+    private readonly SummaryCache _summaries;
     private readonly HashSet<RepoPath> _touched = [];
     private readonly Lock _touchedLock = new();
+
+    /// <summary>The views with some files at HEAD content that are kept for sessions, least recently derived last. <see cref="ClearSessionViews"/> sheds them.</summary>
+    private readonly List<(Solution Source, string Paths, Solution View)> _sessionViews = [];
+
+    /// <summary>Guards <see cref="_sessionViews"/>, which checks that run at the same time derive and shed.</summary>
+    private readonly Lock _sessionViewsLock = new();
+
+    /// <summary>The most session views kept; past it the view derived least recently goes, and a later session derives it again from source.</summary>
+    internal const int MaxSessionViews = 8;
+
+    /// <summary>The summary each baseline project was last supplied by, for the version of that project it was supplied for, so a view derived again does not key or emit it again.</summary>
+    private readonly Dictionary<ProjectId, (VersionStamp Version, MetadataReference? Reference)> _summaryReferences = [];
+
+    /// <summary>Guards <see cref="_summaryReferences"/>.</summary>
+    private readonly Lock _summaryLock = new();
+
+    /// <summary>The source view the kept summary view of <see cref="Current"/> was derived from, so a round that changed neither view reuses it.</summary>
+    private Solution? _summarySourceCurrent;
+
+    /// <summary>The source view the kept summary view of <see cref="Baseline"/> was derived from.</summary>
+    private Solution? _summarySourceBaseline;
+
+    /// <summary><see cref="Current"/> with summaries outside the change cone, or null when it is the source view itself.</summary>
+    private Solution? _summaryCurrent;
+
+    /// <summary><see cref="Baseline"/> with summaries outside the change cone, or null when it is the source view itself.</summary>
+    private Solution? _summaryBaseline;
+
+    /// <summary>Whether the kept summary views were derived with summaries, as <see cref="UseSummaries"/> was when they were derived.</summary>
+    private bool _summaryApplied;
+
+    /// <summary>The working tree before summaries: every referenced project as a live compilation, which reach and test emit read.</summary>
+    private Solution? _sourceCurrent;
+
+    /// <summary>The baseline before summaries.</summary>
+    private Solution? _sourceBaseline;
 
     /// <summary>The most paths the touched set holds. Past it the next sync re-evaluates the projects and resets the set, so it stays bounded however long the engine runs.</summary>
     internal const int MaxTouchedPaths = 2000;
@@ -61,19 +104,31 @@ internal sealed class SolutionViews
     /// </summary>
     private string? _baselineHead;
 
-    public SolutionViews(RepoRoot root, ChangeTracker tracker, ProjectLoader projects)
+    public SolutionViews(RepoRoot root, ChangeTracker tracker, ProjectLoader projects, Action<string>? log = null)
     {
         _root = root;
         _tracker = tracker;
         _projects = projects;
         _analyzers = new AnalyzerShadow(root);
+        _summaries = new SummaryCache(root, log ?? (_ => { }));
     }
 
-    /// <summary>The loaded projects as they are on disk.</summary>
-    public Solution Current { get; private set; } = null!;
+    /// <summary>The summaries the views supply references from, in the shared directory.</summary>
+    public SummaryCache Summaries => _summaries;
 
-    /// <summary>The loaded projects with every changed file at its HEAD content.</summary>
-    public Solution Baseline { get; private set; } = null!;
+    /// <summary>
+    ///     Whether the views supply references to projects outside the change cone from summaries, which is how a check
+    ///     binds. It is set once, before the first check, only by a caller that compares the two answers against each
+    ///     other (the differential tests in Fuse.Tests); a check with it false binds from source everywhere, and no
+    ///     surface reads it, so it is not a setting.
+    /// </summary>
+    public bool UseSummaries { get; set; } = true;
+
+    /// <summary>The loaded projects as they are on disk, with references to projects outside the change cone supplied by their summaries when one is kept.</summary>
+    public Solution Current => _summaryCurrent ?? _sourceCurrent!;
+
+    /// <summary>The loaded projects with every changed file at its HEAD content, with references to projects outside the change cone supplied by their summaries when one is kept.</summary>
+    public Solution Baseline => _summaryBaseline ?? _sourceBaseline!;
 
     /// <summary>Increments whenever the baseline's content changes (HEAD moved, projects reloaded), which invalidates everything cached against it.</summary>
     public int BaselineGeneration { get; private set; }
@@ -94,14 +149,238 @@ internal sealed class SolutionViews
     /// <summary>Empties both views, after the loader closed every project, and increments <see cref="BaselineGeneration"/>.</summary>
     public void Clear()
     {
-        Current = new AdhocWorkspace().CurrentSolution;
-        Baseline = Current;
+        _sourceCurrent = new AdhocWorkspace().CurrentSolution;
+        _sourceBaseline = _sourceCurrent;
+        _summaryCurrent = _sourceCurrent;
+        _summaryBaseline = _sourceBaseline;
+        _summarySourceCurrent = _sourceCurrent;
+        _summarySourceBaseline = _sourceBaseline;
         _derivedFrom = null;
         _generatedFiles = [];
         _generated.Clear();
         _rewritten.Clear();
+        lock (_sessionViewsLock)
+            _sessionViews.Clear();
+        lock (_summaryLock)
+            _summaryReferences.Clear();
         _baselineHead = _tracker.Head;
         BaselineGeneration++;
+    }
+
+    /// <summary>
+    ///     Sheds the session views: the views with some files at HEAD content that a session's check is answered from.
+    ///     A later check of that session derives its view from the current view again, as a check did before its view
+    ///     was kept, and answers the same.
+    /// </summary>
+    public void ClearSessionViews()
+    {
+        lock (_sessionViewsLock)
+            _sessionViews.Clear();
+    }
+
+    /// <summary>
+    ///     Sheds the HEAD compilations by dropping the baseline view, so every compilation built over HEAD can go.
+    ///     The working tree view stays. The next sync derives both views from the loader again, because the views no
+    ///     longer hold what it has open, and reads HEAD's errors from the stored results in the meantime. The
+    ///     baseline's content is the same when it is derived again, so <see cref="BaselineGeneration"/> stays.
+    /// </summary>
+    public void ClearHeadCompilations()
+    {
+        _sourceBaseline = new AdhocWorkspace().CurrentSolution;
+        _summaryBaseline = _sourceBaseline;
+        _summarySourceBaseline = _sourceBaseline;
+        _derivedFrom = null;
+        _generatedFiles = [];
+        _baselineHead = _tracker.Head;
+    }
+
+    /// <summary>
+    ///     Sheds the idle cone projects: the projects in neither view after this call are the dependents a changed
+    ///     file reaches and every other loaded project, except the projects that own changed files and everything
+    ///     they reference, which stay. The loader keeps them open, and the next sync derives both views from it
+    ///     again, so a later request that reaches a shed project binds it from source as it would have anyway; what
+    ///     goes is only the compilations binding it had built.
+    /// </summary>
+    public void ClearIdleConeProjects()
+    {
+        if (_sourceCurrent is null || _sourceBaseline is null || _projects.Graph is not { } graph)
+            return;
+        var keep = new HashSet<RepoPath>();
+        foreach (var path in _tracker.Changed)
+        {
+            foreach (var owner in graph.OwnersOf(path))
+            {
+                foreach (var node in graph.ClosureOf(owner))
+                    keep.Add(node.Path);
+            }
+        }
+
+        var current = _sourceCurrent;
+        var baseline = _sourceBaseline;
+        var shed = false;
+        foreach (var project in _sourceCurrent.Projects.ToList())
+        {
+            if (project.FilePath is not { } file || graph.Find(_root.PathOf(file)) is not { } node || keep.Contains(node.Path))
+                continue;
+            current = current.RemoveProject(project.Id);
+            if (baseline.GetProject(project.Id) is not null)
+                baseline = baseline.RemoveProject(project.Id);
+            shed = true;
+        }
+
+        if (!shed)
+            return;
+        _sourceCurrent = current;
+        _sourceBaseline = baseline;
+        _derivedFrom = null;
+        ClearSessionViews();
+        RefreshSummaryViewsFromCache();
+    }
+
+    /// <summary>The project files of the change cone: the owners of the changed files, and every dependent of an owner.</summary>
+    private HashSet<RepoPath> ConePaths()
+    {
+        var cone = new HashSet<RepoPath>();
+        if (_projects.Graph is not { } graph)
+            return cone;
+        var queue = new Queue<ProjectNode>();
+        foreach (var path in _tracker.Changed)
+        {
+            foreach (var owner in graph.OwnersOf(path))
+            {
+                if (cone.Add(owner.Path))
+                    queue.Enqueue(owner);
+            }
+        }
+
+        while (queue.Count > 0)
+        {
+            foreach (var dependent in graph.DependentsOf(queue.Dequeue()))
+            {
+                if (cone.Add(dependent.Path))
+                    queue.Enqueue(dependent);
+            }
+        }
+
+        return cone;
+    }
+
+    /// <summary>
+    ///     <paramref name="source"/> with each reference to a project outside <paramref name="cone"/> supplied by the
+    ///     summary <paramref name="summaryFor"/> gives for that project at HEAD, when it gives one. A reference with
+    ///     an alias or an embedded interop type, a reference to a project the graph or the baseline does not hold,
+    ///     and a project with no summary kept all stay as they are: a doubt falls back to source.
+    /// </summary>
+    private Solution WithSummaries(Solution source, Solution baseline, IReadOnlySet<RepoPath> cone, Func<Project, MetadataReference?> summaryFor)
+    {
+        if (_projects.Graph is not { } graph)
+            return source;
+        var result = source;
+        foreach (var project in source.Projects)
+        {
+            List<ProjectReference>? kept = null;
+            List<MetadataReference>? added = null;
+            foreach (var reference in project.ProjectReferences)
+            {
+                if (reference.ProjectId == project.Id || !reference.Properties.Aliases.IsEmpty || reference.Properties.EmbedInteropTypes)
+                    continue;
+                if (source.GetProject(reference.ProjectId)?.FilePath is not { } referencedFile)
+                    continue;
+                if (graph.Find(_root.PathOf(referencedFile)) is not { } node || cone.Contains(node.Path))
+                    continue;
+                if (baseline.GetProject(reference.ProjectId) is not { } baselineProject)
+                    continue;
+                if (summaryFor(baselineProject) is not { } summary)
+                    continue;
+                kept ??= [.. project.ProjectReferences];
+                added ??= [];
+                kept.Remove(reference);
+                added.Add(summary);
+            }
+
+            if (kept is not null && added is { Count: > 0 })
+                result = result.WithProjectReferences(project.Id, kept).WithProjectMetadataReferences(project.Id, project.MetadataReferences.Concat(added));
+        }
+
+        return result;
+    }
+
+    /// <summary>The summary kept for <paramref name="baselineProject"/> at the version it is now, or null when none was kept for it.</summary>
+    private MetadataReference? CachedSummary(Project baselineProject)
+    {
+        lock (_summaryLock)
+            return _summaryReferences.TryGetValue(baselineProject.Id, out var entry) && entry.Version == baselineProject.Version ? entry.Reference : null;
+    }
+
+    /// <summary>Derives both summary views from the source views again, with only the summaries already kept, and emits nothing.</summary>
+    private void RefreshSummaryViewsFromCache()
+    {
+        if (_sourceCurrent is null || _sourceBaseline is null)
+            return;
+        _summaryApplied = UseSummaries;
+        if (!UseSummaries)
+        {
+            _summaryCurrent = _sourceCurrent;
+            _summaryBaseline = _sourceBaseline;
+            _summarySourceCurrent = _sourceCurrent;
+            _summarySourceBaseline = _sourceBaseline;
+            return;
+        }
+
+        var cone = ConePaths();
+        _summaryCurrent = WithSummaries(_sourceCurrent, _sourceBaseline, cone, CachedSummary);
+        _summaryBaseline = WithSummaries(_sourceBaseline, _sourceBaseline, cone, CachedSummary);
+        _summarySourceCurrent = _sourceCurrent;
+        _summarySourceBaseline = _sourceBaseline;
+    }
+
+    /// <summary>
+    ///     Derives both summary views from the source views again, emitting the summary of each outside project that
+    ///     has none kept for its version. A round that changed neither source view reuses the views it derived last.
+    /// </summary>
+    private async Task RefreshSummaryViewsAsync(CancellationToken cancellationToken)
+    {
+        if (_sourceCurrent is null || _sourceBaseline is null)
+            return;
+        if (ReferenceEquals(_sourceCurrent, _summarySourceCurrent) && ReferenceEquals(_sourceBaseline, _summarySourceBaseline) && _summaryCurrent is not null && _summaryApplied == UseSummaries)
+            return;
+        if (UseSummaries && _projects.Graph is { } graph)
+        {
+            var cone = ConePaths();
+            var needed = new HashSet<ProjectId>();
+            foreach (var project in _sourceCurrent.Projects.Concat(_sourceBaseline.Projects))
+            {
+                foreach (var reference in project.ProjectReferences)
+                {
+                    if (_sourceBaseline.GetProject(reference.ProjectId) is not { } baselineProject || baselineProject.FilePath is not { } referencedFile)
+                        continue;
+                    if (graph.Find(_root.PathOf(referencedFile)) is not { } node || cone.Contains(node.Path))
+                        continue;
+                    if (needed.Add(reference.ProjectId))
+                        await EnsureSummaryAsync(baselineProject, cancellationToken).ConfigureAwait(false);
+                }
+            }
+        }
+
+        RefreshSummaryViewsFromCache();
+    }
+
+    /// <summary>Keeps the summary of <paramref name="baselineProject"/> for its version, emitted from HEAD when none is kept. A failure to key or emit keeps none, and binds source.</summary>
+    private async Task EnsureSummaryAsync(Project baselineProject, CancellationToken cancellationToken)
+    {
+        if (CachedSummary(baselineProject) is not null)
+            return;
+        lock (_summaryLock)
+        {
+            if (_summaryReferences.TryGetValue(baselineProject.Id, out var entry) && entry.Version == baselineProject.Version)
+                return;
+        }
+
+        MetadataReference? reference = null;
+        if (await _summaries.KeyForAsync(_tracker.Head, baselineProject, _projects.Graph, cancellationToken).ConfigureAwait(false) is { } key)
+            reference = await _summaries.GetOrEmitAsync(baselineProject, key, cancellationToken).ConfigureAwait(false);
+        lock (_summaryLock)
+            _summaryReferences[baselineProject.Id] = (baselineProject.Version, reference);
     }
 
     /// <summary>
@@ -158,13 +437,15 @@ internal sealed class SolutionViews
             baseline = await WithHeadContentAsync(baseline, path, cancellationToken).ConfigureAwait(false);
         }
 
-        Current = current;
-        Baseline = baseline;
+        _sourceCurrent = current;
+        _sourceBaseline = baseline;
         _derivedFrom = loaded;
         if (!string.Equals(head, _baselineHead, StringComparison.Ordinal))
         {
             _baselineHead = head;
             BaselineGeneration++;
+            lock (_summaryLock)
+                _summaryReferences.Clear();
         }
 
         // The loader read the generated files when it opened their projects. A file a build wrote again since then holds
@@ -180,9 +461,10 @@ internal sealed class SolutionViews
             }
         }
 
-        Current = current;
-        Baseline = baseline;
+        _sourceCurrent = current;
+        _sourceBaseline = baseline;
         await RefreshGeneratedAsync(cancellationToken).ConfigureAwait(false);
+        await RefreshSummaryViewsAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -199,8 +481,8 @@ internal sealed class SolutionViews
     {
         if (_generatedFiles.Count == 0)
             return;
-        var current = Current;
-        var baseline = Baseline;
+        var current = _sourceCurrent!;
+        var baseline = _sourceBaseline!;
         foreach (var path in _generatedFiles)
         {
             SourceText text;
@@ -228,12 +510,14 @@ internal sealed class SolutionViews
                 _rewritten[path] = text;
         }
 
-        Current = current;
-        if (!ReferenceEquals(baseline, Baseline))
+        _sourceCurrent = current;
+        if (!ReferenceEquals(baseline, _sourceBaseline))
         {
-            Baseline = baseline;
+            _sourceBaseline = baseline;
             BaselineGeneration++;
         }
+
+        await RefreshSummaryViewsAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>The documents of <paramref name="solution"/> that lie in a <c>bin</c> or <c>obj</c> folder of their project.</summary>
@@ -265,8 +549,8 @@ internal sealed class SolutionViews
     {
         if (paths.Count == 0 || _projects.Solution is null)
             return;
-        var current = Current;
-        var baseline = Baseline;
+        var current = _sourceCurrent!;
+        var baseline = _sourceBaseline!;
         foreach (var path in paths)
         {
             lock (_touchedLock)
@@ -275,37 +559,56 @@ internal sealed class SolutionViews
             baseline = await WithHeadContentAsync(baseline, path, cancellationToken).ConfigureAwait(false);
         }
 
-        Current = current;
-        if (!ReferenceEquals(baseline, Baseline))
+        _sourceCurrent = current;
+        if (!ReferenceEquals(baseline, _sourceBaseline))
         {
-            Baseline = baseline;
+            _sourceBaseline = baseline;
             BaselineGeneration++;
         }
+
+        await RefreshSummaryViewsAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
     ///     <see cref="Current"/> with each of <paramref name="paths"/> at its HEAD content, and a file HEAD does not have
     ///     left out. Neither view changes; the result shares every other document with <see cref="Current"/>, so only the
-    ///     projects that compile those files bind again.
+    ///     projects that compile those files bind again. The result is kept as a session view for the same view and paths,
+    ///     up to <see cref="MaxSessionViews"/>, and shed by <see cref="ClearSessionViews"/>.
     /// </summary>
     /// <param name="view">The current view to derive from, as a pinned generation holds it.</param>
     /// <param name="paths">The files to put back at HEAD content.</param>
     /// <param name="cancellationToken">Cancels reading file contents.</param>
     public async Task<Solution> CurrentWithHeadContentAsync(Solution view, IEnumerable<RepoPath> paths, CancellationToken cancellationToken)
     {
+        var listed = paths as IReadOnlyCollection<RepoPath> ?? [.. paths];
+        var key = string.Join("\n", listed.Select(p => p.Relative).Order(StringComparer.Ordinal));
+        lock (_sessionViewsLock)
+        {
+            foreach (var (source, pathsKey, kept) in _sessionViews)
+            {
+                if (ReferenceEquals(source, view) && pathsKey == key)
+                    return kept;
+            }
+        }
+
         var solution = view;
-        foreach (var path in paths)
+        foreach (var path in listed)
             solution = await WithHeadContentAsync(solution, path, cancellationToken).ConfigureAwait(false);
+        lock (_sessionViewsLock)
+        {
+            if (!_sessionViews.Any(v => ReferenceEquals(v.Source, view) && v.Paths == key))
+            {
+                _sessionViews.Add((view, key, solution));
+                while (_sessionViews.Count > MaxSessionViews)
+                    _sessionViews.RemoveAt(0);
+            }
+        }
+
         return solution;
     }
 
-    public async Task<Solution> CurrentWithHeadContentAsync(IEnumerable<RepoPath> paths, CancellationToken cancellationToken)
-    {
-        var solution = Current;
-        foreach (var path in paths)
-            solution = await WithHeadContentAsync(solution, path, cancellationToken).ConfigureAwait(false);
-        return solution;
-    }
+    public async Task<Solution> CurrentWithHeadContentAsync(IEnumerable<RepoPath> paths, CancellationToken cancellationToken) =>
+        await CurrentWithHeadContentAsync(Current, paths, cancellationToken).ConfigureAwait(false);
 
     /// <summary>The files of the documents and additional documents <see cref="Current"/> holds under <paramref name="directory"/>.</summary>
     public IEnumerable<RepoPath> FilesUnder(RepoPath directory) =>

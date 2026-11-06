@@ -6,6 +6,7 @@ using System.Text.Json.Serialization;
 using Fuse.Check.Model;
 using Fuse.Graph;
 using Fuse.Paths;
+using Fuse.Workspace;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 
@@ -15,20 +16,60 @@ namespace Fuse.Check;
 ///     HEAD's finished baseline results on disk, keyed by what they depend on, so the first check after an engine
 ///     restart reads them instead of binding HEAD again. Anything unreadable or from another key is ignored and computed
 ///     again, and unfinished results are never written. The worktrees of one repository share one store, so a worktree
-///     reads what another worktree on the same commit wrote.
+///     reads what another worktree on the same commit wrote. The store also supplies the summary of a project at HEAD
+///     (<see cref="SummaryForAsync"/>), kept under its own key by <see cref="SummaryCache"/> in the same shared directory.
 /// </summary>
 internal sealed partial class BaselineStore
 {
     private readonly RepoRoot _root;
     private readonly Action<string> _log;
+    private readonly SummaryCache _summaries;
     private bool _writeLogged;
 
-    /// <param name="root">The repository, for the state directory its results are kept in.</param>
+    /// <param name="root">The repository, for the shared directory its results and summaries are kept in.</param>
     /// <param name="log">Where a write that fails is written, once.</param>
     public BaselineStore(RepoRoot root, Action<string> log)
     {
         _root = root;
         _log = log;
+        _summaries = new SummaryCache(root, log);
+    }
+
+    /// <summary>The summaries of HEAD's projects, in the shared directory beside the stored results.</summary>
+    public SummaryCache Summaries => _summaries;
+
+    /// <summary>
+    ///     The summary of <paramref name="baselineProject"/> at <paramref name="head"/>: a metadata-only image of its HEAD
+    ///     compilation, private members and generated code included, emitted once under the key its inputs give it, or
+    ///     null when no summary can be used and the caller binds source instead. A reference is only ever supplied for a
+    ///     project outside the change cone; reach and test emit keep binding source, and a summary is never taken from
+    ///     <c>obj/ref</c>.
+    /// </summary>
+    /// <param name="head">The commit the baseline is taken from.</param>
+    /// <param name="baselineProject">The project at HEAD, in the baseline view.</param>
+    /// <param name="graph">Every project in the repository, for the inputs each project was evaluated from.</param>
+    /// <param name="cancellationToken">Cancels reading the project's documents and emitting its image.</param>
+    public async Task<MetadataReference?> SummaryForAsync(string? head, Project baselineProject, RepoGraph graph, CancellationToken cancellationToken)
+    {
+        if (await _summaries.KeyForAsync(head, baselineProject, graph, cancellationToken).ConfigureAwait(false) is not { } key)
+            return null;
+        return await _summaries.GetOrEmitAsync(baselineProject, key, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    ///     The summary already kept for <paramref name="baselineProject"/> at <paramref name="head"/>, or null when none is
+    ///     kept or its key cannot be computed. It emits nothing, so a caller that may not build a HEAD compilation reads
+    ///     only what another caller or worktree emitted.
+    /// </summary>
+    /// <param name="head">The commit the baseline is taken from.</param>
+    /// <param name="baselineProject">The project at HEAD, in the baseline view.</param>
+    /// <param name="graph">Every project in the repository, for the inputs each project was evaluated from.</param>
+    /// <param name="cancellationToken">Cancels reading the project's documents.</param>
+    public async Task<MetadataReference?> StoredSummaryForAsync(string? head, Project baselineProject, RepoGraph graph, CancellationToken cancellationToken)
+    {
+        if (await _summaries.KeyForAsync(head, baselineProject, graph, cancellationToken).ConfigureAwait(false) is not { } key)
+            return null;
+        return _summaries.TryGet(key, baselineProject);
     }
 
     /// <summary>

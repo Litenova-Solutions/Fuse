@@ -68,6 +68,9 @@ internal sealed class Checker
     private readonly GeneratedSource _generated;
     private readonly KeptCheck _kept = new();
 
+    /// <summary>Drops every kept answer, for the memory budget's shed order; a later check binds again.</summary>
+    public void ClearKeptAnswers() => _kept.Clear();
+
     /// <param name="workspace">The repository's projects and views.</param>
     /// <param name="sessions">Which sessions wrote each changed file; a check answered to a session reads it.</param>
     public Checker(RepoWorkspace workspace, SessionEdits sessions)

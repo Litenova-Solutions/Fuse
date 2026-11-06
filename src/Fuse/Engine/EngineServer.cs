@@ -8,6 +8,7 @@ using Fuse.Failures;
 using Fuse.Paths;
 using Fuse.Protocol;
 using Fuse.Telemetry;
+using Fuse.Workspace;
 
 namespace Fuse.Engine;
 
@@ -137,6 +138,7 @@ internal static class EngineServer
         {
             LocalState.RecordRoot(root);
             BaselineStore.Prune(root.SharedStateDirectory);
+            SummaryCache.Prune(root.SharedStateDirectory);
             LocalState.RemoveUnusedEngineCopies(LocalState.EngineCopies, AppContext.BaseDirectory, DateTime.UtcNow);
             var removed = LocalState.RemoveStateOfMissingRepositories(LocalState.Repositories, DateTime.UtcNow);
             if (removed > 0)

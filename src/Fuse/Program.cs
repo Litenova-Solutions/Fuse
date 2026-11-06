@@ -42,6 +42,7 @@ internal static class Program
                 "test" => await TestAsync(rest, cancel.Token).ConfigureAwait(false),
                 "build" => await BuildAsync(rest, cancel.Token).ConfigureAwait(false),
                 "status" => await StatusAsync(rest, cancel.Token).ConfigureAwait(false),
+                "watch" => await WatchAsync(rest, cancel.Token).ConfigureAwait(false),
                 "session" => await SessionAsync(rest, cancel.Token).ConfigureAwait(false),
                 "stop" => await StopAsync(rest, cancel.Token).ConfigureAwait(false),
                 "hook" => await HookCommand.RunAsync(rest, cancel.Token).ConfigureAwait(false),
@@ -81,6 +82,7 @@ internal static class Program
         "build" => CommandUsage.Build,
         "stop" => CommandUsage.Stop,
         "status" => CommandUsage.Status,
+        "watch" => WatchOperation.Usage,
         "session" => CommandUsage.Session,
         "init" => CommandUsage.Init,
         "uninit" => CommandUsage.Uninit,
@@ -264,6 +266,42 @@ internal static class Program
         if (root is null)
             return 2;
         return Print(await StatusOperation.RunAsync(root, json, cancellationToken).ConfigureAwait(false));
+    }
+
+    /// <summary><c>fuse watch --session &lt;name&gt;</c>: streams the stored answers of one session until it is cancelled; any other argument is a usage failure.</summary>
+    private static async Task<int> WatchAsync(string[] args, CancellationToken cancellationToken)
+    {
+        string? session = null;
+        for (var i = 0; i < args.Length; i++)
+        {
+            if (args[i] == "--session" && session is null && i + 1 < args.Length)
+                session = args[++i];
+            else if (args[i].StartsWith("--session=", StringComparison.Ordinal) && session is null && args[i].Length > "--session=".Length)
+                session = args[i]["--session=".Length..];
+            else
+            {
+                Console.Error.WriteLine(WatchOperation.Usage);
+                return 2;
+            }
+        }
+
+        if (session is null)
+        {
+            Console.Error.WriteLine(WatchOperation.Usage);
+            return 2;
+        }
+
+        var root = RequireRoot();
+        if (root is null)
+            return 2;
+        var result = await WatchOperation.RunAsync(root, session, Console.Out, cancellationToken).ConfigureAwait(false);
+        if (result.Outcome == Outcome.Unanswered)
+        {
+            Console.Error.WriteLine(result.Text);
+            return 2;
+        }
+
+        return result.ExitCode;
     }
 
     private static async Task<int> SessionAsync(string[] args, CancellationToken cancellationToken)

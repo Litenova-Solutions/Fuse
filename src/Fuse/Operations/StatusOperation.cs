@@ -81,10 +81,12 @@ internal static partial class StatusOperation
         {
             var state = engine is not null ? "running" : silentEngine ? "unknown" : "stopped";
             int? memoryMB = engine is null ? null : (int)(engine.WorkingSetBytes / (1024 * 1024));
+            long? memoryCeilingBytes = engine?.MemoryCeilingBytes;
+            long? memoryLoadBytes = engine?.MemoryLoadBytes;
             int? inReach = engine is null ? null : engine.ChangedSourcesInReach;
             int? touched = engine is null ? null : engine.TouchedCount;
             return new OperationResult(Outcome.Clean, JsonSerializer.Serialize(
-                new StatusLine(state, engine?.Pid, memoryMB, count, inReach, touched, TouchedLimit, KeptAnswerAt, WholeProjectAt, ReloadAt, engine?.ReloadMs, engine?.GateHolder),
+                new StatusLine(state, engine?.Pid, memoryMB, count, inReach, touched, TouchedLimit, KeptAnswerAt, WholeProjectAt, ReloadAt, engine?.ReloadMs, engine?.GateHolder, memoryCeilingBytes, memoryLoadBytes),
                 StatusJson.Default.StatusLine));
         }
         var text = new StringBuilder();
@@ -102,7 +104,7 @@ internal static partial class StatusOperation
         {
             var line = $"fuse: engine running for {root.Path} (pid {engine.Pid}), {engine.WorkingSetBytes / (1024 * 1024)} MB; idle exits after 30 min";
             return engine.GateHolder is { } holder
-                ? $"{line}; {holder} holds the request lock; status from last completed sync"
+                ? $"{line}; {holder} holds a reader"
                 : line;
         }
         if (silentEngine)
@@ -163,7 +165,7 @@ internal static partial class StatusOperation
     }
 
     /// <summary>One status answer: the engine, then the tree, then the limits counted as the code counts them.</summary>
-    private sealed record StatusLine(string Engine, int? Pid, int? MemoryMB, int ChangedFiles, int? ChangedSourcesInReach, int? TouchedPaths, int TouchedLimit, int KeptAnswerAt, int WholeProjectAt, int SyncReloadAt, long? ReloadMs, string? GateHolder);
+    private sealed record StatusLine(string Engine, int? Pid, int? MemoryMB, int ChangedFiles, int? ChangedSourcesInReach, int? TouchedPaths, int TouchedLimit, int KeptAnswerAt, int WholeProjectAt, int SyncReloadAt, long? ReloadMs, string? GateHolder, long? MemoryCeilingBytes, long? MemoryLoadBytes);
 
     [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonSerializable(typeof(StatusLine))]

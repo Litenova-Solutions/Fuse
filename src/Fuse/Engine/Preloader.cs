@@ -9,12 +9,12 @@ namespace Fuse.Engine;
 ///     Loads, in the background and one at a time, the projects that depend on projects with uncommitted changes.
 ///     A declaration change has to bind those dependents, and loading them is the slow part of a first check
 ///     (seconds per project); doing it while the agent is busy elsewhere keeps later checks fast. Requests take
-///     precedence: the request lock admits them between project loads. It builds no compilation: a check builds what it binds.
+///     precedence: it holds the gate only while it chooses a project, between loads. It builds no compilation: a check builds what it binds.
 /// </summary>
 internal sealed class Preloader
 {
     private readonly RepoWorkspace _workspace;
-    private readonly RequestGate _requestLock;
+    private readonly RequestGate _gate;
     private readonly Action<string> _log;
 
     /// <summary>Makes starting a load one step, so two requests that finish together cannot both start one.</summary>
@@ -29,12 +29,12 @@ internal sealed class Preloader
     private Task _running = Task.CompletedTask;
 
     /// <param name="workspace">The workspace the projects load into.</param>
-    /// <param name="requestLock">The request lock. It is held only while the next project is chosen, never during a load.</param>
+    /// <param name="gate">The gate it holds only while the next project is chosen, never during a load; requests take a reader from the scheduler and never wait on it.</param>
     /// <param name="log">Where a load that was skipped or failed is written.</param>
-    public Preloader(RepoWorkspace workspace, RequestGate requestLock, Action<string> log)
+    public Preloader(RepoWorkspace workspace, RequestGate gate, Action<string> log)
     {
         _workspace = workspace;
-        _requestLock = requestLock;
+        _gate = gate;
         _log = log;
     }
 
@@ -59,8 +59,8 @@ internal sealed class Preloader
         while (!shutdown.IsCancellationRequested)
         {
             ProjectNode? next;
-            // The request lock only protects choosing the next project; the load itself runs outside it, so requests are served while a project loads.
-            await _requestLock.EnterAsync(RequestGate.Preload, shutdown).ConfigureAwait(false);
+            // The gate only protects choosing the next project; the load itself runs outside it, so requests are served while a project loads.
+            await _gate.EnterAsync(RequestGate.Preload, shutdown).ConfigureAwait(false);
             try
             {
                 var generation = _workspace.PinGeneration();
@@ -72,7 +72,7 @@ internal sealed class Preloader
             }
             finally
             {
-                _requestLock.Exit();
+                _gate.Exit();
             }
 
             if (next is null)

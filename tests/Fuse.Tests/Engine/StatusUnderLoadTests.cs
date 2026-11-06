@@ -6,18 +6,21 @@ using Fuse.Tests.Fixtures;
 namespace Fuse.Tests.Engine;
 
 /// <summary>
-///     Status answers at once from the last completed sync while the request lock is held, naming the holder, instead
-///     of waiting behind the check that holds it.
+///     Status and a session registration bypass the scheduler: they answer while every reader is held, status
+///     naming the holder through its <c>GateHolder</c> and reading the newest generation, and a registration
+///     answering without waiting for the held reader or for a check queued behind it.
 /// </summary>
 public class StatusUnderLoadTests
 {
     [Fact]
-    public async Task Status_answers_from_the_last_completed_sync_while_a_check_holds_the_lock()
+    public async Task Status_answers_while_a_reader_is_held_and_names_the_holder()
     {
         using var repo = FixtureRepo.CreateStandard();
         var log = new EngineLog(repo.Root.StateDirectory);
         using var shutdown = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
-        var router = new RequestRouter(repo.Root, log);
+        var scheduler = new Scheduler(1);
+        var router = new RequestRouter(repo.Root, log, scheduler, new MemoryBudget());
+        SchedulerLease? lease = null;
         try
         {
             await router.InitializeAsync(shutdown.Token);
@@ -26,31 +29,27 @@ public class StatusUnderLoadTests
             Assert.Equal(1, first.ChangedFileCount);
             Assert.Null(first.GateHolder);
 
-            string lastTree;
-            await router.RequestLock.EnterAsync("CheckFiles", TestContext.Current.CancellationToken);
-            try
-            {
-                repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
+            lease = await scheduler.EnterAsync(SchedulerLane.Command, "CheckFiles", 0, TestContext.Current.CancellationToken);
+            repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
+            await Task.Delay(400, TestContext.Current.CancellationToken);
 
-                var last = await StatusAsync(router, TimeSpan.FromSeconds(5));
-                lastTree = last.Tree;
+            var held = await StatusAsync(router, TimeSpan.FromSeconds(5));
 
-                Assert.Equal("CheckFiles", last.GateHolder);
-                Assert.Equal(1, last.ChangedFileCount);
-                Assert.Equal(1, last.ChangedSourcesInReach);
-            }
-            finally
-            {
-                router.RequestLock.Exit();
-            }
+            Assert.Equal("CheckFiles", held.GateHolder);
+            Assert.Equal(1, held.ChangedFileCount);
+            Assert.Equal(1, held.ChangedSourcesInReach);
+            Assert.NotEqual(first.Tree, held.Tree);
 
-            var after = await PollStatusWithTreeAsync(router, lastTree);
+            lease.Dispose();
+            lease = null;
+
+            var after = await PollStatusAsync(router, 1);
             Assert.Null(after.GateHolder);
-            Assert.Equal(1, after.ChangedFileCount);
-            Assert.NotEqual(lastTree, after.Tree);
+            Assert.Equal(held.Tree, after.Tree);
         }
         finally
         {
+            lease?.Dispose();
             await shutdown.CancelAsync();
             await router.WaitForPreloadAsync();
             router.Dispose();
@@ -58,35 +57,41 @@ public class StatusUnderLoadTests
     }
 
     [Fact]
-    public async Task A_registration_runs_before_a_queued_check_after_the_holder()
+    public async Task A_registration_answers_without_waiting_for_a_held_reader_or_a_queued_check()
     {
         using var repo = FixtureRepo.CreateStandard();
         var log = new EngineLog(repo.Root.StateDirectory);
         using var shutdown = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
-        var router = new RequestRouter(repo.Root, log);
+        var scheduler = new Scheduler(1);
+        var router = new RequestRouter(repo.Root, log, scheduler, new MemoryBudget());
+        SchedulerLease? lease = null;
         try
         {
             await router.InitializeAsync(shutdown.Token);
             repo.Replace("Lib/Calc.cs", "public int Add(int a, int b) => a + b;", "public int Add(int a, int b) => a - b;");
 
-            await router.RequestLock.EnterAsync("CheckFiles", TestContext.Current.CancellationToken);
+            lease = await scheduler.EnterAsync(SchedulerLane.Command, "CheckFiles", 0, TestContext.Current.CancellationToken);
             var queuedCheck = router.HandleAsync(
                 new EngineRequest.CheckFiles(["Lib/Calc.cs"], WaitForLoad: true) { BuildId = EngineVersion.Build, RequestId = "queued-behind-holder" },
                 TestContext.Current.CancellationToken);
-            var registration = router.HandleAsync(
-                new EngineRequest.BeginSession("worker-1", ["Lib/**"]) { BuildId = EngineVersion.Build, RequestId = "registration-priority" },
-                TestContext.Current.CancellationToken);
             await Task.Delay(100, TestContext.Current.CancellationToken);
-            router.RequestLock.Exit();
+            Assert.False(queuedCheck.IsCompleted);
 
-            var registered = await registration.WaitAsync(TimeSpan.FromSeconds(15), TestContext.Current.CancellationToken);
+            var registered = await router.HandleAsync(
+                new EngineRequest.BeginSession("worker-1", ["Lib/**"]) { BuildId = EngineVersion.Build, RequestId = "registration-bypass" },
+                TestContext.Current.CancellationToken).WaitAsync(TimeSpan.FromSeconds(15), TestContext.Current.CancellationToken);
             Assert.IsType<EngineResponse.Acknowledged>(registered);
+            Assert.False(queuedCheck.IsCompleted);
+
+            lease.Dispose();
+            lease = null;
 
             var checkedResponse = await queuedCheck.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
             Assert.IsType<EngineResponse.CheckAnswered>(checkedResponse);
         }
         finally
         {
+            lease?.Dispose();
             await shutdown.CancelAsync();
             await router.WaitForPreloadAsync();
             router.Dispose();
@@ -104,21 +109,6 @@ public class StatusUnderLoadTests
     }
 
     private static string EngineLogRequestId() => Guid.NewGuid().ToString("N");
-
-    /// <summary>Waits until a status from a sync of its own names a tree other than <paramref name="otherTree"/>.</summary>
-    private static async Task<EngineStatus> PollStatusWithTreeAsync(RequestRouter router, string otherTree)
-    {
-        var deadline = Environment.TickCount64 + 15000;
-        while (true)
-        {
-            var status = await StatusAsync(router);
-            if (status.GateHolder is null && status.Tree != otherTree)
-                return status;
-            if (Environment.TickCount64 > deadline)
-                Assert.Fail($"tree stayed at {status.Tree}, expected a tree other than {otherTree}");
-            await Task.Delay(100, TestContext.Current.CancellationToken);
-        }
-    }
 
     private static async Task<EngineStatus> PollStatusAsync(RequestRouter router, int expected)
     {

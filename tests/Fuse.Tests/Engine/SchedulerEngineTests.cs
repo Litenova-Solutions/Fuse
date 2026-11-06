@@ -146,7 +146,8 @@ public class SchedulerEngineTests
         using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });
         using var engine = new BusyEngine(repo.Root, busyAnswers: 100);
 
-        var response = await EngineClient.SendAsync(repo.Root, new EngineRequest.Ping(), TimeSpan.FromMilliseconds(300), TestContext.Current.CancellationToken);
+        // Long enough for a slow runner to connect and hear Busy at least once; the fake engine answers Busy every time.
+        var response = await EngineClient.SendAsync(repo.Root, new EngineRequest.Ping(), TimeSpan.FromSeconds(3), TestContext.Current.CancellationToken);
 
         var unanswered = Assert.IsType<EngineResponse.Unanswered>(response);
         Assert.Equal(Fuse.Failures.ErrorCode.Busy, unanswered.Code);

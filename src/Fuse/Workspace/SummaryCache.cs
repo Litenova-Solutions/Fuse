@@ -159,17 +159,9 @@ internal sealed class SummaryCache
                         return false;
                     lines.Add("analyzer:" + analyzerPath + "=" + HashFile(file.FullPath));
                     break;
-                case AnalyzerImageReference image:
-                    foreach (var analyzer in image.GetAnalyzersForAllLanguages().OrderBy(a => a.GetType().FullName, StringComparer.Ordinal))
-                    {
-                        var location = analyzer.GetType().Assembly.Location;
-                        if (string.IsNullOrEmpty(location) || !File.Exists(location))
-                            return false;
-                        lines.Add("analyzer-image:" + analyzer.GetType().FullName + "=" + HashFile(location));
-                    }
-
-                    break;
                 default:
+                    // An analyzer loaded from memory has no file whose content can key a summary, so its project binds
+                    // from source.
                     return false;
             }
         }

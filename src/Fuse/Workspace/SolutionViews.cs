@@ -701,8 +701,8 @@ internal sealed class SolutionViews
                 result = result.WithProjectReferences(project.Id, from.ProjectReferences);
             var supplied = project.MetadataReferences;
             var wanted = from.MetadataReferences;
-            var differs = supplied.Length != wanted.Length;
-            for (var i = 0; !differs && i < supplied.Length; i++)
+            var differs = supplied.Count != wanted.Count;
+            for (var i = 0; !differs && i < supplied.Count; i++)
                 differs = !ReferenceEquals(supplied[i], wanted[i]);
             if (differs)
                 result = result.WithProjectMetadataReferences(project.Id, wanted);

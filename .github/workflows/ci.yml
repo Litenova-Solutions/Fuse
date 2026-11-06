@@ -82,6 +82,7 @@ jobs:
       - name: Test
         shell: bash
         run: dotnet test --solution Fuse.slnx -c Release --no-build --hangdump --hangdump-timeout 20m ${{ matrix.shard.filter }}
+- name: Tests still running at a hang        if: failure()        shell: bash        run: cat TestResults/*_hang.log 2>/dev/null || true
 
   targeted:
     name: Test ${{ inputs.filter }} (${{ matrix.os }})
@@ -113,6 +114,11 @@ jobs:
           FILTER: ${{ inputs.filter }}
         # The filter splits into its arguments on purpose.
         run: dotnet test --solution Fuse.slnx -c Release --no-build --hangdump --hangdump-timeout 20m $FILTER
+
+      - name: Tests still running at a hang
+        if: failure()
+        shell: bash
+        run: cat TestResults/*_hang.log 2>/dev/null || true
 
   # The gate builds once and checks formatting before any shard starts, so a compile or format error fails in
   # minutes instead of failing all 18 test jobs.

@@ -37,19 +37,22 @@ internal sealed class MemoryBudget
         var total = _totalAvailable();
         var byCeiling = CeilingBytes == 0 ? 0 : (double)workingSet / CeilingBytes;
         var byMachine = total > 0 ? (double)load / total : 0;
-        var pressure = Math.Max(byCeiling, byMachine);
+        // The engine sheds what it holds by its own working set against its ceiling. The machine's load, which every
+        // other process on it adds to and a busy machine keeps high, only stops background work here: the machine-wide
+        // rule (ShouldExitIdlest) is what frees memory across engines, so one engine never refuses its callers because
+        // other programs fill the machine.
         var shed = new List<ShedStep>();
-        if (pressure >= 0.70)
+        if (byCeiling >= 0.70 || byMachine >= 0.90)
             shed.Add(ShedStep.Background);
-        if (pressure >= 0.80)
+        if (byCeiling >= 0.80)
             shed.Add(ShedStep.KeptAnswersAndCaches);
-        if (pressure >= 0.85)
+        if (byCeiling >= 0.85)
             shed.Add(ShedStep.SessionViews);
-        if (pressure >= 0.90)
+        if (byCeiling >= 0.90)
             shed.Add(ShedStep.HeadCompilations);
-        if (pressure >= 0.95)
+        if (byCeiling >= 0.95)
             shed.Add(ShedStep.IdleConeProjects);
-        return new Snapshot(workingSet, CeilingBytes, load, total, pressure >= 1.0, shed);
+        return new Snapshot(workingSet, CeilingBytes, load, total, byCeiling >= 1.0, shed);
     }
 
     /// <summary>

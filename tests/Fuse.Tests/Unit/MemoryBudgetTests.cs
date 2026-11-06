@@ -40,13 +40,14 @@ public class MemoryBudgetTests
     }
 
     [Fact]
-    public void The_machine_memory_load_counts_toward_pressure()
+    public void A_full_machine_stops_only_background_work_in_an_engine_well_under_its_ceiling()
     {
         var budget = new MemoryBudget(ceilingBytes: 100 * 1024 * 1024, workingSet: () => 1024, memoryLoad: () => 960, totalAvailable: () => 1000);
 
         var snapshot = budget.Assess();
 
-        Assert.Contains(MemoryBudget.ShedStep.IdleConeProjects, snapshot.Shed);
+        // Other programs filling the machine never make one engine drop its views or refuse its callers.
+        Assert.Equal([MemoryBudget.ShedStep.Background], snapshot.Shed);
         Assert.False(snapshot.IsPastCeiling);
         Assert.Equal(960, snapshot.MemoryLoadBytes);
     }

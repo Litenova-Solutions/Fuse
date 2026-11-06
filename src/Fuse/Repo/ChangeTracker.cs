@@ -109,19 +109,16 @@ internal sealed class ChangeTracker : IDisposable
             foreach (var ignoredPath in ignored) _nonSources.TryRemove(ignoredPath, out _);
         }
 
-        // A check of every change asked for confirmation, and the watcher reported nothing since the last sync and no
-        // caller named a file: a write it has not reported yet, as a shell command's write on macOS can be late, is in
-        // no set yet, so the changed set is confirmed against disk through git, as a reseed reads it. Every file that
-        // changed before the confirmation or after it goes back, so a file whose membership stayed while its content
-        // moved is applied again too. Other syncs never pay for git.
-        if (confirmWithDisk && !headMoved && paths.Count == 0 && watchedNonSources.Count == 0
-            && watched.ProjectFiles.Count == 0 && watched.VanishedDirectories.Count == 0 && watched.WatcherErrors.Count == 0)
+        // A check of every change asks for the changed set to be confirmed against disk: a write the watcher has not
+        // reported yet, as a shell command's write on macOS can be late, is in no set. git lists what differs from
+        // HEAD, and every source whose membership differs from what the tracker holds joins the reported paths, which
+        // the sync below verifies against disk and HEAD like any other. Other syncs never pay for git.
+        if (confirmWithDisk && !headMoved && watched.WatcherErrors.Count == 0)
         {
             HashSet<RepoPath> seeded;
-            List<RepoPath> seededNonSources;
             try
             {
-                (seeded, seededNonSources) = await SeedAsync(cancellationToken).ConfigureAwait(false);
+                (seeded, _) = await SeedAsync(cancellationToken).ConfigureAwait(false);
             }
             catch (Exception)
             {
@@ -131,13 +128,8 @@ internal sealed class ChangeTracker : IDisposable
                 throw;
             }
 
-            // Reconciled in place, never emptied, so a reader between the two steps never sees a tree with no changes.
-            var confirmed = new HashSet<RepoPath>(_changed.Keys);
-            foreach (var seededPath in seeded) _changed[seededPath] = 0;
-            foreach (var stale in confirmed.Where(p => !seeded.Contains(p))) _changed.TryRemove(stale, out _);
-            SetNonSources(seededNonSources);
-            confirmed.UnionWith(_changed.Keys);
-            return new SyncResult.Patch(confirmed, watched.VanishedDirectories);
+            paths.UnionWith(seeded.Where(p => !_changed.ContainsKey(p)));
+            paths.UnionWith(_changed.Keys.Where(p => !seeded.Contains(p)));
         }
 
         // After HEAD moves or the watcher loses events, the reported paths are not the whole change, and past the limit

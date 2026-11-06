@@ -152,7 +152,7 @@ internal sealed class SessionViewFilter
     ///     change, an added or removed declaration, or a changed constructor, conversion or operator declines, as
     ///     does a changed declaration in a file no session is credited with.
     /// </summary>
-    private async Task<IReadOnlySet<string>? ChangedDeclarationAsync(Solution current, Document errorDocument, RepoPath declaringPath, SyntaxNode declaredNode, IReadOnlyDictionary<RepoPath, IReadOnlySet<string>> writers, CancellationToken cancellationToken)
+    private async Task<IReadOnlySet<string>?> ChangedDeclarationAsync(Solution current, Document errorDocument, RepoPath declaringPath, SyntaxNode declaredNode, IReadOnlyDictionary<RepoPath, IReadOnlySet<string>> writers, CancellationToken cancellationToken)
     {
         Document? declaringDocument = null;
         foreach (var id in current.GetDocumentIdsWithFilePath(declaringPath.Absolute))

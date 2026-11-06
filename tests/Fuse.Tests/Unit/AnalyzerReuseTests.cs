@@ -50,12 +50,12 @@ public class AnalyzerReuseTests
         var path = repo.Root.PathOf(repo.Full("C1.cs"));
         var warm = new CheckContext(AnalyzerRun.Full, reuse: false);
         collector.BeginContext(warm);
-        // The first bind also makes the project's plan, whose probes run the analyzers of their own.
+        // The first bind makes the plan and runs C1.cs under the shared wrapper, whose cached result a repeat of C1.cs reuses, so the counted bind below uses a file that wrapper has not run yet.
         await collector.ForFileAsync(solution, path, warm, TestContext.Current.CancellationToken);
         analyzer.ResetStarts();
 
         var context = new CheckContext(AnalyzerRun.Full, reuse: false);
-        var errors = await collector.ForFileAsync(solution, path, context, TestContext.Current.CancellationToken);
+        var errors = await collector.ForFileAsync(solution, repo.Root.PathOf(repo.Full("C2.cs")), context, TestContext.Current.CancellationToken);
 
         Assert.Contains(errors, e => e.Id == "START1");
         Assert.Equal(1, analyzer.Starts);

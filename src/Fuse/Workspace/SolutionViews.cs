@@ -444,13 +444,12 @@ internal sealed class SolutionViews
     ///     (<see cref="EmitSummaryAsync"/>), off the request path and never under the writer lock. This runs only
     ///     on that loader derivation, never on a sync, so the key it reads a kept summary under is paid when
     ///     projects load, reload or HEAD moves and at no other time. A round that changed neither source view
-    ///     reuses the views it derived last.
+    ///     and kept the same summaries supplied reuses the views it derived last; a summary kept since then,
+    ///     by the background warm, is supplied here even when the source views are the same instances.
     /// </summary>
     private async Task RefreshSummaryViewsAsync(CancellationToken cancellationToken)
     {
         if (_sourceCurrent is null || _sourceBaseline is null)
-            return;
-        if (ReferenceEquals(_sourceCurrent, _summarySourceCurrent) && ReferenceEquals(_sourceBaseline, _summarySourceBaseline) && _summaryCurrent is not null && _summaryApplied == UseSummaries)
             return;
         var cone = ConePaths();
         var supplied = new HashSet<ProjectId>();
@@ -475,6 +474,12 @@ internal sealed class SolutionViews
                 }
             }
         }
+
+        HashSet<ProjectId> applied;
+        lock (_summaryLock)
+            applied = [.. _appliedSummaries];
+        if (ReferenceEquals(_sourceCurrent, _summarySourceCurrent) && ReferenceEquals(_sourceBaseline, _summarySourceBaseline) && _summaryCurrent is not null && _summaryApplied == UseSummaries && supplied.SetEquals(applied))
+            return;
 
         DeriveSummaryViews(supplied, cone);
     }

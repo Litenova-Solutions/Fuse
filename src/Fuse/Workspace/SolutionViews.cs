@@ -304,7 +304,15 @@ internal sealed class SolutionViews
             }
 
             if (kept is not null && added is { Count: > 0 })
+            {
                 result = result.WithProjectReferences(project.Id, kept).WithProjectMetadataReferences(project.Id, project.MetadataReferences.Concat(added));
+                // A project supplied by a summary is bound from metadata, where a member the surface hides
+                // counts only when every member is imported, as the compiler imports them: against source
+                // such a member is inaccessible (CS0122), and the summary view must say the same, so a
+                // project whose references a summary supplies imports all members.
+                if (project.CompilationOptions is { } compilationOptions)
+                    result = result.WithProjectCompilationOptions(project.Id, compilationOptions.WithMetadataImportOptions(MetadataImportOptions.All));
+            }
         }
 
         return result;

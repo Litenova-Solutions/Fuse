@@ -182,6 +182,26 @@ public class CoalescingTests
     }
 
     [Fact]
+    public async Task A_check_of_every_change_answers_for_a_file_written_without_telling_the_engine()
+    {
+        using var repo = FixtureRepo.CreateStandard();
+        await using var engine = await InProcessRequestRouter.StartAsync(repo);
+
+        var clean = Assert.IsType<EngineResponse.CheckAnswered>(await engine.SendAsync(
+            new EngineRequest.CheckChanges(WaitForLoad: true) { StampTree = true })).Report;
+        Assert.Equal(0, clean.ErrorCount);
+
+        // As a shell command writes it: no request names the file, and no hook reports it, so only a
+        // confirmation of the changed set against disk can find it before the watcher does.
+        repo.Replace("Lib/Calc.cs", "a * b;", "a * undefinedValue;");
+
+        var answered = Assert.IsType<EngineResponse.CheckAnswered>(await engine.SendAsync(
+            new EngineRequest.CheckChanges(WaitForLoad: true) { StampTree = true })).Report;
+        Assert.Contains(answered.Errors, e => e.Error.Id == "CS0103");
+        Assert.Equal(1, answered.TreeFiles);
+    }
+
+    [Fact]
     public async Task A_busy_and_an_unanswered_answer_are_logged_with_their_kind_code_and_session()
     {
         using var repo = FixtureRepo.CreateStandard();

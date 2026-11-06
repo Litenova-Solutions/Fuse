@@ -9,13 +9,14 @@ using Fuse.Graph;
 using Fuse.Paths;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Emit;
 
 namespace Fuse.Workspace;
 
 /// <summary>
-///     The summaries one repository shares: a metadata-only image of a project's HEAD compilation, private members
+///     The summaries one repository shares: an image of a project's HEAD compilation, private members
 ///     included, emitted once and kept in a content-addressed cache under the shared directory, which is keyed by
 ///     the git common directory, so every worktree on the same commit reads the image another worktree wrote.
 ///     A project outside the change cone supplies its surface through the image instead of a live compilation,
@@ -216,11 +217,18 @@ internal sealed class SummaryCache
                 return null;
             if (compilation.GetDiagnostics(cancellationToken).Any(d => d.Severity == DiagnosticSeverity.Error))
                 return null;
+            if (await DeclaresTypeInGeneratedFileAsync(baselineProject, cancellationToken).ConfigureAwait(false))
+                return null;
+            // A full image, not a metadata-only one: its metadata carries every member the compilation
+            // declares, private members included, as a built assembly's does, so a dependent binds against
+            // it with the same accessibility wording it binds against source with. Roslyn maps the file
+            // as a metadata reference and never reads its bodies, so what a check holds is still the image,
+            // not the project's compilation.
             using var pe = new MemoryStream();
             var result = compilation.Emit(
                 pe,
                 null,
-                options: new EmitOptions().WithEmitMetadataOnly(true).WithIncludePrivateMembers(true),
+                options: new EmitOptions().WithIncludePrivateMembers(true),
                 cancellationToken: cancellationToken);
             if (!result.Success)
                 return null;
@@ -234,6 +242,29 @@ internal sealed class SummaryCache
         {
             return null;
         }
+    }
+
+    /// <summary>
+    ///     True when <paramref name="project"/> declares a type in a file a build generates (in a <c>bin</c> or
+    ///     <c>obj</c> folder of the project). An error about such a type names the file that declares it, which
+    ///     the metadata a summary carries cannot name, so no summary is kept for the project and a dependent
+    ///     binds it from source, where the declaring file is a syntax reference.
+    /// </summary>
+    private async Task<bool> DeclaresTypeInGeneratedFileAsync(Project project, CancellationToken cancellationToken)
+    {
+        if (Path.GetDirectoryName(project.FilePath) is not { } directory)
+            return false;
+        foreach (var document in project.Documents)
+        {
+            if (document.FilePath is not { } file || !Path.IsPathRooted(file) || !PathRules.IsBuildOutput(directory, file))
+                continue;
+            if (await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false) is { } root
+                && (root.DescendantNodesAndSelf().OfType<BaseTypeDeclarationSyntax>().Any()
+                    || root.DescendantNodesAndSelf().OfType<DelegateDeclarationSyntax>().Any()))
+                return true;
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -466,7 +497,7 @@ internal sealed class SummaryCache
         {
             if (JsonNode.Parse(File.ReadAllText(path)) is not { } assets)
                 return HashFile(path);
-            MaskWorktreePaths(assets, _root.Path);
+            MaskWorktreePaths(assets, _root);
             return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(assets.ToJsonString())));
         }
         catch (Exception e) when (e is ArgumentException or JsonException)
@@ -476,7 +507,7 @@ internal sealed class SummaryCache
     }
 
     /// <summary>Replaces every string under <paramref name="node"/> that names a path under <paramref name="root"/> with its repository-relative form.</summary>
-    private static void MaskWorktreePaths(JsonNode node, string root)
+    private static void MaskWorktreePaths(JsonNode node, RepoRoot root)
     {
         if (node is JsonObject obj)
         {
@@ -501,13 +532,6 @@ internal sealed class SummaryCache
     }
 
     /// <summary>The repository-relative form of <paramref name="value"/> when it names a path under <paramref name="root"/>, or null otherwise.</summary>
-    private static string? MaskedPath(string value, string root)
-    {
-        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-        if (value.Length > root.Length
-            && value.StartsWith(root, comparison)
-            && (value[root.Length] == Path.DirectorySeparatorChar || value[root.Length] == Path.AltDirectorySeparatorChar))
-            return value[(root.Length + 1)..].Replace('\\', '/');
-        return null;
-    }
+    private static string? MaskedPath(string value, RepoRoot root) =>
+        value.Length > root.Path.Length && root.Contains(value) ? root.PathOf(value).Relative : null;
 }

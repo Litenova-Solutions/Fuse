@@ -108,6 +108,39 @@ internal sealed class ChangeTracker : IDisposable
             foreach (var ignoredPath in ignored) _nonSources.TryRemove(ignoredPath, out _);
         }
 
+
+
+
+        // The watcher reported nothing since the last sync and no caller named a file: a write it has not
+        // reported yet, as a shell command's write on macOS can be late, is in no set yet, so the changed set
+        // is confirmed against disk through git, as a reseed reads it. Every file that changed before the
+        // confirmation or after it goes back, so a file whose membership stayed while its content moved is
+        // applied again too.
+        if (!headMoved && paths.Count == 0 && watchedNonSources.Count == 0
+            && watched.ProjectFiles.Count == 0 && watched.VanishedDirectories.Count == 0 && watched.WatcherErrors.Count == 0)
+        {
+            HashSet<RepoPath> seeded;
+            List<RepoPath> seededNonSources;
+            try
+            {
+                (seeded, seededNonSources) = await SeedAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+                // Nothing is folded in, so the next sync takes what this one drained and confirms again.
+                _unfolded = watched with { Sources = new HashSet<RepoPath>(paths) };
+                _unfoldedNonSources = watchedNonSources;
+                throw;
+            }
+
+            var confirmed = new HashSet<RepoPath>(_changed.Keys);
+            _changed.Clear();
+            foreach (var seededPath in seeded) _changed[seededPath] = 0;
+            SetNonSources(seededNonSources);
+            confirmed.UnionWith(_changed.Keys);
+            return new SyncResult.Patch(confirmed, watched.VanishedDirectories);
+        }
+
         // After HEAD moves or the watcher loses events, the reported paths are not the whole change, and past the limit
         // comparing them one at a time costs more than asking git again. Every path that may differ from what the
         // workspace holds goes back: changed before the reseed, changed after it, or reported.

@@ -2,6 +2,7 @@ using System.Text;
 using Fuse.Testing;
 using Fuse.Tests.Fixtures;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
 
 namespace Fuse.Tests.Unit;
@@ -30,7 +31,10 @@ public class MemoryBoundCacheTests
                 File.Copy(typeof(MemoryBoundCacheTests).Assembly.Location, output);
                 var source = Path.Combine(directory, $"C{i}.cs");
                 File.WriteAllText(source, "public class C { }");
+                // A library, as a project's build output is: a project the workspace makes without compilation
+                // options is a program with no entry point, which does not compile and emits nothing.
                 var info = ProjectInfo.Create(ProjectId.CreateNewId(), VersionStamp.Default, "P", "P", LanguageNames.CSharp, outputFilePath: output)
+                    .WithCompilationOptions(new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary))
                     .WithMetadataReferences([MetadataReference.CreateFromFile(typeof(object).Assembly.Location)]);
                 solution = solution.AddProject(info)
                     .AddDocument(DocumentId.CreateNewId(info.Id), "C.cs", SourceText.From("public class C { }", Encoding.UTF8), filePath: source);

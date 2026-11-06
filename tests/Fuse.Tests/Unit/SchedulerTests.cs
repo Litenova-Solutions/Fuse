@@ -156,6 +156,30 @@ public class SchedulerTests
     }
 
     [Fact]
+    public async Task A_waiter_that_joins_after_the_last_waiter_gave_up_starts_the_work_again()
+    {
+        using var scheduler = new Scheduler(1);
+        using var givingUp = new CancellationTokenSource();
+        var runs = 0;
+        async Task<EngineResponse> Work(CancellationToken token)
+        {
+            Interlocked.Increment(ref runs);
+            await Task.Delay(300, token);
+            return new EngineResponse.Acknowledged();
+        }
+
+        var leaving = scheduler.RunCoalescedAsync("shared", Work, givingUp.Token);
+        await givingUp.CancelAsync();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => leaving);
+
+        var joined = await scheduler.RunCoalescedAsync("shared", Work, TestContext.Current.CancellationToken)
+            .WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+
+        Assert.IsType<EngineResponse.Acknowledged>(joined);
+        Assert.Equal(2, runs);
+    }
+
+    [Fact]
     public void Publishing_a_newer_generation_cancels_background_work_of_the_older_one()
     {
         using var scheduler = new Scheduler(1);

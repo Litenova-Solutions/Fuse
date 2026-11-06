@@ -168,7 +168,12 @@ internal sealed class Scheduler : IDisposable
         lock (_lock)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
-            if (!_inflight.TryGetValue(key, out var existing))
+            // A check its last waiter gave up on, or whose work already ended in a cancellation or a failure, is
+            // not joined: a waiter that arrives after the giving up starts the work again instead of inheriting
+            // the cancellation the work it never waited for is about to answer with.
+            if (!_inflight.TryGetValue(key, out var existing) || existing.Abandoned
+                || existing.Source.IsCancellationRequested
+                || existing.Completion.Task.IsCanceled || existing.Completion.Task.IsFaulted)
             {
                 existing = new Shared(key);
                 _inflight[key] = existing;
@@ -192,7 +197,15 @@ internal sealed class Scheduler : IDisposable
             {
                 shared.Waiters--;
                 if (shared.Waiters == 0 && !shared.Completion.Task.IsCompleted)
+                {
+                    // Retired under the lock, so a waiter that arrives before the cancellation lands starts
+                    // the work again (above) instead of joining this check.
+                    shared.Abandoned = true;
+                    if (_inflight.TryGetValue(key, out var current) && ReferenceEquals(current, shared))
+                        _inflight.Remove(key);
                     cancel = true;
+                }
+
                 if (shared.Completion.Task.IsCompleted && _inflight.TryGetValue(key, out var current) && ReferenceEquals(current, shared))
                     _inflight.Remove(key);
             }
@@ -240,7 +253,7 @@ internal sealed class Scheduler : IDisposable
             _running.Remove(lease);
             RecordLocked(lease.Lane, Math.Max(0, (Stopwatch.GetTimestamp() - lease.DequeuedAt) * 1000 / Stopwatch.Frequency));
             if (!_disposed)
-                GrantLocked();
+                GrantLocked(lease.Holder);
         }
     }
 
@@ -283,8 +296,14 @@ internal sealed class Scheduler : IDisposable
         }
     }
 
-    /// <summary>Admits waiters while a reader is free: the first interactive waiter, then the first command waiter, then the first background waiter, each in arrival order.</summary>
-    private void GrantLocked()
+    /// <summary>
+    ///     Admits waiters while a reader is free: the first interactive waiter, then the first command waiter, then
+    ///     the first background waiter, each in arrival order. The waiter a release admits names what held a reader
+    ///     while it waited: the longest-running reader still running, or, when that release emptied the pool, the
+    ///     holder it released, whose reader is the one the waiter waited for.
+    /// </summary>
+    /// <param name="releasedHolder">What the release that admits the next waiter held, or null when a new arrival admits it.</param>
+    private void GrantLocked(string? releasedHolder = null)
     {
         while (_running.Count < ReaderCount && _waiters.Count > 0)
         {
@@ -294,8 +313,9 @@ internal sealed class Scheduler : IDisposable
             _waiters.Remove(next);
             var now = Stopwatch.GetTimestamp();
             var gateHolder = _running.Count == 0
-                ? null
+                ? releasedHolder
                 : _running.MaxBy(r => now - r.DequeuedAt)!.Holder;
+            releasedHolder = null;
             var lease = new SchedulerLease(this, next.Lane, next.Holder, TimeSpan.FromTicks((now - next.Since) * TimeSpan.TicksPerSecond / Stopwatch.Frequency), gateHolder, now);
             _running.Add(lease);
             next.Completion.TrySetResult(lease);
@@ -356,6 +376,9 @@ internal sealed class Scheduler : IDisposable
         public string Key { get; } = key;
 
         public int Waiters;
+
+        /// <summary>True once the last waiter gave up before the answer, so no later waiter joins this check.</summary>
+        public bool Abandoned;
 
         public CancellationTokenSource Source { get; } = new();
 

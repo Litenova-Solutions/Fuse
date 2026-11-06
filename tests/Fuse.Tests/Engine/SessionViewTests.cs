@@ -27,17 +27,24 @@ public class SessionViewTests
 
         var first = await engine.Workspace.CurrentWithHeadContentAsync(paths, cancellationToken);
 
-        // A later sync patches another file; the writer applies it to the kept view instead of deriving it again.
+        // A later sync patches the file the view holds at HEAD; the writer leaves that file at HEAD in the
+        // kept view, so the view is the same one, neither derived again nor holding the tree's new text.
+        engine.Repo.Replace("Lib/Calc.cs", "public int Plus(", "public int PlusPlus(");
+        await engine.SyncAsync("Lib/Calc.cs");
+        Assert.Same(first, await engine.Workspace.CurrentWithHeadContentAsync(paths, cancellationToken));
+
+        // A later sync patches another file; the writer applies it to the kept view instead of deriving it
+        // again. A solution is immutable, so applying the file forks the view: it is a new instance, and its
+        // identity is asserted above, on a sync whose file the view holds at HEAD.
         engine.Repo.Replace("App/Report.cs", "\"value=\" +", "\"value: \" +");
         await engine.SyncAsync("App/Report.cs");
         var second = await engine.Workspace.CurrentWithHeadContentAsync(paths, cancellationToken);
 
-        Assert.Same(first, second);
         // The kept view holds the patched file as the tree has it, and the file at HEAD as HEAD has it.
         Assert.Contains("value: ", await TextOfAsync(second, "App/Report.cs", cancellationToken), StringComparison.Ordinal);
         var calc = await TextOfAsync(second, "Lib/Calc.cs", cancellationToken);
         Assert.Contains("public int Add(", calc, StringComparison.Ordinal);
-        Assert.DoesNotContain("public int Plus(", calc, StringComparison.Ordinal);
+        Assert.DoesNotContain("public int Plus", calc, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -47,6 +54,12 @@ public class SessionViewTests
         await engine.CheckAsync("Lib/Calc.cs");
         var cancellationToken = TestContext.Current.CancellationToken;
         string[] files = ["Lib/Calc.cs", "Lib/Greeting.cs", "Lib/Formatter.cs", "App/Program.cs", "App/Report.cs", "Lib.Tests/CalcTests.cs", "App.Tests/ReportTests.cs"];
+        // Each listed file is changed in the tree and synced, so a view that puts it back at HEAD is a
+        // solution of its own: with the file as HEAD leaves it, each view would be the tree view itself
+        // and neither the kept view nor the one derived again after it goes could be told from it.
+        foreach (var file in files)
+            engine.Repo.Write(file, engine.Repo.Read(file) + "\n// changed in the tree\n");
+        await engine.SyncAsync(files);
         var sets = files.Select(f => new[] { engine.Repo.PathOf(f) })
             .Concat([new[] { engine.Repo.PathOf(files[0]), engine.Repo.PathOf(files[1]) }, new[] { engine.Repo.PathOf(files[0]), engine.Repo.PathOf(files[2]) }])
             .ToList();

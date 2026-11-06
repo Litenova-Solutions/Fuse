@@ -535,15 +535,25 @@ internal sealed class DiagnosticCollector
     }
 
     /// <summary>
-    ///     What a working-tree file's compiler and per-file analyzer errors depend on: its text, the declarations of its
-    ///     project and of the projects it references (Roslyn's dependent semantic version, which a change inside a method
-    ///     body leaves as it is), and the project configuration.
+    ///     What a working-tree file's compiler and per-file analyzer errors depend on: its text, the declarations of
+    ///     every project in the solution (each project's own semantic version, which a change inside a method body
+    ///     leaves as it is), and the project configuration. Every project in the solution counts, not only the ones
+    ///     this file's project references as projects: a reference outside the change cone is supplied by a summary
+    ///     instead, so a dependent version taken from the references would change when a body-only edit in that
+    ///     project moves it into the cone and the reference becomes source again, although no declaration changed.
+    ///     Counting a project this file cannot see only ever binds it again, never reuses it wrongly.
     /// </summary>
     private async Task<FileKey> KeyAsync(Document document, CancellationToken cancellationToken)
     {
         var text = await document.GetTextAsync(cancellationToken).ConfigureAwait(false);
-        var declarations = await document.Project.GetDependentSemanticVersionAsync(cancellationToken).ConfigureAwait(false);
-        return new FileKey(Convert.ToHexString(text.GetChecksum().AsSpan()), declarations, _configurationGeneration());
+        var declarations = new HashCode();
+        foreach (var project in document.Project.Solution.Projects.OrderBy(p => p.Id.Id.ToString("N"), StringComparer.Ordinal))
+        {
+            declarations.Add(project.Id);
+            declarations.Add(await project.GetSemanticVersionAsync(cancellationToken).ConfigureAwait(false));
+        }
+
+        return new FileKey(Convert.ToHexString(text.GetChecksum().AsSpan()), declarations.ToHashCode(), _configurationGeneration());
     }
 
     /// <summary>
@@ -695,8 +705,8 @@ internal sealed class DiagnosticCollector
     /// <summary>HEAD's errors in one file from a run whose analyzers finished, and whether that run included the compilation-wide analyzers.</summary>
     private sealed record BaselineFile(IReadOnlyList<CompilerError> Errors, bool CompilationWide);
 
-    /// <summary>What a working-tree file's errors were found under: its text's checksum, its dependent semantic version and the configuration generation.</summary>
-    private sealed record FileKey(string Checksum, VersionStamp Declarations, int Configuration);
+    /// <summary>What a working-tree file's errors were found under: its text's checksum, a hash of every project's semantic version and the configuration generation.</summary>
+    private sealed record FileKey(string Checksum, int Declarations, int Configuration);
 
     /// <summary>A working-tree file's compiler and per-file analyzer errors, and the key they were found under.</summary>
     private sealed record CachedFile(FileKey Key, IReadOnlyList<CompilerError> Errors);

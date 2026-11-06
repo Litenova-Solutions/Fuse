@@ -81,6 +81,11 @@ public class HeadOnDemandTests
         engine.Repo.Replace("Lib/Calc.cs", "a * existingError;", "a * anotherError;");
 
         Assert.Contains("anotherError", Assert.Single((await engine.CheckAsync("Lib/Calc.cs")).Errors).Error.Message, StringComparison.Ordinal);
+        // An identical repeat is answered from the kept answer without binding, as it is meant to be. Clearing
+        // the kept answers, as the memory budget's shed does, leaves the next check to bind again, and its HEAD
+        // errors must come from the store the first check wrote, because the first check released what it built
+        // over HEAD when it ended.
+        engine.Checker.ClearKeptAnswers();
         Assert.Contains("anotherError", Assert.Single((await engine.CheckAsync("Lib/Calc.cs")).Errors).Error.Message, StringComparison.Ordinal);
 
         Assert.Contains(engine.Log, l => l.Contains("1 stored result(s) read", StringComparison.Ordinal));

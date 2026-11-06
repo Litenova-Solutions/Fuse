@@ -8,7 +8,7 @@ using Microsoft.CodeAnalysis.Text;
 namespace Fuse.Tests.Engine;
 
 /// <summary>
-///     A project's summary is a metadata-only image of its HEAD compilation, private members included, kept in a
+///     A project's summary is an image of its HEAD compilation, private members included, kept in a
 ///     content-addressed cache under the shared directory, and supplied only for references to projects outside the
 ///     change cone. A missing, unreadable or unkeyable summary, and a HEAD compilation with errors, fall back to
 ///     source, and the views bind cone projects from source whether a summary is kept or not.
@@ -33,11 +33,13 @@ public class SummaryCacheTests
         Assert.Same(reference, await cache.GetOrEmitAsync(project, "test-key", cancellationToken));
         Assert.NotNull(new SummaryCache(repo.Root, _ => { }).TryGet("test-key", project));
 
+        // The consumer imports every member, as a view that supplies a summary does, so the members the
+        // summary carries below the public surface are among the type's members.
         var consumer = CSharpCompilation.Create(
             "Consumer",
             [CSharpSyntaxTree.ParseText("public class Use { public C Make() => new C(); }\n", cancellationToken: TestContext.Current.CancellationToken)],
             [reference],
-            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, metadataImportOptions: MetadataImportOptions.All));
         var type = consumer.GetTypeByMetadataName("C");
         Assert.NotNull(type);
         Assert.Empty(type.DeclaringSyntaxReferences);
@@ -171,7 +173,11 @@ public class SummaryCacheTests
     /// <summary>One project over <paramref name="source"/>, in an adhoc solution whose only file the repository holds.</summary>
     private static Project ProjectWith(FixtureRepo repo, string source)
     {
+        // The compilation and parse options a loaded project always carries, named here so the project's
+        // compilation is a library's, as it is for every project the loader opens.
         var project = ProjectInfo.Create(ProjectId.CreateNewId(), VersionStamp.Default, "P", "P", LanguageNames.CSharp, filePath: repo.Full("P.csproj"))
+            .WithCompilationOptions(new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary))
+            .WithParseOptions(new CSharpParseOptions())
             .WithMetadataReferences([MetadataReference.CreateFromFile(typeof(object).Assembly.Location)]);
         var workspace = new AdhocWorkspace();
         var solution = workspace.CurrentSolution.AddProject(project);

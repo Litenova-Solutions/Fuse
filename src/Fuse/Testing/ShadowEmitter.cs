@@ -149,7 +149,7 @@ internal sealed class ShadowEmitter
         }
 
         // Every project the test assembly loads, with the build output it would be copied from.
-        var closure = Closure(testProject).ToList();
+        var closure = Closure(testProject, graph).ToList();
         var testOutputDirectory = Path.GetDirectoryName(testOutput)!;
         var stale = new HashSet<ProjectId>();
         foreach (var project in closure)
@@ -551,7 +551,15 @@ internal sealed class ShadowEmitter
         }
     }
 
-    private static IEnumerable<Project> Closure(Project project)
+    /// <summary>
+    ///     Every project <paramref name="project"/>'s assembly loads, through its project references and through
+    ///     the references the graph names that this view supplies by a summary instead: a summarized reference is
+    ///     no project reference in the view, but the test assembly still loads that project's build output, so
+    ///     its freshness and its emitted image are the shadow's business as much as a live reference's are.
+    ///     Without this, a non-C# file changed in a library the view supplies by summary was never judged
+    ///     stale, and the plan ran from the build output the change had already left behind.
+    /// </summary>
+    private IEnumerable<Project> Closure(Project project, RepoGraph graph)
     {
         var seen = new HashSet<ProjectId>();
         var stack = new Stack<Project>([project]);
@@ -566,8 +574,30 @@ internal sealed class ShadowEmitter
                 if (current.Solution.GetProject(reference.ProjectId) is { } referenced)
                     stack.Push(referenced);
             }
+
+            if (current.FilePath is null || graph.Find(_root.PathOf(current.FilePath)) is not { } node)
+                continue;
+            foreach (var referencePath in node.References)
+            {
+                if (graph.Find(referencePath) is not { } referencedNode)
+                    continue;
+                var candidates = RepoWorkspace.ProjectsFor(current.Solution, referencedNode).ToList();
+                // One project per target framework of the referenced project stands in the solution; the one
+                // this project loads is the one built for the same framework folder of build output, and
+                // every candidate stands when no folder names one, so no loaded project is left out.
+                var folder = FrameworkFolder(current);
+                var loaded = folder is null
+                    ? candidates
+                    : candidates.Where(c => string.Equals(FrameworkFolder(c), folder, StringComparison.OrdinalIgnoreCase)).ToList();
+                foreach (var referenced in loaded.Count > 0 ? loaded : candidates)
+                    stack.Push(referenced);
+            }
         }
     }
+
+    /// <summary>The framework folder of <paramref name="project"/>'s build output, which names its target framework, or null when it has no build output.</summary>
+    private static string? FrameworkFolder(Project project) =>
+        project.OutputFilePath is { } output ? Path.GetFileName(Path.GetDirectoryName(output)) : null;
 
     /// <summary>
     ///     Whether the project's C# sources are newer than its build output, and the first non-source file

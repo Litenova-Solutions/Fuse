@@ -119,10 +119,34 @@ internal sealed class RequestRouter : IDisposable
     /// </summary>
     public async Task<EngineResponse> HandleAsync(EngineRequest request, CancellationToken cancellationToken)
     {
+        // The session a request names is recorded before its key is taken: the key hashes the session record, so
+        // a repeat of the check that first named the session takes the same key as the check that computed the
+        // answer and finds it kept, instead of hashing a record its own request had not written yet.
+        NoteSession(request);
         var key = CoalesceKey(request);
+        if (key is not null && request is EngineRequest.CheckChanges && _initialization is not { IsCompleted: false })
+        {
+            // A check of every change answers for the files on disk, not for the tree the watcher last
+            // reported: a shell write it has not reported yet is in no generation yet, and the kept answer of
+            // the tree without it would answer for that tree (and stamp it). The sync confirms the changed
+            // set against disk before any kept answer is served, and the key is taken from the generation
+            // it publishes. Hooks name their files, which the check itself syncs in by name, so they are
+            // not affected by this.
+            try
+            {
+                await _workspace.SyncAndPinAsync([], cancellationToken).ConfigureAwait(false);
+                key = CoalesceKey(request);
+            }
+            catch (FuseException)
+            {
+                // The check below surfaces this refusal; no kept answer is served for a tree that could
+                // not be confirmed.
+                key = null;
+            }
+        }
+
         if (key is not null && _results.TryGet(key, out var stored))
         {
-            NoteSession(request);
             var phases = new PhaseTimes();
             phases.Add(Phase.Gate, 0);
             _requestLog.Write(request, phases, 0, null);
@@ -159,7 +183,7 @@ internal sealed class RequestRouter : IDisposable
         return response;
     }
 
-    private async Task<EngineResponse> ScheduledAsync(EngineRequest request, CancellationToken cancellationToken, SchedulerLane? laneOverride = null)
+    private async Task<EngineResponse> ScheduledAsync(EngineRequest request, CancellationToken cancellationToken, SchedulerLane? laneOverride = null, bool creditSession = true)
     {
         if (request is EngineRequest.Ping or EngineRequest.ShutDown)
             return new EngineResponse.Acknowledged();
@@ -168,7 +192,8 @@ internal sealed class RequestRouter : IDisposable
         if (request is EngineRequest.BeginSession or EngineRequest.EndSession)
             return await SessionAsync(request, cancellationToken).ConfigureAwait(false);
 
-        NoteSession(request);
+        if (creditSession)
+            NoteSession(request);
 
         var initialization = _initialization ?? Task.CompletedTask;
         if (!initialization.IsCompleted && request is EngineRequest.CheckChanges { WaitForLoad: false } or EngineRequest.CheckFiles { WaitForLoad: false } or EngineRequest.CheckPaths { WaitForLoad: false })
@@ -415,7 +440,11 @@ internal sealed class RequestRouter : IDisposable
         EngineResponse response;
         try
         {
-            response = await _scheduler.RunCoalescedAsync(key, token => ScheduledAsync(request, token, SchedulerLane.Background), generation.Token).ConfigureAwait(false);
+            // The re-check credits nothing: its files are the session's because the writers already say so, and
+            // recording the session it answers to would credit a registered session's files to it in the record
+            // itself, so its files would still count as that session's after the registration ended or expired
+            // and a judge's stop would go on leaving their errors out.
+            response = await _scheduler.RunCoalescedAsync(key, token => ScheduledAsync(request, token, SchedulerLane.Background, creditSession: false), generation.Token).ConfigureAwait(false);
         }
         catch (SchedulerBusyException busy)
         {

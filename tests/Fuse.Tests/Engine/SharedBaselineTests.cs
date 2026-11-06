@@ -107,9 +107,12 @@ public class SharedBaselineTests
             using (var workspace = new RepoWorkspace(other, log.Enqueue))
             {
                 await workspace.InitializeAsync(cancellationToken);
-                Assert.Equal(mainKey, BaselineStore.KeyFor(head, workspace.Baseline, workspace.Graph, other));
                 var second = await CheckAsync(workspace, other, "Lib/Calc.cs", cancellationToken);
                 Assert.Contains("worktreeError", Assert.Single(second.Errors).Error.Message, StringComparison.Ordinal);
+                // The key covers the projects a workspace has loaded, so the two keys are compared only once
+                // both checks have loaded the same projects. The check above is the compute-once proof: its
+                // baseline came from the store the first worktree wrote, as the log below names.
+                Assert.Equal(mainKey, BaselineStore.KeyFor(head, workspace.Baseline, workspace.Graph, other));
             }
 
             Assert.Contains(log, l => l.Contains("stored result(s) read", StringComparison.Ordinal) && !l.Contains("0 stored result(s) read", StringComparison.Ordinal));
@@ -171,7 +174,7 @@ public class SharedBaselineTests
             _ = new AnalyzerShadow(other);
             Assert.True(File.Exists(mainCopy));
 
-            var worktreeAnalyzer = Path.Combine(worktree, "Gen", "bin", "Gen.dll");
+            var worktreeAnalyzer = Path.Combine(other.Path, "Gen", "bin", "Gen.dll");
             Directory.CreateDirectory(Path.GetDirectoryName(worktreeAnalyzer)!);
             File.Copy(typeof(SharedBaselineTests).Assembly.Location, worktreeAnalyzer);
             var worktreeCopy = ShadowCopy(other, worktreeAnalyzer);

@@ -24,7 +24,7 @@ public class StreamingTests
         Assert.True(report.CheckedWholeProjects);
         Assert.True(report.ErrorFileCount >= 510, $"expected at least 510 files with errors, got {report.ErrorFileCount}");
         Assert.Contains(report.Errors, e => e.Error.Path.StartsWith("Lib/Generated/Part", StringComparison.Ordinal));
-        Assert.All(report.Errors, e => Assert.Equal("CS0117", e.Error.Id));
+        Assert.All(report.Errors, e => Assert.Equal("CS1061", e.Error.Id));
     }
 
     [Fact]

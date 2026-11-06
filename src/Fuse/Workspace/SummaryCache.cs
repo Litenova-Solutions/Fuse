@@ -197,7 +197,9 @@ internal sealed class SummaryCache
 
     /// <summary>
     ///     The reference to the summary of <paramref name="baselineProject"/> under <paramref name="key"/>, emitted
-    ///     from its HEAD compilation when the cache holds none, or null when the summary cannot be used: the key
+    ///     from its HEAD compilation when the cache holds none, or null when the summary cannot be used. Emitting
+    ///     builds a HEAD compilation, so this is called only off the request path, by the background warm; a view
+    ///     on the request path reads what is already kept through <see cref="TryGet"/> and never calls this. The key
     ///     names no file, the compilation has errors, the emit fails, or the written image does not read back as
     ///     that assembly. The caller binds source then.
     /// </summary>

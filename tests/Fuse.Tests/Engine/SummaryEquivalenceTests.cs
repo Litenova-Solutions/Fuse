@@ -19,6 +19,7 @@ public class SummaryEquivalenceTests
     public async Task A_body_edit_in_a_dependent_binds_against_a_summary_of_its_dependency()
     {
         await using var pair = await SummaryPair.StartAsync();
+        await PrimeSummariesAsync(pair);
         pair.ReplaceBoth("App/Report.cs", "Lib.Formatter.Format(value)", "Lib.Formatter.Missing(value)");
 
         var (fromSource, withSummaries) = await pair.CheckBothAsync("App/Report.cs");
@@ -41,6 +42,7 @@ public class SummaryEquivalenceTests
     public async Task A_renamed_member_reaches_and_breaks_the_same_files()
     {
         await using var pair = await SummaryPair.StartAsync();
+        await PrimeSummariesAsync(pair);
         pair.ReplaceBoth("Lib/Calc.cs", "public int Add(", "public int Plus(");
 
         var (fromSource, withSummaries) = await pair.CheckBothAsync("Lib/Calc.cs");
@@ -56,6 +58,7 @@ public class SummaryEquivalenceTests
     public async Task A_broad_change_reaches_the_same_files()
     {
         await using var pair = await SummaryPair.StartAsync();
+        await PrimeSummariesAsync(pair);
         pair.ReplaceBoth("Lib/Calc.cs", "public class Calc", "public sealed class Calc");
 
         var (fromSource, withSummaries) = await pair.CheckBothAsync("Lib/Calc.cs");
@@ -72,6 +75,7 @@ public class SummaryEquivalenceTests
     public async Task A_private_member_of_a_dependency_is_inaccessible_the_same_way()
     {
         await using var pair = await SummaryPair.StartAsync(repo => repo.Write("Lib/Vault.cs", Vault));
+        await PrimeSummariesAsync(pair);
         pair.ReplaceBoth("App/Program.cs", "calc.Add(1, 2)", "new Lib.Vault().Code()");
 
         var (fromSource, withSummaries) = await pair.CheckBothAsync("App/Program.cs");
@@ -91,6 +95,7 @@ public class SummaryEquivalenceTests
     public async Task A_member_made_private_breaks_its_callers_the_same_way()
     {
         await using var pair = await SummaryPair.StartAsync();
+        await PrimeSummariesAsync(pair);
         pair.ReplaceBoth("Lib/Calc.cs", "public int Mul(", "private int Mul(");
 
         var (fromSource, withSummaries) = await pair.CheckBothAsync("Lib/Calc.cs");
@@ -110,6 +115,7 @@ public class SummaryEquivalenceTests
             repo.Write("Lib/Internal.cs", Internal);
             repo.Write("Lib/AssemblyInfo.cs", "[assembly: System.Runtime.CompilerServices.InternalsVisibleTo(\"App\")]\n");
         });
+        await PrimeSummariesAsync(pair);
         pair.ReplaceBoth("App/Report.cs", "Lib.Formatter.Format(value)", "Lib.Internal.Code() + value");
 
         var (fromSource, withSummaries) = await pair.CheckBothAsync("App/Report.cs");
@@ -132,6 +138,7 @@ public class SummaryEquivalenceTests
             repo.Replace("Lib/Lib.csproj", "</Project>", "<ItemGroup><Compile Include=\"obj/Gen/Client.cs\" /></ItemGroup></Project>");
             repo.Write("Lib/obj/Gen/Client.cs", Client);
         });
+        await PrimeSummariesAsync(pair);
         pair.ReplaceBoth("App/Report.cs", "Lib.Formatter.Format(value)", "Lib.Formatter.Format(new Lib.Client().Old())");
 
         var (fromSource, withSummaries) = await pair.CheckBothAsync("App/Report.cs");
@@ -151,6 +158,7 @@ public class SummaryEquivalenceTests
     public async Task A_summary_whose_inputs_changed_is_not_taken_for_the_changed_HEAD()
     {
         await using var pair = await SummaryPair.StartAsync(repo => repo.Write("Lib/Vault.cs", Vault));
+        await PrimeSummariesAsync(pair);
         pair.ReplaceBoth("App/Program.cs", "calc.Add(1, 2)", "new Lib.Vault().Code()");
         var (beforeSource, beforeSummaries) = await pair.CheckBothAsync("App/Program.cs");
         Assert.Equal(beforeSource, beforeSummaries);
@@ -170,5 +178,21 @@ public class SummaryEquivalenceTests
         Assert.Equal(brokenSource, brokenSummaries);
         Assert.Equal(1, brokenSource.ErrorCount);
         Assert.Contains("CS1501", brokenSource.Errors, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    ///     Loads the summary engine's fixture projects with a first check, emits every loaded project's
+    ///     summary the way the background warm does, and derives its views from the loader again, which is
+    ///     the moment a kept summary starts being supplied. The source engine is left as it is, so each test
+    ///     still holds a summary answer beside a source answer.
+    /// </summary>
+    private static async Task PrimeSummariesAsync(SummaryPair pair)
+    {
+        var engine = pair.WithSummaries;
+        await engine.CheckAsync("App/Report.cs");
+        var cancellationToken = TestContext.Current.CancellationToken;
+        foreach (var node in engine.Workspace.Graph.Projects.ToList())
+            await engine.Workspace.EmitSummaryAsync(node, cancellationToken);
+        await engine.Workspace.RebuildViewsAsync(cancellationToken);
     }
 }

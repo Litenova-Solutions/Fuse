@@ -98,6 +98,7 @@ public class SummaryCacheTests
     public async Task Views_supply_a_project_outside_the_cone_by_its_summary_and_keep_its_source()
     {
         await using var engine = await InProcessEngine.StartAsync();
+        await PrimeSummariesAsync(engine);
         engine.Repo.Replace("App/Report.cs", "\"value=\" +", "\"value: \" +");
 
         var report = await engine.CheckAsync("App/Report.cs");
@@ -134,6 +135,7 @@ public class SummaryCacheTests
     public async Task An_error_against_a_summary_is_reported_as_it_is_against_source()
     {
         await using var engine = await InProcessEngine.StartAsync();
+        await PrimeSummariesAsync(engine);
         engine.Repo.Replace("App/Program.cs", "calc.Add(1, 2)", "calc.Add(\"x\", 2)");
 
         var report = await engine.CheckAsync("App/Program.cs");
@@ -168,6 +170,20 @@ public class SummaryCacheTests
         Assert.Contains(engine.Workspace.Current.Projects, p => p.Name == "App");
         Assert.Contains(engine.Workspace.Current.Projects, p => p.Name == "Lib");
         Assert.Empty((await engine.CheckAsync("App/Report.cs")).Errors);
+    }
+
+    /// <summary>
+    ///     Loads the fixture projects with a first check, emits every loaded project's summary the way the
+    ///     background warm does, and derives the views from the loader again, which is the moment a kept
+    ///     summary starts being supplied. No check or sync in this helper emits a summary.
+    /// </summary>
+    private static async Task PrimeSummariesAsync(InProcessEngine engine)
+    {
+        await engine.CheckAsync("App/Report.cs");
+        var cancellationToken = TestContext.Current.CancellationToken;
+        foreach (var node in engine.Workspace.Graph.Projects.ToList())
+            await engine.Workspace.EmitSummaryAsync(node, cancellationToken);
+        await engine.Workspace.RebuildViewsAsync(cancellationToken);
     }
 
     /// <summary>One project over <paramref name="source"/>, in an adhoc solution whose only file the repository holds.</summary>

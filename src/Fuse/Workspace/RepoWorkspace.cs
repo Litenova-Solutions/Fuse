@@ -63,6 +63,14 @@ internal sealed class RepoWorkspace : IDisposable
     /// <summary>The summaries the views supply references to projects outside the change cone from.</summary>
     public SummaryCache Summaries => _views.Summaries;
 
+    /// <summary>How many session views the views keep now; none in a single-agent engine, so its syncs maintain none.</summary>
+    public int SessionViewCount => _views.SessionViewCount;
+
+    /// <inheritdoc cref="SolutionViews.EmitSummaryAsync"/>
+    /// <remarks>It takes no writer lock and changes neither view, so the background warm runs it after a request, never inside one.</remarks>
+    public Task<bool> EmitSummaryAsync(ProjectNode node, CancellationToken cancellationToken) =>
+        _views.EmitSummaryAsync(node, cancellationToken);
+
     /// <inheritdoc cref="SolutionViews.UseSummaries"/>
     public bool UseSummaries
     {

@@ -8,7 +8,10 @@ namespace Fuse.Engine;
 /// <summary>
 ///     Fills, in the background and one project at a time, the disk store with HEAD's errors after HEAD
 ///     moved, so the first check that needs them reads the store instead of binding HEAD. Each project it fills is
-///     released when its errors are stored, so the warm holds no baseline compilation. Only loaded projects are filled; the warm loads none itself. Requests take precedence: it holds the gate only while it chooses a project, between
+///     released when its errors are stored, so the warm holds no baseline compilation. For the same project it
+///     also emits the project's summary when the project is outside the change cone, which is the one place a
+///     summary is emitted: off the request path, at this background priority and never under the writer lock,
+///     so a sync only ever reads a summary that is already kept. Only loaded projects are filled; the warm loads none itself. Requests take precedence: it holds the gate only while it chooses a project, between
 ///     projects.
 /// </summary>
 internal sealed class BaselineWarmer
@@ -96,6 +99,8 @@ internal sealed class BaselineWarmer
             var warming = System.Diagnostics.Stopwatch.GetTimestamp();
             try
             {
+                if (await _workspace.EmitSummaryAsync(next, shutdown).ConfigureAwait(false))
+                    _log($"summary emitted: {next.Name}");
                 if (await _checker.WarmBaselineAsync(next, shutdown).ConfigureAwait(false))
                     _log($"baseline warm: {next.Name} compilation-wide analyzers done in {(System.Diagnostics.Stopwatch.GetTimestamp() - warming) * 1000 / System.Diagnostics.Stopwatch.Frequency} ms");
             }

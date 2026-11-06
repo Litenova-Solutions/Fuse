@@ -38,10 +38,18 @@ internal sealed class DiagnosticCollector
     private const int MaxDeclarationFingerprints = 512;
 
     /// <summary>
-    ///     The declaration fingerprint of a project, by the project and the checksums of the document texts it was
-    ///     read from, so a project whose documents are as they were is not read again for every file of a check.
+    ///     The declaration fingerprint of a project, by the project's state: its semantic version, the version of
+    ///     its most recently changed document, its additional documents' text versions and its document counts.
+    ///     A project in that state again is not read again for every file of a check, so a body edit, which moves
+    ///     only its own project's state, costs at most that one project's fingerprint.
     /// </summary>
-    private readonly ConcurrentDictionary<string, string> _declarationFingerprints = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<FingerprintKey, string> _declarationFingerprints = new();
+
+    /// <summary>How many declaration fingerprints were computed, counted when a project's declarations are read; a test reads it to see that a state is computed once.</summary>
+    private int _fingerprintComputations;
+
+    /// <summary>How many declaration fingerprints have been computed, as against read back from the state cache above.</summary>
+    internal int DeclarationFingerprintComputations => Volatile.Read(ref _fingerprintComputations);
 
     private readonly Lock _configurationLock = new();
     private int _currentFilesGeneration = -1;
@@ -549,7 +557,9 @@ internal sealed class DiagnosticCollector
 
     /// <summary>
     ///     What a working-tree file's compiler and per-file analyzer errors depend on: its text, the declarations of
-    ///     every project in the solution, and the project configuration. Every project in the solution counts, not
+    ///     every project in the solution, and the project configuration. Each project's fingerprint is computed
+    ///     once for its state (<see cref="DeclarationFingerprintAsync"/>), so this reads only Roslyn's versions for
+    ///     the projects whose state an earlier file already fingerprinted. Every project in the solution counts, not
     ///     only the ones this file's project references as projects. The declarations are read from syntax, as a
     ///     fingerprint of each declaration's identity, surface and parameter lists, because a version taken from
     ///     Roslyn changes when a reference outside the change cone stops being supplied by a summary and becomes
@@ -575,16 +585,31 @@ internal sealed class DiagnosticCollector
     }
 
     /// <summary>
-    ///     The declarations <paramref name="project"/> holds now: every declaration's identity, surface and
-    ///     parameter lists, over its documents and its source-generated documents in path order, hashed. A
-    ///     default value or a constant is part of it, because callers inline them. Null when a document has no
-    ///     path or its declarations cannot be read, which the caller treats as no reuse for its files.
+    ///     The declaration fingerprint of <paramref name="project"/> in its current state, computed once for that
+    ///     state and read back for every later file keyed while the project stays in it. Null when its
+    ///     declarations cannot be read, which the caller treats as no reuse for its files.
     /// </summary>
     private async Task<string?> DeclarationFingerprintAsync(Project project, CancellationToken cancellationToken)
     {
         try
         {
-            return await DeclarationFingerprintCoreAsync(project, cancellationToken).ConfigureAwait(false);
+            // The project's state, read from Roslyn's versions alone: no document text is read and no syntax is
+            // walked for a project whose state an earlier file of this or an earlier check already fingerprinted.
+            var key = new FingerprintKey(
+                project.Id,
+                await project.GetSemanticVersionAsync(cancellationToken).ConfigureAwait(false),
+                await project.GetLatestDocumentVersionAsync(cancellationToken).ConfigureAwait(false),
+                await AdditionalStampAsync(project, cancellationToken).ConfigureAwait(false));
+            if (_declarationFingerprints.TryGetValue(key, out var kept))
+                return kept;
+            var fingerprint = await DeclarationFingerprintCoreAsync(project, cancellationToken).ConfigureAwait(false);
+            if (fingerprint is null)
+                return null;
+            Interlocked.Increment(ref _fingerprintComputations);
+            if (_declarationFingerprints.Count > MaxDeclarationFingerprints)
+                _declarationFingerprints.Clear();
+            _declarationFingerprints[key] = fingerprint;
+            return fingerprint;
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
@@ -592,6 +617,31 @@ internal sealed class DiagnosticCollector
         }
     }
 
+    /// <summary>
+    ///     What a project's additional documents add to its state: their ids and text versions, which a source
+    ///     generator reads, and the document counts, which an added or removed file moves even when its text
+    ///     declares nothing.
+    /// </summary>
+    private static async Task<int> AdditionalStampAsync(Project project, CancellationToken cancellationToken)
+    {
+        var stamp = new HashCode();
+        stamp.Add(project.Documents.Count());
+        stamp.Add(project.AdditionalDocuments.Count());
+        foreach (var document in project.AdditionalDocuments)
+        {
+            stamp.Add(document.Id);
+            stamp.Add(await document.GetTextVersionAsync(cancellationToken).ConfigureAwait(false));
+        }
+
+        return stamp.ToHashCode();
+    }
+
+    /// <summary>
+    ///     The declarations <paramref name="project"/> holds now: every declaration's identity, surface and
+    ///     parameter lists, over its documents and its source-generated documents in path order, hashed. A
+    ///     default value or a constant is part of it, because callers inline them. Null when a document has no
+    ///     path or its declarations cannot be read.
+    /// </summary>
     private async Task<string?> DeclarationFingerprintCoreAsync(Project project, CancellationToken cancellationToken)
     {
         var documents = project.Documents.ToList();
@@ -599,16 +649,6 @@ internal sealed class DiagnosticCollector
         if (documents.Any(d => d.FilePath is null))
             return null;
         documents = [.. documents.OrderBy(d => d.FilePath, StringComparer.Ordinal)];
-        var memo = new StringBuilder();
-        foreach (var document in documents)
-        {
-            memo.Append(document.Id).Append(':');
-            memo.Append(Convert.ToHexString((await document.GetTextAsync(cancellationToken).ConfigureAwait(false)).GetChecksum().AsSpan())).Append('\n');
-        }
-
-        var memoKey = project.Id.Id.ToString("N") + ":" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(memo.ToString())));
-        if (_declarationFingerprints.TryGetValue(memoKey, out var kept))
-            return kept;
         var builder = new StringBuilder();
         foreach (var document in documents)
         {
@@ -625,11 +665,7 @@ internal sealed class DiagnosticCollector
             builder.Append('\0');
         }
 
-        var fingerprint = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(builder.ToString())));
-        if (_declarationFingerprints.Count > MaxDeclarationFingerprints)
-            _declarationFingerprints.Clear();
-        _declarationFingerprints[memoKey] = fingerprint;
-        return fingerprint;
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(builder.ToString())));
     }
 
     /// <summary>
@@ -783,6 +819,9 @@ internal sealed class DiagnosticCollector
 
     /// <summary>What a working-tree file's errors were found under: its text's checksum, a hash of every project's declaration fingerprints and the configuration generation.</summary>
     private sealed record FileKey(string Checksum, int Declarations, int Configuration);
+
+    /// <summary>One project's state, which its declaration fingerprint is computed once for: the project, its semantic version, the version of its most recently changed document and a stamp of its additional documents and document counts.</summary>
+    private readonly record struct FingerprintKey(ProjectId Project, VersionStamp Semantic, VersionStamp Latest, int Additional);
 
     /// <summary>A working-tree file's compiler and per-file analyzer errors, and the key they were found under.</summary>
     private sealed record CachedFile(FileKey Key, IReadOnlyList<CompilerError> Errors);

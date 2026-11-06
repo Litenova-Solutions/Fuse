@@ -18,7 +18,7 @@ internal sealed class MemoryBudget
     private readonly Func<long> _memoryLoad;
     private readonly Func<long> _totalAvailable;
 
-    /// <summary>True when the load and the total come from the GC together, so one <see cref="GC.GetGCMemoryInfo"/> call a request boundary reads both.</summary>
+    /// <summary>True when the load and the total come from the GC together, so one <see cref="GC.GetGCMemoryInfo()"/> call a request boundary reads both.</summary>
     private readonly bool _sharedMemoryInfo;
 
     public MemoryBudget(long ceilingBytes = DefaultCeilingBytes, Func<long>? workingSet = null, Func<long>? memoryLoad = null, Func<long>? totalAvailable = null)

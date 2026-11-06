@@ -20,7 +20,7 @@ public class BuildReuseTests
             [("build", 1, 3.5, errors, warnings, 2, commands, "slowest tasks: Csc 1.0 s", "tail line", "Fuse.slnx")],
             "; tree abc over 1 changed file(s)", null);
 
-        var stored = BuildResultsFile.ReadReuse(repo.Root)!;
+        var stored = BuildResultsFile.ReadReuse(repo.Root)!.Value;
         Assert.Equal((stamp.TreeHash, stamp.FullHash, stamp.AssetsHash), (stored.TreeHash, stored.FullHash, stored.AssetsHash));
         Assert.Equal(BuildResultsFile.WholeScope, stored.Scope);
         Assert.Empty(stored.Projects);

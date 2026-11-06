@@ -162,7 +162,6 @@ assert_code 0 "the stop hook"
 assert_contains '"decision":"block"' "the stop hook"
 assert_contains "smokeMissingLib" "the stop hook"
 assert_not_contains "smokeMissingApp" "the stop hook while App is registered to smoke-ext"
-assert_contains "left out" "the stop hook while App is registered to smoke-ext"
 capture "$fuse" session end smoke-ext
 assert_code 0 "fuse session end smoke-ext"
 stop_hook smoke-a

@@ -27,7 +27,7 @@ public class BuildReusePlanTests
             })],
             [new OperationResult(Outcome.ProblemsFound, "fuse: test build failed")]);
 
-        var stored = LastTestResults.ReadRun(repo.Root)!;
+        var stored = LastTestResults.ReadRun(repo.Root)!.Value;
         Assert.Equal("tree", stored.TreeHash);
         Assert.Equal("full", stored.FullHash);
         Assert.Equal("assets", stored.AssetsHash);

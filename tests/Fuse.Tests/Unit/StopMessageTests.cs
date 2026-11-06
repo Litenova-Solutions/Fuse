@@ -65,7 +65,7 @@ public class StopMessageTests
         Assert.Contains("FUSE_SESSION=<name>", text, StringComparison.Ordinal);
         Assert.DoesNotContain(HookCommand.StopReason, text, StringComparison.Ordinal);
         Assert.True(StopMessage.OnlyInFilesNeverWritten(errors, new HashSet<string>(StringComparer.Ordinal)));
-        Assert.False(StopMessage.OnlyInFilesNeverWritten(errors, ["Lib/Calc.cs"]));
+        Assert.False(StopMessage.OnlyInFilesNeverWritten(errors, new HashSet<string>(["Lib/Calc.cs"], StringComparer.Ordinal)));
     }
 
     [Fact]

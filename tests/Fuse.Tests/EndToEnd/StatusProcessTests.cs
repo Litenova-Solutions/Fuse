@@ -27,7 +27,7 @@ public class StatusProcessTests
             Assert.True(tree.Success, lines[1]);
             Assert.Equal(cleanTree, tree.Groups[1].Value);
             Assert.Equal(
-                "fuse: large-tree limits: past 300 changed files a sync reloads projects; past 500 files in reach a check binds whole projects; commit or run fuse stop and let the next check reload when checks feel slow",
+                "fuse: 0 changed C# source(s) in a project; 0 of 2000 touched paths before projects re-evaluate; past 500 changed files a check skips its kept answer; past 500 files in reach a check binds whole projects",
                 lines[2]);
 
             var json = await FuseProcess.RunAsync(repo.Path, null, "status", "--json");
@@ -40,7 +40,11 @@ public class StatusProcessTests
             Assert.Equal(0, root.GetProperty("changedFiles").GetInt32());
             Assert.Equal(tree.Groups[2].Value, root.GetProperty("head").GetString()![..12]);
             Assert.Equal(cleanTree, root.GetProperty("tree").GetString());
-            Assert.Equal(300, root.GetProperty("reloadAt").GetInt32());
+            Assert.Equal(0, root.GetProperty("changedSourcesInReach").GetInt32());
+            Assert.Equal(0, root.GetProperty("touchedPaths").GetInt32());
+            Assert.Equal(2000, root.GetProperty("touchedLimit").GetInt32());
+            Assert.Equal(500, root.GetProperty("keptAnswerAt").GetInt32());
+            Assert.Equal(300, root.GetProperty("syncReloadAt").GetInt32());
             Assert.Equal(500, root.GetProperty("wholeProjectAt").GetInt32());
 
             repo.Replace("Lib/Calc.cs", "public int Add(int a, int b) => a + b;", "public int Add(int a, int b) => a - b;");

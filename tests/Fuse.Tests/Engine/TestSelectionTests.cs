@@ -249,7 +249,10 @@ public class TestSelectionTests
         engine.Repo.Write("Lib/data.json", "{}");
         await engine.SyncAsync("Lib/Calc.cs", "Lib/data.json");
         var plan = await engine.Planner.PlanAsync(new TestScope.Affected(), PhaseTimes.None, TestContext.Current.CancellationToken);
-        Assert.IsType<RunMode.Build>(Assert.Single(plan.Runs).Mode);
+
+        // data.json lies under Lib, so every test project that depends on Lib runs whole, and each builds with MSBuild.
+        Assert.Equal(2, plan.Runs.Count);
+        Assert.All(plan.Runs, run => Assert.IsType<RunMode.Build>(run.Mode));
     }
 
     [Fact]

@@ -90,26 +90,6 @@ internal sealed class RepoWorkspace : IDisposable
     public Task PreloadAsync(ProjectNode project, CancellationToken cancellationToken) =>
         _projects.PreloadAsync(project, cancellationToken);
 
-    /// <summary>
-    ///     Builds the compilations of <paramref name="node"/> in the loader, so a later check binds against what is
-    ///     already built instead of building it inside the check. The views share the loader's compilations for the
-    ///     projects whose content they did not change, so what is built here is what the check reuses.
-    /// </summary>
-    /// <returns>The compilations built, one per target framework; empty when the loader holds no project of the node.</returns>
-    public async Task<IReadOnlyList<Compilation>> PreloadCompilationAsync(ProjectNode node, CancellationToken cancellationToken)
-    {
-        var result = new List<Compilation>();
-        if (_projects.Solution is not { } loaded)
-            return result;
-        foreach (var project in ProjectsFor(loaded, node).ToList())
-        {
-            if (await project.GetCompilationAsync(cancellationToken).ConfigureAwait(false) is { } compilation)
-                result.Add(compilation);
-        }
-
-        return result;
-    }
-
     public bool IsLoaded(ProjectNode node) => _projects.IsLoaded(node);
 
     /// <summary>Why <paramref name="node"/> did not load, or null when no load of it has failed.</summary>

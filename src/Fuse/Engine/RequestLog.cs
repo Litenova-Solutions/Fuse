@@ -21,8 +21,8 @@ internal sealed class RequestLog
 
     /// <summary>Writes both lines for <paramref name="request"/>; a request that carries no id gets no phase line.</summary>
     /// <param name="request">The request, which names the files a check was scoped to.</param>
-    /// <param name="phases">The phases the request went through, in order.</param>
-    /// <param name="tookMs">The whole request from the moment it held the request lock, written as <see cref="Phase.Total"/>.</param>
+    /// <param name="phases">The phases the request went through, in order. The gate phase is the queue wait, reported separately from the work that follows it.</param>
+    /// <param name="tookMs">The request from the moment it held the request lock (queue time is the gate phase, not this total; a status answer from the last completed sync writes 0), written as <see cref="Phase.Total"/>.</param>
     /// <param name="gateHolder">What held the request lock longest while the request waited for it, or null when nothing did.</param>
     public void Write(EngineRequest request, PhaseTimes phases, long tookMs, string? gateHolder)
     {

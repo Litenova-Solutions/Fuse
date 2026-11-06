@@ -49,11 +49,18 @@ namespace Fuse.Check;
 /// </remarks>
 internal sealed class ChangeReach
 {
+    /// <summary>The most reference sets kept; past it the set unused the longest goes.</summary>
+    internal const int MaxCacheEntries = 128;
+
     private readonly RepoWorkspace _workspace;
     private readonly Dictionary<string, HashSet<RepoPath>> _cache = new(StringComparer.Ordinal);
+    private readonly List<string> _cacheOrder = [];
     private int _cachedGeneration = -1;
 
     public ChangeReach(RepoWorkspace workspace) => _workspace = workspace;
+
+    /// <summary>How many reference sets are kept.</summary>
+    public int CachedSets => _cache.Count;
 
     /// <summary>
     ///     True when the file has a declaration change against HEAD in any target framework it compiles for. Syntax only;
@@ -91,6 +98,7 @@ internal sealed class ChangeReach
         if (_cachedGeneration != _workspace.BaselineGeneration)
         {
             _cache.Clear();
+            _cacheOrder.Clear();
             _cachedGeneration = _workspace.BaselineGeneration;
         }
 
@@ -323,7 +331,12 @@ internal sealed class ChangeReach
     {
         var key = (symbol.GetDocumentationCommentId() ?? symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)) + "|" + searchKey;
         if (_cache.TryGetValue(key, out var cached))
+        {
+            _cacheOrder.Remove(key);
+            _cacheOrder.Add(key);
             return cached;
+        }
+
         var references = await SymbolFinder.FindReferencesAsync(symbol, baseline, documents, cancellationToken).ConfigureAwait(false);
         var files = new HashSet<RepoPath>();
         // A file holds many references; its path is made once.
@@ -334,6 +347,14 @@ internal sealed class ChangeReach
         }
 
         _cache[key] = files;
+        _cacheOrder.Add(key);
+        while (_cache.Count > MaxCacheEntries)
+        {
+            var oldest = _cacheOrder[0];
+            _cacheOrder.RemoveAt(0);
+            _cache.Remove(oldest);
+        }
+
         return files;
     }
 

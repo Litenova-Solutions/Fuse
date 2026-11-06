@@ -1,6 +1,8 @@
+using System.Diagnostics;
 using System.IO.Pipes;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.Json;
 using Fuse.Check;
 using Fuse.Failures;
 using Fuse.Paths;
@@ -12,11 +14,19 @@ namespace Fuse.Engine;
 /// <summary>
 ///     The engine process: one per repository root, guarded by a named mutex, serving one request per pipe
 ///     connection. It returns its free memory once idle for <see cref="IdleClock.ReleaseAfter"/>, and exits after
-///     <see cref="IdleClock.ExitAfter"/> without requests, when a client of another build connects, or when the
+///     <see cref="IdleClock.ExitAfter"/> without requests, after it drains for a client of another build, or when the
 ///     repository disappears.
 /// </summary>
 internal static class EngineServer
 {
+    /// <summary>
+    ///     How long a draining engine waits for the requests it serves to finish before it exits. Below the client's 15 s
+    ///     start window, so the mismatched client starts a matching engine within its wait.
+    /// </summary>
+    private static readonly TimeSpan DrainGrace = TimeSpan.FromSeconds(10);
+
+    private static readonly string RequestIdProperty = JsonNamingPolicy.CamelCase.ConvertName(nameof(EngineRequest.RequestId));
+
     public static async Task<int> RunAsync(string rootPath)
     {
         var root = RepoRoot.Find(rootPath);
@@ -42,6 +52,12 @@ internal static class EngineServer
         using var copy = HoldEngineCopy(log);
         _ = Task.Run(() => CleanUpLocalState(root, log));
         using var shutdown = new CancellationTokenSource();
+        // Cancelled when the engine drains for a client of another build: the accept loop stops, while the requests it
+        // serves run on, linked to the shutdown token alone.
+        using var acceptStop = new CancellationTokenSource();
+        // Every request being served, so the drain waits for each. Pruned as requests arrive, so it holds only those.
+        var running = new List<Task>();
+        var runningLock = new Lock();
         using var router = new RequestRouter(root, log);
         _ = router.InitializeAsync(shutdown.Token);
 
@@ -49,7 +65,7 @@ internal static class EngineServer
         var watchdog = WatchIdleAsync(root, router, state, shutdown, log);
         try
         {
-            while (!shutdown.IsCancellationRequested)
+            while (!shutdown.IsCancellationRequested && !acceptStop.IsCancellationRequested)
             {
                 var pipe = new NamedPipeServerStream(
                     root.PipeName,
@@ -59,7 +75,8 @@ internal static class EngineServer
                     PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
                 try
                 {
-                    await pipe.WaitForConnectionAsync(shutdown.Token).ConfigureAwait(false);
+                    using var waiting = CancellationTokenSource.CreateLinkedTokenSource(shutdown.Token, acceptStop.Token);
+                    await pipe.WaitForConnectionAsync(waiting.Token).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
                 {
@@ -73,8 +90,16 @@ internal static class EngineServer
                     continue;
                 }
 
-                _ = ServeAsync(pipe, router, state, shutdown, log);
+                var serving = ServeAsync(pipe, router, state, shutdown, acceptStop, log);
+                lock (runningLock)
+                {
+                    running.RemoveAll(task => task.IsCompleted);
+                    running.Add(serving);
+                }
             }
+
+            if (acceptStop.IsCancellationRequested && !shutdown.IsCancellationRequested)
+                await DrainAsync(running, runningLock, log).ConfigureAwait(false);
         }
         finally
         {
@@ -111,7 +136,7 @@ internal static class EngineServer
         try
         {
             LocalState.RecordRoot(root);
-            BaselineStore.Prune(root.StateDirectory);
+            BaselineStore.Prune(root.SharedStateDirectory);
             LocalState.RemoveUnusedEngineCopies(LocalState.EngineCopies, AppContext.BaseDirectory, DateTime.UtcNow);
             var removed = LocalState.RemoveStateOfMissingRepositories(LocalState.Repositories, DateTime.UtcNow);
             if (removed > 0)
@@ -123,7 +148,7 @@ internal static class EngineServer
         }
     }
 
-    private static async Task ServeAsync(NamedPipeServerStream pipe, RequestRouter router, IdleClock state, CancellationTokenSource shutdown, EngineLog log)
+    private static async Task ServeAsync(NamedPipeServerStream pipe, RequestRouter router, IdleClock state, CancellationTokenSource shutdown, CancellationTokenSource acceptStop, EngineLog log)
     {
         await using (pipe.ConfigureAwait(false))
         {
@@ -139,9 +164,9 @@ internal static class EngineServer
                 if (buildId != EngineVersion.Build)
                 {
                     // A request of 5.0.0 names its build id otherwise, so none is read from it.
-                    log.Write($"client build {buildId ?? "(none)"} differs; exiting so the client can start a matching engine");
+                    log.Write($"client build {buildId ?? "(none)"} differs; draining for {ClientProcessPath(line)} so the client can start a matching engine");
                     await WriteAsync(pipe, new EngineResponse.Restart(), CancellationToken.None).ConfigureAwait(false);
-                    await shutdown.CancelAsync().ConfigureAwait(false);
+                    await acceptStop.CancelAsync().ConfigureAwait(false);
                     return;
                 }
 
@@ -189,6 +214,48 @@ internal static class EngineServer
             {
                 log.Write($"request failed: {e}");
             }
+        }
+    }
+
+    /// <summary>
+    ///     Waits for the requests the engine serves to finish, at most <see cref="DrainGrace"/>. A request still going
+    ///     after that is cancelled with the shutdown token when the engine exits.
+    /// </summary>
+    internal static async Task DrainAsync(List<Task> running, Lock runningLock, EngineLog log)
+    {
+        Task[] snapshot;
+        lock (runningLock)
+            snapshot = [.. running];
+        if (snapshot.Length == 0)
+            return;
+        var all = Task.WhenAll(snapshot);
+        if (await Task.WhenAny(all, Task.Delay(DrainGrace, CancellationToken.None)).ConfigureAwait(false) != all)
+            log.Write($"drain timed out with {snapshot.Count(task => !task.IsCompleted)} requests still going; exiting");
+    }
+
+    /// <summary>
+    ///     The process path of the client that sent <paramref name="line"/>, or "(unknown)". The request id starts with
+    ///     the client's process id, which names the process while it runs.
+    /// </summary>
+    private static string ClientProcessPath(string line)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(line);
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+                return "(unknown)";
+            if (!document.RootElement.TryGetProperty(RequestIdProperty, out var id) || id.ValueKind != JsonValueKind.String)
+                return "(unknown)";
+            var text = id.GetString();
+            var dash = text?.IndexOf('-') ?? -1;
+            if (text is null || dash <= 0 || !int.TryParse(text.AsSpan(0, dash), System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var pid))
+                return "(unknown)";
+            using var process = Process.GetProcessById(pid);
+            return process.MainModule?.FileName ?? "(unknown)";
+        }
+        catch (Exception e) when (e is JsonException or ArgumentException or InvalidOperationException or NotSupportedException or IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
+        {
+            return "(unknown)";
         }
     }
 

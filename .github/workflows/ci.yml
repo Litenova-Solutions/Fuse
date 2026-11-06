@@ -1,5 +1,10 @@
 name: CI
 
+# This workflow never runs more than 19 jobs at once: the test matrix peaks at 18 (6 shards on 3 operating
+# systems, capped by max-parallel below) beside the one Format job, and Package runs after the tests. The
+# smoke workflow (.github/workflows/smoke.yml, 4 jobs) and the evals are separate workflows; no workflow
+# passes the repository's 20 concurrent jobs on its own.
+
 on:
   push:
     branches: [main]
@@ -24,13 +29,15 @@ jobs:
   # The tests run in shards on each OS, because most of their time goes to generating and restoring fixture
   # repositories. Each shard names test classes with the test platform's filters, and the last one runs
   # every test the others do not, so a test in a new class or namespace still runs. The real-build contention
-  # tests are isolated together, and the heaviest lock tests run on their own.
+  # tests are isolated together, and the heaviest lock tests run on their own. A test class no shard names
+  # runs in the last shard, so adding test classes never adds a shard or a job.
   test:
     name: Test ${{ matrix.shard.name }} (${{ matrix.os }})
     if: github.event_name != 'workflow_dispatch'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
+      max-parallel: 18
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         shard:

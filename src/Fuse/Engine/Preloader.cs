@@ -9,7 +9,7 @@ namespace Fuse.Engine;
 ///     Loads, in the background and one at a time, the projects that depend on projects with uncommitted changes.
 ///     A declaration change has to bind those dependents, and loading them is the slow part of a first check
 ///     (seconds per project); doing it while the agent is busy elsewhere keeps later checks fast. Requests take
-///     precedence: the request lock admits them between project loads.
+///     precedence: the request lock admits them between project loads. It builds no compilation: a check builds what it binds.
 /// </summary>
 internal sealed class Preloader
 {
@@ -99,25 +99,6 @@ internal sealed class Preloader
                 _log($"preload failed: {e}");
                 return;
             }
-
-            // Outside the load above: a compilation that fails to build must not count as a load that failed, or the
-            // project would not be tried again. The next check that needs the compilation builds it itself.
-            var warming = System.Diagnostics.Stopwatch.GetTimestamp();
-            try
-            {
-                await _workspace.PreloadCompilationAsync(next, shutdown).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                return;
-            }
-            catch (Exception e)
-            {
-                _log($"preload of {next.Name} compilation failed: {e.Message}");
-                continue;
-            }
-
-            _log($"preloaded {next.Name} compilation in {(System.Diagnostics.Stopwatch.GetTimestamp() - warming) * 1000 / System.Diagnostics.Stopwatch.Frequency} ms");
         }
     }
 

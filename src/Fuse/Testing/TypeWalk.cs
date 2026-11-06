@@ -19,10 +19,14 @@ internal sealed class TypeWalk
 {
     private readonly RepoWorkspace _workspace;
 
-    // Each file's syntax facts by text version, kept across requests, so a rebuilt graph parses only the files that changed.
+    // Each file's syntax facts by text version, kept across requests for the documents a graph is built over, so a
+    // rebuilt graph parses only the files that changed.
     private readonly Dictionary<DocumentId, (VersionStamp Version, TypeGraph.FileFacts Facts)> _facts = [];
 
     public TypeWalk(RepoWorkspace workspace) => _workspace = workspace;
+
+    /// <summary>How many files' facts are kept.</summary>
+    public int KeptFacts => _facts.Count;
 
     /// <summary>Selects the tests the types of <paramref name="seeds"/> reach, keyed by test project file.</summary>
     /// <param name="reachedProjects">The Roslyn projects of the changed projects and their dependents; the graph covers only these.</param>
@@ -33,6 +37,11 @@ internal sealed class TypeWalk
         IReadOnlyList<(Document Document, SyntaxNode Node)> seeds,
         CancellationToken cancellationToken)
     {
+        // A reload replaces a document's id, and an id it replaced is not among the documents the graph is built
+        // over, so the facts kept for it go; the facts of a document the graph holds stay for the next request.
+        var live = reachedProjects.SelectMany(p => p.Documents).Select(d => d.Id).ToHashSet();
+        foreach (var id in _facts.Keys.Where(id => !live.Contains(id)).ToList())
+            _facts.Remove(id);
         var graph = _workspace.Graph;
         var typeGraph = await TypeGraph.BuildAsync(reachedProjects, p => p.FilePath is null ? null : graph.Find(_workspace.Root.PathOf(p.FilePath)), _facts, cancellationToken).ConfigureAwait(false);
         var start = seeds

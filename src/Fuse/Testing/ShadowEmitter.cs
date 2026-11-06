@@ -25,7 +25,7 @@ namespace Fuse.Testing;
 ///     </para>
 ///     <para>
 ///         One emitter serves every plan of the engine. It keeps the emitted images in an <see cref="EmitCache"/>, and
-///         remembers each shadow file it wrote, so an image that is already in place is not written again and the copy
+///         remembers each shadow file it wrote, up to a limit for each map it keeps, so an image that is already in place is not written again and the copy
 ///         from build output never overwrites a file it is about to emit. It also remembers what a kept dependent's
 ///         referenced projects declared when its image was written, so the image is kept only while they declare the
 ///         same. It runs after the request lock is released, against the snapshot the plan took under it;
@@ -39,15 +39,23 @@ namespace Fuse.Testing;
 /// </remarks>
 internal sealed class ShadowEmitter
 {
+    /// <summary>The most shadow files whose written bytes are remembered; past it the file written longest ago goes.</summary>
+    internal const int MaxWrittenEntries = 512;
+
+    /// <summary>The most dependents whose declaration fingerprints are remembered; past it the dependent written longest ago goes.</summary>
+    internal const int MaxFingerprintEntries = 128;
+
     private readonly RepoWorkspace _workspace;
     private readonly RepoRoot _root;
     private readonly EmitCache _cache = new();
 
     /// <summary>Each shadow file this emitter wrote, with the bytes it wrote and the length and time the file had after.</summary>
     private readonly Dictionary<string, Written> _written = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<string> _writtenOrder = [];
 
     /// <summary>For each dependent this emitter wrote, the declaration fingerprint of each project it references, as it was when the dependent was written.</summary>
     private readonly Dictionary<ProjectId, Dictionary<ProjectId, string>> _fingerprints = new();
+    private readonly List<ProjectId> _fingerprintOrder = [];
 
     public ShadowEmitter(RepoWorkspace workspace)
     {
@@ -57,6 +65,12 @@ internal sealed class ShadowEmitter
 
     /// <summary>How many assemblies were emitted since the engine started, as opposed to taken from the cache.</summary>
     public int Emits => _cache.Emits;
+
+    /// <summary>How many shadow files' written bytes are remembered.</summary>
+    public int KeptWritten => _written.Count;
+
+    /// <summary>How many dependents' declaration fingerprints are remembered.</summary>
+    public int KeptFingerprints => _fingerprints.Count;
 
     /// <summary>Returns a shadow run of the prepared test assembly, or a build with MSBuild when a shadow run is not safe.</summary>
     /// <param name="testProject">The Roslyn project for one target framework of the test project, from the plan's snapshot.</param>
@@ -306,6 +320,14 @@ internal sealed class ShadowEmitter
         }
 
         _fingerprints[project.Id] = recorded;
+        _fingerprintOrder.Remove(project.Id);
+        _fingerprintOrder.Add(project.Id);
+        while (_fingerprints.Count > MaxFingerprintEntries && _fingerprintOrder.Count > 0)
+        {
+            var oldest = _fingerprintOrder[0];
+            _fingerprintOrder.RemoveAt(0);
+            _fingerprints.Remove(oldest);
+        }
     }
 
     /// <summary>
@@ -367,6 +389,14 @@ internal sealed class ShadowEmitter
         await File.WriteAllBytesAsync(path, bytes, cancellationToken).ConfigureAwait(false);
         file.Refresh();
         _written[path] = new Written(bytes, file.Length, file.LastWriteTimeUtc);
+        _writtenOrder.Remove(path);
+        _writtenOrder.Add(path);
+        while (_written.Count > MaxWrittenEntries && _writtenOrder.Count > 0)
+        {
+            var oldest = _writtenOrder[0];
+            _writtenOrder.RemoveAt(0);
+            _written.Remove(oldest);
+        }
     }
 
     /// <summary>

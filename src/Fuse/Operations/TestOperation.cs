@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using Fuse.Dotnet;
 using Fuse.Engine.Client;
@@ -113,6 +114,88 @@ internal static class TestOperation
         }
     }
 
+    /// <summary>
+    ///     The last finished test run's answer when it ran the same plan on the same tree, or null. The answer prints
+    ///     the stored failures and summary with a line above them saying the run was reused and how old it is, and the
+    ///     results files hold the stored failures again.
+    /// </summary>
+    internal static OperationResult? ReusedTestRun(RepoRoot root, (string TreeHash, string FullHash, string AssetsHash, int SourceCount) stamp, string planKey, TextWriter? live)
+    {
+        var stored = LastTestResults.ReadRun(root);
+        if (stored is null
+            || stored.Value.TreeHash != stamp.TreeHash
+            || stored.Value.FullHash != stamp.FullHash
+            || stored.Value.AssetsHash != stamp.AssetsHash
+            || stored.Value.PlanKey != planKey
+            || stored.Value.Aggregate.Total == 0
+            || stored.Value.Runs.Count == 0)
+            return null;
+        var record = stored.Value;
+        var resultsPath = ResultsFile.WriteTestsWithPaths(root, record.Runs);
+        var line = $"fuse: test run reused from {BuildResultsFile.AgeAgo(record.FinishedUtc, DateTime.UtcNow)} ago; tree {record.TreeHash}";
+        if (live is not null)
+        {
+            live.Write(RenderFailures(record.Aggregate));
+            live.Flush();
+            var summaryOnly = new OperationResult(
+                record.Aggregate.Failed > 0 ? Outcome.ProblemsFound : Outcome.Clean,
+                RenderSummary(record.Aggregate, record.Summary, record.Seconds, resultsPath));
+            var answer = record.Problems.Count == 0 ? summaryOnly : Join([summaryOnly, .. record.Problems]);
+            return answer with { Text = line + "\n" + answer.Text };
+        }
+
+        var tests = Render(record.Aggregate, record.Summary, record.Seconds, resultsPath);
+        var joined = record.Problems.Count == 0 ? tests : Join([tests, .. record.Problems]);
+        return joined with { Text = line + "\n" + joined.Text };
+    }
+
+    /// <summary>
+    ///     What a test run is reused by: the plan's runs in run order, its counts and summary, and the scope's switches
+    ///     and paths. A shadow run's copy folder is not part of it, because the same plan prepares another folder next
+    ///     time. Each field carries its length, so no two different plans share a key.
+    /// </summary>
+    internal static string PlanKey(TestPlan plan, TestScopeArguments? scope)
+    {
+        var text = new StringBuilder();
+        void Field(string value) => text.Append(value.Length.ToString(CultureInfo.InvariantCulture)).Append(':').Append(value).Append('|');
+        Field(plan.SelectedTests.ToString(CultureInfo.InvariantCulture));
+        Field(plan.TotalTests.ToString(CultureInfo.InvariantCulture));
+        Field(plan.Summary);
+        Field(plan.ContainerGatedTests.ToString(CultureInfo.InvariantCulture));
+        foreach (var gated in plan.ContainerGatedProjects)
+            Field(gated);
+        text.Append('|');
+        foreach (var run in plan.Runs)
+        {
+            Field(run.Project);
+            Field(run.Name);
+            Field(run.Mode is TestRunMode.Shadow ? "shadow" : "build");
+            Field(run.Filter ?? "");
+            Field(run.UsesTestingPlatform ? "1" : "0");
+            Field(run.RunSettings ?? "");
+            foreach (var argument in run.FilterArguments)
+                Field(argument);
+            text.Append('|');
+            foreach (var target in run.TargetPaths)
+                Field(target);
+            text.Append('|');
+        }
+
+        text.Append('|');
+        if (scope is not null)
+        {
+            foreach (var path in scope.Paths)
+                Field(path);
+            text.Append('|');
+            foreach (var button in scope.BuildSwitches)
+                Field(button);
+            text.Append('|');
+            Field(scope.BuildOnly ? "1" : "0");
+        }
+
+        return text.ToString();
+    }
+
     /// <summary>Runs every run of <paramref name="plan"/> and answers for all of them together.</summary>
     /// <param name="root">The repository the plan is for.</param>
     /// <param name="plan">The engine's plan, with at least one run.</param>
@@ -132,6 +215,13 @@ internal static class TestOperation
     /// </remarks>
     internal static async Task<OperationResult> RunPlanAsync(RepoRoot root, TestPlan plan, long started, CancellationToken cancellationToken, BuildLock? held = null, TestScopeArguments? scope = null, TextWriter? live = null, int? failedRerunCount = null, IReadOnlyDictionary<string, string[]>? failedFirstByProject = null)
     {
+        var stamp = await BuildResultsFile.StampForReuseAsync(root, cancellationToken).ConfigureAwait(false);
+        var planKey = stamp is null ? null : PlanKey(plan, scope);
+        if (stamp is not null && planKey is not null && ReusedTestRun(root, stamp.Value, planKey, live) is { } reused)
+            return reused;
+        (string TreeHash, string FullHash, string AssetsHash, string PlanKey)? key = null;
+        if (stamp is not null && planKey is not null)
+            key = (stamp.Value.TreeHash, stamp.Value.FullHash, stamp.Value.AssetsHash, planKey);
         var buildLock = held;
         var copies = new List<IDisposable>();
         try
@@ -140,7 +230,7 @@ internal static class TestOperation
             {
                 buildLock?.Dispose();
                 buildLock = null;
-            }, () => buildLock ??= BuildLock.AcquireForClient(root), scope, cancellationToken, live, failedRerunCount, failedFirstByProject).ConfigureAwait(false);
+            }, () => buildLock ??= BuildLock.AcquireForClient(root), scope, cancellationToken, live, failedRerunCount, failedFirstByProject, key).ConfigureAwait(false);
         }
         finally
         {
@@ -151,10 +241,10 @@ internal static class TestOperation
     }
 
     private static async Task<OperationResult> RunPlanHoldingAsync(
-        RepoRoot root, TestPlan plan, long started, List<IDisposable> copies, Action releaseLock, Func<BuildLock> takeLock, TestScopeArguments? scope, CancellationToken cancellationToken, TextWriter? live = null, int? failedRerunCount = null, IReadOnlyDictionary<string, string[]>? failedFirstByProject = null)
+        RepoRoot root, TestPlan plan, long started, List<IDisposable> copies, Action releaseLock, Func<BuildLock> takeLock, TestScopeArguments? scope, CancellationToken cancellationToken, TextWriter? live = null, int? failedRerunCount = null, IReadOnlyDictionary<string, string[]>? failedFirstByProject = null, (string TreeHash, string FullHash, string AssetsHash, string PlanKey)? reuse = null)
     {
         if (failedFirstByProject is not null
-            && await RunStagedAsync(root, plan, started, copies, releaseLock, takeLock, scope, live, failedFirstByProject, cancellationToken).ConfigureAwait(false) is { } staged)
+            && await RunStagedAsync(root, plan, started, copies, releaseLock, takeLock, scope, live, failedFirstByProject, cancellationToken, reuse).ConfigureAwait(false) is { } staged)
             return staged;
 
         var groups = plan.Runs.GroupBy(r => root.PathOf(r.Project)).ToList();
@@ -246,6 +336,8 @@ internal static class TestOperation
         var shadowRuns = outcomes.Count;
         var mode = shadowRuns == groups.Count ? "without MSBuild" : shadowRuns > 0 ? $"without MSBuild for {shadowRuns} of {groups.Count} project(s)" : "built with MSBuild";
         var resultsPath = aggregate.Total > 0 ? ResultsFile.WriteTestsWithPaths(root, perProject) : null;
+        if (reuse is not null && aggregate.Total > 0)
+            LastTestResults.WriteRun(root, reuse.Value.TreeHash, reuse.Value.FullHash, reuse.Value.AssetsHash, reuse.Value.PlanKey, DateTime.UtcNow, Seconds(started), $"{plan.Summary}; {mode}", aggregate, perProject, problems);
         var tests = Render(aggregate, $"{plan.Summary}; {mode}", Seconds(started), resultsPath);
         // The tests' answer comes first, so the last line is a failed build or run whenever there is one.
         return problems.Count == 0 ? tests : Join([tests, .. problems]);
@@ -262,7 +354,7 @@ internal static class TestOperation
     /// </summary>
     private static async Task<OperationResult?> RunStagedAsync(
         RepoRoot root, TestPlan plan, long started, List<IDisposable> copies, Action releaseLock, Func<BuildLock> takeLock,
-        TestScopeArguments? scope, TextWriter? live, IReadOnlyDictionary<string, string[]> failedFirstByProject, CancellationToken cancellationToken)
+        TestScopeArguments? scope, TextWriter? live, IReadOnlyDictionary<string, string[]> failedFirstByProject, CancellationToken cancellationToken, (string TreeHash, string FullHash, string AssetsHash, string PlanKey)? reuse = null)
     {
         var groups = plan.Runs.GroupBy(r => root.PathOf(r.Project)).ToList();
         var priority = new List<(RepoPath Key, List<TestRun> Runs)>();
@@ -352,6 +444,8 @@ internal static class TestOperation
         var shadowRuns = priority.Count(p => first.Shadowed.Contains(p.Key) && second.Shadowed.Contains(p.Key)) + single.Count(g => second.Shadowed.Contains(g.Key));
         var mode = shadowRuns == groups.Count ? "without MSBuild" : shadowRuns > 0 ? $"without MSBuild for {shadowRuns} of {groups.Count} project(s)" : "built with MSBuild";
         var resultsPath = aggregate.Total > 0 ? ResultsFile.WriteTestsWithPaths(root, perProject) : null;
+        if (reuse is not null && aggregate.Total > 0)
+            LastTestResults.WriteRun(root, reuse.Value.TreeHash, reuse.Value.FullHash, reuse.Value.AssetsHash, reuse.Value.PlanKey, DateTime.UtcNow, Seconds(started), $"{plan.Summary}; {mode}", aggregate, perProject, problems);
         if (live is not null)
         {
             var summaryOnly = new OperationResult(

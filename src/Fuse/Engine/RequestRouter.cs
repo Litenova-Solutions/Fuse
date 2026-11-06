@@ -27,6 +27,13 @@ internal sealed class RequestRouter : IDisposable
     private readonly BaselineWarmer _warmer;
     private readonly RequestLog _requestLog;
     private readonly SessionEdits _sessions;
+
+    /// <summary>Guards the last completed sync's status and the distinct touched paths it counted.</summary>
+    private readonly Lock _statusLock = new();
+
+    private readonly HashSet<RepoPath> _touchedPaths = [];
+    private EngineStatus? _lastStatus;
+    private int _touchedConfigurationGeneration;
     private Task? _initialization;
     private CancellationToken _shutdown;
 
@@ -74,6 +81,8 @@ internal sealed class RequestRouter : IDisposable
                     _log.Write($"preload skipped: {e.Message}");
                 }
             }
+
+            CaptureStatus(reloadMs: null);
         }
         finally
         {
@@ -85,24 +94,23 @@ internal sealed class RequestRouter : IDisposable
     }
 
     /// <summary>
-    ///     Answers one request. A ping or a shutdown is answered at once; a session registration waits for the request
-    ///     lock; a check or a test plan waits for initialization (a check that does not wait for the load is refused while
-    ///     loading), then for the request lock, then runs. A check holds the lock until it is answered; a test plan holds
-    ///     it through the sync and the selection, and releases it before it mirrors and emits into the shadow folders from
-    ///     the snapshot it took. A status answer and a changed-build plan sync under the lock without loading a project.
+    ///     Answers one request. A ping or a shutdown is answered at once; a status answer is read from the last
+    ///     completed sync at once when the request lock is held, naming the holder, and otherwise syncs ahead of queued
+    ///     checks; a session registration waits ahead of queued checks and still holds the lock, so none begins or ends
+    ///     mid-check; a check or a test plan waits for initialization (a check that does not wait for the load is refused
+    ///     while loading), then for the request lock, then runs. A check's wait and analyzer budget start when it holds
+    ///     the lock, not when it queued. A check holds the lock until it is answered; a test plan holds it through the
+    ///     sync and the selection, and releases it before it mirrors and emits into the shadow folders from the snapshot
+    ///     it took. A changed-build plan syncs under the lock without loading a project.
     /// </summary>
     public async Task<EngineResponse> HandleAsync(EngineRequest request, CancellationToken cancellationToken)
     {
-        if (request is EngineRequest.BeginSession or EngineRequest.EndSession)
-            return await SessionAsync(request, cancellationToken).ConfigureAwait(false);
         if (request is EngineRequest.Ping or EngineRequest.ShutDown)
             return new EngineResponse.Acknowledged();
-
-        // The client's wait started before this request queued, so the analyzers' share of it is counted from here.
-        using var analyzerDeadline = new CancellationTokenSource();
-        if (request.WaitMs > 0)
-            analyzerDeadline.CancelAfter(TimeSpan.FromMilliseconds(request.WaitMs * AnalyzerRun.ShareOfWait));
-        var analyzers = new AnalyzerRun(request is not EngineRequest.CheckFiles { LeaveOutCompilationWide: true }, analyzerDeadline.Token);
+        if (request is EngineRequest.Status)
+            return await StatusAsync(request, cancellationToken).ConfigureAwait(false);
+        if (request is EngineRequest.BeginSession or EngineRequest.EndSession)
+            return await SessionAsync(request, cancellationToken).ConfigureAwait(false);
 
         // Recorded before anything can refuse the check, so a check answered "still loading" still credits the session
         // with its files.
@@ -128,10 +136,6 @@ internal sealed class RequestRouter : IDisposable
             return new EngineResponse.Unanswered(ErrorCode.LoadFailed, $"Fuse could not evaluate the repository's projects: {e.Message}");
         }
 
-        // Status needs no project, so it is answered before the check that refuses a repository without one.
-        if (request is EngineRequest.Status)
-            return await StatusAsync(request, cancellationToken).ConfigureAwait(false);
-
         if (_workspace.Graph.Projects.Count == 0)
             return new EngineResponse.Unanswered(ErrorCode.NoProjects, _workspace.Graph.Failures.Count > 0
                 ? $"no C# project could be evaluated: {_workspace.Graph.Failures[0]}"
@@ -141,8 +145,15 @@ internal sealed class RequestRouter : IDisposable
         var queued = Stopwatch.StartNew();
         var gateHolder = await _requestLock.EnterAsync(RequestLog.KindOf(request), cancellationToken).ConfigureAwait(false);
         phases.Add(Phase.Gate, queued);
+        var configurationBefore = _workspace.ConfigurationGeneration;
         var started = Environment.TickCount64;
         var held = true;
+
+        // The wait and the analyzer budget start at dequeue: queue time is the gate phase and counts against neither.
+        using var analyzerDeadline = new CancellationTokenSource();
+        if (request.WaitMs > 0)
+            analyzerDeadline.CancelAfter(TimeSpan.FromMilliseconds(request.WaitMs * AnalyzerRun.ShareOfWait));
+        var analyzers = new AnalyzerRun(request is not EngineRequest.CheckFiles { LeaveOutCompilationWide: true }, analyzerDeadline.Token);
         try
         {
             // Each case carries its scope, which becomes the feature's own.
@@ -177,6 +188,7 @@ internal sealed class RequestRouter : IDisposable
                 }
 
                 var pendingFailed = await _planner.SelectFailedAsync(byProject, unknown, phases, cancellationToken).ConfigureAwait(false);
+                RememberStatus(configurationBefore, phases);
                 held = false;
                 Release();
                 return AnswerPlan(await _planner.PrepareAsync(pendingFailed, phases, cancellationToken).ConfigureAwait(false));
@@ -194,6 +206,7 @@ internal sealed class RequestRouter : IDisposable
 
             // The shadow preparation reads only the snapshot the selection took, which is immutable, so it runs after the
             // lock is released and a check from another client does not wait behind the emit.
+            RememberStatus(configurationBefore, phases);
             held = false;
             Release();
             return AnswerPlan(await _planner.PrepareAsync(pending, phases, cancellationToken).ConfigureAwait(false));
@@ -212,6 +225,8 @@ internal sealed class RequestRouter : IDisposable
             // Released whatever the log write does: a lock that stays held makes every later request wait for it.
             try
             {
+                if (held)
+                    RememberStatus(configurationBefore, phases);
                 _requestLog.Write(request, phases, Environment.TickCount64 - started, gateHolder);
             }
             finally
@@ -267,6 +282,66 @@ internal sealed class RequestRouter : IDisposable
     /// <summary>The planner the router answers test plans with, for a test that holds a plan in its shadow preparation.</summary>
     internal TestPlanner Planner => _planner;
 
+    /// <summary>The request lock, for a test that holds it while it asks for status or queues a check behind it.</summary>
+    internal RequestGate RequestLock => _requestLock;
+
+    /// <summary>
+    ///     Stores the status of the sync that just completed, counted the way the code counts each threshold: changed
+    ///     sources a project owns, and distinct touched paths against the limit past which projects re-evaluate. The
+    ///     distinct count is the router's count of the paths each completed sync held; the views hold the same paths.
+    /// </summary>
+    /// <param name="reloadMs">How long that sync's reload took, or null when it patched without reloading.</param>
+    private EngineStatus CaptureStatus(long? reloadMs)
+    {
+        var changed = _workspace.Tracker.Changed;
+        lock (_statusLock)
+        {
+            if (_workspace.ConfigurationGeneration != _touchedConfigurationGeneration)
+            {
+                // The touched set resets only when it passed its limit and the next sync re-evaluated; a reload that
+                // did not pass it keeps the paths it already held.
+                if (_touchedPaths.Count > SolutionViews.MaxTouchedPaths)
+                    _touchedPaths.Clear();
+                _touchedConfigurationGeneration = _workspace.ConfigurationGeneration;
+            }
+
+            _touchedPaths.UnionWith(changed);
+            var status = new EngineStatus(
+                Environment.ProcessId,
+                Environment.WorkingSet,
+                changed.Count,
+                _workspace.Tracker.Head,
+                TreeStamp.Of(ChangedPairs(changed)))
+            {
+                ChangedSourcesInReach = changed.Count(path => _workspace.Graph.OwnersOf(path).Count > 0),
+                TouchedCount = _touchedPaths.Count,
+                ReloadMs = reloadMs,
+            };
+            _lastStatus = status;
+            return status;
+        }
+    }
+
+    /// <summary>The last completed sync's status with the current holder named, or null when no sync has completed.</summary>
+    private EngineStatus? LastStatus(string holder)
+    {
+        lock (_statusLock)
+            return _lastStatus is { } status ? status with { GateHolder = holder } : null;
+    }
+
+    /// <summary>Stores the status after a gated sync, naming its reload when the configuration generation moved during it.</summary>
+    private void RememberStatus(int configurationBefore, PhaseTimes phases)
+    {
+        long? reloadMs = null;
+        if (_workspace.ConfigurationGeneration != configurationBefore)
+        {
+            var sync = phases.All.FirstOrDefault(phase => phase.Phase == Phase.Sync);
+            reloadMs = sync.Phase is null ? 0 : (long)Math.Round(sync.Ms);
+        }
+
+        CaptureStatus(reloadMs);
+    }
+
     /// <summary>
     ///     Checks the files <paramref name="check"/> names. The wire carries them as strings, absolute or relative to the
     ///     root, in whatever letter case the client wrote; each becomes a <see cref="RepoPath"/> in the spelling the file
@@ -295,28 +370,59 @@ internal sealed class RequestRouter : IDisposable
     }
 
     /// <summary>
-    ///     Answers what the tree holds: it syncs under the request lock like a check, then reads the process, its
-    ///     working set and the changed files. It never loads a project and never refuses a repository without one.
+    ///     Answers what the tree holds. When the request lock is held and a sync has completed, it answers at once from
+    ///     that sync and names the holder; it never waits behind a check. Otherwise it waits ahead of queued checks,
+    ///     syncs, and reads the process, its working set and the changed files. It never loads a project and never
+    ///     refuses a repository without one.
     /// </summary>
     private async Task<EngineResponse> StatusAsync(EngineRequest request, CancellationToken cancellationToken)
     {
+        if (_requestLock.CurrentHolder is { } heldBy && LastStatus(heldBy) is { } lastCompleted)
+        {
+            _requestLog.Write(request, new PhaseTimes(), tookMs: 0, heldBy);
+            return new EngineResponse.StatusAnswered(lastCompleted);
+        }
+
+        var initialization = _initialization ?? Task.CompletedTask;
+        if (!initialization.IsCompleted)
+        {
+            try
+            {
+                await initialization.WaitAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (FuseException e)
+            {
+                return ResponseMapper.Unanswered(e);
+            }
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                _log.Write($"initialization failed: {e}");
+                return new EngineResponse.Unanswered(ErrorCode.LoadFailed, $"Fuse could not evaluate the repository's projects: {e.Message}");
+            }
+
+            // The holder that kept status from a sync of its own may have finished while initialization ran.
+            if (_requestLock.CurrentHolder is { } holderAfterInit && LastStatus(holderAfterInit) is { } lastAfterInit)
+            {
+                _requestLog.Write(request, new PhaseTimes(), tookMs: 0, holderAfterInit);
+                return new EngineResponse.StatusAnswered(lastAfterInit);
+            }
+        }
+
         var phases = new PhaseTimes();
         var queued = Stopwatch.StartNew();
-        var gateHolder = await _requestLock.EnterAsync(RequestLog.KindOf(request), cancellationToken).ConfigureAwait(false);
+        var gateHolder = await _requestLock.EnterPriorityAsync(RequestLog.KindOf(request), cancellationToken).ConfigureAwait(false);
         phases.Add(Phase.Gate, queued);
+        var configurationBefore = _workspace.ConfigurationGeneration;
         var started = Environment.TickCount64;
         try
         {
             var syncing = phases.Start();
             await _workspace.SyncAsync([], cancellationToken).ConfigureAwait(false);
             phases.Add(Phase.Sync, syncing);
-            var changed = _workspace.Tracker.Changed;
-            return new EngineResponse.StatusAnswered(new EngineStatus(
-                Environment.ProcessId,
-                Environment.WorkingSet,
-                changed.Count,
-                _workspace.Tracker.Head,
-                TreeStamp.Of(ChangedPairs(changed))));
+            long? reloadMs = _workspace.ConfigurationGeneration != configurationBefore
+                ? (long)Math.Round(syncing?.Elapsed.TotalMilliseconds ?? 0)
+                : null;
+            return new EngineResponse.StatusAnswered(CaptureStatus(reloadMs));
         }
         catch (FuseException e)
         {
@@ -377,7 +483,7 @@ internal sealed class RequestRouter : IDisposable
     {
         try
         {
-            _sessions.BeginRegistration(begin.Name, begin.Paths);
+            _sessions.BeginRegistration(begin.Name, begin.Paths, begin.Pid);
             return new EngineResponse.Acknowledged();
         }
         catch (FuseException e)
@@ -408,14 +514,14 @@ internal sealed class RequestRouter : IDisposable
     }
 
     /// <summary>
-    ///     Answers a session registration through the request lock, so no registration begins or ends mid-check: a check
-    ///     takes its session exclusion at the start and re-reads writers later, and a registration between the two would
-    ///     shield errors neither read shielded. It waits for no initialization beyond the lock, which the first evaluation
-    ///     holds; a registration needs no workspace.
+    ///     Answers a session registration through the request lock, ahead of queued checks, so no registration begins or
+    ///     ends mid-check: a check takes its session exclusion at the start and re-reads writers later, and a registration
+    ///     between the two would shield errors neither read shielded. It waits for no initialization beyond the lock,
+    ///     which the first evaluation holds; a registration needs no workspace.
     /// </summary>
     private async Task<EngineResponse> SessionAsync(EngineRequest request, CancellationToken cancellationToken)
     {
-        await _requestLock.EnterAsync(RequestLog.KindOf(request), cancellationToken).ConfigureAwait(false);
+        await _requestLock.EnterPriorityAsync(RequestLog.KindOf(request), cancellationToken).ConfigureAwait(false);
         try
         {
             return request switch
@@ -446,7 +552,7 @@ internal sealed class RequestRouter : IDisposable
                 return new EngineResponse.Unanswered(ErrorCode.InvalidPath, ErrorMessages.EmptyPath);
         }
 
-        return Stamped(ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.NamedPaths(check.Paths), session: null, analyzers, phases, cancellationToken, maxReported: check.MaxErrors).ConfigureAwait(false)), check.StampTree);
+        return Stamped(ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.NamedPaths(check.Paths), SessionEdits.IsValid(check.Session) ? check.Session : null, analyzers, phases, cancellationToken, maxReported: check.MaxErrors).ConfigureAwait(false)), check.StampTree);
     }
 
     /// <summary>

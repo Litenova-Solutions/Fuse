@@ -153,6 +153,9 @@ internal abstract record EngineRequest
 
         /// <summary>True to stamp the answer with the tree the check ended on, which <c>fuse check</c> prints. A line without it reads as false.</summary>
         public bool StampTree { get; init; }
+
+        /// <summary>The session the check is answered to, or null to report every error. A line without it reads as null.</summary>
+        public string? Session { get; init; }
     }
 
     /// <summary>Registers an external writer as a session for the path patterns it writes.</summary>
@@ -162,6 +165,19 @@ internal abstract record EngineRequest
     {
         /// <summary>The name. A line without it reads as empty, which no registration holds.</summary>
         public string Name { get; init; } = Name ?? "";
+
+        /// <summary>
+        ///     The process the registration is tied to, or null for no process. The registration ends when that process
+        ///     exits, checked as registrations are read; the 4-hour expiry stays as the fallback. A line without it, or
+        ///     with a value that names no process, reads as null.
+        /// </summary>
+        private readonly int? _pid;
+
+        public int? Pid
+        {
+            get => _pid;
+            init => _pid = value is > 0 ? value : null;
+        }
 
         /// <summary>The patterns. A line without the list reads as one that names none.</summary>
         public string[] Paths { get; init; } = Paths ?? [];

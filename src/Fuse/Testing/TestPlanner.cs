@@ -125,8 +125,12 @@ internal sealed class TestPlanner
         // theirs to run.
         var leftOut = scope is TestScope.Affected affected ? affected.LeftOut : new HashSet<RepoPath>();
         var owned = _workspace.Tracker.Changed.Where(p => graph.OwnersOf(p).Count > 0).ToList();
-        var changed = owned.Where(p => !leftOut.Contains(p)).ToList();
-        var others = owned.Count - changed.Count;
+        var allNonSources = _workspace.Tracker.NonSources.ToList();
+        var changedNonSources = allNonSources.Where(p => !leftOut.Contains(p)).ToList();
+        var outside = changedNonSources.Where(p => graph.NonSourceOwnersOf(p).Count == 0 && graph.ContainingProject(p) is null).OrderBy(p => p.Relative, StringComparer.Ordinal).ToList();
+        var changedSources = owned.Where(p => !leftOut.Contains(p)).ToList();
+        var changed = changedSources.Concat(changedNonSources).ToList();
+        var others = (owned.Count - changedSources.Count) + (allNonSources.Count - changedNonSources.Count);
         var othersNote = others > 0 ? $"; left out {others} changed file(s) only other sessions wrote" : "";
         if (changed.Count == 0 && others > 0)
             return PendingPlan.Of(new TestPlanResult([], 0, total, $"no C# changes by this session since HEAD, so no test is affected{othersNote}{namedNote} (fuse test --all runs everything)"), graph);
@@ -220,6 +224,8 @@ internal sealed class TestPlanner
         else if (runtimePresent is false && containerGatedTests > 0)
             _workspace.Log($"test plan: left out {containerGatedTests} test(s) in {string.Join(", ", containerGatedProjects)} (no container runtime)");
 
+        if (projects.Count == 0 && outside.Count > 0 && containerGatedTests == 0)
+            return PendingPlan.Of(new TestPlanResult([], 0, total, OutsideSummary(outside, othersNote, namedNote)), graph);
         if (selections.Count == 0 && outcome.AllSameCode)
             return PendingPlan.Of(new TestPlanResult([], 0, total, $"no test is affected by the changes (out of {total}); the changes compile to the same code as HEAD; fuse test --all runs everything"), graph);
 
@@ -234,7 +240,9 @@ internal sealed class TestPlanner
         summary.Append(namedNote);
         if (containerGatedTests > 0)
             summary.Append($"; skipped {containerGatedTests} test(s) in {string.Join(", ", containerGatedProjects)} (no container runtime)");
-        summary.Append("; fuse test --all runs everything");
+        if (outside.Count > 0)
+            summary.Append($"; {outside.Count} non-C# file(s) outside every project changed ({OutsideSample(outside)}); a test that reads them by path is not selected");
+        summary.Append(outside.Count > 0 ? "; fuse test --all covers them" : "; fuse test --all runs everything");
         return PendingPlan.ToPrepare(graph, projects, selected, total, summary.ToString(), scope is TestScope.Affected { BuildOnly: true }, containerGatedTests, [.. containerGatedProjects]);
     }
 
@@ -382,6 +390,15 @@ internal sealed class TestPlanner
     /// </summary>
     private static string? RunSettingsOf(ProjectNode node) =>
         node.UsesTestingPlatform && node.Framework is not (TestFramework.MSTest or TestFramework.NUnit) ? null : node.RunSettings;
+
+    /// <summary>A selection as the engine log gives it: "all", or how many patterns it has.</summary>
+    /// <summary>The summary for a plan that selects nothing because every non-C# change is outside every project.</summary>
+    private static string OutsideSummary(IReadOnlyList<RepoPath> outside, string othersNote, string namedNote) =>
+        $"{outside.Count} non-C# file(s) outside every project changed ({OutsideSample(outside)}); a test that reads them by path is not selected{othersNote}{namedNote}; fuse test --all covers them";
+
+    /// <summary>The first outside files by relative path, with the rest elided past three.</summary>
+    private static string OutsideSample(IReadOnlyList<RepoPath> outside) =>
+        string.Join(", ", outside.Take(3).Select(p => p.Relative)) + (outside.Count > 3 ? ", ..." : "");
 
     /// <summary>A selection as the engine log gives it: "all", or how many patterns it has.</summary>
     private static string Describe(TestSelection selection) =>

@@ -95,14 +95,16 @@ internal static class McpCommand
                         return Text($"fuse: max_errors takes a count of 1 to {CheckArguments.MaxErrorsLimit}", isError: true);
                 }
 
-                (result, _) = await CheckOperation.RunAsync(root, files, session: null, waitForLoad: true, compilationWideAnalyzers: true, TimeSpan.FromMinutes(10), cancellationToken, maxErrors).ConfigureAwait(false);
+                // FUSE_SESSION names the caller's session in its environment, as a hook names one in its payload: with files
+                // it credits them to the session, and without files it answers for that session alone.
+                (result, _) = await CheckOperation.RunAsync(root, files, session: SessionOperation.EnvironmentSession, waitForLoad: true, compilationWideAnalyzers: true, TimeSpan.FromMinutes(10), cancellationToken, maxErrors).ConfigureAwait(false);
                 break;
             case "fuse_test":
                 var all = arguments.TryGetValue("all", out var flag) && flag.ValueKind == JsonValueKind.True;
                 var failed = arguments.TryGetValue("failed", out var retry) && retry.ValueKind == JsonValueKind.True;
                 if (all && failed)
                     return Text("fuse: failed reruns the tests that failed last time and cannot be combined with all; set only one of them", isError: true);
-                result = await TestOperation.RunAsync(root, root.Path, [], all, cancellationToken, failed: failed).ConfigureAwait(false);
+                result = await TestOperation.RunAsync(root, root.Path, [], all, cancellationToken, session: SessionOperation.EnvironmentSession, failed: failed).ConfigureAwait(false);
                 break;
             case "fuse_build":
                 var target = arguments.TryGetValue("target", out var t) && t.ValueKind == JsonValueKind.String ? t.GetString() : null;

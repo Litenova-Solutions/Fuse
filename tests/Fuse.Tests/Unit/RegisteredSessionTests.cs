@@ -165,6 +165,83 @@ public class RegisteredSessionTests
     }
 
     [Fact]
+    public void A_registration_tied_to_a_process_that_has_exited_is_uncredited_and_the_record_is_rewritten()
+    {
+        string? logged = null;
+        InTempFiles((sessions, registrations) =>
+        {
+            var running = true;
+            var edits = new SessionEdits(Root, sessions, registrations, processIsRunning: _ => running, log: message => logged = message);
+            edits.BeginRegistration("w1", ["Lib/**"], pid: 4242);
+            Assert.Equal(["registered:w1"], edits.WritersOf([Calc])[Calc]);
+
+            running = false;
+            var writers = edits.WritersOf([Calc]);
+
+            Assert.False(writers.ContainsKey(Calc));
+            Assert.Empty(File.ReadAllLines(registrations));
+            Assert.Equal("registered session w1 ended; its process exited, so its files count as no session's now", logged);
+        });
+    }
+
+    [Fact]
+    public void A_registration_tied_to_a_running_process_stays_credited_until_it_ends()
+    {
+        InTempFiles((sessions, registrations) =>
+        {
+            var edits = new SessionEdits(Root, sessions, registrations, processIsRunning: _ => true);
+            edits.BeginRegistration("w1", ["Lib/**"], pid: 4242);
+
+            Assert.Equal(["registered:w1"], edits.WritersOf([Calc])[Calc]);
+            Assert.True(edits.EndRegistration("w1"));
+            Assert.False(edits.WritersOf([Calc]).ContainsKey(Calc));
+        });
+    }
+
+    [Fact]
+    public void The_process_a_registration_is_tied_to_survives_a_restart()
+    {
+        InTempFiles((sessions, registrations) =>
+        {
+            new SessionEdits(Root, sessions, registrations, processIsRunning: _ => true).BeginRegistration("w1", ["Lib/**"], pid: 4242);
+
+            var edits = new SessionEdits(Root, sessions, registrations, processIsRunning: pid => pid == 4242);
+            var live = Assert.Single(edits.LiveRegistrations());
+
+            Assert.Equal(4242, live.Pid);
+            Assert.Equal(["registered:w1"], edits.WritersOf([Calc])[Calc]);
+            Assert.Contains("pid:4242", File.ReadAllText(registrations), StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
+    public void Beginning_again_without_a_process_drops_the_process_the_registration_was_tied_to()
+    {
+        InTempFiles((sessions, registrations) =>
+        {
+            var edits = new SessionEdits(Root, sessions, registrations, processIsRunning: _ => false);
+            edits.BeginRegistration("w1", ["Lib/**"], pid: 4242);
+            edits.BeginRegistration("w1", ["Lib/**"]);
+
+            Assert.Equal(["registered:w1"], edits.WritersOf([Calc])[Calc]);
+            Assert.Null(Assert.Single(edits.LiveRegistrations()).Pid);
+        });
+    }
+
+    [Fact]
+    public void A_process_id_that_names_no_process_ties_the_registration_to_no_process()
+    {
+        InTempFiles((sessions, registrations) =>
+        {
+            var edits = new SessionEdits(Root, sessions, registrations, processIsRunning: _ => false);
+            edits.BeginRegistration("w1", ["Lib/**"], pid: 0);
+
+            Assert.Equal(["registered:w1"], edits.WritersOf([Calc])[Calc]);
+            Assert.Null(Assert.Single(edits.LiveRegistrations()).Pid);
+        });
+    }
+
+    [Fact]
     public void A_line_that_does_not_read_back_is_skipped()
     {
         InTempFiles((sessions, registrations) =>

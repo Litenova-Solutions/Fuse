@@ -109,7 +109,7 @@ internal static class Program
             var (specs, specsRefusal) = CheckOperation.ResolveFiles(parsed.Files, Path.GetFullPath);
             if (specsRefusal is not null)
                 return Print(specsRefusal);
-            var (scoped, _) = await CheckOperation.RunScopedAsync(root, specs, parsed.MaxErrors, parsed.Json, TimeSpan.FromMinutes(10), cancellationToken, includeTreeStamp: true).ConfigureAwait(false);
+            var (scoped, _) = await CheckOperation.RunScopedAsync(root, specs, parsed.MaxErrors, parsed.Json, TimeSpan.FromMinutes(10), cancellationToken, includeTreeStamp: true, session: SessionOperation.EnvironmentSession).ConfigureAwait(false);
             return Print(scoped);
         }
 
@@ -121,7 +121,9 @@ internal static class Program
                 return Print(filesRefusal);
         }
 
-        var (result, _) = await CheckOperation.RunAsync(root, absolute, session: null, waitForLoad: true, compilationWideAnalyzers: true, TimeSpan.FromMinutes(10), cancellationToken, parsed.MaxErrors, parsed.Json, includeTreeStamp: true).ConfigureAwait(false);
+        // FUSE_SESSION names the caller's session in its environment, as a hook names one in its payload: with files it
+        // credits them to the session, and without files it answers for that session alone.
+        var (result, _) = await CheckOperation.RunAsync(root, absolute, session: SessionOperation.EnvironmentSession, waitForLoad: true, compilationWideAnalyzers: true, TimeSpan.FromMinutes(10), cancellationToken, parsed.MaxErrors, parsed.Json, includeTreeStamp: true).ConfigureAwait(false);
         return Print(result);
     }
 
@@ -166,6 +168,9 @@ internal static class Program
             session = args[index + 1];
             args = [.. args[..index], .. args[(index + 2)..]];
         }
+
+        // With no --session, FUSE_SESSION in the environment names the session, as it does for fuse check.
+        session ??= SessionOperation.EnvironmentSession;
 
         // --from-rewrite is the pre-shell hook's too: the command ran through Fuse, which the notice says.
         var fromRewrite = args.Contains("--from-rewrite");

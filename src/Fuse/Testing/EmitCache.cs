@@ -12,14 +12,22 @@ namespace Fuse.Testing;
 ///     The dependent version changes when a document, a project attribute or a reference of the project or of any
 ///     project it depends on changes. The build output's write time is in the key because the image carries the embedded
 ///     resources of the last built assembly. Only the bytes are kept, never a compilation, so the cache holds at most one
-///     image (assembly and PDB) per build output path. Not thread-safe: <see cref="TestPlanner"/> prepares one plan at a time.
+///     image (assembly and PDB) per build output path and at most <see cref="MaxEntries"/> images in all, the one unused
+///     the longest first to go. Not thread-safe: <see cref="TestPlanner"/> prepares one plan at a time.
 /// </remarks>
 internal sealed class EmitCache
 {
+    /// <summary>The most images kept; past it the image unused the longest goes.</summary>
+    internal const int MaxEntries = 32;
+
     private readonly Dictionary<string, Entry> _entries = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<string> _order = [];
 
     /// <summary>How many times an assembly was emitted, as opposed to taken from the cache.</summary>
     public int Emits { get; private set; }
+
+    /// <summary>How many images are kept.</summary>
+    public int Entries => _entries.Count;
 
     /// <summary>
     ///     The image of <paramref name="project"/> as its compilation in this snapshot has it, emitted once per change, or
@@ -33,10 +41,23 @@ internal sealed class EmitCache
         var version = await project.GetDependentVersionAsync(cancellationToken).ConfigureAwait(false);
         var built = File.GetLastWriteTimeUtc(output);
         if (_entries.TryGetValue(output, out var cached) && cached.Project == project.Id && cached.Version == version && cached.BuiltUtc == built)
+        {
+            _order.Remove(output);
+            _order.Add(output);
             return cached.Image;
+        }
 
         var image = await EmitAsync(project, output, cancellationToken).ConfigureAwait(false);
         _entries[output] = new Entry(project.Id, version, built, image);
+        _order.Remove(output);
+        _order.Add(output);
+        while (_entries.Count > MaxEntries)
+        {
+            var oldest = _order[0];
+            _order.RemoveAt(0);
+            _entries.Remove(oldest);
+        }
+
         return image;
     }
 

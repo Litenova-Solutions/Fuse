@@ -1,3 +1,4 @@
+using Fuse.Graph;
 using Fuse.Paths;
 using Fuse.Testing.Model;
 using Fuse.Workspace;
@@ -34,12 +35,22 @@ internal sealed class TestSelector
     }
 
     /// <summary>Selects tests for <paramref name="changedFiles"/>; the result holds each test project file's selection.</summary>
-    /// <param name="changedFiles">Changed files that an evaluated project owns.</param>
+    /// <param name="changedFiles">Changed files, C# sources and non-C# files alike.</param>
     /// <param name="cancellationToken">Cancels loading and both walks.</param>
     public async Task<SelectionResult> SelectAsync(IReadOnlyList<RepoPath> changedFiles, CancellationToken cancellationToken)
     {
         var graph = _workspace.Graph;
-        var changedProjects = changedFiles.SelectMany(graph.OwnersOf).DistinctBy(p => p.Path).ToList();
+        var nonSourceOwners = new Dictionary<RepoPath, IReadOnlyList<ProjectNode>>();
+        foreach (var path in changedFiles.Where(p => !PathRules.IsSource(p.Absolute)))
+        {
+            var owners = graph.NonSourceOwnersOf(path);
+            if (owners.Count == 0 && graph.ContainingProject(path) is { } containing)
+                owners = [containing];
+            if (owners.Count > 0)
+                nonSourceOwners[path] = owners;
+        }
+
+        var changedProjects = changedFiles.SelectMany(p => PathRules.IsSource(p.Absolute) ? graph.OwnersOf(p) : nonSourceOwners.GetValueOrDefault(p, [])).DistinctBy(p => p.Path).ToList();
         var reachedProjects = changedProjects.Concat(changedProjects.SelectMany(graph.DependentsOf)).DistinctBy(p => p.Path).ToList();
         if (!reachedProjects.Any(p => p.IsTest))
             return new SelectionResult(new Dictionary<RepoPath, TestSelection>(), 0, false);
@@ -51,6 +62,21 @@ internal sealed class TestSelector
         var seeds = new List<(Document Document, SyntaxNode Node)>();
         foreach (var path in changedFiles)
         {
+            if (!PathRules.IsSource(path.Absolute))
+            {
+                // A non-C# file has no declaration either walk can start from. A file an MSBuild item names, and a
+                // file under a project directory that no item names, belongs to its project, so every test project
+                // that depends on that project runs whole. A file outside every project selects nothing here; the
+                // plan names it.
+                if (nonSourceOwners.TryGetValue(path, out var nonSourceOwnerList))
+                {
+                    foreach (var owner in nonSourceOwnerList)
+                        walk.SelectDependentsWhole(owner, $"{path.FileName} changed");
+                }
+
+                continue;
+            }
+
             if (!path.Absolute.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
             {
                 // A Razor file (.razor, .cshtml) has no declaration either walk can start from, so every test project
@@ -79,10 +105,11 @@ internal sealed class TestSelector
         // The class-level answer costs milliseconds. The member walk costs a reference search per symbol, so it runs only
         // when the class-level answer is small enough for the refinement to matter and the walk to finish.
         var classes = classLevel.Values.OfType<TestSelection.Methods>().Sum(m => m.Patterns.Count);
-        var allSameCode = walk.DroppedSameCode == walk.ChangedDeclarations;
+        var allSameCode = walk.ChangedDeclarations > 0 && walk.DroppedSameCode == walk.ChangedDeclarations;
         if (classes > RefineThreshold)
         {
             _workspace.Log($"test selection: {classes} test classes reachable; selecting at class level");
+            AddBuildOnlySelections(graph, changedProjects, reachedProjects, classLevel);
             return new SelectionResult(classLevel, walk.DroppedSameCode, allSameCode);
         }
 
@@ -90,6 +117,7 @@ internal sealed class TestSelector
         if (!outcome.Completed)
         {
             _workspace.Log($"test selection: member walk over budget in {outcome.Milliseconds} ms, {outcome.Symbols} symbol(s), {classes} test class(es) reachable, {PatternsOf(classLevel)} pattern(s) selected; selecting at class level");
+            AddBuildOnlySelections(graph, changedProjects, reachedProjects, classLevel);
             return new SelectionResult(classLevel, walk.DroppedSameCode, allSameCode);
         }
 
@@ -98,8 +126,30 @@ internal sealed class TestSelector
         var memberLevel = new Dictionary<RepoPath, TestSelection>(walk.Selections);
         foreach (var (path, _) in seededWhole)
             memberLevel[path] = classLevel[path];
+        AddBuildOnlySelections(graph, changedProjects, reachedProjects, memberLevel);
         _workspace.Log($"test selection: member walk completed in {outcome.Milliseconds} ms, {outcome.Symbols} symbol(s), {classes} test class(es) reachable, {PatternsOf(memberLevel)} pattern(s) selected; selecting at member level");
         return new SelectionResult(memberLevel, walk.DroppedSameCode, allSameCode);
+    }
+
+    /// <summary>
+    ///     Selects every test project that reaches an application through a reference with ReferenceOutputAssembly
+    ///     false whole. Such a test starts the application as a child process, so neither walk follows it to a test by
+    ///     name, and a change in the application, or in code an application that was reached uses, selects it through
+    ///     the application host rule.
+    /// </summary>
+    private static void AddBuildOnlySelections(RepoGraph graph, IReadOnlyList<ProjectNode> changedProjects, IReadOnlyList<ProjectNode> reachedProjects, Dictionary<RepoPath, TestSelection> selections)
+    {
+        foreach (var application in reachedProjects.Where(p => p.IsExecutable))
+        {
+            var reason = changedProjects.Any(p => p.Path == application.Path)
+                ? $"{application.Name} changed and runs behind an application host"
+                : $"{application.Name} uses the changed code and runs behind an application host";
+            foreach (var test in HostRule.BuildOnlyDependentTestProjects(graph, application))
+            {
+                if (selections.GetValueOrDefault(test.Path) is not TestSelection.Whole)
+                    selections[test.Path] = new TestSelection.Whole(reason);
+            }
+        }
     }
 
     /// <summary>How many test name patterns the selections hold.</summary>

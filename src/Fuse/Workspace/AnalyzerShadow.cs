@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Fuse.Workspace;
 
 /// <summary>
-///     Loads a repository's own analyzers and source generators from a copy in the state directory. Roslyn keeps an
+///     Loads a repository's own analyzers and source generators from a copy in the shared directory. Roslyn keeps an
 ///     analyzer assembly open for as long as it is loaded, and the engine lives for 30 idle minutes, so an analyzer the
 ///     repository builds itself (a project referenced with <c>OutputItemType="Analyzer"</c>) would otherwise stay locked
 ///     under its <c>bin</c> folder, and the next real build of that project would fail to copy its output with MSB3021.
@@ -16,11 +16,15 @@ namespace Fuse.Workspace;
 ///     Only analyzers inside the repository are copied: package analyzers live in the NuGet cache and SDK analyzers in
 ///     the SDK, which no build writes. A copy holds the analyzer's whole directory, so its dependencies resolve next to it
 ///     as they do from the original, and a rebuilt analyzer gets a new copy, because the loader never unloads the old one.
+///     The copies of one repository's worktrees share one directory.
 /// </remarks>
 internal sealed class AnalyzerShadow
 {
     private readonly RepoRoot _root;
     private readonly string _directory;
+    /// <summary>Copies older than this are removed when an engine starts; younger ones may still be in use.</summary>
+    private static readonly TimeSpan CopyLifetime = TimeSpan.FromDays(7);
+
     private readonly Dictionary<RepoPath, (string Stamp, AnalyzerFileReference Reference)> _references = [];
     private Solution? _lastInput;
     private Solution? _lastOutput;
@@ -28,14 +32,19 @@ internal sealed class AnalyzerShadow
     public AnalyzerShadow(RepoRoot root)
     {
         _root = root;
-        _directory = Path.Combine(root.StateDirectory, "analyzers");
-        // Copies left by an earlier engine are no longer loaded by anything; a copy still in use is skipped.
+        _directory = Path.Combine(root.SharedStateDirectory, "analyzers");
+        // The directory is shared with the repository's other worktrees, so only copies no engine has written for a
+        // while are removed; a copy another engine still uses is skipped.
         try
         {
             if (Directory.Exists(_directory))
             {
                 foreach (var old in Directory.EnumerateDirectories(_directory))
+                {
+                    if (DateTime.UtcNow - Directory.GetLastWriteTimeUtc(old) <= CopyLifetime)
+                        continue;
                     TryDelete(old);
+                }
             }
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
@@ -92,7 +101,15 @@ internal sealed class AnalyzerShadow
                 Directory.CreateDirectory(staging);
                 foreach (var dll in Directory.EnumerateFiles(source, "*.dll"))
                     File.Copy(dll, Path.Combine(staging, Path.GetFileName(dll)), overwrite: true);
-                Directory.Move(staging, target);
+                try
+                {
+                    Directory.Move(staging, target);
+                }
+                catch (IOException) when (Directory.Exists(target))
+                {
+                    // Another engine copied the same directory first; its copy is used and this staging is dropped.
+                    TryDelete(staging);
+                }
             }
 
             var copy = Path.Combine(target, Path.GetFileName(file.FullPath));

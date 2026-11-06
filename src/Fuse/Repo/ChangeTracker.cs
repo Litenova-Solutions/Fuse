@@ -60,6 +60,9 @@ internal sealed class ChangeTracker : IDisposable
     /// <summary>The first changed non-sources by sorted relative path.</summary>
     public IReadOnlyList<RepoPath> NonSourceSample { get; private set; } = [];
 
+    /// <summary>The files that differ from HEAD and are not sources, including deleted ones.</summary>
+    public IReadOnlyCollection<RepoPath> NonSources => _nonSources;
+
     /// <summary>Reads git state and starts watching. Call once before <see cref="SyncAsync"/>.</summary>
     public async Task InitializeAsync(CancellationToken cancellationToken)
     {
@@ -94,6 +97,14 @@ internal sealed class ChangeTracker : IDisposable
                     paths.Add(path);
                 else if (!PathRules.IsProjectFile(path.Absolute))
                     watchedNonSources.Add(path);
+        }
+
+        // Git-ignored files the watcher reports are not changes: one batched check-ignore call per sync names them.
+        if (watchedNonSources.Count > 0)
+        {
+            var ignored = await GitStatus.IgnoredPathsAsync(_root, watchedNonSources, cancellationToken).ConfigureAwait(false);
+            watchedNonSources.ExceptWith(ignored);
+            _nonSources.ExceptWith(ignored);
         }
 
         // After HEAD moves or the watcher loses events, the reported paths are not the whole change, and past the limit

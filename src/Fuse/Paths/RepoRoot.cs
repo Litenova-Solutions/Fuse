@@ -11,7 +11,14 @@ namespace Fuse.Paths;
 /// </summary>
 internal sealed class RepoRoot
 {
-    private RepoRoot(string path) => Path = path;
+    private RepoRoot(string path)
+    {
+        Path = path;
+        GitCommonDirectory = CommonDirectory(path);
+        SharedStateDirectory = GitCommonDirectory is null
+            ? StateDirectory
+            : System.IO.Path.Combine(LocalState.Repositories, "shared-" + Hash(OperatingSystem.IsWindows() ? GitCommonDirectory.ToUpperInvariant() : GitCommonDirectory));
+    }
 
     /// <summary>Absolute canonical path without a trailing separator.</summary>
     public string Path { get; }
@@ -24,6 +31,21 @@ internal sealed class RepoRoot
     ///     It lives in the user's local application data, so Fuse never writes inside the repository.
     /// </summary>
     public string StateDirectory => System.IO.Path.Combine(LocalState.Repositories, PipeName["fuse-".Length..]);
+
+    /// <summary>
+    ///     The git common directory: what <c>git rev-parse --git-common-dir</c> answers, read from the <c>.git</c> file
+    ///     and its <c>commondir</c> file instead of starting git. Every worktree of one repository has the same one, so
+    ///     the state worktrees share is keyed by it. Null when it cannot be read, such as when the repository is damaged.
+    /// </summary>
+    public string? GitCommonDirectory { get; }
+
+    /// <summary>
+    ///     Directory for the state the worktrees of one repository share (stored baselines, analyzer copies), keyed by
+    ///     <see cref="GitCommonDirectory"/>. Sessions, build locks and logs stay in <see cref="StateDirectory"/>, one per
+    ///     worktree. When the common directory cannot be read this is the state directory, so nothing is shared but
+    ///     everything still works.
+    /// </summary>
+    public string SharedStateDirectory { get; }
 
     /// <summary>Finds the repository containing <paramref name="start"/>, or null when there is none.</summary>
     public static RepoRoot? Find(string start)
@@ -83,6 +105,50 @@ internal sealed class RepoRoot
     public bool Contains(string absolute) =>
         absolute.StartsWith(Path, RepoPath.Comparison)
         && (absolute.Length == Path.Length || absolute[Path.Length] == System.IO.Path.DirectorySeparatorChar || absolute[Path.Length] == System.IO.Path.AltDirectorySeparatorChar);
+
+    /// <summary>
+    ///     The canonical git common directory of the repository <paramref name="root"/>: its <c>.git</c> directory, or
+    ///     for a worktree or submodule the directory its <c>.git</c> file's <c>commondir</c> file names. Null when it
+    ///     cannot be read.
+    /// </summary>
+    private static string? CommonDirectory(string root)
+    {
+        try
+        {
+            var dotGit = System.IO.Path.Combine(root, ".git");
+            var gitDir = dotGit;
+            if (File.Exists(dotGit))
+            {
+                var line = File.ReadAllText(dotGit).Trim();
+                if (!line.StartsWith("gitdir:", StringComparison.Ordinal))
+                    return null;
+                var target = line["gitdir:".Length..].Trim();
+                if (target.Length == 0)
+                    return null;
+                gitDir = System.IO.Path.GetFullPath(System.IO.Path.IsPathRooted(target) ? target : System.IO.Path.Combine(root, target));
+            }
+            else if (!Directory.Exists(dotGit))
+            {
+                return null;
+            }
+
+            var common = gitDir;
+            var commonFile = System.IO.Path.Combine(gitDir, "commondir");
+            if (File.Exists(commonFile))
+            {
+                var text = File.ReadAllText(commonFile).Trim();
+                if (text.Length == 0)
+                    return null;
+                common = System.IO.Path.GetFullPath(System.IO.Path.IsPathRooted(text) ? text : System.IO.Path.Combine(gitDir, text));
+            }
+
+            return Canonicalize(common);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            return null;
+        }
+    }
 
     private static string Hash(string value)
     {

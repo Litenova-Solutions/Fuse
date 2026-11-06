@@ -10,12 +10,18 @@ namespace Fuse.Check;
 ///     belongs to its compilation, not to the check that started it: when that check's deadline passes or its client stops
 ///     waiting, the run goes on, so the next check of the same compilation finds it done instead of starting again. A
 ///     newer compilation of the same project on the same side stops the older one's runs, so at most one compilation per
-///     project and side is analyzed at a time.
+///     project and side is analyzed at a time. The newest wrapper of a project is held weakly, so it keeps no
+///     compilation after both views have moved on.
 /// </summary>
 internal sealed class CompilationAnalyses
 {
     private readonly ConditionalWeakTable<CompilationWithAnalyzers, Runs> _runs = new();
-    private readonly Dictionary<(ProjectId Project, bool Baseline), (CompilationWithAnalyzers Analyzers, CancellationTokenSource Stop)> _latest = [];
+
+    /// <summary>
+    ///     The newest wrapper of each project on each side and the token that stops its runs, held weakly: the wrapper
+    ///     roots its compilation, so a strong entry would keep that compilation after both views have moved on.
+    /// </summary>
+    private readonly Dictionary<(ProjectId Project, bool Baseline), (WeakReference<CompilationWithAnalyzers> Analyzers, CancellationTokenSource Stop)> _latest = [];
     private readonly Lock _lock = new();
 
     /// <summary>
@@ -67,7 +73,8 @@ internal sealed class CompilationAnalyses
         CancellationTokenSource? older = null;
         lock (_lock)
         {
-            if (_latest.TryGetValue((project, baseline), out var latest) && !ReferenceEquals(latest.Analyzers, analyzers))
+            if (_latest.TryGetValue((project, baseline), out var latest)
+                && (!latest.Analyzers.TryGetTarget(out var current) || !ReferenceEquals(current, analyzers)))
             {
                 older = latest.Stop;
                 _latest.Remove((project, baseline));
@@ -103,13 +110,13 @@ internal sealed class CompilationAnalyses
         older = null;
         if (_latest.TryGetValue((project, baseline), out var latest))
         {
-            if (ReferenceEquals(latest.Analyzers, analyzers))
+            if (latest.Analyzers.TryGetTarget(out var current) && ReferenceEquals(current, analyzers))
                 return latest.Stop.Token;
             older = latest.Stop;
         }
 
         var stop = new CancellationTokenSource();
-        _latest[(project, baseline)] = (analyzers, stop);
+        _latest[(project, baseline)] = (new WeakReference<CompilationWithAnalyzers>(analyzers), stop);
         return stop.Token;
     }
 

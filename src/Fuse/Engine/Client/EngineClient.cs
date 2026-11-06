@@ -32,7 +32,8 @@ internal static class EngineClient
         deadline.CancelAfter(timeout);
         try
         {
-            for (var attempt = 0; ; attempt++)
+            var restarts = 0;
+            for (var attempt = 0; ;)
             {
                 string? line;
                 try
@@ -48,6 +49,7 @@ internal static class EngineClient
                     // On Linux and macOS each pipe server instance accepts one connection and closes its socket, so a
                     // connection that arrives in between is reset. Every request is safe to send again.
                     await Task.Delay(50 * (attempt + 1), deadline.Token).ConfigureAwait(false);
+                    attempt++;
                     continue;
                 }
 
@@ -57,14 +59,20 @@ internal static class EngineClient
                 if (response is null)
                 {
                     if (attempt < 1)
+                    {
+                        attempt++;
                         continue;
+                    }
+
                     return new EngineResponse.Unanswered(ErrorCode.Internal, $"the Fuse engine closed the connection (see {Path.Combine(root.StateDirectory, "engine.log")})");
                 }
 
-                if (response is EngineResponse.Restart && attempt < 2)
+                if (response is EngineResponse.Restart)
                 {
-                    // An engine from another build is exiting; give it a moment to release the pipe and mutex.
-                    await Task.Delay(300, deadline.Token).ConfigureAwait(false);
+                    // An engine from another build is draining; wait with backoff for the matching engine to take its
+                    // place, within this request's own wait.
+                    restarts++;
+                    await Task.Delay(RestartDelay(restarts), deadline.Token).ConfigureAwait(false);
                     continue;
                 }
 
@@ -88,6 +96,19 @@ internal static class EngineClient
             return new EngineResponse.Unanswered(ErrorCode.Internal, $"could not start the Fuse engine: {e.Message}");
         }
     }
+
+    /// <summary>
+    ///     How long to wait after the <paramref name="nth"/> Restart in a row before sending the request again. The drained
+    ///     engine finishes its requests before it exits, so the wait grows from 300 ms to 5 s.
+    /// </summary>
+    private static TimeSpan RestartDelay(int nth) => nth switch
+    {
+        1 => TimeSpan.FromMilliseconds(300),
+        2 => TimeSpan.FromMilliseconds(600),
+        3 => TimeSpan.FromMilliseconds(1200),
+        4 => TimeSpan.FromMilliseconds(2400),
+        _ => TimeSpan.FromMilliseconds(5000),
+    };
 
     /// <summary>
     ///     Reads <paramref name="line"/> into <paramref name="response"/> and returns why it is not a complete answer, or

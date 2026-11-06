@@ -162,13 +162,15 @@ internal sealed class FixtureRepo : IDisposable
     }
 
     /// <summary>
-    ///     Deletes the repository and its state directory. An in-process engine records no root, so without this every
+    ///     Deletes the repository, its state directory and its shared state directory. An in-process engine records no root, so without this every
     ///     test run would leave state directories in the user's local application data that no cleanup can remove.
     /// </summary>
     public void Dispose()
     {
         DeleteDirectory(Path);
         DeleteDirectory(Root.StateDirectory);
+        if (Root.SharedStateDirectory != Root.StateDirectory)
+            DeleteDirectory(Root.SharedStateDirectory);
     }
 
     private static void DeleteDirectory(string directory)

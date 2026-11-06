@@ -29,6 +29,12 @@ name: Evals
 # The scale suite is check-only on a generated large tree: one job generates thousands of files, changes a quarter of
 # them, and measures one cold check and the engine's memory, uploading evals-scale-fixture-scale. Like attribution, it
 # runs only when the suites input names it.
+#
+# The concurrency suite is one job per repository: 1, 4, 10 and 20 simultaneous callers from distinct
+# sessions (post-edit checks, scoped checks, stops and test plans) against the repository, recording
+# queue time, engine time, errors, Busy answers, idle and peak working set and cold-start time, and
+# uploads evals-<repo>-concurrency. Like attribution and scale, it runs only when the suites input
+# names it.
 
 on:
   pull_request:
@@ -40,7 +46,7 @@ on:
         default: '["FluentValidation", "NodaTime", "Jellyfin", "Polly"]'
         required: true
       suites:
-        description: Suites to run, as a JSON array (correctness, selection, latency, attribution, analyzers, scale).
+        description: Suites to run, as a JSON array (correctness, selection, latency, attribution, analyzers, scale, concurrency).
         default: '["correctness", "selection", "latency"]'
         required: true
       fresh-truth:
@@ -70,6 +76,7 @@ jobs:
       attribution: ${{ steps.matrix.outputs.attribution }}
       analyzers: ${{ steps.matrix.outputs.analyzers }}
       scale: ${{ steps.matrix.outputs.scale }}
+      concurrency: ${{ steps.matrix.outputs.concurrency }}
       measure: ${{ steps.matrix.outputs.measure }}
     steps:
       - id: matrix
@@ -93,6 +100,7 @@ jobs:
           attribution = [r for r in repos] if "attribution" in suites else []
           analyzers = "analyzers" in suites
           scale = "scale" in suites
+          concurrency = [r for r in repos] if "concurrency" in suites else []
           # One call of evals-suite.yml per suite and repository, so a repository's measure job waits only for its own
           # truth. Jobs start in matrix order when the runners are all busy, so the longest go first: selection before
           # correctness, and the largest repositories first.
@@ -102,7 +110,7 @@ jobs:
           with open(os.environ["GITHUB_OUTPUT"], "a") as out:
               out.write(f"analyzers={str(analyzers).lower()}\n")
               out.write(f"scale={str(scale).lower()}\n")
-              for name, value in (("latency", latency), ("attribution", attribution), ("measure", measure)):
+              for name, value in (("latency", latency), ("attribution", attribution), ("measure", measure), ("concurrency", concurrency)):
                   out.write(f"{name}={json.dumps(value)}\n")
                   print(f"{name}: {json.dumps(value)}")
 
@@ -314,6 +322,58 @@ jobs:
         if: always()
         with:
           name: evals-scale-fixture-scale
+          path: out/
+          if-no-files-found: error
+
+  concurrency:
+    name: concurrency on ${{ matrix.repo }}
+    needs: [plan, build]
+    if: needs.plan.outputs.concurrency != '[]'
+    runs-on: windows-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        repo: ${{ fromJSON(needs.plan.outputs.concurrency) }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          # The pinned repositories test on .NET 8 and 9 as well; global.json adds the SDK that builds Fuse.
+          dotnet-version: |
+            8.0.x
+            9.0.x
+          global-json-file: global.json
+      - uses: actions/download-artifact@v8
+        with:
+          name: build
+      - *identity
+      - *packages
+      - *clone
+      - name: Run concurrency with the native client
+        run: |
+          $EVALS concurrency "${{ matrix.repo }}" --fuse "$(cygpath -w "$PWD/artifacts/native/fuse.exe")"
+          mkdir -p out/results
+          git ls-files --others --exclude-standard evals/results | xargs -I{} mv {} out/results/
+      - *runner
+      - name: Keep the engine logs
+        if: always()
+        # The engine log and hook log of every repository the run used, so a failed or slow caller can be
+        # read without running it again.
+        run: |
+          mkdir -p out/engine-logs
+          for d in "$(cygpath -u "$LOCALAPPDATA")"/fuse/repos/*/; do
+            [ -d "$d" ] || continue
+            n=$(basename "$d"); mkdir -p "out/engine-logs/$n"
+            cp "$d"engine.log "$d"hook.log "$d"root "out/engine-logs/$n/" 2>/dev/null || true
+          done
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: evals-${{ matrix.repo }}-concurrency
           path: out/
           if-no-files-found: error
 

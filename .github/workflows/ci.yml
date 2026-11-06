@@ -37,6 +37,7 @@ jobs:
     needs: [format]
     if: github.event_name != 'workflow_dispatch'
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       max-parallel: 18
@@ -80,12 +81,13 @@ jobs:
 
       - name: Test
         shell: bash
-        run: dotnet test --solution Fuse.slnx -c Release --no-build ${{ matrix.shard.filter }}
+        run: dotnet test --solution Fuse.slnx -c Release --no-build --hangdump --hangdump-timeout 20m ${{ matrix.shard.filter }}
 
   targeted:
     name: Test ${{ inputs.filter }} (${{ matrix.os }})
     if: github.event_name == 'workflow_dispatch'
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -110,7 +112,7 @@ jobs:
         env:
           FILTER: ${{ inputs.filter }}
         # The filter splits into its arguments on purpose.
-        run: dotnet test --solution Fuse.slnx -c Release --no-build $FILTER
+        run: dotnet test --solution Fuse.slnx -c Release --no-build --hangdump --hangdump-timeout 20m $FILTER
 
   # The gate builds once and checks formatting before any shard starts, so a compile or format error fails in
   # minutes instead of failing all 18 test jobs.

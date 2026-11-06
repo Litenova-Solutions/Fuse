@@ -22,9 +22,9 @@ public class SchedulerTests
     public async Task Readers_run_up_to_the_pool_and_the_next_request_waits()
     {
         using var scheduler = new Scheduler(2);
-        var first = await scheduler.EnterAsync(SchedulerLane.Command, "CheckFiles", 0, TestContext.Current.CancellationToken);
-        var second = await scheduler.EnterAsync(SchedulerLane.Command, "CheckChanges", 0, TestContext.Current.CancellationToken);
-        var third = scheduler.EnterAsync(SchedulerLane.Command, "PlanAllTests", 0, TestContext.Current.CancellationToken);
+        var first = await scheduler.EnterAsync(SchedulerLane.Interactive, "CheckFiles", 0, TestContext.Current.CancellationToken);
+        var second = await scheduler.EnterAsync(SchedulerLane.Interactive, "CheckChanges", 0, TestContext.Current.CancellationToken);
+        var third = scheduler.EnterAsync(SchedulerLane.Interactive, "PlanAllTests", 0, TestContext.Current.CancellationToken);
 
         await Task.Delay(50, TestContext.Current.CancellationToken);
         Assert.False(third.IsCompleted);
@@ -36,6 +36,26 @@ public class SchedulerTests
         Assert.Equal("CheckChanges", admitted.GateHolder);
         admitted.Dispose();
         second.Dispose();
+    }
+
+    [Fact]
+    public async Task One_reader_stays_free_for_an_interactive_request_while_commands_wait()
+    {
+        using var scheduler = new Scheduler(2);
+        var command = await scheduler.EnterAsync(SchedulerLane.Command, "CheckPaths", 0, TestContext.Current.CancellationToken);
+        var secondCommand = scheduler.EnterAsync(SchedulerLane.Command, "CheckChanges", 0, TestContext.Current.CancellationToken);
+
+        await Task.Delay(50, TestContext.Current.CancellationToken);
+        Assert.False(secondCommand.IsCompleted);
+
+        // The free reader is the interactive lane's: a post-edit check starts at once beside the running command.
+        var interactive = await scheduler.EnterAsync(SchedulerLane.Interactive, "CheckFiles", 0, TestContext.Current.CancellationToken)
+            .WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        Assert.Equal(2, scheduler.RunningCount);
+
+        interactive.Dispose();
+        command.Dispose();
+        (await secondCommand.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken)).Dispose();
     }
 
     [Fact]

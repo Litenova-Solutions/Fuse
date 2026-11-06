@@ -307,9 +307,17 @@ internal sealed class Scheduler : IDisposable
     {
         while (_running.Count < ReaderCount && _waiters.Count > 0)
         {
+            // One reader stays free for interactive requests, so an agent's post-edit or stop never waits behind long
+            // command checks and test plans; background work takes at most one reader.
+            var nonInteractive = _running.Count(r => r.Lane != SchedulerLane.Interactive);
+            var commandLimit = Math.Max(1, ReaderCount - 1);
             var next = _waiters.Find(w => w.Lane == SchedulerLane.Interactive)
-                ?? _waiters.Find(w => w.Lane == SchedulerLane.Command)
-                ?? _waiters[0];
+                ?? (nonInteractive < commandLimit ? _waiters.Find(w => w.Lane == SchedulerLane.Command) : null)
+                ?? (nonInteractive < commandLimit && !_running.Any(r => r.Lane == SchedulerLane.Background)
+                    ? _waiters.Find(w => w.Lane == SchedulerLane.Background)
+                    : null);
+            if (next is null)
+                break;
             _waiters.Remove(next);
             var now = Stopwatch.GetTimestamp();
             var gateHolder = _running.Count == 0

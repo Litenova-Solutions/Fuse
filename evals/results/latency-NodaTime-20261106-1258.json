@@ -1,0 +1,638 @@
+{
+  "suite": "latency",
+  "repo": "NodaTime",
+  "commit": "fcd80e11216ba403ccce0abbcedc41ba37bb352e",
+  "fuseBuild": "6.0.0/b24b111aad3943d6982f25f88c8d43dd",
+  "target": "src/NodaTime/Text/Patterns/SteppedPatternBuilder.cs",
+  "method": "Format",
+  "referencingFilesInOtherProjects": 46,
+  "coldCleanMs": 4085.7976,
+  "coldBodyEditMs": 9295.7277,
+  "bodyEdit": {
+    "p50": 815.9,
+    "p95": 1120.5,
+    "max": 1120.5,
+    "n": 15
+  },
+  "signatureEdit": {
+    "p50": 3938.6,
+    "p95": 15679.8,
+    "max": 15679.8,
+    "n": 10
+  },
+  "signatureEditSample": "fuse: 1 error(s) introduced in 1 file(s) (NodaTime); NodaTime declarations changed, 11 dependent project(s) checked; tree efce2c4c5b58 over 1 changed file(s)",
+  "warmUnchanged": {
+    "p50": 37.7,
+    "p95": 41.7,
+    "max": 41.7,
+    "n": 10
+  },
+  "part": "all",
+  "testRound": {
+    "p50": 57837.8,
+    "p95": 68765.5,
+    "max": 68765.5,
+    "n": 5
+  },
+  "bodyEditPhases": {
+    "phases": {
+      "bindAnalyzers": {
+        "p50": 398,
+        "p95": 473,
+        "max": 473,
+        "n": 15
+      },
+      "bindCompiler": {
+        "p50": 307,
+        "p95": 398,
+        "max": 398,
+        "n": 15
+      },
+      "bindFrameworks": {
+        "p50": 2,
+        "p95": 2,
+        "max": 2,
+        "n": 15
+      },
+      "bindTargets": {
+        "p50": 724.9,
+        "p95": 979.9,
+        "max": 979.9,
+        "n": 15
+      },
+      "bindUpdate": {
+        "p50": 22,
+        "p95": 147,
+        "max": 147,
+        "n": 15
+      },
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 15
+      },
+      "load": {
+        "p50": 0,
+        "p95": 0.1,
+        "max": 0.1,
+        "n": 15
+      },
+      "surfaceDiff": {
+        "p50": 10.3,
+        "p95": 45.1,
+        "max": 45.1,
+        "n": 15
+      },
+      "sync": {
+        "p50": 4.1,
+        "p95": 91.3,
+        "max": 91.3,
+        "n": 15
+      },
+      "total": {
+        "p50": 766,
+        "p95": 1015,
+        "max": 1015,
+        "n": 15
+      }
+    },
+    "outsideEngine": {
+      "p50": 58.6,
+      "p95": 105.5,
+      "max": 105.5,
+      "n": 15
+    },
+    "n": 15
+  },
+  "signatureEditPhases": {
+    "phases": {
+      "bindAnalyzers": {
+        "p50": 217,
+        "p95": 554,
+        "max": 554,
+        "n": 10
+      },
+      "bindCandidates": {
+        "p50": 3378.4,
+        "p95": 9836.2,
+        "max": 9836.2,
+        "n": 10
+      },
+      "bindCompiler": {
+        "p50": 121,
+        "p95": 409,
+        "max": 409,
+        "n": 10
+      },
+      "bindFrameworks": {
+        "p50": 2,
+        "p95": 2,
+        "max": 2,
+        "n": 10
+      },
+      "bindTargets": {
+        "p50": 355.1,
+        "p95": 987.3,
+        "max": 987.3,
+        "n": 10
+      },
+      "bindUpdate": {
+        "p50": 16,
+        "p95": 36,
+        "max": 36,
+        "n": 10
+      },
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 10
+      },
+      "load": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 10
+      },
+      "loadDependents": {
+        "p50": 0,
+        "p95": 0.1,
+        "max": 0.1,
+        "n": 10
+      },
+      "referenceSearch": {
+        "p50": 4.2,
+        "p95": 4970.7,
+        "max": 4970.7,
+        "n": 10
+      },
+      "surfaceDiff": {
+        "p50": 3.9,
+        "p95": 18.7,
+        "max": 18.7,
+        "n": 10
+      },
+      "sync": {
+        "p50": 4.1,
+        "p95": 15,
+        "max": 15,
+        "n": 10
+      },
+      "total": {
+        "p50": 3890,
+        "p95": 15625,
+        "max": 15625,
+        "n": 10
+      }
+    },
+    "outsideEngine": {
+      "p50": 44.5,
+      "p95": 141.2,
+      "max": 141.2,
+      "n": 10
+    },
+    "n": 10
+  },
+  "warmUnchangedPhases": {
+    "phases": {
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 10
+      },
+      "total": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 10
+      }
+    },
+    "outsideEngine": {
+      "p50": 37.7,
+      "p95": 41.7,
+      "max": 41.7,
+      "n": 10
+    },
+    "n": 10
+  },
+  "testRoundPhases": {
+    "phases": {
+      "emit": {
+        "p50": 1116.7,
+        "p95": 2363.3,
+        "max": 2363.3,
+        "n": 5
+      },
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 5
+      },
+      "mirror": {
+        "p50": 176.1,
+        "p95": 550.8,
+        "max": 550.8,
+        "n": 5
+      },
+      "selection": {
+        "p50": 45.2,
+        "p95": 88.8,
+        "max": 88.8,
+        "n": 5
+      },
+      "sync": {
+        "p50": 42.3,
+        "p95": 45.8,
+        "max": 45.8,
+        "n": 5
+      },
+      "total": {
+        "p50": 1422,
+        "p95": 3031,
+        "max": 3031,
+        "n": 5
+      }
+    },
+    "outsideEngine": {
+      "p50": 55884.8,
+      "p95": 65734.5,
+      "max": 65734.5,
+      "n": 5
+    },
+    "n": 5
+  },
+  "noCodeChange": {
+    "edits": [
+      {
+        "kind": "comment",
+        "checkMs": 1010.5339,
+        "filesChecked": 1,
+        "checkErrors": 0,
+        "testMs": 5080.427,
+        "testsSelected": 0,
+        "testsRun": 0,
+        "noCodeChange": true,
+        "note": null
+      },
+      {
+        "kind": "local-rename",
+        "checkMs": 871.0453,
+        "filesChecked": 1,
+        "checkErrors": 0,
+        "testMs": 309.8938,
+        "testsSelected": 0,
+        "testsRun": 0,
+        "noCodeChange": true,
+        "note": null
+      },
+      {
+        "kind": "reformat",
+        "checkMs": 845.6161,
+        "filesChecked": 1,
+        "checkErrors": 0,
+        "testMs": 124.0176,
+        "testsSelected": 0,
+        "testsRun": 0,
+        "noCodeChange": true,
+        "note": null
+      },
+      {
+        "kind": "using-sort",
+        "checkMs": 871.3193,
+        "filesChecked": 1,
+        "checkErrors": 0,
+        "testMs": 155.5375,
+        "testsSelected": 0,
+        "testsRun": 0,
+        "noCodeChange": true,
+        "note": null
+      },
+      {
+        "kind": "whitespace",
+        "checkMs": 830.9159,
+        "filesChecked": 1,
+        "checkErrors": 0,
+        "testMs": 172.0499,
+        "testsSelected": 0,
+        "testsRun": 0,
+        "noCodeChange": true,
+        "note": null
+      }
+    ],
+    "check": {
+      "p50": 871,
+      "p95": 1010.5,
+      "max": 1010.5,
+      "n": 5
+    },
+    "testRound": {
+      "p50": 172,
+      "p95": 5080.4,
+      "max": 5080.4,
+      "n": 5
+    },
+    "checkPhases": {
+      "phases": {
+        "bindAnalyzers": {
+          "p50": 424,
+          "p95": 492,
+          "max": 492,
+          "n": 5
+        },
+        "bindCompiler": {
+          "p50": 351,
+          "p95": 377,
+          "max": 377,
+          "n": 5
+        },
+        "bindFrameworks": {
+          "p50": 2,
+          "p95": 2,
+          "max": 2,
+          "n": 5
+        },
+        "bindTargets": {
+          "p50": 789.6,
+          "p95": 906.6,
+          "max": 906.6,
+          "n": 5
+        },
+        "bindUpdate": {
+          "p50": 27,
+          "p95": 35,
+          "max": 35,
+          "n": 5
+        },
+        "gate": {
+          "p50": 0,
+          "p95": 0.1,
+          "max": 0.1,
+          "n": 5
+        },
+        "load": {
+          "p50": 0,
+          "p95": 0.1,
+          "max": 0.1,
+          "n": 5
+        },
+        "surfaceDiff": {
+          "p50": 10,
+          "p95": 34.1,
+          "max": 34.1,
+          "n": 5
+        },
+        "sync": {
+          "p50": 4.1,
+          "p95": 11.7,
+          "max": 11.7,
+          "n": 5
+        },
+        "total": {
+          "p50": 812,
+          "p95": 953,
+          "max": 953,
+          "n": 5
+        }
+      },
+      "outsideEngine": {
+        "p50": 49.6,
+        "p95": 59.3,
+        "max": 59.3,
+        "n": 5
+      },
+      "n": 5
+    },
+    "testRoundPhases": {
+      "phases": {
+        "gate": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 5
+        },
+        "selection": {
+          "p50": 98.7,
+          "p95": 3993.1,
+          "max": 3993.1,
+          "n": 5
+        },
+        "sync": {
+          "p50": 1.6,
+          "p95": 21.8,
+          "max": 21.8,
+          "n": 5
+        },
+        "total": {
+          "p50": 109,
+          "p95": 5016,
+          "max": 5016,
+          "n": 5
+        }
+      },
+      "outsideEngine": {
+        "p50": 63,
+        "p95": 74.9,
+        "max": 74.9,
+        "n": 5
+      },
+      "n": 5
+    }
+  },
+  "multiAgent": {
+    "writers": {
+      "clients": 4,
+      "editsPerClient": 10,
+      "wallMs": 48632.524,
+      "checks": 40,
+      "unanswered": 0,
+      "notRun": 0,
+      "gate": {
+        "p50": 2.3,
+        "p95": 103.3,
+        "max": 148.7,
+        "n": 40
+      },
+      "gateByHolder": {
+        "CheckChanges": {
+          "p50": 59.8,
+          "p95": 148.7,
+          "max": 148.7,
+          "n": 7
+        },
+        "CheckFiles": {
+          "p50": 2.3,
+          "p95": 96,
+          "max": 103.3,
+          "n": 20
+        },
+        "PlanAffectedTests": {
+          "p50": 36.1,
+          "p95": 63.3,
+          "max": 63.3,
+          "n": 5
+        }
+      },
+      "engineTotal": {
+        "p50": 62,
+        "p95": 157,
+        "max": 297,
+        "n": 40
+      },
+      "singleClientTotalP50": 500
+    },
+    "builds": {
+      "clients": 3,
+      "rounds": 5,
+      "wallMs": 2633.0865,
+      "each": {
+        "p50": 285.3,
+        "p95": 693.1,
+        "max": 693.1,
+        "n": 15
+      },
+      "collisions": 0,
+      "collisionSamples": []
+    },
+    "rounds": [
+      {
+        "index": 1,
+        "project": "NodaTime.csproj",
+        "edit": "src\\NodaTime\\AnnualDate.cs",
+        "ms": 42182.0222,
+        "testProjects": [
+          "NodaTime.Test",
+          "NodaTime.Demo",
+          "NodaTime.TzdbCompiler.Test"
+        ],
+        "failingTests": 0
+      },
+      {
+        "index": 2,
+        "project": "NodaTime.Testing.csproj",
+        "edit": "src\\NodaTime.Testing\\FakeClock.cs",
+        "ms": 39769.8697,
+        "testProjects": [
+          "NodaTime.Test",
+          "NodaTime.Demo",
+          "NodaTime.TzdbCompiler.Test"
+        ],
+        "failingTests": 0
+      },
+      {
+        "index": 3,
+        "project": "NodaTime.Testing.csproj",
+        "edit": "src\\NodaTime.Testing\\FakeClock.cs",
+        "ms": 39032.3742,
+        "testProjects": [
+          "NodaTime.Test",
+          "NodaTime.Demo",
+          "NodaTime.TzdbCompiler.Test"
+        ],
+        "failingTests": 0
+      }
+    ],
+    "attribution": {
+      "renamedIn": "src/NodaTime/CalendarSystem.cs",
+      "method": "GetHebrewCalendar",
+      "brokenIn": "src/NodaTime.Benchmarks/NodaTimeTests/Calendars/HebrewCalendarBenchmarks.cs",
+      "ownWithoutSessions": 12,
+      "otherWithoutSessions": 3,
+      "ownWithSessions": 12,
+      "otherWithSessions": 0,
+      "leftToOtherSessions": 3,
+      "msWithoutSessions": 98.7139,
+      "msWithSessions": 222.8266
+    },
+    "stops": {
+      "changedFiles": 11,
+      "firstMs": 1917.8171,
+      "repeat": {
+        "p50": 181.7,
+        "p95": 188.9,
+        "max": 188.9,
+        "n": 5
+      },
+      "mostReused": 14
+    },
+    "tests": {
+      "edit": "src/NodaTime/AnnualDate.cs",
+      "aloneMs": 40097.0056,
+      "pairWallMs": 74447.8876,
+      "pairEach": {
+        "p50": 42121.6,
+        "p95": 74446,
+        "max": 74446,
+        "n": 2
+      },
+      "notPassed": 0
+    },
+    "stopsUnchangedRepeat": [
+      {
+        "ms": 57.0464,
+        "documentsBound": 0
+      },
+      {
+        "ms": 52.1031,
+        "documentsBound": 0
+      },
+      {
+        "ms": 39.1693,
+        "documentsBound": 0
+      }
+    ],
+    "scopeOnly": [
+      {
+        "form": "directory",
+        "arg": "src/NodaTime.Demo",
+        "projectsPlanned": 3,
+        "testsSelected": 145,
+        "mode": "shadow",
+        "ms": 3958.1134
+      },
+      {
+        "form": "project",
+        "arg": "src/NodaTime.Demo/NodaTime.Demo.csproj",
+        "projectsPlanned": 3,
+        "testsSelected": 145,
+        "mode": "shadow",
+        "ms": 2551.7367
+      },
+      {
+        "form": "build-only",
+        "arg": "--no-build",
+        "projectsPlanned": 3,
+        "testsSelected": 1883,
+        "mode": "msbuild",
+        "ms": 38909.1082
+      }
+    ],
+    "plainRun": {
+      "form": "plain",
+      "arg": "",
+      "projectsPlanned": 3,
+      "testsSelected": 1883,
+      "mode": "msbuild",
+      "ms": 44869.4862
+    },
+    "wholeRun": {
+      "form": "all",
+      "arg": "--all",
+      "projectsPlanned": 3,
+      "testsSelected": 42736,
+      "mode": "msbuild",
+      "ms": 44876.5567
+    },
+    "scopeRefusal": {
+      "arg": "src/NodaTime",
+      "refused": true,
+      "exitCode": 2
+    }
+  },
+  "engineWorkingSetMb": 352,
+  "enginePeakWorkingSetMb": 834.6,
+  "engineIdleWorkingSetMb": 349.7,
+  "treeCleanAfter": true
+}

@@ -90,13 +90,13 @@ internal sealed class ShadowEmitter
 
 
     public ShadowEmitter(RepoWorkspace workspace)
-        : this(workspace, null, new SharedState())
+        : this(workspace, (Solution?)null, new SharedState())
     {
     }
 
     /// <summary>An emitter over <paramref name="shared"/> state whose declarations compare against the workspace's baseline.</summary>
     internal ShadowEmitter(RepoWorkspace workspace, SharedState shared)
-        : this(workspace, null, shared)
+        : this(workspace, (Solution?)null, shared)
     {
     }
 

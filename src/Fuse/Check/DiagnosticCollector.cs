@@ -204,7 +204,7 @@ internal sealed class DiagnosticCollector
     ///     null when none of those projects is stored. The stored project results hold the errors of every file, so a
     ///     file reads its own from them without a baseline compilation.
     /// </summary>
-    private IReadOnlyList<CompilerError>? StoredProjectErrorsFor(Solution baseline, string baselineKey, RepoPath path)
+    private List<CompilerError>? StoredProjectErrorsFor(Solution baseline, string baselineKey, RepoPath path)
     {
         var result = new List<CompilerError>();
         var stored = false;
@@ -228,7 +228,7 @@ internal sealed class DiagnosticCollector
     /// </summary>
     private async Task<IReadOnlyList<CompilerError>?> StoredFileErrorsForAsync(Project project, string baselineKey, bool compilationWide, CancellationToken cancellationToken)
     {
-        if ((await project.GetSourceGeneratedDocumentsAsync(cancellationToken).ConfigureAwait(false)).Length > 0)
+        if ((await project.GetSourceGeneratedDocumentsAsync(cancellationToken).ConfigureAwait(false)).Any())
             return null;
         var paths = project.Documents.Select(d => d.FilePath).OfType<string>().Select(_root.PathOf).Distinct().ToList();
         if (paths.Count == 0)

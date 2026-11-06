@@ -250,7 +250,7 @@ internal sealed class SummaryCache
     ///     the metadata a summary carries cannot name, so no summary is kept for the project and a dependent
     ///     binds it from source, where the declaring file is a syntax reference.
     /// </summary>
-    private async Task<bool> DeclaresTypeInGeneratedFileAsync(Project project, CancellationToken cancellationToken)
+    private static async Task<bool> DeclaresTypeInGeneratedFileAsync(Project project, CancellationToken cancellationToken)
     {
         if (Path.GetDirectoryName(project.FilePath) is not { } directory)
             return false;

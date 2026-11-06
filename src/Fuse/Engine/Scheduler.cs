@@ -201,7 +201,7 @@ internal sealed class Scheduler : IDisposable
                     // Retired under the lock, so a waiter that arrives before the cancellation lands starts
                     // the work again (above) instead of joining this check.
                     shared.Abandoned = true;
-                    if (_inflight.TryGetValue(key, out var current) && ReferenceEquals(current, shared))
+                    if (_inflight.TryGetValue(key, out var registered) && ReferenceEquals(registered, shared))
                         _inflight.Remove(key);
                     cancel = true;
                 }

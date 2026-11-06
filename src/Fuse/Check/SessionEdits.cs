@@ -198,9 +198,10 @@ internal sealed class SessionEdits
 
     /// <summary>
     ///     Drops the record of every file not in <paramref name="changed"/>: such a file matches HEAD again, so the sessions
-    ///     that wrote it are not credited with it when it changes again.
+    ///     that wrote it are not credited with it when it changes again. The caller passes the changed set a sync has
+    ///     just verified against HEAD, so a file the tracker has not folded in yet is never dropped by this call.
     /// </summary>
-    /// <param name="changed">Every file that differs from HEAD now.</param>
+    /// <param name="changed">Every file that differs from HEAD now, as the tracker verified after a sync.</param>
     public void Forget(IReadOnlyCollection<RepoPath> changed)
     {
         lock (_lock)
@@ -222,15 +223,21 @@ internal sealed class SessionEdits
         }
     }
 
-    /// <summary>The sessions that wrote each of <paramref name="changed"/>, for the files any session wrote, after <see cref="Forget"/> drops the others.</summary>
+    /// <summary>
+    ///     The sessions that wrote each of <paramref name="changed"/>, for the files any session wrote. This read drops
+    ///     nothing: its <paramref name="changed"/> may come from a generation pinned before a session recorded its
+    ///     file, as the background re-check reads it without a sync, so a writer the set does not name yet stays
+    ///     recorded until <see cref="Forget"/> drops it from a set the tracker verified.
+    /// </summary>
     /// <param name="changed">Every file that differs from HEAD now.</param>
     public Dictionary<RepoPath, IReadOnlySet<string>> WritersOf(IReadOnlyCollection<RepoPath> changed)
     {
         lock (_lock)
         {
             PruneExpired();
-            ForgetUnchanged(changed);
-            var writers = _writers.ToDictionary(w => w.Key, IReadOnlySet<string> (w) => w.Value.ToHashSet(StringComparer.Ordinal));
+            var current = changed as IReadOnlySet<RepoPath> ?? changed.ToHashSet();
+            var writers = _writers.Where(w => current.Contains(w.Key))
+                .ToDictionary(w => w.Key, IReadOnlySet<string> (w) => w.Value.ToHashSet(StringComparer.Ordinal));
             foreach (var path in changed)
             {
                 foreach (var registration in _registrations)

@@ -404,7 +404,8 @@ internal sealed class RequestRouter : IDisposable
 
     /// <summary>
     ///     The live sessions of the newest generation and the files each wrote in it, from its writers without a
-    ///     sync: a session with no changed file in it is not re-checked.
+    ///     sync: a session with no changed file in it is not re-checked. The generation may predate a credit a
+    ///     kept answer recorded, so this read drops no credit; only a sync that verifies a file matches HEAD does.
     /// </summary>
     private IReadOnlyList<BackgroundCheck.SessionFiles> LiveSessionFiles()
     {

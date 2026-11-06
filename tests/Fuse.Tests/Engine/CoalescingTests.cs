@@ -184,6 +184,9 @@ public class CoalescingTests
     [Fact]
     public async Task A_check_of_every_change_answers_for_a_file_written_without_telling_the_engine()
     {
+        // Only macOS confirms with git, because only its file watcher reports a write late; elsewhere the watcher is the
+        // confirmation, and a request sent microseconds after the write in process would race it.
+        Assert.SkipUnless(OperatingSystem.IsMacOS(), "the changed set is confirmed against git only on macOS");
         using var repo = FixtureRepo.CreateStandard();
         await using var engine = await InProcessRequestRouter.StartAsync(repo);
 

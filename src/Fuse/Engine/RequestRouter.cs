@@ -131,10 +131,12 @@ internal sealed class RequestRouter : IDisposable
             // the tree without it would answer for that tree (and stamp it). The sync confirms the changed
             // set against disk before any kept answer is served, and the key is taken from the generation
             // it publishes. Hooks name their files, which the check itself syncs in by name, so they are
-            // not affected by this.
+            // not affected by this. Only macOS confirms with git: its file watcher can report a write late,
+            // while Windows and Linux report it before another process can ask, and git costs tens of
+            // milliseconds on a large repository.
             try
             {
-                await _workspace.SyncAndPinAsync([], cancellationToken, confirmWithDisk: true).ConfigureAwait(false);
+                await _workspace.SyncAndPinAsync([], cancellationToken, confirmWithDisk: OperatingSystem.IsMacOS()).ConfigureAwait(false);
                 key = CoalesceKey(request);
             }
             catch (FuseException)

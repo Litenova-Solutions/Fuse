@@ -45,7 +45,7 @@
       "url": "https://fuse.codes/docs/messages",
       "mainEntityOfPage": "https://fuse.codes/docs/messages",
       "inLanguage": "en",
-      "dateModified": "2026-10-29",
+      "dateModified": "2026-11-06",
       "image": "https://fuse.codes/assets/og.png",
       "isPartOf": {
         "@type": "WebSite",
@@ -140,6 +140,7 @@
         <li><a href="#invalidpath">InvalidPath</a></li>
         <li><a href="#noregisteredsession">NoRegisteredSession</a></li>
         <li><a href="#internal">Internal</a></li>
+        <li><a href="#busy">Busy</a></li>
         <li><a href="#usage-failures">Usage failures</a></li>
         <li><a href="#no-failures-to-rerun">No failures to rerun</a></li>
         <li><a href="#no-container-runtime">No container runtime</a></li>
@@ -149,7 +150,7 @@
 
     <h2 id="notarepository">NotARepository <a class="anchor" href="#notarepository" aria-label="Link to this section">#</a></h2>
     <pre class="out" data-label="Message"><code>fuse: not inside a git repository; Fuse compares your changes with HEAD, so it needs one</code></pre>
-    <p><strong>Cause.</strong> When the working directory is not inside a git repository, <code>fuse check</code>, <code>fuse test</code>, <code>fuse status</code>, <code>fuse session</code>, <code>fuse stop</code>, <code>fuse init</code> and <code>fuse uninit</code> print this message on standard error, and <code>fuse mcp</code> returns this message. For an MCP server, the working directory is the directory where you started it. <code>fuse build</code> runs outside a repository. Only <code>fuse build --changed</code> needs a repository.</p>
+    <p><strong>Cause.</strong> When the working directory is not inside a git repository, <code>fuse check</code>, <code>fuse test</code>, <code>fuse status</code>, <code>fuse session</code>, <code>fuse watch</code>, <code>fuse stop</code>, <code>fuse init</code> and <code>fuse uninit</code> print this message on standard error, and <code>fuse mcp</code> returns this message. For an MCP server, the working directory is the directory where you started it. <code>fuse build</code> runs outside a repository. Only <code>fuse build --changed</code> needs a repository.</p>
     <p><strong>Fix.</strong> Run the command inside the repository, or run <code>git init</code> and commit.</p>
 
     <h2 id="noprojects">NoProjects <a class="anchor" href="#noprojects" aria-label="Link to this section">#</a></h2>
@@ -206,13 +207,18 @@ fuse: "&lt;name&gt;" is not a valid session name; use 1 to 64 letters, digits, -
 fuse: "&lt;pattern&gt;" is not a valid path pattern; use forward slashes, * and ? inside a segment, ** as a whole segment, no .. segment
 fuse: a session holds at most 32 path patterns, not &lt;N&gt;; name fewer
 fuse: at most 64 sessions can be registered at once; end one with fuse session end &lt;name&gt;
-fuse: "&lt;pattern&gt;" is outside this repository; name a pattern inside it</code></pre>
+fuse: "&lt;pattern&gt;" is outside this repository; name a pattern inside it
+fuse: --pid takes a process id, not '&lt;text&gt;'; name the process the launcher started
+fuse: --pid takes one process id; name it once
+fuse: cannot read the session file "&lt;file&gt;"; name a file of name, tab and pattern lines
+fuse: session file line &lt;n&gt; is not a name, a tab and a pattern; write each line as a name, a tab, then a pattern
+fuse: the session file names no session; write each line as a name, a tab, then a pattern</code></pre>
     <p><strong>Cause.</strong> When a file argument is empty or blank, is not a string, or is not a path (for example because it holds a NUL character), <code>fuse check</code> and the <code>fuse_check</code> tool print this message and check nothing. The other lines mean:</p>
     <ul>
       <li>The third line means every named file is something Fuse cannot check: a path that does not exist, a file of another language, or a C# file outside every project. It lists up to five of them. When at least one named file is a C# source of a project, the check runs on those, and its <code>file(s) checked</code> count leaves the others out.</li>
       <li>The fourth line answers <code>fuse test</code> with arguments that only name where the tests are, when none of them is a test project file, a solution listing one, or a directory holding one.</li>
       <li>The fifth and sixth lines answer a scoped <code>fuse check</code>. The fifth means one directory or pattern matches no changed C# source that a project owns, or one file is no C# source of a project. Fuse refuses the whole call even when the other specs match. The sixth means the specs expand past 2000 sources.</li>
-      <li>The rest answer <code>fuse session</code>: a name or pattern the engine cannot register, more than 32 patterns on one session, more than 64 sessions at once, or a pattern outside the repository.</li>
+      <li>The rest answer <code>fuse session</code>: a name or pattern the engine cannot register, more than 32 patterns on one session, more than 64 sessions at once, a pattern outside the repository, a <code>--pid</code> that names no process or names one twice, and a <code>--from</code> file that does not read, whose line is not a name, a tab and a pattern, or that names no session. A <code>--from</code> file is checked whole before any registration is sent, so a bad line registers nothing.</li>
     </ul>
     <p><strong>Fix.</strong> Name each file by its path, relative or absolute. Check that the path is spelled as it is on disk. For a scoped check, name a smaller folder or pattern. For a session, pick a name of 1 to 64 letters, digits, <code>-</code>, <code>_</code> or <code>.</code>, and patterns inside the repository.</p>
 
@@ -231,6 +237,13 @@ fuse: the Fuse engine sent no check result (&lt;response&gt;); run the command a
 fuse: the Fuse engine sent no test plan (&lt;response&gt;); run the command again</code></pre>
     <p><strong>Cause.</strong> Something went wrong inside Fuse. <code>could not connect to the Fuse engine: it did not start within 15 s</code> means the engine process did not open its pipe.</p>
     <p><strong>Fix.</strong> Read the lines of <code>engine.log</code> the message names. Then run the command again. <a href="troubleshooting#internal-errors">Troubleshooting</a> lists the details to collect for a bug report.</p>
+
+    <h2 id="busy">Busy <a class="anchor" href="#busy" aria-label="Link to this section">#</a></h2>
+    <pre class="out" data-label="Message"><code>fuse: the engine is busy: &lt;N&gt; request(s) ahead, about &lt;S&gt; s; try again
+fuse: the engine is busy: &lt;N&gt; request(s) ahead; try again</code></pre>
+    <p><strong>Cause.</strong> The engine's scheduler can tell that a request will not start before its wait ends: its queue position times its lane's recent median is longer than the wait. It answers Busy at once with the position and the estimated wait in seconds, rounded up, instead of waiting silently. The second line, with no estimate, is the form with no estimate to give. The same answer comes from the per-engine memory budget past its ceiling: the engine answers Busy instead of growing, and never answers a narrower check instead.</p>
+    <p>The command line waits the estimate, bounded, and sends the request again while its own wait remains. Past the wait it prints this line and exits with 2. A hook stays silent on Busy, as it does on every answer but an introduced error and a missing restore. An MCP call with a progress token sends the position and estimate as a progress notification before the final error. <code>engine.log</code> logs every Busy answer with its request kind, its code and its session.</p>
+    <p><strong>Fix.</strong> Run the command again. If it repeats, let fewer workers run at once, or stop an engine you no longer need with <code>fuse stop</code> so its memory goes back. <code>fuse status --json</code> reports the engine's memory and budget.</p>
 
     <h2 id="usage-failures">Usage failures <a class="anchor" href="#usage-failures" aria-label="Link to this section">#</a></h2>
     <pre class="out" data-label="Message"><code>fuse: check takes files and [--max-errors &lt;n&gt;|--all-errors] [--json]; '&lt;token&gt;' is not one
@@ -252,7 +265,7 @@ fuse: failed reruns the tests that failed last time and cannot be combined with 
       <li>The last two lines are the MCP server's, and it returns them as error results.</li>
     </ul>
     <p>On the command line, the command prints each refusal on standard error and exits with 2. The command prints the <code>--session</code>, <code>--all</code> and <code>--failed</code> lines alone, and the rest with its usage.</p>
-    <p><code>fuse init</code>, <code>fuse uninit</code>, <code>fuse stop</code>, <code>fuse mcp</code> and <code>fuse session</code> with arguments they do not take print only their usage on standard error. Three of them print one line: <code>usage: fuse init [--instructions]</code>, <code>usage: fuse uninit</code>, and <code>usage: fuse session begin &lt;name&gt; --paths &lt;pattern&gt; [&lt;pattern&gt;...] | fuse session end &lt;name&gt;</code>. The other two, <code>fuse stop</code> and <code>fuse mcp</code>, print their own usage block instead. An unknown command does the same: it prints the top-level usage.</p>
+    <p><code>fuse init</code>, <code>fuse uninit</code>, <code>fuse stop</code>, <code>fuse mcp</code> and <code>fuse session</code> with arguments they do not take print only their usage on standard error. Three of them print one line: <code>usage: fuse init [--instructions]</code>, <code>usage: fuse uninit</code>, and <code>usage: fuse session begin &lt;name&gt; --paths &lt;pattern&gt; [&lt;pattern&gt;...] [--pid &lt;pid&gt;] | fuse session begin --from &lt;file&gt; | fuse session end &lt;name&gt;</code>. The other two, <code>fuse stop</code> and <code>fuse mcp</code>, print their own usage block instead. An unknown command does the same: it prints the top-level usage.</p>
     <p><strong>Fix.</strong> Read the usage line. Then run the command again.</p>
 
     <h2 id="no-failures-to-rerun">No failures to rerun <a class="anchor" href="#no-failures-to-rerun" aria-label="Link to this section">#</a></h2>
@@ -281,9 +294,11 @@ fuse: none of the &lt;N&gt; test(s) that failed last time ran; they may have bee
     <div class="callout tip">
       <p>These two lines mean nothing failed: the command goes on after printing them.</p>
     </div>
-    <pre class="out" data-label="Message"><code>fuse: waiting for another build or test in this repository
+    <pre class="out" data-label="Message"><code>lock file: run dotnet restore &lt;target&gt; --force-evaluate to refresh &lt;lock files&gt;
+fuse: waiting for another build or test in this repository
 fuse: running without the per-repository build lock: &lt;reason&gt;</code></pre>
-    <p>When another build or test holds the <a href="how-it-works#builds-and-the-build-lock">build lock</a>, <code>fuse build</code> and <code>fuse test</code> print the first once and keep waiting. When the state directory cannot be written, they print the second and build without the lock.</p>
+    <p>The first line is not on standard error: it is printed indented under the first NU1403 build error, a package content hash failure, naming the one restore that refreshes the lock files and the files it changes (at most 10 named, the rest counted, or <code>the restore</code> when there are none; with no solution or several, the command names no target). Fuse prints it and never runs it.</p>
+    <p>When another build or test holds the <a href="how-it-works#builds-and-the-build-lock">build lock</a>, <code>fuse build</code> and <code>fuse test</code> print the waiting line once and keep waiting. When the state directory cannot be written, they print the second and build without the lock.</p>
 
     <nav class="pager" aria-label="Previous and next page">
       <a href="commands"><span>Previous</span>Commands</a>

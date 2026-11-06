@@ -35,6 +35,7 @@ internal static class InstructionsFile
         - Run `fuse build` instead of `dotnet build`: it prints only the errors, and waits for another agent's build instead of colliding with it.
         - When you finish, Fuse checks every change since HEAD (the commit checked out) and sends you back for the errors your edits introduced. `fuse check` runs the same check when you want it sooner.
         - When several agents work in this working tree, each is told the errors its own edits cause, and `fuse test` runs the tests its own edits affect.
+        - If you run without hooks as one of several workers, set `FUSE_SESSION` to your worker name before `fuse check`, `fuse test` or `fuse mcp`, so you are told only your own errors; a check that names files credits them to you.
         - If Fuse stops answering, `fuse stop` stops its engine; the next command starts a new one.
         """;
 

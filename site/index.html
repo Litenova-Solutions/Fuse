@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fuse: Faster .NET Build and Test Loop for AI Coding Agents</title>
-<meta name="description" content="Fuse speeds up dotnet build and dotnet test for AI coding agents: it checks each edit 8.1x to 27.7x faster than dotnet build and runs only the affected tests.">
+<meta name="description" content="Fuse speeds up dotnet build and dotnet test for AI coding agents: it checks each edit 5.3x to 44.4x faster than dotnet build and runs only the affected tests.">
 <link rel="canonical" href="https://fuse.codes/">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 <meta name="author" content="Litenova Solutions">
@@ -14,7 +14,7 @@
 <meta property="og:site_name" content="Fuse">
 <meta property="og:locale" content="en_US">
 <meta property="og:title" content="Fuse: Faster .NET Build and Test Loop for AI Coding Agents">
-<meta property="og:description" content="Fuse speeds up dotnet build and dotnet test for AI coding agents: it checks each edit 8.1x to 27.7x faster than dotnet build and runs only the affected tests.">
+<meta property="og:description" content="Fuse speeds up dotnet build and dotnet test for AI coding agents: it checks each edit 5.3x to 44.4x faster than dotnet build and runs only the affected tests.">
 <meta property="og:url" content="https://fuse.codes/">
 <meta property="og:image" content="https://fuse.codes/assets/og.png">
 <meta property="og:image:type" content="image/png">
@@ -23,7 +23,7 @@
 <meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 8.1x to 27.7x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Fuse: Faster .NET Build and Test Loop for AI Coding Agents">
-<meta name="twitter:description" content="Fuse speeds up dotnet build and dotnet test for AI coding agents: it checks each edit 8.1x to 27.7x faster than dotnet build and runs only the affected tests.">
+<meta name="twitter:description" content="Fuse speeds up dotnet build and dotnet test for AI coding agents: it checks each edit 5.3x to 44.4x faster than dotnet build and runs only the affected tests.">
 <meta name="twitter:image" content="https://fuse.codes/assets/og.png">
 <meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 8.1x to 27.7x faster than dotnet build. dotnet tool install -g Fuse.">
 <link rel="icon" href="assets/favicon.png" type="image/png" sizes="48x48">
@@ -67,18 +67,18 @@
         "height": 630
       },
       "inLanguage": "en",
-      "dateModified": "2026-10-29"
+      "dateModified": "2026-11-11"
     },
     {
       "@type": "SoftwareApplication",
       "@id": "https://fuse.codes/#software",
       "name": "Fuse",
       "url": "https://fuse.codes/",
-      "description": "Fuse makes dotnet build and dotnet test faster for AI coding agents. It keeps the solution loaded, reports the compiler errors each edit caused 8.1x to 27.7x faster than dotnet build, and runs only the affected tests.",
+      "description": "Fuse makes dotnet build and dotnet test faster for AI coding agents. It keeps the solution loaded, reports the compiler errors each edit caused 5.3x to 44.4x faster than dotnet build, and runs only the affected tests.",
       "applicationCategory": "DeveloperApplication",
       "applicationSubCategory": ".NET developer tool",
-      "softwareVersion": "5.7.0",
-      "releaseNotes": "https://fuse.codes/docs/changelog#v5-7-0",
+      "softwareVersion": "6.0.0",
+      "releaseNotes": "https://fuse.codes/docs/changelog#v6-0-0",
       "installUrl": "https://www.nuget.org/packages/Fuse",
       "operatingSystem": "Windows, Linux, macOS",
       "softwareRequirements": ".NET 10 SDK",
@@ -129,12 +129,12 @@
 
   <main id="main" tabindex="-1">
     <section class="hero">
-      <a class="release" href="docs/changelog#v5-7-0"><b>v5.7.0</b>Latest release: see what changed</a>
+      <a class="release" href="docs/changelog#v6-0-0"><b>v6.0.0</b>Latest release: see what changed</a>
       <h1>Faster .NET Build and Test Loop for AI Coding Agents</h1>
       <ul class="tags" aria-label="Requirements and license">
         <li>.NET 10 SDK</li><li>C#</li><li>Open Source</li><li>Apache-2.0</li><li>Runs Locally</li>
       </ul>
-      <p>After every change, AI agents wait for <code>dotnet build</code> and <code>dotnet test</code>. Fuse keeps your solution loaded in memory, checks each edit <b>8.1x&nbsp;to&nbsp;27.7x faster</b> and runs only the affected tests.</p>
+      <p>After every change, AI agents wait for <code>dotnet build</code> and <code>dotnet test</code>. Fuse keeps your solution loaded in memory, checks each edit <b>5.3x&nbsp;to&nbsp;44.4x faster</b> and runs only the affected tests.</p>
       <div class="install">
         <p class="label">Install the tool:</p>
         <div class="cmd"><span><span class="dim">$ </span>dotnet tool install -g Fuse</span><button type="button" data-copy="dotnet tool install -g Fuse" aria-label="Copy dotnet tool install -g Fuse">Copy</button></div>
@@ -151,63 +151,63 @@
         <p>The agent renames <code>Calc.Add</code> in a library that 2 other projects call, then checks the edit.</p>
       </div>
       <div class="race" id="race">
-        <div class="term" data-total="23.0">
-          <div class="term-bar"><span>With <code>dotnet build</code></span><span class="clock">23.0 s</span></div>
-          <pre><code><span class="ln prompt"><span class="dim">$ </span>dotnet build</span><span class="ln" data-at="0.79">  Determining projects to restore...</span><span class="ln" data-at="3.27">  All projects are up-to-date for restore.</span><span class="ln warn" data-at="8.69">/repo/Lib/Legacy.cs(12,9): warning CS0618: 'Calc.Sum()' is obsolete [/repo/Lib/Lib.csproj]</span><span class="ln" data-at="12.08">  Lib -&gt; /repo/Lib/bin/Debug/net10.0/Lib.dll</span><span class="ln err" data-at="18.63">/repo/App/Program.cs(3,30): error CS1061: 'Calc' does not contain a definition for 'Add' ... [/repo/App/App.csproj]</span><span class="ln err" data-at="20.10">/repo/Lib.Tests/CalcTests.cs(6,54): error CS1061: 'Calc' does not contain a definition for 'Add' ... [/repo/Lib.Tests/Lib.Tests.csproj]</span><span class="ln" data-at="23.0"> </span><span class="ln err" data-at="23.0">Build FAILED.</span><span class="ln" data-at="23.0"> </span><span class="ln warn" data-at="23.0">/repo/Lib/Legacy.cs(12,9): warning CS0618: 'Calc.Sum()' is obsolete [/repo/Lib/Lib.csproj]</span><span class="ln err" data-at="23.0">/repo/App/Program.cs(3,30): error CS1061: 'Calc' does not contain a definition for 'Add' ... [/repo/App/App.csproj]</span><span class="ln err" data-at="23.0">/repo/Lib.Tests/CalcTests.cs(6,54): error CS1061: 'Calc' does not contain a definition for 'Add' ... [/repo/Lib.Tests/Lib.Tests.csproj]</span><span class="ln" data-at="23.0">    1 Warning(s)</span><span class="ln" data-at="23.0">    2 Error(s)</span></code></pre>
+        <div class="term" data-total="20.8">
+          <div class="term-bar"><span>With <code>dotnet build</code></span><span class="clock">20.8 s</span></div>
+          <pre><code><span class="ln prompt"><span class="dim">$ </span>dotnet build</span><span class="ln" data-at="0.71">  Determining projects to restore...</span><span class="ln" data-at="2.96">  All projects are up-to-date for restore.</span><span class="ln warn" data-at="7.86">/repo/Lib/Legacy.cs(12,9): warning CS0618: 'Calc.Sum()' is obsolete [/repo/Lib/Lib.csproj]</span><span class="ln" data-at="10.9">  Lib -&gt; /repo/Lib/bin/Debug/net10.0/Lib.dll</span><span class="ln err" data-at="16.8">/repo/App/Program.cs(3,30): error CS1061: 'Calc' does not contain a definition for 'Add' ... [/repo/App/App.csproj]</span><span class="ln err" data-at="18.2">/repo/Lib.Tests/CalcTests.cs(6,54): error CS1061: 'Calc' does not contain a definition for 'Add' ... [/repo/Lib.Tests/Lib.Tests.csproj]</span><span class="ln" data-at="20.8"> </span><span class="ln err" data-at="20.8">Build FAILED.</span><span class="ln" data-at="20.8"> </span><span class="ln warn" data-at="20.8">/repo/Lib/Legacy.cs(12,9): warning CS0618: 'Calc.Sum()' is obsolete [/repo/Lib/Lib.csproj]</span><span class="ln err" data-at="20.8">/repo/App/Program.cs(3,30): error CS1061: 'Calc' does not contain a definition for 'Add' ... [/repo/App/App.csproj]</span><span class="ln err" data-at="20.8">/repo/Lib.Tests/CalcTests.cs(6,54): error CS1061: 'Calc' does not contain a definition for 'Add' ... [/repo/Lib.Tests/Lib.Tests.csproj]</span><span class="ln" data-at="20.8">    1 Warning(s)</span><span class="ln" data-at="20.8">    2 Error(s)</span></code></pre>
         </div>
-        <div class="term fuse-term" data-total="0.83">
-          <div class="term-bar"><span>With <code>fuse check</code></span><span class="clock">0.83 s</span></div>
-          <pre><code><span class="ln prompt"><span class="dim">$ </span>fuse check</span><span class="ln" data-at="0.83">removed: public int Add(int a, int b) (2 error(s))</span><span class="ln err" data-at="0.83">App/Program.cs(3,30): error CS1061: 'Calc' does not contain a definition for 'Add' ...</span><span class="ln err" data-at="0.83">Lib.Tests/CalcTests.cs(6,54): error CS1061: 'Calc' does not contain a definition for 'Add' ...</span><span class="ln sum" data-at="0.83">fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations changed, 2 dependent project(s) checked; tree 9f2c41aa07b3 over 1 changed file(s)</span></code></pre>
+        <div class="term fuse-term" data-total="0.47">
+          <div class="term-bar"><span>With <code>fuse check</code></span><span class="clock">0.47 s</span></div>
+          <pre><code><span class="ln prompt"><span class="dim">$ </span>fuse check</span><span class="ln" data-at="0.47">removed: public int Add(int a, int b) (2 error(s))</span><span class="ln err" data-at="0.47">App/Program.cs(3,30): error CS1061: 'Calc' does not contain a definition for 'Add' ...</span><span class="ln err" data-at="0.47">Lib.Tests/CalcTests.cs(6,54): error CS1061: 'Calc' does not contain a definition for 'Add' ...</span><span class="ln sum" data-at="0.47">fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations changed, 2 dependent project(s) checked; tree 9f2c41aa07b3 over 1 changed file(s)</span></code></pre>
         </div>
       </div>
-      <p class="race-note">Both terminals play at real speed, with the median times on Jellyfin, 40 projects: 0.83 s and 23.0 s. Fuse prints each error once, with the change that caused it, and prints nothing when the edit compiles. <button type="button" class="replay" hidden>Replay</button></p>
+      <p class="race-note">Both terminals play at real speed, with the median times on Jellyfin, 40 projects: 0.47 s and 20.8 s. Fuse prints each error once, with the change that caused it, and prints nothing when the edit compiles. <button type="button" class="replay" hidden>Replay</button></p>
     </section>
     <section class="section" aria-labelledby="check-heading">
       <div class="section-head">
         <p class="kicker">After Every Edit</p>
-        <h2 id="check-heading">Up to 27.7x Faster Than <code>dotnet build</code></h2>
+        <h2 id="check-heading">Up to 44.4x Faster Than <code>dotnet build</code></h2>
         <p>The agent gets only the errors its edit caused, including breaks in other projects.</p>
       </div>
       <div class="repos">
         <div class="repo">
           <h3>Validation Library <span><a href="https://github.com/FluentValidation/FluentValidation">FluentValidation</a>, 4 projects</span></h3>
-          <div class="lane fuse"><code>fuse check</code><span class="track" aria-hidden="true"><span class="fill" style="width:8.9%"></span></span><span class="t">0.15 s</span><span class="range">0.07 to 7.90 s, mean 0.53 s</span></div>
-          <div class="lane"><code>dotnet build</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">1.66 s</span><span class="range">1.10 to 8.05 s, mean 2.24 s</span></div>
-          <p class="x"><b>11.2x</b> faster at the median</p>
+          <div class="lane fuse"><code>fuse check</code><span class="track" aria-hidden="true"><span class="fill" style="width:16.9%"></span></span><span class="t">0.38 s</span><span class="range">0.15 to 14.6 s, mean 1.01 s</span></div>
+          <div class="lane"><code>dotnet build</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">2.25 s</span><span class="range">1.48 to 8.82 s, mean 2.94 s</span></div>
+          <p class="x"><b>5.9x</b> faster at the median</p>
         </div>
         <div class="repo">
           <h3>Date and Time Library <span><a href="https://github.com/nodatime/nodatime">NodaTime</a>, 15 projects</span></h3>
-          <div class="lane fuse"><code>fuse check</code><span class="track" aria-hidden="true"><span class="fill" style="width:12.3%"></span></span><span class="t">0.68 s</span><span class="range">0.07 to 17.8 s, mean 1.98 s</span></div>
-          <div class="lane"><code>dotnet build</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">5.55 s</span><span class="range">2.22 to 13.0 s, mean 6.13 s</span></div>
-          <p class="x"><b>8.1x</b> faster at the median</p>
+          <div class="lane fuse"><code>fuse check</code><span class="track" aria-hidden="true"><span class="fill" style="width:19.1%"></span></span><span class="t">0.70 s</span><span class="range">0.08 to 15.3 s, mean 1.75 s</span></div>
+          <div class="lane"><code>dotnet build</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">3.67 s</span><span class="range">1.86 to 11.4 s, mean 4.38 s</span></div>
+          <p class="x"><b>5.3x</b> faster at the median</p>
         </div>
         <div class="repo">
           <h3>Media Server <span><a href="https://github.com/jellyfin/jellyfin">Jellyfin</a>, 40 projects</span></h3>
-          <div class="lane fuse"><code>fuse check</code><span class="track" aria-hidden="true"><span class="fill" style="width:3.6%"></span></span><span class="t">0.83 s</span><span class="range">0.16 to 68.9 s, mean 6.68 s</span></div>
-          <div class="lane"><code>dotnet build</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">23.0 s</span><span class="range">3.73 to 93.1 s, mean 29.1 s</span></div>
-          <p class="x"><b>27.7x</b> faster at the median</p>
+          <div class="lane fuse"><code>fuse check</code><span class="track" aria-hidden="true"><span class="fill" style="width:2.3%"></span></span><span class="t">0.47 s</span><span class="range">0.11 to 76.9 s, mean 6.00 s</span></div>
+          <div class="lane"><code>dotnet build</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">20.8 s</span><span class="range">3.34 to 93.9 s, mean 28.7 s</span></div>
+          <p class="x"><b>44.4x</b> faster at the median</p>
         </div>
         <div class="repo">
           <h3>Resilience Library <span><a href="https://github.com/App-vNext/Polly">Polly</a>, 15 projects</span></h3>
-          <div class="lane fuse"><code>fuse check</code><span class="track" aria-hidden="true"><span class="fill" style="width:10.1%"></span></span><span class="t">2.90 s</span><span class="range">0.65 to 49.3 s, mean 7.54 s</span></div>
-          <div class="lane"><code>dotnet build</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">28.7 s</span><span class="range">4.25 to 116.4 s, mean 42.1 s</span></div>
-          <p class="x"><b>9.9x</b> faster at the median</p>
+          <div class="lane fuse"><code>fuse check</code><span class="track" aria-hidden="true"><span class="fill" style="width:13.5%"></span></span><span class="t">2.83 s</span><span class="range">0.58 to 43.5 s, mean 5.85 s</span></div>
+          <div class="lane"><code>dotnet build</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">21.0 s</span><span class="range">2.96 to 106.4 s, mean 35.9 s</span></div>
+          <p class="x"><b>7.4x</b> faster at the median</p>
         </div>
       </div>
-      <p class="proof">In 120 generated cases (161 edits), Fuse reported <b>0</b> broken edits as clean and missed <b>2</b> compiler errors. Each bar shows a median. Under each bar are its fastest to slowest case and its mean.</p>
+      <p class="proof">In 120 generated cases (161 edits), Fuse reported <b>0</b> broken edits as clean and missed <b>3</b> compiler errors. Each bar shows a median. Under each bar are its fastest to slowest case and its mean.</p>
     </section>
 
     <section class="section" aria-labelledby="test-heading">
       <div class="section-head">
         <p class="kicker">When the Agent Runs the Tests</p>
-        <h2 id="test-heading">Up to 2.9x Faster Than <code>dotnet test</code></h2>
+        <h2 id="test-heading">Up to 4.4x Faster Than <code>dotnet test</code></h2>
         <p>Only the tests the change can reach run, and Fuse prints only failures.</p>
       </div>
       <div class="repos">
         <div class="repo">
           <h3>Validation Library <span><a href="https://github.com/FluentValidation/FluentValidation">FluentValidation</a>, 2,664 tests</span></h3>
-          <div class="lane fuse"><code>fuse test</code><span class="track" aria-hidden="true"><span class="fill" style="width:81.1%"></span></span><span class="t">9.66 s</span><span class="range">7.93 to 34.1 s, mean 13.8 s</span></div>
-          <div class="lane"><code>dotnet test</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">11.9 s</span><span class="range">11.3 to 18.3 s, mean 13.1 s</span></div>
+          <div class="lane fuse"><code>fuse test</code><span class="track" aria-hidden="true"><span class="fill" style="width:84.3%"></span></span><span class="t">9.78 s</span><span class="range">7.89 to 37.9 s, mean 13.9 s</span></div>
+          <div class="lane"><code>dotnet test</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">11.6 s</span><span class="range">10.6 to 18.3 s, mean 13.1 s</span></div>
           <p class="x"><b>1.2x</b> faster at the median</p>
         </div>
         <div class="repo">

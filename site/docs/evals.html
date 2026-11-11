@@ -45,7 +45,7 @@
       "url": "https://fuse.codes/docs/evals",
       "mainEntityOfPage": "https://fuse.codes/docs/evals",
       "inLanguage": "en",
-      "dateModified": "2026-10-29",
+      "dateModified": "2026-11-11",
       "image": "https://fuse.codes/assets/og.png",
       "isPartOf": {
         "@type": "WebSite",
@@ -122,13 +122,13 @@
       <p>In short</p>
       <ul>
         <li>Every suite runs the real <code>fuse</code> executable and checks each answer against a real <code>dotnet build</code> or <code>dotnet test</code>.</li>
-        <li>Correctness, test selection and latency are the main suites. Attribution, analyzers, scale and stale are lighter suites that need no truth.</li>
+        <li>Correctness, test selection and latency are the main suites. Attribution, analyzers, scale, stale and concurrency are lighter suites that need no truth.</li>
         <li>Times depend on what else the machine is doing, so the recorded numbers come from GitHub Actions runners that run nothing else.</li>
         <li>Each run writes one JSON file to <code>evals/results</code>, and that file becomes the newest for its suite and repository, so commit result files only from full runs.</li>
         <li>Run the suite your change touches and attach the result to the pull request.</li>
       </ul>
     </div>
-    <p><code>evals/Fuse.Evals</code> is the console project that runs the evals. It holds 3 main suites, correctness, test selection and latency, and the lighter attribution, analyzers, scale and stale suites. Every benchmark calls the <code>fuse</code> executable, the way an agent calls it, and compares each answer with the truth from a real <code>dotnet build</code> or <code>dotnet test</code>. Each run of a suite writes one JSON file to <code>evals/results</code>. The published numbers, the chart and the site quote the newest file of each suite and repository.</p>
+    <p><code>evals/Fuse.Evals</code> is the console project that runs the evals. It holds 3 main suites, correctness, test selection and latency, and the lighter attribution, analyzers, scale, stale and concurrency suites. Every benchmark calls the <code>fuse</code> executable, the way an agent calls it, and compares each answer with the truth from a real <code>dotnet build</code> or <code>dotnet test</code>. Each run of a suite writes one JSON file to <code>evals/results</code>. The published numbers, the chart and the site quote the newest file of each suite and repository.</p>
 
     <nav class="toc" aria-label="On this page">
       <p>On this page</p>
@@ -171,7 +171,7 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
        Fuse.Evals chart
        Fuse.Evals clone &lt;repo&gt;
        Fuse.Evals clean
-  suite: correctness | selection | latency | attribution | analyzers | scale | stale | all
+  suite: correctness | selection | latency | attribution | analyzers | scale | stale | concurrency | all
   repo:  fixture (generated under evals/.work/fixture), analyzer-fixture (generated under evals/.work/analyzer-fixture),
          scale-fixture (generated under evals/.work/scale-fixture), a pinned repository name, or a path to a git repository
   truth: runs shard K of N of the truth side (the real dotnet build or dotnet test) and writes it to a file; the
@@ -186,6 +186,9 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
          engine's peak and idle memory; no truth and no test runs
   stale: on fixture, an error reported by the post-edit hook and fixed before the stop hook: whether the stop
          delivers it again; no truth and no test runs
+  concurrency: 1, 4, 10 and 20 simultaneous callers from distinct sessions (post-edit checks, scoped checks,
+         stops and test plans) with a status probe per caller: queue and engine time, errors, timeouts,
+         Busy answers, cold-start time and the engine's idle and peak working set; no truth
   --part: for latency, what to measure: all (the default); checks, the checks alone; main, the checks and
          the test rounds; agents, the multi-agent scenario after the cold checks and body edits
   --failed-rounds: for selection on fixture, three fix-and-rerun rounds with fuse test --failed afterwards
@@ -283,6 +286,7 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
     </div>
 
     <p>Each case also records what the check cost: how many files it checked, how many documents it bound for them, whether it bound whole projects, whether it answered from the answer it kept, and for how many files it reused the errors of an earlier check.</p>
+    <p>Summaries have their own differential proof in the test suite, not a suite here: two engines over the same fixture, one with summaries and one without, must give identical introduced errors and identical reach file sets, with fixtures for private members across projects, <code>InternalsVisibleTo</code>, a generated type a dependent uses, and a summary whose inputs changed.</p>
     <p>A capped answer proves its completeness with its results file: the file holds every error the summary counts. A missing file or a short count is a <code>results-incomplete</code> verdict rather than a silent gap. When the file is complete, the case is classified on the file's errors, not on the ones the answer printed, so an error the answer left out of its printed list is not counted as missed.</p>
 
     <h3 id="test-selection">Test selection <a class="anchor" href="#test-selection" aria-label="Link to this section">#</a></h3>
@@ -361,6 +365,12 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
     <pre data-label="bash"><code>dotnet run --project evals/Fuse.Evals -c Release -- stale fixture</code></pre>
     <p>The stop should deliver no stale error: the fix is already on disk when it runs, so anything it delivers beyond the current tree's errors is a defect. The result file records the post-edit, check and stop errors, whether the stop blocked, the stale errors it delivered, and whether it rechecked.</p>
 
+    <h3 id="concurrency-suite">Concurrency suite <a class="anchor" href="#concurrency-suite" aria-label="Link to this section">#</a></h3>
+    <p>The concurrency suite measures one engine under simultaneous callers. It times a cold start and a warm edited check, then runs waves of 1, 4, 10 and 20 simultaneous callers from distinct sessions, released from one start signal: post-edit hooks, scoped checks through <code>FUSE_SESSION</code>, stop hooks and test plans through <code>fuse test --session</code>, in rotation, with one <code>fuse status</code> probe per caller fired with each wave. Each wave records its wall time, the queue and engine times from the wave's phase lines, what held a reader during the waits, every caller, the errors, timeouts, Busy answers and unanswered answers, stop and status timeouts, the same counts per kind of caller, and the engine's peak working set after the wave. Hook timeouts and Busy answers are read from the engine log by session, because a hook prints neither. After the waves it waits 50 seconds and records the engine's idle working set. It needs no truth and runs no test of its own.</p>
+    <pre data-label="bash"><code>dotnet run --project evals/Fuse.Evals -c Release -- concurrency NodaTime</code></pre>
+    <p class="sources">The quoted concurrency numbers come from <code>concurrency-FluentValidation-20261106-1250.json</code>, <code>concurrency-NodaTime-20261106-1304.json</code>, <code>concurrency-Jellyfin-20261106-1306.json</code> and <code>concurrency-Polly-20261106-1304.json</code> in <code>evals/results</code> (build <code>6.0.0/b24b111aad3943d6982f25f88c8d43dd</code>).</p>
+    <p>The gates read the result file directly: at 10 callers, no stop answer times out, the queue time's p95 sits under the one-caller engine time's p95, and the peak working set at 10 callers sits under the agreed ceiling. The 1-caller wave is the comparison each other wave is read against. Result files from this suite are now committed, and <a href="benchmarks#callers-at-once">Benchmarks</a> quotes them: no caller timed out at 4, 10 or 20 callers on any of the 4 repositories (<code>timeouts</code> is 0 in every wave, with no Busy and no unanswered caller), and the peak working set at 20 callers was 569 MB on FluentValidation, 794 MB on NodaTime, 1,299 MB on Jellyfin and 1,862 MB on Polly. Status probes fired with each wave did time out in some waves at 4 and 10 callers and in none at 20, which the same files record under <code>statusTimeouts</code>.</p>
+
     <h2 id="on-github-actions">On GitHub Actions <a class="anchor" href="#on-github-actions" aria-label="Link to this section">#</a></h2>
     <p>Times depend on what else the machine is doing, so the recorded results come from <code>.github/workflows/evals.yml</code>, which runs every job that measures on a fresh <code>windows-latest</code> runner that runs nothing else. Add the <code>evals</code> label to a pull request to run the latency and analyzers suites on the 4 open-source repositories.</p>
     <p>Start the workflow from the Actions tab to choose:</p>
@@ -377,6 +387,7 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
       <li><strong>Latency.</strong> Per repository, 2 jobs run the latency suite with the native client: one runs the checks and the test rounds, followed by the checks alone with the managed client on the same runner, and the other runs the multi-agent scenario. A merge job puts the multi-agent result into the first job's file.</li>
       <li><strong>Truth.</strong> The truth side of the correctness and selection suites runs in shards, one job each, more of them on the larger repositories. For correctness there is 1 shard on the fixture and FluentValidation, 2 on NodaTime and Polly, and 4 on Jellyfin. For selection there is 1 on the fixture and FluentValidation, 4 on NodaTime and Polly, and 6 on Jellyfin. A shard whose truth is already in the Actions cache under its key does nothing.</li>
       <li><strong>Scale.</strong> One job generates the scale fixture, changes a quarter of its files, and measures one cold check with the native client, uploading <code>evals-scale-fixture-scale</code>. Like the attribution job, it runs only when the suites input names it.</li>
+      <li><strong>Concurrency.</strong> One job per repository runs the concurrency suite with the native client when the suites input names it, uploading <code>evals-&lt;repo&gt;-concurrency</code> with the results, <code>runner.txt</code> and the engine logs. It is not in the labeled-pull-request default.</li>
       <li><strong>Measure.</strong> One job per suite and repository merges the shards with the cached truth, measures Fuse on its own runner, writes the result file, and saves the merged truth to the cache. Each suite and repository is its own call of <code>.github/workflows/evals-suite.yml</code>, so a measure job starts as soon as its own shards finish, not when the slowest repository's do.</li>
     </ul>
     <p>A measure job's artifact <code>evals-&lt;repo&gt;-&lt;suite&gt;</code> holds:</p>
@@ -527,6 +538,12 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
       <li><code>reportedByCheck</code> and <code>leftOutByHook</code>, the 2 answers to the forbidden class.</li>
       <li><code>enginePeakWorkingSetMb</code> and <code>engineIdleWorkingSetMb</code>.</li>
     </ul>
+    <p><strong>Concurrency files</strong> hold:</p>
+    <ul>
+      <li><code>coldStartMs</code>, the time of a clean check with a cold engine, and the warm edited check.</li>
+      <li>one level per caller count (1, 4, 10 and 20), each with <code>callers</code>, <code>wallMs</code> and <code>wall</code>, the <code>queue</code> and <code>engine</code> statistics from the wave's phase lines, <code>gateByHolder</code>, every caller in <code>calls</code>, <code>errors</code>, <code>timeouts</code>, <code>busyAnswers</code> and <code>unanswered</code>, <code>stopTimeouts</code> and <code>statusTimeouts</code>, the same counts per kind in <code>byKind</code>, the status probes in <code>status</code>, and <code>enginePeakWorkingSetMb</code>.</li>
+      <li><code>enginePeakWorkingSetMb</code> over the waves and <code>engineIdleWorkingSetMb</code> after the 50-second idle wait.</li>
+    </ul>
     <p><code>fuseStats</code> and <code>dotnetStats</code> describe how the Fuse command's and the dotnet command's times spread over the cases, in seconds: <code>n</code>, <code>fastest</code>, <code>median</code>, <code>mean</code>, <code>standardDeviation</code> (the sample standard deviation), <code>p95</code>, <code>slowest</code> and <code>total</code>. The chart and <a href="benchmarks">Benchmarks</a> quote them next to each median.</p>
     <p>Medians are over the cases, and the average of the 2 middle values for an even count. Percentiles use the nearest-rank method: P95 of 10 or 15 samples is the slowest one.</p>
 
@@ -538,6 +555,7 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
         <tr><td>The check: <code>Fuse.Check</code>, <code>Fuse.Changes</code>, <code>Fuse.Workspace</code>, analyzer selection</td><td><code>correctness</code> on the fixture and on at least one pinned repository</td></tr>
         <tr><td>Test selection or test runs: <code>Fuse.Testing</code>, <code>TestOperation</code></td><td><code>selection</code> on the fixture and on at least one pinned repository</td></tr>
         <tr><td>The engine, the protocol, the client, the build lock, or anything on a request's path</td><td><code>latency</code></td></tr>
+        <tr><td>The scheduler, generations, session views, summaries or the memory budget</td><td><code>concurrency</code>, with <code>correctness</code> for summaries and <code>attribution</code> for session views</td></tr>
       </tbody>
     </table>
     </div>

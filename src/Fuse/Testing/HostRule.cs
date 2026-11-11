@@ -1,4 +1,5 @@
 using Fuse.Graph;
+using Fuse.Paths;
 using Microsoft.CodeAnalysis;
 
 namespace Fuse.Testing;
@@ -21,6 +22,28 @@ internal static class HostRule
             yield return project;
         foreach (var dependent in graph.DependentsOf(project).Where(d => d.IsTest))
             yield return dependent;
+    }
+
+    /// <summary>
+    ///     The test projects that reach <paramref name="project"/> through a reference with ReferenceOutputAssembly false, directly or through another project that does. Such a test starts the project as a child process rather than naming its types, so no walk follows it to a test by name.
+    /// </summary>
+    public static IEnumerable<ProjectNode> BuildOnlyDependentTestProjects(RepoGraph graph, ProjectNode project)
+    {
+        var visited = new HashSet<(RepoPath Path, bool BuildOnly)>();
+        var queue = new Queue<(ProjectNode Node, bool BuildOnly)>([(project, false)]);
+        while (queue.Count > 0)
+        {
+            var (current, buildOnly) = queue.Dequeue();
+            foreach (var dependent in graph.Projects.Where(p => p.References.Contains(current.Path)))
+            {
+                var throughBuildOnly = buildOnly || dependent.BuildOnlyReferences.Contains(current.Path);
+                if (!visited.Add((dependent.Path, throughBuildOnly)))
+                    continue;
+                if (dependent.IsTest && throughBuildOnly)
+                    yield return dependent;
+                queue.Enqueue((dependent, throughBuildOnly));
+            }
+        }
     }
 
     /// <summary>

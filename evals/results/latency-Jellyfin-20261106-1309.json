@@ -1,0 +1,712 @@
+{
+  "suite": "latency",
+  "repo": "Jellyfin",
+  "commit": "1d7c6af520da5c84ceac1c21a1d2da34837540ac",
+  "fuseBuild": "6.0.0/b24b111aad3943d6982f25f88c8d43dd",
+  "target": "MediaBrowser.Controller/Entities/LinkedChildComparer.cs",
+  "method": "Equals",
+  "referencingFilesInOtherProjects": 210,
+  "coldCleanMs": 3839.1869,
+  "coldBodyEditMs": 13650.7249,
+  "bodyEdit": {
+    "p50": 142.3,
+    "p95": 2501.2,
+    "max": 2501.2,
+    "n": 15
+  },
+  "signatureEdit": {
+    "p50": 60,
+    "p95": 64866.7,
+    "max": 64866.7,
+    "n": 10
+  },
+  "signatureEditSample": "fuse: 1 error(s) introduced in 1 file(s) (MediaBrowser.Controller); MediaBrowser.Controller declarations changed, 27 dependent project(s) checked; tree f50f8b531caa over 1 changed file(s)",
+  "warmUnchanged": {
+    "p50": 29.7,
+    "p95": 33.2,
+    "max": 33.2,
+    "n": 10
+  },
+  "part": "all",
+  "testRound": {
+    "p50": 123250,
+    "p95": 137673,
+    "max": 137673,
+    "n": 5
+  },
+  "bodyEditPhases": {
+    "phases": {
+      "bindAnalyzers": {
+        "p50": 59,
+        "p95": 91,
+        "max": 91,
+        "n": 15
+      },
+      "bindCompiler": {
+        "p50": 11,
+        "p95": 70,
+        "max": 70,
+        "n": 15
+      },
+      "bindFrameworks": {
+        "p50": 1,
+        "p95": 1,
+        "max": 1,
+        "n": 15
+      },
+      "bindTargets": {
+        "p50": 89.4,
+        "p95": 294.9,
+        "max": 294.9,
+        "n": 15
+      },
+      "bindUpdate": {
+        "p50": 15,
+        "p95": 130,
+        "max": 130,
+        "n": 15
+      },
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 15
+      },
+      "load": {
+        "p50": 0,
+        "p95": 0.1,
+        "max": 0.1,
+        "n": 15
+      },
+      "surfaceDiff": {
+        "p50": 0.8,
+        "p95": 15.7,
+        "max": 15.7,
+        "n": 15
+      },
+      "sync": {
+        "p50": 1.8,
+        "p95": 2156.3,
+        "max": 2156.3,
+        "n": 15
+      },
+      "total": {
+        "p50": 109,
+        "p95": 2453,
+        "max": 2453,
+        "n": 15
+      }
+    },
+    "outsideEngine": {
+      "p50": 49.2,
+      "p95": 142.6,
+      "max": 142.6,
+      "n": 15
+    },
+    "n": 15
+  },
+  "signatureEditPhases": {
+    "phases": {
+      "bindAnalyzers": {
+        "p50": 12,
+        "p95": 35,
+        "max": 35,
+        "n": 10
+      },
+      "bindCandidates": {
+        "p50": 0.1,
+        "p95": 3.1,
+        "max": 3.1,
+        "n": 10
+      },
+      "bindCompiler": {
+        "p50": 3,
+        "p95": 12,
+        "max": 12,
+        "n": 10
+      },
+      "bindFrameworks": {
+        "p50": 1,
+        "p95": 1,
+        "max": 1,
+        "n": 10
+      },
+      "bindTargets": {
+        "p50": 20.8,
+        "p95": 55.9,
+        "max": 55.9,
+        "n": 10
+      },
+      "bindUpdate": {
+        "p50": 4,
+        "p95": 10,
+        "max": 10,
+        "n": 10
+      },
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 10
+      },
+      "load": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 10
+      },
+      "loadDependents": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 10
+      },
+      "referenceSearch": {
+        "p50": 0.8,
+        "p95": 64762.8,
+        "max": 64762.8,
+        "n": 10
+      },
+      "surfaceDiff": {
+        "p50": 0.5,
+        "p95": 1.9,
+        "max": 1.9,
+        "n": 10
+      },
+      "sync": {
+        "p50": 1.9,
+        "p95": 2.6,
+        "max": 2.6,
+        "n": 10
+      },
+      "total": {
+        "p50": 31,
+        "p95": 64828,
+        "max": 64828,
+        "n": 10
+      }
+    },
+    "outsideEngine": {
+      "p50": 35.2,
+      "p95": 47.6,
+      "max": 47.6,
+      "n": 10
+    },
+    "n": 10
+  },
+  "warmUnchangedPhases": {
+    "phases": {
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 10
+      },
+      "sync": {
+        "p50": 0.8,
+        "p95": 0.8,
+        "max": 0.8,
+        "n": 1
+      },
+      "total": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 10
+      }
+    },
+    "outsideEngine": {
+      "p50": 29.7,
+      "p95": 33.2,
+      "max": 33.2,
+      "n": 10
+    },
+    "n": 10
+  },
+  "testRoundPhases": {
+    "phases": {
+      "emit": {
+        "p50": 682.4,
+        "p95": 7311,
+        "max": 7311,
+        "n": 5
+      },
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 5
+      },
+      "mirror": {
+        "p50": 1310.8,
+        "p95": 5787.6,
+        "max": 5787.6,
+        "n": 5
+      },
+      "selection": {
+        "p50": 29021.5,
+        "p95": 29458.6,
+        "max": 29458.6,
+        "n": 5
+      },
+      "sync": {
+        "p50": 2.1,
+        "p95": 3.3,
+        "max": 3.3,
+        "n": 5
+      },
+      "total": {
+        "p50": 31125,
+        "p95": 39578,
+        "max": 39578,
+        "n": 5
+      }
+    },
+    "outsideEngine": {
+      "p50": 91828,
+      "p95": 98095,
+      "max": 98095,
+      "n": 5
+    },
+    "n": 5
+  },
+  "noCodeChange": {
+    "edits": [
+      {
+        "kind": "comment",
+        "checkMs": 5059.8752,
+        "filesChecked": 1,
+        "checkErrors": 0,
+        "testMs": 28528.2856,
+        "testsSelected": 0,
+        "testsRun": 0,
+        "noCodeChange": true,
+        "note": null
+      },
+      {
+        "kind": "local-rename",
+        "checkMs": null,
+        "filesChecked": null,
+        "checkErrors": null,
+        "testMs": null,
+        "testsSelected": null,
+        "testsRun": null,
+        "noCodeChange": null,
+        "note": "no method in the target file declares a local variable"
+      },
+      {
+        "kind": "reformat",
+        "checkMs": 101.8627,
+        "filesChecked": 1,
+        "checkErrors": 1,
+        "testMs": 65.723,
+        "testsSelected": 0,
+        "testsRun": 0,
+        "noCodeChange": true,
+        "note": null
+      },
+      {
+        "kind": "using-sort",
+        "checkMs": 90.2997,
+        "filesChecked": 1,
+        "checkErrors": 1,
+        "testMs": 95.7177,
+        "testsSelected": 0,
+        "testsRun": 0,
+        "noCodeChange": true,
+        "note": null
+      },
+      {
+        "kind": "whitespace",
+        "checkMs": 91.4489,
+        "filesChecked": 1,
+        "checkErrors": 0,
+        "testMs": 72.8308,
+        "testsSelected": 0,
+        "testsRun": 0,
+        "noCodeChange": true,
+        "note": null
+      }
+    ],
+    "check": {
+      "p50": 91.4,
+      "p95": 5059.9,
+      "max": 5059.9,
+      "n": 4
+    },
+    "testRound": {
+      "p50": 72.8,
+      "p95": 28528.3,
+      "max": 28528.3,
+      "n": 4
+    },
+    "checkPhases": {
+      "phases": {
+        "bindAnalyzers": {
+          "p50": 29,
+          "p95": 60,
+          "max": 60,
+          "n": 4
+        },
+        "bindCompiler": {
+          "p50": 6,
+          "p95": 12,
+          "max": 12,
+          "n": 4
+        },
+        "bindFrameworks": {
+          "p50": 1,
+          "p95": 1,
+          "max": 1,
+          "n": 4
+        },
+        "bindTargets": {
+          "p50": 44.7,
+          "p95": 161.9,
+          "max": 161.9,
+          "n": 4
+        },
+        "bindUpdate": {
+          "p50": 8,
+          "p95": 88,
+          "max": 88,
+          "n": 4
+        },
+        "gate": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 4
+        },
+        "load": {
+          "p50": 0,
+          "p95": 2193.5,
+          "max": 2193.5,
+          "n": 4
+        },
+        "surfaceDiff": {
+          "p50": 0.8,
+          "p95": 1.5,
+          "max": 1.5,
+          "n": 4
+        },
+        "sync": {
+          "p50": 2.3,
+          "p95": 2648.1,
+          "max": 2648.1,
+          "n": 4
+        },
+        "total": {
+          "p50": 47,
+          "p95": 5016,
+          "max": 5016,
+          "n": 4
+        }
+      },
+      "outsideEngine": {
+        "p50": 43.9,
+        "p95": 54.9,
+        "max": 54.9,
+        "n": 4
+      },
+      "n": 4
+    },
+    "testRoundPhases": {
+      "phases": {
+        "bindAnalyzers": {
+          "p50": 487,
+          "p95": 487,
+          "max": 487,
+          "n": 1
+        },
+        "bindCompiler": {
+          "p50": 51,
+          "p95": 51,
+          "max": 51,
+          "n": 1
+        },
+        "bindFrameworks": {
+          "p50": 2,
+          "p95": 2,
+          "max": 2,
+          "n": 1
+        },
+        "bindTargets": {
+          "p50": 5131.4,
+          "p95": 5131.4,
+          "max": 5131.4,
+          "n": 1
+        },
+        "bindUpdate": {
+          "p50": 4241,
+          "p95": 4241,
+          "max": 4241,
+          "n": 1
+        },
+        "gate": {
+          "p50": 0,
+          "p95": 3.1,
+          "max": 3.1,
+          "n": 4
+        },
+        "load": {
+          "p50": 0.3,
+          "p95": 0.3,
+          "max": 0.3,
+          "n": 1
+        },
+        "selection": {
+          "p50": 24,
+          "p95": 25774,
+          "max": 25774,
+          "n": 3
+        },
+        "surfaceDiff": {
+          "p50": 22.3,
+          "p95": 22.3,
+          "max": 22.3,
+          "n": 1
+        },
+        "sync": {
+          "p50": 1.5,
+          "p95": 2307.7,
+          "max": 2307.7,
+          "n": 4
+        },
+        "total": {
+          "p50": 31,
+          "p95": 28484,
+          "max": 28484,
+          "n": 4
+        }
+      },
+      "outsideEngine": {
+        "p50": 34.7,
+        "p95": 57.8,
+        "max": 57.8,
+        "n": 4
+      },
+      "n": 4
+    }
+  },
+  "multiAgent": {
+    "writers": {
+      "clients": 4,
+      "editsPerClient": 10,
+      "wallMs": 209961.1697,
+      "checks": 40,
+      "unanswered": 0,
+      "notRun": 0,
+      "gate": {
+        "p50": 263.3,
+        "p95": 5984.7,
+        "max": 6298.2,
+        "n": 40
+      },
+      "gateByHolder": {
+        "CheckChanges": {
+          "p50": 11,
+          "p95": 448.5,
+          "max": 448.5,
+          "n": 4
+        },
+        "CheckFiles": {
+          "p50": 67.7,
+          "p95": 597.8,
+          "max": 597.8,
+          "n": 6
+        },
+        "PlanAffectedTests": {
+          "p50": 395.1,
+          "p95": 6014.4,
+          "max": 6298.2,
+          "n": 28
+        }
+      },
+      "engineTotal": {
+        "p50": 125,
+        "p95": 641,
+        "max": 5906,
+        "n": 40
+      },
+      "singleClientTotalP50": 156
+    },
+    "builds": {
+      "clients": 3,
+      "rounds": 5,
+      "wallMs": 74552.0041,
+      "each": {
+        "p50": 393.7,
+        "p95": 72187.2,
+        "max": 72187.2,
+        "n": 15
+      },
+      "collisions": 0,
+      "collisionSamples": []
+    },
+    "rounds": [
+      {
+        "index": 1,
+        "project": "MediaBrowser.Model.csproj",
+        "edit": "MediaBrowser.Model\\Configuration\\LibraryOptions.cs",
+        "ms": 114422.4935,
+        "testProjects": [
+          "Jellyfin.Api.Tests",
+          "Jellyfin.Controller.Tests",
+          "Jellyfin.LiveTv.Tests",
+          "Jellyfin.MediaEncoding.Hls.Tests",
+          "Jellyfin.MediaEncoding.Tests",
+          "Jellyfin.Networking.Tests",
+          "Jellyfin.Providers.Tests",
+          "Jellyfin.Server.Implementations.Tests",
+          "Jellyfin.Server.Integration.Tests",
+          "Jellyfin.Server.Tests",
+          "Jellyfin.XbmcMetadata.Tests"
+        ],
+        "failingTests": 0
+      },
+      {
+        "index": 2,
+        "project": "Jellyfin.MediaEncoding.Keyframes.csproj",
+        "edit": "src\\Jellyfin.MediaEncoding.Keyframes\\FfProbe\\FfProbeKeyframeExtractor.cs",
+        "ms": 111149.1529,
+        "testProjects": [
+          "Jellyfin.Api.Tests",
+          "Jellyfin.Controller.Tests",
+          "Jellyfin.LiveTv.Tests",
+          "Jellyfin.MediaEncoding.Hls.Tests",
+          "Jellyfin.MediaEncoding.Keyframes.Tests",
+          "Jellyfin.MediaEncoding.Tests",
+          "Jellyfin.Networking.Tests",
+          "Jellyfin.Providers.Tests",
+          "Jellyfin.Server.Implementations.Tests",
+          "Jellyfin.Server.Integration.Tests",
+          "Jellyfin.Server.Tests",
+          "Jellyfin.XbmcMetadata.Tests"
+        ],
+        "failingTests": 0
+      },
+      {
+        "index": 3,
+        "project": "Jellyfin.MediaEncoding.Keyframes.csproj",
+        "edit": "src\\Jellyfin.MediaEncoding.Keyframes\\FfProbe\\FfProbeKeyframeExtractor.cs",
+        "ms": 106767.0899,
+        "testProjects": [
+          "Jellyfin.Api.Tests",
+          "Jellyfin.Controller.Tests",
+          "Jellyfin.LiveTv.Tests",
+          "Jellyfin.MediaEncoding.Hls.Tests",
+          "Jellyfin.MediaEncoding.Keyframes.Tests",
+          "Jellyfin.MediaEncoding.Tests",
+          "Jellyfin.Networking.Tests",
+          "Jellyfin.Providers.Tests",
+          "Jellyfin.Server.Implementations.Tests",
+          "Jellyfin.Server.Integration.Tests",
+          "Jellyfin.Server.Tests",
+          "Jellyfin.XbmcMetadata.Tests"
+        ],
+        "failingTests": 0
+      }
+    ],
+    "attribution": {
+      "renamedIn": "MediaBrowser.Model/Configuration/LibraryOptions.cs",
+      "method": "GetTypeOptions",
+      "brokenIn": "MediaBrowser.Providers/Manager/ItemImageProvider.cs",
+      "ownWithoutSessions": 4,
+      "otherWithoutSessions": 2,
+      "ownWithSessions": 4,
+      "otherWithSessions": 0,
+      "leftToOtherSessions": 8,
+      "msWithoutSessions": 128.5866,
+      "msWithSessions": 644.199
+    },
+    "stops": {
+      "changedFiles": 20,
+      "firstMs": 1091.9756,
+      "repeat": {
+        "p50": 170.3,
+        "p95": 207.6,
+        "max": 207.6,
+        "n": 5
+      },
+      "mostReused": 19
+    },
+    "tests": {
+      "edit": "MediaBrowser.Model/Configuration/LibraryOptions.cs",
+      "aloneMs": 116334.4043,
+      "pairWallMs": 143666.436,
+      "pairEach": {
+        "p50": 129763.9,
+        "p95": 143663.6,
+        "max": 143663.6,
+        "n": 2
+      },
+      "notPassed": 0
+    },
+    "stopsUnchangedRepeat": [
+      {
+        "ms": 40.1046,
+        "documentsBound": 0
+      },
+      {
+        "ms": 38.1336,
+        "documentsBound": 0
+      },
+      {
+        "ms": 36.8824,
+        "documentsBound": 0
+      }
+    ],
+    "scopeOnly": [
+      {
+        "form": "directory",
+        "arg": "tests/Jellyfin.Api.Tests",
+        "projectsPlanned": 11,
+        "testsSelected": 42,
+        "mode": "shadow",
+        "ms": 5076.8578
+      },
+      {
+        "form": "project",
+        "arg": "tests/Jellyfin.Api.Tests/Jellyfin.Api.Tests.csproj",
+        "projectsPlanned": 11,
+        "testsSelected": 42,
+        "mode": "shadow",
+        "ms": 5025.1617
+      },
+      {
+        "form": "build-only",
+        "arg": "--no-build",
+        "projectsPlanned": 11,
+        "testsSelected": 387,
+        "mode": "shadow",
+        "ms": 105733.7004
+      }
+    ],
+    "plainRun": {
+      "form": "plain",
+      "arg": "",
+      "projectsPlanned": 11,
+      "testsSelected": 387,
+      "mode": "shadow",
+      "ms": 105202.7005
+    },
+    "wholeRun": {
+      "form": "all",
+      "arg": "--all",
+      "projectsPlanned": 16,
+      "testsSelected": 2,
+      "mode": "msbuild",
+      "ms": 95344.0421
+    },
+    "scopeRefusal": {
+      "arg": "Emby.Naming",
+      "refused": true,
+      "exitCode": 2
+    }
+  },
+  "engineWorkingSetMb": 520.3,
+  "enginePeakWorkingSetMb": 1142.6,
+  "engineIdleWorkingSetMb": 463.6,
+  "treeCleanAfter": true
+}

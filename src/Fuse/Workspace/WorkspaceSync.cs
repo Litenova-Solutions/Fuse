@@ -43,12 +43,13 @@ internal sealed class WorkspaceSync
     /// <summary>Folds disk changes into both views, after the changes of an earlier sync that did not finish.</summary>
     /// <param name="knownPaths">Files just written by the agent, checked even before their watcher event arrives.</param>
     /// <param name="cancellationToken">Cancels re-evaluation.</param>
+    /// <param name="confirmWithDisk">True to confirm the changed set against disk when the watcher reported nothing.</param>
     /// <exception cref="FuseException">
     ///     git or MSBuild failed. The result stays unfinished, so the next sync does the same work again.
     /// </exception>
-    public async Task SyncAsync(IEnumerable<RepoPath> knownPaths, CancellationToken cancellationToken)
+    public async Task SyncAsync(IEnumerable<RepoPath> knownPaths, CancellationToken cancellationToken, bool confirmWithDisk = false)
     {
-        var result = await _tracker.SyncAsync(knownPaths, cancellationToken).ConfigureAwait(false);
+        var result = await _tracker.SyncAsync(knownPaths, cancellationToken, confirmWithDisk).ConfigureAwait(false);
         if (_unfinished is { } unfinished)
             result = unfinished.Then(result);
         if (result is SyncResult.Patch overflowing && _views.TouchedOverflows)

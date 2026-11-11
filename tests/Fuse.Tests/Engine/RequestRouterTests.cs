@@ -132,7 +132,7 @@ public class RequestRouterTests
     }
 
     [Fact]
-    public async Task A_check_sent_while_a_test_plan_emits_is_answered_before_the_plan_finishes()
+    public async Task A_check_sent_while_a_test_plan_prepares_is_answered_through_the_scheduler()
     {
         using var repo = FixtureRepo.CreateStandard();
         await using var engine = await InProcessRequestRouter.StartAsync(repo);
@@ -141,23 +141,17 @@ public class RequestRouterTests
         using var limit = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         limit.CancelAfter(TimeSpan.FromMinutes(2));
 
-        // Holding the preparation keeps the plan in its shadow preparation, after its selection, for as long as the test likes.
-        await engine.Planner.Preparation.WaitAsync(limit.Token);
-        Task<EngineResponse> plan;
-        try
-        {
-            plan = engine.SendAsync(new EngineRequest.PlanAffectedTests { RequestId = "p-1" }, limit.Token);
-            await WaitForLogAsync(engine, "test plan: selection in ");
+        // A plan prepares with an emitter of its own and holds no reader while it does, so the check below
+        // takes a reader through the scheduler while the plan is still preparing.
+        var plan = engine.SendAsync(new EngineRequest.PlanAffectedTests { RequestId = "p-1" }, limit.Token);
+        await WaitForLogAsync(engine, "test plan: selection in ");
 
-            var check = await engine.SendAsync(new EngineRequest.CheckFiles(["Lib/Calc.cs"], WaitForLoad: true) { RequestId = "c-1" }, limit.Token);
+        // A fast runner can finish the preparation before the check arrives, so what is asserted is the property that
+        // holds either way: the check needs no lock the plan holds, and its phase line shows no wait at the gate.
+        var check = await engine.SendAsync(new EngineRequest.CheckFiles(["Lib/Calc.cs"], WaitForLoad: true) { RequestId = "c-1" }, limit.Token);
 
-            Assert.IsType<EngineResponse.CheckAnswered>(check);
-            Assert.False(plan.IsCompleted, "the plan finished before the check, so the check may have waited for it");
-        }
-        finally
-        {
-            engine.Planner.Preparation.Release();
-        }
+        Assert.IsType<EngineResponse.CheckAnswered>(check);
+        Assert.True(PhaseLineOf(engine, "c-1").Phases.GetValueOrDefault("gate") < 1000, "the check waited at the gate behind the plan");
 
         var answered = Assert.IsType<EngineResponse.PlanAnswered>(await plan);
         Assert.IsType<TestRunMode.Shadow>(Assert.Single(answered.Plan.Runs).Mode);
@@ -174,7 +168,7 @@ public class RequestRouterTests
         using var limit = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         limit.CancelAfter(TimeSpan.FromMinutes(2));
 
-        // No request id and no file list: the request log has nothing to name, and the request lock must still be released.
+        // No request id and no file list: the request log has nothing to name, and the reader must still be released.
         var bare = ProtocolJson.ReadRequest("""{"request":"CheckFiles","waitForLoad":true}""")!;
         var first = await engine.SendAsync(bare, limit.Token);
         var second = await engine.SendAsync(new EngineRequest.CheckFiles(["Lib/Calc.cs"], WaitForLoad: true), limit.Token);

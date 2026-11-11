@@ -69,6 +69,13 @@ public class InstructionsFileTests
     }
 
     [Fact]
+    public void The_section_tells_a_worker_without_hooks_to_name_its_session()
+    {
+        Assert.Contains("FUSE_SESSION", InstructionsFile.Section);
+        Assert.Contains("without hooks", InstructionsFile.Section);
+    }
+
+    [Fact]
     public void Init_without_the_option_writes_no_instruction_file()
     {
         using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["App/App.csproj"] = "<Project />" });

@@ -12,8 +12,9 @@ namespace Fuse.Check;
 /// <summary>
 ///     Reports the errors the working tree has that HEAD does not, in the targets and in every file a declaration change
 ///     can reach, including files in dependent projects. It composes the steps below in order and records each as a
-///     <see cref="Phase"/>. It is not safe to call concurrently; the engine calls it one request at a time, behind its
-///     request lock.
+///     <see cref="Phase"/>. It is safe to call concurrently: each call pins a <see cref="Generation"/> and holds a
+///     <see cref="CheckContext"/> of its own, and the engine still calls it one request at a time behind its request
+///     lock in this wave.
 /// </summary>
 /// <remarks>
 ///     The check grows only as far as the change requires:
@@ -47,10 +48,12 @@ internal sealed class Checker
     ///     Past this many changed files the kept answer is skipped: hashing every file costs more than the reuse saves.
     ///     The same number as the whole-project threshold, so one number to remember.
     /// </summary>
-    private const int MaxKeptHashFiles = 500;
 
     /// <summary>How many sessions the engine log names per check before counting the rest.</summary>
     private const int MaxLoggedSessions = 10;
+
+    /// <summary>How many times one check restarts on a newer generation after coverage recovery, before it reports the missing project.</summary>
+    private const int MaxCoverageRestarts = 2;
 
     private static readonly CheckResult NoTargets = new([], 0, [], [], 0, false, 0, 0, 0);
 
@@ -63,6 +66,9 @@ internal sealed class Checker
     private readonly SessionAttribution _attribution;
     private readonly GeneratedSource _generated;
     private readonly KeptCheck _kept = new();
+
+    /// <summary>Drops every kept answer, for the memory budget's shed order; a later check binds again.</summary>
+    public void ClearKeptAnswers() => _kept.Clear();
 
     /// <param name="workspace">The repository's projects and views.</param>
     /// <param name="sessions">Which sessions wrote each changed file; a check answered to a session reads it.</param>
@@ -102,56 +108,83 @@ internal sealed class Checker
     /// <param name="maxReported">How many errors the answer holds at most; 0 keeps the default cap.</param>
     public async Task<CheckResult> CheckAsync(CheckScope scope, string? session, AnalyzerRun analyzers, PhaseTimes phases, CancellationToken cancellationToken, int maxReported = 0)
     {
-        // Also drops what a cancelled check left behind: its binding times and its analyzer report are not this check's.
-        _introduced.Begin(analyzers, reuse: scope is CheckScope.AllChanges);
+        for (var restart = 0; ; restart++)
+        {
+            try
+            {
+                return await CheckOnceAsync(scope, session, analyzers, phases, maxReported, cancellationToken).ConfigureAwait(false);
+            }
+            catch (CoverageRestartException) when (restart < MaxCoverageRestarts)
+            {
+                // The writer published a generation that holds the reached project this pin lacked. The next
+                // attempt pins it and answers from it alone.
+            }
+            finally
+            {
+                // The check ends here: what it built over HEAD goes, and a later check reads HEAD's errors from
+                // the store the finished results were written to.
+                _introduced.ReleaseBaseline();
+            }
+        }
+    }
+
+    private async Task<CheckResult> CheckOnceAsync(CheckScope scope, string? session, AnalyzerRun analyzers, PhaseTimes phases, int maxReported, CancellationToken cancellationToken)
+    {
+        var context = new CheckContext(analyzers, reuse: scope is CheckScope.AllChanges);
+        _introduced.BeginContext(context);
         var syncing = phases.Start();
         IReadOnlyList<RepoPath> known = scope is CheckScope.NamedPaths scoped ? ScopeExpansion.RecentlyWritten(_workspace.Root, scoped.Named) : TargetResolver.NamedPaths(scope);
-        await _workspace.SyncAsync(known, cancellationToken).ConfigureAwait(false);
+        var generation = await _workspace.SyncAndPinAsync(known, cancellationToken).ConfigureAwait(false);
         phases.Add(Phase.Sync, syncing);
         // A file that matches HEAD again is no longer credited to the sessions that wrote it, whichever check sees it first.
-        _sessions.Forget(_workspace.Tracker.Changed);
+        _sessions.Forget(generation.Changed);
 
         IReadOnlyList<string> scopedPaths = scope is CheckScope.NamedPaths namedPaths ? ScopeExpansion.DisplaySpecs(_workspace.Root, namedPaths.Named) : [];
         var targets = scope is CheckScope.NamedPaths pathScope
-            ? ScopeExpansion.Expand(_workspace, pathScope.Named)
-            : _targets.Resolve(scope, scope is CheckScope.AllChanges && session is not null ? _sessions.OnlyOtherSessionsWrote(_workspace.Tracker.Changed, session) : null);
+            ? ScopeExpansion.Expand(_workspace, generation, pathScope.Named)
+            : _targets.Resolve(scope, generation, scope is CheckScope.AllChanges && session is not null ? _sessions.OnlyOtherSessionsWrote(generation.Changed, session) : null);
         // Named files that are all outside every project, or not C# sources, would check nothing and read as a pass.
         if (targets.Count == 0 && scope is CheckScope.Files { Paths.Count: > 0 } named)
             throw new FuseException(ErrorCode.InvalidPath, ErrorMessages.NothingToCheck([.. named.Paths.Select(p => p.Relative)]));
         if (targets.Count == 0 && scope is CheckScope.NamedPaths)
             throw new FuseException(ErrorCode.InvalidPath, ErrorMessages.NothingToCheck([.. scopedPaths]));
         if (targets.Count == 0)
-            return NoTargets with { NonCSharpChanged = _workspace.Tracker.NonSourceChanged, NonCSharpSample = [.. _workspace.Tracker.NonSourceSample.Select(p => p.Relative)] };
+            return NoTargets with { NonCSharpChanged = generation.NonSourceChanged, NonCSharpSample = [.. generation.NonSourceSample.Select(p => p.Relative)] };
 
-        // The sync above has folded in every edit, so what the tree holds now keys the answer a repeat of this check gets.
-        // A check of every change answers from a kept answer only when the views hold that tree; an answer bound from
-        // older text is never kept under the current tree's key. A check of named files already reads them from disk.
+        // The sync above has folded in every edit, so what the pinned generation holds keys the answer a repeat of
+        // this check gets. A check of every change answers from a kept answer only when its views hold the tree on
+        // disk; an answer bound from older text is never kept under the current tree's key.
         var fresh = true;
         if (scope is CheckScope.AllChanges)
-            fresh = await ViewsMatchDiskAsync(cancellationToken).ConfigureAwait(false);
+        {
+            // The writer reapplies every changed file, so an edit the watcher has not reported yet is in the
+            // views this check binds. Nothing has bound yet, so the check adopts the generation that round
+            // published instead of restarting.
+            generation = await _workspace.PatchAndPinAsync(generation.Changed, cancellationToken).ConfigureAwait(false);
+            fresh = await ViewsMatchDiskAsync(generation, cancellationToken).ConfigureAwait(false);
+        }
         // Past the bound the kept answer costs more hashing than it saves; the check runs as usual.
-        var changedFiles = _workspace.Tracker.Changed.Count;
+        var changedFiles = generation.Changed.Count;
         string? keptKey = null;
-        if (changedFiles > MaxKeptHashFiles)
-            _workspace.Log($"check: kept answer skipped, {changedFiles} changed file(s) past {MaxKeptHashFiles}");
+        if (changedFiles > KeptCheck.MaxChangedFiles)
+            _workspace.Log($"check: kept answer skipped, {changedFiles} changed file(s) past {KeptCheck.MaxChangedFiles}");
         else if (fresh)
-            keptKey = KeptKeyFor(scope, session, analyzers, maxReported);
+            keptKey = KeptKeyFor(scope, session, analyzers, maxReported, generation);
         if (keptKey is not null && _kept.TryGet(keptKey, out var kept))
         {
             _workspace.Log("check: kept answer");
             return kept;
         }
 
-        var graph = _workspace.Graph;
         var loading = phases.Start();
-        await _workspace.EnsureLoadedAsync(OwnersOf(graph, targets), cancellationToken).ConfigureAwait(false);
+        generation = await _workspace.EnsureLoadedAndPinAsync(OwnersOf(generation.Graph, targets), cancellationToken).ConfigureAwait(false);
         phases.Add(Phase.Load, loading);
 
         var timer = Stopwatch.StartNew();
-        var errors = await _introduced.InFilesAsync(targets, cancellationToken).ConfigureAwait(false);
+        var errors = await _introduced.InFilesAsync(targets, generation, context, cancellationToken).ConfigureAwait(false);
         var targetsMs = timer.ElapsedMilliseconds;
         phases.Add(Phase.BindTargets, timer);
-        var parts = _introduced.TakeBindParts();
+        var parts = context.TakeBindParts();
         phases.Add(Phase.BindUpdate, parts.UpdateMs);
         phases.Add(Phase.BindCompiler, parts.CompilerMs);
         phases.Add(Phase.BindAnalyzers, parts.AnalyzerMs);
@@ -162,12 +195,12 @@ internal sealed class Checker
         var changedTargets = new List<RepoPath>();
         foreach (var path in targets)
         {
-            if (await _reach.HasDeclarationChangeAsync(path, cancellationToken).ConfigureAwait(false))
+            if (await _reach.HasDeclarationChangeAsync(path, generation, cancellationToken).ConfigureAwait(false))
                 changedTargets.Add(path);
         }
 
         phases.Add(Phase.SurfaceDiff, diffing);
-        var changedIn = OwnersOf(graph, changedTargets);
+        var changedIn = OwnersOf(generation.Graph, changedTargets);
         var dependents = new List<ProjectNode>();
         Reach reach = new Reach.None();
         var filesChecked = targets.Count;
@@ -175,22 +208,22 @@ internal sealed class Checker
         var wholeCauses = new List<WholeProjectCause>();
         if (changedIn.Count > 0)
         {
-            dependents = changedIn.SelectMany(graph.DependentsOf).DistinctBy(p => p.Path)
+            dependents = changedIn.SelectMany(generation.Graph.DependentsOf).DistinctBy(p => p.Path)
                 .Where(p => !changedIn.Any(s => s.Path == p.Path))
                 .ToList();
             var loadingDependents = phases.Start();
-            await _workspace.EnsureLoadedAsync(dependents, cancellationToken).ConfigureAwait(false);
+            generation = await _workspace.EnsureLoadedAndPinAsync(dependents, cancellationToken).ConfigureAwait(false);
             phases.Add(Phase.LoadDependents, loadingDependents);
 
             var reached = changedIn.Concat(dependents).ToList();
-            var coverage = await RecoverCoverageAsync(reached, cancellationToken).ConfigureAwait(false);
+            var coverage = await RecoverCoverageAsync(reached, generation, cancellationToken).ConfigureAwait(false);
             var searching = phases.Start();
-            reach = await _reach.ReachAsync(changedTargets, reached, cancellationToken).ConfigureAwait(false);
+            reach = await _reach.ReachAsync(changedTargets, reached, generation, cancellationToken).ConfigureAwait(false);
             phases.Add(Phase.ReferenceSearch, searching);
-            LogCoverage(reached, coverage, reach);
+            LogCoverage(reached, coverage, reach, generation);
 
             var binding = phases.Start();
-            var bound = await _candidates.BindAsync(reach, reached, targets, cancellationToken).ConfigureAwait(false);
+            var bound = await _candidates.BindAsync(reach, reached, targets, generation, context, cancellationToken).ConfigureAwait(false);
             phases.Add(Phase.BindCandidates, binding);
             errors.AddRange(bound.Errors);
             filesChecked = bound.FilesChecked;
@@ -205,6 +238,7 @@ internal sealed class Checker
         }
 
         var root = _workspace.Root;
+        var graph = generation.Graph;
         var ordered = errors.Distinct()
             .OrderBy(d => d.Path, StringComparer.Ordinal).ThenBy(d => d.Line).ThenBy(d => d.Column)
             .ToList();
@@ -213,13 +247,19 @@ internal sealed class Checker
         if (session is not null)
         {
             var attributing = phases.Start();
-            if (await _attribution.ToldAsync(ordered, session, cancellationToken).ConfigureAwait(false) is ({ } told, var filesNotAttributed))
+            if (await _attribution.ToldAsync(ordered, session, generation, context, cancellationToken).ConfigureAwait(false) is ({ } told, var filesNotAttributed))
             {
                 leftToOthers = ordered.Count - told.Count;
                 notAttributed = filesNotAttributed;
                 ordered = told;
                 phases.Add(Phase.Attribution, attributing);
             }
+
+            // With at most one session writing, no other session's check needs the attribution views, each
+            // of which roots a solution and its compilations: a later check derives its view again and
+            // answers the same.
+            if (_sessions.WritersOf(generation.Changed).Values.SelectMany(sessions => sessions).Distinct(StringComparer.Ordinal).Take(2).Count() <= 1)
+                await _workspace.ClearSessionViewsAsync(cancellationToken).ConfigureAwait(false);
         }
 
         var projects = ordered
@@ -227,16 +267,16 @@ internal sealed class Checker
             .OfType<string>()
             .Distinct()
             .ToArray();
-        var (compilerMs, analyzerMs) = _introduced.TakeTimings();
+        var (compilerMs, analyzerMs) = context.TakeTimings();
         compilerMs += parts.CompilerMs;
         analyzerMs += parts.AnalyzerMs;
-        var (unfinished, leftOut) = _introduced.TakeAnalyzerReport();
-        var reused = _introduced.TakeReused();
-        _workspace.Log($"check: binding {compilerMs} ms, analyzers {analyzerMs} ms (summed over files); {targets.Count} target(s) in {targetsMs} ms, {changedTargets.Count} with declaration changes, {filesChecked} file(s) bound{(reused > 0 ? $" ({reused} with errors reused from an earlier check)" : "")}, {timer.ElapsedMilliseconds} ms total{(wholeProjects ? WholeProjectsLog(wholeCauses) : "")}{(leftToOthers > 0 ? $", {leftToOthers} error(s) left to other sessions" : "")}{(notAttributed > 0 ? $", {notAttributed} file(s) not attributed" : "")}{(unfinished > 0 ? $", analyzers unfinished in {unfinished}" : "")}{(leftOut.Count > 0 ? $", left out {string.Join(", ", leftOut)}" : "")}{SessionCounts()}");
-        _introduced.LogBaseline();
-        var reported = CauseLines.Attach(ordered, reach, root, targets);
+        var (unfinished, leftOut) = context.TakeAnalyzerReport();
+        var reused = context.TakeReused();
+        _workspace.Log($"check: binding {compilerMs} ms, analyzers {analyzerMs} ms (summed over files); {targets.Count} target(s) in {targetsMs} ms, {changedTargets.Count} with declaration changes, {filesChecked} file(s) bound{(reused > 0 ? $" ({reused} with errors reused from an earlier check)" : "")}, {timer.ElapsedMilliseconds} ms total{(wholeProjects ? WholeProjectsLog(wholeCauses) : "")}{(leftToOthers > 0 ? $", {leftToOthers} error(s) left to other sessions" : "")}{(notAttributed > 0 ? $", {notAttributed} file(s) not attributed" : "")}{(unfinished > 0 ? $", analyzers unfinished in {unfinished}" : "")}{(leftOut.Count > 0 ? $", left out {string.Join(", ", leftOut)}" : "")}{SessionCounts(generation)}");
+        _introduced.LogBaseline(context);
+        var reported = CauseLines.Attach(ordered, reach, root, targets, _sessions.WritersOf(generation.Changed));
         reported = [.. reported.Take(maxReported == 0 ? MaxReported : maxReported)];
-        reported = await _generated.AttachAsync(_workspace.Current, reported, cancellationToken).ConfigureAwait(false);
+        reported = await _generated.AttachAsync(generation.Current, reported, cancellationToken).ConfigureAwait(false);
         var result = new CheckResult(
             reported,
             filesChecked,
@@ -253,8 +293,8 @@ internal sealed class Checker
             FilesNotAttributed = notAttributed,
             ScopedPaths = scopedPaths,
             WholeProjectCauses = wholeCauses,
-            NonCSharpChanged = _workspace.Tracker.NonSourceChanged,
-            NonCSharpSample = [.. _workspace.Tracker.NonSourceSample.Select(p => p.Relative)],
+            NonCSharpChanged = generation.NonSourceChanged,
+            NonCSharpSample = [.. generation.NonSourceSample.Select(p => p.Relative)],
         };
         if (keptKey is not null)
             _kept.Keep(keptKey, result);
@@ -262,30 +302,31 @@ internal sealed class Checker
     }
 
     /// <summary>
-    ///     Warms the baseline compilation-wide analyzer results of <paramref name="node"/>, one target framework at a
-    ///     time, for the background warm after HEAD moved. It fills the same shared runs a check waits for, and reports
-    ///     nothing.
+    ///     Fills the store with the baseline errors of <paramref name="node"/>, one target framework at a time, for
+    ///     the background warm after HEAD moved, and releases each baseline compilation it built. The first check
+    ///     that needs HEAD's errors then reads the store instead of binding HEAD, and reports nothing.
     /// </summary>
-    /// <returns>True when any target framework of the node has compilation-wide analyzers that were warmed.</returns>
+    /// <returns>True when any target framework of the node has compilation-wide analyzers whose results were stored.</returns>
     public async Task<bool> WarmBaselineAsync(ProjectNode node, CancellationToken cancellationToken)
     {
+        var generation = _workspace.PinGeneration();
+        var context = new CheckContext(AnalyzerRun.Full, reuse: false);
         var warmed = false;
-        var generation = _workspace.BaselineGeneration;
-        foreach (var project in RepoWorkspace.ProjectsFor(_workspace.Baseline, node).ToList())
+        foreach (var project in RepoWorkspace.ProjectsFor(generation.Baseline, node).ToList())
         {
-            if (_workspace.BaselineGeneration != generation)
+            if (_workspace.PinGeneration().BaselineGeneration != generation.BaselineGeneration)
                 return warmed;
-            warmed |= await _introduced.WarmBaselineAsync(project, generation, cancellationToken).ConfigureAwait(false);
+            warmed |= await _introduced.FillBaselineStoreAsync(project, generation, context, cancellationToken).ConfigureAwait(false);
         }
 
         return warmed;
     }
 
     /// <summary>
-    ///     The key the kept answer for this check is kept under, from the tree as the sync just left it, or null when
-    ///     no answer is kept for it because a changed file cannot be read. The check runs as usual then.
+    ///     The key the kept answer for this check is kept under, from the pinned generation, or null when no answer is
+    ///     kept for it because a changed file cannot be read. The check runs as usual then.
     /// </summary>
-    private string? KeptKeyFor(CheckScope scope, string? session, AnalyzerRun analyzers, int maxReported)
+    private string? KeptKeyFor(CheckScope scope, string? session, AnalyzerRun analyzers, int maxReported, Generation generation)
     {
         var scopeKey = scope switch
         {
@@ -293,36 +334,32 @@ internal sealed class Checker
             CheckScope.NamedPaths paths => "paths:" + string.Join(",", ScopeExpansion.DisplaySpecs(_workspace.Root, paths.Named).Order(StringComparer.Ordinal)),
             _ => "all",
         };
-        // A paths scope keys by its display specs,
-        // distinct from all changes
-        // and from any file list.
-        // A kept answer holds only the errors its cap allowed, so the cap keys it too.
-        var capKey = maxReported == 0 ? "cap:default" : $"cap:{maxReported}";
+        // A paths scope keys by its display specs, distinct from all changes and from any file list.
         return KeptCheck.KeyFor(
-            capKey + ":" + scopeKey,
+            scopeKey,
+            maxReported,
             session,
             analyzers.CompilationWide,
-            _workspace.Tracker.Head ?? "",
-            _workspace.ConfigurationGeneration,
-            _workspace.BaselineGeneration,
+            generation.Head ?? "",
+            generation.ConfigurationGeneration,
+            generation.BaselineGeneration,
             _sessions.RecordsHash(),
-            _workspace.Tracker.Changed.Select(path => (path.Relative, path.Absolute)));
+            generation.Changed.Select(path => (path.Relative, path.Absolute)));
     }
 
     /// <summary>
-    ///     Applies every changed file to both views again and compares each with what the disk holds now. A file with no
-    ///     document in the current view is not compared: its project is not bound yet.
+    ///     True when every document the pinned generation's current view holds for a changed file has the content the
+    ///     disk holds. A file with no document in the view is not compared: its project is not bound yet. The writer
+    ///     sync at the start of the check applied the changed files, so a disagreement here is a file that changed
+    ///     after the pin or could not be read, and this answer is not kept.
     /// </summary>
     /// <returns>False when a changed file could not be read or still disagrees, so this answer is not kept.</returns>
-    private async Task<bool> ViewsMatchDiskAsync(CancellationToken cancellationToken)
+    private async Task<bool> ViewsMatchDiskAsync(Generation generation, CancellationToken cancellationToken)
     {
-        var paths = _workspace.Tracker.Changed;
-        await _workspace.PatchViewsAsync(paths, cancellationToken).ConfigureAwait(false);
-        var current = _workspace.Current;
         var stale = 0;
-        foreach (var path in paths)
+        foreach (var path in generation.Changed)
         {
-            if (!await MatchesDiskAsync(current, path, cancellationToken).ConfigureAwait(false))
+            if (!await MatchesDiskAsync(generation.Current, path, cancellationToken).ConfigureAwait(false))
                 stale++;
         }
 
@@ -337,7 +374,7 @@ internal sealed class Checker
         byte[]? bytes;
         try
         {
-            bytes = File.Exists(path.Absolute) ? File.ReadAllBytes(path.Absolute) : null;
+            bytes = File.Exists(path.Absolute) ? SharedRead.AllBytes(path.Absolute) : null;
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
@@ -369,27 +406,33 @@ internal sealed class Checker
         [.. reached.Where(node => !RepoWorkspace.ProjectsFor(current, node).Any() || !RepoWorkspace.ProjectsFor(baseline, node).Any())];
 
     /// <summary>
-    ///     Makes a reached project no view holds fail the check instead of narrowing it without saying so: the views are
-    ///     derived again once, and what is still missing is reported, as is a load failure a background load recorded for
-    ///     a reached project since the check's own load.
+    ///     Makes a reached project no view holds fail the check instead of narrowing it without saying so. When the
+    ///     pinned generation lacks one, it asks the writer to load it: the writer publishes a newer generation, and
+    ///     this check restarts on it, so it never binds from a mix of the two. What is still missing after the writer
+    ///     has had its round is reported, as is a load failure a background load recorded for a reached project.
     /// </summary>
-    /// <returns>How each view held the reached projects before the rebuild, or null when nothing was missing.</returns>
-    /// <exception cref="FuseException">A reached project is still missing after the rebuild, or failed to load.</exception>
-    private async Task<string?> RecoverCoverageAsync(IReadOnlyList<ProjectNode> reached, CancellationToken cancellationToken)
+    /// <returns>How each view held the reached projects before the writer round, or null when nothing was missing.</returns>
+    /// <exception cref="FuseException">A reached project is still missing after the writer round, or failed to load.</exception>
+    private async Task<string?> RecoverCoverageAsync(IReadOnlyList<ProjectNode> reached, Generation generation, CancellationToken cancellationToken)
     {
-        if (Uncovered(reached, _workspace.Current, _workspace.Baseline).Count == 0)
+        var uncovered = Uncovered(reached, generation.Current, generation.Baseline);
+        if (uncovered.Count == 0)
         {
             ThrowOnLoadFailure(reached);
             return null;
         }
 
-        var held = HeldLine(reached);
-        await _workspace.RebuildViewsAsync(cancellationToken).ConfigureAwait(false);
-        var uncovered = Uncovered(reached, _workspace.Current, _workspace.Baseline);
-        if (uncovered.Count > 0)
+        var held = HeldLine(reached, generation);
+        var newer = await _workspace.EnsureLoadedAndPinAsync(uncovered, cancellationToken).ConfigureAwait(false);
+        if (newer.Number == generation.Number)
+            newer = await _workspace.RebuildAndPinAsync(cancellationToken).ConfigureAwait(false);
+        if (newer.Number != generation.Number)
+            throw new CoverageRestartException();
+        var still = Uncovered(reached, newer.Current, newer.Baseline);
+        if (still.Count > 0)
         {
             _workspace.Log($"check coverage: {held}");
-            throw CoverageFailed(uncovered[0]);
+            throw CoverageFailed(still[0]);
         }
 
         ThrowOnLoadFailure(reached);
@@ -400,12 +443,12 @@ internal sealed class Checker
     ///     Writes the coverage line for an affected check: one whose views missed a reached project, or whose precise reach
     ///     names a file on disk with no document in the current view. A check neither holds for logs nothing.
     /// </summary>
-    private void LogCoverage(IReadOnlyList<ProjectNode> reached, string? coverage, Reach reach)
+    private void LogCoverage(IReadOnlyList<ProjectNode> reached, string? coverage, Reach reach, Generation generation)
     {
-        var missing = reach is Reach.Precise precise ? CandidatesWithoutDocument(precise) : [];
+        var missing = reach is Reach.Precise precise ? CandidatesWithoutDocument(precise, generation) : [];
         if (coverage is null && missing.Count == 0)
             return;
-        var line = $"check coverage: {coverage ?? HeldLine(reached)}";
+        var line = $"check coverage: {coverage ?? HeldLine(reached, generation)}";
         if (coverage is not null)
             line += "; recovered after rebuilding the views";
         if (missing.Count > 0)
@@ -413,10 +456,10 @@ internal sealed class Checker
         _workspace.Log(line);
     }
 
-    /// <summary>The relative paths of <paramref name="precise"/>'s candidates on disk with no document in the current view, in order.</summary>
-    private List<string> CandidatesWithoutDocument(Reach.Precise precise)
+    /// <summary>The relative paths of <paramref name="precise"/>'s candidates on disk with no document in the pinned view, in order.</summary>
+    private static List<string> CandidatesWithoutDocument(Reach.Precise precise, Generation generation)
     {
-        var current = _workspace.Current;
+        var current = generation.Current;
         return [.. precise.Causes.Keys
             .Where(path => File.Exists(path.Absolute) && current.GetDocumentIdsWithFilePath(path.Absolute).IsEmpty)
             .Select(path => path.Relative)
@@ -424,10 +467,10 @@ internal sealed class Checker
     }
 
     /// <summary>Which reached projects each view holds a project for, in reached order, as the coverage line names them.</summary>
-    private string HeldLine(IReadOnlyList<ProjectNode> reached)
+    private static string HeldLine(IReadOnlyList<ProjectNode> reached, Generation generation)
     {
-        var current = _workspace.Current;
-        var baseline = _workspace.Baseline;
+        var current = generation.Current;
+        var baseline = generation.Baseline;
         return $"reached {CoverageNames(reached)}; current holds {CoverageNames(reached.Where(node => RepoWorkspace.ProjectsFor(current, node).Any()))}; baseline holds {CoverageNames(reached.Where(node => RepoWorkspace.ProjectsFor(baseline, node).Any()))}";
     }
 
@@ -478,9 +521,9 @@ internal sealed class Checker
     }
 
     /// <summary>How many changed files each session wrote, most files first; empty when no session wrote any.</summary>
-    private string SessionCounts()
+    private string SessionCounts(Generation generation)
     {
-        var counts = _sessions.WritersOf(_workspace.Tracker.Changed)
+        var counts = _sessions.WritersOf(generation.Changed)
             .SelectMany(w => w.Value)
             .GroupBy(session => session, StringComparer.Ordinal)
             .Select(g => (Session: g.Key, Files: g.Count()))
@@ -496,4 +539,9 @@ internal sealed class Checker
 
     private static List<ProjectNode> OwnersOf(RepoGraph graph, IEnumerable<RepoPath> paths) =>
         paths.SelectMany(graph.OwnersOf).DistinctBy(p => p.Path).ToList();
+
+    /// <summary>The writer published a newer generation that holds a project the pinned one lacked, so this attempt stops and the check restarts on it.</summary>
+    private sealed class CoverageRestartException : Exception
+    {
+    }
 }

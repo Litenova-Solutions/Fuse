@@ -36,7 +36,7 @@ Run `fuse init` once. After that, the harness, the program your agent runs in (C
 
 - **Memory.** Fuse keeps the loaded projects in memory until it has been idle for 30 minutes. That costs 319 MB to 512 MB once idle in the [benchmarks](https://fuse.codes/docs/benchmarks), up to 1,091 MB while it checks, and more on a machine with more memory. Each git worktree uses its own.
 - **A slow first check across projects.** The first edit that affects other projects has to load them. On Jellyfin (40 projects) that took up to 68.9 s. The median signature edit took 58 ms.
-- **One check at a time.** Agents in the same repository wait for each other's checks.
+- **Many agents, one engine.** Checks and test plans from several sessions run at the same time on pinned generations, each answered about its own edits. A worker without hooks sets `FUSE_SESSION`; a judge can `fuse watch` a worker and route errors by `causedBy`.
 - **Not a full build.** Fuse checks C# only and picks tests by reading the code, so a few cases still need `fuse build` or `fuse test --all`. [Limits](https://fuse.codes/docs/limits) lists them.
 
 ## Supported harnesses
@@ -81,7 +81,7 @@ fuse init
 ```text
 wrote .claude/settings.json
 wrote .gitignore
-fuse: hooks registered by Fuse 5.7.0; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors
+fuse: hooks registered by Fuse 6.0.0; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors
 ```
 
 That is the whole setup. The agent now hears from Fuse only when an edit introduced an error.
@@ -108,7 +108,9 @@ fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations chan
 | `fuse test --failed` | Reruns the tests that failed in the last run |
 | `fuse build [args...] [--changed]` | Runs `dotnet build` and prints its errors. `--changed` builds only the changed projects and their dependents |
 | `fuse status [--json]` | Shows the engine and the changed files |
-| `fuse session begin <name> --paths <pattern>...` | Registers an external writer as a session for its paths, so a judge's stop leaves the writer's errors to the writer |
+| `fuse session begin <name> [--pid <pid>] --paths <pattern>...` | Registers an external writer as a session for its paths, so a judge's stop leaves the writer's errors to the writer; `--pid` ends it when that process exits |
+| `fuse session begin --from <file>` | Registers every session in a file of name, tab and pattern lines |
+| `fuse watch --session <name>` | Streams that session's newest errors each time the engine checks them |
 | `fuse session end <name>` | Ends the registration |
 | `fuse stop [--all]` | Stops this repository's engine, or every engine. The next command starts a new one |
 | `fuse mcp` | Serves `fuse_check`, `fuse_test` and `fuse_build` over stdio to an MCP host |

@@ -1,0 +1,1080 @@
+{
+  "suite": "concurrency",
+  "repo": "FluentValidation",
+  "commit": "fa3c160b17796ff67d6aa5ae6c4b05b471f1a791",
+  "fuseBuild": "6.0.0/b24b111aad3943d6982f25f88c8d43dd",
+  "coldStartMs": 2355.4367,
+  "levels": [
+    {
+      "callers": 1,
+      "wallMs": 945.1272,
+      "wall": {
+        "p50": 940.4,
+        "p95": 940.4,
+        "max": 940.4,
+        "n": 1
+      },
+      "queue": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 1
+      },
+      "engine": {
+        "p50": 781,
+        "p95": 781,
+        "max": 781,
+        "n": 1
+      },
+      "gateByHolder": {},
+      "calls": [
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-1-1",
+          "file": "src/FluentValidation/AbstractValidator.cs",
+          "wallMs": 940.4153,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        }
+      ],
+      "errors": 0,
+      "timeouts": 0,
+      "busyAnswers": 0,
+      "unanswered": 0,
+      "stopTimeouts": 0,
+      "statusTimeouts": 0,
+      "byKind": {
+        "post-edit": {
+          "calls": 1,
+          "wall": {
+            "p50": 940.4,
+            "p95": 940.4,
+            "max": 940.4,
+            "n": 1
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 1
+          },
+          "engine": {
+            "p50": 781,
+            "p95": 781,
+            "max": 781,
+            "n": 1
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "scoped": {
+          "calls": 0,
+          "wall": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 0
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 0
+          },
+          "engine": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 0
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "stop": {
+          "calls": 0,
+          "wall": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 0
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 0
+          },
+          "engine": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 0
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "test-plan": {
+          "calls": 0,
+          "wall": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 0
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 0
+          },
+          "engine": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 0
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        }
+      },
+      "status": {
+        "calls": 1,
+        "wall": {
+          "p50": 83.4,
+          "p95": 83.4,
+          "max": 83.4,
+          "n": 1
+        },
+        "queue": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 1
+        },
+        "engine": {
+          "p50": 15,
+          "p95": 15,
+          "max": 15,
+          "n": 1
+        },
+        "timeouts": 0,
+        "busyAnswers": 0,
+        "unanswered": 0
+      },
+      "enginePeakWorkingSetMb": 227.9
+    },
+    {
+      "callers": 4,
+      "wallMs": 30007.1862,
+      "wall": {
+        "p50": 3079,
+        "p95": 29986.4,
+        "max": 29986.4,
+        "n": 4
+      },
+      "queue": {
+        "p50": 0,
+        "p95": 6.6,
+        "max": 6.6,
+        "n": 4
+      },
+      "engine": {
+        "p50": 2921,
+        "p95": 4765,
+        "max": 4765,
+        "n": 4
+      },
+      "gateByHolder": {
+        "CheckPaths": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 2
+        },
+        "PlanAffectedTests": {
+          "p50": 6.6,
+          "p95": 6.6,
+          "max": 6.6,
+          "n": 1
+        }
+      },
+      "calls": [
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-4-1",
+          "file": "src/FluentValidation/AbstractValidator.cs",
+          "wallMs": 3078.2452,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "scoped",
+          "session": "eval-concurrency-4-2",
+          "file": "src/FluentValidation.DependencyInjectionExtensions/ServiceCollectionExtensions.cs",
+          "wallMs": 3079.0049,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "stop",
+          "session": "eval-concurrency-4-3",
+          "file": "src/FluentValidation.Tests.Benchmarks/AccessorCacheBenchmark.cs",
+          "wallMs": 4724.0158,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "test-plan",
+          "session": "eval-concurrency-4-4",
+          "file": "src/FluentValidation/AssemblyScanner.cs",
+          "wallMs": 29986.4401,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        }
+      ],
+      "errors": 0,
+      "timeouts": 0,
+      "busyAnswers": 0,
+      "unanswered": 0,
+      "stopTimeouts": 0,
+      "statusTimeouts": 1,
+      "byKind": {
+        "post-edit": {
+          "calls": 1,
+          "wall": {
+            "p50": 3078.2,
+            "p95": 3078.2,
+            "max": 3078.2,
+            "n": 1
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 1
+          },
+          "engine": {
+            "p50": 2921,
+            "p95": 2921,
+            "max": 2921,
+            "n": 1
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "scoped": {
+          "calls": 1,
+          "wall": {
+            "p50": 3079,
+            "p95": 3079,
+            "max": 3079,
+            "n": 1
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 1
+          },
+          "engine": {
+            "p50": 2938,
+            "p95": 2938,
+            "max": 2938,
+            "n": 1
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "stop": {
+          "calls": 1,
+          "wall": {
+            "p50": 4724,
+            "p95": 4724,
+            "max": 4724,
+            "n": 1
+          },
+          "queue": {
+            "p50": 6.6,
+            "p95": 6.6,
+            "max": 6.6,
+            "n": 1
+          },
+          "engine": {
+            "p50": 1688,
+            "p95": 1688,
+            "max": 1688,
+            "n": 1
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "test-plan": {
+          "calls": 1,
+          "wall": {
+            "p50": 29986.4,
+            "p95": 29986.4,
+            "max": 29986.4,
+            "n": 1
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 1
+          },
+          "engine": {
+            "p50": 4765,
+            "p95": 4765,
+            "max": 4765,
+            "n": 1
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        }
+      },
+      "status": {
+        "calls": 4,
+        "wall": {
+          "p50": 786.2,
+          "p95": 2836.9,
+          "max": 2836.9,
+          "n": 4
+        },
+        "queue": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 4
+        },
+        "engine": {
+          "p50": 78,
+          "p95": 1703,
+          "max": 1703,
+          "n": 4
+        },
+        "timeouts": 1,
+        "busyAnswers": 0,
+        "unanswered": 1
+      },
+      "enginePeakWorkingSetMb": 342.7
+    },
+    {
+      "callers": 10,
+      "wallMs": 30979.9268,
+      "wall": {
+        "p50": 1837.9,
+        "p95": 30978.6,
+        "max": 30978.6,
+        "n": 10
+      },
+      "queue": {
+        "p50": 274.2,
+        "p95": 1893.6,
+        "max": 1893.6,
+        "n": 10
+      },
+      "engine": {
+        "p50": 735,
+        "p95": 12359,
+        "max": 12359,
+        "n": 10
+      },
+      "gateByHolder": {
+        "CheckChanges": {
+          "p50": 1591.6,
+          "p95": 1893.6,
+          "max": 1893.6,
+          "n": 3
+        },
+        "CheckFiles": {
+          "p50": 274.2,
+          "p95": 563.5,
+          "max": 563.5,
+          "n": 5
+        }
+      },
+      "calls": [
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-10-1",
+          "file": "src/FluentValidation/AbstractValidator.cs",
+          "wallMs": 1154.4966,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "scoped",
+          "session": "eval-concurrency-10-2",
+          "file": "src/FluentValidation.DependencyInjectionExtensions/ServiceCollectionExtensions.cs",
+          "wallMs": 860.9455,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "stop",
+          "session": "eval-concurrency-10-3",
+          "file": "src/FluentValidation.Tests.Benchmarks/AccessorCacheBenchmark.cs",
+          "wallMs": 2224.7465,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "test-plan",
+          "session": "eval-concurrency-10-4",
+          "file": "src/FluentValidation/AssemblyScanner.cs",
+          "wallMs": 30978.5644,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-10-5",
+          "file": "src/FluentValidation.Tests.Benchmarks/EngineOnlyBenchmark.cs",
+          "wallMs": 864.0696,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "scoped",
+          "session": "eval-concurrency-10-6",
+          "file": "src/FluentValidation/AsyncValidatorInvokedSynchronouslyException.cs",
+          "wallMs": 1837.8524,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "stop",
+          "session": "eval-concurrency-10-7",
+          "file": "src/FluentValidation.Tests.Benchmarks/InitializationBenchmark.cs",
+          "wallMs": 2188.7867,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "test-plan",
+          "session": "eval-concurrency-10-8",
+          "file": "src/FluentValidation/DefaultValidatorExtensions.cs",
+          "wallMs": 27667.3635,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-10-9",
+          "file": "src/FluentValidation.Tests.Benchmarks/ValidationBenchmark.cs",
+          "wallMs": 860.3355,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "scoped",
+          "session": "eval-concurrency-10-10",
+          "file": "src/FluentValidation/DefaultValidatorExtensions_Validate.cs",
+          "wallMs": 2190.8442,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        }
+      ],
+      "errors": 0,
+      "timeouts": 0,
+      "busyAnswers": 0,
+      "unanswered": 0,
+      "stopTimeouts": 0,
+      "statusTimeouts": 0,
+      "byKind": {
+        "post-edit": {
+          "calls": 3,
+          "wall": {
+            "p50": 864.1,
+            "p95": 1154.5,
+            "max": 1154.5,
+            "n": 3
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 274.2,
+            "max": 274.2,
+            "n": 3
+          },
+          "engine": {
+            "p50": 641,
+            "p95": 969,
+            "max": 969,
+            "n": 3
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "scoped": {
+          "calls": 3,
+          "wall": {
+            "p50": 1837.9,
+            "p95": 2190.8,
+            "max": 2190.8,
+            "n": 3
+          },
+          "queue": {
+            "p50": 867.6,
+            "p95": 1893.6,
+            "max": 1893.6,
+            "n": 3
+          },
+          "engine": {
+            "p50": 312,
+            "p95": 735,
+            "max": 735,
+            "n": 3
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "stop": {
+          "calls": 2,
+          "wall": {
+            "p50": 2188.8,
+            "p95": 2224.7,
+            "max": 2224.7,
+            "n": 2
+          },
+          "queue": {
+            "p50": 558.3,
+            "p95": 563.5,
+            "max": 563.5,
+            "n": 2
+          },
+          "engine": {
+            "p50": 1296,
+            "p95": 1391,
+            "max": 1391,
+            "n": 2
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "test-plan": {
+          "calls": 2,
+          "wall": {
+            "p50": 27667.4,
+            "p95": 30978.6,
+            "max": 30978.6,
+            "n": 2
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 1591.6,
+            "max": 1591.6,
+            "n": 2
+          },
+          "engine": {
+            "p50": 2531,
+            "p95": 12359,
+            "max": 12359,
+            "n": 2
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        }
+      },
+      "status": {
+        "calls": 10,
+        "wall": {
+          "p50": 261,
+          "p95": 368,
+          "max": 368,
+          "n": 10
+        },
+        "queue": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 10
+        },
+        "engine": {
+          "p50": 0,
+          "p95": 15,
+          "max": 15,
+          "n": 10
+        },
+        "timeouts": 0,
+        "busyAnswers": 0,
+        "unanswered": 0
+      },
+      "enginePeakWorkingSetMb": 485.6
+    },
+    {
+      "callers": 20,
+      "wallMs": 23205.7607,
+      "wall": {
+        "p50": 1168.4,
+        "p95": 18938.8,
+        "max": 22725.5,
+        "n": 20
+      },
+      "queue": {
+        "p50": 0,
+        "p95": 864.4,
+        "max": 899.8,
+        "n": 20
+      },
+      "engine": {
+        "p50": 156,
+        "p95": 2156,
+        "max": 11172,
+        "n": 20
+      },
+      "gateByHolder": {
+        "CheckChanges": {
+          "p50": 736.4,
+          "p95": 899.8,
+          "max": 899.8,
+          "n": 4
+        },
+        "CheckFiles": {
+          "p50": 0,
+          "p95": 251.1,
+          "max": 251.1,
+          "n": 4
+        },
+        "CheckPaths": {
+          "p50": 626.8,
+          "p95": 653.6,
+          "max": 653.6,
+          "n": 2
+        },
+        "PlanAffectedTests": {
+          "p50": 0,
+          "p95": 136.9,
+          "max": 136.9,
+          "n": 5
+        }
+      },
+      "calls": [
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-20-1",
+          "file": "src/FluentValidation/AbstractValidator.cs",
+          "wallMs": 922.5763,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "scoped",
+          "session": "eval-concurrency-20-2",
+          "file": "src/FluentValidation.DependencyInjectionExtensions/ServiceCollectionExtensions.cs",
+          "wallMs": 480.169,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "stop",
+          "session": "eval-concurrency-20-3",
+          "file": "src/FluentValidation.Tests.Benchmarks/AccessorCacheBenchmark.cs",
+          "wallMs": 1168.385,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "test-plan",
+          "session": "eval-concurrency-20-4",
+          "file": "src/FluentValidation/AssemblyScanner.cs",
+          "wallMs": 15246.7875,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-20-5",
+          "file": "src/FluentValidation.Tests.Benchmarks/EngineOnlyBenchmark.cs",
+          "wallMs": 880.1603,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "scoped",
+          "session": "eval-concurrency-20-6",
+          "file": "src/FluentValidation/AsyncValidatorInvokedSynchronouslyException.cs",
+          "wallMs": 1076.8406,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "stop",
+          "session": "eval-concurrency-20-7",
+          "file": "src/FluentValidation.Tests.Benchmarks/InitializationBenchmark.cs",
+          "wallMs": 1130.9831,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "test-plan",
+          "session": "eval-concurrency-20-8",
+          "file": "src/FluentValidation/DefaultValidatorExtensions.cs",
+          "wallMs": 18938.7524,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-20-9",
+          "file": "src/FluentValidation.Tests.Benchmarks/ValidationBenchmark.cs",
+          "wallMs": 1015.7464,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "scoped",
+          "session": "eval-concurrency-20-10",
+          "file": "src/FluentValidation/DefaultValidatorExtensions_Validate.cs",
+          "wallMs": 1251.7334,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "stop",
+          "session": "eval-concurrency-20-11",
+          "file": "src/FluentValidation/DefaultValidatorOptions.cs",
+          "wallMs": 1081.5024,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "test-plan",
+          "session": "eval-concurrency-20-12",
+          "file": "src/FluentValidation/IValidationContext.cs",
+          "wallMs": 22725.4992,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-20-13",
+          "file": "src/FluentValidation/InlineValidator.cs",
+          "wallMs": 252.9119,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "scoped",
+          "session": "eval-concurrency-20-14",
+          "file": "src/FluentValidation/Internal/AccessorCache.cs",
+          "wallMs": 1874.5875,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "stop",
+          "session": "eval-concurrency-20-15",
+          "file": "src/FluentValidation/Internal/CollectionPropertyRule.cs",
+          "wallMs": 381.7454,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "test-plan",
+          "session": "eval-concurrency-20-16",
+          "file": "src/FluentValidation/Internal/CompositeValidatorSelector.cs",
+          "wallMs": 15680.6029,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-20-17",
+          "file": "src/FluentValidation/Internal/ConditionBuilder.cs",
+          "wallMs": 1733.1533,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "scoped",
+          "session": "eval-concurrency-20-18",
+          "file": "src/FluentValidation/Internal/DefaultValidatorSelector.cs",
+          "wallMs": 1733.1052,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "stop",
+          "session": "eval-concurrency-20-19",
+          "file": "src/FluentValidation/Internal/Extensions.cs",
+          "wallMs": 1570.5641,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "test-plan",
+          "session": "eval-concurrency-20-20",
+          "file": "src/FluentValidation/Internal/ExtensionsInternal.cs",
+          "wallMs": 16529.0477,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        }
+      ],
+      "errors": 0,
+      "timeouts": 0,
+      "busyAnswers": 0,
+      "unanswered": 0,
+      "stopTimeouts": 0,
+      "statusTimeouts": 0,
+      "byKind": {
+        "post-edit": {
+          "calls": 5,
+          "wall": {
+            "p50": 922.6,
+            "p95": 1733.2,
+            "max": 1733.2,
+            "n": 5
+          },
+          "queue": {
+            "p50": 61.6,
+            "p95": 653.6,
+            "max": 653.6,
+            "n": 5
+          },
+          "engine": {
+            "p50": 47,
+            "p95": 750,
+            "max": 750,
+            "n": 5
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "scoped": {
+          "calls": 5,
+          "wall": {
+            "p50": 1251.7,
+            "p95": 1874.6,
+            "max": 1874.6,
+            "n": 5
+          },
+          "queue": {
+            "p50": 22.2,
+            "p95": 864.4,
+            "max": 864.4,
+            "n": 5
+          },
+          "engine": {
+            "p50": 172,
+            "p95": 859,
+            "max": 859,
+            "n": 5
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "stop": {
+          "calls": 5,
+          "wall": {
+            "p50": 1131,
+            "p95": 1570.6,
+            "max": 1570.6,
+            "n": 5
+          },
+          "queue": {
+            "p50": 251.1,
+            "p95": 736.4,
+            "max": 736.4,
+            "n": 5
+          },
+          "engine": {
+            "p50": 156,
+            "p95": 625,
+            "max": 625,
+            "n": 5
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "test-plan": {
+          "calls": 5,
+          "wall": {
+            "p50": 16529,
+            "p95": 22725.5,
+            "max": 22725.5,
+            "n": 5
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 899.8,
+            "max": 899.8,
+            "n": 5
+          },
+          "engine": {
+            "p50": 1532,
+            "p95": 11172,
+            "max": 11172,
+            "n": 5
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        }
+      },
+      "status": {
+        "calls": 20,
+        "wall": {
+          "p50": 148,
+          "p95": 1494.3,
+          "max": 1554.6,
+          "n": 20
+        },
+        "queue": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 20
+        },
+        "engine": {
+          "p50": 0,
+          "p95": 16,
+          "max": 62,
+          "n": 20
+        },
+        "timeouts": 0,
+        "busyAnswers": 0,
+        "unanswered": 0
+      },
+      "enginePeakWorkingSetMb": 569.3
+    }
+  ],
+  "enginePeakWorkingSetMb": 569.3,
+  "engineIdleWorkingSetMb": 392.4,
+  "treeCleanAfter": true
+}

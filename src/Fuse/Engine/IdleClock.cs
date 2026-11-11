@@ -19,6 +19,13 @@ internal sealed class IdleClock
     /// </summary>
     public static readonly TimeSpan ReleaseAfter = TimeSpan.FromSeconds(30);
 
+    /// <summary>
+    ///     An engine with no request for this long leaves early when another engine needs memory: minutes instead
+    ///     of <see cref="ExitAfter"/>. It comes back fast, because the stored graph and the summaries are kept, so
+    ///     leaving costs an evaluation it does not repeat.
+    /// </summary>
+    public static readonly TimeSpan ExitAfterShortened = TimeSpan.FromMinutes(5);
+
     private readonly TimeProvider _time;
     private int _active;
     private long _lastRequest;
@@ -54,12 +61,24 @@ internal sealed class IdleClock
     /// <summary>True when no request is running and none came for <see cref="ExitAfter"/>.</summary>
     public bool ShouldExit => Volatile.Read(ref _active) == 0 && IdleFor >= ExitAfter;
 
+    /// <summary>True when no request is running and none came for <see cref="ExitAfterShortened"/>, the shortened idle an engine leaves on when another engine needs memory.</summary>
+    public bool ShouldExitShortened => Volatile.Read(ref _active) == 0 && IdleFor >= ExitAfterShortened;
+
+    /// <summary>True when the engine leaves now: after <see cref="ExitAfterShortened"/> when <paramref name="machineNeedsMemory"/> holds, and after <see cref="ExitAfter"/> otherwise.</summary>
+    public bool ShouldExitWhen(bool machineNeedsMemory) => machineNeedsMemory ? ShouldExitShortened : ShouldExit;
+
     /// <summary>
     ///     True once per idle period: the first time no request is running and none came for <see cref="ReleaseAfter"/>.
     ///     A request resets it.
     /// </summary>
     public bool TakeRelease() =>
         Volatile.Read(ref _active) == 0 && IdleFor >= ReleaseAfter && Interlocked.Exchange(ref _released, 1) == 0;
+
+    /// <summary>How many requests are running.</summary>
+    public int ActiveCount => Volatile.Read(ref _active);
+
+    /// <summary>How long no request has run, which the machine memory budget compares between engines.</summary>
+    public TimeSpan IdleDuration => IdleFor;
 
     private TimeSpan IdleFor => _time.GetElapsedTime(Interlocked.Read(ref _lastRequest));
 }

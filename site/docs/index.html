@@ -45,7 +45,7 @@
       "url": "https://fuse.codes/docs/",
       "mainEntityOfPage": "https://fuse.codes/docs/",
       "inLanguage": "en",
-      "dateModified": "2026-10-29",
+      "dateModified": "2026-11-06",
       "image": "https://fuse.codes/assets/og.png",
       "isPartOf": {
         "@type": "WebSite",
@@ -157,7 +157,7 @@
     <ul>
       <li><strong>Memory.</strong> The engine keeps loaded projects in memory until it has been idle for 30 minutes. When idle, it holds 319 MB on the 15-project NodaTime and 512 MB on the 4-project FluentValidation, and up to 1,091 MB while it checks, on runners with 16 GB of memory. On a machine with more memory, the engine uses more (<a href="benchmarks">Benchmarks</a>). Each git worktree runs its own engine.</li>
       <li><strong>A slow first check across projects.</strong> The first edit that affects other projects must load them. On Jellyfin (40 projects), that took up to 68.9 s. The median signature edit took 58 ms.</li>
-      <li><strong>One check at a time.</strong> Agents in the same repository wait for each other's checks.</li>
+      <li><strong>Many agents, one engine.</strong> Checks and test plans from several sessions run at the same time, each answered about its own edits.</li>
       <li><strong>Not a full build.</strong> Fuse checks C# only and selects tests by reading the code, so a few cases still need <code>fuse build</code> or <code>fuse test --all</code>. <a href="limits">Limits</a> lists them.</li>
     </ul>
 

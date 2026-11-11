@@ -18,6 +18,7 @@ internal sealed class RepoGraph
     private readonly Dictionary<RepoPath, ProjectNode> _byPath;
     private readonly Dictionary<RepoPath, List<ProjectNode>> _owners;
     private readonly Dictionary<RepoPath, List<ProjectNode>> _directDependents;
+    private readonly Dictionary<RepoPath, List<ProjectNode>> _nonSourceOwners;
 
     private RepoGraph(IReadOnlyList<ProjectNode> projects, IReadOnlyList<string> failures)
     {
@@ -25,6 +26,7 @@ internal sealed class RepoGraph
         Failures = failures;
         _byPath = projects.ToDictionary(p => p.Path);
         _owners = [];
+        _nonSourceOwners = [];
         _directDependents = projects.ToDictionary(p => p.Path, _ => new List<ProjectNode>());
         foreach (var project in projects)
         {
@@ -33,6 +35,13 @@ internal sealed class RepoGraph
                 if (!_owners.TryGetValue(source, out var list))
                     _owners[source] = list = [];
                 list.Add(project);
+            }
+
+            foreach (var nonSource in project.NonSources)
+            {
+                if (!_nonSourceOwners.TryGetValue(nonSource, out var nonSourceList))
+                    _nonSourceOwners[nonSource] = nonSourceList = [];
+                nonSourceList.Add(project);
             }
 
             foreach (var reference in project.References)
@@ -67,6 +76,23 @@ internal sealed class RepoGraph
 
         // A new file belongs to the deepest project directory holding it, unless it sits in build output.
         return best is null || PathRules.IsBuildOutput(best.Directory.Absolute, path.Absolute) ? [] : [best];
+    }
+
+    /// <summary>The projects whose MSBuild items name <paramref name="path"/> as a non-C# file they use.</summary>
+    public IReadOnlyList<ProjectNode> NonSourceOwnersOf(RepoPath path) =>
+        _nonSourceOwners.TryGetValue(path, out var owners) ? owners : [];
+
+    /// <summary>The deepest project whose directory holds <paramref name="path"/>, or null when no project directory holds it or it sits in build output.</summary>
+    public ProjectNode? ContainingProject(RepoPath path)
+    {
+        ProjectNode? best = null;
+        foreach (var project in Projects)
+        {
+            if (path.IsUnder(project.Directory) && (best is null || project.Directory.Absolute.Length > best.Directory.Absolute.Length))
+                best = project;
+        }
+
+        return best is null || PathRules.IsBuildOutput(best.Directory.Absolute, path.Absolute) ? null : best;
     }
 
     /// <summary>Every project that references <paramref name="project"/>, directly or transitively.</summary>
@@ -112,7 +138,18 @@ internal sealed class RepoGraph
         return result;
     }
 
-    /// <summary>Evaluates every project file git knows about (tracked or untracked, not ignored).</summary>
+    /// <summary>
+    ///     The graph the stored form holds for <paramref name="projects"/>, for <see cref="GraphStore"/> alone.
+    ///     Its owners, dependents and closures are derived as an evaluated graph's are.
+    /// </summary>
+    internal static RepoGraph FromStored(IReadOnlyList<ProjectNode> projects, IReadOnlyList<string> failures) =>
+        new(projects, failures);
+
+    /// <summary>
+    ///     Every project file git knows about (tracked or untracked, not ignored), evaluated, or read from the
+    ///     stored graph (<see cref="GraphStore"/>) when the project files and their imports are as they were when
+    ///     it was stored, so a fresh engine answers without evaluating again.
+    /// </summary>
     public static async Task<RepoGraph> EvaluateAsync(RepoRoot root, CancellationToken cancellationToken)
     {
         // -z gives one NUL-separated path per project file, exactly as it is on disk; without it git C-quotes a path that
@@ -130,8 +167,13 @@ internal sealed class RepoGraph
             .Distinct()
             .ToList();
 
+        // Registered before the stored graph is read too: the workspace loads projects through MSBuild either way.
         MsBuildSetup.EnsureRegistered();
-        return Evaluate(root, paths, cancellationToken);
+        if (GraphStore.TryLoad(root, paths) is { } stored)
+            return stored;
+        var graph = Evaluate(root, paths, cancellationToken);
+        GraphStore.Store(root, graph);
+        return graph;
     }
 
     private static RepoGraph Evaluate(RepoRoot root, List<RepoPath> paths, CancellationToken cancellationToken)
@@ -201,6 +243,8 @@ internal sealed class RepoGraph
 
         var path = root.PathOf(project.FullPath);
         var sources = new HashSet<RepoPath>();
+        var nonSources = new HashSet<RepoPath>();
+        var buildOnlyReferences = new HashSet<RepoPath>();
         var references = new HashSet<RepoPath>();
         var packages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var inputs = new HashSet<RepoPath> { path };
@@ -217,6 +261,37 @@ internal sealed class RepoGraph
                     if (PathRules.IsSource(item.EvaluatedInclude))
                         sources.Add(Full(item.EvaluatedInclude));
                 }
+            }
+
+            foreach (var item in evaluation.GetItems("EmbeddedResource"))
+            {
+                if (item.EvaluatedInclude.Length > 0 && !PathRules.IsSource(item.EvaluatedInclude))
+                    nonSources.Add(Full(item.EvaluatedInclude));
+            }
+
+            foreach (var item in evaluation.GetItems("Content"))
+            {
+                if (item.EvaluatedInclude.Length > 0 && !PathRules.IsSource(item.EvaluatedInclude))
+                    nonSources.Add(Full(item.EvaluatedInclude));
+            }
+
+            foreach (var item in evaluation.GetItems("AdditionalFiles"))
+            {
+                if (item.EvaluatedInclude.Length > 0 && !PathRules.IsSource(item.EvaluatedInclude))
+                    nonSources.Add(Full(item.EvaluatedInclude));
+            }
+
+            foreach (var item in evaluation.GetItems("None"))
+            {
+                var copy = item.GetMetadataValue("CopyToOutputDirectory");
+                if (item.EvaluatedInclude.Length > 0 && !PathRules.IsSource(item.EvaluatedInclude) && copy.Length > 0 && !copy.Equals("Never", StringComparison.OrdinalIgnoreCase))
+                    nonSources.Add(Full(item.EvaluatedInclude));
+            }
+
+            foreach (var item in evaluation.GetItems("ProjectReference"))
+            {
+                if (item.GetMetadataValue("ReferenceOutputAssembly").Equals("false", StringComparison.OrdinalIgnoreCase))
+                    buildOnlyReferences.Add(Full(item.EvaluatedInclude));
             }
 
             references.UnionWith(evaluation.GetItems("ProjectReference").Select(i => Full(i.EvaluatedInclude)));
@@ -258,6 +333,8 @@ internal sealed class RepoGraph
             Directory = root.PathOf(dir.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar)),
             References = [.. references],
             Sources = sources,
+            NonSources = nonSources,
+            BuildOnlyReferences = [.. buildOnlyReferences],
             EvaluationInputs = inputs,
             AssetsFile = Full(string.IsNullOrEmpty(assets) ? System.IO.Path.Combine("obj", "project.assets.json") : assets),
             IsTest = isTest,

@@ -139,7 +139,7 @@ public class EngineProcessTests
             Assert.True(await FuseProcess.WaitForExitAsync(repo.Root, TimeSpan.FromSeconds(15)));
             // The line carries no build id under this build's name, and the log says so rather than leaving a gap.
             var log = File.ReadAllLines(Path.Combine(repo.Root.StateDirectory, "engine.log"));
-            Assert.Contains(log, l => l.EndsWith(" client build (none) differs; exiting so the client can start a matching engine", StringComparison.Ordinal));
+            Assert.Contains(log, l => l.EndsWith(" client build (none) differs; draining for (unknown) so the client can start a matching engine", StringComparison.Ordinal));
         }
         finally
         {

@@ -42,6 +42,7 @@ internal static class Program
                 "test" => await TestAsync(rest, cancel.Token).ConfigureAwait(false),
                 "build" => await BuildAsync(rest, cancel.Token).ConfigureAwait(false),
                 "status" => await StatusAsync(rest, cancel.Token).ConfigureAwait(false),
+                "watch" => await WatchAsync(rest, cancel.Token).ConfigureAwait(false),
                 "session" => await SessionAsync(rest, cancel.Token).ConfigureAwait(false),
                 "stop" => await StopAsync(rest, cancel.Token).ConfigureAwait(false),
                 "hook" => await HookCommand.RunAsync(rest, cancel.Token).ConfigureAwait(false),
@@ -81,6 +82,7 @@ internal static class Program
         "build" => CommandUsage.Build,
         "stop" => CommandUsage.Stop,
         "status" => CommandUsage.Status,
+        "watch" => WatchOperation.Usage,
         "session" => CommandUsage.Session,
         "init" => CommandUsage.Init,
         "uninit" => CommandUsage.Uninit,
@@ -109,7 +111,7 @@ internal static class Program
             var (specs, specsRefusal) = CheckOperation.ResolveFiles(parsed.Files, Path.GetFullPath);
             if (specsRefusal is not null)
                 return Print(specsRefusal);
-            var (scoped, _) = await CheckOperation.RunScopedAsync(root, specs, parsed.MaxErrors, parsed.Json, TimeSpan.FromMinutes(10), cancellationToken, includeTreeStamp: true).ConfigureAwait(false);
+            var (scoped, _) = await CheckOperation.RunScopedAsync(root, specs, parsed.MaxErrors, parsed.Json, TimeSpan.FromMinutes(10), cancellationToken, includeTreeStamp: true, session: SessionOperation.EnvironmentSession).ConfigureAwait(false);
             return Print(scoped);
         }
 
@@ -121,7 +123,9 @@ internal static class Program
                 return Print(filesRefusal);
         }
 
-        var (result, _) = await CheckOperation.RunAsync(root, absolute, session: null, waitForLoad: true, compilationWideAnalyzers: true, TimeSpan.FromMinutes(10), cancellationToken, parsed.MaxErrors, parsed.Json, includeTreeStamp: true).ConfigureAwait(false);
+        // FUSE_SESSION names the caller's session in its environment, as a hook names one in its payload: with files it
+        // credits them to the session, and without files it answers for that session alone.
+        var (result, _) = await CheckOperation.RunAsync(root, absolute, session: SessionOperation.EnvironmentSession, waitForLoad: true, compilationWideAnalyzers: true, TimeSpan.FromMinutes(10), cancellationToken, parsed.MaxErrors, parsed.Json, includeTreeStamp: true).ConfigureAwait(false);
         return Print(result);
     }
 
@@ -166,6 +170,9 @@ internal static class Program
             session = args[index + 1];
             args = [.. args[..index], .. args[(index + 2)..]];
         }
+
+        // With no --session, FUSE_SESSION in the environment names the session, as it does for fuse check.
+        session ??= SessionOperation.EnvironmentSession;
 
         // --from-rewrite is the pre-shell hook's too: the command ran through Fuse, which the notice says.
         var fromRewrite = args.Contains("--from-rewrite");
@@ -259,6 +266,42 @@ internal static class Program
         if (root is null)
             return 2;
         return Print(await StatusOperation.RunAsync(root, json, cancellationToken).ConfigureAwait(false));
+    }
+
+    /// <summary><c>fuse watch --session &lt;name&gt;</c>: streams the stored answers of one session until it is cancelled; any other argument is a usage failure.</summary>
+    private static async Task<int> WatchAsync(string[] args, CancellationToken cancellationToken)
+    {
+        string? session = null;
+        for (var i = 0; i < args.Length; i++)
+        {
+            if (args[i] == "--session" && session is null && i + 1 < args.Length)
+                session = args[++i];
+            else if (args[i].StartsWith("--session=", StringComparison.Ordinal) && session is null && args[i].Length > "--session=".Length)
+                session = args[i]["--session=".Length..];
+            else
+            {
+                Console.Error.WriteLine(WatchOperation.Usage);
+                return 2;
+            }
+        }
+
+        if (session is null)
+        {
+            Console.Error.WriteLine(WatchOperation.Usage);
+            return 2;
+        }
+
+        var root = RequireRoot();
+        if (root is null)
+            return 2;
+        var result = await WatchOperation.RunAsync(root, session, Console.Out, cancellationToken).ConfigureAwait(false);
+        if (result.Outcome == Outcome.Unanswered)
+        {
+            Console.Error.WriteLine(result.Text);
+            return 2;
+        }
+
+        return result.ExitCode;
     }
 
     private static async Task<int> SessionAsync(string[] args, CancellationToken cancellationToken)

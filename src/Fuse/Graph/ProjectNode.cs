@@ -19,6 +19,16 @@ internal sealed class ProjectNode
     /// <summary>The C# and Razor sources the project compiles.</summary>
     public required IReadOnlySet<RepoPath> Sources { get; init; }
 
+    /// <summary>
+    ///     The non-C# files MSBuild names for the project: every EmbeddedResource, Content and AdditionalFiles item, and every None item with a copy to output. A change to one belongs to this project, so test selection selects its tests as a change in the project does.
+    /// </summary>
+    public IReadOnlySet<RepoPath> NonSources { get; init; } = new HashSet<RepoPath>();
+
+    /// <summary>
+    ///     The project files it references with ReferenceOutputAssembly false: build this project first, with no assembly reference. A test project that starts an application as a child process declares the application this way, so the reference is its reach to the application.
+    /// </summary>
+    public IReadOnlyList<RepoPath> BuildOnlyReferences { get; init; } = [];
+
     /// <summary>The files whose change requires re-evaluating this project (itself and its imports inside the repository).</summary>
     public required IReadOnlySet<RepoPath> EvaluationInputs { get; init; }
 

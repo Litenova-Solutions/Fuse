@@ -25,17 +25,22 @@ internal sealed class TargetResolver
 
     /// <summary>The targets of <paramref name="scope"/>, read after the sync so every change includes the latest edits.</summary>
     /// <param name="excluded">The files a check of every change leaves out, or null to leave out none.</param>
-    public IReadOnlyList<RepoPath> Resolve(CheckScope scope, IReadOnlySet<RepoPath>? excluded = null)
+    public IReadOnlyList<RepoPath> Resolve(CheckScope scope, IReadOnlySet<RepoPath>? excluded = null) =>
+        Resolve(scope, _workspace.PinGeneration(), excluded);
+
+    /// <summary>The targets of <paramref name="scope"/> in <paramref name="generation"/>.</summary>
+    /// <param name="excluded">The files a check of every change leaves out, or null to leave out none.</param>
+    public IReadOnlyList<RepoPath> Resolve(CheckScope scope, Generation generation, IReadOnlySet<RepoPath>? excluded = null)
     {
         if (scope is CheckScope.NamedPaths paths)
-            return ScopeExpansion.Expand(_workspace, paths.Named);
-        return ResolveRest(scope, excluded);
+            return ScopeExpansion.Expand(_workspace, generation, paths.Named);
+        return ResolveRest(scope, generation, excluded);
     }
 
-    private List<RepoPath> ResolveRest(CheckScope scope, IReadOnlySet<RepoPath>? excluded)
+    private static List<RepoPath> ResolveRest(CheckScope scope, Generation generation, IReadOnlySet<RepoPath>? excluded)
     {
-        var graph = _workspace.Graph;
-        var paths = scope is CheckScope.Files ? NamedPaths(scope) : _workspace.Tracker.Changed;
+        var graph = generation.Graph;
+        var paths = scope is CheckScope.Files ? NamedPaths(scope) : generation.Changed;
         if (excluded is not null && scope is CheckScope.AllChanges)
             paths = paths.Where(p => !excluded.Contains(p)).ToList();
         return paths

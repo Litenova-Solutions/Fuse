@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Fuse.Failures;
 using Fuse.Paths;
 
@@ -24,8 +25,8 @@ internal sealed class ChangeTracker : IDisposable
     private readonly HeadResolver _head;
     private readonly WatchedPaths _watched;
     private readonly GitBlobReader _blobs;
-    private readonly HashSet<RepoPath> _changed = [];
-    private readonly HashSet<RepoPath> _nonSources = [];
+    private readonly ConcurrentDictionary<RepoPath, byte> _changed = new();
+    private readonly ConcurrentDictionary<RepoPath, byte> _nonSources = new();
 
     /// <summary>
     ///     What a sync took from the watcher and did not fold in because its reseed failed, or null. The next sync takes it
@@ -51,8 +52,8 @@ internal sealed class ChangeTracker : IDisposable
     /// <summary>The commit the baseline is taken from, or null in a repository without commits.</summary>
     public string? Head { get; private set; }
 
-    /// <summary>The C# and Razor files that differ from HEAD, including deleted ones.</summary>
-    public IReadOnlyCollection<RepoPath> Changed => _changed;
+    /// <summary>The C# and Razor files that differ from HEAD, including deleted ones, as a snapshot a reader can enumerate while a sync folds.</summary>
+    public IReadOnlyCollection<RepoPath> Changed => [.. _changed.Keys.OrderBy(p => p.Relative, StringComparer.Ordinal)];
 
     /// <summary>How many changed files are not sources; the check names them instead of reading them.</summary>
     public int NonSourceChanged { get; private set; }
@@ -60,13 +61,16 @@ internal sealed class ChangeTracker : IDisposable
     /// <summary>The first changed non-sources by sorted relative path.</summary>
     public IReadOnlyList<RepoPath> NonSourceSample { get; private set; } = [];
 
+    /// <summary>The files that differ from HEAD and are not sources, including deleted ones.</summary>
+    public IReadOnlyCollection<RepoPath> NonSources => [.. _nonSources.Keys.OrderBy(p => p.Relative, StringComparer.Ordinal)];
+
     /// <summary>Reads git state and starts watching. Call once before <see cref="SyncAsync"/>.</summary>
     public async Task InitializeAsync(CancellationToken cancellationToken)
     {
         var head = await _head.ResolveAsync(Head, cancellationToken).ConfigureAwait(false);
         var (seeded, nonSources) = await SeedAsync(cancellationToken).ConfigureAwait(false);
         Head = head;
-        _changed.UnionWith(seeded);
+        foreach (var seededPath in seeded) _changed[seededPath] = 0;
         SetNonSources(nonSources);
         _watched.Start();
     }
@@ -74,11 +78,12 @@ internal sealed class ChangeTracker : IDisposable
     /// <summary>Folds every change seen since the last call into <see cref="Changed"/> and says how the workspace follows it.</summary>
     /// <param name="knownPaths">Files a hook reports as written, checked even if their watcher event has not arrived.</param>
     /// <param name="cancellationToken">Cancels a reseed from git.</param>
+    /// <param name="confirmWithDisk">True to confirm the changed set against git when the watcher reported nothing.</param>
     /// <exception cref="FuseException">
     ///     git cannot resolve HEAD, list the changes or read a file at HEAD. When listing the changes for a reseed fails,
     ///     <see cref="Head"/> and <see cref="Changed"/> stay as they were and the next call seeds again.
     /// </exception>
-    public async Task<SyncResult> SyncAsync(IEnumerable<RepoPath> knownPaths, CancellationToken cancellationToken)
+    public async Task<SyncResult> SyncAsync(IEnumerable<RepoPath> knownPaths, CancellationToken cancellationToken, bool confirmWithDisk = false)
     {
         var head = await _head.ResolveAsync(Head, cancellationToken).ConfigureAwait(false);
         var headMoved = !string.Equals(head, Head, StringComparison.Ordinal);
@@ -94,6 +99,37 @@ internal sealed class ChangeTracker : IDisposable
                     paths.Add(path);
                 else if (!PathRules.IsProjectFile(path.Absolute))
                     watchedNonSources.Add(path);
+        }
+
+        // Git-ignored files the watcher reports are not changes: one batched check-ignore call per sync names them.
+        if (watchedNonSources.Count > 0)
+        {
+            var ignored = await GitStatus.IgnoredPathsAsync(_root, watchedNonSources, cancellationToken).ConfigureAwait(false);
+            watchedNonSources.ExceptWith(ignored);
+            foreach (var ignoredPath in ignored) _nonSources.TryRemove(ignoredPath, out _);
+        }
+
+        // A check of every change asks for the changed set to be confirmed against disk: a write the watcher has not
+        // reported yet, as a shell command's write on macOS can be late, is in no set. git lists what differs from
+        // HEAD, and every source whose membership differs from what the tracker holds joins the reported paths, which
+        // the sync below verifies against disk and HEAD like any other. Other syncs never pay for git.
+        if (confirmWithDisk && !headMoved && watched.WatcherErrors.Count == 0)
+        {
+            HashSet<RepoPath> seeded;
+            try
+            {
+                (seeded, _) = await SeedAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+                // Nothing is folded in, so the next sync takes what this one drained and confirms again.
+                _unfolded = watched with { Sources = new HashSet<RepoPath>(paths) };
+                _unfoldedNonSources = watchedNonSources;
+                throw;
+            }
+
+            paths.UnionWith(seeded.Where(p => !_changed.ContainsKey(p)));
+            paths.UnionWith(_changed.Keys.Where(p => !seeded.Contains(p)));
         }
 
         // After HEAD moves or the watcher loses events, the reported paths are not the whole change, and past the limit
@@ -117,12 +153,12 @@ internal sealed class ChangeTracker : IDisposable
                 throw;
             }
 
-            paths.UnionWith(_changed);
+            paths.UnionWith(_changed.Keys);
             Head = head;
             _changed.Clear();
-            _changed.UnionWith(seeded);
+            foreach (var seededPath in seeded) _changed[seededPath] = 0;
             SetNonSources(nonSources);
-            paths.UnionWith(_changed);
+            paths.UnionWith(_changed.Keys);
             if (headMoved)
                 return new SyncResult.Reevaluate(paths, head is null ? "HEAD has no commit" : $"HEAD moved to {head[..Math.Min(12, head.Length)]}");
             if (watched.WatcherErrors.Count > 0)
@@ -134,8 +170,8 @@ internal sealed class ChangeTracker : IDisposable
 
         foreach (var directory in watched.VanishedDirectories)
         {
-            watchedNonSources.UnionWith(_nonSources.Where(c => c.IsUnder(directory)));
-            paths.UnionWith(_changed.Where(c => c.IsUnder(directory)));
+            watchedNonSources.UnionWith(_nonSources.Keys.Where(c => c.IsUnder(directory)));
+            paths.UnionWith(_changed.Keys.Where(c => c.IsUnder(directory)));
         }
 
         foreach (var path in paths)
@@ -160,7 +196,7 @@ internal sealed class ChangeTracker : IDisposable
     private void SetNonSources(List<RepoPath> nonSources)
     {
         _nonSources.Clear();
-        _nonSources.UnionWith(nonSources);
+        foreach (var nonSourcePath in nonSources) _nonSources[nonSourcePath] = 0;
         NoteNonSources();
     }
 
@@ -215,7 +251,7 @@ internal sealed class ChangeTracker : IDisposable
     private void NoteNonSources()
     {
         NonSourceChanged = _nonSources.Count;
-        NonSourceSample = [.. _nonSources.OrderBy(p => p.Relative, StringComparer.Ordinal).Take(MaxNonSourceSample)];
+        NonSourceSample = [.. _nonSources.Keys.OrderBy(p => p.Relative, StringComparer.Ordinal).Take(MaxNonSourceSample)];
     }
 
     private void RefreshNonSource(RepoPath path)
@@ -225,14 +261,14 @@ internal sealed class ChangeTracker : IDisposable
         // The watcher reports a change on a directory when its listing changes; the directory is not a changed file.
         if (Directory.Exists(path.Absolute))
         {
-            _nonSources.Remove(path);
+            _nonSources.TryRemove(path, out _);
             return;
         }
 
         if (DiffersFromHead(path))
-            _nonSources.Add(path);
+            _nonSources[path] = 0;
         else
-            _nonSources.Remove(path);
+            _nonSources.TryRemove(path, out _);
     }
 
     private void Refresh(RepoPath path)
@@ -240,9 +276,9 @@ internal sealed class ChangeTracker : IDisposable
         if (_watched.IsIgnored(path))
             return;
         if (DiffersFromHead(path))
-            _changed.Add(path);
+            _changed[path] = 0;
         else
-            _changed.Remove(path);
+            _changed.TryRemove(path, out _);
     }
 
     private bool DiffersFromHead(RepoPath path)
@@ -252,7 +288,7 @@ internal sealed class ChangeTracker : IDisposable
         try
         {
             if (File.Exists(path.Absolute))
-                onDisk = File.ReadAllBytes(path.Absolute);
+                onDisk = SharedRead.AllBytes(path.Absolute);
         }
         catch (IOException)
         {
@@ -266,6 +302,16 @@ internal sealed class ChangeTracker : IDisposable
         }
 
         return HeadComparison.Differs(atHead, onDisk);
+    }
+
+    /// <summary>
+    ///     Reports <paramref name="paths"/> as written, as the watcher would, so the next sync verifies them whichever
+    ///     request runs it. A hook that credits a session with a file calls this.
+    /// </summary>
+    public void ReportWritten(IEnumerable<RepoPath> paths)
+    {
+        foreach (var path in paths)
+            _watched.Record(path.Absolute, appearedOrVanished: false);
     }
 
     public void Dispose()

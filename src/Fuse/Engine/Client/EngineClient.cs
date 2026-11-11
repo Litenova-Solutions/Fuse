@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.IO.Pipes;
 using System.Text;
 using Fuse.Failures;
@@ -11,6 +12,11 @@ namespace Fuse.Engine.Client;
 internal static class EngineClient
 {
     private static readonly TimeSpan StartTimeout = TimeSpan.FromSeconds(15);
+
+    /// <summary>How long a pipe existence answer is kept, so a round trip that asks twice in quick succession enumerates the pipes once.</summary>
+    private static readonly long PipeExistsCacheMs = 100;
+
+    private static readonly ConcurrentDictionary<string, (bool Exists, long ExpiresAt)> PipeExistence = new(StringComparer.Ordinal);
 
     private static int _counter;
 
@@ -28,11 +34,13 @@ internal static class EngineClient
     public static async Task<EngineResponse> SendAsync(RepoRoot root, EngineRequest request, TimeSpan timeout, CancellationToken cancellationToken)
     {
         request = request with { BuildId = EngineVersion.Build, RequestId = NextRequestId(), WaitMs = (long)timeout.TotalMilliseconds };
+        var sendStarted = Environment.TickCount64;
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         deadline.CancelAfter(timeout);
         try
         {
-            for (var attempt = 0; ; attempt++)
+            var restarts = 0;
+            for (var attempt = 0; ;)
             {
                 string? line;
                 try
@@ -48,6 +56,7 @@ internal static class EngineClient
                     // On Linux and macOS each pipe server instance accepts one connection and closes its socket, so a
                     // connection that arrives in between is reset. Every request is safe to send again.
                     await Task.Delay(50 * (attempt + 1), deadline.Token).ConfigureAwait(false);
+                    attempt++;
                     continue;
                 }
 
@@ -57,14 +66,36 @@ internal static class EngineClient
                 if (response is null)
                 {
                     if (attempt < 1)
+                    {
+                        attempt++;
                         continue;
+                    }
+
                     return new EngineResponse.Unanswered(ErrorCode.Internal, $"the Fuse engine closed the connection (see {Path.Combine(root.StateDirectory, "engine.log")})");
                 }
 
-                if (response is EngineResponse.Restart && attempt < 2)
+                if (response is EngineResponse.Busy busy)
                 {
-                    // An engine from another build is exiting; give it a moment to release the pipe and mutex.
-                    await Task.Delay(300, deadline.Token).ConfigureAwait(false);
+                    // The engine refused the request at once instead of queueing it past the wait. Send it again
+                    // after the estimate, within this request's own wait; past the wait the answer is Busy, which
+                    // the command line prints and a hook leaves silent, as it leaves every answer but a missing
+                    // restore and introduced errors.
+                    var remainingMs = timeout.TotalMilliseconds - (Environment.TickCount64 - sendStarted);
+                    if (remainingMs <= 0)
+                        return new EngineResponse.Unanswered(ErrorCode.Busy, ErrorMessages.Busy(busy.Position, busy.EstimatedWaitMs));
+                    var delayMs = Math.Clamp(busy.EstimatedWaitMs, 50, 5000);
+                    if (delayMs >= remainingMs)
+                        return new EngineResponse.Unanswered(ErrorCode.Busy, ErrorMessages.Busy(busy.Position, busy.EstimatedWaitMs));
+                    await Task.Delay(TimeSpan.FromMilliseconds(delayMs), deadline.Token).ConfigureAwait(false);
+                    continue;
+                }
+
+                if (response is EngineResponse.Restart)
+                {
+                    // An engine from another build is draining; wait with backoff for the matching engine to take its
+                    // place, within this request's own wait.
+                    restarts++;
+                    await Task.Delay(RestartDelay(restarts), deadline.Token).ConfigureAwait(false);
                     continue;
                 }
 
@@ -88,6 +119,19 @@ internal static class EngineClient
             return new EngineResponse.Unanswered(ErrorCode.Internal, $"could not start the Fuse engine: {e.Message}");
         }
     }
+
+    /// <summary>
+    ///     How long to wait after the <paramref name="nth"/> Restart in a row before sending the request again. The drained
+    ///     engine finishes its requests before it exits, so the wait grows from 300 ms to 5 s.
+    /// </summary>
+    private static TimeSpan RestartDelay(int nth) => nth switch
+    {
+        1 => TimeSpan.FromMilliseconds(300),
+        2 => TimeSpan.FromMilliseconds(600),
+        3 => TimeSpan.FromMilliseconds(1200),
+        4 => TimeSpan.FromMilliseconds(2400),
+        _ => TimeSpan.FromMilliseconds(5000),
+    };
 
     /// <summary>
     ///     Reads <paramref name="line"/> into <paramref name="response"/> and returns why it is not a complete answer, or
@@ -120,20 +164,34 @@ internal static class EngineClient
         return complete ? null : "the answer leaves out part of the result";
     }
 
-    /// <summary>True when an engine's pipe exists, checked without connecting (a connection attempt waits for a timeout).</summary>
-    internal static bool PipeExists(string name)
+    /// <summary>
+    ///     True when an engine's pipe exists, checked without connecting (a connection attempt waits for a
+    ///     timeout). An answer is kept per pipe name for 100 ms, so a post-edit round trip and a background
+    ///     post-edit's confirmation round trip enumerate the pipes at most once between them.
+    /// </summary>
+    internal static bool PipeExists(string name) => PipeExists(name, Environment.TickCount64);
+
+    /// <summary>True when an engine's pipe exists, as of <paramref name="now"/> in <see cref="Environment.TickCount64"/> milliseconds.</summary>
+    internal static bool PipeExists(string name, long now)
     {
+        if (PipeExistence.TryGetValue(name, out var kept) && now < kept.ExpiresAt)
+            return kept.Exists;
+        bool exists;
         try
         {
             if (OperatingSystem.IsWindows())
-                return Directory.EnumerateFiles(@"\\.\pipe\", name).Any();
+                exists = Directory.EnumerateFiles(@"\\.\pipe\", name).Any();
             // .NET implements named pipes on Unix as domain sockets in the temp directory.
-            return File.Exists(Path.Combine(Path.GetTempPath(), "CoreFxPipe_" + name));
+            else
+                exists = File.Exists(Path.Combine(Path.GetTempPath(), "CoreFxPipe_" + name));
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException)
         {
             return true; // Cannot tell; try to connect.
         }
+
+        PipeExistence[name] = (exists, now + PipeExistsCacheMs);
+        return exists;
     }
 
     private static async Task<NamedPipeClientStream> ConnectAsync(RepoRoot root, CancellationToken cancellationToken)

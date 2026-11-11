@@ -25,7 +25,25 @@ internal static partial class CauseLines
         IReadOnlyList<CompilerError> errors,
         Reach reach,
         RepoRoot root,
-        IReadOnlyCollection<RepoPath> targets)
+        IReadOnlyCollection<RepoPath> targets) =>
+        Attach(errors, reach, root, targets, null);
+
+    /// <summary>
+    ///     Each error with its cause and, when one session wrote the file that holds the cause's declaration, the
+    ///     session that caused it, in the same order. A cause in a file several sessions wrote, or no session is
+    ///     credited with, names none.
+    /// </summary>
+    /// <param name="errors">The errors in the check's answer, in report order.</param>
+    /// <param name="reach">The files the declaration changes reached; only a precise reach names a cause for a file.</param>
+    /// <param name="root">The repository, which turns an error's repository-relative path into the path the reach is keyed by.</param>
+    /// <param name="targets">The targets, which never get a cause.</param>
+    /// <param name="writers">The sessions that wrote each changed file, or null when no session is recorded.</param>
+    public static IReadOnlyList<IntroducedError> Attach(
+        IReadOnlyList<CompilerError> errors,
+        Reach reach,
+        RepoRoot root,
+        IReadOnlyCollection<RepoPath> targets,
+        IReadOnlyDictionary<RepoPath, IReadOnlySet<string>>? writers)
     {
         if (reach is not Reach.Precise precise)
             return [.. errors.Select(e => new IntroducedError(e))];
@@ -41,10 +59,28 @@ internal static partial class CauseLines
                 continue;
             }
 
-            result.Add(new IntroducedError(error, About(error, cause, precise.AllCauses?.GetValueOrDefault(path))));
+            var about = About(error, cause, precise.AllCauses?.GetValueOrDefault(path));
+            result.Add(new IntroducedError(error, about) { CausedBy = CausedByOf(about, precise, writers) });
         }
 
         return result;
+    }
+
+    /// <summary>
+    ///     The session that caused <paramref name="cause"/>: the one session that wrote the file holding the cause's
+    ///     declaration, named as a router names it, so a registration loses the prefix it is stored under. Null when
+    ///     that file has no writer or several writers, or when the reach does not name the file.
+    /// </summary>
+    internal static string? CausedByOf(Cause cause, Reach.Precise precise, IReadOnlyDictionary<RepoPath, IReadOnlySet<string>>? writers)
+    {
+        if (writers is null || precise.CauseFiles is null || !precise.CauseFiles.TryGetValue(cause, out var file))
+            return null;
+        if (!writers.TryGetValue(file, out var sessions) || sessions.Count != 1)
+            return null;
+        var session = sessions.Single();
+        return session.StartsWith(SessionEdits.RegisteredPrefix, StringComparison.Ordinal)
+            ? session[SessionEdits.RegisteredPrefix.Length..]
+            : session;
     }
 
     /// <summary>

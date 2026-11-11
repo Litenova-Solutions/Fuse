@@ -32,4 +32,7 @@ internal enum ErrorCode
 
     /// <summary>An unexpected failure inside Fuse.</summary>
     Internal,
+
+    /// <summary>The engine is busy: its scheduler or its memory budget refused the request, with its queue position and an estimated wait.</summary>
+    Busy,
 }

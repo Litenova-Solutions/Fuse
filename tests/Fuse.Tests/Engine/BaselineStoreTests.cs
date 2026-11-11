@@ -35,7 +35,7 @@ public class BaselineStoreTests
         }
 
         Assert.Contains("anotherError", Assert.Single(first.Errors).Error.Message, StringComparison.Ordinal);
-        Assert.NotEmpty(Directory.EnumerateFiles(Path.Combine(repo.Root.StateDirectory, "baseline"), "*.json", SearchOption.AllDirectories));
+        Assert.NotEmpty(Directory.EnumerateFiles(Path.Combine(repo.Root.SharedStateDirectory, "baseline"), "*.json", SearchOption.AllDirectories));
 
         CheckResult second;
         var log = new ConcurrentQueue<string>();
@@ -119,7 +119,7 @@ public class BaselineStoreTests
             await CheckAsync(workspace, repo, "Lib/Calc.cs", cancellationToken);
         }
 
-        var stored = Directory.EnumerateFiles(Path.Combine(repo.Root.StateDirectory, "baseline"), "*.json", SearchOption.AllDirectories).ToList();
+        var stored = Directory.EnumerateFiles(Path.Combine(repo.Root.SharedStateDirectory, "baseline"), "*.json", SearchOption.AllDirectories).ToList();
         Assert.NotEmpty(stored);
         foreach (var file in stored)
             File.WriteAllText(file, "not json{");
@@ -158,7 +158,7 @@ public class BaselineStoreTests
 
         Assert.False(finished);
         Assert.Empty(errors);
-        Assert.False(Directory.Exists(Path.Combine(repo.Root.StateDirectory, "baseline")));
+        Assert.False(Directory.Exists(Path.Combine(repo.Root.SharedStateDirectory, "baseline")));
     }
 
     private static Task<CheckResult> CheckAsync(RepoWorkspace workspace, FixtureRepo repo, string relative, CancellationToken cancellationToken) =>

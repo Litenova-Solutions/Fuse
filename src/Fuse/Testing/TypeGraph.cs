@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Fuse.Graph;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -38,7 +39,7 @@ internal sealed class TypeGraph
     public static async Task<TypeGraph> BuildAsync(
         IReadOnlyList<Project> projects,
         Func<Project, ProjectNode?> nodeOf,
-        Dictionary<DocumentId, (VersionStamp Version, FileFacts Facts)> cache,
+        ConcurrentDictionary<DocumentId, (VersionStamp Version, FileFacts Facts)> cache,
         CancellationToken cancellationToken)
     {
         var graph = new TypeGraph();

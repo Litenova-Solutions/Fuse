@@ -8,7 +8,7 @@ namespace Fuse.Tests.Unit;
 
 /// <summary>
 ///     The engine loads a repository's own analyzers from a copy, so a real build can still replace them. These cases are
-///     the rules that make the copy safe: only files inside the repository are copied, the copy is under the state
+///     the rules that make the copy safe: only files inside the repository are copied, the copy is under the shared
 ///     directory, and the same solution is shadowed once, so Roslyn's cached compilations survive.
 /// </summary>
 public class AnalyzerShadowTests
@@ -28,7 +28,7 @@ public class AnalyzerShadowTests
         var paths = shadowed.Projects.Single().AnalyzerReferences.Select(r => r.FullPath!).ToList();
         Assert.Contains(outside, paths);
         var copy = Assert.Single(paths, p => p != outside);
-        Assert.StartsWith(Path.Combine(repo.Root.StateDirectory, "analyzers"), copy, StringComparison.OrdinalIgnoreCase);
+        Assert.StartsWith(Path.Combine(repo.Root.SharedStateDirectory, "analyzers"), copy, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(File.ReadAllBytes(inRepo), File.ReadAllBytes(copy));
     }
 

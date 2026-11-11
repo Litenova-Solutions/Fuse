@@ -258,6 +258,32 @@ public class ChangeTrackerTests
     ///     Makes <c>git status</c> fail until disposed, by overwriting the index with bytes git cannot read. Resolving HEAD
     ///     reads the refs and the commit, not the index, so only the reseed fails.
     /// </summary>
+    [Fact]
+    public async Task A_git_ignored_non_source_the_watcher_reports_is_not_counted()
+    {
+        using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string>
+        {
+            [".gitignore"] = "ignored/\n",
+            ["Lib/Lib.csproj"] = "<Project Sdk=\"Microsoft.NET.Sdk\" />\n",
+            ["Lib/Calc.cs"] = "namespace Lib;\n\npublic class Calc {}\n",
+        });
+        var watched = new WatchedPaths(repo.Root);
+        using var tracker = await StartAsync(repo, watched);
+        repo.Write("ignored/data.json", "{}\n");
+        repo.Write("notes/keep.json", "{}\n");
+        watched.Record(repo.Full("ignored/data.json"), appearedOrVanished: true);
+        watched.Record(repo.Full("notes/keep.json"), appearedOrVanished: true);
+
+        await tracker.SyncAsync([], TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, tracker.NonSourceChanged);
+        Assert.Equal([repo.PathOf("notes/keep.json")], tracker.NonSources);
+    }
+
+    /// <summary>
+    ///     Makes <c>git status</c> fail until disposed, by overwriting the index with bytes git cannot read. Resolving HEAD
+    ///     reads the refs and the commit, not the index, so only the reseed fails.
+    /// </summary>
     private static IndexRestorer BreakGitStatus(FixtureRepo repo)
     {
         var index = Path.Combine(repo.Root.Path, ".git", "index");

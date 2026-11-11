@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using Fuse.Changes;
@@ -17,7 +18,7 @@ namespace Fuse.Check;
 /// <summary>
 ///     Decides which other files a declaration change can break, by resolving each changed declaration to its symbol
 ///     at HEAD and asking Roslyn where that symbol is used. The baseline does not change between edits, so the
-///     reference sets are cached until HEAD moves or projects load.
+///     reference sets are kept in a concurrent cache keyed by the baseline generation and the symbol.
 /// </summary>
 /// <remarks>
 ///     <para>
@@ -49,25 +50,36 @@ namespace Fuse.Check;
 /// </remarks>
 internal sealed class ChangeReach
 {
+    /// <summary>The most reference sets kept; past it the set unused the longest goes.</summary>
+    internal const int MaxCacheEntries = 128;
+
     private readonly RepoWorkspace _workspace;
-    private readonly Dictionary<string, HashSet<RepoPath>> _cache = new(StringComparer.Ordinal);
-    private int _cachedGeneration = -1;
+    private readonly ConcurrentDictionary<string, HashSet<RepoPath>> _cache = new(StringComparer.Ordinal);
+    private readonly List<string> _cacheOrder = [];
+    private readonly Lock _cacheLock = new();
 
     public ChangeReach(RepoWorkspace workspace) => _workspace = workspace;
+
+    /// <summary>How many reference sets are kept.</summary>
+    public int CachedSets => _cache.Count;
 
     /// <summary>
     ///     True when the file has a declaration change against HEAD in any target framework it compiles for. Syntax only;
     ///     binds nothing.
     /// </summary>
-    public async Task<bool> HasDeclarationChangeAsync(RepoPath path, CancellationToken cancellationToken)
+    public Task<bool> HasDeclarationChangeAsync(RepoPath path, CancellationToken cancellationToken) =>
+        HasDeclarationChangeAsync(path, _workspace.PinGeneration(), cancellationToken);
+
+    /// <summary>True when the file has a declaration change in the pinned generation.</summary>
+    public async Task<bool> HasDeclarationChangeAsync(RepoPath path, Generation generation, CancellationToken cancellationToken)
     {
         var head = _workspace.HeadText(path);
-        var now = await CurrentTextAsync(path, cancellationToken).ConfigureAwait(false);
+        var now = await CurrentTextAsync(path, generation.Current, cancellationToken).ConfigureAwait(false);
         if (head is not null && now is not null && head.ContentEquals(now))
             return false;
         if (!path.Absolute.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
             return true;
-        foreach (var version in await VersionsAsync(path, cancellationToken).ConfigureAwait(false))
+        foreach (var version in await VersionsAsync(path, generation, cancellationToken).ConfigureAwait(false))
         {
             // An added using changes nothing another file can see, so it alone does not send the check to the dependents.
             if (SurfaceDiff.Compare(version.Before, version.After).Changes.Any(c => !(c is DeclarationChange.Added && c.Key is DeclarationKey.Using)))
@@ -85,14 +97,13 @@ internal sealed class ChangeReach
     /// <param name="paths">The targets with a declaration change, in any order: they are taken in path order.</param>
     /// <param name="reached">The projects that own those targets, and their dependents, all loaded.</param>
     /// <param name="cancellationToken">Cancels the search.</param>
-    public async Task<Reach> ReachAsync(IReadOnlyList<RepoPath> paths, IReadOnlyList<ProjectNode> reached, CancellationToken cancellationToken)
+    public Task<Reach> ReachAsync(IReadOnlyList<RepoPath> paths, IReadOnlyList<ProjectNode> reached, CancellationToken cancellationToken) =>
+        ReachAsync(paths, reached, _workspace.PinGeneration(), cancellationToken);
+
+    /// <summary>The reach of the changes in the pinned generation.</summary>
+    public async Task<Reach> ReachAsync(IReadOnlyList<RepoPath> paths, IReadOnlyList<ProjectNode> reached, Generation generation, CancellationToken cancellationToken)
     {
-        var projects = reached.SelectMany(n => RepoWorkspace.ProjectsFor(_workspace.Current, n)).ToList();
-        if (_cachedGeneration != _workspace.BaselineGeneration)
-        {
-            _cache.Clear();
-            _cachedGeneration = _workspace.BaselineGeneration;
-        }
+        var projects = reached.SelectMany(n => RepoWorkspace.ProjectsFor(generation.Current, n)).ToList();
 
         // Every way the changes reach other files, in the order that decides which cause a file gets: the targets in
         // path order, and each target's changes in the order SurfaceDiff lists them.
@@ -118,7 +129,7 @@ internal sealed class ChangeReach
                 continue;
             }
 
-            foreach (var version in await VersionsAsync(path, cancellationToken).ConfigureAwait(false))
+            foreach (var version in await VersionsAsync(path, generation, cancellationToken).ConfigureAwait(false))
             {
                 var changes = SurfaceDiff.Compare(version.Before, version.After);
                 if (changes.HasBroadChange)
@@ -153,7 +164,7 @@ internal sealed class ChangeReach
 
         if (isBroad)
             return Broad(projects, broadCauses);
-        var causes = await CausesAsync(routes, projects, cancellationToken).ConfigureAwait(false);
+        var causes = await CausesAsync(routes, projects, generation, cancellationToken).ConfigureAwait(false);
         return new Reach.Precise(causes.ToDictionary(c => c.Key, c => c.Value[0]), causes, causeFiles);
     }
 
@@ -225,9 +236,9 @@ internal sealed class ChangeReach
     ///     depend on the order of any set. A symbol or a type is searched once however many routes name it, and every name
     ///     is looked for in one pass over the reached projects' documents.
     /// </summary>
-    private async Task<Dictionary<RepoPath, IReadOnlyList<Cause>>> CausesAsync(IReadOnlyList<Route> routes, IReadOnlyList<Project> projects, CancellationToken cancellationToken)
+    private async Task<Dictionary<RepoPath, IReadOnlyList<Cause>>> CausesAsync(IReadOnlyList<Route> routes, IReadOnlyList<Project> projects, Generation generation, CancellationToken cancellationToken)
     {
-        var baseline = _workspace.Baseline;
+        var baseline = generation.Baseline;
         var searchedIds = projects.Select(p => p.Id).ToHashSet();
         // Reference sets depend on which projects were searched; a background load adds projects to the search.
         var searchKey = string.Join(",", searchedIds.Select(id => id.Id.ToString("N")).Order(StringComparer.Ordinal));
@@ -253,7 +264,7 @@ internal sealed class ChangeReach
             if (routes[index] is Route.BySymbol symbol && (symbol.IncludesImplementations ? searchedWithImplementations : searched).Add(symbol.Symbol))
             {
                 searched.Add(symbol.Symbol);
-                files.AddRange(await ReferencingFilesAsync(symbol.Symbol, searchKey, baseline, baselineDocuments, cancellationToken).ConfigureAwait(false));
+                files.AddRange(await ReferencingFilesAsync(symbol.Symbol, searchKey, baseline, baselineDocuments, generation, cancellationToken).ConfigureAwait(false));
                 if (symbol.IncludesImplementations)
                 {
                     files.AddRange(Declarations(await SymbolFinder.FindImplementationsAsync(symbol.Symbol, baseline, baselineProjects, cancellationToken).ConfigureAwait(false)));
@@ -319,11 +330,19 @@ internal sealed class ChangeReach
     private Reach.Broad Broad(IReadOnlyList<Project> projects, IReadOnlyList<(RepoPath File, Cause Cause)> broadCauses) =>
         new(projects.SelectMany(p => p.Documents).Select(d => d.FilePath).OfType<string>().Select(_workspace.Root.PathOf).ToHashSet(), broadCauses);
 
-    private async Task<IEnumerable<RepoPath>> ReferencingFilesAsync(ISymbol symbol, string searchKey, Solution baseline, IImmutableSet<Document> documents, CancellationToken cancellationToken)
+    private async Task<IEnumerable<RepoPath>> ReferencingFilesAsync(ISymbol symbol, string searchKey, Solution baseline, IImmutableSet<Document> documents, Generation generation, CancellationToken cancellationToken)
     {
-        var key = (symbol.GetDocumentationCommentId() ?? symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)) + "|" + searchKey;
-        if (_cache.TryGetValue(key, out var cached))
-            return cached;
+        var key = generation.BaselineGeneration + "|" + (symbol.GetDocumentationCommentId() ?? symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)) + "|" + searchKey;
+        lock (_cacheLock)
+        {
+            if (_cache.TryGetValue(key, out var cached))
+            {
+                _cacheOrder.Remove(key);
+                _cacheOrder.Add(key);
+                return cached;
+            }
+        }
+
         var references = await SymbolFinder.FindReferencesAsync(symbol, baseline, documents, cancellationToken).ConfigureAwait(false);
         var files = new HashSet<RepoPath>();
         // A file holds many references; its path is made once.
@@ -333,7 +352,19 @@ internal sealed class ChangeReach
                 files.Add(_workspace.Root.PathOf(file));
         }
 
-        _cache[key] = files;
+        lock (_cacheLock)
+        {
+            _cache[key] = files;
+            _cacheOrder.Remove(key);
+            _cacheOrder.Add(key);
+            while (_cache.Count > MaxCacheEntries && _cacheOrder.Count > 0)
+            {
+                var oldest = _cacheOrder[0];
+                _cacheOrder.RemoveAt(0);
+                _cache.TryRemove(oldest, out _);
+            }
+        }
+
         return files;
     }
 
@@ -345,10 +376,10 @@ internal sealed class ChangeReach
     ///     document and the working tree's from the current one, each parsed with that project's options. When no loaded
     ///     project compiles the file, both texts are parsed with no preprocessor symbols and no symbol resolves.
     /// </summary>
-    private async Task<List<FileVersion>> VersionsAsync(RepoPath path, CancellationToken cancellationToken)
+    private async Task<List<FileVersion>> VersionsAsync(RepoPath path, Generation generation, CancellationToken cancellationToken)
     {
-        var baseline = _workspace.Baseline;
-        var current = _workspace.Current;
+        var baseline = generation.Baseline;
+        var current = generation.Current;
         var versions = new List<FileVersion>();
         var projectIds = baseline.GetDocumentIdsWithFilePath(path.Absolute).Concat(current.GetDocumentIdsWithFilePath(path.Absolute)).Select(id => id.ProjectId).Distinct();
         foreach (var projectId in projectIds)
@@ -366,7 +397,7 @@ internal sealed class ChangeReach
         if (versions.Count > 0)
             return versions;
         var head = _workspace.HeadText(path);
-        var now = await CurrentTextAsync(path, cancellationToken).ConfigureAwait(false);
+        var now = await CurrentTextAsync(path, generation.Current, cancellationToken).ConfigureAwait(false);
         return
         [
             new FileVersion(
@@ -382,16 +413,15 @@ internal sealed class ChangeReach
     private static async Task<FileDeclarations> DeclarationsOfAsync(Document? document, CancellationToken cancellationToken) =>
         document is not null && await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false) is { } root ? FileDeclarations.Of(root) : FileDeclarations.Empty;
 
-    private async Task<SourceText?> CurrentTextAsync(RepoPath path, CancellationToken cancellationToken)
+    private static async Task<SourceText?> CurrentTextAsync(RepoPath path, Solution current, CancellationToken cancellationToken)
     {
         if (!File.Exists(path.Absolute))
             return null;
-        var current = _workspace.Current;
         var id = current.GetDocumentIdsWithFilePath(path.Absolute).FirstOrDefault();
         TextDocument? document = id is null ? null : current.GetDocument(id) ?? (TextDocument?)current.GetAdditionalDocument(id);
         return document is not null
             ? await document.GetTextAsync(cancellationToken).ConfigureAwait(false)
-            : SolutionViews.Decode(await File.ReadAllBytesAsync(path.Absolute, cancellationToken).ConfigureAwait(false));
+            : SolutionViews.Decode(await SharedRead.AllBytesAsync(path.Absolute, cancellationToken).ConfigureAwait(false));
     }
 
     private static Task<SyntaxNode> ParseAsync(SourceText text, CancellationToken cancellationToken) =>

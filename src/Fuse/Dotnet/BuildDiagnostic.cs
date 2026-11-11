@@ -11,6 +11,9 @@ namespace Fuse.Dotnet;
 /// <param name="Message">The message, in the invariant culture.</param>
 internal sealed record BuildDiagnostic(string File, int? Line, int? Column, string Code, string Message)
 {
+    /// <summary>True for a package content hash failure, which a restore that re-evaluates the lock files fixes.</summary>
+    public bool IsContentHashFailure => Code == "NU1403";
+
     /// <summary>The MSBuild canonical form, which coding agents and editors already parse.</summary>
     public override string ToString() =>
         Line is null ? $"{File}: error {Code}: {Message}" : $"{File}({Line},{Column}): error {Code}: {Message}";

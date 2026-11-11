@@ -19,7 +19,7 @@ internal static class Program
                Fuse.Evals chart
                Fuse.Evals clone <repo>
                Fuse.Evals clean
-          suite: correctness | selection | latency | attribution | analyzers | scale | stale | all
+          suite: correctness | selection | latency | attribution | analyzers | scale | stale | concurrency | all
           repo:  fixture (generated under evals/.work/fixture), analyzer-fixture (generated under evals/.work/analyzer-fixture),
                  scale-fixture (generated under evals/.work/scale-fixture), a pinned repository name, or a path to a git repository
           truth: runs shard K of N of the truth side (the real dotnet build or dotnet test) and writes it to a file; the
@@ -34,6 +34,9 @@ internal static class Program
                  engine's peak and idle memory; no truth and no test runs
           stale: on fixture, an error reported by the post-edit hook and fixed before the stop hook: whether the stop
                  delivers it again; no truth and no test runs
+          concurrency: 1, 4, 10 and 20 simultaneous callers from distinct sessions (post-edit checks, scoped checks,
+                 stops and test plans) with a status probe per caller: queue and engine time, errors, timeouts,
+                 Busy answers, cold-start time and the engine's idle and peak working set; no truth
           --part: for latency, what to measure: all (the default); checks, the checks alone; main, the checks and
                  the test rounds; agents, the multi-agent scenario after the cold checks and body edits
           --failed-rounds: for selection on fixture, three fix-and-rerun rounds with fuse test --failed afterwards
@@ -130,6 +133,10 @@ internal static class Program
             else if (name == "stale")
             {
                 result = await HookStaleness.RunAsync(repo, solution);
+            }
+            else if (name == "concurrency")
+            {
+                result = await ConcurrencySuite.RunAsync(repo, solution);
             }
             else
             {

@@ -115,6 +115,13 @@ internal static class HookCommand
         // errors its own edits cause; one harness's ids never meet another's, because each is prefixed with its name.
         var background = harness.RunsPostEditInBackground;
         var session = payload.Session is { } id ? $"{harness.Name}:{id}" : null;
+        if (session is not null)
+        {
+            // Both records are held once per file and root for the session, so a post-edit for a file and a
+            // repository the session already touched writes no state file before its check runs.
+            SessionRoots.Record(session, root);
+            BlockedStops.NoteWrittenOnce(root, session, files.Select(f => Path.GetRelativePath(root.Path, f).Replace('\\', '/')));
+        }
         var started = Environment.TickCount64;
         TimeSpan Remaining() => LongWait - TimeSpan.FromMilliseconds(Environment.TickCount64 - started);
         Task<(OperationResult Result, EngineResponse Response)> Check(CancellationToken ct) => CheckOperation.RunAsync(
@@ -166,23 +173,75 @@ internal static class HookCommand
     {
         if (payload.StopHookActive)
             return harness.AllowStop();
-        var root = RepoRoot.Find(payload.Cwd);
-        if (root is null)
+        var anchor = RepoRoot.Find(payload.Cwd);
+        if (anchor is null)
             return harness.AllowStop();
+        var session = payload.Session is { } id ? $"{harness.Name}:{id}" : null;
+        // The stop checks every repository the session's post-edit hooks touched, starting with the one its working
+        // directory names. A repository with no answer that blocks lets the stop through to the next one.
+        foreach (var root in SessionRoots.RootsFor(session, anchor))
+        {
+            var answer = await StopInRootAsync(harness, root, session, cancellationToken).ConfigureAwait(false);
+            if (answer is not null)
+                return answer;
+        }
+
+        return harness.AllowStop();
+    }
+
+    /// <summary>
+    ///     The stop answer for one repository: a block, or null when this repository lets the stop through, because it
+    ///     reports nothing the session must fix or because it holds the same blocked answer the session met before with
+    ///     no error in a file the session wrote after that block.
+    /// </summary>
+    private static async Task<HookAnswer?> StopInRootAsync(Harness harness, RepoRoot root, string? session, CancellationToken cancellationToken)
+    {
         // The stop hook checks every change in the working tree. Answered to the stopping session, it blocks on the errors
         // that session's edits cause, alone or with other sessions' edits, and on those no session's edits are credited
         // with; an error another session's edits cause without it is left to that session, which may still be writing.
-        var session = payload.Session is { } id ? $"{harness.Name}:{id}" : null;
         var (result, response) = await CheckOperation.RunAsync(root, null, session, waitForLoad: true, compilationWideAnalyzers: true, LongWait, cancellationToken).ConfigureAwait(false);
         if (!ShouldReport(result, response))
-            return harness.AllowStop();
-        // A stop that blocks is told apart from a background post-edit the harness delivers late by this line.
-        Log(root.Path, $"{harness.Name} stop blocked: {SummaryLine(result.Text)}");
+            return null;
         // A missing restore is not an error the changes introduced; its message already names the command to run.
         if (result.Outcome != Outcome.ProblemsFound)
-            return harness.BlockStop(result.Text);
-        return harness.BlockStop(result.Text + "\n" + (session is null ? StopReasonWithoutSession : StopReason));
+            return BlockStop(harness, root, result.Text, result.Text);
+
+        if (response is not EngineResponse.CheckAnswered answered)
+            return BlockStop(harness, root, result.Text, StopMessage.Build(result.Text, ReportOf(response), null, new HashSet<string>(StringComparer.Ordinal), session));
+
+        var report = answered.Report;
+        if (session is null)
+            return BlockStop(harness, root, result.Text, StopMessage.Build(result.Text, report, null, new HashSet<string>(StringComparer.Ordinal), null));
+        var previous = BlockedStops.Load(root, session);
+        var editedFiles = BlockedStops.AllWritten(root, session);
+        var writtenSince = previous is null ? new HashSet<string>(StringComparer.Ordinal) : BlockedStops.WrittenSince(root, session, previous.BlockedAt);
+        if (BlockedStops.IsRepeat(previous, report.Errors, report.Tree, writtenSince))
+        {
+            // The same unactionable answer is told once as information in the log and the stop goes through.
+            Log(root.Path, $"{harness.Name} stop let through: {SummaryLine(result.Text)} (same errors as the last blocked stop, none in a file this session wrote after it)");
+            return null;
+        }
+
+        BlockedStops.Save(root, session, BlockedStops.StopFor(report.Errors, report.Tree, DateTimeOffset.UtcNow));
+        return BlockStop(harness, root, result.Text, StopMessage.Build(result.Text, report, previous, editedFiles, session));
     }
+
+    /// <summary>
+    ///     Blocks the stop with <paramref name="blockText"/>, naming the errors in <c>hook.log</c> first, so a blocked
+    ///     stop is told apart from a background post-edit the harness delivers late on every path that blocks: with or
+    ///     without a session, with or without a report behind the answer.
+    /// </summary>
+    private static HookAnswer BlockStop(Harness harness, RepoRoot root, string resultText, string blockText)
+    {
+        Log(root.Path, $"{harness.Name} stop blocked: {SummaryLine(resultText)}");
+        return harness.BlockStop(blockText);
+    }
+
+    /// <summary>The report behind a check answer, or an empty one for an answer that carries none, so the stop text still prints its lines.</summary>
+    private static CheckReport ReportOf(EngineResponse response) =>
+        response is EngineResponse.CheckAnswered answered
+            ? answered.Report
+            : new CheckReport([], 0, [], [], 0, false, 0, 0, 0);
 
     /// <summary>
     ///     The line under the errors that block a session's stop. It says what is true of every error told to the session:
@@ -256,3 +315,4 @@ internal static class HookCommand
         }
     }
 }
+

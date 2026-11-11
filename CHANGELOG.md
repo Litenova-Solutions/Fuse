@@ -6,7 +6,7 @@ The [changelog page](https://fuse.codes/docs/changelog) explains each release wi
 
 ## 6.0.0
 
-Released 2026-11-06. Compared with 5.7.0, this release rewrites how the engine answers many agents at once: checks, test plans and builds no longer take turns behind one lock. No upgrade steps are required. A 5.x engine drains its queued and running requests and restarts as 6.0.0 on the next request, because every request carries its build.
+Released 2026-11-11. Compared with 5.7.0, this release rewrites how the engine answers many agents at once: checks, test plans and builds no longer take turns behind one lock. No upgrade steps are required. A 5.x engine drains its queued and running requests and restarts as 6.0.0 on the next request, because every request carries its build.
 
 ### Added
 
@@ -18,15 +18,15 @@ Released 2026-11-06. Compared with 5.7.0, this release rewrites how the engine a
 - A Busy answer when a request will not start before its wait ends, or past the engine's memory ceiling: queue position and estimated wait at once. The command line retries within its wait, a hook stays silent, and an MCP call sends it as a progress notification first. See [Messages and fixes](https://fuse.codes/docs/messages#busy).
 - Build and test reuse: a build whose tree stamp, project set and arguments equal the last finished build's, and a test run whose plan and tree stamp equal a finished run's, print that result with a reuse line.
 - An NU1403 refresh line under the first package content hash failure, naming the one restore that refreshes the lock files. Fuse prints it and never runs it.
-- A concurrency eval suite (1, 4, 10 and 20 simultaneous callers) and a CI smoke workflow over fixture repositories. No result file from the suite is committed yet, so no number is quoted. See [Evals](https://fuse.codes/docs/evals#concurrency-suite).
+- A concurrency eval suite (1, 4, 10 and 20 simultaneous callers) and a CI smoke workflow over fixture repositories. In its committed results no caller timed out at 4, 10 or 20 callers on any of the 4 repositories. See [Evals](https://fuse.codes/docs/evals#concurrency-suite).
 
 ### Changed
 
-- Checks and test plans run in parallel on pinned generations, in lanes (interactive hooks, then commands and MCP calls, then background work). A wait starts when a reader takes the request. Identical checks in flight share one computation. Status, ping and session registrations bypass the queue. See [How Fuse works](https://fuse.codes/docs/how-it-works).
+- Checks and test plans run in parallel on pinned generations, in lanes (interactive hooks, then commands and MCP calls, then background work). One reader stays free for interactive requests, and background work takes at most one. A wait starts when a reader takes the request. Identical checks in flight share one computation. Status, ping and session registrations bypass the queue. See [How Fuse works](https://fuse.codes/docs/how-it-works).
 - A background check re-checks each live session's fresh files after each generation. Answers live in a content-keyed result store and as `sessions/NAME.json`.
 - Session attribution keeps one view per live session (at most 8) and tries a declaration filter first. Answers are unchanged.
-- Projects outside the change cone come from a metadata summary of their HEAD compilation, private members and generated code included. HEAD's errors come from the disk store, worktrees on the same commit share the baseline store, summaries and stored graph, and past 500 candidates a check streams one document at a time. A differential test proof holds answers with and without summaries identical.
-- Memory is bounded: capped caches, no preloaded compilations, a fixed shed order past a 2 GB per-engine budget, a Busy answer past the ceiling, and a 5-minute idle exit (at once when the machine runs short and the engine is the idlest) when another engine needs memory.
+- A project outside the change cone comes from a summary of its HEAD compilation when one is already cached: a full image, private members and generated code included. The baseline warmer emits summaries in the background, never under the writer lock. HEAD's errors come from the disk store, worktrees on the same commit share the baseline store, summaries and stored graph, and past 500 candidates a check streams one document at a time. A differential test proof holds answers with and without summaries identical.
+- Memory is bounded: capped caches, no preloaded compilations, a fixed shed order by the engine's own working set against a 2 GB per-engine budget (the machine's load only stops background work), a Busy answer past the ceiling, and a 5-minute idle exit (at once when the machine runs short and the engine is the idlest) when another engine needs memory.
 - Test selection reads non-C# files by their project, through reach. Test plans prepare at the same time. An ignored file is not counted as a non-C# change.
 - A blocked stop that repeats its last blocked answer on unchanged errors lets the stop through. A later blocked stop starts with a delta line. A block only on files the session never wrote ends by naming `fuse session begin` and `FUSE_SESSION`. A stop checks every root that session touched.
 - `fuse status` never waits behind a check. Its first line carries the memory budget, its third counts the limits as the code counts them, and no line tells you to commit. `--json` adds `memoryWorkingSetBytes`, `memoryCeilingBytes`, `memoryLoadBytes`, `changedSourcesInReach`, `touchedPaths`, `touchedLimit`, `keptAnswerAt`, `syncReloadAt`, `reloadMs` and `gateHolder`. See [Commands](https://fuse.codes/docs/commands#fuse-status).
@@ -37,6 +37,9 @@ Released 2026-11-06. Compared with 5.7.0, this release rewrites how the engine a
 
 - A comment-only or whitespace-only edit reads as the same code and selects no tests.
 - A stop hook's block line reaches `hook.log` on every harness.
+- Saving a file while the engine reads it no longer fails on Windows: every read of a working-tree file shares write and delete.
+- A session keeps its credit for a file until a sync verifies the file matches HEAD, so a background read that predates the session's record no longer drops it.
+- On macOS, a check of every change confirms the changed set against git first, so a write the file watcher reports late is still checked.
 - Worktrees on the same commit no longer poison each other's baseline store: worktree paths are masked in restore keys, values and the graph key.
 
 ### Documentation

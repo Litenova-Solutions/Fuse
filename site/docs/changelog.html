@@ -45,7 +45,7 @@
       "url": "https://fuse.codes/docs/changelog",
       "mainEntityOfPage": "https://fuse.codes/docs/changelog",
       "inLanguage": "en",
-      "dateModified": "2026-11-06",
+      "dateModified": "2026-11-11",
       "image": "https://fuse.codes/assets/og.png",
       "isPartOf": {
         "@type": "WebSite",
@@ -162,7 +162,7 @@
     <pre data-label="Shell"><code>dotnet tool update -g Fuse</code></pre>
 
     <h2 id="v6-0-0">6.0.0 <a class="anchor" href="#v6-0-0" aria-label="Link to this section">#</a></h2>
-    <p class="intro">Released 2026-11-06. Compared with 5.7.0, this release rewrites how the engine answers many agents at once. Checks, test plans and builds no longer take turns behind one lock: they pin generations and run in parallel. Workers without hooks get a name, judges can watch workers, and memory follows the change instead of the repository.</p>
+    <p class="intro">Released 2026-11-11. Compared with 5.7.0, this release rewrites how the engine answers many agents at once. Checks, test plans and builds no longer take turns behind one lock: they pin generations and run in parallel. Workers without hooks get a name, judges can watch workers, and memory follows the change instead of the repository.</p>
 
     <h3 id="upgrading-to-6-0-0">Upgrading to 6.0.0 <a class="anchor" href="#upgrading-to-6-0-0" aria-label="Link to this section">#</a></h3>
     <ul>
@@ -180,16 +180,16 @@
       <li>A Busy answer. When a request will not start before its wait ends, or past the engine's memory ceiling, the engine answers at once with its queue position and estimated wait: the command line retries within its wait, a hook stays silent, and an MCP call sends it as a progress notification first. <a href="messages#busy">Messages and fixes</a> shows the line.</li>
       <li>Build and test reuse. A build whose tree stamp, project set and arguments equal the last finished build's, and a test run whose plan and tree stamp equal a finished run's, print that result with a reuse line instead of running again.</li>
       <li>An NU1403 refresh line. Under the first package content hash failure, an indented line names the one restore that refreshes the lock files. Fuse prints it and never runs it.</li>
-      <li>A concurrency eval suite and a CI smoke workflow. The suite waves 1, 4, 10 and 20 simultaneous callers at one engine and records queue and engine time, Busy answers and the engine's working set. <a href="evals#concurrency-suite">Evals</a> describes it. No result file from it is committed yet, so no number is quoted.</li>
+      <li>A concurrency eval suite and a CI smoke workflow. The suite waves 1, 4, 10 and 20 simultaneous callers at one engine and records queue and engine time, Busy answers and the engine's working set. <a href="evals#concurrency-suite">Evals</a> describes it. In its committed results no caller timed out at 4, 10 or 20 callers on any of the 4 repositories (<a href="benchmarks#callers-at-once">Benchmarks</a>).</li>
     </ul>
 
     <h3>Changed</h3>
     <ul>
-      <li>Checks and test plans run in parallel. A single writer publishes immutable generations; each request pins one and reads only it. Readers run in lanes (interactive hooks, then commands and MCP calls, then background work), a wait starts when a reader takes the request, and identical checks in flight share one computation. Status, ping and session registrations bypass the queue. <a href="how-it-works">How Fuse works</a> explains it.</li>
+      <li>Checks and test plans run in parallel. A single writer publishes immutable generations; each request pins one and reads only it. Readers run in lanes (interactive hooks, then commands and MCP calls, then background work); one reader stays free for interactive requests and background work takes at most one. A wait starts when a reader takes the request, and identical checks in flight share one computation. Status, ping and session registrations bypass the queue. <a href="how-it-works">How Fuse works</a> explains it.</li>
       <li>Most checks are answered before anyone asks. A background check re-checks each live session's fresh files after each generation, and answers live in a content-keyed result store and as <code>sessions/NAME.json</code>.</li>
       <li>Session attribution keeps one view per live session (at most 8) and tries a cheap declaration filter first. Both give the same answers as before.</li>
-      <li>Projects outside the change cone come from a metadata summary of their HEAD compilation, private members and generated code included. HEAD's errors come from the disk store, a HEAD compilation is built only on a store miss, worktrees on the same commit share the baseline store, summaries and stored graph, and past 500 candidates a check streams one document at a time. A differential test proof holds answers with and without summaries identical.</li>
-      <li>Memory is bounded. Caches have caps, the preloader builds no compilations, an engine sheds in a fixed order past its 2 GB budget and answers Busy past its ceiling, and engines give memory back sooner when another engine needs it. The idle exit is 5 minutes in that case, and at once when the machine runs short and the engine is the idlest.</li>
+      <li>A project outside the change cone comes from a summary of its HEAD compilation when one is already cached: a full image, private members and generated code included. The baseline warmer emits summaries in the background, never under the writer lock. HEAD's errors come from the disk store, a HEAD compilation is built only on a store miss, worktrees on the same commit share the baseline store, summaries and stored graph, and past 500 candidates a check streams one document at a time. A differential test proof holds answers with and without summaries identical.</li>
+      <li>Memory is bounded. Caches have caps, the preloader builds no compilations, an engine sheds in a fixed order by its own working set against its 2 GB budget (the machine's load only stops background work) and answers Busy past its ceiling, and engines give memory back sooner when another engine needs it. The idle exit is 5 minutes in that case, and at once when the machine runs short and the engine is the idlest.</li>
       <li>Test selection reads non-C# files by their project, and test plans prepare at the same time. An ignored file is not counted.</li>
       <li>A blocked stop that repeats the last blocked answer on unchanged errors lets the stop through. A blocked stop that follows an earlier one starts with a delta line, and a block only on files the session never wrote ends by naming <code>fuse session begin</code> and <code>FUSE_SESSION</code>. A stop now checks every root that session touched.</li>
       <li><code>fuse status</code> never waits behind a check. Its first line carries the memory budget, its third counts the limits as the code counts them and no line tells you to commit, and <code>--json</code> adds the memory, touched-path and reader fields. Scripts that parse the old text or the old limit names (<code>reloadAt</code> still names its limit, now beside <code>syncReloadAt</code>) need the new shapes in <a href="commands#fuse-status">Commands</a>.</li>
@@ -201,6 +201,9 @@
     <ul>
       <li>A comment-only or whitespace-only edit now reads as the same code and selects no tests.</li>
       <li>A stop hook's block line reaches <code>hook.log</code> on every harness, and a judge's starting check sends <code>Initial=true</code>.</li>
+      <li>Saving a file while the engine reads it no longer fails on Windows: every read of a working-tree file shares write and delete.</li>
+      <li>A session keeps its credit for a file until a sync verifies the file matches HEAD, so a background read that predates the session's record no longer drops it.</li>
+      <li>On macOS, a check of every change confirms the changed set against git first, so a write the file watcher reports late is still checked.</li>
       <li>Worktrees on the same commit no longer poison each other's baseline store: worktree paths are masked in restore keys, values and the graph key.</li>
     </ul>
 

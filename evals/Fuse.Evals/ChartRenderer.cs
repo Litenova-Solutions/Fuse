@@ -202,8 +202,8 @@ internal static class ChartRenderer
         svg.Append(CultureInfo.InvariantCulture, $"""<line class="rule" x1="{PadX}" y1="{HeaderHeight}" x2="{Width - PadX}" y2="{HeaderHeight}"/>""").Append('\n');
     }
 
-    /// <summary>The site's icon, site/assets/fuse-icon.svg, drawn in a 32 by 32 box.</summary>
-    private const string Logo = """<rect width="32" height="32" rx="7" fill="#6d4aff"/><g fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"><path d="M10 7c-2.5 0-3 1.2-3 3.5v2.3c0 1.8-1 3.2-2.5 3.2 1.5 0 2.5 1.4 2.5 3.2v2.3C7 23.8 7.5 25 10 25"/><path d="M22 7c2.5 0 3 1.2 3 3.5v2.3c0 1.8 1 3.2 2.5 3.2-1.5 0-2.5 1.4-2.5 3.2v2.3c0 2.3-.5 3.5-3 3.5"/></g><path d="M17.8 7.5 11.5 17.2h4.3l-1.6 7.3 6.3-9.7h-4.3z" fill="#ffffff" stroke="#ffffff" stroke-width="0.8" stroke-linejoin="round"/>""";
+    /// <summary>The site's icon, site/assets/fuse-icon.svg (assets/logo/icon-rounded-small.svg), drawn in a 32 by 32 box.</summary>
+    private const string Logo = """<rect width="32" height="32" rx="5.87" fill="#0F1B33"/><g transform="translate(4 4) scale(0.1)"><path fill="#F6F7FA" fill-rule="evenodd" d="M0 0H240V240H0ZM20 20V220H220V20Z"/><path fill="#F6F7FA" d="M40 44H200V64H40ZM40 88H155.2V108H40ZM40 132H110.4V152H40Z"/><path fill="#EFA73A" d="M40 176H68.8V196H40Z"/></g>""";
 
     /// <summary>
     ///     "Fuse 5.2.2, measured 2026-10-02.": the version of the build the newest correctness file records, and the date in

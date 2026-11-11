@@ -1,4 +1,4 @@
-# ![Fuse logo](site/assets/fuse-icon.svg) Fuse
+# <img src="site/assets/fuse-icon.svg" alt="Fuse logo" width="32" height="32"> Fuse
 
 [![NuGet](https://img.shields.io/nuget/v/Fuse)](https://www.nuget.org/packages/Fuse)
 [![NuGet downloads](https://img.shields.io/nuget/dt/Fuse)](https://www.nuget.org/packages/Fuse)

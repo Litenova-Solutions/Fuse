@@ -204,48 +204,12 @@ internal sealed class RequestRouter : IDisposable
         // The session is credited once, in HandleAsync before the key is taken. A background re-check
         // reaches this call without HandleAsync and credits nothing.
 
-        var initialization = _initialization ?? Task.CompletedTask;
-        if (!initialization.IsCompleted && request is EngineRequest.CheckChanges { WaitForLoad: false } or EngineRequest.CheckFiles { WaitForLoad: false } or EngineRequest.CheckPaths { WaitForLoad: false })
-            return new EngineResponse.Unanswered(ErrorCode.Loading, "Fuse is still loading this repository; the next check will include these changes");
-        try
-        {
-            await initialization.WaitAsync(cancellationToken).ConfigureAwait(false);
-        }
-        catch (FuseException e)
-        {
-            return ResponseMapper.Unanswered(e);
-        }
-        catch (Exception e) when (e is not OperationCanceledException)
-        {
-            _log.Write($"initialization failed: {e}");
-            return new EngineResponse.Unanswered(ErrorCode.LoadFailed, $"Fuse could not evaluate the repository's projects: {e.Message}");
-        }
-
-        if (_workspace.Graph.Projects.Count == 0)
-            return new EngineResponse.Unanswered(ErrorCode.NoProjects, _workspace.Graph.Failures.Count > 0
-                ? $"no C# project could be evaluated: {_workspace.Graph.Failures[0]}"
-                : ErrorMessages.NoProjects);
+        if (await RefusalBeforeReadyAsync(request, cancellationToken).ConfigureAwait(false) is { } refusal)
+            return refusal;
 
         var lane = laneOverride ?? Scheduler.LaneFor(request);
-        var budget = _budget.Assess();
-        if (budget.Shed.Count > 0)
-            _log.Write($"memory: working set {budget.WorkingSetBytes / (1024 * 1024)} MB of {budget.CeilingBytes / (1024 * 1024)} MB, shedding {string.Join(", ", budget.Shed)}");
-        if (budget.Shed.Contains(MemoryBudget.ShedStep.KeptAnswersAndCaches))
-        {
-            _answers.Clear();
-            _checker.ClearKeptAnswers();
-        }
-        if (budget.Shed.Contains(MemoryBudget.ShedStep.SessionViews))
-            await _workspace.ClearSessionViewsAsync(_shutdown).ConfigureAwait(false);
-        if (budget.Shed.Contains(MemoryBudget.ShedStep.HeadCompilations))
-            await _workspace.ClearHeadCompilationsAsync(_shutdown).ConfigureAwait(false);
-        if (budget.Shed.Contains(MemoryBudget.ShedStep.IdleConeProjects))
-            await _workspace.ClearIdleConeProjectsAsync(_shutdown).ConfigureAwait(false);
-        if (budget.IsPastCeiling)
-        {
-            var (position, estimate) = _scheduler.EstimateFor(lane);
-            return new EngineResponse.Busy(Math.Max(1, position), Math.Max(estimate, 1000));
-        }
+        if (await ShedAsync(lane).ConfigureAwait(false) is { } shed)
+            return shed;
 
         var phases = new PhaseTimes();
         var queued = Stopwatch.StartNew();
@@ -287,21 +251,7 @@ internal sealed class RequestRouter : IDisposable
 
             if (request is EngineRequest.PlanFailedTests failed)
             {
-                var byProject = new Dictionary<RepoPath, string[]>();
-                var unknown = new List<string>();
-                foreach (var project in failed.Projects)
-                {
-                    if (string.IsNullOrWhiteSpace(project.Project))
-                        continue;
-                    try
-                    {
-                        byProject[_workspace.Root.PathOfNamed(project.Project)] = project.Tests ?? [];
-                    }
-                    catch (Exception e) when (e is ArgumentException or PathTooLongException)
-                    {
-                        unknown.Add(project.Project);
-                    }
-                }
+                var (byProject, unknown) = FailedTestProjects(failed);
 
                 var pendingFailed = await _planner.SelectFailedAsync(byProject, unknown, phases, cancellationToken).ConfigureAwait(false);
                 RememberStatus(configurationBefore, phases);
@@ -321,8 +271,7 @@ internal sealed class RequestRouter : IDisposable
             };
             var pending = await _planner.SelectAsync(scope, phases, cancellationToken).ConfigureAwait(false);
 
-            // The shadow preparation reads only the snapshot the selection took, which is immutable, so it runs after a reader is released and a check from another client does not wait behind the emit.
-            // The snapshot is immutable, so no reader is held while it runs.
+            // The shadow preparation reads only the selection, which is immutable, so it runs after a reader is released and a check from another client does not wait behind the emit.
             RememberStatus(configurationBefore, phases);
             held = false;
             lease.Dispose();
@@ -356,6 +305,93 @@ internal sealed class RequestRouter : IDisposable
                 }
             }
         }
+    }
+
+    /// <summary>
+    ///     Answers the refusal while the workspace is still loading or holds no project, or null when the request may run.
+    /// </summary>
+    /// <param name="request">The request to refuse while the engine is not ready.</param>
+    /// <param name="cancellationToken">The token that stops waiting for initialization.</param>
+    private async Task<EngineResponse?> RefusalBeforeReadyAsync(EngineRequest request, CancellationToken cancellationToken)
+    {
+        var initialization = _initialization ?? Task.CompletedTask;
+        if (!initialization.IsCompleted && request is EngineRequest.CheckChanges { WaitForLoad: false } or EngineRequest.CheckFiles { WaitForLoad: false } or EngineRequest.CheckPaths { WaitForLoad: false })
+            return new EngineResponse.Unanswered(ErrorCode.Loading, "Fuse is still loading this repository; the next check will include these changes");
+        try
+        {
+            await initialization.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (FuseException e)
+        {
+            return ResponseMapper.Unanswered(e);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            _log.Write($"initialization failed: {e}");
+            return new EngineResponse.Unanswered(ErrorCode.LoadFailed, $"Fuse could not evaluate the repository's projects: {e.Message}");
+        }
+
+        if (_workspace.Graph.Projects.Count == 0)
+            return new EngineResponse.Unanswered(ErrorCode.NoProjects, _workspace.Graph.Failures.Count > 0
+                ? $"no C# project could be evaluated: {_workspace.Graph.Failures[0]}"
+                : ErrorMessages.NoProjects);
+
+        return null;
+    }
+
+    /// <summary>
+    ///     Sheds what the memory budget sheds at this pressure, in its order, and answers Busy past the ceiling with the lane's queue position and estimate; null when the request may run.
+    /// </summary>
+    /// <param name="lane">The scheduler lane the request waits in.</param>
+    private async Task<EngineResponse?> ShedAsync(SchedulerLane lane)
+    {
+        var budget = _budget.Assess();
+        if (budget.Shed.Count > 0)
+            _log.Write($"memory: working set {budget.WorkingSetBytes / (1024 * 1024)} MB of {budget.CeilingBytes / (1024 * 1024)} MB, shedding {string.Join(", ", budget.Shed)}");
+        if (budget.Shed.Contains(MemoryBudget.ShedStep.KeptAnswersAndCaches))
+        {
+            _answers.Clear();
+            _checker.ClearKeptAnswers();
+        }
+
+        if (budget.Shed.Contains(MemoryBudget.ShedStep.SessionViews))
+            await _workspace.ClearSessionViewsAsync(_shutdown).ConfigureAwait(false);
+        if (budget.Shed.Contains(MemoryBudget.ShedStep.HeadCompilations))
+            await _workspace.ClearHeadCompilationsAsync(_shutdown).ConfigureAwait(false);
+        if (budget.Shed.Contains(MemoryBudget.ShedStep.IdleConeProjects))
+            await _workspace.ClearIdleConeProjectsAsync(_shutdown).ConfigureAwait(false);
+        if (budget.IsPastCeiling)
+        {
+            var (position, estimate) = _scheduler.EstimateFor(lane);
+            return new EngineResponse.Busy(Math.Max(1, position), Math.Max(estimate, 1000));
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    ///     The projects a failed-tests plan names, each with the tests that failed in it, and the names that are not a path.
+    /// </summary>
+    /// <param name="failed">The request for a plan of the tests that failed last time.</param>
+    private (Dictionary<RepoPath, string[]> ByProject, List<string> Unknown) FailedTestProjects(EngineRequest.PlanFailedTests failed)
+    {
+        var byProject = new Dictionary<RepoPath, string[]>();
+        var unknown = new List<string>();
+        foreach (var project in failed.Projects)
+        {
+            if (string.IsNullOrWhiteSpace(project.Project))
+                continue;
+            try
+            {
+                byProject[_workspace.Root.PathOfNamed(project.Project)] = project.Tests ?? [];
+            }
+            catch (Exception e) when (e is ArgumentException or PathTooLongException)
+            {
+                unknown.Add(project.Project);
+            }
+        }
+
+        return (byProject, unknown);
     }
 
     /// <summary>

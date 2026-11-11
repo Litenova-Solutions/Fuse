@@ -66,19 +66,19 @@ public class HotPathCacheTests
             File.WriteAllText(file, "class Calc {}\n");
             var keyed = new[] { ("Calc.cs", file) };
 
-            var first = KeptCheck.KeyFor("all", null, true, "head", 1, 1, "records", keyed);
+            var first = KeptCheck.KeyFor("all", 0, null, true, "head", 1, 1, "records", keyed);
             var stamp = File.GetLastWriteTimeUtc(file);
 
             // The same length under the same stamp answers from the kept hash, though the bytes differ.
             File.WriteAllText(file, "class Xalc {}\n");
             File.SetLastWriteTimeUtc(file, stamp);
-            Assert.Equal(first, KeptCheck.KeyFor("all", null, true, "head", 1, 1, "records", keyed));
+            Assert.Equal(first, KeptCheck.KeyFor("all", 0, null, true, "head", 1, 1, "records", keyed));
 
             File.SetLastWriteTimeUtc(file, stamp.AddSeconds(1));
-            Assert.NotEqual(first, KeptCheck.KeyFor("all", null, true, "head", 1, 1, "records", keyed));
+            Assert.NotEqual(first, KeptCheck.KeyFor("all", 0, null, true, "head", 1, 1, "records", keyed));
 
             File.Delete(file);
-            Assert.Null(KeptCheck.KeyFor("all", null, true, "head", 1, 1, "records", keyed));
+            Assert.Null(KeptCheck.KeyFor("all", 0, null, true, "head", 1, 1, "records", keyed));
         });
     }
 
@@ -91,7 +91,7 @@ public class HotPathCacheTests
             {
                 var file = Path.Combine(directory, $"C{i}.cs");
                 File.WriteAllText(file, $"class C{i} {{}}\n");
-                Assert.NotNull(KeptCheck.KeyFor("all", null, true, "head", 1, 1, "records", [($"C{i}.cs", file)]));
+                Assert.NotNull(KeptCheck.KeyFor("all", 0, null, true, "head", 1, 1, "records", [($"C{i}.cs", file)]));
             }
 
             Assert.True(KeptCheck.CachedFileHashes <= KeptCheck.MaxFileHashEntries);

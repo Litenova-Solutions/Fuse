@@ -18,6 +18,12 @@ internal sealed class KeptCheck
     /// <summary>The most answers kept; past it the answer unused the longest goes.</summary>
     private const int MaxEntries = 8;
 
+    /// <summary>
+    ///     The most changed files a kept answer is keyed by. Past it the kept answer costs more hashing than it saves,
+    ///     so a check runs as usual and the engine shares no answer by content key.
+    /// </summary>
+    internal const int MaxChangedFiles = 500;
+
     /// <summary>The most file hashes kept; past it the hash unused the longest goes.</summary>
     internal const int MaxFileHashEntries = 128;
 
@@ -89,6 +95,7 @@ internal sealed class KeptCheck
     ///     changed file cannot be read: the check runs then instead of answering from a key that leaves a file out.
     /// </summary>
     /// <param name="scopeKey">The scope checked: all changes, or the named files in sorted order.</param>
+    /// <param name="maxReported">The most errors the answer reports, or 0 for the default; a kept answer holds only the errors its cap allowed, so the cap keys it too.</param>
     /// <param name="session">The session the answer is for, or null for every error.</param>
     /// <param name="compilationWide">Whether the check runs the analyzers that read the whole compilation.</param>
     /// <param name="headIdentity">The commit the baseline is taken from.</param>
@@ -101,6 +108,7 @@ internal sealed class KeptCheck
     /// <param name="changedFiles">Every file that differs from HEAD, with its absolute path to read.</param>
     public static string? KeyFor(
         string scopeKey,
+        int maxReported,
         string? session,
         bool compilationWide,
         string headIdentity,
@@ -122,9 +130,10 @@ internal sealed class KeptCheck
             return null;
         }
 
+        var capKey = maxReported == 0 ? "cap:default" : $"cap:{maxReported.ToString(CultureInfo.InvariantCulture)}";
         var parts = new List<string>(lines.Count + 7)
         {
-            scopeKey,
+            capKey + ":" + scopeKey,
             session ?? "",
             compilationWide ? "1" : "0",
             headIdentity,

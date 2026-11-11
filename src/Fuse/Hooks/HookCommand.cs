@@ -120,7 +120,7 @@ internal static class HookCommand
             // Both records are held once per file and root for the session, so a post-edit for a file and a
             // repository the session already touched writes no state file before its check runs.
             SessionRoots.Record(session, root);
-            StopMemory.NoteWrittenOnce(root, session, files.Select(f => Path.GetRelativePath(root.Path, f).Replace('\\', '/')));
+            BlockedStops.NoteWrittenOnce(root, session, files.Select(f => Path.GetRelativePath(root.Path, f).Replace('\\', '/')));
         }
         var started = Environment.TickCount64;
         TimeSpan Remaining() => LongWait - TimeSpan.FromMilliseconds(Environment.TickCount64 - started);
@@ -212,17 +212,17 @@ internal static class HookCommand
         var report = answered.Report;
         if (session is null)
             return BlockStop(harness, root, result.Text, StopMessage.Build(result.Text, report, null, new HashSet<string>(StringComparer.Ordinal), null));
-        var previous = StopMemory.Load(root, session);
-        var editedFiles = StopMemory.AllWritten(root, session);
-        var writtenSince = previous is null ? new HashSet<string>(StringComparer.Ordinal) : StopMemory.WrittenSince(root, session, previous.BlockedAt);
-        if (StopMemory.IsRepeat(previous, report.Errors, report.Tree, writtenSince))
+        var previous = BlockedStops.Load(root, session);
+        var editedFiles = BlockedStops.AllWritten(root, session);
+        var writtenSince = previous is null ? new HashSet<string>(StringComparer.Ordinal) : BlockedStops.WrittenSince(root, session, previous.BlockedAt);
+        if (BlockedStops.IsRepeat(previous, report.Errors, report.Tree, writtenSince))
         {
             // The same unactionable answer is told once as information in the log and the stop goes through.
             Log(root.Path, $"{harness.Name} stop let through: {SummaryLine(result.Text)} (same errors as the last blocked stop, none in a file this session wrote after it)");
             return null;
         }
 
-        StopMemory.Save(root, session, StopMemory.SnapshotFor(report.Errors, report.Tree, DateTimeOffset.UtcNow));
+        BlockedStops.Save(root, session, BlockedStops.StopFor(report.Errors, report.Tree, DateTimeOffset.UtcNow));
         return BlockStop(harness, root, result.Text, StopMessage.Build(result.Text, report, previous, editedFiles, session));
     }
 

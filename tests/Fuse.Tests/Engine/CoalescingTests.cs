@@ -56,7 +56,7 @@ public class CoalescingTests
         var state = NewStateDirectory();
         try
         {
-            var store = new ResultStore(state);
+            var store = new AnswerStore(state);
             store.Keep("key-1", "worker-1", generation: 3, "0123456789ab", Report("CS0103"));
 
             Assert.True(store.TryGet("key-1", out var kept));
@@ -84,9 +84,9 @@ public class CoalescingTests
     [Fact]
     public void A_session_file_is_named_by_the_session_an_orchestrator_names()
     {
-        Assert.Equal("worker-1.json", ResultStore.FileNameFor("worker-1"));
-        Assert.Equal("worker-1.json", ResultStore.FileNameFor("registered:worker-1"));
-        Assert.Equal("claude-a-w1.json", ResultStore.FileNameFor("claude:a/w1"));
+        Assert.Equal("worker-1.json", AnswerStore.FileNameFor("worker-1"));
+        Assert.Equal("worker-1.json", AnswerStore.FileNameFor("registered:worker-1"));
+        Assert.Equal("claude-a-w1.json", AnswerStore.FileNameFor("claude:a/w1"));
     }
 
     [Fact]
@@ -95,7 +95,7 @@ public class CoalescingTests
         var state = NewStateDirectory();
         try
         {
-            var store = new ResultStore(state);
+            var store = new AnswerStore(state);
             store.Keep("key-1", "worker-1", generation: 1, "0123456789ab", Report("CS0103") with { AnalyzersUnfinished = 1 });
 
             Assert.False(store.TryGet("key-1", out _));
@@ -113,7 +113,7 @@ public class CoalescingTests
         var state = NewStateDirectory();
         try
         {
-            var store = new ResultStore(state);
+            var store = new AnswerStore(state);
             store.Keep("key-new", "worker-1", generation: 5, "0123456789ab", Report("CS0103"));
             store.Keep("key-old", "worker-1", generation: 4, "ba9876543210", Report("CS1002"));
 
@@ -133,7 +133,7 @@ public class CoalescingTests
         var state = NewStateDirectory();
         try
         {
-            var store = new ResultStore(state);
+            var store = new AnswerStore(state);
             store.Keep("key-1", "worker-1", generation: 1, "0123456789ab", Report("CS0103"));
             store.Clear();
 

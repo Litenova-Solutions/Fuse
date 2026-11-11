@@ -139,7 +139,7 @@ internal sealed class RepoGraph
     }
 
     /// <summary>
-    ///     The graph the stored form holds for <paramref name="projects"/>, for <see cref="GraphCache"/> alone.
+    ///     The graph the stored form holds for <paramref name="projects"/>, for <see cref="GraphStore"/> alone.
     ///     Its owners, dependents and closures are derived as an evaluated graph's are.
     /// </summary>
     internal static RepoGraph FromStored(IReadOnlyList<ProjectNode> projects, IReadOnlyList<string> failures) =>
@@ -147,7 +147,7 @@ internal sealed class RepoGraph
 
     /// <summary>
     ///     Every project file git knows about (tracked or untracked, not ignored), evaluated, or read from the
-    ///     stored graph (<see cref="GraphCache"/>) when the project files and their imports are as they were when
+    ///     stored graph (<see cref="GraphStore"/>) when the project files and their imports are as they were when
     ///     it was stored, so a fresh engine answers without evaluating again.
     /// </summary>
     public static async Task<RepoGraph> EvaluateAsync(RepoRoot root, CancellationToken cancellationToken)
@@ -169,10 +169,10 @@ internal sealed class RepoGraph
 
         // Registered before the stored graph is read too: the workspace loads projects through MSBuild either way.
         MsBuildSetup.EnsureRegistered();
-        if (GraphCache.TryLoad(root, paths) is { } stored)
+        if (GraphStore.TryLoad(root, paths) is { } stored)
             return stored;
         var graph = Evaluate(root, paths, cancellationToken);
-        GraphCache.Store(root, graph);
+        GraphStore.Store(root, graph);
         return graph;
     }
 

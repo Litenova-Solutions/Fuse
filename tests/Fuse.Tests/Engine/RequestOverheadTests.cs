@@ -34,14 +34,14 @@ public class RequestOverheadTests
     public void A_file_already_written_since_the_last_block_writes_no_state_file() =>
         InTempDirectory(directory =>
         {
-            StopMemory.NoteWrittenOnce(directory, "claude:a", ["Lib/Calc.cs"], DateTimeOffset.MinValue, BlockedAt.AddMinutes(-5));
+            BlockedStops.NoteWrittenOnce(directory, "claude:a", ["Lib/Calc.cs"], DateTimeOffset.MinValue, BlockedAt.AddMinutes(-5));
             var file = Assert.Single(Directory.EnumerateFiles(directory, "stop-written-*.tsv"));
             var held = File.ReadAllBytes(file);
 
-            StopMemory.NoteWrittenOnce(directory, "claude:a", ["Lib/Calc.cs"], DateTimeOffset.MinValue, BlockedAt.AddMinutes(-1));
+            BlockedStops.NoteWrittenOnce(directory, "claude:a", ["Lib/Calc.cs"], DateTimeOffset.MinValue, BlockedAt.AddMinutes(-1));
 
             Assert.Equal(held, File.ReadAllBytes(file));
-            Assert.Equal(["Lib/Calc.cs"], StopMemory.AllWritten(directory, "claude:a").Order(StringComparer.Ordinal));
+            Assert.Equal(["Lib/Calc.cs"], BlockedStops.AllWritten(directory, "claude:a").Order(StringComparer.Ordinal));
         });
 
     [Fact]
@@ -49,17 +49,17 @@ public class RequestOverheadTests
         InTempDirectory(directory =>
         {
             ReportedError[] errors = [new ReportedError(new CompilerError("Lib/Calc.cs", 7, 1, "CS1061", "no Add"))];
-            StopMemory.Save(directory, "claude:a", StopMemory.SnapshotFor(errors, "9f2c41aa07b3", BlockedAt));
-            StopMemory.NoteWrittenOnce(directory, "claude:a", ["Lib/Calc.cs"], DateTimeOffset.MinValue, BlockedAt.AddMinutes(-5));
-            Assert.Empty(StopMemory.WrittenSince(directory, "claude:a", BlockedAt));
+            BlockedStops.Save(directory, "claude:a", BlockedStops.StopFor(errors, "9f2c41aa07b3", BlockedAt));
+            BlockedStops.NoteWrittenOnce(directory, "claude:a", ["Lib/Calc.cs"], DateTimeOffset.MinValue, BlockedAt.AddMinutes(-5));
+            Assert.Empty(BlockedStops.WrittenSince(directory, "claude:a", BlockedAt));
 
-            StopMemory.NoteWrittenOnce(directory, "claude:a", ["Lib/Calc.cs"], BlockedAt, BlockedAt.AddMinutes(1));
+            BlockedStops.NoteWrittenOnce(directory, "claude:a", ["Lib/Calc.cs"], BlockedAt, BlockedAt.AddMinutes(1));
             var file = Assert.Single(Directory.EnumerateFiles(directory, "stop-written-*.tsv"));
             var held = File.ReadAllBytes(file);
-            StopMemory.NoteWrittenOnce(directory, "claude:a", ["Lib/Calc.cs"], BlockedAt, BlockedAt.AddMinutes(2));
+            BlockedStops.NoteWrittenOnce(directory, "claude:a", ["Lib/Calc.cs"], BlockedAt, BlockedAt.AddMinutes(2));
 
             Assert.Equal(held, File.ReadAllBytes(file));
-            Assert.Equal(["Lib/Calc.cs"], StopMemory.WrittenSince(directory, "claude:a", BlockedAt).Order(StringComparer.Ordinal));
+            Assert.Equal(["Lib/Calc.cs"], BlockedStops.WrittenSince(directory, "claude:a", BlockedAt).Order(StringComparer.Ordinal));
         });
 
     [Fact]
@@ -68,7 +68,7 @@ public class RequestOverheadTests
         var state = NewStateDirectory();
         try
         {
-            var store = new ResultStore(state);
+            var store = new AnswerStore(state);
             for (var i = 0; i < 33; i++)
                 store.Keep($"key-{i}", $"worker-{i}", generation: 1, "0123456789ab", Report("CS0103"));
 

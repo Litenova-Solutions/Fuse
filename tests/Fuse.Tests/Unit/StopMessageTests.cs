@@ -21,7 +21,7 @@ public class StopMessageTests
     public void A_repeat_block_opens_with_the_delta_line()
     {
         ReportedError[] held = [Error("Lib/Calc.cs", 7)];
-        var previous = StopMemory.SnapshotFor(held, null, DateTimeOffset.UtcNow);
+        var previous = BlockedStops.StopFor(held, null, DateTimeOffset.UtcNow);
         ReportedError[] current = [Error("Lib/Calc.cs", 7), Error("App/Program.cs", 3)];
         var report = Report(current, [], 0);
         var checkText = "App/Program.cs(3,1): error CS1061: no Add\nfuse: 2 error(s) introduced in 2 file(s) (App)";

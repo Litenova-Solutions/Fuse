@@ -19,7 +19,7 @@ internal sealed class BackgroundCheck : IDisposable
 
     private readonly Func<IReadOnlyList<SessionFiles>> _sessions;
     private readonly Func<SessionFiles, string?> _keyFor;
-    private readonly ResultStore _results;
+    private readonly AnswerStore _answers;
     private readonly Func<SessionFiles, CancellationToken, Task> _check;
     private readonly Action<string> _log;
     private readonly TimeSpan _debounce;
@@ -42,14 +42,14 @@ internal sealed class BackgroundCheck : IDisposable
     public BackgroundCheck(
         Func<IReadOnlyList<SessionFiles>> sessions,
         Func<SessionFiles, string?> keyFor,
-        ResultStore results,
+        AnswerStore results,
         Func<SessionFiles, CancellationToken, Task> check,
         Action<string> log,
         TimeSpan? debounce = null)
     {
         _sessions = sessions;
         _keyFor = keyFor;
-        _results = results;
+        _answers = results;
         _check = check;
         _log = log;
         _debounce = debounce ?? DefaultDebounce;
@@ -185,7 +185,7 @@ internal sealed class BackgroundCheck : IDisposable
                     }
 
                     var key = _keyFor(session);
-                    if (key is not null && _results.TryGet(key, out _))
+                    if (key is not null && _answers.TryGet(key, out _))
                     {
                         MarkChecked(session, files);
                         continue;

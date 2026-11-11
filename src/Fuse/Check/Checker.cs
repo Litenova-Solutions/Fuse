@@ -48,7 +48,6 @@ internal sealed class Checker
     ///     Past this many changed files the kept answer is skipped: hashing every file costs more than the reuse saves.
     ///     The same number as the whole-project threshold, so one number to remember.
     /// </summary>
-    private const int MaxKeptHashFiles = 500;
 
     /// <summary>How many sessions the engine log names per check before counting the rest.</summary>
     private const int MaxLoggedSessions = 10;
@@ -167,8 +166,8 @@ internal sealed class Checker
         // Past the bound the kept answer costs more hashing than it saves; the check runs as usual.
         var changedFiles = generation.Changed.Count;
         string? keptKey = null;
-        if (changedFiles > MaxKeptHashFiles)
-            _workspace.Log($"check: kept answer skipped, {changedFiles} changed file(s) past {MaxKeptHashFiles}");
+        if (changedFiles > KeptCheck.MaxChangedFiles)
+            _workspace.Log($"check: kept answer skipped, {changedFiles} changed file(s) past {KeptCheck.MaxChangedFiles}");
         else if (fresh)
             keptKey = KeptKeyFor(scope, session, analyzers, maxReported, generation);
         if (keptKey is not null && _kept.TryGet(keptKey, out var kept))
@@ -335,13 +334,10 @@ internal sealed class Checker
             CheckScope.NamedPaths paths => "paths:" + string.Join(",", ScopeExpansion.DisplaySpecs(_workspace.Root, paths.Named).Order(StringComparer.Ordinal)),
             _ => "all",
         };
-        // A paths scope keys by its display specs,
-        // distinct from all changes
-        // and from any file list.
-        // A kept answer holds only the errors its cap allowed, so the cap keys it too.
-        var capKey = maxReported == 0 ? "cap:default" : $"cap:{maxReported}";
+        // A paths scope keys by its display specs, distinct from all changes and from any file list.
         return KeptCheck.KeyFor(
-            capKey + ":" + scopeKey,
+            scopeKey,
+            maxReported,
             session,
             analyzers.CompilationWide,
             generation.Head ?? "",

@@ -26,13 +26,13 @@ internal static partial class StatusOperation
     internal const int ReloadAt = 300;
 
     /// <summary>
-    ///     Past this many changed files a check skips its kept answer. It mirrors the check's kept-answer limit.
+    ///     Past this many changed files a check skips its kept answer. It mirrors <c>KeptCheck.MaxChangedFiles</c>, which the client may not reference: Fuse.Operations does not use Fuse.Check.
     /// </summary>
     internal const int KeptAnswerAt = 500;
 
     /// <summary>
     ///     Past this many files in reach of a change a check binds whole projects, which the limits line names. It
-    ///     mirrors the check's whole-project threshold.
+    ///     mirrors <c>CandidateBinding.WholeProjectThreshold</c>, which the client may not reference.
     /// </summary>
     internal const int WholeProjectAt = 500;
 

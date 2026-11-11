@@ -29,7 +29,7 @@ internal sealed class RequestRouter : IDisposable
     private readonly BaselineWarmer _warmer;
     private readonly RequestLog _requestLog;
     private readonly SessionEdits _sessions;
-    private readonly ResultStore _results;
+    private readonly AnswerStore _answers;
     private readonly BackgroundCheck _background;
 
     /// <summary>Guards the last completed sync's status and the distinct touched paths it counted.</summary>
@@ -57,8 +57,8 @@ internal sealed class RequestRouter : IDisposable
         _requestLog = new RequestLog(log);
         _scheduler = scheduler;
         _budget = budget;
-        _results = new ResultStore(root.StateDirectory, log.Write);
-        _background = new BackgroundCheck(LiveSessionFiles, BackgroundKey, _results, RunBackgroundCheckAsync, log.Write);
+        _answers = new AnswerStore(root.StateDirectory, log.Write);
+        _background = new BackgroundCheck(LiveSessionFiles, BackgroundKey, _answers, RunBackgroundCheckAsync, log.Write);
     }
 
     /// <summary>Evaluates projects, then preloads the projects that already have uncommitted changes.</summary>
@@ -154,7 +154,7 @@ internal sealed class RequestRouter : IDisposable
             key = CoalesceKey(request);
         }
 
-        if (key is not null && _results.TryGet(key, out var stored))
+        if (key is not null && _answers.TryGet(key, out var stored))
         {
             var phases = new PhaseTimes();
             phases.Add(Phase.Gate, 0);
@@ -232,7 +232,7 @@ internal sealed class RequestRouter : IDisposable
             _log.Write($"memory: working set {budget.WorkingSetBytes / (1024 * 1024)} MB of {budget.CeilingBytes / (1024 * 1024)} MB, shedding {string.Join(", ", budget.Shed)}");
         if (budget.Shed.Contains(MemoryBudget.ShedStep.KeptAnswersAndCaches))
         {
-            _results.Clear();
+            _answers.Clear();
             _checker.ClearKeptAnswers();
         }
         if (budget.Shed.Contains(MemoryBudget.ShedStep.SessionViews))
@@ -401,7 +401,7 @@ internal sealed class RequestRouter : IDisposable
             return;
         var generation = _workspace.PinGeneration();
         var tree = answered.Report.Tree ?? TreeStamp.Of(ChangedPairs(generation.Changed));
-        _results.Keep(key, RequestLog.SessionOf(request), generation.Number, tree, answered.Report);
+        _answers.Keep(key, RequestLog.SessionOf(request), generation.Number, tree, answered.Report);
     }
 
     /// <summary>The request a background re-check of <paramref name="session"/> sends: its files, answered to it, with every analyzer and a tree stamp.</summary>
@@ -443,7 +443,7 @@ internal sealed class RequestRouter : IDisposable
     {
         var request = BackgroundRequest(session);
         var key = CoalesceKey(request);
-        if (key is null || _results.TryGet(key, out _))
+        if (key is null || _answers.TryGet(key, out _))
             return;
         // The scheduler's background token ties the run to its generation too: a newer one cancels both.
         using var generation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _scheduler.BackgroundToken);
@@ -575,11 +575,11 @@ internal sealed class RequestRouter : IDisposable
             return null;
         }
 
-        if (generation.Changed.Count > 500)
+        if (generation.Changed.Count > KeptCheck.MaxChangedFiles)
             return null;
-        var capKey = maxErrors == 0 ? "cap:default" : $"cap:{maxErrors}";
         var kept = KeptCheck.KeyFor(
-            capKey + ":" + scopeKey,
+            scopeKey,
+            maxErrors,
             session,
             compilationWide,
             generation.Head ?? "",
@@ -605,7 +605,7 @@ internal sealed class RequestRouter : IDisposable
     internal Scheduler Scheduler => _scheduler;
 
     /// <summary>The result store answers are kept in, for a test that reads a kept answer or a session file.</summary>
-    internal ResultStore Results => _results;
+    internal AnswerStore Answers => _answers;
 
     /// <summary>The background re-check of live sessions, for a test that waits for a run to finish.</summary>
     internal BackgroundCheck Background => _background;

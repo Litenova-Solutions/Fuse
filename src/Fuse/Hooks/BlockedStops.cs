@@ -13,27 +13,27 @@ namespace Fuse.Hooks;
 ///     wrote after that block, lets the agent finish instead of blocking it on errors it cannot act on. An error in a
 ///     file the session wrote after the block blocks again, so work the session itself did is never let through.
 /// </summary>
-internal static partial class StopMemory
+internal static partial class BlockedStops
 {
     /// <summary>One blocked stop: the error set it held, the tree it ended on, and when it blocked.</summary>
     /// <param name="Errors">The blocked errors, each as <see cref="KeyOf"/> writes it, in ordinal order.</param>
     /// <param name="Tree">The tree stamp the check ended on, or null when the check sent none.</param>
     /// <param name="BlockedAt">When the stop blocked, in UTC.</param>
-    internal sealed record Snapshot(string[] Errors, string? Tree, DateTimeOffset BlockedAt);
+    internal sealed record BlockedStop(string[] Errors, string? Tree, DateTimeOffset BlockedAt);
 
-    /// <summary>One error as the memory holds it: file, position, id and message, so an edit that moves or rewords an error counts as a different error.</summary>
+    /// <summary>One error as a blocked stop holds it: file, position, id and message, so an edit that moves or rewords an error counts as a different error.</summary>
     internal static string KeyOf(ReportedError error) =>
         $"{error.Error.Path}|{error.Error.Line}|{error.Error.Column}|{error.Error.Id}|{error.Error.Message}";
 
     /// <summary>The blocked stop <paramref name="session"/> last met in the state directory, or null when it met none that reads back.</summary>
-    internal static Snapshot? Load(string stateDirectory, string session)
+    internal static BlockedStop? Load(string stateDirectory, string session)
     {
         try
         {
             var path = BlockedFile(stateDirectory, session);
             if (!File.Exists(path))
                 return null;
-            return JsonSerializer.Deserialize(File.ReadAllText(path), SnapshotJson.Default.Snapshot);
+            return JsonSerializer.Deserialize(File.ReadAllText(path), BlockedStopJson.Default.BlockedStop);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException)
         {
@@ -42,26 +42,26 @@ internal static partial class StopMemory
     }
 
     /// <summary>The blocked stop <paramref name="session"/> last met in <paramref name="root"/>, or null.</summary>
-    internal static Snapshot? Load(RepoRoot root, string session) => Load(root.StateDirectory, session);
+    internal static BlockedStop? Load(RepoRoot root, string session) => Load(root.StateDirectory, session);
 
-    /// <summary>Records <paramref name="snapshot"/> as the stop <paramref name="session"/> last met. A failure to write it is dropped: the next stop then blocks again, which is the safe side.</summary>
-    internal static void Save(string stateDirectory, string session, Snapshot snapshot)
+    /// <summary>Records <paramref name="stop"/> as the stop <paramref name="session"/> last met. A failure to write it is dropped: the next stop then blocks again, which is the safe side.</summary>
+    internal static void Save(string stateDirectory, string session, BlockedStop stop)
     {
         try
         {
             Directory.CreateDirectory(stateDirectory);
-            File.WriteAllText(BlockedFile(stateDirectory, session), JsonSerializer.Serialize(snapshot, SnapshotJson.Default.Snapshot));
+            File.WriteAllText(BlockedFile(stateDirectory, session), JsonSerializer.Serialize(stop, BlockedStopJson.Default.BlockedStop));
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
         }
     }
 
-    /// <summary>Records <paramref name="snapshot"/> as the stop <paramref name="session"/> last met in <paramref name="root"/>.</summary>
-    internal static void Save(RepoRoot root, string session, Snapshot snapshot) => Save(root.StateDirectory, session, snapshot);
+    /// <summary>Records <paramref name="stop"/> as the stop <paramref name="session"/> last met in <paramref name="root"/>.</summary>
+    internal static void Save(RepoRoot root, string session, BlockedStop stop) => Save(root.StateDirectory, session, stop);
 
-    /// <summary>The snapshot a blocked stop records for <paramref name="errors"/> on <paramref name="tree"/> at <paramref name="blockedAt"/>.</summary>
-    internal static Snapshot SnapshotFor(IReadOnlyList<ReportedError> errors, string? tree, DateTimeOffset blockedAt) =>
+    /// <summary>The stop a blocked stop records for <paramref name="errors"/> on <paramref name="tree"/> at <paramref name="blockedAt"/>.</summary>
+    internal static BlockedStop StopFor(IReadOnlyList<ReportedError> errors, string? tree, DateTimeOffset blockedAt) =>
         new([.. errors.Select(KeyOf).Order(StringComparer.Ordinal)], tree, blockedAt);
 
     /// <summary>
@@ -136,7 +136,7 @@ internal static partial class StopMemory
     ///     True when <paramref name="current"/> is the blocked answer <paramref name="previous"/> holds: the same error
     ///     set, the same tree where both checks stamped one, and no error in a file the session wrote after that block.
     /// </summary>
-    internal static bool IsRepeat(Snapshot? previous, IReadOnlyList<ReportedError> current, string? tree, IReadOnlySet<string> writtenSince)
+    internal static bool IsRepeat(BlockedStop? previous, IReadOnlyList<ReportedError> current, string? tree, IReadOnlySet<string> writtenSince)
     {
         if (previous is null || current.Count == 0)
             return false;
@@ -152,7 +152,7 @@ internal static partial class StopMemory
     ///     How many of <paramref name="current"/> the blocked answer <paramref name="previous"/> did not hold, and how
     ///     many of those sit in a file the session wrote. With no blocked answer held, every error counts as unseen.
     /// </summary>
-    internal static (int Unseen, int InEditedFiles) Delta(Snapshot? previous, IReadOnlyList<ReportedError> current, IReadOnlySet<string> editedFiles)
+    internal static (int Unseen, int InEditedFiles) Delta(BlockedStop? previous, IReadOnlyList<ReportedError> current, IReadOnlySet<string> editedFiles)
     {
         var held = previous is null ? new HashSet<string>(StringComparer.Ordinal) : new HashSet<string>(previous.Errors, StringComparer.Ordinal);
         var unseen = current.Where(e => !held.Contains(KeyOf(e))).ToList();
@@ -190,8 +190,8 @@ internal static partial class StopMemory
     private static string Hash(string session) =>
         Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(session)))[..16];
 
-    [JsonSerializable(typeof(Snapshot))]
-    private sealed partial class SnapshotJson : JsonSerializerContext
+    [JsonSerializable(typeof(BlockedStop))]
+    private sealed partial class BlockedStopJson : JsonSerializerContext
     {
     }
 }

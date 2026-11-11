@@ -34,7 +34,7 @@ internal sealed class MemoryBudget
     public long CeilingBytes { get; }
 
     /// <summary>What the engine holds now, against the ceiling and the machine.</summary>
-    public Snapshot Assess()
+    public Assessment Assess()
     {
         var workingSet = _workingSet();
         long load;
@@ -67,7 +67,7 @@ internal sealed class MemoryBudget
             shed.Add(ShedStep.HeadCompilations);
         if (byCeiling >= 0.95)
             shed.Add(ShedStep.IdleConeProjects);
-        return new Snapshot(workingSet, CeilingBytes, load, total, byCeiling >= 1.0, shed);
+        return new Assessment(workingSet, CeilingBytes, load, total, byCeiling >= 1.0, shed);
     }
 
     /// <summary>
@@ -199,7 +199,7 @@ internal sealed class MemoryBudget
     /// <param name="TotalAvailableBytes">The memory available to the GC in bytes, or 0 when it reports none.</param>
     /// <param name="IsPastCeiling">True when the engine is at or past its ceiling and answers Busy.</param>
     /// <param name="Shed">The shed steps for this pressure, in the order they are taken.</param>
-    internal sealed record Snapshot(long WorkingSetBytes, long CeilingBytes, long MemoryLoadBytes, long TotalAvailableBytes, bool IsPastCeiling, IReadOnlyList<ShedStep> Shed);
+    internal sealed record Assessment(long WorkingSetBytes, long CeilingBytes, long MemoryLoadBytes, long TotalAvailableBytes, bool IsPastCeiling, IReadOnlyList<ShedStep> Shed);
 
     /// <summary>One engine's record on the machine: its process, its working set and how long it has been idle.</summary>
     /// <param name="Pid">The engine process's id.</param>

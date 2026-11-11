@@ -140,7 +140,7 @@ internal static class EngineServer
             LocalState.RecordRoot(root);
             BaselineStore.Prune(root.SharedStateDirectory);
             SummaryCache.Prune(root.SharedStateDirectory);
-            GraphCache.Prune(root.SharedStateDirectory);
+            GraphStore.Prune(root.SharedStateDirectory);
             LocalState.RemoveUnusedEngineCopies(LocalState.EngineCopies, AppContext.BaseDirectory, DateTime.UtcNow);
             var removed = LocalState.RemoveStateOfMissingRepositories(LocalState.Repositories, DateTime.UtcNow);
             if (removed > 0)

@@ -8,7 +8,7 @@ namespace Fuse.Tests.Engine;
 ///     answer without evaluating again: the stored graph answers as the evaluated one does, and a changed
 ///     project file, a changed or appearing import, or an unreadable stored graph evaluates again.
 /// </summary>
-public class GraphCacheTests
+public class GraphStoreTests
 {
     [Fact]
     public async Task A_stored_graph_answers_as_the_evaluated_graph_does()
@@ -19,7 +19,7 @@ public class GraphCacheTests
         var evaluated = await RepoGraph.EvaluateAsync(repo.Root, cancellationToken);
         Assert.Empty(evaluated.Failures);
         Assert.NotEmpty(evaluated.Projects);
-        Assert.Single(Directory.EnumerateFiles(GraphCache.DirectoryFor(repo.Root.SharedStateDirectory), "graph.json", SearchOption.AllDirectories));
+        Assert.Single(Directory.EnumerateFiles(GraphStore.DirectoryFor(repo.Root.SharedStateDirectory), "graph.json", SearchOption.AllDirectories));
 
         var stored = await RepoGraph.EvaluateAsync(repo.Root, cancellationToken);
 
@@ -41,14 +41,14 @@ public class GraphCacheTests
         var cancellationToken = TestContext.Current.CancellationToken;
         var evaluated = await RepoGraph.EvaluateAsync(repo.Root, cancellationToken);
         var paths = evaluated.Projects.Select(p => p.Path).ToList();
-        Assert.NotNull(GraphCache.TryLoad(repo.Root, paths));
+        Assert.NotNull(GraphStore.TryLoad(repo.Root, paths));
 
         repo.Write("Lib/Lib.csproj", repo.Read("Lib/Lib.csproj") + "<!-- stored graph test -->\n");
 
-        Assert.Null(GraphCache.TryLoad(repo.Root, paths));
+        Assert.Null(GraphStore.TryLoad(repo.Root, paths));
         var again = await RepoGraph.EvaluateAsync(repo.Root, cancellationToken);
         Assert.Empty(again.Failures);
-        Assert.NotNull(GraphCache.TryLoad(repo.Root, paths));
+        Assert.NotNull(GraphStore.TryLoad(repo.Root, paths));
         AssertGraphEqual(evaluated, again);
     }
 
@@ -59,16 +59,16 @@ public class GraphCacheTests
         var cancellationToken = TestContext.Current.CancellationToken;
         var evaluated = await RepoGraph.EvaluateAsync(repo.Root, cancellationToken);
         var paths = evaluated.Projects.Select(p => p.Path).ToList();
-        Assert.NotNull(GraphCache.TryLoad(repo.Root, paths));
+        Assert.NotNull(GraphStore.TryLoad(repo.Root, paths));
 
         repo.Write("Directory.Build.props", "<Project></Project>\n");
-        Assert.Null(GraphCache.TryLoad(repo.Root, paths));
+        Assert.Null(GraphStore.TryLoad(repo.Root, paths));
 
         await RepoGraph.EvaluateAsync(repo.Root, cancellationToken);
-        Assert.NotNull(GraphCache.TryLoad(repo.Root, paths));
+        Assert.NotNull(GraphStore.TryLoad(repo.Root, paths));
 
         repo.Write("Directory.Build.props", "<Project><!-- changed --></Project>\n");
-        Assert.Null(GraphCache.TryLoad(repo.Root, paths));
+        Assert.Null(GraphStore.TryLoad(repo.Root, paths));
     }
 
     [Fact]
@@ -78,21 +78,21 @@ public class GraphCacheTests
         var cancellationToken = TestContext.Current.CancellationToken;
         var evaluated = await RepoGraph.EvaluateAsync(repo.Root, cancellationToken);
         var paths = evaluated.Projects.Select(p => p.Path).ToList();
-        var file = Assert.Single(Directory.EnumerateFiles(GraphCache.DirectoryFor(repo.Root.SharedStateDirectory), "graph.json", SearchOption.AllDirectories));
+        var file = Assert.Single(Directory.EnumerateFiles(GraphStore.DirectoryFor(repo.Root.SharedStateDirectory), "graph.json", SearchOption.AllDirectories));
         File.WriteAllText(file, "not a stored graph");
 
-        Assert.Null(GraphCache.TryLoad(repo.Root, paths));
+        Assert.Null(GraphStore.TryLoad(repo.Root, paths));
         var again = await RepoGraph.EvaluateAsync(repo.Root, cancellationToken);
 
         AssertGraphEqual(evaluated, again);
-        Assert.NotNull(GraphCache.TryLoad(repo.Root, paths));
+        Assert.NotNull(GraphStore.TryLoad(repo.Root, paths));
     }
 
     [Fact]
     public void Pruning_keeps_the_two_most_recently_written_graphs()
     {
         using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });
-        var directory = GraphCache.DirectoryFor(repo.Root.SharedStateDirectory);
+        var directory = GraphStore.DirectoryFor(repo.Root.SharedStateDirectory);
         var oldest = Directory.CreateDirectory(Path.Combine(directory, "oldest")).FullName;
         var middle = Directory.CreateDirectory(Path.Combine(directory, "middle")).FullName;
         var newest = Directory.CreateDirectory(Path.Combine(directory, "newest")).FullName;
@@ -104,7 +104,7 @@ public class GraphCacheTests
             Directory.SetLastWriteTimeUtc(key, written);
         }
 
-        GraphCache.Prune(repo.Root.SharedStateDirectory);
+        GraphStore.Prune(repo.Root.SharedStateDirectory);
 
         Assert.False(Directory.Exists(oldest));
         Assert.True(Directory.Exists(middle));

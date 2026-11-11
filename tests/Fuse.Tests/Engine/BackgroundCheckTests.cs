@@ -19,7 +19,7 @@ public class BackgroundCheckTests
         var state = NewStateDirectory();
         try
         {
-            var store = new ResultStore(state);
+            var store = new AnswerStore(state);
             var runs = new List<string>();
             var background = NewBackground(store, () => [Session("worker-1", generation: 1)], runs, TimeSpan.Zero);
             using (background)
@@ -44,7 +44,7 @@ public class BackgroundCheckTests
         var state = NewStateDirectory();
         try
         {
-            var store = new ResultStore(state);
+            var store = new AnswerStore(state);
             var runs = new List<string>();
             var background = NewBackground(store, () => [Session("worker-1", generation: 1)], runs, TimeSpan.Zero);
             using (background)
@@ -69,7 +69,7 @@ public class BackgroundCheckTests
         var state = NewStateDirectory();
         try
         {
-            var store = new ResultStore(state);
+            var store = new AnswerStore(state);
             var runs = new List<string>();
             var background = NewBackground(store, () => [Session("worker-1", generation: 1)], runs, TimeSpan.FromMilliseconds(300));
             using (background)
@@ -97,7 +97,7 @@ public class BackgroundCheckTests
         var state = NewStateDirectory();
         try
         {
-            var store = new ResultStore(state);
+            var store = new AnswerStore(state);
             var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             var cancelled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             IReadOnlyList<BackgroundCheck.SessionFiles> current = [Session("worker-1", generation: 1)];
@@ -154,7 +154,7 @@ public class BackgroundCheckTests
     }
 
     /// <summary>A background check whose run keeps one empty answer per session under its key, as the router's run does.</summary>
-    private static BackgroundCheck NewBackground(ResultStore store, Func<IReadOnlyList<BackgroundCheck.SessionFiles>> sessions, List<string> runs, TimeSpan debounce) =>
+    private static BackgroundCheck NewBackground(AnswerStore store, Func<IReadOnlyList<BackgroundCheck.SessionFiles>> sessions, List<string> runs, TimeSpan debounce) =>
         new(
             sessions,
             session => "key-" + session.Session,

@@ -23,7 +23,7 @@ namespace Fuse.Check;
 ///     is declared in a file no session is credited with, and an error traced sessions wrote together, because a
 ///     view, not a trace, decides those.
 /// </remarks>
-internal sealed class SessionViewFilter
+internal sealed class DeclarationFilter
 {
     /// <summary>
     ///     The errors whose answer can depend on a conversion, an overload or an inference the site does not bind to
@@ -38,7 +38,7 @@ internal sealed class SessionViewFilter
     private readonly RepoWorkspace _workspace;
     private readonly SessionEdits _edits;
 
-    public SessionViewFilter(RepoWorkspace workspace, SessionEdits edits)
+    public DeclarationFilter(RepoWorkspace workspace, SessionEdits edits)
     {
         _workspace = workspace;
         _edits = edits;

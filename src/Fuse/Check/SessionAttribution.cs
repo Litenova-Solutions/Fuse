@@ -20,7 +20,7 @@ namespace Fuse.Check;
 ///         rest stay in every view, so an error they cause is everyone's.
 ///     </para>
 ///     <para>
-///         A declaration filter runs first (<see cref="SessionViewFilter"/>): an error whose bound symbol, and every
+///         A declaration filter runs first (<see cref="DeclarationFilter"/>): an error whose bound symbol, and every
 ///         candidate symbol, traces to declarations exactly one session changed is decided from that trace, and the
 ///         filter declines the rest. For each remaining error in a file S did not write together with another session:
 ///     </para>
@@ -50,14 +50,14 @@ internal sealed class SessionAttribution
     private readonly RepoWorkspace _workspace;
     private readonly IntroducedErrors _introduced;
     private readonly SessionEdits _edits;
-    private readonly SessionViewFilter _filter;
+    private readonly DeclarationFilter _filter;
 
     public SessionAttribution(RepoWorkspace workspace, IntroducedErrors introduced, SessionEdits edits)
     {
         _workspace = workspace;
         _introduced = introduced;
         _edits = edits;
-        _filter = new SessionViewFilter(workspace, edits);
+        _filter = new DeclarationFilter(workspace, edits);
     }
 
     /// <summary>
@@ -105,10 +105,10 @@ internal sealed class SessionAttribution
             {
                 switch (await _filter.DecideAsync(error, session, generation, writers, cancellationToken).ConfigureAwait(false))
                 {
-                    case SessionViewFilter.Decision.NotTold:
+                    case DeclarationFilter.Decision.NotTold:
                         notTold.Add(error);
                         break;
-                    case SessionViewFilter.Decision.Told:
+                    case DeclarationFilter.Decision.Told:
                         break;
                     default:
                         remaining.Add(error);

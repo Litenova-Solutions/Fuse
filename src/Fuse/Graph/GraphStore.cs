@@ -14,7 +14,7 @@ namespace Fuse.Graph;
 ///     import misses and evaluates again. A missing, unreadable or stale stored graph is no graph at all: the
 ///     caller evaluates, which always answers as the stored form would.
 /// </summary>
-internal static partial class GraphCache
+internal static partial class GraphStore
 {
     /// <summary>The stored form's version. A stored graph of another version is left unread.</summary>
     private const int FormatVersion = 1;
@@ -178,7 +178,7 @@ internal static partial class GraphCache
     }
 
     /// <summary>The build the stored form names: the Fuse build that evaluated it. An engine of another build evaluates again.</summary>
-    private static string Build => typeof(GraphCache).Assembly.GetName().Version?.ToString() ?? "";
+    private static string Build => typeof(GraphStore).Assembly.GetName().Version?.ToString() ?? "";
 
     private static StoredProject ToStored(ProjectNode project) => new(
         project.Path.Relative,

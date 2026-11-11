@@ -33,9 +33,9 @@ internal static class StopMessage
                            && (causer == session || causer.StartsWith(session + "/", StringComparison.Ordinal)));
 
     /// <summary>The first line of a blocked stop that follows an earlier one: how much of the answer that earlier stop did not hold, and how much of that sits in files the session wrote.</summary>
-    internal static string DeltaLine(StopMemory.Snapshot? previous, IReadOnlyList<ReportedError> current, IReadOnlySet<string> editedFiles)
+    internal static string DeltaLine(BlockedStops.BlockedStop? previous, IReadOnlyList<ReportedError> current, IReadOnlySet<string> editedFiles)
     {
-        var (unseen, inEdited) = StopMemory.Delta(previous, current, editedFiles);
+        var (unseen, inEdited) = BlockedStops.Delta(previous, current, editedFiles);
         return $"{unseen} new since your last stop, {inEdited} in files you edited";
     }
 
@@ -45,7 +45,7 @@ internal static class StopMessage
     /// <param name="previous">The blocked answer the session met before in this repository, or null.</param>
     /// <param name="editedFiles">Repository-relative paths the session wrote in this repository.</param>
     /// <param name="session">The session that is stopping, or null when its harness names none.</param>
-    internal static string Build(string checkText, CheckReport report, StopMemory.Snapshot? previous, IReadOnlySet<string> editedFiles, string? session)
+    internal static string Build(string checkText, CheckReport report, BlockedStops.BlockedStop? previous, IReadOnlySet<string> editedFiles, string? session)
     {
         var lines = new List<string>();
         if (previous is not null)

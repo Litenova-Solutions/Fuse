@@ -1,32 +1,38 @@
+using System.Globalization;
+using System.Runtime.InteropServices;
 using Fuse.Paths;
 
 namespace Fuse.Engine;
 
 /// <summary>
-///     The memory one engine may hold. At each request boundary the engine reads its working set and the GC's
+///     The memory one engine may hold. At each request boundary the engine reads its working set and the OS's
 ///     memory load and sheds in a fixed order, and past the ceiling it answers
 ///     <see cref="Fuse.Protocol.EngineResponse.Busy"/> instead of growing: an explicit refusal, never a narrowed
 ///     check. Engines on one machine record their working set in their state directory, and the engine that has
-///     been idle the longest among them exits first when the machine runs short.
+///     been idle the longest among them exits first when the machine runs short, whether from Fuse engines or
+///     other processes on the machine.
 /// </summary>
 internal sealed class MemoryBudget
 {
     /// <summary>The ceiling one engine holds to, in bytes. It is decided here, not a setting.</summary>
     public const long DefaultCeilingBytes = 2L * 1024 * 1024 * 1024;
 
+    /// <summary>Minimum total memory (64 MB) considered a real machine rather than a synthetic unit-test fixture.</summary>
+    private const long RealMachineFloorBytes = 64L * 1024 * 1024;
+
     private readonly Func<long> _workingSet;
     private readonly Func<long> _memoryLoad;
     private readonly Func<long> _totalAvailable;
 
-    /// <summary>True when the load and the total come from the GC together, so one <see cref="GC.GetGCMemoryInfo()"/> call a request boundary reads both.</summary>
+    /// <summary>True when the load and the total come from the OS/GC together, so one snapshot reads both.</summary>
     private readonly bool _sharedMemoryInfo;
 
     public MemoryBudget(long ceilingBytes = DefaultCeilingBytes, Func<long>? workingSet = null, Func<long>? memoryLoad = null, Func<long>? totalAvailable = null)
     {
         CeilingBytes = Math.Max(1, ceilingBytes);
         _workingSet = workingSet ?? (() => Environment.WorkingSet);
-        _memoryLoad = memoryLoad ?? (() => GC.GetGCMemoryInfo().MemoryLoadBytes);
-        _totalAvailable = totalAvailable ?? (() => GC.GetGCMemoryInfo().TotalAvailableMemoryBytes);
+        _memoryLoad = memoryLoad ?? (() => ReadOsMemory().MemoryLoadBytes);
+        _totalAvailable = totalAvailable ?? (() => ReadOsMemory().TotalAvailableBytes);
         _sharedMemoryInfo = memoryLoad is null && totalAvailable is null;
     }
 
@@ -41,31 +47,29 @@ internal sealed class MemoryBudget
         long total;
         if (_sharedMemoryInfo)
         {
-            var info = GC.GetGCMemoryInfo();
-            load = info.MemoryLoadBytes;
-            total = info.TotalAvailableMemoryBytes;
+            (load, total) = ReadOsMemory();
         }
         else
         {
             load = _memoryLoad();
             total = _totalAvailable();
         }
+
         var byCeiling = CeilingBytes == 0 ? 0 : (double)workingSet / CeilingBytes;
         var byMachine = total > 0 ? (double)load / total : 0;
-        // The engine sheds what it holds by its own working set against its ceiling. The machine's load, which every
-        // other process on it adds to and a busy machine keeps high, only stops background work here: the machine-wide
-        // rule (ShouldExitIdlest) is what frees memory across engines, so one engine never refuses its callers because
-        // other programs fill the machine.
+        // High machine-wide memory load (including non-Fuse processes) triggers progressive shedding of caches,
+        // views and idle cone projects, while IsPastCeiling remains gated on this engine's own ceiling so other
+        // programs never force one engine to refuse its callers with Busy.
         var shed = new List<ShedStep>();
         if (byCeiling >= 0.70 || byMachine >= 0.90)
             shed.Add(ShedStep.Background);
-        if (byCeiling >= 0.80)
+        if (byCeiling >= 0.80 || byMachine >= 0.90)
             shed.Add(ShedStep.KeptAnswersAndCaches);
-        if (byCeiling >= 0.85)
+        if (byCeiling >= 0.85 || byMachine >= 0.90)
             shed.Add(ShedStep.SessionViews);
-        if (byCeiling >= 0.90)
+        if (byCeiling >= 0.90 || byMachine >= 0.92)
             shed.Add(ShedStep.HeadCompilations);
-        if (byCeiling >= 0.95)
+        if (byCeiling >= 0.95 || byMachine >= 0.95)
             shed.Add(ShedStep.IdleConeProjects);
         return new Assessment(workingSet, CeilingBytes, load, total, byCeiling >= 1.0, shed);
     }
@@ -129,8 +133,8 @@ internal sealed class MemoryBudget
     }
 
     /// <summary>
-    ///     True when the engines on the machine hold more than 90 percent of the memory the GC reports and this
-    ///     engine has been idle at least as long as every other, so it exits first and a busier engine stays.
+    ///     True when the machine holds more than 90 percent of available memory (from Fuse engines or OS memory load)
+    ///     and this engine has been idle at least as long as every other, so it exits first and a busier engine stays.
     /// </summary>
     public static bool ShouldExitIdlest(IReadOnlyList<EngineRecord> engines, int pid, long totalAvailable)
     {
@@ -142,13 +146,188 @@ internal sealed class MemoryBudget
         return IsIdlest(engines, pid);
     }
 
-    /// <summary>True when the engines on the machine hold more than 90 percent of the memory the GC reports, so the machine runs short.</summary>
-    public static bool IsMachineShort(IReadOnlyList<EngineRecord> engines, long totalAvailable) =>
-        totalAvailable > 0 && engines.Sum(e => e.WorkingSetBytes) > totalAvailable * 0.9;
+    /// <summary>
+    ///     True when the machine holds more than 90 percent of <paramref name="totalAvailable"/> (comparing both Fuse
+    ///     engines and <paramref name="memoryLoadBytes"/>) and this engine has been idle at least as long as every other.
+    /// </summary>
+    public static bool ShouldExitIdlest(IReadOnlyList<EngineRecord> engines, int pid, long totalAvailable, long memoryLoadBytes)
+    {
+        if (totalAvailable <= 0 || engines.Count == 0)
+            return false;
+        if (!IsMachineShort(engines, totalAvailable, memoryLoadBytes))
+            return false;
+        return IsIdlest(engines, pid);
+    }
 
-    /// <summary>True when the engines on the machine hold more than 70 percent of the memory the GC reports, so another engine needs memory an idle engine holds.</summary>
-    public static bool MachineNeedsMemory(IReadOnlyList<EngineRecord> engines, long totalAvailable) =>
-        totalAvailable > 0 && engines.Sum(e => e.WorkingSetBytes) > totalAvailable * 0.7;
+    /// <summary>
+    ///     True when the machine holds more than 90 percent of available memory, incorporating actual OS memory load
+    ///     when <paramref name="totalAvailable"/> reflects real machine memory.
+    /// </summary>
+    public static bool IsMachineShort(IReadOnlyList<EngineRecord> engines, long totalAvailable)
+    {
+        if (totalAvailable <= 0)
+            return false;
+        if (totalAvailable >= RealMachineFloorBytes)
+        {
+            var (osLoad, osTotal) = ReadOsMemory();
+            var effectiveTotal = osTotal > 0 ? Math.Max(totalAvailable, osTotal) : totalAvailable;
+            return IsMachineShort(engines, effectiveTotal, osLoad);
+        }
+
+        return IsMachineShort(engines, totalAvailable, memoryLoadBytes: 0);
+    }
+
+    /// <summary>True when either the Fuse engines or the OS <paramref name="memoryLoadBytes"/> exceeds 90 percent of <paramref name="totalAvailable"/>.</summary>
+    public static bool IsMachineShort(IReadOnlyList<EngineRecord> engines, long totalAvailable, long memoryLoadBytes) =>
+        totalAvailable > 0 && EffectiveMachineLoad(engines, memoryLoadBytes) > totalAvailable * 0.9;
+
+    /// <summary>
+    ///     True when the machine holds more than 70 percent of available memory, incorporating actual OS memory load
+    ///     when <paramref name="totalAvailable"/> reflects real machine memory.
+    /// </summary>
+    public static bool MachineNeedsMemory(IReadOnlyList<EngineRecord> engines, long totalAvailable)
+    {
+        if (totalAvailable <= 0)
+            return false;
+        if (totalAvailable >= RealMachineFloorBytes)
+        {
+            var (osLoad, osTotal) = ReadOsMemory();
+            var effectiveTotal = osTotal > 0 ? Math.Max(totalAvailable, osTotal) : totalAvailable;
+            return MachineNeedsMemory(engines, effectiveTotal, osLoad);
+        }
+
+        return MachineNeedsMemory(engines, totalAvailable, memoryLoadBytes: 0);
+    }
+
+    /// <summary>True when either the Fuse engines or the OS <paramref name="memoryLoadBytes"/> exceeds 70 percent of <paramref name="totalAvailable"/>.</summary>
+    public static bool MachineNeedsMemory(IReadOnlyList<EngineRecord> engines, long totalAvailable, long memoryLoadBytes) =>
+        totalAvailable > 0 && EffectiveMachineLoad(engines, memoryLoadBytes) > totalAvailable * 0.7;
+
+    private static long EffectiveMachineLoad(IReadOnlyList<EngineRecord> engines, long memoryLoadBytes) =>
+        Math.Max(engines.Sum(e => e.WorkingSetBytes), Math.Max(0, memoryLoadBytes));
+
+    /// <summary>
+    ///     Reads the current OS memory load and total physical/available memory in bytes, using
+    ///     <c>GlobalMemoryStatusEx</c> on Windows, <c>/proc/meminfo</c> on Linux, and <see cref="GC.GetGCMemoryInfo()"/>
+    ///     as fallback so <c>DOTNET_GCHeapHardLimit</c> never shrinks the denominator or leaves load at zero.
+    /// </summary>
+    internal static (long MemoryLoadBytes, long TotalAvailableBytes) ReadOsMemory()
+    {
+        if (OperatingSystem.IsWindows() && TryReadWindowsMemory(out var winLoad, out var winTotal))
+            return (winLoad, winTotal);
+        if (OperatingSystem.IsLinux() && TryReadProcMemInfo(out var linuxLoad, out var linuxTotal))
+            return (linuxLoad, linuxTotal);
+
+        var info = GC.GetGCMemoryInfo();
+        var total = info.TotalAvailableMemoryBytes;
+        // When DOTNET_GCHeapHardLimit is configured, TotalAvailableMemoryBytes is clamped to the heap cap while
+        // HighMemoryLoadThresholdBytes still reflects 90% of machine memory.
+        if (info.HighMemoryLoadThresholdBytes > total)
+            total = (long)(info.HighMemoryLoadThresholdBytes / 0.9);
+        return (Math.Max(0, info.MemoryLoadBytes), Math.Max(0, total));
+    }
+
+    private static bool TryReadWindowsMemory(out long loadBytes, out long totalBytes)
+    {
+        loadBytes = 0;
+        totalBytes = 0;
+        try
+        {
+            var status = new Native.MemoryStatusEx { dwLength = (uint)Marshal.SizeOf<Native.MemoryStatusEx>() };
+            if (!Native.GlobalMemoryStatusEx(ref status) || status.ullTotalPhys == 0)
+                return false;
+            totalBytes = (long)Math.Min(status.ullTotalPhys, (ulong)long.MaxValue);
+            var avail = (long)Math.Min(status.ullAvailPhys, (ulong)totalBytes);
+            loadBytes = Math.Max(0, totalBytes - avail);
+            return true;
+        }
+        catch (Exception e) when (e is DllNotFoundException or EntryPointNotFoundException)
+        {
+            return false;
+        }
+    }
+
+    private static bool TryReadProcMemInfo(out long loadBytes, out long totalBytes)
+    {
+        loadBytes = 0;
+        totalBytes = 0;
+        try
+        {
+            if (!File.Exists("/proc/meminfo"))
+                return false;
+            long totalKb = -1;
+            long availableKb = -1;
+            long freeKb = -1;
+            foreach (var line in File.ReadLines("/proc/meminfo"))
+            {
+                if (line.StartsWith("MemTotal:", StringComparison.Ordinal))
+                    totalKb = ParseMemInfoKb(line);
+                else if (line.StartsWith("MemAvailable:", StringComparison.Ordinal))
+                    availableKb = ParseMemInfoKb(line);
+                else if (line.StartsWith("MemFree:", StringComparison.Ordinal))
+                    freeKb = ParseMemInfoKb(line);
+                if (totalKb >= 0 && availableKb >= 0)
+                    break;
+            }
+
+            if (totalKb <= 0)
+                return false;
+            var availKb = availableKb >= 0 ? availableKb : Math.Max(0, freeKb);
+            totalBytes = totalKb * 1024;
+            var info = GC.GetGCMemoryInfo();
+            // Honor smaller container cgroup limits when no GCHeapHardLimit clamps TotalAvailableMemoryBytes.
+            if (Environment.GetEnvironmentVariable("DOTNET_GCHeapHardLimit") is null
+                && info.TotalAvailableMemoryBytes > 0
+                && info.TotalAvailableMemoryBytes < totalBytes)
+            {
+                totalBytes = info.TotalAvailableMemoryBytes;
+                if (info.MemoryLoadBytes > 0)
+                {
+                    loadBytes = info.MemoryLoadBytes;
+                    return true;
+                }
+            }
+
+            loadBytes = Math.Max(0, (totalKb - Math.Min(totalKb, availKb)) * 1024);
+            return true;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
+    private static long ParseMemInfoKb(string line)
+    {
+        var colon = line.IndexOf(':');
+        if (colon < 0)
+            return -1;
+        var rest = line.AsSpan(colon + 1).Trim();
+        var space = rest.IndexOf(' ');
+        var number = space >= 0 ? rest[..space] : rest;
+        return long.TryParse(number, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) ? value : -1;
+    }
+
+    private static class Native
+    {
+        [StructLayout(LayoutKind.Sequential)]
+        public struct MemoryStatusEx
+        {
+            public uint dwLength;
+            public uint dwMemoryLoad;
+            public ulong ullTotalPhys;
+            public ulong ullAvailPhys;
+            public ulong ullTotalPageFile;
+            public ulong ullAvailPageFile;
+            public ulong ullTotalVirtual;
+            public ulong ullAvailVirtual;
+            public ulong ullAvailExtendedVirtual;
+        }
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool GlobalMemoryStatusEx(ref MemoryStatusEx lpBuffer);
+    }
 
     /// <summary>
     ///     True when <paramref name="pid"/> yields first: it has been idle at least as long as every other engine,

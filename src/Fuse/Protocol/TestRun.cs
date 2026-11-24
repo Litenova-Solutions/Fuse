@@ -21,6 +21,12 @@ namespace Fuse.Protocol;
 /// </param>
 internal sealed record TestRun(string Project, string Name, TestRunMode Mode, string? Filter, bool UsesTestingPlatform, string? RunSettings, string[] FilterArguments, string[] TargetPaths)
 {
+    /// <summary>True when this test slice was satisfied from the content-addressed slice cache without executing.</summary>
+    public bool FromCache { get; init; }
+
+    /// <summary>Optional explanation for a cached slice verdict.</summary>
+    public string? CacheReason { get; init; }
+
     // A record compares its fields, and an array field by the array itself; two runs with the same arguments in
     // different arrays are the same run, as one read back from the pipe must equal the one that was sent.
     public bool Equals(TestRun? other) =>

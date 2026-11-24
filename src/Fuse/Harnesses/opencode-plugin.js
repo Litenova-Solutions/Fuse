@@ -1,16 +1,33 @@
-// Written by `fuse init`; rerun it to update. Forwards OpenCode tool events to `fuse hook opencode`, which answers in
-// JSON. It carries both plugin shapes: OpenCode 2 calls setup(), OpenCode 1 calls server().
+// Written by `fuse init`; rerun it to update. Forwards OpenCode tool events to `fuse hook opencode` or directly
+// over the warm Fuse engine pipe for sub-millisecond post-edit and clean stop checks. Carries both plugin shapes:
+// OpenCode 2 calls setup(), OpenCode 1 calls server().
 import { spawn } from "node:child_process";
+import net from "node:net";
+import os from "node:os";
+import path from "node:path";
 
 const EDIT_TOOLS = new Set(["edit", "write", "multiedit", "patch", "apply_patch"]);
 const SHELL_TOOLS = new Set(["shell", "bash"]);
+const PATCH_HEADER_RE = /^\*\*\* (?:Add File|Update File|Delete File|Move to): (.+)$/gm;
+
+const pipeCache = new Map();
+let reqCounter = 0;
+
+function pipeAddress(pipeName) {
+  if (process.platform === "win32") return `\\\\.\\pipe\\${pipeName}`;
+  return path.join(os.tmpdir(), `CoreFxPipe_${pipeName}`);
+}
 
 function runHook(event, payload, timeoutMs) {
   return new Promise((resolve) => {
     let out = "";
     let child;
     try {
-      child = spawn("fuse", ["hook", "opencode", event], { stdio: ["pipe", "pipe", "ignore"], windowsHide: true });
+      child = spawn("fuse", ["hook", "opencode", event], {
+        cwd: payload.cwd || undefined,
+        stdio: ["pipe", "pipe", "ignore"],
+        windowsHide: true,
+      });
     } catch {
       return resolve(null);
     }
@@ -26,18 +43,169 @@ function runHook(event, payload, timeoutMs) {
   });
 }
 
-const rewrite = async (cwd, input) => {
+function refreshPipeInfo(cwd) {
+  if (!cwd) return Promise.resolve(null);
+  const cached = pipeCache.get(cwd);
+  if (cached && cached.pending) return cached.pending;
+  if (cached && cached.info && Date.now() < cached.expiresAt) return Promise.resolve(cached.info);
+
+  const pending = new Promise((resolve) => {
+    let out = "";
+    let child;
+    try {
+      child = spawn("fuse", ["status", "--json"], { cwd, stdio: ["ignore", "pipe", "ignore"], windowsHide: true });
+    } catch {
+      pipeCache.delete(cwd);
+      return resolve(null);
+    }
+    const timer = setTimeout(() => { try { child.kill(); } catch {} }, 3000);
+    child.on("error", () => { clearTimeout(timer); pipeCache.delete(cwd); resolve(null); });
+    child.stdout.on("data", (chunk) => { out += chunk; });
+    child.on("close", () => {
+      clearTimeout(timer);
+      try {
+        const parsed = out.trim() ? JSON.parse(out) : null;
+        if (parsed?.pipeName && parsed?.buildId) {
+          const info = {
+            pipePath: pipeAddress(parsed.pipeName),
+            buildId: parsed.buildId,
+            rootPath: cwd,
+            running: parsed.engine === "running",
+          };
+          pipeCache.set(cwd, { info, expiresAt: Date.now() + 30000 });
+          return resolve(info);
+        }
+      } catch {
+      }
+      pipeCache.delete(cwd);
+      resolve(null);
+    });
+  });
+
+  pipeCache.set(cwd, { info: cached?.info ?? null, pending, expiresAt: 0 });
+  return pending;
+}
+
+function sendPipeRequest(pipePath, requestObj, timeoutMs) {
+  return new Promise((resolve) => {
+    let settled = false;
+    let buffer = "";
+    const socket = net.createConnection(pipePath);
+
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      try { socket.destroy(); } catch {}
+      resolve(value);
+    };
+
+    const timer = setTimeout(() => finish(null), timeoutMs);
+    socket.on("error", () => finish(null));
+    socket.on("connect", () => {
+      socket.write(JSON.stringify(requestObj) + "\n");
+    });
+    socket.on("data", (chunk) => {
+      buffer += chunk.toString("utf8");
+      const nl = buffer.indexOf("\n");
+      if (nl >= 0) {
+        const line = buffer.slice(0, nl).trim();
+        try {
+          finish(line ? JSON.parse(line) : null);
+        } catch {
+          finish(null);
+        }
+      }
+    });
+    socket.on("end", () => {
+      const line = buffer.trim();
+      if (!line) return finish(null);
+      try { finish(JSON.parse(line)); } catch { finish(null); }
+    });
+  });
+}
+
+function extractEditedFiles(cwd, input) {
+  if (!input || typeof input !== "object") return [];
+  const raw = [];
+  for (const key of ["file_path", "filePath", "path", "notebook_path"]) {
+    if (typeof input[key] === "string" && input[key]) raw.push(input[key]);
+  }
+  for (const value of Object.values(input)) {
+    if (typeof value !== "string") continue;
+    PATCH_HEADER_RE.lastIndex = 0;
+    let m;
+    while ((m = PATCH_HEADER_RE.exec(value)) !== null) {
+      if (m[1]?.trim()) raw.push(m[1].trim());
+    }
+  }
+  const base = cwd || process.cwd();
+  return [...new Set(raw.map((p) => path.resolve(base, p)))];
+}
+
+function formatCheckReport(report) {
+  if (!report || !report.errorCount) return null;
+  const lines = [];
+  for (const item of report.errors ?? []) {
+    const err = item?.error;
+    if (!err) continue;
+    lines.push(`${err.path}(${err.line},${err.column}): error ${err.id}: ${err.message}`);
+    if (item.cause) {
+      const verb = item.cause.kind === "Removed" ? "removed" : "changed";
+      lines.push(`  ${verb}: ${item.cause.declaration}`);
+    }
+  }
+  const files = report.filesChecked ?? 0;
+  const projects = (report.projects ?? []).join(", ");
+  lines.push(`fuse: ${report.errorCount} error(s) introduced in ${report.errorFileCount ?? 0} file(s) (${projects}) (${files} file(s) checked)`);
+  return lines.join("\n");
+}
+
+const rewrite = async (cwd, sessionID, input) => {
   if (typeof input?.command !== "string") return;
-  const answer = await runHook("pre-shell", { cwd, tool_input: input }, 10000);
+  const payload = { cwd, tool_input: input };
+  if (typeof sessionID === "string" && sessionID) payload.session_id = sessionID;
+  const answer = await runHook("pre-shell", payload, 10000);
   if (typeof answer?.command === "string") input.command = answer.command;
 };
 
 // The session id lets Fuse tell this session only the errors its own edits cause when other sessions edit the same
 // working tree. A subagent runs in a child session with an id of its own.
 const check = async (cwd, sessionID, input) => {
+  const edited = extractEditedFiles(cwd, input);
+  const csFiles = edited.filter((f) => f.toLowerCase().endsWith(".cs"));
+  if (edited.length > 0 && csFiles.length === 0) return null;
+
+  const session = typeof sessionID === "string" && sessionID ? `opencode:${sessionID}` : undefined;
+  const cached = pipeCache.get(cwd)?.info;
+  if (cached && csFiles.length > 0) {
+    const req = {
+      request: "CheckFiles",
+      buildId: cached.buildId,
+      requestId: `oc-${process.pid}-${++reqCounter}`,
+      waitMs: 50000,
+      worktreeRoot: cached.rootPath,
+      files: csFiles,
+      waitForLoad: false,
+      leaveOutCompilationWide: true,
+      interactiveFast: true,
+      ...(session ? { session } : {}),
+    };
+    const resp = await sendPipeRequest(cached.pipePath, req, 50000);
+    if (resp?.status === "CheckAnswered" && resp.report) {
+      if (resp.report.errorCount === 0) return null;
+      const text = formatCheckReport(resp.report);
+      if (text) return text;
+    }
+    if (resp?.status === "Restart" || resp?.status === "Unanswered" || resp === null) {
+      pipeCache.delete(cwd);
+    }
+  }
+
   const payload = { cwd, tool_input: input };
   if (typeof sessionID === "string" && sessionID) payload.session_id = sessionID;
   const answer = await runHook("post-edit", payload, 60000);
+  void refreshPipeInfo(cwd);
   return typeof answer?.additionalContext === "string" ? answer.additionalContext : null;
 };
 
@@ -51,7 +219,27 @@ function stopGuard(cwd, prompt) {
     checking.add(sessionID);
     try {
       const active = continued.delete(sessionID);
-      const answer = await runHook("stop", { cwd, stop_hook_active: active }, 300000);
+      if (!active) {
+        const cached = pipeCache.get(cwd)?.info;
+        if (cached) {
+          const req = {
+            request: "CheckChanges",
+            buildId: cached.buildId,
+            requestId: `oc-${process.pid}-${++reqCounter}`,
+            waitMs: 300000,
+            worktreeRoot: cached.rootPath,
+            waitForLoad: true,
+            session: `opencode:${sessionID}`,
+            isStopping: true,
+          };
+          const resp = await sendPipeRequest(cached.pipePath, req, 300000);
+          if (resp?.status === "CheckAnswered" && resp.report && resp.report.errorCount === 0) return;
+          if (resp?.status === "Restart" || resp === null) pipeCache.delete(cwd);
+        }
+      }
+
+      const answer = await runHook("stop", { cwd, session_id: sessionID, stop_hook_active: active }, 300000);
+      void refreshPipeInfo(cwd);
       if (answer?.decision !== "block" || typeof answer.reason !== "string") return;
       continued.add(sessionID);
       await prompt(sessionID, answer.reason);
@@ -68,8 +256,9 @@ export default {
 
   async setup(ctx) {
     const cwd = ctx.location.directory;
+    void refreshPipeInfo(cwd);
     await ctx.tool.hook("execute.before", async (event) => {
-      if (SHELL_TOOLS.has(event.tool)) await rewrite(cwd, event.input);
+      if (SHELL_TOOLS.has(event.tool)) await rewrite(cwd, event.sessionID, event.input);
     });
     await ctx.tool.hook("execute.after", async (event) => {
       if (event.status !== "completed" || !EDIT_TOOLS.has(event.tool)) return;
@@ -92,10 +281,11 @@ export default {
   },
 
   async server({ client, directory }) {
+    void refreshPipeInfo(directory);
     const stop = stopGuard(directory, (id, text) => client.session.prompt({ path: { id }, body: { parts: [{ type: "text", text }] } }));
     return {
       "tool.execute.before": async (input, output) => {
-        if (SHELL_TOOLS.has(input.tool)) await rewrite(directory, output.args);
+        if (SHELL_TOOLS.has(input.tool)) await rewrite(directory, input.sessionID, output.args);
       },
       "tool.execute.after": async (input, output) => {
         if (!EDIT_TOOLS.has(input.tool)) return;

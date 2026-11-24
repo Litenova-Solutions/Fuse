@@ -14,6 +14,12 @@ namespace Fuse.Check.Model;
 /// </param>
 internal sealed record CompilerError(string Path, int Line, int Column, string Id, string Message, bool FromAnalyzer = false)
 {
+    /// <summary>
+    ///     Optional compiler facts for fixing this error without opening other files, populated when repair briefs
+    ///     are requested.
+    /// </summary>
+    public RepairPacket? Repair { get; init; }
+
     /// <summary>The MSBuild canonical form, which coding agents and editors already parse.</summary>
     public override string ToString() => $"{Path}({Line},{Column}): error {Id}: {Message}";
 }

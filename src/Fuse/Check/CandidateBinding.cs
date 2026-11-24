@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Fuse.Check.Model;
 using Fuse.Graph;
 using Fuse.Paths;
@@ -63,9 +64,21 @@ internal sealed class CandidateBinding
         if (candidates.Count <= WholeProjectThreshold)
             return (await _introduced.InFilesAsync(candidates, generation, binding, cancellationToken).ConfigureAwait(false), targets.Count + candidates.Count(c => graph.OwnersOf(c).Count > 0), false, []);
 
-        var errors = new List<CompilerError>();
-        foreach (var node in reached)
-            errors.AddRange(await _introduced.InProjectAsync(node, generation, binding, cancellationToken).ConfigureAwait(false));
+        var bag = new ConcurrentBag<CompilerError>();
+        await Parallel.ForEachAsync(
+            reached,
+            new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = cancellationToken },
+            async (node, ct) =>
+            {
+                foreach (var error in await _introduced.InProjectAsync(node, generation, binding, ct).ConfigureAwait(false))
+                    bag.Add(error);
+            }).ConfigureAwait(false);
+
+        var errors = bag
+            .OrderBy(e => e.Path, StringComparer.Ordinal)
+            .ThenBy(e => e.Line)
+            .ThenBy(e => e.Column)
+            .ToList();
         // The targets outside the reached projects were bound one by one, before this step.
         var files = new HashSet<RepoPath>(targets);
         foreach (var path in reached.SelectMany(n => RepoWorkspace.ProjectsFor(generation.Current, n)).SelectMany(p => p.Documents).Select(d => d.FilePath).OfType<string>())

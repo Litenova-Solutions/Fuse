@@ -21,6 +21,11 @@ namespace Fuse.Protocol;
 [JsonDerivedType(typeof(ChangedBuildAnswered), nameof(ChangedBuildAnswered))]
 [JsonDerivedType(typeof(StatusAnswered), nameof(StatusAnswered))]
 [JsonDerivedType(typeof(Busy), nameof(Busy))]
+[JsonDerivedType(typeof(MemoryYielded), nameof(MemoryYielded))]
+[JsonDerivedType(typeof(JudgeAnswered), nameof(JudgeAnswered))]
+[JsonDerivedType(typeof(GraphAnswered), nameof(GraphAnswered))]
+[JsonDerivedType(typeof(ImpactAnswered), nameof(ImpactAnswered))]
+[JsonDerivedType(typeof(WatchEventPushed), nameof(WatchEventPushed))]
 internal abstract record EngineResponse
 {
     private EngineResponse()
@@ -54,4 +59,21 @@ internal abstract record EngineResponse
     /// <param name="Position">How many requests will start before this one, counting the next reader as 1.</param>
     /// <param name="EstimatedWaitMs">The estimated wait before a reader takes the request, in milliseconds.</param>
     public sealed record Busy(int Position, long EstimatedWaitMs) : EngineResponse;
+
+    /// <summary>The answer to <see cref="EngineRequest.YieldMemory"/>: how many bytes were reclaimed by shedding and compacting GC.</summary>
+    /// <param name="ReclaimedBytes">Working set reduction in bytes (0 or positive).</param>
+    /// <param name="WorkingSetAfterBytes">Engine process working set after GC in bytes.</param>
+    public sealed record MemoryYielded(long ReclaimedBytes, long WorkingSetAfterBytes) : EngineResponse;
+
+    /// <summary>The answer to <see cref="EngineRequest.Judge"/>: ranked evaluation verdicts and conflicts.</summary>
+    public sealed record JudgeAnswered(JudgeReport Report) : EngineResponse;
+
+    /// <summary>The answer to <see cref="EngineRequest.Graph"/>: project DAG, clusters, and test ownership.</summary>
+    public sealed record GraphAnswered(GraphReport Report) : EngineResponse;
+
+    /// <summary>The answer to <see cref="EngineRequest.Impact"/>: owning and affected projects, files, and tests.</summary>
+    public sealed record ImpactAnswered(ImpactReport Report) : EngineResponse;
+
+    /// <summary>One pushed event on a <see cref="EngineRequest.WatchStream"/> pipe connection.</summary>
+    public sealed record WatchEventPushed(WatchEvent Event) : EngineResponse;
 }

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 using Fuse.Failures;
 using Fuse.Graph;
 using Fuse.Paths;
@@ -8,14 +9,12 @@ using Microsoft.CodeAnalysis.MSBuild;
 namespace Fuse.Workspace;
 
 /// <summary>
-///     Evaluates the repository's projects and opens the ones requests need in an MSBuildWorkspace. A project that is not
-///     restored, or that MSBuild could not load, is refused rather than checked, because it would compile differently
-///     from the real build.
+///     Evaluates the repository's projects and opens the ones requests need into a lean
+///     <see cref="BlueprintWorkspace"/> backed by <see cref="CompilationBlueprint"/> snapshots extracted from ephemeral
+///     MSBuild runs. Unrestored projects without a matching zero-restore blueprint, or projects that MSBuild could not
+///     evaluate, are refused rather than checked. Exotic projects that fail blueprint extraction fall back gracefully
+///     to direct MSBuild loading.
 /// </summary>
-/// <remarks>
-///     MSBuildWorkspace is used only as a loader. Its <c>TryApplyChanges</c> writes to disk, so it is never called;
-///     <see cref="SolutionViews"/> derives both views from <see cref="Solution"/> instead.
-/// </remarks>
 internal sealed class ProjectLoader : IDisposable
 {
     private readonly RepoRoot _root;
@@ -30,13 +29,37 @@ internal sealed class ProjectLoader : IDisposable
     private readonly ConcurrentDictionary<RepoPath, string> _loadFailures = new();
 
     private readonly SemaphoreSlim _loadLock = new(1, 1);
-    private MSBuildWorkspace? _loader;
+    private readonly BlueprintWorkspace _blueprintWorkspace;
+    private readonly Func<string?>? _headProvider;
+    private readonly Func<IReadOnlySet<RepoPath>>? _dirtyProvider;
+    private MSBuildWorkspace? _msbuildFallback;
+    private CompilationBlueprint? _activeBlueprint;
 
-    public ProjectLoader(RepoRoot root, Action<string> log)
+    public ProjectLoader(
+        RepoRoot root,
+        Action<string> log,
+        BlueprintWorkspace.SharedResources? sharedResources = null,
+        Func<string?>? headProvider = null,
+        Func<IReadOnlySet<RepoPath>>? dirtyProvider = null)
     {
         _root = root;
         _log = log;
+        _blueprintWorkspace = new BlueprintWorkspace(sharedResources);
+        _headProvider = headProvider;
+        _dirtyProvider = dirtyProvider;
     }
+
+    /// <summary>Shared immutable metadata, analyzer and HEAD text resources for this hypervisor.</summary>
+    public BlueprintWorkspace.SharedResources SharedResources => _blueprintWorkspace.Shared;
+
+    /// <summary>The active blueprint supplying loaded projects, or null when not loaded from a blueprint.</summary>
+    public CompilationBlueprint? ActiveBlueprint => _activeBlueprint;
+
+    /// <summary>True when the loader mapped projects onto another worktree's restored blueprint without local restore assets.</summary>
+    public bool IsUsingZeroRestoreBlueprint { get; private set; }
+
+    /// <summary>True when active projects come from a cached blueprint rather than the live MSBuild fallback workspace.</summary>
+    public bool IsLoadedFromBlueprint => _activeBlueprint is not null && _msbuildFallback is null;
 
     /// <summary>Every C# project in the repository, as the last evaluation found it.</summary>
     public RepoGraph Graph { get; private set; } = null!;
@@ -48,10 +71,12 @@ internal sealed class ProjectLoader : IDisposable
     public int ConfigurationGeneration { get; private set; }
 
     /// <summary>
-    ///     The loader's solution: every project opened since the last reset, each file as it was on disk when its project
-    ///     opened. Null until a load starts after a reset.
+    ///     The loader's solution: every project opened since the last reset, each file as it was when its project
+    ///     opened. Null until a load opens a project after a reset.
     /// </summary>
-    public Solution? Solution => _loader?.CurrentSolution;
+    public Solution? Solution =>
+        _msbuildFallback?.CurrentSolution
+        ?? (_blueprintWorkspace.LoadedPaths().Count > 0 ? _blueprintWorkspace.Solution : null);
 
     /// <summary>True when <paramref name="node"/> is open in the loader.</summary>
     public bool IsLoaded(ProjectNode node) => _loaded.ContainsKey(node.Path);
@@ -62,6 +87,10 @@ internal sealed class ProjectLoader : IDisposable
     /// <summary>Why <paramref name="node"/> did not load, or null when no load of it has failed.</summary>
     public string? LoadFailureOf(ProjectNode node) =>
         _loadFailures.TryGetValue(node.Path, out var failure) ? failure : null;
+
+    /// <summary>Returns the masked assets hash recorded in the active blueprint for zero-restore worktrees.</summary>
+    public string? AssetsHashFallback(RepoPath assetsFile) =>
+        _activeBlueprint is { } bp && bp.AssetsHashes.TryGetValue(assetsFile.Relative, out var hash) ? hash : null;
 
     /// <summary>Evaluates every project again and closes every project, so none stays open under the old evaluation. Compiles nothing.</summary>
     public async Task EvaluateAsync(CancellationToken cancellationToken)
@@ -78,12 +107,15 @@ internal sealed class ProjectLoader : IDisposable
     /// <summary>Closes every project, forgets their load failures, and increments <see cref="ConfigurationGeneration"/>.</summary>
     public async Task ResetAsync(CancellationToken cancellationToken)
     {
-        // Wait out a background load, so the loader is never disposed under it.
+        // Wait out a background load, so the workspace is never disposed under it.
         await _loadLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            _loader?.Dispose();
-            _loader = null;
+            _blueprintWorkspace.Reset();
+            _msbuildFallback?.Dispose();
+            _msbuildFallback = null;
+            _activeBlueprint = null;
+            IsUsingZeroRestoreBlueprint = false;
             _loaded.Clear();
             _loadFailures.Clear();
             ConfigurationGeneration++;
@@ -93,6 +125,28 @@ internal sealed class ProjectLoader : IDisposable
             _loadLock.Release();
         }
     }
+
+    /// <summary>Unloads individual projects from the underlying <see cref="AdhocWorkspace"/> without resetting configuration.</summary>
+    public async Task<IReadOnlyList<RepoPath>> UnloadAsync(IReadOnlyCollection<RepoPath> projectPaths, CancellationToken cancellationToken)
+    {
+        if (projectPaths.Count == 0 || _msbuildFallback is not null)
+            return [];
+        await _loadLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var unloaded = _blueprintWorkspace.UnloadProjects(projectPaths);
+            foreach (var path in unloaded)
+                _loaded.TryRemove(path, out _);
+            return unloaded;
+        }
+        finally
+        {
+            _loadLock.Release();
+        }
+    }
+
+    /// <summary>Drops transient HEAD text caches and unreferenced metadata references held by the loader.</summary>
+    public void TrimCaches() => _blueprintWorkspace.TrimCaches();
 
     /// <summary>Opens <paramref name="projects"/> and everything they reference, unless they are open already.</summary>
     /// <remarks>
@@ -129,52 +183,85 @@ internal sealed class ProjectLoader : IDisposable
     }
 
     /// <summary>Opens each of <paramref name="missing"/> that is not open yet, under the load lock.</summary>
-    /// <param name="missing">The projects to open.</param>
-    /// <param name="cancellationToken">Cancels waiting for the lock and loading.</param>
     private async Task OpenAsync(IReadOnlyList<ProjectNode> missing, CancellationToken cancellationToken)
     {
-        var unrestored = missing.SelectMany(Graph.ClosureOf).Where(p => !File.Exists(p.AssetsFile.Absolute)).Select(p => p.Path.Relative).Distinct().ToList();
-        // The command names a project, because a bare `dotnet restore` restores a solution, which may leave out the very
-        // project that is missing its assets (a fuzzing or sample project outside the solution).
+        var closure = missing.SelectMany(Graph.ClosureOf).DistinctBy(p => p.Path).ToList();
+        var unrestored = closure.Where(p => !File.Exists(p.AssetsFile.Absolute)).Select(p => p.Path.Relative).Distinct(StringComparer.Ordinal).ToList();
+        CompilationBlueprint? reusableZeroRestore = null;
         if (unrestored.Count > 0)
-            throw new FuseException(ErrorCode.RestoreNeeded, $"restore needed: run `dotnet restore {unrestored[0]}`{(unrestored.Count > 1 ? " and the same for each project listed" : "")} ({string.Join(", ", unrestored.Take(3))}{(unrestored.Count > 3 ? ", ..." : "")} not restored)");
+        {
+            reusableZeroRestore = BlueprintEvaluator.TryFindReusableBlueprint(_root, Graph, missing);
+            if (reusableZeroRestore is null)
+                throw RestoreNeeded(unrestored);
+        }
 
         await _loadLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            var loader = _loader ??= CreateLoader();
-            foreach (var project in missing)
+            var stillMissing = missing.Where(p => !_loaded.ContainsKey(p.Path)).ToList();
+            if (stillMissing.Count == 0)
+                return;
+
+            var loadedViaBlueprint = false;
+            if (_msbuildFallback is null)
             {
-                if (_loaded.ContainsKey(project.Path))
-                    continue;
-                var started = Environment.TickCount64;
                 try
                 {
-                    await loader.OpenProjectAsync(project.Path.Absolute, cancellationToken: cancellationToken).ConfigureAwait(false);
-                }
-                catch (Exception e) when (e is InvalidOperationException or IOException or ArgumentException)
-                {
-                    throw LoadFailed(project, e.Message);
-                }
+                    var started = Environment.TickCount64;
+                    CompilationBlueprint? blueprint;
+                    if (reusableZeroRestore is not null)
+                    {
+                        blueprint = reusableZeroRestore;
+                        IsUsingZeroRestoreBlueprint = true;
+                        _log($"zero-restore: mapped {stillMissing.Count} project(s) onto blueprint from {blueprint.SourceRoot}");
+                    }
+                    else
+                    {
+                        var outcome = await BlueprintEvaluator.EnsureProjectsAsync(_root, Graph, stillMissing, _log, cancellationToken).ConfigureAwait(false);
+                        foreach (var (failedPath, reason) in outcome.Failures)
+                            _loadFailures[failedPath] = reason;
+                        ThrowOnRecordedFailures(stillMissing);
+                        blueprint = outcome.Blueprint;
+                    }
 
-                // Published after the loader's solution holds the project, so a request that finds it loaded also finds
-                // the views behind that solution and derives them again.
-                foreach (var loadedProject in loader.CurrentSolution.Projects)
-                {
-                    if (loadedProject.FilePath is not null)
-                        _loaded[_root.PathOf(loadedProject.FilePath)] = 0;
-                }
+                    if (blueprint is not null && blueprint.Covers(_root, stillMissing.SelectMany(Graph.ClosureOf), allowZeroRestore: reusableZeroRestore is not null))
+                    {
+                        foreach (var project in stillMissing)
+                        {
+                            cancellationToken.ThrowIfCancellationRequested();
+                            if (_loaded.ContainsKey(project.Path))
+                                continue;
+                            var projectStarted = Environment.TickCount64;
+                            _blueprintWorkspace.LoadProjects(
+                                _root,
+                                Graph,
+                                blueprint,
+                                [project],
+                                _headProvider?.Invoke(),
+                                _dirtyProvider?.Invoke());
+                            _activeBlueprint = blueprint;
+                            PublishLoadedProjects(_blueprintWorkspace.Solution, project, projectStarted);
+                        }
 
-                _log($"loaded {project.Name} in {Environment.TickCount64 - started} ms ({loader.CurrentSolution.ProjectIds.Count} projects open)");
+                        loadedViaBlueprint = true;
+                    }
+                }
+                catch (FuseException)
+                {
+                    throw;
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception e)
+                {
+                    _log($"blueprint load fallback to MSBuild: {e.Message}");
+                }
             }
 
-            // A load failure (a missing project reference, an unresolvable SDK) leaves a project that compiles
-            // differently from the real build, so it is reported rather than checked.
-            foreach (var project in missing)
-            {
-                if (_loadFailures.TryGetValue(project.Path, out var failure))
-                    throw LoadFailed(project, failure);
-            }
+            if (!loadedViaBlueprint)
+                await OpenWithFallbackMsBuildAsync(stillMissing, cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -182,7 +269,71 @@ internal sealed class ProjectLoader : IDisposable
         }
     }
 
-    private MSBuildWorkspace CreateLoader()
+    private void PublishLoadedProjects(Solution solution, ProjectNode requested, long startedTicks)
+    {
+        // Published after the workspace solution holds the project, so a request that finds it loaded also finds
+        // the views behind that solution and derives them again.
+        foreach (var loadedProject in solution.Projects)
+        {
+            if (loadedProject.FilePath is not null)
+                _loaded[_root.PathOf(loadedProject.FilePath)] = 0;
+        }
+
+        if (_loaded.ContainsKey(requested.Path))
+            _log($"loaded {requested.Name} in {Environment.TickCount64 - startedTicks} ms ({solution.ProjectIds.Count} projects open)");
+    }
+
+    private void ThrowOnRecordedFailures(IReadOnlyList<ProjectNode> missing)
+    {
+        foreach (var node in missing.SelectMany(Graph.ClosureOf))
+        {
+            if (_loadFailures.TryGetValue(node.Path, out var failure))
+                throw LoadFailed(node, failure);
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private Task OpenWithFallbackMsBuildAsync(IReadOnlyList<ProjectNode> missing, CancellationToken cancellationToken)
+    {
+        EnsureMsBuildRegistered();
+        return OpenWithFallbackMsBuildCoreAsync(missing, cancellationToken);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void EnsureMsBuildRegistered() => MsBuildSetup.EnsureRegistered();
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private async Task OpenWithFallbackMsBuildCoreAsync(IReadOnlyList<ProjectNode> missing, CancellationToken cancellationToken)
+    {
+        var loader = _msbuildFallback ??= CreateFallbackLoader();
+        foreach (var project in missing)
+        {
+            if (_loaded.ContainsKey(project.Path))
+                continue;
+            var started = Environment.TickCount64;
+            try
+            {
+                await loader.OpenProjectAsync(project.Path.Absolute, cancellationToken: cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception e) when (e is InvalidOperationException or IOException or ArgumentException)
+            {
+                throw LoadFailed(project, e.Message);
+            }
+
+            foreach (var loadedProject in loader.CurrentSolution.Projects)
+            {
+                if (loadedProject.FilePath is not null)
+                    _loaded[_root.PathOf(loadedProject.FilePath)] = 0;
+            }
+
+            _log($"loaded {project.Name} in {Environment.TickCount64 - started} ms ({loader.CurrentSolution.ProjectIds.Count} projects open)");
+        }
+
+        ThrowOnRecordedFailures(missing);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private MSBuildWorkspace CreateFallbackLoader()
     {
         var loader = MSBuildWorkspace.Create();
         loader.LoadMetadataForReferencedProjects = false;
@@ -192,21 +343,24 @@ internal sealed class ProjectLoader : IDisposable
             if (e.Diagnostic.Kind != WorkspaceDiagnosticKind.Failure)
                 return;
             _log($"workspace: {e.Diagnostic.Message}");
-            // The message names the project somewhere in its text, in whatever case MSBuild wrote it, so this is a search
-            // of the text rather than a comparison of two paths.
             var path = Graph.Projects.FirstOrDefault(p => e.Diagnostic.Message.Contains(p.Path.Absolute, StringComparison.OrdinalIgnoreCase))?.Path;
-            // MSBuildWorkspace reports every message MSBuild logged while loading, warnings included, as a failure of
-            // the project. A warning leaves the project loadable, and the real build reports the same text as a warning
-            // too, so recording it would leave Fuse unable to answer in a repository that builds. Only a project the
-            // load could not evaluate is a failure; see LoadFailure.
             if (path is { } failed && !LoadFailure.IsWarning(e.Diagnostic.Message))
                 _loadFailures[failed] = e.Diagnostic.Message;
         });
         return loader;
     }
 
+    private static FuseException RestoreNeeded(List<string> unrestored) =>
+        new(
+            ErrorCode.RestoreNeeded,
+            $"restore needed: run `dotnet restore {unrestored[0]}`{(unrestored.Count > 1 ? " and the same for each project listed" : "")} ({string.Join(", ", unrestored.Take(3))}{(unrestored.Count > 3 ? ", ..." : "")} not restored)");
+
     private static FuseException LoadFailed(ProjectNode project, string reason) =>
         new(ErrorCode.LoadFailed, $"could not load {project.Path.Relative}: {reason}");
 
-    public void Dispose() => _loader?.Dispose();
+    public void Dispose()
+    {
+        _msbuildFallback?.Dispose();
+        _blueprintWorkspace.Dispose();
+    }
 }

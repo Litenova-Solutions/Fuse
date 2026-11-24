@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Globalization;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using Fuse.Changes;
@@ -70,7 +71,7 @@ internal sealed class ShadowEmitter
         /// <summary>The emitted images kept between plans.</summary>
         internal EmitCache Cache { get; } = new();
 
-        /// <summary>Each shadow file an emitter wrote, with the bytes it wrote and the length and time the file had after.</summary>
+        /// <summary>Each shadow file an emitter wrote, with its 32-byte SHA-256 hash and the length and time the file had after.</summary>
         internal ConcurrentDictionary<string, Written> Written { get; } = new(StringComparer.OrdinalIgnoreCase);
         /// <summary>The written files in the order they were last written in, for <see cref="WrittenGate"/>.</summary>
         internal List<string> WrittenOrder { get; } = [];
@@ -162,6 +163,12 @@ internal sealed class ShadowEmitter
     /// <summary>How many dependents' declaration fingerprints are remembered.</summary>
     public int KeptFingerprints => _shared.Fingerprints.Count;
 
+    /// <summary>Outcome of preparing a shadow run, including the closure projects and any newly or cached emitted images.</summary>
+    internal sealed record PreparationResult(
+        RunMode Mode,
+        IReadOnlyList<Project> Closure,
+        IReadOnlyDictionary<ProjectId, (EmittedImage Image, string PeHash, string PdbHash)> Emitted);
+
     /// <summary>Returns a shadow run of the prepared test assembly, or a build with MSBuild when a shadow run is not safe.</summary>
     /// <param name="testProject">The Roslyn project for one target framework of the test project, from the plan's generation.</param>
     /// <param name="graph">The project graph of the plan's generation.</param>
@@ -170,12 +177,19 @@ internal sealed class ShadowEmitter
     /// <param name="cancellationToken">Cancels emitting.</param>
     public async Task<RunMode> PrepareAsync(Project testProject, RepoGraph graph, Action<string> log, Stopwatch emitting, CancellationToken cancellationToken)
     {
+        var result = await PrepareDetailedAsync(testProject, graph, log, emitting, cancellationToken).ConfigureAwait(false);
+        return result.Mode;
+    }
+
+    /// <summary>Prepares a shadow run and returns its mode alongside the closure and emitted images with SHA-256 hashes.</summary>
+    internal async Task<PreparationResult> PrepareDetailedAsync(Project testProject, RepoGraph graph, Action<string> log, Stopwatch emitting, CancellationToken cancellationToken)
+    {
         var solution = testProject.Solution;
         var testOutput = testProject.OutputFilePath;
         if (testOutput is null || !File.Exists(testOutput))
         {
             log($"{testProject.Name}: no build output yet");
-            return new RunMode.Build();
+            return new PreparationResult(new RunMode.Build(), [], new Dictionary<ProjectId, (EmittedImage, string, string)>());
         }
 
         // Every project the test assembly loads, with the build output it would be copied from.
@@ -187,24 +201,24 @@ internal sealed class ShadowEmitter
             if (project.OutputFilePath is null || !File.Exists(project.OutputFilePath))
             {
                 log($"{project.Name}: no build output yet");
-                return new RunMode.Build();
+                return new PreparationResult(new RunMode.Build(), closure, new Dictionary<ProjectId, (EmittedImage, string, string)>());
             }
 
             var built = File.GetLastWriteTimeUtc(project.OutputFilePath);
             var node = project.FilePath is null ? null : graph.Find(_root.PathOf(project.FilePath));
             if (node is null)
-                return new RunMode.Build();
+                return new PreparationResult(new RunMode.Build(), closure, new Dictionary<ProjectId, (EmittedImage, string, string)>());
             if (node.EvaluationInputs.Any(i => File.Exists(i.Absolute) && File.GetLastWriteTimeUtc(i.Absolute) > built))
             {
                 log($"{project.Name}: project file changed since the last build");
-                return new RunMode.Build();
+                return new PreparationResult(new RunMode.Build(), closure, new Dictionary<ProjectId, (EmittedImage, string, string)>());
             }
 
             var (sourcesNewer, otherNewer) = Freshness(node, built);
             if (otherNewer is not null)
             {
                 log($"{project.Name}: {_root.PathOf(otherNewer).Relative} changed since the last build");
-                return new RunMode.Build();
+                return new PreparationResult(new RunMode.Build(), closure, new Dictionary<ProjectId, (EmittedImage, string, string)>());
             }
 
             // The shadow starts as a copy of the test project's output, which can hold an older build of a project that
@@ -285,19 +299,21 @@ internal sealed class ShadowEmitter
         // The files about to be emitted are not copied first: the copy would only be overwritten, and when the emitted
         // image is already in place, it would make the image be written again. The kept images are not copied either.
         Mirror(testOutputDirectory, shadow, [.. targets, .. targets.Select(t => Path.ChangeExtension(t, ".pdb")), .. keptTargets, .. keptTargets.Select(t => Path.ChangeExtension(t, ".pdb"))]);
+        var emittedImages = new Dictionary<ProjectId, (EmittedImage Image, string PeHash, string PdbHash)>();
         foreach (var id in emit)
         {
             var project = solution.GetProject(id)!;
             emitting.Start();
             try
             {
-                var image = await _shared.Cache.GetAsync(project, cancellationToken).ConfigureAwait(false);
+                var (image, peHash, pdbHash) = await _shared.Cache.GetWithHashesAsync(project, cancellationToken).ConfigureAwait(false);
                 if (image is null)
                 {
                     log($"{project.Name}: does not compile; building with MSBuild to report the errors");
-                    return new RunMode.Build();
+                    return new PreparationResult(new RunMode.Build(), closure, emittedImages);
                 }
 
+                emittedImages[id] = (image, peHash, pdbHash);
                 var target = Path.Combine(shadow, Path.GetFileName(project.OutputFilePath!));
                 await WriteAsync(target, image.Pe, cancellationToken).ConfigureAwait(false);
                 await WriteAsync(Path.ChangeExtension(target, ".pdb"), image.Pdb, cancellationToken).ConfigureAwait(false);
@@ -309,7 +325,7 @@ internal sealed class ShadowEmitter
             }
         }
 
-        return new RunMode.Shadow(Path.Combine(shadow, Path.GetFileName(testOutput)));
+        return new PreparationResult(new RunMode.Shadow(Path.Combine(shadow, Path.GetFileName(testOutput))), closure, emittedImages);
     }
 
     /// <summary>
@@ -468,22 +484,27 @@ internal sealed class ShadowEmitter
     }
 
     /// <summary>
-    ///     Writes <paramref name="bytes"/> to a shadow file, unless an emitter already wrote those same bytes there and the
-    ///     file still has the length and time it had after.
+    ///     Writes <paramref name="bytes"/> to a shadow file, unless an emitter already wrote the same content hash there
+    ///     and the file still has the length and time it had after. Unlinks any existing target before writing so
+    ///     hardlinked originals in build output are never overwritten in place.
     /// </summary>
     private async Task WriteAsync(string path, byte[] bytes, CancellationToken cancellationToken)
     {
+        var contentHash = SHA256.HashData(bytes);
         var file = new FileInfo(path);
-        if (_shared.Written.TryGetValue(path, out var written) && ReferenceEquals(written.Bytes, bytes)
+        if (_shared.Written.TryGetValue(path, out var written)
+            && written.ContentHash.AsSpan().SequenceEqual(contentHash)
             && file.Exists && file.Length == written.Length && file.LastWriteTimeUtc == written.WrittenUtc)
             return;
 
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        // Unlink before writing so a hardlinked file from bin/ is replaced with a distinct file rather than overwritten in place.
+        DeleteBeforeWrite(path);
         await File.WriteAllBytesAsync(path, bytes, cancellationToken).ConfigureAwait(false);
         file.Refresh();
         lock (_shared.WrittenGate)
         {
-            _shared.Written[path] = new Written(bytes, file.Length, file.LastWriteTimeUtc);
+            _shared.Written[path] = new Written(contentHash, file.Length, file.LastWriteTimeUtc);
             _shared.WrittenOrder.Remove(path);
             _shared.WrittenOrder.Add(path);
             while (_shared.Written.Count > MaxWrittenEntries && _shared.WrittenOrder.Count > 0)
@@ -492,14 +513,6 @@ internal sealed class ShadowEmitter
                 _shared.WrittenOrder.RemoveAt(0);
                 _shared.Written.TryRemove(oldest, out _);
             }
-        }
-
-
-
-        {
-
-
-
         }
     }
 
@@ -715,12 +728,17 @@ internal sealed class ShadowEmitter
     }
 
     /// <summary>
-    ///     Overlays <paramref name="source"/> onto <paramref name="target"/>, copying files whose size or time differ; files
-    ///     only in the target stay, and so do the destinations in <paramref name="emitted"/>, which are about to be emitted.
+    ///     Overlays <paramref name="source"/> onto <paramref name="target"/> using OS hardlinks where supported (falling
+    ///     back to <see cref="File.Copy(string, string, bool)"/> when cross-volume or unsupported) for files whose size
+    ///     or time differ; files only in the target stay, and so do the destinations in <paramref name="emitted"/>, which
+    ///     are about to be emitted. Existing destinations are unlinked before linking or copying so hardlinked sources
+    ///     are never corrupted.
     /// </summary>
-    private static void Mirror(string source, string target, IReadOnlyCollection<string> emitted)
+    internal static void Mirror(string source, string target, IReadOnlyCollection<string> emitted)
     {
         var skipped = new HashSet<string>(emitted, StringComparer.OrdinalIgnoreCase);
+        var createdDirectories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var hardlinksUnsupported = false;
         foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
         {
             var relative = Path.GetRelativePath(source, file);
@@ -731,12 +749,85 @@ internal sealed class ShadowEmitter
             var to = new FileInfo(destination);
             if (to.Exists && to.Length == from.Length && to.LastWriteTimeUtc == from.LastWriteTimeUtc)
                 continue;
-            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+            var directory = Path.GetDirectoryName(destination)!;
+            if (createdDirectories.Add(directory))
+                Directory.CreateDirectory(directory);
+            if (to.Exists)
+                DeleteBeforeWrite(destination);
+            if (!hardlinksUnsupported)
+            {
+                var linkResult = TryCreateHardLink(file, destination);
+                if (linkResult == HardLinkResult.Created)
+                    continue;
+                if (linkResult == HardLinkResult.Unsupported)
+                    hardlinksUnsupported = true;
+            }
+
             File.Copy(file, destination, overwrite: true);
             File.SetLastWriteTimeUtc(destination, from.LastWriteTimeUtc);
         }
     }
 
-    /// <summary>A shadow file this emitter wrote: the bytes, and the length and last write time the file had after.</summary>
-    internal sealed record Written(byte[] Bytes, long Length, DateTime WrittenUtc);
+    /// <summary>Deletes <paramref name="path"/> if present so subsequent writes or links never mutate a hardlink target.</summary>
+    internal static void DeleteBeforeWrite(string path)
+    {
+        if (!File.Exists(path))
+            return;
+        try
+        {
+            File.Delete(path);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            File.SetAttributes(path, FileAttributes.Normal);
+            File.Delete(path);
+        }
+    }
+
+    private static HardLinkResult TryCreateHardLink(string existingSourcePath, string newLinkPath)
+    {
+        try
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                if (Native.CreateHardLinkW(newLinkPath, existingSourcePath, 0))
+                    return HardLinkResult.Created;
+                var error = Marshal.GetLastPInvokeError();
+                // 1: ERROR_INVALID_FUNCTION, 5: ERROR_ACCESS_DENIED, 17: ERROR_NOT_SAME_DEVICE, 50: ERROR_NOT_SUPPORTED.
+                return error is 1 or 5 or 17 or 50 ? HardLinkResult.Unsupported : HardLinkResult.PerFileFallback;
+            }
+
+            if (Native.link(existingSourcePath, newLinkPath) == 0)
+                return HardLinkResult.Created;
+            var errno = Marshal.GetLastPInvokeError();
+            // 1: EPERM, 13: EACCES, 18: EXDEV, 45/95/102: ENOTSUP/EOPNOTSUPP across Linux and macOS.
+            return errno is 1 or 13 or 18 or 45 or 95 or 102 ? HardLinkResult.Unsupported : HardLinkResult.PerFileFallback;
+        }
+        catch (Exception e) when (e is DllNotFoundException or EntryPointNotFoundException)
+        {
+            return HardLinkResult.Unsupported;
+        }
+    }
+
+    /// <summary>A shadow file this emitter wrote: the 32-byte SHA-256 content hash, and the length and last write time the file had after.</summary>
+    internal sealed record Written(byte[] ContentHash, long Length, DateTime WrittenUtc);
+
+    private enum HardLinkResult
+    {
+        Created,
+        PerFileFallback,
+        Unsupported,
+    }
+
+    private static class Native
+    {
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool CreateHardLinkW(string lpFileName, string lpExistingFileName, nint lpSecurityAttributes);
+
+        [DllImport("libc", EntryPoint = "link", SetLastError = true)]
+#pragma warning disable CA2101, SYSLIB1054 // UTF-8 marshalling is what libc expects.
+        public static extern int link([MarshalAs(UnmanagedType.LPUTF8Str)] string oldpath, [MarshalAs(UnmanagedType.LPUTF8Str)] string newpath);
+#pragma warning restore CA2101, SYSLIB1054
+    }
 }

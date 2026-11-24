@@ -120,6 +120,25 @@ public class MachineBudgetTests
         Assert.Equal(5, StatusOperation.ShortenedIdleMinutes);
     }
 
+    [Fact]
+    public void Non_fuse_os_memory_load_triggers_machine_needs_memory_short_and_idlest_exit()
+    {
+        var smallEngines = new[]
+        {
+            new MemoryBudget.EngineRecord(11, 50, TimeSpan.FromMinutes(1)),
+            new MemoryBudget.EngineRecord(22, 60, TimeSpan.FromMinutes(10)),
+        };
+
+        Assert.False(MemoryBudget.MachineNeedsMemory(smallEngines, totalAvailable: 1000, memoryLoadBytes: 600));
+        Assert.True(MemoryBudget.MachineNeedsMemory(smallEngines, totalAvailable: 1000, memoryLoadBytes: 750));
+        Assert.False(MemoryBudget.IsMachineShort(smallEngines, totalAvailable: 1000, memoryLoadBytes: 850));
+        Assert.True(MemoryBudget.IsMachineShort(smallEngines, totalAvailable: 1000, memoryLoadBytes: 910));
+
+        Assert.True(MemoryBudget.ShouldExitIdlest(smallEngines, pid: 22, totalAvailable: 1000, memoryLoadBytes: 910));
+        Assert.False(MemoryBudget.ShouldExitIdlest(smallEngines, pid: 11, totalAvailable: 1000, memoryLoadBytes: 910));
+        Assert.False(MemoryBudget.ShouldExitIdlest(smallEngines, pid: 22, totalAvailable: 1000, memoryLoadBytes: 850));
+    }
+
     private sealed class ManualClock : TimeProvider
     {
         private long _now;

@@ -88,6 +88,63 @@ internal static class HostRule
         method.IsStatic && method.Name is "Main" or WellKnownMemberNames.TopLevelStatementsEntryPointMethodName;
 
     /// <summary>
+    ///     Resolves exact dynamic test selections for <paramref name="symbol"/> when <paramref name="dynamicMap"/> covers
+    ///     it and the declaration is not newly added. Returns false so callers fall back safely to static rules when
+    ///     the symbol is unmapped or newly added.
+    /// </summary>
+    public static bool TryResolveDynamicSelections(
+        DynamicTestMap? dynamicMap,
+        RepoGraph graph,
+        RepoRoot root,
+        ISymbol symbol,
+        bool isNewlyAdded,
+        SelectionBuilder selections)
+    {
+        if (dynamicMap is null || isNewlyAdded || !dynamicMap.HasAnyMapping)
+            return false;
+
+        var filePath = symbol.Locations.FirstOrDefault(l => l.IsInSource)?.SourceTree?.FilePath;
+        var relativePath = filePath is null ? null : root.PathOf(filePath).Relative;
+        if (!dynamicMap.TryResolveForSymbol(symbol, relativePath, root, out var resolved))
+            return false;
+
+        return ApplyDynamicSelections(graph, root, resolved, selections);
+    }
+
+    /// <summary>Applies mapped test patterns per test project to <paramref name="selections"/>.</summary>
+    public static bool ApplyDynamicSelections(
+        RepoGraph graph,
+        RepoRoot root,
+        IReadOnlyDictionary<string, IReadOnlySet<string>> resolved,
+        SelectionBuilder selections)
+    {
+        var applied = 0;
+        foreach (var (projectPath, testIds) in resolved)
+        {
+            var testNode = graph.Find(root.PathOf(projectPath));
+            if (testNode is null || !testNode.IsTest)
+                return false;
+
+            foreach (var testId in testIds)
+            {
+                var pattern = StripTheoryArgs(testId);
+                if (pattern.Length == 0)
+                    continue;
+                selections.Add(testNode, pattern);
+                applied++;
+            }
+        }
+
+        return applied > 0;
+    }
+
+    private static string StripTheoryArgs(string name)
+    {
+        var args = name.IndexOf('(');
+        return args < 0 ? name : name[..args].Trim();
+    }
+
+    /// <summary>
     ///     An attribute that does not make a framework call the member it is on: the compiler, debugger and analyzer
     ///     attributes, and <c>Obsolete</c>, <c>Serializable</c> and <c>Flags</c>.
     /// </summary>

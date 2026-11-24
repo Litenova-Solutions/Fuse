@@ -26,6 +26,12 @@ namespace Fuse.Protocol;
 [JsonDerivedType(typeof(PlanFailedTests), nameof(PlanFailedTests))]
 [JsonDerivedType(typeof(PlanChangedBuild), nameof(PlanChangedBuild))]
 [JsonDerivedType(typeof(Status), nameof(Status))]
+[JsonDerivedType(typeof(YieldMemory), nameof(YieldMemory))]
+[JsonDerivedType(typeof(Judge), nameof(Judge))]
+[JsonDerivedType(typeof(Graph), nameof(Graph))]
+[JsonDerivedType(typeof(Impact), nameof(Impact))]
+[JsonDerivedType(typeof(SessionGuard), nameof(SessionGuard))]
+[JsonDerivedType(typeof(WatchStream), nameof(WatchStream))]
 internal abstract record EngineRequest
 {
     private readonly string _buildId = "";
@@ -66,6 +72,12 @@ internal abstract record EngineRequest
     /// </summary>
     public long WaitMs { get; init; }
 
+    /// <summary>
+    ///     Canonical root path of the caller's git worktree, so a hypervisor shared across worktrees knows which
+    ///     worktree overlay to check or test against. Null when omitted by an older client.
+    /// </summary>
+    public string? WorktreeRoot { get; init; }
+
     /// <summary>A liveness probe, answered with <see cref="EngineResponse.Acknowledged"/> once the pipe is up, even while the engine loads.</summary>
     public sealed record Ping : EngineRequest;
 
@@ -99,6 +111,9 @@ internal abstract record EngineRequest
 
         /// <summary>True to stamp the answer with the tree the check ended on, which <c>fuse check</c> prints. A line without it reads as false.</summary>
         public bool StampTree { get; init; }
+
+        /// <summary>True to attach <see cref="ReportedRepairPacket"/> details for <c>--brief</c>. A line without it reads as false.</summary>
+        public bool Brief { get; init; }
     }
 
     /// <summary>The errors that the changes to the named files introduced, in those files and in the files they reach.</summary>
@@ -136,6 +151,15 @@ internal abstract record EngineRequest
 
         /// <summary>True to stamp the answer with the tree the check ended on, which <c>fuse check</c> prints. A line without it reads as false.</summary>
         public bool StampTree { get; init; }
+
+        /// <summary>True to attach <see cref="ReportedRepairPacket"/> details for <c>--brief</c>. A line without it reads as false.</summary>
+        public bool Brief { get; init; }
+
+        /// <summary>
+        ///     True on post-edit hook calls so body-only edits can use fast span-level binding without running
+        ///     whole-file analyzers. A line without it reads as false.
+        /// </summary>
+        public bool InteractiveFast { get; init; }
     }
 
     /// <summary>The errors that the changes under the named paths introduced, in those files and in the files they reach.</summary>
@@ -156,6 +180,9 @@ internal abstract record EngineRequest
 
         /// <summary>The session the check is answered to, or null to report every error. A line without it reads as null.</summary>
         public string? Session { get; init; }
+
+        /// <summary>True to attach <see cref="ReportedRepairPacket"/> details for <c>--brief</c>. A line without it reads as false.</summary>
+        public bool Brief { get; init; }
     }
 
     /// <summary>Registers an external writer as a session for the path patterns it writes.</summary>
@@ -223,10 +250,29 @@ internal abstract record EngineRequest
         ///     shadow run serves a build the command did not make. A line without it reads as false.
         /// </summary>
         public bool BuildOnly { get; init; }
+
+        /// <summary>True to bypass warm test workers and run fresh processes (<c>--clean</c>).</summary>
+        public bool Clean { get; init; }
+
+        /// <summary>True to bypass the content-addressed slice test cache (<c>--no-cache</c>).</summary>
+        public bool NoCache { get; init; }
+
+        /// <summary>Maximum test failures before stopping early; 0 uses the default cap.</summary>
+        public int MaxFailures { get; init; }
     }
 
     /// <summary>Every test project, run whole. Like <see cref="PlanAffectedTests"/>, it always waits for the engine to finish loading.</summary>
-    public sealed record PlanAllTests : EngineRequest;
+    public sealed record PlanAllTests : EngineRequest
+    {
+        /// <summary>True to bypass warm test workers and run fresh processes (<c>--clean</c>).</summary>
+        public bool Clean { get; init; }
+
+        /// <summary>True to bypass the content-addressed slice test cache (<c>--no-cache</c>).</summary>
+        public bool NoCache { get; init; }
+
+        /// <summary>Maximum test failures before stopping early; 0 uses the default cap.</summary>
+        public int MaxFailures { get; init; }
+    }
 
     /// <summary>One test project of a rerun, with the fully qualified names of the tests to run in it.</summary>
     /// <param name="Project">Absolute path of the test project file, as the last run recorded it.</param>
@@ -263,6 +309,15 @@ internal abstract record EngineRequest
         /// <summary>The projects to rerun. A line without the list reads as one that names none, which runs nothing.</summary>
         public FailedProject[] Projects { get; init; } = Projects ?? [];
 
+        /// <summary>True to bypass warm test workers and run fresh processes (<c>--clean</c>).</summary>
+        public bool Clean { get; init; }
+
+        /// <summary>True to bypass the content-addressed slice test cache (<c>--no-cache</c>).</summary>
+        public bool NoCache { get; init; }
+
+        /// <summary>Maximum test failures before stopping early; 0 uses the default cap.</summary>
+        public int MaxFailures { get; init; }
+
         public bool Equals(PlanFailedTests? other) =>
             other is not null
             && EqualityContract == other.EqualityContract
@@ -289,4 +344,51 @@ internal abstract record EngineRequest
     ///     Answered without requiring C# projects, so status works in a repository that has none.
     /// </summary>
     public sealed record Status : EngineRequest;
+
+    /// <summary>
+    ///     Asks the engine to shed transient caches and run a compacting Gen2 GC before a heavy external build
+    ///     (<c>fuse slim</c>), answered with <see cref="EngineResponse.MemoryYielded"/>.
+    /// </summary>
+    public sealed record YieldMemory : EngineRequest;
+
+    /// <summary>
+    ///     Evaluates candidate patches or worktree diffs in memory (<c>fuse judge</c>), answered with
+    ///     <see cref="EngineResponse.JudgeAnswered"/>.
+    /// </summary>
+    public sealed record Judge(JudgeRequest Spec) : EngineRequest;
+
+    /// <summary>
+    ///     Returns the repository's project DAG, coupling clusters, and test ownership (<c>fuse graph</c>), answered with
+    ///     <see cref="EngineResponse.GraphAnswered"/>.
+    /// </summary>
+    public sealed record Graph : EngineRequest;
+
+    /// <summary>
+    ///     Returns the projects, candidate files, and test projects affected by modifying <paramref name="Paths"/>
+    ///     (<c>fuse impact</c>), answered with <see cref="EngineResponse.ImpactAnswered"/>.
+    /// </summary>
+    public sealed record Impact(string[] Paths) : EngineRequest
+    {
+        /// <summary>Absolute or repository-relative paths to evaluate.</summary>
+        public string[] Paths { get; init; } = Paths ?? [];
+    }
+
+    /// <summary>
+    ///     Registers or removes a frozen contract surface guard (<c>fuse session guard</c>), answered with
+    ///     <see cref="EngineResponse.Acknowledged"/>.
+    /// </summary>
+    public sealed record SessionGuard(FreezeGuardRequest Guard) : EngineRequest;
+
+    /// <summary>
+    ///     Subscribes to a server-push NDJSON stream of <see cref="EngineResponse.WatchEventPushed"/> messages for one
+    ///     session or for every session and guard (<c>fuse watch --all</c>).
+    /// </summary>
+    public sealed record WatchStream : EngineRequest
+    {
+        /// <summary>Session to filter to, or null when <see cref="All"/> is true.</summary>
+        public string? Session { get; init; }
+
+        /// <summary>True to stream events for every session, worktree, and guard violation.</summary>
+        public bool All { get; init; }
+    }
 }

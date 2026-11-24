@@ -242,6 +242,122 @@ write_calc 'a + b'
 capture "$fuse" check
 assert_code 0 "fuse check after the concurrency rounds"
 
+echo "smoke: fuse graph and fuse impact"
+capture "$fuse" graph --json
+assert_code 0 "fuse graph --json"
+assert_contains "{" "fuse graph --json"
+assert_contains "Lib" "fuse graph --json"
+capture "$fuse" impact Lib/Calc.cs --json
+assert_code 0 "fuse impact Lib/Calc.cs --json"
+assert_contains "{" "fuse impact Lib/Calc.cs --json"
+
+echo "smoke: fuse check --brief repair packet"
+write_app 'Console.WriteLine(Calc.Ad(1, 2));'
+capture "$fuse" check --brief
+assert_code 1 "fuse check --brief on CS1061"
+assert_contains "CS1061" "fuse check --brief on CS1061"
+assert_contains "Add" "fuse check --brief on CS1061"
+write_app ''
+capture "$fuse" check
+assert_code 0 "fuse check after restoring App/Program.cs"
+
+echo "smoke: fuse gate --brief --test"
+write_calc 'a + smokeMissingLib'
+capture "$fuse" gate --brief --test
+assert_code 1 "fuse gate --brief --test on broken code"
+assert_contains "smokeMissingLib" "fuse gate --brief --test on broken code"
+write_calc 'b + a'
+capture "$fuse" gate --brief --test
+assert_code 0 "fuse gate --brief --test after fix"
+assert_contains "passed" "fuse gate --brief --test after fix"
+write_calc 'a + b'
+capture "$fuse" check
+assert_code 0 "fuse check after fuse gate"
+
+echo "smoke: fuse slim"
+capture "$fuse" slim
+assert_code 0 "fuse slim"
+capture "$fuse" check
+assert_code 0 "fuse check after fuse slim"
+assert_contains "no errors introduced" "fuse check after fuse slim"
+
+echo "smoke: fuse batch"
+set +e
+output=$(printf '{"request":"Ping"}\n{"request":"Status"}\n{"request":"CheckChanges","waitForLoad":true}\n' | "$fuse" batch 2>&1)
+code=$?
+set -e
+echo "$output"
+assert_code 0 "fuse batch"
+assert_contains "Acknowledged" "fuse batch"
+assert_contains "StatusAnswered" "fuse batch"
+assert_contains "CheckAnswered" "fuse batch"
+
+echo "smoke: fuse watch --all --json and fuse session guard"
+watch_log="$work/watch-all.ndjson"
+"$fuse" watch --all --json >"$watch_log" 2>&1 &
+watch_pid=$!
+sleep 1
+capture "$fuse" session guard smoke-guard --freeze 'Lib/**'
+assert_code 0 "fuse session guard --freeze"
+printf '%s\n' 'namespace Lib;' '' 'public static class Calc' '{' '    public static int Add(int a, int b) => a + b;' '    public static int Sub(int a, int b) => a - b;' '}' > Lib/Calc.cs
+capture "$fuse" check
+{ [ "$code" = 0 ] || [ "$code" = 1 ]; } || fail "fuse check after frozen surface edit exited $code, expected 0 or 1: $output"
+sleep 1
+capture "$fuse" session guard smoke-guard --unfreeze
+assert_code 0 "fuse session guard --unfreeze"
+kill "$watch_pid" 2>/dev/null || true
+wait "$watch_pid" 2>/dev/null || true
+[ -s "$watch_log" ] || fail "fuse watch --all --json wrote no events"
+grep -q '{' "$watch_log" || fail "fuse watch --all --json wrote no JSON event: $(cat "$watch_log")"
+write_calc 'a + b'
+capture "$fuse" check
+assert_code 0 "fuse check after unfreeze"
+
+echo "smoke: fuse judge --combine and --race"
+patch_dir="$work/patches"
+mkdir -p "$patch_dir"
+write_calc 'b + a'
+git diff --no-color -- Lib/Calc.cs > "$patch_dir/p1.patch"
+write_calc 'a + b'
+write_app 'Console.WriteLine(Calc.Add(2, 3));'
+git diff --no-color -- App/Program.cs > "$patch_dir/p2.patch"
+write_app 'Console.WriteLine(Calc.Ad(2, 3));'
+git diff --no-color -- App/Program.cs > "$patch_dir/bad.patch"
+write_app ''
+capture "$fuse" judge --combine "$patch_dir/p1.patch" "$patch_dir/p2.patch" --json
+assert_code 0 "fuse judge --combine"
+assert_contains "{" "fuse judge --combine"
+capture "$fuse" judge --race "$patch_dir/p2.patch" "$patch_dir/bad.patch" --json
+assert_code 0 "fuse judge --race"
+assert_contains "{" "fuse judge --race"
+assert_contains "p2.patch" "fuse judge --race"
+
+echo "smoke: shared hypervisor across secondary git worktree (zero-restore)"
+capture "$fuse" status
+assert_code 0 "fuse status before secondary worktree"
+primary_pid=$(printf '%s' "$output" | sed -n 's/.*(pid \([0-9][0-9]*\)).*/\1/p' | head -n 1)
+[ -n "$primary_pid" ] || fail "could not read engine pid from fuse status: $output"
+wt2="$work/wt2"
+git worktree add -q -b smoke-wt2 "$wt2" HEAD
+(
+    cd "$wt2"
+    capture "$fuse" check
+    assert_code 0 "zero-restore fuse check in secondary worktree"
+    assert_contains "no errors introduced" "zero-restore fuse check in secondary worktree"
+    capture "$fuse" status
+    assert_code 0 "fuse status in secondary worktree"
+    assert_contains "pid $primary_pid" "fuse status in secondary worktree shares primary engine PID"
+    printf '%s\n' 'namespace Lib;' '' 'public static class Calc' '{' '    public static int Add(int a, int b) => a + smokeWtMissing;' '}' > Lib/Calc.cs
+    capture "$fuse" check
+    assert_code 1 "fuse check in secondary worktree with error"
+    assert_contains "smokeWtMissing" "fuse check in secondary worktree with error"
+)
+capture "$fuse" check
+assert_code 0 "primary worktree remains clean during secondary worktree error"
+assert_not_contains "smokeWtMissing" "primary worktree check"
+git worktree remove --force "$wt2"
+git branch -D smoke-wt2 >/dev/null
+
 echo "smoke: fuse stop"
 capture "$fuse" status
 assert_code 0 "fuse status"

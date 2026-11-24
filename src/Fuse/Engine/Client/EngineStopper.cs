@@ -37,7 +37,7 @@ internal static class EngineStopper
             await Task.Delay(200, cancellationToken).ConfigureAwait(false);
         }
 
-        return (true, Kill(LocalState.LastEnginePid(root.StateDirectory)));
+        return (true, Kill(LocalState.LastEnginePid(root.StateDirectory) ?? LocalState.LastEnginePid(root.SharedStateDirectory)));
     }
 
     /// <summary>Sends the shutdown request; an engine too busy or broken to answer is killed after the grace period instead.</summary>
@@ -47,7 +47,7 @@ internal static class EngineStopper
         {
             await using var pipe = new NamedPipeClientStream(".", root.PipeName, PipeDirection.InOut, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
             await pipe.ConnectAsync(2000, cancellationToken).ConfigureAwait(false);
-            var request = new EngineRequest.ShutDown { BuildId = EngineVersion.Build };
+            var request = new EngineRequest.ShutDown { BuildId = EngineVersion.Build, WorktreeRoot = root.Path };
             var bytes = Encoding.UTF8.GetBytes(ProtocolJson.Serialize(request) + "\n");
             await pipe.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
             await pipe.FlushAsync(cancellationToken).ConfigureAwait(false);

@@ -33,7 +33,7 @@ internal static class EngineClient
     /// <param name="cancellationToken">Cancels the request; the engine stops the work when the connection closes.</param>
     public static async Task<EngineResponse> SendAsync(RepoRoot root, EngineRequest request, TimeSpan timeout, CancellationToken cancellationToken)
     {
-        request = request with { BuildId = EngineVersion.Build, RequestId = NextRequestId(), WaitMs = (long)timeout.TotalMilliseconds };
+        request = Stamp(root, request, timeout);
         var sendStarted = Environment.TickCount64;
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         deadline.CancelAfter(timeout);
@@ -158,6 +158,10 @@ internal static class EngineClient
                                                                     && report.Errors.All(e => e?.Error is not null),
             EngineResponse.PlanAnswered { Plan: var plan } => plan is { Runs: not null, Summary: not null }
                                                               && plan.Runs.All(r => r is { Project: not null, Name: not null, Mode: not null }),
+            EngineResponse.JudgeAnswered { Report: var judge } => judge is not null,
+            EngineResponse.GraphAnswered { Report: var graph } => graph is not null,
+            EngineResponse.ImpactAnswered { Report: var impact } => impact is not null,
+            EngineResponse.WatchEventPushed { Event: var ev } => ev is not null,
             EngineResponse.Unanswered unanswered => unanswered.Message is not null,
             _ => true,
         };
@@ -234,5 +238,219 @@ internal static class EngineClient
                 throw new IOException($"it did not start within {StartTimeout.TotalSeconds:0} s (see {Path.Combine(root.StateDirectory, "engine.log")})");
             await Task.Delay(40, cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    /// <summary>
+    ///     Sends a <see cref="EngineRequest.YieldMemory"/> signal if an engine is already running for
+    ///     <paramref name="root"/>, without ever starting one. Returns null when no engine runs or it cannot answer
+    ///     within the short yield timeout.
+    /// </summary>
+    public static async Task<EngineResponse?> TryYieldMemoryAsync(RepoRoot root, CancellationToken cancellationToken)
+    {
+        if (!PipeExists(root.PipeName))
+            return null;
+        var timeout = TimeSpan.FromSeconds(2);
+        var request = Stamp(root, new EngineRequest.YieldMemory(), timeout);
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        deadline.CancelAfter(timeout);
+        try
+        {
+            await using var pipe = new NamedPipeClientStream(".", root.PipeName, PipeDirection.InOut, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+            await pipe.ConnectAsync(500, deadline.Token).ConfigureAwait(false);
+            var bytes = Encoding.UTF8.GetBytes(ProtocolJson.Serialize(request) + "\n");
+            await pipe.WriteAsync(bytes, deadline.Token).ConfigureAwait(false);
+            await pipe.FlushAsync(deadline.Token).ConfigureAwait(false);
+            var line = await PipeFraming.ReadLineAsync(pipe, deadline.Token).ConfigureAwait(false);
+            if (line is null || Read(line, out var response) is not null)
+                return null;
+            return response;
+        }
+        catch (Exception e) when (e is IOException or TimeoutException or UnauthorizedAccessException or OperationCanceledException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    ///     Runs a sequence of requests over one persistent pipe session (reconnecting automatically if the server closes
+    ///     after a single response), eliminating per-request process spawns for <c>fuse batch</c>.
+    /// </summary>
+    public static async Task RunBatchSessionAsync(
+        RepoRoot root,
+        Func<Func<EngineRequest, TimeSpan, CancellationToken, Task<EngineResponse>>, Task> run,
+        CancellationToken cancellationToken)
+    {
+        await using var session = new PipeSession(root);
+        await run((req, timeout, ct) => session.SendAsync(req, timeout, ct)).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    ///     Subscribes to server-push <see cref="WatchEvent"/> messages on a running engine's pipe. Returns false when no
+    ///     engine runs or the engine closes without supporting push streams, so the caller can fall back to polling.
+    /// </summary>
+    public static async Task<bool> WatchStreamAsync(
+        RepoRoot root,
+        EngineRequest.WatchStream request,
+        Func<WatchEvent, Task> onEvent,
+        CancellationToken cancellationToken)
+    {
+        if (!PipeExists(root.PipeName))
+            return false;
+        var stamped = (EngineRequest.WatchStream)Stamp(root, request, TimeSpan.FromHours(24));
+        try
+        {
+            await using var pipe = new NamedPipeClientStream(".", root.PipeName, PipeDirection.InOut, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+            await pipe.ConnectAsync(1000, cancellationToken).ConfigureAwait(false);
+            var bytes = Encoding.UTF8.GetBytes(ProtocolJson.Serialize(stamped) + "\n");
+            await pipe.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
+            await pipe.FlushAsync(cancellationToken).ConfigureAwait(false);
+
+            var receivedAny = false;
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                var line = await PipeFraming.ReadLineAsync(pipe, cancellationToken).ConfigureAwait(false);
+                if (line is null)
+                    return receivedAny;
+                if (Read(line, out var response) is not null || response is null)
+                    return receivedAny;
+                if (response is EngineResponse.WatchEventPushed pushed)
+                {
+                    receivedAny = true;
+                    await onEvent(pushed.Event).ConfigureAwait(false);
+                    continue;
+                }
+
+                if (response is EngineResponse.Unanswered or EngineResponse.Restart)
+                    return receivedAny;
+            }
+
+            return receivedAny;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return true;
+        }
+        catch (Exception e) when (e is IOException or TimeoutException or UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
+    private static EngineRequest Stamp(RepoRoot root, EngineRequest request, TimeSpan timeout) =>
+        request with
+        {
+            BuildId = EngineVersion.Build,
+            RequestId = NextRequestId(),
+            WaitMs = (long)timeout.TotalMilliseconds,
+            WorktreeRoot = request.WorktreeRoot ?? root.Path,
+        };
+
+    private sealed class PipeSession(RepoRoot root) : IAsyncDisposable
+    {
+        private NamedPipeClientStream? _pipe;
+
+        public async Task<EngineResponse> SendAsync(EngineRequest request, TimeSpan timeout, CancellationToken cancellationToken)
+        {
+            request = Stamp(root, request, timeout);
+            var sendStarted = Environment.TickCount64;
+            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            deadline.CancelAfter(timeout);
+            try
+            {
+                var restarts = 0;
+                for (var attempt = 0; ;)
+                {
+                    string? line;
+                    try
+                    {
+                        var pipe = await EnsureConnectedAsync(deadline.Token).ConfigureAwait(false);
+                        var bytes = Encoding.UTF8.GetBytes(ProtocolJson.Serialize(request) + "\n");
+                        await pipe.WriteAsync(bytes, deadline.Token).ConfigureAwait(false);
+                        await pipe.FlushAsync(deadline.Token).ConfigureAwait(false);
+                        line = await PipeFraming.ReadLineAsync(pipe, deadline.Token).ConfigureAwait(false);
+                    }
+                    catch (IOException) when (attempt < 4)
+                    {
+                        await ResetPipeAsync().ConfigureAwait(false);
+                        await Task.Delay(50 * (attempt + 1), deadline.Token).ConfigureAwait(false);
+                        attempt++;
+                        continue;
+                    }
+
+                    EngineResponse? response = null;
+                    if (line is not null && Read(line, out response) is { } reason)
+                        return new EngineResponse.Unanswered(ErrorCode.Internal, $"the Fuse engine sent an answer this client cannot read ({reason}; see {Path.Combine(root.StateDirectory, "engine.log")})");
+                    if (response is null)
+                    {
+                        await ResetPipeAsync().ConfigureAwait(false);
+                        if (attempt < 2)
+                        {
+                            attempt++;
+                            continue;
+                        }
+
+                        return new EngineResponse.Unanswered(ErrorCode.Internal, $"the Fuse engine closed the connection (see {Path.Combine(root.StateDirectory, "engine.log")})");
+                    }
+
+                    if (response is EngineResponse.Busy busy)
+                    {
+                        var remainingMs = timeout.TotalMilliseconds - (Environment.TickCount64 - sendStarted);
+                        if (remainingMs <= 0)
+                            return new EngineResponse.Unanswered(ErrorCode.Busy, ErrorMessages.Busy(busy.Position, busy.EstimatedWaitMs));
+                        var delayMs = Math.Clamp(busy.EstimatedWaitMs, 50, 5000);
+                        if (delayMs >= remainingMs)
+                            return new EngineResponse.Unanswered(ErrorCode.Busy, ErrorMessages.Busy(busy.Position, busy.EstimatedWaitMs));
+                        await Task.Delay(TimeSpan.FromMilliseconds(delayMs), deadline.Token).ConfigureAwait(false);
+                        continue;
+                    }
+
+                    if (response is EngineResponse.Restart)
+                    {
+                        await ResetPipeAsync().ConfigureAwait(false);
+                        restarts++;
+                        await Task.Delay(RestartDelay(restarts), deadline.Token).ConfigureAwait(false);
+                        continue;
+                    }
+
+                    return response;
+                }
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                return new EngineResponse.Unanswered(ErrorCode.Timeout, $"the Fuse engine did not answer within {timeout.TotalSeconds:0} s");
+            }
+            catch (FuseException e)
+            {
+                return new EngineResponse.Unanswered(e.Code, e.Message);
+            }
+            catch (IOException e)
+            {
+                return new EngineResponse.Unanswered(ErrorCode.Internal, $"could not connect to the Fuse engine: {e.Message}");
+            }
+            catch (Exception e) when (e is System.ComponentModel.Win32Exception or InvalidOperationException or UnauthorizedAccessException)
+            {
+                return new EngineResponse.Unanswered(ErrorCode.Internal, $"could not start the Fuse engine: {e.Message}");
+            }
+        }
+
+        private async Task<NamedPipeClientStream> EnsureConnectedAsync(CancellationToken cancellationToken)
+        {
+            if (_pipe is { IsConnected: true })
+                return _pipe;
+            await ResetPipeAsync().ConfigureAwait(false);
+            _pipe = await ConnectAsync(root, cancellationToken).ConfigureAwait(false);
+            return _pipe;
+        }
+
+        private async Task ResetPipeAsync()
+        {
+            if (_pipe is not null)
+            {
+                await _pipe.DisposeAsync().ConfigureAwait(false);
+                _pipe = null;
+            }
+        }
+
+        public ValueTask DisposeAsync() => ResetPipeAsync() is var t ? new ValueTask(t) : ValueTask.CompletedTask;
     }
 }

@@ -37,7 +37,11 @@ internal static class ScaleFixture
         }
 
         // The fixture lives inside the Fuse repository; these files stop MSBuild from importing Fuse's own build settings.
-        await File.WriteAllTextAsync(Path.Combine(directory, "global.json"), """{ "sdk": { "version": "10.0.100", "rollForward": "latestFeature" } }""");
+        var evalSdk = Environment.GetEnvironmentVariable("FUSE_EVAL_SDK");
+        var sdkJson = evalSdk is not null && evalSdk.StartsWith("11.", StringComparison.Ordinal)
+            ? """{ "sdk": { "version": "11.0.100", "rollForward": "latestFeature" } }"""
+            : """{ "sdk": { "version": "10.0.100", "rollForward": "latestFeature" } }""";
+        await File.WriteAllTextAsync(Path.Combine(directory, "global.json"), sdkJson);
         await File.WriteAllTextAsync(Path.Combine(directory, "Directory.Build.props"), "<Project />");
         await File.WriteAllTextAsync(Path.Combine(directory, "Directory.Build.targets"), "<Project />");
         await File.WriteAllTextAsync(

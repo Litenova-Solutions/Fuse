@@ -36,15 +36,18 @@ internal sealed class SummaryCache
 {
     private readonly RepoRoot _root;
     private readonly Action<string> _log;
+    private readonly Func<RepoPath, string?>? _fallbackAssetsHash;
     private readonly ConcurrentDictionary<string, MetadataReference> _references = new(StringComparer.OrdinalIgnoreCase);
     private bool _writeLogged;
 
     /// <param name="root">The repository, for the shared directory its summaries are kept in.</param>
     /// <param name="log">Where a write that fails is written, once.</param>
-    public SummaryCache(RepoRoot root, Action<string> log)
+    /// <param name="fallbackAssetsHash">Optional masked assets hash lookup for zero-restore worktrees without a local <c>project.assets.json</c>.</param>
+    public SummaryCache(RepoRoot root, Action<string> log, Func<RepoPath, string?>? fallbackAssetsHash = null)
     {
         _root = root;
         _log = log;
+        _fallbackAssetsHash = fallbackAssetsHash;
     }
 
     /// <summary>The directory the summaries of every worktree of this repository share, under the git common directory's state.</summary>
@@ -78,7 +81,10 @@ internal sealed class SummaryCache
                 lines.Add("project:" + node.Path.Relative + "|" + project.Name + "|" + project.AssemblyName);
                 foreach (var input in node.EvaluationInputs.OrderBy(p => p.Relative, StringComparer.Ordinal))
                     lines.Add("input:" + input.Relative + "=" + HashFile(input.Absolute));
-                if (HashAssets(node.AssetsFile.Absolute) is not { } assetsHash)
+                var assetsHash = File.Exists(node.AssetsFile.Absolute)
+                    ? HashAssets(node.AssetsFile.Absolute)
+                    : _fallbackAssetsHash?.Invoke(node.AssetsFile);
+                if (assetsHash is null)
                     return null;
                 lines.Add("assets:" + node.AssetsFile.Relative + "=" + assetsHash);
                 if (!await AddProjectInputsAsync(lines, project, cancellationToken).ConfigureAwait(false))

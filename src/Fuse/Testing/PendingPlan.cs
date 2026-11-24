@@ -1,4 +1,5 @@
 using Fuse.Graph;
+using Fuse.Paths;
 using Fuse.Testing.Model;
 using Fuse.Workspace;
 using Microsoft.CodeAnalysis;
@@ -13,7 +14,20 @@ namespace Fuse.Testing;
 /// </summary>
 internal sealed class PendingPlan
 {
-    private PendingPlan(TestPlanResult? answered, Generation generation, ShadowEmitter? emitter, IReadOnlyList<(ProjectNode Node, string? Filter, string[] FilterArguments, IReadOnlyList<Project> Variants)> projects, int selected, int total, string summary, bool buildOnly = false, int gatedTests = 0, string[]? gatedProjects = null)
+    private PendingPlan(
+        TestPlanResult? answered,
+        Generation generation,
+        ShadowEmitter? emitter,
+        IReadOnlyList<(ProjectNode Node, string? Filter, string[] FilterArguments, IReadOnlyList<Project> Variants)> projects,
+        int selected,
+        int total,
+        string summary,
+        bool buildOnly = false,
+        int gatedTests = 0,
+        string[]? gatedProjects = null,
+        bool noCache = false,
+        bool runner = false,
+        IReadOnlyDictionary<RepoPath, TestSelection>? selections = null)
     {
         Answered = answered;
         Generation = generation;
@@ -25,6 +39,9 @@ internal sealed class PendingPlan
         BuildOnly = buildOnly;
         GatedTests = gatedTests;
         GatedProjects = gatedProjects ?? [];
+        NoCache = noCache;
+        Runner = runner;
+        Selections = selections;
     }
 
     /// <summary>The plan, when it needs no shadow preparation: nothing to run, or every test, which builds with MSBuild.</summary>
@@ -63,10 +80,31 @@ internal sealed class PendingPlan
     /// <summary>The projects those tests are in, in ordinal order.</summary>
     public string[] GatedProjects { get; }
 
+    /// <summary>True when slice cache lookups are bypassed for this plan (<c>--clean</c> / <c>--no-cache</c>).</summary>
+    public bool NoCache { get; }
+
+    /// <summary>Whether <c>global.json</c> opts <c>dotnet test</c> into Microsoft.Testing.Platform.</summary>
+    public bool Runner { get; }
+
+    /// <summary>Selection per test project file, for recomputing shadow-direct platform arguments when needed.</summary>
+    public IReadOnlyDictionary<RepoPath, TestSelection>? Selections { get; }
+
     /// <summary>A plan that is already answered and prepares nothing.</summary>
     public static PendingPlan Of(TestPlanResult answered, Generation generation) => new(answered, generation, null, [], 0, answered.TotalTests, answered.Summary);
 
     /// <summary>A plan whose shadow runs are still to be prepared, with the emitter that prepares them.</summary>
-    public static PendingPlan ToPrepare(Generation generation, ShadowEmitter emitter, IReadOnlyList<(ProjectNode Node, string? Filter, string[] FilterArguments, IReadOnlyList<Project> Variants)> projects, int selected, int total, string summary, bool buildOnly = false, int gatedTests = 0, string[]? gatedProjects = null) =>
-        new(null, generation, emitter, projects, selected, total, summary, buildOnly, gatedTests, gatedProjects);
+    public static PendingPlan ToPrepare(
+        Generation generation,
+        ShadowEmitter emitter,
+        IReadOnlyList<(ProjectNode Node, string? Filter, string[] FilterArguments, IReadOnlyList<Project> Variants)> projects,
+        int selected,
+        int total,
+        string summary,
+        bool buildOnly = false,
+        int gatedTests = 0,
+        string[]? gatedProjects = null,
+        bool noCache = false,
+        bool runner = false,
+        IReadOnlyDictionary<RepoPath, TestSelection>? selections = null) =>
+        new(null, generation, emitter, projects, selected, total, summary, buildOnly, gatedTests, gatedProjects, noCache, runner, selections);
 }

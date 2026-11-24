@@ -17,20 +17,37 @@ internal sealed class RepoRoot
         GitCommonDirectory = CommonDirectory(path);
         SharedStateDirectory = GitCommonDirectory is null
             ? StateDirectory
-            : System.IO.Path.Combine(LocalState.Repositories, "shared-" + Hash(OperatingSystem.IsWindows() ? GitCommonDirectory.ToUpperInvariant() : GitCommonDirectory));
+            : System.IO.Path.Combine(LocalState.Repositories, "shared-" + Hash(KeyString(GitCommonDirectory)));
     }
 
     /// <summary>Absolute canonical path without a trailing separator.</summary>
     public string Path { get; }
 
-    /// <summary>Name of the engine's pipe for this root. Case-insensitive on Windows, where paths are.</summary>
-    public string PipeName => "fuse-" + Hash(OperatingSystem.IsWindows() ? Path.ToUpperInvariant() : Path);
+    /// <summary>
+    ///     Name of the engine's pipe for this repository. Keyed by canonical <see cref="GitCommonDirectory"/> when
+    ///     available so every worktree of one repository shares one hypervisor engine, and by <see cref="Path"/>
+    ///     otherwise. Case-insensitive on Windows, where paths are.
+    /// </summary>
+    public string PipeName => "fuse-" + EngineKey;
+
+    /// <summary>Alias for <see cref="PipeName"/>, naming the shared hypervisor pipe keyed by <see cref="GitCommonDirectory"/>.</summary>
+    public string EnginePipeName => PipeName;
+
+    /// <summary>Name of the engine's single-instance mutex, keyed alongside <see cref="EnginePipeName"/>.</summary>
+    public string EngineMutexName => "fuse-engine-" + EnginePipeName;
 
     /// <summary>
-    ///     Directory for Fuse's own files for this repository (engine log, hook log, shadow test output, test results).
-    ///     It lives in the user's local application data, so Fuse never writes inside the repository.
+    ///     Directory for Fuse's own per-worktree files (engine log, hook log, shadow test output, test results,
+    ///     sessions, build locks). It lives in the user's local application data, so Fuse never writes inside the
+    ///     repository.
     /// </summary>
-    public string StateDirectory => System.IO.Path.Combine(LocalState.Repositories, PipeName["fuse-".Length..]);
+    public string StateDirectory => System.IO.Path.Combine(LocalState.Repositories, WorktreeKey);
+
+    private string WorktreeKey => Hash(KeyString(Path));
+
+    private string EngineKey => GitCommonDirectory is null ? WorktreeKey : Hash(KeyString(GitCommonDirectory));
+
+    private static string KeyString(string path) => OperatingSystem.IsWindows() ? path.ToUpperInvariant() : path;
 
     /// <summary>
     ///     The git common directory: what <c>git rev-parse --git-common-dir</c> answers, read from the <c>.git</c> file
@@ -110,17 +127,36 @@ internal sealed class RepoRoot
     ///     <paramref name="value"/> with every spelling of the root's path taken out, compared the way the file system
     ///     does, so a value that names a path under the root reads alike in every worktree of the repository.
     /// </summary>
-    public string WithoutRoot(string value)
+    public string WithoutRoot(string value) => ReplaceRoot(value, "", "");
+
+    /// <summary>
+    ///     Replaces every spelling of <see cref="Path"/> in <paramref name="value"/> using the file system's path
+    ///     comparison: <paramref name="nativeReplacement"/> for native-separator spellings and
+    ///     <paramref name="forwardReplacement"/> for forward-slash spellings.
+    /// </summary>
+    public string ReplaceRoot(string value, string nativeReplacement, string? forwardReplacement = null)
     {
-        var masked = value;
-        foreach (var spelling in new[] { Path, Path.Replace('\\', '/'), Path.Replace('/', '\\') }.Distinct(StringComparer.Ordinal))
+        var result = value;
+        var forwardSpelling = Path.Replace('\\', '/');
+        var backSpelling = Path.Replace('/', '\\');
+        var pairs = new List<(string Spelling, string Replacement)> { (Path, nativeReplacement) };
+        if (!string.Equals(forwardSpelling, Path, StringComparison.Ordinal))
+            pairs.Add((forwardSpelling, forwardReplacement ?? nativeReplacement));
+        if (!string.Equals(backSpelling, Path, StringComparison.Ordinal) && !string.Equals(backSpelling, forwardSpelling, StringComparison.Ordinal))
+            pairs.Add((backSpelling, nativeReplacement));
+
+        foreach (var (spelling, replacement) in pairs)
         {
+            var start = 0;
             int index;
-            while ((index = masked.IndexOf(spelling, RepoPath.Comparison)) >= 0)
-                masked = masked[..index] + masked[(index + spelling.Length)..];
+            while (start <= result.Length - spelling.Length && (index = result.IndexOf(spelling, start, RepoPath.Comparison)) >= 0)
+            {
+                result = result[..index] + replacement + result[(index + spelling.Length)..];
+                start = index + replacement.Length;
+            }
         }
 
-        return masked;
+        return result;
     }
 
     /// <summary>
@@ -159,7 +195,7 @@ internal sealed class RepoRoot
                 common = System.IO.Path.GetFullPath(System.IO.Path.IsPathRooted(text) ? text : System.IO.Path.Combine(gitDir, text));
             }
 
-            return Canonicalize(common);
+            return Canonicalize(common).TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {

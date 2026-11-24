@@ -40,16 +40,35 @@ public class MemoryBudgetTests
     }
 
     [Fact]
-    public void A_full_machine_stops_only_background_work_in_an_engine_well_under_its_ceiling()
+    public void A_full_machine_sheds_caches_views_and_idle_projects_without_refusing_callers()
     {
         var budget = new MemoryBudget(ceilingBytes: 100 * 1024 * 1024, workingSet: () => 1024, memoryLoad: () => 960, totalAvailable: () => 1000);
 
         var snapshot = budget.Assess();
 
-        // Other programs filling the machine never make one engine drop its views or refuse its callers.
-        Assert.Equal([MemoryBudget.ShedStep.Background], snapshot.Shed);
+        Assert.Equal(
+            [
+                MemoryBudget.ShedStep.Background,
+                MemoryBudget.ShedStep.KeptAnswersAndCaches,
+                MemoryBudget.ShedStep.SessionViews,
+                MemoryBudget.ShedStep.HeadCompilations,
+                MemoryBudget.ShedStep.IdleConeProjects,
+            ],
+            snapshot.Shed);
         Assert.False(snapshot.IsPastCeiling);
         Assert.Equal(960, snapshot.MemoryLoadBytes);
+    }
+
+    [Fact]
+    public void Machine_memory_pressure_sheds_progressively_by_load_ratio()
+    {
+        Assert.Empty(new MemoryBudget(ceilingBytes: 100_000_000, workingSet: () => 1024, memoryLoad: () => 890, totalAvailable: () => 1000).Assess().Shed);
+        Assert.Equal(
+            [MemoryBudget.ShedStep.Background, MemoryBudget.ShedStep.KeptAnswersAndCaches, MemoryBudget.ShedStep.SessionViews],
+            new MemoryBudget(ceilingBytes: 100_000_000, workingSet: () => 1024, memoryLoad: () => 900, totalAvailable: () => 1000).Assess().Shed);
+        Assert.Equal(
+            [MemoryBudget.ShedStep.Background, MemoryBudget.ShedStep.KeptAnswersAndCaches, MemoryBudget.ShedStep.SessionViews, MemoryBudget.ShedStep.HeadCompilations],
+            new MemoryBudget(ceilingBytes: 100_000_000, workingSet: () => 1024, memoryLoad: () => 920, totalAvailable: () => 1000).Assess().Shed);
     }
 
     [Fact]

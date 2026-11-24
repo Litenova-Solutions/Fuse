@@ -21,9 +21,9 @@ internal static class ResponseMapper
     /// <summary>The answer to a request that <paramref name="failure"/> ended: its code, and its message, which names the fix.</summary>
     public static EngineResponse Unanswered(FuseException failure) => new EngineResponse.Unanswered(failure.Code, failure.Message);
 
-    /// <summary>A check result as the client receives it, each error carrying the cause to print under it.</summary>
+    /// <summary>A check result as the client receives it, each error carrying the cause to print under it and the repair packet a brief check attached.</summary>
     public static CheckReport Report(CheckResult result) => new(
-        [.. result.Errors.Select(e => new ReportedError(e.Error, Reported(e.Cause), e.IsCauseLeftOut) { GeneratedFile = e.GeneratedFile, CausedBy = e.CausedBy })],
+        [.. result.Errors.Select(e => new ReportedError(e.Error, Reported(e.Cause), e.IsCauseLeftOut) { GeneratedFile = e.GeneratedFile, CausedBy = e.CausedBy, Repair = Repaired(e.Repair) })],
         result.FilesChecked,
         [.. result.Projects],
         [.. result.DeclarationsChangedIn],
@@ -43,8 +43,13 @@ internal static class ResponseMapper
     };
 
     /// <summary>A test plan as the client receives it, each run with the mode the client starts it in and its project file's absolute path.</summary>
-    public static TestPlan Plan(TestPlanResult result) => new(
-        [.. result.Runs.Select(r => new TestRun(r.Project.Absolute, r.Name, Mode(r.Mode), r.Filter, r.UsesTestingPlatform, r.RunSettings, r.FilterArguments, r.TargetPaths))],
+    /// <param name="noCache">True when the plan skipped the slice cache, so no run answers from it.</param>
+    public static TestPlan Plan(TestPlanResult result, bool noCache = false) => new(
+        [.. result.Runs.Select(r => new TestRun(r.Project.Absolute, r.Name, Mode(r.Mode), r.Filter, r.UsesTestingPlatform, r.RunSettings, r.FilterArguments, r.TargetPaths)
+        {
+            FromCache = !noCache && r.CachedResult is not null,
+            CacheReason = CacheReasonOf(r.CachedResult, noCache),
+        })],
         result.SelectedTests,
         result.TotalTests,
         result.Summary)
@@ -52,6 +57,18 @@ internal static class ResponseMapper
         ContainerGatedTests = result.ContainerGatedTests,
         ContainerGatedProjects = [.. result.ContainerGatedProjects],
     };
+
+    /// <summary>A repair packet as the client receives it, the source window as one text, or null when the check attached none.</summary>
+    private static ReportedRepairPacket? Repaired(RepairPacket? packet) =>
+        packet is null ? null : new ReportedRepairPacket(
+            SourceWindow: packet.SourceWindow.Count == 0 ? null : string.Join("\n", packet.SourceWindow),
+            Candidates: [.. packet.Candidates],
+            SuggestedUsings: [.. packet.SuggestedUsings],
+            InterfaceStub: packet.InterfaceStub);
+
+    /// <summary>Why a run answers from the slice cache: its stored verdict, or null when it runs fresh.</summary>
+    private static string? CacheReasonOf(SliceCacheResult? cached, bool noCache) =>
+        cached is null || noCache ? null : $"slice cache: {cached.Passed} passed, {cached.Failed} failed, {cached.Skipped} skipped";
 
     private static ReportedCause? Reported(Cause? cause) => cause switch
     {

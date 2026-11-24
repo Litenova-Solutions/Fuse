@@ -355,13 +355,11 @@ internal static class TestOperation
                 }
                 else
                 {
-                    var isNet11 = await BuildOperation.IsNet11OrLaterAsync(root.Path, cancellationToken).ConfigureAwait(false);
-                    string[] mtArgs = isNet11 ? ["-mt"] : [];
                     var traversalProjects = remainingGroups.Select(g => g.First().Project).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
                     var (traversalResult, _, _, _) = await BuildOperation.RunTraversalBuildAsync(
                         root,
                         traversalProjects,
-                        ["--no-restore", .. buildSwitches, .. mtArgs, "-nologo", "-tl:off", "-v:q", "-clp:ErrorsOnly;NoSummary"],
+                        ["--no-restore", .. buildSwitches, "-nologo", "-tl:off", "-v:q", "-clp:ErrorsOnly;NoSummary"],
                         root.Path,
                         root.StateDirectory,
                         continueOnError: true,

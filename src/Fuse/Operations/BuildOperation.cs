@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Security;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -30,9 +29,6 @@ internal static partial class BuildOperation
     private const double HighMemoryLoadRatio = 0.80;
 
     private static readonly string[] QuietArguments = ["-nologo", "-tl:off", "-v:q", "-clp:ErrorsOnly;NoSummary"];
-
-    // Integrator: can unify with Fuse.Dotnet.SdkCapabilities.For(workingDirectory).
-    private static readonly ConcurrentDictionary<string, bool> Net11SdkCache = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>The line printed above the answer when a source file moved during the build and it ran again.</summary>
     internal const string RanAgainLine = "fuse: a source file moved while the build ran, so it ran again";
@@ -106,17 +102,17 @@ internal static partial class BuildOperation
             return reused;
 
         await EngineClient.TryYieldMemoryAsync(root, cancellationToken).ConfigureAwait(false);
-        var isNet11 = await IsNet11OrLaterAsync(workingDirectory, cancellationToken).ConfigureAwait(false);
-        string[] mtArgs = isNet11 && !HasMultithreadedSwitch(effectiveArgs) ? ["-mt"] : [];
 
         if (plan.BuildProjects.Length > 1)
         {
             var (result, log, seconds, ranAgain) = await RunTraversalBuildAsync(
-                root, plan.BuildProjects, [.. effectiveArgs, .. mtArgs, .. QuietArguments], workingDirectory, root.StateDirectory, continueOnError: false, cancellationToken).ConfigureAwait(false);
-            await ShutdownBuildServerIfMemoryTightAsync(workingDirectory).ConfigureAwait(false);
+                root, plan.BuildProjects, [.. effectiveArgs, .. QuietArguments], workingDirectory, root.StateDirectory, continueOnError: false, cancellationToken).ConfigureAwait(false);
 
             var treeStamp = await StampAsync(root, cancellationToken).ConfigureAwait(false);
             var diagnostics = BuildOutputParser.Diagnostics(result.Output, root.Path);
+            // A build server holding a locked file is shut down so the next build can copy; any other outcome leaves it running.
+            if (result.ExitCode != 0 && diagnostics.Any(NamesBuildServerLock))
+                await SdkCapabilities.ShutdownMsBuildServerAsync(workingDirectory, cancellationToken).ConfigureAwait(false);
             var warnings = log.Length == 0 ? [] : BuildLog.WarningsList(log, root.Path);
             var resultsPath = BuildResultsFile.WriteBuild(root, diagnostics, warnings, options.Json, treeStamp);
             var label = $"build ({plan.BuildProjects.Length} projects)";
@@ -134,12 +130,14 @@ internal static partial class BuildOperation
 
         var singleRuns = new List<(ProcessResult Result, string Log, double Seconds, bool RanAgain)>(plan.BuildProjects.Length);
         foreach (var project in plan.BuildProjects)
-            singleRuns.Add(await RunOneAsync(["build", project, .. effectiveArgs, .. mtArgs, .. QuietArguments], workingDirectory, root.StateDirectory, cancellationToken).ConfigureAwait(false));
-        await ShutdownBuildServerIfMemoryTightAsync(workingDirectory).ConfigureAwait(false);
+            singleRuns.Add(await RunOneAsync(["build", project, .. effectiveArgs, .. QuietArguments], workingDirectory, root.StateDirectory, cancellationToken).ConfigureAwait(false));
 
         // The results file holds every project at once; each summary names it with the combined count.
         var singleStamp = await StampAsync(root, cancellationToken).ConfigureAwait(false);
         var parsed = singleRuns.Select((run, i) => BuildRun($"build ({names[i]})", run.Result, run.Log, run.Seconds, BuildOutputParser.Diagnostics(run.Result.Output, root.Path), run.Log.Length == 0 ? [] : BuildLog.WarningsList(run.Log, root.Path), RelativeProject(plan.BuildProjects[i], root.Path))).ToList();
+        // A build server holding a locked file is shut down so the next build can copy; any other outcome leaves it running.
+        if (parsed.Any(run => run.ExitCode != 0 && run.Errors.Any(NamesBuildServerLock)))
+            await SdkCapabilities.ShutdownMsBuildServerAsync(workingDirectory, cancellationToken).ConfigureAwait(false);
         var errors = parsed.SelectMany(run => run.Errors).ToList();
         var allWarnings = parsed.SelectMany(run => run.Warnings).ToList();
 
@@ -224,27 +222,8 @@ internal static partial class BuildOperation
     /// <summary>True when the active .NET SDK in <paramref name="workingDirectory"/> is major version 11 or higher.</summary>
     internal static async Task<bool> IsNet11OrLaterAsync(string workingDirectory, CancellationToken cancellationToken)
     {
-        var key = Path.GetFullPath(workingDirectory);
-        if (Net11SdkCache.TryGetValue(key, out var cached))
-            return cached;
-        var detected = false;
-        try
-        {
-            var version = await ProcessRunner.RunAsync("dotnet", ["--version"], workingDirectory, cancellationToken).ConfigureAwait(false);
-            if (version.ExitCode == 0)
-            {
-                var line = version.Output.Trim().Split('\n', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()?.Trim();
-                var dot = line?.IndexOf('.') ?? -1;
-                if (dot > 0 && int.TryParse(line![..dot], out var major))
-                    detected = major >= 11;
-            }
-        }
-        catch (Exception e) when (e is IOException or InvalidOperationException)
-        {
-        }
-
-        Net11SdkCache[key] = detected;
-        return detected;
+        var capabilities = await SdkCapabilities.DetectAsync(workingDirectory, cancellationToken).ConfigureAwait(false);
+        return capabilities.SupportsMultithreadedBuild;
     }
 
     /// <summary>Shuts down idle MSBuild build servers when OS memory load exceeds <see cref="HighMemoryLoadRatio"/>.</summary>
@@ -285,8 +264,23 @@ internal static partial class BuildOperation
         return [.. arguments, "--artifacts-path", artifactsPath];
     }
 
-    private static bool HasMultithreadedSwitch(IReadOnlyList<string> arguments) =>
-        arguments.Any(a => a is "-mt" or "--mt" or "/mt" || a.StartsWith("-mt:", StringComparison.Ordinal) || a.StartsWith("/mt:", StringComparison.Ordinal));
+    /// <summary>
+    ///     True when <paramref name="diagnostic"/> is a file lock error that names a build server process. It mirrors
+    ///     the names <see cref="LockLine"/> decides by; its holder reports "name (pid n)".
+    /// </summary>
+    private static bool NamesBuildServerLock(BuildDiagnostic diagnostic)
+    {
+        var holder = LockLine.Holder(diagnostic);
+        if (holder is null)
+            return false;
+        var pid = holder.LastIndexOf(" (pid ", StringComparison.Ordinal);
+        var name = pid < 0 ? holder : holder[..pid];
+        var bare = name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? name[..^4] : name;
+        return bare.Equals("dotnet", StringComparison.OrdinalIgnoreCase)
+            || bare.Equals("msbuild", StringComparison.OrdinalIgnoreCase)
+            || bare.Equals("vbcscompiler", StringComparison.OrdinalIgnoreCase)
+            || bare.Equals("testhost", StringComparison.OrdinalIgnoreCase);
+    }
 
     /// <summary>Builds the whole solution because <paramref name="reason"/> says the changed projects cannot be selected, saying so first.</summary>
     private static async Task<OperationResult> FallbackAsync(RepoRoot root, string workingDirectory, IReadOnlyList<string> arguments, BuildOptions options, string reason, CancellationToken cancellationToken, bool parallelArtifacts = false)
@@ -317,9 +311,11 @@ internal static partial class BuildOperation
         if (resultsRoot is not null)
             await EngineClient.TryYieldMemoryAsync(resultsRoot, cancellationToken).ConfigureAwait(false);
         var (result, log, seconds, ranAgain) = await RunOneAsync(["build", .. arguments, .. QuietArguments], workingDirectory, logDirectory, cancellationToken).ConfigureAwait(false);
-        await ShutdownBuildServerIfMemoryTightAsync(workingDirectory).ConfigureAwait(false);
         var treeStamp = includeTreeStamp && resultsRoot is not null ? await StampAsync(resultsRoot, cancellationToken).ConfigureAwait(false) : null;
         var diagnostics = BuildOutputParser.Diagnostics(result.Output, root);
+        // A build server holding a locked file is shut down so the next build can copy; any other outcome leaves it running.
+        if (result.ExitCode != 0 && diagnostics.Any(NamesBuildServerLock))
+            await SdkCapabilities.ShutdownMsBuildServerAsync(workingDirectory, cancellationToken).ConfigureAwait(false);
         var warnings = log.Length == 0 ? [] : BuildLog.WarningsList(log, root);
         var resultsPath = resultsRoot is null ? null : BuildResultsFile.WriteBuild(resultsRoot, diagnostics, warnings, options.Json, treeStamp);
         var restoreTarget = resultsRoot is null ? null : RestoreTargetHint(arguments, workingDirectory, root);

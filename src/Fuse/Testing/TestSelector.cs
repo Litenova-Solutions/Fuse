@@ -34,6 +34,8 @@ internal sealed class TestSelector
     private readonly TimeProvider _time;
     private readonly DynamicTestMap _dynamicMap;
     private readonly TypeWalk _types;
+    private readonly SyntaxTokenIndex _tokenIndex;
+    private volatile bool _tokenIndexLoaded;
 
     /// <param name="workspace">The engine's workspace, which the selector loads the changed projects and their dependents into.</param>
     /// <param name="time">Measures the member walk against its budget.</param>
@@ -48,10 +50,14 @@ internal sealed class TestSelector
         _time = time;
         _dynamicMap = dynamicMap;
         _types = new TypeWalk(workspace, dynamicMap);
+        _tokenIndex = new SyntaxTokenIndex(workspace.Root, workspace.Log);
     }
 
-    /// <summary>Dynamic coverage map used to refine host/DI/controller selections without whole-project fallbacks.</summary>
+    /// <summary>Dynamic coverage map whose recorded tests are added to the selection, never replacing a static selection.</summary>
     internal DynamicTestMap DynamicMap => _dynamicMap;
+
+    /// <summary>Syntax token and inheritance index used to narrow symbol searches.</summary>
+    internal SyntaxTokenIndex TokenIndex => _tokenIndex;
 
     /// <summary>Selects tests for <paramref name="changedFiles"/> from the workspace's pinned generation; the result holds each test project file's selection.</summary>
     /// <param name="changedFiles">Changed files, C# sources and non-C# files alike.</param>
@@ -117,7 +123,8 @@ internal sealed class TestSelector
             graph = generation.Graph;
             var ownerSolution = generation.Current;
             var ownerRoslynProjects = activeChangedProjects.SelectMany(n => RepoWorkspace.ProjectsFor(ownerSolution, n)).ToList();
-            var ownerWalk = new MemberWalk(_workspace.Root, generation, ownerSolution, ownerRoslynProjects, _time, _dynamicMap);
+            await PrepareTokenIndexAsync(ownerSolution, ownerRoslynProjects, cancellationToken).ConfigureAwait(false);
+            var ownerWalk = new MemberWalk(_workspace.Root, generation, ownerSolution, ownerRoslynProjects, _time, _dynamicMap, _tokenIndex);
             foreach (var path in activeFiles)
                 await ownerWalk.SeedAsync(path, cancellationToken).ConfigureAwait(false);
 
@@ -139,7 +146,8 @@ internal sealed class TestSelector
 
         var solution = generation.Current;
         var reachedRoslynProjects = effectiveReachedProjects.SelectMany(n => RepoWorkspace.ProjectsFor(solution, n)).ToList();
-        var walk = new MemberWalk(_workspace.Root, generation, solution, reachedRoslynProjects, _time, _dynamicMap);
+        await PrepareTokenIndexAsync(solution, reachedRoslynProjects, cancellationToken).ConfigureAwait(false);
+        var walk = new MemberWalk(_workspace.Root, generation, solution, reachedRoslynProjects, _time, _dynamicMap, _tokenIndex);
         var seeds = new List<(Document Document, SyntaxNode Node)>();
         foreach (var path in activeFiles)
         {
@@ -196,7 +204,7 @@ internal sealed class TestSelector
         if (classes > RefineThreshold)
         {
             _workspace.Log($"test selection: {classes} test classes reachable; selecting at class level");
-            AddBuildOnlySelections(graph, activeChangedProjects, effectiveReachedProjects, classLevel, walk: null);
+            AddBuildOnlySelections(graph, activeChangedProjects, effectiveReachedProjects, classLevel);
             return (new SelectionResult(classLevel, walk.DroppedSameCode, allSameCode), generation);
         }
 
@@ -204,7 +212,7 @@ internal sealed class TestSelector
         if (!outcome.Completed)
         {
             _workspace.Log($"test selection: member walk over budget in {outcome.Milliseconds} ms, {outcome.Symbols} symbol(s), {classes} test class(es) reachable, {PatternsOf(classLevel)} pattern(s) selected; selecting at class level");
-            AddBuildOnlySelections(graph, activeChangedProjects, effectiveReachedProjects, classLevel, walk: null);
+            AddBuildOnlySelections(graph, activeChangedProjects, effectiveReachedProjects, classLevel);
             return (new SelectionResult(classLevel, walk.DroppedSameCode, allSameCode), generation);
         }
 
@@ -213,9 +221,26 @@ internal sealed class TestSelector
         var memberLevel = new Dictionary<RepoPath, TestSelection>(walk.Selections);
         foreach (var (path, _) in seededWhole)
             memberLevel[path] = classLevel[path];
-        AddBuildOnlySelections(graph, activeChangedProjects, effectiveReachedProjects, memberLevel, walk);
+        AddBuildOnlySelections(graph, activeChangedProjects, effectiveReachedProjects, memberLevel);
         _workspace.Log($"test selection: member walk completed in {outcome.Milliseconds} ms, {outcome.Symbols} symbol(s), {classes} test class(es) reachable, {PatternsOf(memberLevel)} pattern(s) selected; selecting at member level");
         return (new SelectionResult(memberLevel, walk.DroppedSameCode, allSameCode), generation);
+    }
+
+    /// <summary>
+    ///     Loads the syntax token index once and brings it current over the searched projects, so the member walk
+    ///     narrows its reference searches to candidate documents. The walk searches as before when the index has
+    ///     nothing to narrow by.
+    /// </summary>
+    private async Task PrepareTokenIndexAsync(Solution solution, IReadOnlyList<Project> reachedProjects, CancellationToken cancellationToken)
+    {
+        if (!_tokenIndexLoaded)
+        {
+            _tokenIndex.TryLoad("current");
+            _tokenIndexLoaded = true;
+        }
+
+        await _tokenIndex.EnsureIndexedAsync(solution, reachedProjects, cancellationToken).ConfigureAwait(false);
+        _tokenIndex.SaveIfDirty("current");
     }
 
     private async Task<(List<RepoPath> ActiveFiles, bool AllCSharp, bool HasTopLevelDiff)> FilterChangedFilesBySyntaxAsync(
@@ -331,16 +356,12 @@ internal sealed class TestSelector
         RepoGraph graph,
         IReadOnlyList<ProjectNode> changedProjects,
         IReadOnlyList<ProjectNode> reachedProjects,
-        Dictionary<RepoPath, TestSelection> selections,
-        MemberWalk? walk)
+        Dictionary<RepoPath, TestSelection> selections)
     {
+        // Recorded coverage the walks already added stays; these whole-project selections stand beside it, so a
+        // test the static walks selected is never dropped.
         foreach (var application in reachedProjects.Where(p => p.IsExecutable))
         {
-            if (walk is not null
-                && walk.DynamicCoveredApplications.Contains(application.Path)
-                && !walk.UnmappedHostApplications.Contains(application.Path))
-                continue;
-
             var reason = changedProjects.Any(p => p.Path == application.Path)
                 ? $"{application.Name} changed and runs behind an application host"
                 : $"{application.Name} uses the changed code and runs behind an application host";

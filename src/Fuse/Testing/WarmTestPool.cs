@@ -8,6 +8,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using Fuse.Changes;
+using Fuse.Graph;
 using Fuse.Paths;
 using Fuse.Testing.Model;
 using Microsoft.CodeAnalysis;
@@ -207,6 +208,18 @@ internal sealed class WarmTestPool : IDisposable, IAsyncDisposable
                 response.TotalMs,
                 null,
                 response.Failures);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            // Any worker failure falls back to the normal shadow run, so results never differ.
+            if (worker is not null)
+            {
+                RecycleWorker(slot, worker);
+                worker = null;
+            }
+
+            _log($"warm test worker failed for {request.ProjectName}: {e.Message}; running from the shadow copy instead");
+            return WarmRunResult.Fallback($"warm worker failed: {e.Message}");
         }
         finally
         {
@@ -886,6 +899,14 @@ internal sealed class WarmTestPool : IDisposable, IAsyncDisposable
             PdbBase64 = Convert.ToBase64String(a.Pdb),
         }),
     ];
+
+    /// <summary>
+    ///     True when a shadow run of a test project on <paramref name="framework"/> and <paramref name="targetFramework"/>
+    ///     can run in a warm worker: a test framework the worker executes, on a target framework it loads.
+    /// </summary>
+    internal static bool IsEligible(TestFramework framework, string targetFramework) =>
+        framework is TestFramework.XUnit or TestFramework.NUnit or TestFramework.MSTest
+        && !IsUnsupportedTargetFramework(targetFramework);
 
     private static bool IsUnsupportedTargetFramework(string targetFramework) =>
         targetFramework.StartsWith("net4", StringComparison.OrdinalIgnoreCase)

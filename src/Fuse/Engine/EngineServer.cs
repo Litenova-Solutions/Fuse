@@ -14,8 +14,9 @@ using Fuse.Workspace;
 namespace Fuse.Engine;
 
 /// <summary>
-///     The engine process: one per repository root, guarded by a named mutex, serving one request per pipe
-///     connection. It returns its free memory once idle for <see cref="IdleClock.ReleaseAfter"/>, and exits after
+///     The engine process: one per repository root, guarded by a named mutex. It answers one request per pipe
+///     connection, a batch of requests on one connection, or a stream of watch events on one connection. It returns
+///     its free memory once idle for <see cref="IdleClock.ReleaseAfter"/>, and exits after
 ///     <see cref="IdleClock.ExitAfter"/> without requests, after it drains for a client of another build, or when the
 ///     repository disappears. When another engine needs memory, the engine that has been idle the longest leaves after the shortened idle instead, and comes back from the stored graph.
 /// </summary>
@@ -60,7 +61,8 @@ internal static class EngineServer
         // Every request being served, so the drain waits for each. Pruned as requests arrive, so it holds only those.
         var running = new List<Task>();
         var runningLock = new Lock();
-        using var router = new RequestRouter(root, log);
+        var hub = new WatchHub();
+        using var router = new RequestRouter(root, log, hub);
         _ = router.InitializeAsync(shutdown.Token);
 
         var state = new IdleClock(TimeProvider.System);
@@ -92,7 +94,7 @@ internal static class EngineServer
                     continue;
                 }
 
-                var serving = ServeAsync(pipe, router, state, shutdown, acceptStop, log);
+                var serving = ServeAsync(pipe, router, hub, state, shutdown, acceptStop, log);
                 lock (runningLock)
                 {
                     running.RemoveAll(task => task.IsCompleted);
@@ -152,62 +154,84 @@ internal static class EngineServer
         }
     }
 
-    private static async Task ServeAsync(NamedPipeServerStream pipe, RequestRouter router, IdleClock state, CancellationTokenSource shutdown, CancellationTokenSource acceptStop, EngineLog log)
+    private static async Task ServeAsync(NamedPipeServerStream pipe, RequestRouter router, WatchHub hub, IdleClock state, CancellationTokenSource shutdown, CancellationTokenSource acceptStop, EngineLog log)
     {
         await using (pipe.ConfigureAwait(false))
         {
             try
             {
-                var line = await PipeFraming.ReadLineAsync(pipe, shutdown.Token).ConfigureAwait(false);
-                if (line is null)
-                    return;
-                state.Touch();
-                // The build id is read before the request's case, which a client of another build may name differently or
-                // not at all, so every such client gets Restart.
-                var buildId = ProtocolJson.ReadBuildId(line);
-                if (buildId != EngineVersion.Build)
+                // A batch client sends its next request on the same connection once it has read the answer. The
+                // disconnect watch below reads that request's first byte, which starts the next line.
+                byte? pending = null;
+                while (true)
                 {
-                    // A request of 5.0.0 names its build id otherwise, so none is read from it.
-                    log.Write($"client build {buildId ?? "(none)"} differs; draining for {ClientProcessPath(line)} so the client can start a matching engine");
-                    await WriteAsync(pipe, new EngineResponse.Restart(), CancellationToken.None).ConfigureAwait(false);
-                    await acceptStop.CancelAsync().ConfigureAwait(false);
-                    return;
-                }
+                    var line = pending is { } first
+                        ? await ReadRestOfLineAsync(pipe, first, shutdown.Token).ConfigureAwait(false)
+                        : await PipeFraming.ReadLineAsync(pipe, shutdown.Token).ConfigureAwait(false);
+                    pending = null;
+                    if (line is null)
+                        return;
+                    state.Touch();
+                    // The build id is read before the request's case, which a client of another build may name differently or
+                    // not at all, so every such client gets Restart.
+                    var buildId = ProtocolJson.ReadBuildId(line);
+                    if (buildId != EngineVersion.Build)
+                    {
+                        // A request of 5.0.0 names its build id otherwise, so none is read from it.
+                        log.Write($"client build {buildId ?? "(none)"} differs; draining for {ClientProcessPath(line)} so the client can start a matching engine");
+                        await WriteAsync(pipe, new EngineResponse.Restart(), CancellationToken.None).ConfigureAwait(false);
+                        await acceptStop.CancelAsync().ConfigureAwait(false);
+                        return;
+                    }
 
-                var request = ProtocolJson.ReadRequest(line);
-                if (request is null)
-                    return;
+                    var request = ProtocolJson.ReadRequest(line);
+                    if (request is null)
+                        return;
+                    if (request is EngineRequest.WatchStream watch)
+                    {
+                        await StreamWatchAsync(pipe, hub, watch, state, shutdown, log).ConfigureAwait(false);
+                        return;
+                    }
 
-                state.Begin();
-                try
-                {
-                    using var requestCancellation = CancellationTokenSource.CreateLinkedTokenSource(shutdown.Token);
-                    // The client sends nothing after its request, so a completed read means it disconnected: stop the work.
-                    var disconnect = WatchDisconnectAsync(pipe, requestCancellation);
-                    EngineResponse response;
+                    state.Begin();
                     try
                     {
-                        response = await router.HandleAsync(request, requestCancellation.Token).ConfigureAwait(false);
+                        using var requestCancellation = CancellationTokenSource.CreateLinkedTokenSource(shutdown.Token);
+                        // While the request runs the client sends nothing, so a read that ends means it disconnected:
+                        // stop the work. After the answer is written the pending read ends with the next request's
+                        // first byte on a batch connection, which starts the next line.
+                        var disconnect = WatchDisconnectAsync(pipe, requestCancellation);
+                        EngineResponse response;
+                        try
+                        {
+                            response = await router.HandleAsync(request, requestCancellation.Token).ConfigureAwait(false);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            response = new EngineResponse.Unanswered(ErrorCode.Timeout, "the request is cancelled");
+                        }
+
+                        if (!requestCancellation.IsCancellationRequested)
+                            await WriteAsync(pipe, response, requestCancellation.Token).ConfigureAwait(false);
+
+                        // Let the client read the answer and close its end first: on Unix, where the pipe is a socket,
+                        // cancelling the pending read can reset the connection before the client has read the answer.
+                        await Task.WhenAny(disconnect, Task.Delay(TimeSpan.FromSeconds(5), CancellationToken.None)).ConfigureAwait(false);
+                        if (request is EngineRequest.ShutDown)
+                        {
+                            await shutdown.CancelAsync().ConfigureAwait(false);
+                            await requestCancellation.CancelAsync().ConfigureAwait(false);
+                            await disconnect.ConfigureAwait(false);
+                            return;
+                        }
+
+                        await requestCancellation.CancelAsync().ConfigureAwait(false);
+                        pending = await disconnect.ConfigureAwait(false);
                     }
-                    catch (OperationCanceledException)
+                    finally
                     {
-                        response = new EngineResponse.Unanswered(ErrorCode.Timeout, "the request is cancelled");
+                        state.End();
                     }
-
-                    if (!requestCancellation.IsCancellationRequested)
-                        await WriteAsync(pipe, response, requestCancellation.Token).ConfigureAwait(false);
-
-                    // Let the client read the answer and close its end first: on Unix, where the pipe is a socket,
-                    // cancelling the pending read can reset the connection before the client has read the answer.
-                    await Task.WhenAny(disconnect, Task.Delay(TimeSpan.FromSeconds(5), CancellationToken.None)).ConfigureAwait(false);
-                    if (request is EngineRequest.ShutDown)
-                        await shutdown.CancelAsync().ConfigureAwait(false);
-                    await requestCancellation.CancelAsync().ConfigureAwait(false);
-                    await disconnect.ConfigureAwait(false);
-                }
-                finally
-                {
-                    state.End();
                 }
             }
             catch (Exception e) when (e is IOException or OperationCanceledException or ObjectDisposedException)
@@ -218,6 +242,76 @@ internal static class EngineServer
             {
                 log.Write($"request failed: {e}");
             }
+        }
+    }
+
+    /// <summary>
+    ///     Reads one newline-terminated UTF-8 line that starts with <paramref name="first"/>, the byte the disconnect
+    ///     watch read, then continues on <paramref name="stream"/> the way <see cref="PipeFraming.ReadLineAsync"/> does.
+    /// </summary>
+    /// <returns>The line without its newline.</returns>
+    private static async Task<string> ReadRestOfLineAsync(Stream stream, byte first, CancellationToken cancellationToken)
+    {
+        using var line = new MemoryStream();
+        line.WriteByte(first);
+        if (first == (byte)'\n')
+            return "";
+        var buffer = new byte[4096];
+        while (true)
+        {
+            var read = await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+            if (read == 0)
+                return Encoding.UTF8.GetString(line.GetBuffer(), 0, (int)line.Length);
+            var newline = Array.IndexOf(buffer, (byte)'\n', 0, read);
+            if (newline >= 0)
+            {
+                line.Write(buffer, 0, newline);
+                return Encoding.UTF8.GetString(line.GetBuffer(), 0, (int)line.Length);
+            }
+
+            line.Write(buffer, 0, read);
+        }
+    }
+
+    /// <summary>
+    ///     Streams the events a <see cref="EngineRequest.WatchStream"/> subscription reads, one
+    ///     <see cref="EngineResponse.WatchEventPushed"/> line each, until the client disconnects or the engine stops.
+    ///     A disconnect ends the subscription silently: the client going away is not a failure.
+    /// </summary>
+    private static async Task StreamWatchAsync(NamedPipeServerStream pipe, WatchHub hub, EngineRequest.WatchStream watch, IdleClock state, CancellationTokenSource shutdown, EngineLog log)
+    {
+        state.Begin();
+        try
+        {
+            using var subscription = CancellationTokenSource.CreateLinkedTokenSource(shutdown.Token);
+            // The client sends nothing after its request, so a read that ends means it disconnected: end the stream.
+            var disconnect = WatchDisconnectAsync(pipe, subscription);
+            try
+            {
+                await foreach (var watchEvent in hub.SubscribeAsync(watch.Session, watch.All, subscription.Token).ConfigureAwait(false))
+                {
+                    if (subscription.IsCancellationRequested)
+                        break;
+                    await WriteAsync(pipe, new EngineResponse.WatchEventPushed(watchEvent), subscription.Token).ConfigureAwait(false);
+                }
+            }
+            catch (Exception e) when (e is IOException or OperationCanceledException or ObjectDisposedException)
+            {
+                // The client went away; nothing more to stream.
+            }
+            catch (Exception e)
+            {
+                log.Write($"request failed: {e}");
+            }
+            finally
+            {
+                await subscription.CancelAsync().ConfigureAwait(false);
+                await disconnect.ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            state.End();
         }
     }
 
@@ -263,19 +357,29 @@ internal static class EngineServer
         }
     }
 
-    private static async Task WatchDisconnectAsync(Stream pipe, CancellationTokenSource request)
+    /// <summary>
+    ///     Reads one byte: null when the client disconnected, which cancels <paramref name="request"/>, else the byte
+    ///     itself, which starts the next request's line on a batch connection.
+    /// </summary>
+    private static async Task<byte?> WatchDisconnectAsync(Stream pipe, CancellationTokenSource request)
     {
         var buffer = new byte[1];
         try
         {
             var read = await pipe.ReadAsync(buffer, request.Token).ConfigureAwait(false);
             if (read == 0)
+            {
                 await request.CancelAsync().ConfigureAwait(false);
+                return null;
+            }
+
+            return buffer[0];
         }
         catch (Exception e) when (e is IOException or OperationCanceledException or ObjectDisposedException)
         {
             if (!request.IsCancellationRequested)
                 await request.CancelAsync().ConfigureAwait(false);
+            return null;
         }
     }
 

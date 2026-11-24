@@ -47,6 +47,8 @@ internal sealed class MemberWalk
     private readonly Dictionary<string, ProjectId> _byAssembly;
     private readonly TimeProvider _time;
     private readonly DynamicTestMap? _dynamicMap;
+    private readonly SyntaxTokenIndex? _tokenIndex;
+    private readonly HashSet<ProjectId> _reachedProjectIds;
     private readonly HashSet<ISymbol> _visited = new(SymbolEqualityComparer.Default);
     private readonly HashSet<ISymbol> _newlyAddedSymbols = new(SymbolEqualityComparer.Default);
     private readonly HashSet<RepoPath> _dynamicCoveredApplications = [];
@@ -60,11 +62,16 @@ internal sealed class MemberWalk
     /// <param name="reachedProjects">The Roslyn projects of the changed projects and their dependents; references outside it are not searched.</param>
     /// <param name="time">Measures the walk against its 8 second budget.</param>
     public MemberWalk(RepoRoot root, Generation generation, Solution solution, IReadOnlyList<Project> reachedProjects, TimeProvider time)
-        : this(root, generation, solution, reachedProjects, time, null)
+        : this(root, generation, solution, reachedProjects, time, null, null)
     {
     }
 
     internal MemberWalk(RepoRoot root, Generation generation, Solution solution, IReadOnlyList<Project> reachedProjects, TimeProvider time, DynamicTestMap? dynamicMap)
+        : this(root, generation, solution, reachedProjects, time, dynamicMap, null)
+    {
+    }
+
+    internal MemberWalk(RepoRoot root, Generation generation, Solution solution, IReadOnlyList<Project> reachedProjects, TimeProvider time, DynamicTestMap? dynamicMap, SyntaxTokenIndex? tokenIndex)
     {
         _root = root;
         _graph = generation.Graph;
@@ -72,9 +79,11 @@ internal sealed class MemberWalk
         _solution = solution;
         _reachedProjects = [.. reachedProjects];
         _reachedDocuments = [.. reachedProjects.SelectMany(p => p.Documents)];
+        _reachedProjectIds = reachedProjects.Select(p => p.Id).ToHashSet();
         _byAssembly = reachedProjects.GroupBy(p => p.AssemblyName).ToDictionary(g => g.Key, g => g.First().Id, StringComparer.Ordinal);
         _time = time;
         _dynamicMap = dynamicMap;
+        _tokenIndex = tokenIndex;
     }
 
     /// <summary>The selections found so far, keyed by test project file. It grows while the walk runs.</summary>
@@ -190,7 +199,7 @@ internal sealed class MemberWalk
             var referenced = false;
             foreach (var related in Related(symbol))
             {
-                var references = await SymbolFinder.FindReferencesAsync(related, _solution, _reachedDocuments, cancellationToken).ConfigureAwait(false);
+                var references = await SymbolFinder.FindReferencesAsync(related, _solution, CandidateDocuments(related), cancellationToken).ConfigureAwait(false);
                 foreach (var location in references.SelectMany(r => r.Locations))
                 {
                     if (location.IsImplicit)
@@ -211,20 +220,18 @@ internal sealed class MemberWalk
                 continue;
             if (HostRule.IsCalledByHost(symbol, node))
             {
+                // Recorded coverage only adds tests to the selection; the static whole-project selection below
+                // stands, so a test the static walks selected is never dropped.
                 if (HostRule.TryResolveDynamicSelections(_dynamicMap, _graph, _root, symbol, isNewlyAdded, _selections))
-                {
                     _dynamicCoveredApplications.Add(node.Path);
-                    continue;
-                }
-
-                _unmappedHostApplications.Add(node.Path);
+                else
+                    _unmappedHostApplications.Add(node.Path);
                 SelectDependentsWhole(node, $"{symbol.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat)} is called by an application host or a framework");
             }
             else if (HostRule.IsFrameworkInvoked(symbol))
             {
-                if (HostRule.TryResolveDynamicSelections(_dynamicMap, _graph, _root, symbol, isNewlyAdded, _selections))
-                    continue;
-
+                // Recorded coverage only adds tests; the walk still follows the type, as without a mapping.
+                HostRule.TryResolveDynamicSelections(_dynamicMap, _graph, _root, symbol, isNewlyAdded, _selections);
                 if (symbol.ContainingType is { } containing)
                 {
                     // A library member called through an external interface or base class (Equals, CompareTo,
@@ -278,6 +285,152 @@ internal sealed class MemberWalk
 
     private ProjectId? FindProjectId(ISymbol symbol) =>
         symbol.ContainingAssembly is { } assembly ? _byAssembly.GetValueOrDefault(assembly.Name) : null;
+
+    /// <summary>
+    ///     The reached documents a reference to <paramref name="symbol"/> can sit in, narrowed through the syntax token
+    ///     index by the member's name. Without an index, when the symbol has no name to narrow by, or when the index
+    ///     fails, every reached document is searched, as before.
+    /// </summary>
+    private ImmutableHashSet<Document> CandidateDocuments(ISymbol symbol)
+    {
+        try
+        {
+            if (_tokenIndex is null || !TryGetSymbolFilterTokens(symbol, out var identifiers, out _))
+                return _reachedDocuments;
+            var candidates = _tokenIndex.CandidateDocuments(_solution, identifiers, [], _reachedProjectIds);
+            return WithUnindexedAndDeclaring(candidates, symbol);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            return _reachedDocuments;
+        }
+    }
+
+    /// <summary>
+    ///     The reached projects a class derived from <paramref name="type"/> can sit in, narrowed through the syntax
+    ///     token index. Without an index or when the index fails, every reached project is searched, as before.
+    /// </summary>
+    private ImmutableHashSet<Project> CandidateProjectsForDerived(INamedTypeSymbol type)
+    {
+        try
+        {
+            if (_tokenIndex is null || type.IsAnonymousType || type.IsTupleType || string.IsNullOrEmpty(type.Name))
+                return _reachedProjects;
+            var candidates = _tokenIndex.CandidateDocuments(_solution, [], [type.Name], _reachedProjectIds);
+            var builder = ImmutableHashSet.CreateBuilder<Project>();
+            foreach (var document in candidates)
+                builder.Add(document.Project);
+            foreach (var project in _reachedProjects)
+            {
+                if (project.Documents.Any(d => string.IsNullOrEmpty(d.FilePath)))
+                    builder.Add(project);
+            }
+
+            return builder.ToImmutable();
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            return _reachedProjects;
+        }
+    }
+
+    private ImmutableHashSet<Document> WithUnindexedAndDeclaring(
+        ImmutableHashSet<Document> candidates,
+        ISymbol symbol)
+    {
+        var builder = candidates.ToBuilder();
+        foreach (var document in _reachedDocuments)
+        {
+            if (string.IsNullOrEmpty(document.FilePath))
+                builder.Add(document);
+        }
+
+        foreach (var syntaxRef in symbol.DeclaringSyntaxReferences)
+        {
+            if (_solution.GetDocument(syntaxRef.SyntaxTree) is { } declaring && _reachedProjectIds.Contains(declaring.Project.Id))
+                builder.Add(declaring);
+        }
+
+        return builder.ToImmutable();
+    }
+
+    private static bool TryGetSymbolFilterTokens(
+        ISymbol symbol,
+        out IReadOnlyList<string> identifiers,
+        out IReadOnlyList<string> baseTypeNames)
+    {
+        identifiers = [];
+        baseTypeNames = [];
+
+        if (symbol.IsImplicitlyDeclared)
+            return false;
+
+        switch (symbol)
+        {
+            case IMethodSymbol method:
+                if (method.MethodKind is MethodKind.Constructor or MethodKind.StaticConstructor
+                    or MethodKind.UserDefinedOperator or MethodKind.Conversion
+                    or MethodKind.BuiltinOperator or MethodKind.Destructor)
+                    return false;
+
+                if (method.AssociatedSymbol is IPropertySymbol { IsIndexer: true })
+                    return false;
+
+                var methodName = SimpleMemberName(method.AssociatedSymbol?.Name ?? method.Name);
+                if (string.IsNullOrEmpty(methodName) || IsImplicitPatternMember(methodName))
+                    return false;
+
+                identifiers = [methodName];
+                baseTypeNames = method.ContainingType is { } methodOwner ? [methodOwner.Name] : [];
+                return true;
+
+            case IPropertySymbol property:
+                if (property.IsIndexer)
+                    return false;
+                var propName = SimpleMemberName(property.Name);
+                if (string.IsNullOrEmpty(propName) || IsImplicitPatternMember(propName))
+                    return false;
+                identifiers = [propName];
+                baseTypeNames = property.ContainingType is { } propOwner ? [propOwner.Name] : [];
+                return true;
+
+            case IEventSymbol evt:
+                var evtName = SimpleMemberName(evt.Name);
+                if (string.IsNullOrEmpty(evtName))
+                    return false;
+                identifiers = [evtName];
+                baseTypeNames = evt.ContainingType is { } evtOwner ? [evtOwner.Name] : [];
+                return true;
+
+            case INamedTypeSymbol type:
+                if (type.IsAnonymousType || type.IsTupleType || string.IsNullOrEmpty(type.Name))
+                    return false;
+                identifiers = type.Name.Length > "Attribute".Length && type.Name.EndsWith("Attribute", StringComparison.Ordinal)
+                    ? [type.Name, type.Name[..^"Attribute".Length]]
+                    : [type.Name];
+                baseTypeNames = [type.Name];
+                return true;
+
+            default:
+                if (string.IsNullOrEmpty(symbol.Name))
+                    return false;
+                identifiers = [symbol.Name];
+                return true;
+        }
+    }
+
+    private static string SimpleMemberName(string name)
+    {
+        var dot = name.LastIndexOf('.');
+        return dot >= 0 ? name[(dot + 1)..] : name;
+    }
+
+    private static bool IsImplicitPatternMember(string name) =>
+        name is "GetEnumerator" or "GetAsyncEnumerator" or "MoveNext" or "MoveNextAsync"
+            or "Current" or "Dispose" or "DisposeAsync"
+            or "GetAwaiter" or "IsCompleted" or "GetResult" or "OnCompleted" or "UnsafeOnCompleted"
+            or "Deconstruct" or "Add" or "Slice" or "Length" or "Count"
+            or "GetPinnableReference" or "PrintMembers" or "EqualityContract" or "<Clone>$";
 
     private async Task VisitReferenceAsync(ReferenceLocation location, CancellationToken cancellationToken)
     {
@@ -336,7 +489,7 @@ internal sealed class MemberWalk
             return;
         if (type.TypeKind != TypeKind.Class)
             return;
-        foreach (var derived in await SymbolFinder.FindDerivedClassesAsync(type, _solution, transitive: true, _reachedProjects, cancellationToken).ConfigureAwait(false))
+        foreach (var derived in await SymbolFinder.FindDerivedClassesAsync(type, _solution, transitive: true, CandidateProjectsForDerived(type), cancellationToken).ConfigureAwait(false))
         {
             var project = _solution.GetProject(FindProjectId(derived));
             if (project is not null && NodeOf(project) is { IsTest: true } testNode)

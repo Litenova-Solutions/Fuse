@@ -306,9 +306,11 @@ internal static class EngineClient
             await pipe.FlushAsync(cancellationToken).ConfigureAwait(false);
 
             var receivedAny = false;
+            // The engine writes events back to back, so two can arrive in one read; the reader keeps the second.
+            var reader = new PipeLineReader(pipe);
             while (!cancellationToken.IsCancellationRequested)
             {
-                var line = await PipeFraming.ReadLineAsync(pipe, cancellationToken).ConfigureAwait(false);
+                var line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
                 if (line is null)
                     return receivedAny;
                 if (Read(line, out var response) is not null || response is null)

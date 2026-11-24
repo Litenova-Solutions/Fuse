@@ -399,7 +399,7 @@ internal sealed class TestPlanner : IDisposable
             var shadowDir = Path.GetDirectoryName(shadow.Assembly);
             var sliceKey = SliceCache.ComputeKey(variant, pending.Graph, _workspace.Root, result.Closure, result.Emitted, shadowDir, runSettings, filter, variantFilterArguments);
             var cached = pending.NoCache ? null : SliceCache.TryGet(sliceKey, noCache: false);
-            var warmEligible = !node.RequiresContainerRuntime && !IsLegacyNetFramework(variant) && IsWarmSupported(node);
+            var warmEligible = !node.RequiresContainerRuntime && !IsLegacyNetFramework(variant) && WarmTestPool.IsEligible(node.Framework, TargetFrameworkOf(variant));
             prepared.Add((variant, shadow, filter, variantFilterArguments, sliceKey, cached, warmEligible));
         }
 
@@ -427,9 +427,6 @@ internal sealed class TestPlanner : IDisposable
         ];
     }
 
-    private static bool IsWarmSupported(ProjectNode node) =>
-        node.Framework is TestFramework.XUnit or TestFramework.NUnit or TestFramework.MSTest;
-
     private static bool IsLegacyNetFramework(Project variant)
     {
         if (variant.OutputFilePath is null)
@@ -446,6 +443,21 @@ internal sealed class TestPlanner : IDisposable
         && !tfm.Contains('.')
         && char.IsDigit(tfm[3])
         && tfm[3] <= '4';
+
+    /// <summary>The target framework of <paramref name="variant"/>: its output folder's name, or the framework its project name carries.</summary>
+    private static string TargetFrameworkOf(Project variant)
+    {
+        if (variant.OutputFilePath is { } output)
+        {
+            var folder = Path.GetFileName(Path.GetDirectoryName(output));
+            if (!string.IsNullOrEmpty(folder))
+                return folder;
+        }
+
+        var open = variant.Name.LastIndexOf('(');
+        var close = variant.Name.LastIndexOf(')');
+        return open >= 0 && close > open ? variant.Name[(open + 1)..close] : "";
+    }
 
     private static async Task<bool> UsesMtpEntryPointAsync(Project variant, bool defaultRunner, CancellationToken cancellationToken)
     {

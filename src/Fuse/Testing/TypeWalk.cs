@@ -111,9 +111,10 @@ internal sealed class TypeWalk
             }
             else if (entry.Node.IsExecutable)
             {
-                if (_dynamicMap is { HasAnyMapping: true }
-                    && TrySelectExecutableFromDynamicMap(entry.Node, key.Name, seeds, graph, root, selections))
-                    continue;
+                // Recorded coverage only adds tests to the selection; the static whole-project selection below
+                // stands, so a test the static walks selected is never dropped.
+                if (_dynamicMap is { HasAnyMapping: true })
+                    TrySelectExecutableFromDynamicMap(entry.Node, key.Name, seeds, graph, root, selections);
 
                 foreach (var dependent in HostRule.DependentTestProjects(graph, entry.Node))
                     selections.SelectWhole(dependent, $"{entry.Node.Name} uses the changed code and runs behind an application host");

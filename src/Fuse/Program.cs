@@ -719,9 +719,7 @@ internal static class Program
             return 2;
         }
 
-        // Integrator: connect to Fuse.Testing.WarmTestWorker.RunAsync(args, cancellationToken).
-        await Console.Error.WriteLineAsync("fuse: test-worker is not wired in this build").ConfigureAwait(false);
-        return 2;
+        return await Fuse.Testing.WarmTestWorker.RunAsync(args, cancellationToken).ConfigureAwait(false);
     }
 
     private static async Task<int> EvaluateBlueprintAsync(string[] args, CancellationToken cancellationToken)
@@ -732,9 +730,7 @@ internal static class Program
             return 2;
         }
 
-        // Integrator: connect to Fuse.Workspace.BlueprintEvaluator.EvaluateCliAsync(args, cancellationToken).
-        await Console.Error.WriteLineAsync("fuse: evaluate-blueprint is not wired in this build").ConfigureAwait(false);
-        return 2;
+        return await Fuse.Workspace.BlueprintEvaluator.EvaluateCliAsync(args, cancellationToken).ConfigureAwait(false);
     }
 
     private static int PrintVersion()

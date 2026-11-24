@@ -1,4 +1,7 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
+using Fuse.Changes;
+using Fuse.Changes.Model;
 using Fuse.Check;
 using Fuse.Check.Model;
 using Fuse.Failures;
@@ -9,6 +12,9 @@ using Fuse.Telemetry;
 using Fuse.Testing;
 using Fuse.Testing.Model;
 using Fuse.Workspace;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Text;
 
 namespace Fuse.Engine;
 
@@ -18,12 +24,14 @@ namespace Fuse.Engine;
 /// </summary>
 internal sealed class RequestRouter : IDisposable
 {
+    private readonly RepoRoot _root;
     private readonly EngineLog _log;
     private readonly RepoWorkspace _workspace;
     private readonly Checker _checker;
     private readonly TestPlanner _planner;
     private readonly RequestGate _requestLock = new();
     private readonly Scheduler _scheduler;
+    private readonly bool _ownsScheduler;
     private readonly MemoryBudget _budget;
     private readonly Preloader _preloader;
     private readonly BaselineWarmer _warmer;
@@ -31,22 +39,30 @@ internal sealed class RequestRouter : IDisposable
     private readonly SessionEdits _sessions;
     private readonly AnswerStore _answers;
     private readonly BackgroundCheck _background;
+    private readonly JudgeService _judge;
+    private readonly SurfaceGuardStore _guards;
+    private readonly WatchHub? _watchHub;
 
     /// <summary>Guards the last completed sync's status and the distinct touched paths it counted.</summary>
     private readonly Lock _statusLock = new();
 
+    /// <summary>Guards the routers that serve the other worktrees of this repository.</summary>
+    private readonly Lock _worktreeLock = new();
+
+    private readonly Dictionary<string, RequestRouter> _worktreeRouters = new(StringComparer.Ordinal);
     private readonly HashSet<RepoPath> _touchedPaths = [];
     private int _touchedConfigurationGeneration;
     private Task? _initialization;
     private CancellationToken _shutdown;
 
-    public RequestRouter(RepoRoot root, EngineLog log)
-        : this(root, log, new Scheduler(Scheduler.DefaultReaderCount), new MemoryBudget())
+    public RequestRouter(RepoRoot root, EngineLog log, WatchHub? watchHub = null)
+        : this(root, log, new Scheduler(Scheduler.DefaultReaderCount), new MemoryBudget(), watchHub)
     {
     }
 
-    internal RequestRouter(RepoRoot root, EngineLog log, Scheduler scheduler, MemoryBudget budget)
+    internal RequestRouter(RepoRoot root, EngineLog log, Scheduler scheduler, MemoryBudget budget, WatchHub? watchHub = null, bool ownsScheduler = true)
     {
+        _root = root;
         _log = log;
         _workspace = new RepoWorkspace(root, log.Write);
         _sessions = new SessionEdits(root, Path.Combine(root.StateDirectory, "sessions.tsv"), Path.Combine(root.StateDirectory, "registered-sessions.tsv"), log: log.Write);
@@ -56,9 +72,13 @@ internal sealed class RequestRouter : IDisposable
         _warmer = new BaselineWarmer(_workspace, _checker, _requestLock, log.Write);
         _requestLog = new RequestLog(log);
         _scheduler = scheduler;
+        _ownsScheduler = ownsScheduler;
         _budget = budget;
         _answers = new AnswerStore(root.StateDirectory, log.Write);
         _background = new BackgroundCheck(LiveSessionFiles, BackgroundKey, _answers, RunBackgroundCheckAsync, log.Write);
+        _judge = new JudgeService(_workspace, root);
+        _guards = new SurfaceGuardStore(root);
+        _watchHub = watchHub;
     }
 
     /// <summary>Evaluates projects, then preloads the projects that already have uncommitted changes.</summary>
@@ -107,8 +127,9 @@ internal sealed class RequestRouter : IDisposable
 
     /// <summary>
     ///     Answers one request. A ping or a shutdown is answered at once; a status answer bypasses the scheduler
-    ///     and reads the newest generation; a session registration bypasses it too, under its own lock. A check or
-    ///     a test plan waits for initialization (a check that does not wait for the load is refused while loading),
+    ///     and reads the newest generation; a session registration or guard, a memory yield and a watch subscription
+    ///     bypass it too, under their own locks. A check or a test plan waits for initialization
+    ///     (a check that does not wait for the load is refused while loading),
     ///     then for a reader in its lane, then runs. A check whose content key matches one in flight shares it;
     ///     one whose key the result store already keeps is answered from it, stamped or not as it asked. Every
     ///     check answer is kept by its key and, for a session, as its session file, and every Unanswered and
@@ -116,9 +137,14 @@ internal sealed class RequestRouter : IDisposable
     ///     at once. A check's wait and analyzer budget start when a reader takes it, not when it queued. A check
     ///     holds a reader until it is answered; a test plan holds one through the sync and the selection, and
     ///     releases it before it mirrors and emits from the snapshot it took. A changed-build plan syncs without loading a project.
+    ///     A request that names another worktree of this repository is answered by that worktree's router, which this
+    ///     router starts on its first request and which shares this router's scheduler, memory budget, log and watch hub.
     /// </summary>
     public async Task<EngineResponse> HandleAsync(EngineRequest request, CancellationToken cancellationToken)
     {
+        if (await RouteToWorktreeAsync(request, cancellationToken).ConfigureAwait(false) is { } routed)
+            return routed;
+
         // The session a request names is recorded before its key is taken: the key hashes the session record, so
         // a repeat of the check that first named the session takes the same key as the check that computed the
         // answer and finds it kept, instead of hashing a record its own request had not written yet.
@@ -198,8 +224,12 @@ internal sealed class RequestRouter : IDisposable
             return new EngineResponse.Acknowledged();
         if (request is EngineRequest.Status)
             return await StatusAsync(request, cancellationToken).ConfigureAwait(false);
-        if (request is EngineRequest.BeginSession or EngineRequest.EndSession)
+        if (request is EngineRequest.YieldMemory)
+            return await YieldMemoryAsync(request, cancellationToken).ConfigureAwait(false);
+        if (request is EngineRequest.BeginSession or EngineRequest.EndSession or EngineRequest.SessionGuard)
             return await SessionAsync(request, cancellationToken).ConfigureAwait(false);
+        if (request is EngineRequest.WatchStream watch)
+            return await WatchFirstAsync(watch, cancellationToken).ConfigureAwait(false);
 
         // The session is credited once, in HandleAsync before the key is taken. A background re-check
         // reaches this call without HandleAsync and credits nothing.
@@ -240,7 +270,10 @@ internal sealed class RequestRouter : IDisposable
             if (request is EngineRequest.CheckChanges changes)
             {
                 var session = SessionEdits.IsValid(changes.Session) ? changes.Session : null;
-                return Stamped(ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.AllChanges(), session, analyzers, phases, cancellationToken, maxReported: changes.MaxErrors).ConfigureAwait(false)), changes.StampTree);
+                var options = new CheckOptions(IncludeRepairBrief: changes.Brief);
+                var answered = Stamped(ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.AllChanges(), session, analyzers, phases, options, cancellationToken, maxReported: changes.MaxErrors).ConfigureAwait(false)), changes.StampTree);
+                await PublishGuardViolationsAsync(cancellationToken).ConfigureAwait(false);
+                return answered;
             }
             if (request is EngineRequest.CheckPaths paths)
                 return await CheckPathsAsync(paths, analyzers, phases, cancellationToken).ConfigureAwait(false);
@@ -248,9 +281,18 @@ internal sealed class RequestRouter : IDisposable
                 return await CheckFilesAsync(check, analyzers, phases, cancellationToken).ConfigureAwait(false);
             if (request is EngineRequest.PlanChangedBuild)
                 return await PlanChangedBuildAsync(phases, cancellationToken).ConfigureAwait(false);
+            if (request is EngineRequest.Graph)
+                return await GraphAsync(phases, cancellationToken).ConfigureAwait(false);
+            if (request is EngineRequest.Impact impact)
+                return await ImpactAsync(impact, phases, cancellationToken).ConfigureAwait(false);
+            if (request is EngineRequest.Judge judge)
+                return await JudgeAsync(judge, cancellationToken).ConfigureAwait(false);
 
+            // MaxFailures is enforced where tests run, not while planning, so the plan carries no trace of it.
             if (request is EngineRequest.PlanFailedTests failed)
             {
+                if (failed.Clean)
+                    _planner.SliceCache.Clear();
                 var (byProject, unknown) = FailedTestProjects(failed);
 
                 var pendingFailed = await _planner.SelectFailedAsync(byProject, unknown, phases, cancellationToken).ConfigureAwait(false);
@@ -258,15 +300,23 @@ internal sealed class RequestRouter : IDisposable
                 held = false;
                 lease.Dispose();
                 ScheduleBackground();
-                return AnswerPlan(await _planner.PrepareAsync(pendingFailed, phases, cancellationToken).ConfigureAwait(false));
+                return AnswerPlan(await _planner.PrepareAsync(pendingFailed, phases, cancellationToken).ConfigureAwait(false), failed.NoCache);
             }
 
+            var (cleanCache, noCache) = request switch
+            {
+                EngineRequest.PlanAffectedTests affected => (affected.Clean, affected.NoCache),
+                EngineRequest.PlanAllTests all => (all.Clean, all.NoCache),
+                _ => (false, false),
+            };
+            if (cleanCache)
+                _planner.SliceCache.Clear();
             TestScope scope = request switch
             {
                 EngineRequest.PlanAffectedTests { Session: { } session } sessioned when SessionEdits.IsValid(session) =>
-                    new TestScope.Affected { LeftOut = await OnlyOtherSessionsWroteAsync(session, cancellationToken).ConfigureAwait(false), NamedPaths = sessioned.Projects, BuildOnly = sessioned.BuildOnly },
-                EngineRequest.PlanAffectedTests plan => new TestScope.Affected { NamedPaths = plan.Projects, BuildOnly = plan.BuildOnly },
-                EngineRequest.PlanAllTests => new TestScope.All(),
+                    new TestScope.Affected { LeftOut = await OnlyOtherSessionsWroteAsync(session, cancellationToken).ConfigureAwait(false), NamedPaths = sessioned.Projects, BuildOnly = sessioned.BuildOnly, NoCache = sessioned.NoCache },
+                EngineRequest.PlanAffectedTests plan => new TestScope.Affected { NamedPaths = plan.Projects, BuildOnly = plan.BuildOnly, NoCache = plan.NoCache },
+                EngineRequest.PlanAllTests allTests => new TestScope.All { NoCache = allTests.NoCache },
                 _ => throw new UnreachableException($"{request.GetType().Name} is answered before the scheduler"),
             };
             var pending = await _planner.SelectAsync(scope, phases, cancellationToken).ConfigureAwait(false);
@@ -276,7 +326,7 @@ internal sealed class RequestRouter : IDisposable
             held = false;
             lease.Dispose();
             ScheduleBackground();
-            return AnswerPlan(await _planner.PrepareAsync(pending, phases, cancellationToken).ConfigureAwait(false));
+            return AnswerPlan(await _planner.PrepareAsync(pending, phases, cancellationToken).ConfigureAwait(false), noCache);
         }
         catch (FuseException e)
         {
@@ -395,6 +445,43 @@ internal sealed class RequestRouter : IDisposable
     }
 
     /// <summary>
+    ///     Answers <paramref name="request"/> on the worktree it names, or null when this router serves it: a request
+    ///     without a worktree root, one that names this router's own root, and the engine-wide requests stay here. A
+    ///     root that names no worktree of this repository is answered with <see cref="Fuse.Failures.ErrorCode.InvalidPath"/>.
+    /// </summary>
+    private async Task<EngineResponse?> RouteToWorktreeAsync(EngineRequest request, CancellationToken cancellationToken)
+    {
+        if (request is EngineRequest.Ping or EngineRequest.ShutDown or EngineRequest.YieldMemory)
+            return null;
+        var named = request.WorktreeRoot;
+        if (string.IsNullOrWhiteSpace(named) || string.Equals(named, _root.Path, StringComparison.Ordinal))
+            return null;
+        var other = RepoRoot.Find(named);
+        if (other is null || !string.Equals(other.PipeName, _root.PipeName, StringComparison.Ordinal))
+            return new EngineResponse.Unanswered(ErrorCode.InvalidPath, $"\"{named}\" is not a worktree of this repository");
+        if (string.Equals(other.StateDirectory, _root.StateDirectory, StringComparison.Ordinal))
+            return null;
+        return await WorktreeRouter(other).HandleAsync(request, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>The router that serves <paramref name="root"/>, started on its first request and shared by every request for it.</summary>
+    private RequestRouter WorktreeRouter(RepoRoot root)
+    {
+        lock (_worktreeLock)
+        {
+            if (!_worktreeRouters.TryGetValue(root.StateDirectory, out var child))
+            {
+                child = new RequestRouter(root, _log, _scheduler, _budget, _watchHub, ownsScheduler: false);
+                _worktreeRouters[root.StateDirectory] = child;
+                // Started without waiting: the delegated request waits for it the way a primary request waits for this router.
+                _ = child.InitializeAsync(_shutdown);
+            }
+
+            return child;
+        }
+    }
+
+    /// <summary>
     ///     Credits the session a request carries with the files it names and marks a stopping session stopped.
     ///     Recorded before anything can refuse the check, so a check answered "still loading" still credits the
     ///     session with its files, and before a kept answer is served, so its record is the one that key held.
@@ -430,14 +517,148 @@ internal sealed class RequestRouter : IDisposable
             : new EngineResponse.CheckAnswered(answered.Report with { Tree = null, TreeFiles = 0 });
     }
 
-    /// <summary>Keeps a check answer by its content key, as the session file of the session it was answered to.</summary>
+    /// <summary>Keeps a check answer by its content key, as the session file of the session it was answered to, and publishes the session's answer when it changed.</summary>
     private void StoreAnswer(string key, EngineRequest request, EngineResponse response)
     {
         if (response is not EngineResponse.CheckAnswered answered)
             return;
         var generation = _workspace.PinGeneration();
         var tree = answered.Report.Tree ?? TreeStamp.Of(ChangedPairs(generation.Changed));
-        _answers.Keep(key, RequestLog.SessionOf(request), generation.Number, tree, answered.Report);
+        var session = RequestLog.SessionOf(request);
+        CheckReport? previous = null;
+        if (session is not null && _answers.TryGetSession(session, out var kept))
+            previous = kept;
+        _answers.Keep(key, session, generation.Number, tree, answered.Report);
+        if (session is not null && _watchHub is not null && AnswerChanged(previous, answered.Report))
+            _watchHub.Publish(new WatchEvent("check", session, _root.Path, generation.Number, tree, answered.Report.ErrorCount, answered.Report.Errors));
+    }
+
+    /// <summary>True when <paramref name="report"/> answers differently than <paramref name="previous"/>: a first answer, or different errors.</summary>
+    private static bool AnswerChanged(CheckReport? previous, CheckReport report)
+    {
+        if (previous is null)
+            return true;
+        if (previous.ErrorCount != report.ErrorCount || previous.Errors.Length != report.Errors.Length)
+            return true;
+        for (var i = 0; i < previous.Errors.Length; i++)
+        {
+            if (previous.Errors[i].Error.ToString() != report.Errors[i].Error.ToString())
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    ///     Publishes a watch event for every frozen declaration the tree changed: after each check, so a watcher learns
+    ///     of a violation with the answer that found the edit. Never fails the check it follows.
+    /// </summary>
+    private async Task PublishGuardViolationsAsync(CancellationToken cancellationToken)
+    {
+        if (_watchHub is null)
+            return;
+        try
+        {
+            var generation = _workspace.PinGeneration();
+            if (generation.Changed.Count == 0)
+                return;
+            var declarations = await ChangedDeclarationsAsync(generation, cancellationToken).ConfigureAwait(false);
+            foreach (var violation in _guards.Violations(generation.Changed, declarations))
+                _watchHub.Publish(violation);
+        }
+        catch (Exception e)
+        {
+            // A cancelled client disconnects; anything else is logged. Either way the check it follows still answers.
+            if (e is not OperationCanceledException)
+                _log.Write($"guard violations skipped: {e.Message}");
+        }
+    }
+
+    /// <summary>
+    ///     The changed declaration headers of each changed C# file in <paramref name="generation"/>: the working-tree
+    ///     header of an added or changed declaration, the HEAD header of a removed one, across every project that
+    ///     compiles the file. A file that cannot be read reports no declarations.
+    /// </summary>
+    private async Task<Dictionary<RepoPath, IReadOnlyList<string>>> ChangedDeclarationsAsync(Generation generation, CancellationToken cancellationToken)
+    {
+        var declarations = new ConcurrentDictionary<RepoPath, IReadOnlyList<string>>();
+        await Parallel.ForEachAsync(
+            generation.Changed.Where(path => path.Absolute.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)),
+            new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = cancellationToken },
+            async (path, ct) =>
+            {
+                try
+                {
+                    if (await DeclarationsOfAsync(path, generation, ct).ConfigureAwait(false) is { Count: > 0 } headers)
+                        declarations[path] = headers;
+                }
+                catch (Exception e) when (e is not OperationCanceledException)
+                {
+                    _log.Write($"guard violations skipped for {path.Relative}: {e.Message}");
+                }
+            }).ConfigureAwait(false);
+        return new Dictionary<RepoPath, IReadOnlyList<string>>(declarations);
+    }
+
+    /// <summary>The changed declaration headers of <paramref name="path"/>, or null when its surface reads the same as HEAD.</summary>
+    private async Task<IReadOnlyList<string>?> DeclarationsOfAsync(RepoPath path, Generation generation, CancellationToken cancellationToken)
+    {
+        var headers = new HashSet<string>(StringComparer.Ordinal);
+        var baseline = generation.Baseline;
+        var current = generation.Current;
+        var projectIds = baseline.GetDocumentIdsWithFilePath(path.Absolute).Concat(current.GetDocumentIdsWithFilePath(path.Absolute)).Select(id => id.ProjectId).Distinct().ToList();
+        if (projectIds.Count == 0)
+        {
+            var before = _workspace.HeadText(path) is { } head ? FileDeclarations.Of(await ParseAsync(head, cancellationToken).ConfigureAwait(false)) : FileDeclarations.Empty;
+            var after = await DiskDeclarationsAsync(path, cancellationToken).ConfigureAwait(false);
+            AddHeaders(headers, SurfaceDiff.Compare(before, after).Changes);
+        }
+        else
+        {
+            foreach (var projectId in projectIds)
+            {
+                var before = await DeclarationsInAsync(baseline, projectId, path, cancellationToken).ConfigureAwait(false);
+                var after = await DeclarationsInAsync(current, projectId, path, cancellationToken).ConfigureAwait(false);
+                AddHeaders(headers, SurfaceDiff.Compare(before, after).Changes);
+            }
+        }
+
+        return headers.Count == 0 ? null : [.. headers.Order(StringComparer.Ordinal)];
+    }
+
+    /// <summary>The declarations <paramref name="solution"/> holds for <paramref name="path"/> in <paramref name="projectId"/>, or none when it holds no document there.</summary>
+    private static async Task<FileDeclarations> DeclarationsInAsync(Solution solution, ProjectId projectId, RepoPath path, CancellationToken cancellationToken)
+    {
+        var document = solution.GetDocumentIdsWithFilePath(path.Absolute).Where(id => id.ProjectId == projectId).Select(solution.GetDocument).FirstOrDefault(d => d is not null);
+        return document is not null && await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false) is { } root ? FileDeclarations.Of(root) : FileDeclarations.Empty;
+    }
+
+    /// <summary>The declarations of <paramref name="path"/> as the working tree holds it, or none when it is gone.</summary>
+    private static async Task<FileDeclarations> DiskDeclarationsAsync(RepoPath path, CancellationToken cancellationToken)
+    {
+        if (!File.Exists(path.Absolute))
+            return FileDeclarations.Empty;
+        var text = SolutionViews.Decode(SharedRead.AllBytes(path.Absolute));
+        return FileDeclarations.Of(await ParseAsync(text, cancellationToken).ConfigureAwait(false));
+    }
+
+    private static Task<SyntaxNode> ParseAsync(SourceText text, CancellationToken cancellationToken) =>
+        CSharpSyntaxTree.ParseText(text, CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Preview), cancellationToken: cancellationToken)
+            .GetRootAsync(cancellationToken);
+
+    /// <summary>Adds the header of each change: the working-tree header of an added or changed declaration, the HEAD header of a removed one.</summary>
+    private static void AddHeaders(HashSet<string> headers, IReadOnlyList<DeclarationChange> changes)
+    {
+        foreach (var change in changes)
+        {
+            headers.Add(change switch
+            {
+                DeclarationChange.Added added => added.After,
+                DeclarationChange.Changed edited => edited.After,
+                DeclarationChange.Removed removed => removed.Before,
+                _ => throw new UnreachableException($"a declaration change is added, changed or removed, not {change.GetType().Name}"),
+            });
+        }
     }
 
     /// <summary>The request a background re-check of <paramref name="session"/> sends: its files, answered to it, with every analyzer and a tree stamp.</summary>
@@ -580,19 +801,19 @@ internal sealed class RequestRouter : IDisposable
         switch (request)
         {
             case EngineRequest.CheckChanges changes:
-                scopeKey = "all";
+                scopeKey = "all" + (changes.Brief ? "|brief" : "");
                 session = SessionEdits.IsValid(changes.Session) ? changes.Session : null;
                 compilationWide = true;
                 maxErrors = changes.MaxErrors;
                 break;
             case EngineRequest.CheckFiles files:
-                scopeKey = "files:" + string.Join(",", files.Files.Order(StringComparer.Ordinal));
+                scopeKey = "files:" + string.Join(",", files.Files.Order(StringComparer.Ordinal)) + (files.Brief ? "|brief" : "") + (files.InteractiveFast ? "|fast" : "");
                 session = SessionEdits.IsValid(files.Session) ? files.Session : null;
                 compilationWide = !files.LeaveOutCompilationWide;
                 maxErrors = files.MaxErrors;
                 break;
             case EngineRequest.CheckPaths paths:
-                scopeKey = "paths:" + string.Join(",", paths.Paths.Order(StringComparer.Ordinal));
+                scopeKey = "paths:" + string.Join(",", paths.Paths.Order(StringComparer.Ordinal)) + (paths.Brief ? "|brief" : "");
                 session = SessionEdits.IsValid(paths.Session) ? paths.Session : null;
                 compilationWide = true;
                 maxErrors = paths.MaxErrors;
@@ -628,8 +849,17 @@ internal sealed class RequestRouter : IDisposable
         return kept is null ? null : $"{scopeKey}|{session ?? ""}|{compilationWide}|{kept}";
     }
 
-    /// <summary>True while the projects are evaluated and first loaded, or while a background load runs.</summary>
-    public bool IsLoading => _initialization is { IsCompleted: false } || _preloader.IsRunning;
+    /// <summary>True while the projects are evaluated and first loaded, or while a background load runs, here or in another worktree this router serves.</summary>
+    public bool IsLoading
+    {
+        get
+        {
+            if (_initialization is { IsCompleted: false } || _preloader.IsRunning)
+                return true;
+            lock (_worktreeLock)
+                return _worktreeRouters.Values.Any(child => child.IsLoading);
+        }
+    }
 
     /// <summary>The planner the router answers test plans with, for a test that answers a plan alongside a check.</summary>
     internal TestPlanner Planner => _planner;
@@ -707,7 +937,7 @@ internal sealed class RequestRouter : IDisposable
     ///     Checks the files <paramref name="check"/> names. The wire carries them as strings, absolute or relative to the
     ///     root, in whatever letter case the client wrote; each becomes a <see cref="RepoPath"/> in the spelling the file
     ///     system holds it under, and one that is empty or not a valid path is answered with
-    ///     <see cref="ErrorCode.InvalidPath"/>, naming it, before anything is checked.
+    ///     <see cref="Fuse.Failures.ErrorCode.InvalidPath"/>, naming it, before anything is checked.
     /// </summary>
     private async Task<EngineResponse> CheckFilesAsync(EngineRequest.CheckFiles check, AnalyzerRun analyzers, PhaseTimes phases, CancellationToken cancellationToken)
     {
@@ -727,7 +957,10 @@ internal sealed class RequestRouter : IDisposable
         }
 
         var session = SessionEdits.IsValid(check.Session) ? check.Session : null;
-        return Stamped(ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.Files(paths), session, analyzers, phases, cancellationToken, maxReported: check.MaxErrors).ConfigureAwait(false)), check.StampTree);
+        var options = new CheckOptions(check.InteractiveFast, check.Brief);
+        var answered = Stamped(ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.Files(paths), session, analyzers, phases, options, cancellationToken, maxReported: check.MaxErrors).ConfigureAwait(false)), check.StampTree);
+        await PublishGuardViolationsAsync(cancellationToken).ConfigureAwait(false);
+        return answered;
     }
 
     /// <summary>
@@ -810,6 +1043,107 @@ internal sealed class RequestRouter : IDisposable
         return new EngineResponse.ChangedBuildAnswered(ChangedBuildPlanner.Plan(generation.Graph, generation.Changed, projectFiles));
     }
 
+    /// <summary>Answers the project graph, coupling clusters and test ownership from the generation a sync pins.</summary>
+    private async Task<EngineResponse> GraphAsync(PhaseTimes phases, CancellationToken cancellationToken)
+    {
+        var syncing = phases.Start();
+        var generation = await _workspace.SyncAndPinAsync([], cancellationToken).ConfigureAwait(false);
+        phases.Add(Phase.Sync, syncing);
+        return new EngineResponse.GraphAnswered(GraphReportBuilder.Build(generation));
+    }
+
+    /// <summary>
+    ///     Answers the projects, files and tests the named paths reach. A path that is empty or not a valid path is
+    ///     answered with <see cref="Fuse.Failures.ErrorCode.InvalidPath"/>, naming it, before anything is read.
+    /// </summary>
+    private async Task<EngineResponse> ImpactAsync(EngineRequest.Impact impact, PhaseTimes phases, CancellationToken cancellationToken)
+    {
+        foreach (var spec in impact.Paths)
+        {
+            if (string.IsNullOrWhiteSpace(spec))
+                return new EngineResponse.Unanswered(ErrorCode.InvalidPath, ErrorMessages.EmptyPath);
+            try
+            {
+                _workspace.Root.PathOfNamed(spec);
+            }
+            catch (Exception e) when (e is ArgumentException or PathTooLongException)
+            {
+                return new EngineResponse.Unanswered(ErrorCode.InvalidPath, ErrorMessages.InvalidPath(spec));
+            }
+        }
+
+        var syncing = phases.Start();
+        var generation = await _workspace.SyncAndPinAsync([], cancellationToken).ConfigureAwait(false);
+        phases.Add(Phase.Sync, syncing);
+        var selecting = phases.Start();
+        var report = await ImpactReportBuilder.BuildAsync(_workspace, generation, impact.Paths, cancellationToken).ConfigureAwait(false);
+        phases.Add(Phase.Selection, selecting);
+        return new EngineResponse.ImpactAnswered(report);
+    }
+
+    /// <summary>Answers a judge request: the verdicts of its candidate patches, ranked.</summary>
+    private async Task<EngineResponse> JudgeAsync(EngineRequest.Judge judge, CancellationToken cancellationToken) =>
+        new EngineResponse.JudgeAnswered(await _judge.RunAsync(judge.Spec, cancellationToken).ConfigureAwait(false));
+
+    /// <summary>
+    ///     Sheds the transient caches of every workspace this engine serves and compacts the heap, answering how many
+    ///     bytes of working set that reclaimed and what it is after. It holds no reader: shedding is the answer to
+    ///     memory pressure, never another waiter for it.
+    /// </summary>
+    private async Task<EngineResponse> YieldMemoryAsync(EngineRequest request, CancellationToken cancellationToken)
+    {
+        var phases = new PhaseTimes();
+        phases.Add(Phase.Gate, 0);
+        var started = Environment.TickCount64;
+        try
+        {
+            var before = Environment.WorkingSet;
+            await YieldCachesAsync(cancellationToken).ConfigureAwait(false);
+            _workspace.YieldMemory();
+            var after = Environment.WorkingSet;
+            return new EngineResponse.MemoryYielded(Math.Max(0, before - after), after);
+        }
+        finally
+        {
+            try
+            {
+                _requestLog.Write(request, phases, Environment.TickCount64 - started, _scheduler.CurrentHolder);
+            }
+            finally
+            {
+                ScheduleBackground();
+            }
+        }
+    }
+
+    /// <summary>Sheds this router's workspace caches and every worktree router's below it, without collecting: the yield collects once after this returns.</summary>
+    private async Task YieldCachesAsync(CancellationToken cancellationToken)
+    {
+        List<RequestRouter> children;
+        lock (_worktreeLock)
+            children = [.. _worktreeRouters.Values];
+        foreach (var child in children)
+            await child.YieldCachesAsync(cancellationToken).ConfigureAwait(false);
+        await _workspace.ClearSessionViewsAsync(cancellationToken).ConfigureAwait(false);
+        await _workspace.ClearHeadCompilationsAsync(cancellationToken).ConfigureAwait(false);
+        await _workspace.ClearIdleConeProjectsAsync(cancellationToken).ConfigureAwait(false);
+        foreach (var overlay in _workspace.Worktrees)
+            overlay.TrimTransientCaches(clearSessionViews: true, dropCompiledBaseline: true);
+    }
+
+    /// <summary>
+    ///     Answers a watch subscription with its first event. The engine server streams the rest without calling here:
+    ///     it subscribes to the watch hub itself and writes one line per event until the client disconnects.
+    /// </summary>
+    private async Task<EngineResponse> WatchFirstAsync(EngineRequest.WatchStream watch, CancellationToken cancellationToken)
+    {
+        if (_watchHub is null)
+            return new EngineResponse.WatchEventPushed(new WatchEvent("heartbeat", watch.Session, _root.Path, Message: "watching"));
+        await foreach (var watchEvent in _watchHub.SubscribeAsync(watch.Session, watch.All, cancellationToken).ConfigureAwait(false))
+            return new EngineResponse.WatchEventPushed(watchEvent);
+        throw new UnreachableException("a watch subscription ends only when cancelled");
+    }
+
     /// <summary>
     ///     The check answer with the tree stamp the command line prints, from the changed set the check just synced, so
     ///     the client does not ask git again. Unchanged when the request did not ask for it or the check was not answered.
@@ -862,11 +1196,26 @@ internal sealed class RequestRouter : IDisposable
         }
     }
 
+    /// <summary>Applies the frozen patterns that <paramref name="guard"/> registers or removes.</summary>
+    private EngineResponse GuardSession(EngineRequest.SessionGuard guard)
+    {
+        try
+        {
+            _guards.Apply(guard.Guard);
+            return new EngineResponse.Acknowledged();
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            _log.Write($"SessionGuard failed: {e}");
+            return new EngineResponse.Unanswered(ErrorCode.Internal, $"internal error: {e.Message} (details in {_log.FilePath})");
+        }
+    }
+
     /// <summary>
-    ///     Answers a session registration without the scheduler, at once: <see cref="SessionEdits"/> applies it under
-    ///     its own lock, so a check that reads its writers under that lock sees the registration whole or not at all.
-    ///     It waits for no initialization and holds no reader; a registration needs no workspace.
-    ///     A check answered after it counts its files as that session's from that answer on.
+    ///     Answers a session registration or a session guard without the scheduler, at once: <see cref="SessionEdits"/>
+    ///     applies a registration under its own lock, so a check that reads its writers under that lock sees the
+    ///     registration whole or not at all. It waits for no initialization and holds no reader; neither needs the workspace.
+    ///     A check answered after a registration counts its files as that session's from that answer on.
     /// </summary>
     private Task<EngineResponse> SessionAsync(EngineRequest request, CancellationToken cancellationToken)
     {
@@ -875,16 +1224,18 @@ internal sealed class RequestRouter : IDisposable
         {
             EngineRequest.BeginSession begin => BeginSession(begin),
             EngineRequest.EndSession end => EndSession(end),
+            EngineRequest.SessionGuard guard => GuardSession(guard),
             _ => throw new UnreachableException($"{request.GetType().Name} is not a session request"),
         });
     }
 
     /// <summary>The answer to a test plan request.</summary>
-    private static EngineResponse AnswerPlan(TestPlanResult result) => ResponseMapper.Answered(result);
+    /// <param name="noCache">True when the plan skipped the slice cache, so no run answers from it.</param>
+    private static EngineResponse.PlanAnswered AnswerPlan(TestPlanResult result, bool noCache = false) => new EngineResponse.PlanAnswered(ResponseMapper.Plan(result, noCache));
 
     /// <summary>
     ///     Checks the paths <paramref name="check"/> names. A path that is empty is answered with
-    ///     <see cref="ErrorCode.InvalidPath"/> before anything is checked; the checker expands the rest.
+    ///     <see cref="Fuse.Failures.ErrorCode.InvalidPath"/> before anything is checked; the checker expands the rest.
     /// </summary>
     private async Task<EngineResponse> CheckPathsAsync(EngineRequest.CheckPaths check, AnalyzerRun analyzers, PhaseTimes phases, CancellationToken cancellationToken)
     {
@@ -894,7 +1245,10 @@ internal sealed class RequestRouter : IDisposable
                 return new EngineResponse.Unanswered(ErrorCode.InvalidPath, ErrorMessages.EmptyPath);
         }
 
-        return Stamped(ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.NamedPaths(check.Paths), SessionEdits.IsValid(check.Session) ? check.Session : null, analyzers, phases, cancellationToken, maxReported: check.MaxErrors).ConfigureAwait(false)), check.StampTree);
+        var options = new CheckOptions(IncludeRepairBrief: check.Brief);
+        var answered = Stamped(ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.NamedPaths(check.Paths), SessionEdits.IsValid(check.Session) ? check.Session : null, analyzers, phases, options, cancellationToken, maxReported: check.MaxErrors).ConfigureAwait(false)), check.StampTree);
+        await PublishGuardViolationsAsync(cancellationToken).ConfigureAwait(false);
+        return answered;
     }
 
     /// <summary>
@@ -906,8 +1260,15 @@ internal sealed class RequestRouter : IDisposable
     public void Dispose()
     {
         _background.Dispose();
-        _scheduler.Dispose();
+        if (_ownsScheduler)
+            _scheduler.Dispose();
         _workspace.Dispose();
         _requestLock.Dispose();
+        lock (_worktreeLock)
+        {
+            foreach (var child in _worktreeRouters.Values)
+                child.Dispose();
+            _worktreeRouters.Clear();
+        }
     }
 }

@@ -222,7 +222,7 @@ public class TestSelectionTests
     public async Task A_testing_platform_project_runs_whole_and_the_summary_counts_all_its_tests()
     {
         var repo = FixtureRepo.CreateStandard();
-        repo.Write("global.json", """{ "test": { "runner": "Microsoft.Testing.Platform" } }""");
+        repo.Write("global.json", "{ " + FixtureRepo.SdkSelection + """, "test": { "runner": "Microsoft.Testing.Platform" } }""");
         repo.Replace("Lib.Tests/Lib.Tests.csproj", "<IsPackable>false</IsPackable>", "<IsPackable>false</IsPackable><IsTestingPlatformApplication>true</IsTestingPlatformApplication>");
         repo.Commit();
         await using var engine = await InProcessEngine.StartAsync(repo);

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Fuse.Changes;
 using Fuse.Changes.Model;
 using Fuse.Check.Model;
@@ -35,14 +36,24 @@ internal sealed class DeclarationFilter
         "CS1660", "CS1661", "CS1667", "CS1729", "CS7036",
     ];
 
+    private const int MaxCachedFiles = 256;
+
     private readonly RepoWorkspace _workspace;
     private readonly SessionEdits _edits;
+    private readonly ConcurrentDictionary<(int BaselineGeneration, RepoPath Path, CSharpParseOptions? Options), FileDeclarations> _headDeclarations = new();
+    private readonly ConcurrentDictionary<(int BaselineGeneration, DocumentId DocId, string Checksum), CachedSurfaceDiff> _surfaceDiffs = new();
+    private readonly Lock _cacheLock = new();
+    private int _cachedBaselineGeneration = -1;
+    private int _headParses;
 
     public DeclarationFilter(RepoWorkspace workspace, SessionEdits edits)
     {
         _workspace = workspace;
         _edits = edits;
     }
+
+    /// <summary>How many times HEAD syntax was parsed on a cache miss; tests read this to verify caching.</summary>
+    internal int HeadParses => Volatile.Read(ref _headParses);
 
     /// <summary>What the filter makes of one error for one session: told to it, left to another session, or declined to the view.</summary>
     internal enum Decision
@@ -113,7 +124,7 @@ internal sealed class DeclarationFilter
         if (string.IsNullOrEmpty(declaredFile) || !Path.IsPathRooted(declaredFile))
             return Decision.Declined;
         var declaringPath = root.PathOf(declaredFile);
-        if (await ChangedDeclarationAsync(current, document, declaringPath, declaredNode, writers, cancellationToken).ConfigureAwait(false) is not { } sessionsOfFile)
+        if (await ChangedDeclarationAsync(generation, document, declaringPath, declaredNode, writers, cancellationToken).ConfigureAwait(false) is not { } sessionsOfFile)
             return Decision.Declined;
 
         // The site itself is the other half of the trace: a session that wrote the file the error is in can have
@@ -152,8 +163,9 @@ internal sealed class DeclarationFilter
     ///     change, an added or removed declaration, or a changed constructor, conversion or operator declines, as
     ///     does a changed declaration in a file no session is credited with.
     /// </summary>
-    private async Task<IReadOnlySet<string>?> ChangedDeclarationAsync(Solution current, Document errorDocument, RepoPath declaringPath, SyntaxNode declaredNode, IReadOnlyDictionary<RepoPath, IReadOnlySet<string>> writers, CancellationToken cancellationToken)
+    private async Task<IReadOnlySet<string>?> ChangedDeclarationAsync(Generation generation, Document errorDocument, RepoPath declaringPath, SyntaxNode declaredNode, IReadOnlyDictionary<RepoPath, IReadOnlySet<string>> writers, CancellationToken cancellationToken)
     {
+        var current = generation.Current;
         Document? declaringDocument = null;
         foreach (var id in current.GetDocumentIdsWithFilePath(declaringPath.Absolute))
         {
@@ -167,29 +179,116 @@ internal sealed class DeclarationFilter
             }
         }
 
-        if (declaringDocument is null || _workspace.HeadText(declaringPath) is not { } head)
+        if (declaringDocument is null)
             return null;
         if (await declaringDocument.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false) is not { } afterRoot)
             return null;
-        var beforeRoot = await CSharpSyntaxTree
-            .ParseText(head, CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Preview), cancellationToken: cancellationToken)
-            .GetRootAsync(cancellationToken).ConfigureAwait(false);
-        var before = FileDeclarations.Of(beforeRoot);
-        var after = FileDeclarations.Of(afterRoot);
-        var changes = SurfaceDiff.Compare(before, after);
-        if (changes.HasBroadChange || changes.Changes.Count == 0)
-            return null;
-        foreach (var change in changes.Changes)
+
+        var afterText = await declaringDocument.GetTextAsync(cancellationToken).ConfigureAwait(false);
+        var checksum = Convert.ToHexString(afterText.GetChecksum().AsSpan());
+        var baselineGen = generation.BaselineGeneration;
+        ForgetOlderGeneration(baselineGen);
+
+        var cacheKey = (baselineGen, declaringDocument.Id, checksum);
+        if (!_surfaceDiffs.TryGetValue(cacheKey, out var cached) || !ReferenceEquals(cached.AfterRoot, afterRoot))
         {
-            if (change is not DeclarationChange.Changed || change.Key is DeclarationKey.Using or DeclarationKey.GlobalUsing or DeclarationKey.AssemblyAttribute)
+            var before = await HeadDeclarationsAsync(generation, declaringDocument, declaringPath, cancellationToken).ConfigureAwait(false);
+            if (before is null)
                 return null;
-            if ((after.Find(change.Key) ?? before.Find(change.Key))?.Node is ConstructorDeclarationSyntax or ConversionOperatorDeclarationSyntax or OperatorDeclarationSyntax)
-                return null;
+            var after = FileDeclarations.Of(afterRoot);
+            var changes = SurfaceDiff.Compare(before, after);
+            var safe = IsSafeSurfaceFile(changes, before, after);
+            var changedParts = new HashSet<SyntaxNode>(ReferenceEqualityComparer.Instance);
+            if (safe)
+            {
+                var changedKeys = changes.Changes.Select(c => c.Key).ToHashSet();
+                foreach (var declaration in after.All)
+                {
+                    if (!changedKeys.Contains(declaration.Key))
+                        continue;
+                    foreach (var part in declaration.Parts)
+                        changedParts.Add(part);
+                }
+            }
+
+            cached = new CachedSurfaceDiff(afterRoot, safe, changedParts);
+            lock (_cacheLock)
+            {
+                if (_surfaceDiffs.Count >= MaxCachedFiles)
+                    _surfaceDiffs.Clear();
+                _surfaceDiffs[cacheKey] = cached;
+            }
         }
 
-        var declaration = after.All.FirstOrDefault(d => d.Parts.Any(p => ReferenceEquals(p, declaredNode)));
-        if (declaration is null || changes.Changes.All(c => !c.Key.Equals(declaration.Key)))
+        if (!cached.IsSafeFile || !cached.ChangedParts.Contains(declaredNode))
             return null;
         return writers.TryGetValue(declaringPath, out var sessions) && sessions.Count > 0 ? sessions : null;
     }
+
+    private async Task<FileDeclarations?> HeadDeclarationsAsync(Generation generation, Document declaringDocument, RepoPath declaringPath, CancellationToken cancellationToken)
+    {
+        var parseOptions = declaringDocument.Project.ParseOptions as CSharpParseOptions;
+        var key = (generation.BaselineGeneration, declaringPath, parseOptions);
+        if (_headDeclarations.TryGetValue(key, out var cached))
+            return cached;
+
+        FileDeclarations? parsed = null;
+        if (generation.Baseline.GetDocument(declaringDocument.Id) is { } baselineDoc
+            && await baselineDoc.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false) is { } baselineRoot)
+        {
+            parsed = FileDeclarations.Of(baselineRoot);
+        }
+        else if (_workspace.HeadText(declaringPath) is { } head)
+        {
+            Interlocked.Increment(ref _headParses);
+            var options = parseOptions ?? CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Preview);
+            var beforeRoot = await CSharpSyntaxTree
+                .ParseText(head, options, cancellationToken: cancellationToken)
+                .GetRootAsync(cancellationToken).ConfigureAwait(false);
+            parsed = FileDeclarations.Of(beforeRoot);
+        }
+
+        if (parsed is null)
+            return null;
+
+        lock (_cacheLock)
+        {
+            if (_headDeclarations.Count >= MaxCachedFiles)
+                _headDeclarations.Clear();
+            _headDeclarations[key] = parsed;
+        }
+
+        return parsed;
+    }
+
+    private void ForgetOlderGeneration(int baselineGeneration)
+    {
+        if (baselineGeneration == Volatile.Read(ref _cachedBaselineGeneration))
+            return;
+        lock (_cacheLock)
+        {
+            if (baselineGeneration == _cachedBaselineGeneration)
+                return;
+            _headDeclarations.Clear();
+            _surfaceDiffs.Clear();
+            _cachedBaselineGeneration = baselineGeneration;
+        }
+    }
+
+    private static bool IsSafeSurfaceFile(FileChanges changes, FileDeclarations before, FileDeclarations after)
+    {
+        if (changes.HasBroadChange || changes.Changes.Count == 0)
+            return false;
+        foreach (var change in changes.Changes)
+        {
+            if (change is not DeclarationChange.Changed || change.Key is DeclarationKey.Using or DeclarationKey.GlobalUsing or DeclarationKey.AssemblyAttribute)
+                return false;
+            if ((after.Find(change.Key) ?? before.Find(change.Key))?.Node is ConstructorDeclarationSyntax or ConversionOperatorDeclarationSyntax or OperatorDeclarationSyntax)
+                return false;
+        }
+
+        return true;
+    }
+
+    private sealed record CachedSurfaceDiff(SyntaxNode AfterRoot, bool IsSafeFile, HashSet<SyntaxNode> ChangedParts);
 }

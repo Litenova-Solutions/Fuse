@@ -1,4 +1,6 @@
+using System.Collections.Concurrent;
 using Fuse.Check.Model;
+using Fuse.Paths;
 using Fuse.Workspace;
 using Microsoft.CodeAnalysis;
 
@@ -82,12 +84,10 @@ internal sealed class SessionAttribution
             return null;
         var onlyThis = writers.Where(w => w.Value.All(s => _edits.IsOwnEdit(s, session))).Select(w => w.Key).ToList();
 
-        Solution? withoutOthers = null;
-        Solution? withoutThis = null;
-        var notTold = new HashSet<CompilerError>();
+        var root = _workspace.Root;
+        var decidedFiles = new List<(RepoPath Path, List<CompilerError> Errors)>();
         var decided = 0;
         var notAttributed = 0;
-        var root = _workspace.Root;
         foreach (var file in errors.GroupBy(e => e.Path, StringComparer.Ordinal))
         {
             var path = root.PathOf(file.Key);
@@ -99,38 +99,83 @@ internal sealed class SessionAttribution
                 continue;
             }
 
-            // The filter decides the errors it can from their declaration trace; the views decide the rest.
-            var remaining = new List<CompilerError>();
-            foreach (var error in file)
-            {
-                switch (await _filter.DecideAsync(error, session, generation, writers, cancellationToken).ConfigureAwait(false))
-                {
-                    case DeclarationFilter.Decision.NotTold:
-                        notTold.Add(error);
-                        break;
-                    case DeclarationFilter.Decision.Told:
-                        break;
-                    default:
-                        remaining.Add(error);
-                        break;
-                }
-            }
-
-            if (remaining.Count == 0)
-                continue;
-
-            withoutOthers ??= await _workspace.CurrentWithHeadContentAsync(generation, onlyOthers, cancellationToken).ConfigureAwait(false);
-            var alone = Keys(await _introduced.InFileOfAsync(withoutOthers, path, generation, context, cancellationToken).ConfigureAwait(false));
-            var undecided = remaining.Where(e => !alone.Contains(Key(e))).ToList();
-            if (undecided.Count == 0)
-                continue;
-
-            withoutThis ??= await _workspace.CurrentWithHeadContentAsync(generation, onlyThis, cancellationToken).ConfigureAwait(false);
-            var byOthers = Keys(await _introduced.InFileOfAsync(withoutThis, path, generation, context, cancellationToken).ConfigureAwait(false));
-            notTold.UnionWith(undecided.Where(e => byOthers.Contains(Key(e))));
+            decidedFiles.Add((path, [.. file]));
         }
 
-        return ([.. errors.Where(e => !notTold.Contains(e))], notAttributed);
+        var notTold = new ConcurrentDictionary<CompilerError, byte>();
+        using var withoutOthersLock = new SemaphoreSlim(1, 1);
+        using var withoutThisLock = new SemaphoreSlim(1, 1);
+        Solution? withoutOthers = null;
+        Solution? withoutThis = null;
+
+        async Task<Solution> WithoutOthersAsync(CancellationToken ct)
+        {
+            if (Volatile.Read(ref withoutOthers) is { } ready)
+                return ready;
+            await withoutOthersLock.WaitAsync(ct).ConfigureAwait(false);
+            try
+            {
+                return withoutOthers ??= await _workspace.CurrentWithHeadContentAsync(generation, onlyOthers, ct).ConfigureAwait(false);
+            }
+            finally
+            {
+                withoutOthersLock.Release();
+            }
+        }
+
+        async Task<Solution> WithoutThisAsync(CancellationToken ct)
+        {
+            if (Volatile.Read(ref withoutThis) is { } ready)
+                return ready;
+            await withoutThisLock.WaitAsync(ct).ConfigureAwait(false);
+            try
+            {
+                return withoutThis ??= await _workspace.CurrentWithHeadContentAsync(generation, onlyThis, ct).ConfigureAwait(false);
+            }
+            finally
+            {
+                withoutThisLock.Release();
+            }
+        }
+
+        await Parallel.ForEachAsync(
+            decidedFiles,
+            new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = cancellationToken },
+            async (entry, ct) =>
+            {
+                var remaining = new List<CompilerError>();
+                foreach (var error in entry.Errors)
+                {
+                    switch (await _filter.DecideAsync(error, session, generation, writers, ct).ConfigureAwait(false))
+                    {
+                        case DeclarationFilter.Decision.NotTold:
+                            notTold.TryAdd(error, 0);
+                            break;
+                        case DeclarationFilter.Decision.Told:
+                            break;
+                        default:
+                            remaining.Add(error);
+                            break;
+                    }
+                }
+
+                if (remaining.Count == 0)
+                    return;
+
+                var alone = Keys(await _introduced.InFileOfAsync(await WithoutOthersAsync(ct).ConfigureAwait(false), entry.Path, generation, context, ct).ConfigureAwait(false));
+                var undecided = remaining.Where(e => !alone.Contains(Key(e))).ToList();
+                if (undecided.Count == 0)
+                    return;
+
+                var byOthers = Keys(await _introduced.InFileOfAsync(await WithoutThisAsync(ct).ConfigureAwait(false), entry.Path, generation, context, ct).ConfigureAwait(false));
+                foreach (var error in undecided)
+                {
+                    if (byOthers.Contains(Key(error)))
+                        notTold.TryAdd(error, 0);
+                }
+            }).ConfigureAwait(false);
+
+        return ([.. errors.Where(e => !notTold.ContainsKey(e))], notAttributed);
     }
 
     /// <summary>

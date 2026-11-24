@@ -76,6 +76,16 @@ internal sealed class ChangeReach
     /// <summary>Syntax token and inheritance index used to narrow symbol searches.</summary>
     internal SyntaxTokenIndex TokenIndex => _tokenIndex;
 
+    /// <summary>
+    ///     Indexes the baseline documents of <paramref name="projects"/> for later searches, for the background warm.
+    ///     A search never waits for it: what it has not indexed yet is searched fully.
+    /// </summary>
+    internal Task WarmIndexAsync(Solution baseline, IEnumerable<Project> projects, CancellationToken cancellationToken) =>
+        _tokenIndex.EnsureIndexedAsync(baseline, projects, cancellationToken);
+
+    /// <summary>Persists the search index when the background warm changed it.</summary>
+    internal void SaveIndex() => _tokenIndex.SaveIfDirty("baseline");
+
     /// <summary>How many reference sets are kept.</summary>
     public int CachedSets => _cache.Count;
 
@@ -298,14 +308,13 @@ internal sealed class ChangeReach
         var baselineProjects = baseline.Projects.Where(p => searchedIds.Contains(p.Id)).ToImmutableHashSet();
         var baselineDocuments = baselineProjects.SelectMany(p => p.Documents).ToImmutableHashSet();
 
+        // The persisted entries are read once; what they do not hold yet is indexed in the background
+        // (see WarmIndexAsync), and searched fully until then, so a search never waits for the index.
         if (!_tokenIndexLoaded)
         {
             _tokenIndex.TryLoad("baseline");
             _tokenIndexLoaded = true;
         }
-
-        await _tokenIndex.EnsureIndexedAsync(baseline, baselineProjects, cancellationToken).ConfigureAwait(false);
-        _tokenIndex.SaveIfDirty("baseline");
 
         // The indexes in routes of the routes that reach each file.
         var reachedBy = new Dictionary<RepoPath, SortedSet<int>>();
@@ -419,7 +428,7 @@ internal sealed class ChangeReach
         if (!TryGetSymbolFilterTokens(symbol, out var identifiers, out _))
             return allDocuments;
 
-        var candidates = _tokenIndex.CandidateDocuments(baseline, identifiers, [], searchedIds);
+        var candidates = _tokenIndex.CandidateDocumentsSnapshot(baseline, identifiers, [], searchedIds);
         return WithUnindexedAndDeclaring(candidates, symbol, baseline, searchedIds, allDocuments);
     }
 
@@ -432,7 +441,7 @@ internal sealed class ChangeReach
         if (!TryGetSymbolFilterTokens(symbol, out var identifiers, out var baseTypeNames))
             return allProjects;
 
-        var candidates = _tokenIndex.CandidateDocuments(baseline, identifiers, baseTypeNames, searchedIds);
+        var candidates = _tokenIndex.CandidateDocumentsSnapshot(baseline, identifiers, baseTypeNames, searchedIds);
         return ProjectsForCandidates(candidates, allProjects);
     }
 
@@ -445,7 +454,7 @@ internal sealed class ChangeReach
         if (!TryGetSymbolFilterTokens(symbol, out var identifiers, out _))
             return allProjects;
 
-        var candidates = _tokenIndex.CandidateDocuments(baseline, identifiers, [], searchedIds);
+        var candidates = _tokenIndex.CandidateDocumentsSnapshot(baseline, identifiers, [], searchedIds);
         return ProjectsForCandidates(candidates, allProjects);
     }
 
@@ -458,7 +467,7 @@ internal sealed class ChangeReach
         if (type.IsAnonymousType || type.IsTupleType || string.IsNullOrEmpty(type.Name))
             return allProjects;
 
-        var candidates = _tokenIndex.CandidateDocuments(baseline, [], [type.Name], searchedIds);
+        var candidates = _tokenIndex.CandidateDocumentsSnapshot(baseline, [], [type.Name], searchedIds);
         return ProjectsForCandidates(candidates, allProjects);
     }
 

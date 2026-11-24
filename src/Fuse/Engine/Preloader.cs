@@ -6,10 +6,11 @@ using Fuse.Workspace;
 namespace Fuse.Engine;
 
 /// <summary>
-///     Loads, in the background and one at a time, the projects that depend on projects with uncommitted changes.
-///     A declaration change has to bind those dependents, and loading them is the slow part of a first check
-///     (seconds per project); doing it while the agent is busy elsewhere keeps later checks fast. Requests take
-///     precedence: it holds the gate only while it chooses a project, between loads. It builds no compilation: a check builds what it binds.
+///     Loads, in the background, the projects that depend on projects with uncommitted changes. A declaration change
+///     has to bind those dependents, and loading them is the slow part of a first check (seconds per project); doing
+///     it while the agent is busy elsewhere keeps later checks fast. It extracts the whole batch in one MSBuild
+///     session without any lock, then opens the projects one at a time under the load lock. Requests take precedence:
+///     it holds the gate only while it chooses the batch. It builds no compilation: a check builds what it binds.
 /// </summary>
 internal sealed class Preloader
 {
@@ -58,37 +59,44 @@ internal sealed class Preloader
     {
         while (!shutdown.IsCancellationRequested)
         {
-            ProjectNode? next;
-            // The gate only protects choosing the next project; the load itself runs outside it, so requests are served while a project loads.
+            List<ProjectNode> batch;
+            // The gate only protects choosing the batch; the extraction and the loads run outside it, so requests
+            // are served while they run.
             await _gate.EnterAsync(RequestGate.Preload, shutdown).ConfigureAwait(false);
             try
             {
                 var generation = _workspace.PinGeneration();
                 var graph = generation.Graph;
-                next = generation.Changed
+                batch = generation.Changed
                     .SelectMany(graph.OwnersOf)
                     .SelectMany(graph.DependentsOf)
-                    .FirstOrDefault(p => !_workspace.IsLoaded(p) && !(_failed.TryGetValue(p.Path, out var failed) && failed == AttemptOf(p, graph)));
+                    .DistinctBy(p => p.Path)
+                    .Where(p => !_workspace.IsLoaded(p) && !(_failed.TryGetValue(p.Path, out var failed) && failed == AttemptOf(p, graph)))
+                    .ToList();
             }
             finally
             {
                 _gate.Exit();
             }
 
-            if (next is null)
+            if (batch.Count == 0)
                 return;
-            var attempt = AttemptOf(next, _workspace.PinGeneration().Graph);
+
+            // One extraction for the whole batch, without any lock: extracting project by project would run one
+            // ephemeral MSBuild session per project, while a request the batch overlaps only waits on the short
+            // loads below, never on the extraction.
             try
             {
-                await _workspace.PreloadAsync(next, shutdown).ConfigureAwait(false);
-                _failed.Remove(next.Path);
+                await _workspace.EnsureExtractedAsync(batch, shutdown).ConfigureAwait(false);
             }
             catch (FuseException e)
             {
                 // Tried again once the projects reload or a restore rewrites its closure's assets; until then a check that
-                // needs the project loads it itself and reports the failure.
-                _failed[next.Path] = attempt;
-                _log($"preload of {next.Name} skipped: {e.Message}");
+                // needs one of the projects loads it itself and reports the failure.
+                var graph = _workspace.PinGeneration().Graph;
+                foreach (var project in batch)
+                    _failed[project.Path] = AttemptOf(project, graph);
+                _log($"preload of {batch.Count} project(s) skipped: {e.Message}");
                 continue;
             }
             catch (OperationCanceledException)
@@ -99,6 +107,36 @@ internal sealed class Preloader
             {
                 _log($"preload failed: {e}");
                 return;
+            }
+
+            foreach (var project in batch)
+            {
+                if (shutdown.IsCancellationRequested)
+                    return;
+                if (_workspace.IsLoaded(project))
+                    continue;
+                var attempt = AttemptOf(project, _workspace.PinGeneration().Graph);
+                try
+                {
+                    await _workspace.PreloadAsync(project, shutdown).ConfigureAwait(false);
+                    _failed.Remove(project.Path);
+                }
+                catch (FuseException e)
+                {
+                    // Tried again once the projects reload or a restore rewrites its closure's assets; until then a check that
+                    // needs the project loads it itself and reports the failure.
+                    _failed[project.Path] = attempt;
+                    _log($"preload of {project.Name} skipped: {e.Message}");
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
+                catch (Exception e)
+                {
+                    _log($"preload failed: {e}");
+                    return;
+                }
             }
         }
     }

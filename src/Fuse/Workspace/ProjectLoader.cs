@@ -182,6 +182,35 @@ internal sealed class ProjectLoader : IDisposable
         await OpenAsync([project], cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>
+    ///     Extracts the blueprints covering <paramref name="projects"/> and their closures into the shared cache, without
+    ///     opening anything and without the load lock, so background preloading extracts while requests are served. A
+    ///     later load opens from the cache without extracting again. Per-project extraction failures are recorded for
+    ///     the loads to report; only a missing restore is thrown.
+    /// </summary>
+    /// <exception cref="FuseException">A project has not been restored and no worktree blueprint covers it.</exception>
+    public async Task EnsureExtractedAsync(IEnumerable<ProjectNode> projects, CancellationToken cancellationToken)
+    {
+        var requested = projects.DistinctBy(p => p.Path).ToList();
+        if (requested.Count == 0)
+            return;
+        var closure = requested.SelectMany(Graph.ClosureOf).DistinctBy(p => p.Path).ToList();
+        var unrestored = closure.Where(p => !File.Exists(p.AssetsFile.Absolute)).Select(p => p.Path.Relative).Distinct(StringComparer.Ordinal).ToList();
+        if (unrestored.Count > 0)
+        {
+            if (BlueprintEvaluator.TryFindReusableBlueprint(_root, Graph, requested) is null)
+                throw RestoreNeeded(unrestored);
+            return;
+        }
+
+        var missing = closure.Where(p => !_loaded.ContainsKey(p.Path)).ToList();
+        if (missing.Count == 0)
+            return;
+        var outcome = await BlueprintEvaluator.EnsureProjectsAsync(_root, Graph, missing, _log, cancellationToken).ConfigureAwait(false);
+        foreach (var (failedPath, reason) in outcome.Failures)
+            _loadFailures[failedPath] = reason;
+    }
+
     /// <summary>Opens each of <paramref name="missing"/> that is not open yet, under the load lock.</summary>
     private async Task OpenAsync(IReadOnlyList<ProjectNode> missing, CancellationToken cancellationToken)
     {

@@ -173,6 +173,11 @@ jobs:
           "$fuse_bin" check
           "$fuse_bin" test
           "$fuse_bin" build
+          printf 'namespace Lib;\n\npublic sealed class Cat\n{\n    public string Name { get; init; } = "";\n}\n\npublic sealed class Dog\n{\n    public string Name { get; init; } = "";\n}\n' > Lib/Animals.cs
+          printf 'namespace Lib;\n\npublic union Pet(Cat, Dog);\n' > Lib/Pets.cs
+          check_out=$("$fuse_bin" check)
+          printf '%s\n' "$check_out"
+          printf '%s\n' "$check_out" | grep -q "no errors introduced"
           "$fuse_bin" stop
 
   targeted:

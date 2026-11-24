@@ -16,9 +16,10 @@ namespace Fuse.Check;
 /// <summary>
 ///     Fast span-level checker for <see cref="CheckOptions.InteractiveFast"/> mode. When a file has only method or
 ///     accessor body edits, binds only the edited member spans via <see cref="SemanticModel.GetDiagnostics(TextSpan?, CancellationToken)"/>
-///     and runs the per-file analyzers on those spans; skips whole-file binding. Falls back to full-file binding
-///     whenever declarations, usings, directives, or code outside member bodies changed, or when the check runs
-///     compilation-wide analyzers, which cannot run on spans.
+///     and skips whole-file binding. Falls back to full-file binding whenever declarations, usings, directives, or
+///     code outside member bodies changed, when the check runs compilation-wide analyzers, which cannot run on spans,
+///     or when per-file analyzers apply: the normal check reuses HEAD's stored analyzer results, while per-span runs
+///     would run them on HEAD as well.
 /// </summary>
 internal sealed class SpanChecker
 {
@@ -40,7 +41,7 @@ internal sealed class SpanChecker
     /// <summary>
     ///     Attempts to check <paramref name="path"/> by binding only edited member body spans across every target
     ///     framework compiling it. Returns null when any target framework has declaration, using, directive, syntax,
-    ///     or non-body changes, or runs compilation-wide analyzers, and requires full-file binding.
+    ///     or non-body changes, or runs compilation-wide or per-file analyzers, and requires full-file binding.
     /// </summary>
     public async Task<IReadOnlyList<CompilerError>?> TryCheckFileAsync(
         RepoPath path,
@@ -84,11 +85,10 @@ internal sealed class SpanChecker
 
             if (await PerFileAnalyzersAsync(currentDoc, model, path, context, cancellationToken).ConfigureAwait(false) is not { } analyzers)
                 return null;
+            if (analyzers.WithAnalyzers is not null && !analyzers.PerFile.IsEmpty)
+                return null;
 
             SemanticModel? baselineModel = null;
-            var currentFinished = true;
-            var baselineFinished = true;
-            using var analyzing = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, context.Run.Deadline);
             foreach (var pair in spans)
             {
                 var bindStart = Stopwatch.GetTimestamp();
@@ -96,16 +96,6 @@ internal sealed class SpanChecker
                 context.AddCompilerTicks(Stopwatch.GetTimestamp() - bindStart);
 
                 var afterErrors = ToCompilerErrors(afterDiagnostics);
-                if (analyzers.WithAnalyzers is not null && !analyzers.PerFile.IsEmpty && currentFinished)
-                {
-                    var spanAnalyzerErrors = await AnalyzerErrorsAsync(
-                        analyzers.WithAnalyzers, analyzers.PerFile, model, pair.AfterNode.Span, path, context, analyzing.Token, cancellationToken).ConfigureAwait(false);
-                    if (spanAnalyzerErrors is null)
-                        currentFinished = false;
-                    else
-                        afterErrors.AddRange(spanAnalyzerErrors);
-                }
-
                 if (afterErrors.Count == 0)
                     continue;
 
@@ -113,22 +103,8 @@ internal sealed class SpanChecker
                 var baselineErrors = baselineModel is null
                     ? new List<CompilerError>()
                     : ToCompilerErrors(baselineModel.GetDiagnostics(pair.BeforeNode.Span, cancellationToken));
-                if (baselineModel is not null && analyzers.WithAnalyzers is not null && !analyzers.PerFile.IsEmpty && baselineFinished
-                    && _analyzers.For(baselineDoc.Project, baselineModel.Compilation) is { } baselineWithAnalyzers)
-                {
-                    // The baseline project has the checked project's id and configuration, so its plan is the one above.
-                    var baselineAnalyzerErrors = await AnalyzerErrorsAsync(
-                        baselineWithAnalyzers, analyzers.PerFile, baselineModel, pair.BeforeNode.Span, path, context, analyzing.Token, cancellationToken).ConfigureAwait(false);
-                    if (baselineAnalyzerErrors is null)
-                        baselineFinished = false;
-                    else
-                        baselineErrors.AddRange(baselineAnalyzerErrors);
-                }
 
-                var (introduced, leftOut) = ErrorDelta.Introduced(afterErrors, baselineErrors, baselineFinished);
-                if (leftOut)
-                    context.MarkUnfinished(path.Relative);
-                collected.AddRange(introduced);
+                collected.AddRange(ErrorDelta.Introduced(afterErrors, baselineErrors));
             }
         }
 
@@ -434,66 +410,8 @@ internal sealed class SpanChecker
         return new SpanAnalyzers(withAnalyzers, plan.PerFile);
     }
 
-    /// <summary>
-    ///     The per-file analyzer errors in <paramref name="span"/> of <paramref name="model"/>, or null when the
-    ///     analyzers passed the check's deadline. A deadline counts the file unfinished, as in the normal check.
-    /// </summary>
-    private async Task<List<CompilerError>?> AnalyzerErrorsAsync(
-        CompilationWithAnalyzers withAnalyzers,
-        ImmutableArray<DiagnosticAnalyzer> perFile,
-        SemanticModel model,
-        TextSpan span,
-        RepoPath path,
-        CheckContext context,
-        CancellationToken analyzing,
-        CancellationToken cancellationToken)
-    {
-        var started = Stopwatch.GetTimestamp();
-        try
-        {
-            var analysis = await withAnalyzers.GetAnalysisResultAsync(model, filterSpan: span, perFile, analyzing).ConfigureAwait(false);
-            return ToAnalyzerErrors(analysis.GetAllDiagnostics(), model.SyntaxTree, span);
-        }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-        {
-            context.MarkUnfinished(path.Relative);
-            return null;
-        }
-        finally
-        {
-            context.AddAnalyzerTicks(Stopwatch.GetTimestamp() - started);
-        }
-    }
-
-    /// <summary>The analyzer errors among <paramref name="diagnostics"/> that fall in <paramref name="span"/> of <paramref name="tree"/>.</summary>
-    private List<CompilerError> ToAnalyzerErrors(IEnumerable<Diagnostic> diagnostics, SyntaxTree tree, TextSpan span)
-    {
-        var list = new List<CompilerError>();
-        foreach (var diagnostic in diagnostics)
-        {
-            if (diagnostic.Severity != DiagnosticSeverity.Error || diagnostic.IsSuppressed)
-                continue;
-            if (!diagnostic.Location.IsInSource && diagnostic.Location.Kind != LocationKind.ExternalFile)
-                continue;
-            if (diagnostic.Location.SourceTree == tree && !diagnostic.Location.SourceSpan.IntersectsWith(span))
-                continue;
-            var lineSpan = diagnostic.Location.GetMappedLineSpan();
-            if (!lineSpan.IsValid || string.IsNullOrEmpty(lineSpan.Path))
-                continue;
-            list.Add(new CompilerError(
-                _root.PathOf(lineSpan.Path).Relative,
-                lineSpan.StartLinePosition.Line + 1,
-                lineSpan.StartLinePosition.Character + 1,
-                diagnostic.Id,
-                diagnostic.GetMessage(CultureInfo.InvariantCulture),
-                FromAnalyzer: true));
-        }
-
-        return list;
-    }
-
     /// <summary>The per-file analyzers the normal check would run for one document of a span check.</summary>
     /// <param name="WithAnalyzers">The document's compilation wrapped with its error-capable analyzers, or null when none can report an error.</param>
-    /// <param name="PerFile">The analyzers that run on each span the check binds.</param>
+    /// <param name="PerFile">The analyzers the normal check runs on the file: when any apply, the span check falls back to it.</param>
     private sealed record SpanAnalyzers(CompilationWithAnalyzers? WithAnalyzers, ImmutableArray<DiagnosticAnalyzer> PerFile);
 }

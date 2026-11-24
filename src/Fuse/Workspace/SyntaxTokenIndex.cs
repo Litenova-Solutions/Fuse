@@ -91,7 +91,10 @@ internal sealed class SyntaxTokenIndex
                 var version = await document.GetTextVersionAsync(cancellationToken).ConfigureAwait(false);
                 var path = NormalizePath(document.FilePath);
                 if (IsEntryCurrent(document, path, preprocessorKey, version, out var length, out var writtenTicks, out var checksum))
+                {
+                    LinkSkipped(document, path, preprocessorKey, version);
                     continue;
+                }
 
                 toParse.Add((document, path, preprocessorKey, length, writtenTicks, checksum));
             }
@@ -242,6 +245,75 @@ internal sealed class SyntaxTokenIndex
         }
 
         return builder.ToImmutable();
+    }
+
+    /// <summary>
+    ///     Queries candidate documents from the entries already held, without parsing, hashing or touching disk, for a
+    ///     search on the request path. Documents whose indexed entry is current narrow by token; every other document
+    ///     is a candidate too, so the answer is the same set a search without narrowing covers while the background
+    ///     warm (see <c>EnsureIndexedAsync</c>) has not indexed it yet.
+    /// </summary>
+    /// <param name="solution">The solution whose documents are filtered.</param>
+    /// <param name="identifiers">Identifier token names to match (attribute names also match omitted <c>Attribute</c> suffix).</param>
+    /// <param name="baseTypeNames">Base type or interface simple names to expand transitively across syntax inheritance.</param>
+    /// <param name="scopeProjects">Optional project filter restricting returned documents.</param>
+    public ImmutableHashSet<Document> CandidateDocumentsSnapshot(
+        Solution solution,
+        IEnumerable<string> identifiers,
+        IEnumerable<string> baseTypeNames,
+        IReadOnlySet<ProjectId>? scopeProjects = null)
+    {
+        ArgumentNullException.ThrowIfNull(solution);
+        ArgumentNullException.ThrowIfNull(identifiers);
+        ArgumentNullException.ThrowIfNull(baseTypeNames);
+
+        var identifierList = identifiers as IReadOnlyCollection<string> ?? [.. identifiers];
+        var baseList = baseTypeNames as IReadOnlyCollection<string> ?? [.. baseTypeNames];
+
+        var projects = scopeProjects is null
+            ? solution.Projects
+            : solution.Projects.Where(p => scopeProjects.Contains(p.Id));
+        var matchingPaths = CandidateRepoPaths(identifierList, baseList);
+        var builder = ImmutableHashSet.CreateBuilder<Document>();
+        foreach (var project in projects)
+        {
+            if (project.Language != LanguageNames.CSharp)
+                continue;
+            var preprocessorKey = PreprocessorKeyFor(project);
+            foreach (var document in project.Documents)
+            {
+                if (string.IsNullOrEmpty(document.FilePath))
+                {
+                    builder.Add(document);
+                    continue;
+                }
+
+                var path = NormalizePath(document.FilePath);
+                if (matchingPaths.Contains(path) || !IsIndexedAndCurrent(document, path, preprocessorKey))
+                    builder.Add(document);
+            }
+        }
+
+        return builder.ToImmutable();
+    }
+
+    /// <summary>
+    ///     True when the entry held for <paramref name="document"/> was scanned from the text it holds now: its path
+    ///     and preprocessor entry exists, and the document's id links to it with its current text version. Same
+    ///     version is same text, so only such a document narrows by token; anything else is searched fully.
+    /// </summary>
+    private bool IsIndexedAndCurrent(Document document, RepoPath path, string preprocessorKey)
+    {
+        if (!document.TryGetTextVersion(out var version))
+            return false;
+        lock (_lock)
+        {
+            return _entryLookup.TryGetValue((path, preprocessorKey), out var entryIndex)
+                && _entries[entryIndex] is not null
+                && _docVersions.TryGetValue(document.Id, out var known)
+                && known.EntryIndex == entryIndex
+                && known.Version == version;
+        }
     }
 
     /// <summary>
@@ -487,7 +559,11 @@ internal sealed class SyntaxTokenIndex
                 var version = document.TryGetTextVersion(out var v) ? v : default;
                 var path = NormalizePath(document.FilePath);
                 if (IsEntryCurrent(document, path, preprocessorKey, version, out var length, out var writtenTicks, out var checksum))
+                {
+                    LinkSkipped(document, path, preprocessorKey, version);
                     continue;
+                }
+
                 toParse.Add((document, path, preprocessorKey, length, writtenTicks, checksum));
             }
         }
@@ -558,6 +634,27 @@ internal sealed class SyntaxTokenIndex
                 return string.Equals(entry.Checksum, checksum, StringComparison.Ordinal);
 
             return length > 0 && entry.Length == length && entry.WrittenTicks == writtenTicks;
+        }
+    }
+
+    /// <summary>
+    ///     Links <paramref name="document"/> at <paramref name="version"/> to its current entry, after
+    ///     <see cref="IsEntryCurrent"/> skipped scanning it, so a later snapshot query narrows it by token. Only
+    ///     links when the entry held for its path and preprocessor entry can be the one the document holds now: a
+    ///     document linked to another entry was scanned under another preprocessor entry, and is searched fully
+    ///     until it is scanned under this one.
+    /// </summary>
+    private void LinkSkipped(Document document, RepoPath path, string preprocessorKey, VersionStamp version)
+    {
+        if (version == default)
+            return;
+        lock (_lock)
+        {
+            if (!_entryLookup.TryGetValue((path, preprocessorKey), out var entryIndex) || _entries[entryIndex] is null)
+                return;
+            if (_docVersions.TryGetValue(document.Id, out var known) && known.EntryIndex != entryIndex)
+                return;
+            _docVersions[document.Id] = (version, entryIndex);
         }
     }
 

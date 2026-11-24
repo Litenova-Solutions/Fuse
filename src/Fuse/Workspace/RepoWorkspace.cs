@@ -201,6 +201,14 @@ internal sealed class RepoWorkspace : IDisposable
     public Task PreloadAsync(ProjectNode project, CancellationToken cancellationToken) =>
         PrimaryOverlay.PreloadAsync(project, cancellationToken);
 
+    /// <summary>
+    ///     Extracts the blueprints covering <paramref name="projects"/> and their closures into the shared cache,
+    ///     without opening anything, so a later load opens from the cache without extracting again.
+    /// </summary>
+    /// <exception cref="FuseException">A project has not been restored and no worktree blueprint covers it.</exception>
+    public Task EnsureExtractedAsync(IEnumerable<ProjectNode> projects, CancellationToken cancellationToken) =>
+        PrimaryOverlay.EnsureExtractedAsync(projects, cancellationToken);
+
     public bool IsLoaded(ProjectNode node) => PrimaryOverlay.IsLoaded(node);
 
     /// <summary>Why <paramref name="node"/> did not load, or null when no load of it has failed.</summary>

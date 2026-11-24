@@ -38,6 +38,14 @@
     <CopyOutputSymbolsToPublishDirectory>false</CopyOutputSymbolsToPublishDirectory>
   </PropertyGroup>
 
+  <!-- Roslyn 5.12 asks for Microsoft.Build.Framework 18.7.1, while Fuse compiles its own MSBuild use against
+       the 18.0 of the oldest SDK it supports (see Directory.Packages.props) and runs on the SDK's MSBuild through
+       the locator, whose assemblies replace the package's at run time. The downgrade warning is suppressed for that
+       reason; it is a NuGet version notice, not an analyzer. -->
+  <PropertyGroup>
+    <NoWarn>$(NoWarn);NU1605</NoWarn>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.Build" ExcludeAssets="runtime" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Build.Framework" ExcludeAssets="runtime" PrivateAssets="all" />

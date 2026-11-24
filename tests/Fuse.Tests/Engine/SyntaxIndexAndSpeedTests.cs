@@ -5,6 +5,7 @@ using Fuse.Tests.Fixtures;
 using Fuse.Workspace;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Text;
 
 namespace Fuse.Tests.Engine;
 
@@ -137,6 +138,82 @@ public class SyntaxIndexAndSpeedTests
 
         var matches = index.CandidateDocuments(solution, ["Net10Only"], []);
         Assert.NotEmpty(matches);
+    }
+
+    [Fact]
+    public async Task SyntaxTokenIndex_snapshot_covers_unindexed_documents_and_narrows_indexed_ones()
+    {
+        using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string>
+        {
+            ["A.cs"] = "public class A { public void Alpha() { } }\n",
+            ["B.cs"] = "public class B { public void Beta() { } }\n",
+        });
+
+        using var ws = new AdhocWorkspace();
+        var pid = ProjectId.CreateNewId();
+        var solution = ws.CurrentSolution.AddProject(ProjectInfo.Create(pid, VersionStamp.Create(), "P", "P", LanguageNames.CSharp));
+        var docA = DocumentId.CreateNewId(pid);
+        var docB = DocumentId.CreateNewId(pid);
+        solution = solution
+            .AddDocument(docA, "A.cs", repo.Read("A.cs"), filePath: repo.Full("A.cs"))
+            .AddDocument(docB, "B.cs", repo.Read("B.cs"), filePath: repo.Full("B.cs"));
+
+        var ct = TestContext.Current.CancellationToken;
+        var index = new SyntaxTokenIndex(repo.Root);
+
+        // Cold: nothing is indexed, so every document is a candidate and the query parses nothing.
+        Assert.Equal(2, index.CandidateDocumentsSnapshot(solution, ["Alpha"], []).Count);
+        Assert.Equal(0, index.DocumentCount);
+
+        await index.EnsureIndexedAsync(solution, ct);
+
+        // Warm: only the file mentioning the token is a candidate.
+        var warm = index.CandidateDocumentsSnapshot(solution, ["Alpha"], []);
+        Assert.Equal(["A.cs"], warm.Select(d => Path.GetFileName(d.FilePath)).Order(StringComparer.Ordinal));
+
+        // Stale: B now mentions the token but was not indexed again, so it is searched fully rather than missed.
+        solution = solution.WithDocumentText(docB, SourceText.From("public class B { public void Beta() { new A().Alpha(); } }\n"));
+        Assert.Equal(2, index.CandidateDocumentsSnapshot(solution, ["Alpha"], []).Count);
+
+        await index.EnsureIndexedAsync(solution, ct);
+        var refreshed = index.CandidateDocumentsSnapshot(solution, ["Alpha"], []);
+        Assert.Equal(["A.cs", "B.cs"], refreshed.Select(d => Path.GetFileName(d.FilePath)).Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public async Task SyntaxTokenIndex_loaded_entries_narrow_after_a_warm_without_scanning_again()
+    {
+        using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string>
+        {
+            ["A.cs"] = "public class A { public void Alpha() { } }\n",
+            ["B.cs"] = "public class B { public void Beta() { } }\n",
+        });
+
+        using var ws = new AdhocWorkspace();
+        var pid = ProjectId.CreateNewId();
+        var solution = ws.CurrentSolution.AddProject(ProjectInfo.Create(pid, VersionStamp.Create(), "P", "P", LanguageNames.CSharp));
+        var docA = DocumentId.CreateNewId(pid);
+        var docB = DocumentId.CreateNewId(pid);
+        solution = solution
+            .AddDocument(docA, "A.cs", repo.Read("A.cs"), filePath: repo.Full("A.cs"))
+            .AddDocument(docB, "B.cs", repo.Read("B.cs"), filePath: repo.Full("B.cs"));
+
+        var ct = TestContext.Current.CancellationToken;
+        var first = new SyntaxTokenIndex(repo.Root);
+        await first.EnsureIndexedAsync(solution, ct);
+        first.Save("test");
+
+        // A later run loads the saved entries, which no document version links to yet, so every document is a
+        // candidate until the warm runs.
+        var index = new SyntaxTokenIndex(repo.Root);
+        Assert.True(index.TryLoad("test"));
+        Assert.Equal(2, index.CandidateDocumentsSnapshot(solution, ["Alpha"], []).Count);
+
+        // The warm finds both entries current by checksum, scans nothing, and links both documents, so the next
+        // search narrows by token.
+        await index.EnsureIndexedAsync(solution, ct);
+        var warm = index.CandidateDocumentsSnapshot(solution, ["Alpha"], []);
+        Assert.Equal(["A.cs"], warm.Select(d => Path.GetFileName(d.FilePath)).Order(StringComparer.Ordinal));
     }
 
     [Fact]
@@ -316,6 +393,46 @@ public class SyntaxIndexAndSpeedTests
     }
 
     [Fact]
+    public async Task Checker_InteractiveFast_with_per_file_analyzers_matches_the_normal_check()
+    {
+        using var repo = CreatePerFileAnalyzerRepo();
+        await using var engine = await InProcessEngine.StartAsync(repo);
+        engine.Repo.Replace("App/Part0.cs", "var total = n;", "var total = n;\n        Banned();");
+        var ct = TestContext.Current.CancellationToken;
+
+        var fast = await engine.Checker.CheckAsync(
+            engine.Files("App/Part0.cs"),
+            null,
+            AnalyzerRun.Full,
+            PhaseTimes.None,
+            new CheckOptions(InteractiveFast: true),
+            ct);
+        var normal = await engine.Checker.CheckAsync(
+            engine.Files("App/Part0.cs"),
+            null,
+            AnalyzerRun.Full,
+            PhaseTimes.None,
+            CheckOptions.Default,
+            ct);
+
+        // The span check falls back when per-file analyzers apply, so the fast answer is the normal one: the
+        // introduced analyzer error, and never the one HEAD already has.
+        var introduced = Assert.Single(fast.Errors);
+        Assert.Equal("PERF001", introduced.Error.Id);
+        Assert.Contains("Edit", introduced.Error.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(fast.Errors, e => e.Error.Message.Contains("Keep", StringComparison.Ordinal));
+        Assert.Equal(normal.Errors.Select(e => e.Error), fast.Errors.Select(e => e.Error));
+
+        var generation = engine.Workspace.PinGeneration();
+        var spanChecker = new SpanChecker(repo.Root, () => engine.Workspace.ConfigurationGeneration, _ => { });
+        Assert.Null(await spanChecker.TryCheckFileAsync(
+            repo.PathOf("App/Part0.cs"),
+            generation,
+            new CheckContext(AnalyzerRun.Full, reuse: false),
+            ct));
+    }
+
+    [Fact]
     public async Task DeclarationFilter_caches_head_declarations_across_multiple_errors()
     {
         await using var engine = await InProcessEngine.StartAsync();
@@ -357,5 +474,104 @@ public class SyntaxIndexAndSpeedTests
         Assert.True(result.CheckedWholeProjects);
         Assert.Equal(511, result.FilesChecked);
         Assert.Equal("CA1825", Assert.Single(result.Errors).Error.Id);
+    }
+
+    /// <summary>
+    ///     A repository with a per-file analyzer that reports an error on every call to <c>Banned</c>, naming the
+    ///     calling method, built and committed: <c>Keep</c> already calls it at HEAD, and <c>Edit</c> does not yet.
+    /// </summary>
+    private static FixtureRepo CreatePerFileAnalyzerRepo()
+    {
+        var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string>
+        {
+            [".gitignore"] = "bin/\nobj/\n",
+            ["Directory.Build.props"] = "<Project />\n",
+            ["Directory.Build.targets"] = "<Project />\n",
+            ["Slow/Slow.csproj"] = """
+                <Project Sdk="Microsoft.NET.Sdk">
+                  <PropertyGroup>
+                    <TargetFramework>netstandard2.0</TargetFramework>
+                    <LangVersion>latest</LangVersion>
+                    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+                    <IsRoslynComponent>true</IsRoslynComponent>
+                    <NoWarn>RS1030;RS2008</NoWarn>
+                  </PropertyGroup>
+                  <ItemGroup>
+                    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" PrivateAssets="all" />
+                  </ItemGroup>
+                </Project>
+                """,
+            ["Slow/BannedAnalyzer.cs"] = """
+                using System.Collections.Immutable;
+                using System.Linq;
+                using Microsoft.CodeAnalysis;
+                using Microsoft.CodeAnalysis.CSharp;
+                using Microsoft.CodeAnalysis.CSharp.Syntax;
+                using Microsoft.CodeAnalysis.Diagnostics;
+
+                namespace Slow.Analyzers;
+
+                [DiagnosticAnalyzer(LanguageNames.CSharp)]
+                public sealed class BannedAnalyzer : DiagnosticAnalyzer
+                {
+                    private static readonly DiagnosticDescriptor Rule = new("PERF001", "Banned call", "Banned call in {0}", "Design", DiagnosticSeverity.Error, isEnabledByDefault: true);
+
+                    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
+
+                    public override void Initialize(AnalysisContext context)
+                    {
+                        context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
+                        context.EnableConcurrentExecution();
+                        context.RegisterSyntaxNodeAction(
+                            node =>
+                            {
+                                if (node.Node is InvocationExpressionSyntax { Expression: IdentifierNameSyntax { Identifier.Text: "Banned" } })
+                                {
+                                    var method = node.Node.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault()?.Identifier.Text ?? "?";
+                                    node.ReportDiagnostic(Diagnostic.Create(Rule, node.Node.GetLocation(), method));
+                                }
+                            },
+                            SyntaxKind.InvocationExpression);
+                    }
+                }
+                """,
+            ["App/App.csproj"] = """
+                <Project Sdk="Microsoft.NET.Sdk">
+                  <PropertyGroup>
+                    <TargetFramework>net10.0</TargetFramework>
+                    <Nullable>enable</Nullable>
+                  </PropertyGroup>
+                  <ItemGroup>
+                    <ProjectReference Include="../Slow/Slow.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+                  </ItemGroup>
+                </Project>
+                """,
+            ["App/Part0.cs"] = """
+                namespace App;
+
+                public static class Part0
+                {
+                    public static void Banned() { }
+
+                    public static int Keep(int n)
+                    {
+                        Banned();
+                        return n;
+                    }
+
+                    public static int Edit(int n)
+                    {
+                        var total = n;
+                        for (var k = 0; k < n; k++)
+                            total += k;
+                        return total;
+                    }
+                }
+                """,
+        });
+        // The build restores the projects and compiles the analyzer; its own run of the analyzer stays off so
+        // the pre-existing call in Keep does not fail the fixture's build. The files are already committed.
+        FixtureRepo.Run(repo.Path, "dotnet", "build", "App/App.csproj", "-nologo", "-v:q", "/p:RunAnalyzers=false");
+        return repo;
     }
 }

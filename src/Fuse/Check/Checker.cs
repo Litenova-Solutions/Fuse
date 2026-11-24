@@ -377,6 +377,25 @@ internal sealed class Checker
     }
 
     /// <summary>
+    ///     Indexes the baseline documents of <paramref name="node"/>, one target framework at a time, for the
+    ///     background warm, so a later reference search narrows by token instead of searching fully. A search never
+    ///     waits for it: what it has not indexed yet is searched fully.
+    /// </summary>
+    public async Task WarmSearchIndexAsync(ProjectNode node, CancellationToken cancellationToken)
+    {
+        var generation = _workspace.PinGeneration();
+        foreach (var project in RepoWorkspace.ProjectsFor(generation.Baseline, node).ToList())
+        {
+            if (_workspace.PinGeneration().BaselineGeneration != generation.BaselineGeneration)
+                return;
+            await _reach.WarmIndexAsync(generation.Baseline, [project], cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>Persists the search index when the background warm changed it.</summary>
+    public void SaveSearchIndex() => _reach.SaveIndex();
+
+    /// <summary>
     ///     The key the kept answer for this check is kept under, from the pinned generation, or null when no answer is
     ///     kept for it because a changed file cannot be read. The check runs as usual then.
     /// </summary>

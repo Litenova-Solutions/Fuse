@@ -32,10 +32,11 @@ internal sealed class WatchHub
 
     /// <summary>
     ///     Reads the events published after this call: every event when <paramref name="all"/> holds, else only the
-    ///     events of <paramref name="session"/>. Ends when <paramref name="cancellationToken"/> is cancelled, which
-    ///     removes the subscription.
+    ///     events of <paramref name="session"/>. The subscription is registered before this returns, so events
+    ///     published before the caller starts enumerating are kept. Ends when <paramref name="cancellationToken"/>
+    ///     is cancelled, which removes the subscription.
     /// </summary>
-    public async IAsyncEnumerable<WatchEvent> SubscribeAsync(string? session, bool all, [EnumeratorCancellation] CancellationToken cancellationToken)
+    public IAsyncEnumerable<WatchEvent> SubscribeAsync(string? session, bool all, CancellationToken cancellationToken)
     {
         var channel = Channel.CreateBounded<WatchEvent>(new BoundedChannelOptions(KeptEvents)
         {
@@ -46,6 +47,19 @@ internal sealed class WatchHub
         var subscription = new Subscription(session, all, channel);
         lock (_lock)
             _subscriptions.Add(subscription);
+
+        // A subscription nobody enumerates would otherwise stay registered after its token is cancelled.
+        var registration = cancellationToken.Register(() => Unregister(subscription));
+        return ReadAsync(subscription, channel, registration, cancellationToken);
+    }
+
+    /// <summary>Reads a subscription's channel until its token is cancelled, then removes the subscription.</summary>
+    private async IAsyncEnumerable<WatchEvent> ReadAsync(
+        Subscription subscription,
+        Channel<WatchEvent> channel,
+        CancellationTokenRegistration registration,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
         try
         {
             await foreach (var watchEvent in channel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
@@ -53,10 +67,17 @@ internal sealed class WatchHub
         }
         finally
         {
-            lock (_lock)
-                _subscriptions.Remove(subscription);
-            channel.Writer.Complete();
+            registration.Dispose();
+            Unregister(subscription);
+            _ = channel.Writer.TryComplete();
         }
+    }
+
+    /// <summary>Removes a subscription so it receives no more events and can be collected.</summary>
+    private void Unregister(Subscription subscription)
+    {
+        lock (_lock)
+            _subscriptions.Remove(subscription);
     }
 
     /// <summary>One subscriber: its filter and the bounded channel that drops the oldest event when full.</summary>

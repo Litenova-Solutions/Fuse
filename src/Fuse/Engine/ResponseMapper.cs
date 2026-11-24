@@ -66,7 +66,10 @@ internal static class ResponseMapper
             SuggestedUsings: [.. packet.SuggestedUsings],
             InterfaceStub: packet.InterfaceStub);
 
-    /// <summary>Why a run answers from the slice cache: its stored verdict, or null when it runs fresh.</summary>
+    /// <summary>
+    ///     Why a run answers from the slice cache: its stored verdict, or null when it runs fresh. The client parses
+    ///     this text to reuse a passing verdict without running, so its shape is a contract.
+    /// </summary>
     private static string? CacheReasonOf(SliceCacheResult? cached, bool noCache) =>
         cached is null || noCache ? null : $"slice cache: {cached.Passed} passed, {cached.Failed} failed, {cached.Skipped} skipped";
 

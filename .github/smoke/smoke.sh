@@ -254,9 +254,9 @@ assert_contains "{" "fuse impact Lib/Calc.cs --json"
 echo "smoke: fuse check --brief repair packet"
 write_app 'Console.WriteLine(Calc.Ad(1, 2));'
 capture "$fuse" check --brief
-assert_code 1 "fuse check --brief on CS1061"
-assert_contains "CS1061" "fuse check --brief on CS1061"
-assert_contains "Add" "fuse check --brief on CS1061"
+assert_code 1 "fuse check --brief on CS0117"
+assert_contains "CS0117" "fuse check --brief on CS0117"
+assert_contains "int Calc.Add(int a, int b)" "fuse check --brief on CS0117"
 write_app ''
 capture "$fuse" check
 assert_code 0 "fuse check after restoring App/Program.cs"

@@ -295,12 +295,12 @@ internal sealed class RequestRouter : IDisposable
                     _planner.SliceCache.Clear();
                 var (byProject, unknown) = FailedTestProjects(failed);
 
-                var pendingFailed = await _planner.SelectFailedAsync(byProject, unknown, phases, cancellationToken).ConfigureAwait(false);
+                var pendingFailed = await _planner.SelectFailedAsync(byProject, unknown, phases, cancellationToken, noCache: failed.NoCache).ConfigureAwait(false);
                 RememberStatus(configurationBefore, phases);
                 held = false;
                 lease.Dispose();
                 ScheduleBackground();
-                return AnswerPlan(await _planner.PrepareAsync(pendingFailed, phases, cancellationToken).ConfigureAwait(false), failed.NoCache);
+                return AnswerPlan(await _planner.PrepareAsync(pendingFailed, phases, cancellationToken, runWarm: !failed.Clean).ConfigureAwait(false), failed.NoCache || failed.Clean);
             }
 
             var (cleanCache, noCache) = request switch
@@ -326,7 +326,7 @@ internal sealed class RequestRouter : IDisposable
             held = false;
             lease.Dispose();
             ScheduleBackground();
-            return AnswerPlan(await _planner.PrepareAsync(pending, phases, cancellationToken).ConfigureAwait(false), noCache);
+            return AnswerPlan(await _planner.PrepareAsync(pending, phases, cancellationToken, runWarm: !cleanCache).ConfigureAwait(false), noCache || cleanCache);
         }
         catch (FuseException e)
         {
@@ -1259,6 +1259,7 @@ internal sealed class RequestRouter : IDisposable
 
     public void Dispose()
     {
+        _planner.Dispose();
         _background.Dispose();
         if (_ownsScheduler)
             _scheduler.Dispose();

@@ -45,6 +45,14 @@ internal static class UnifiedDiff
     public static (IReadOnlyList<FilePatch> Files, string? Error) Parse(string diff)
     {
         var lines = diff.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+        if (lines.Length > 0 && lines[^1].Length == 0)
+            lines = lines[..^1];
+        for (var k = 0; k < lines.Length; k++)
+        {
+            if (lines[k].EndsWith('\r'))
+                lines[k] = lines[k][..^1];
+        }
+
         var files = new List<FilePatch>();
         string? oldPath = null;
         string? newPath = null;
@@ -188,7 +196,7 @@ internal static class UnifiedDiff
         var newSeen = 0;
         var lastKind = '\0';
         i++;
-        while (oldSeen < oldCount || newSeen < newCount)
+        while (oldSeen < oldCount || newSeen < newCount || (i < lines.Length && lines[i].StartsWith('\\')))
         {
             if (i >= lines.Length)
             {

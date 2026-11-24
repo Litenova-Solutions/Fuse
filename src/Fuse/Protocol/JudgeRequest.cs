@@ -6,13 +6,9 @@ namespace Fuse.Protocol;
 /// </summary>
 /// <param name="Mode">Whether to combine all patches into one overlay or race candidates independently.</param>
 /// <param name="Candidates">The candidate patches or worktree diffs to evaluate.</param>
-/// <param name="RunTests">True to run affected tests for compiling candidates.</param>
-/// <param name="MaxFailures">Maximum test failures per candidate before stopping early; 0 uses the default.</param>
 internal sealed record JudgeRequest(
     JudgeRequest.JudgeMode Mode,
-    JudgeRequest.Candidate[] Candidates,
-    bool RunTests = false,
-    int MaxFailures = 0)
+    JudgeRequest.Candidate[] Candidates)
 {
     /// <summary>The candidate patches or worktree diffs. A line without the list reads as empty.</summary>
     public Candidate[] Candidates { get; init; } = Candidates ?? [];

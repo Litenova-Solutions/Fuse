@@ -116,6 +116,8 @@ public class RequestRouterSwarmTests
         await using var engine = await InProcessRequestRouter.StartAsync(repo);
         var cancellationToken = TestContext.Current.CancellationToken;
         repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
+        // The check syncs the edit by name, so every plan below sees it without waiting for the watcher.
+        Assert.IsType<EngineResponse.CheckAnswered>(await engine.SendAsync(new EngineRequest.CheckFiles([repo.Full("Lib/Calc.cs")], WaitForLoad: true)));
 
         var pending = await engine.Planner.SelectAsync(new TestScope.Affected(), PhaseTimes.None, cancellationToken);
         var prepared = await engine.Planner.PrepareAsync(pending, PhaseTimes.None, cancellationToken);

@@ -150,6 +150,12 @@ internal sealed class WorkspaceSync
             _views.Touch(patch.Paths);
             await _views.RebuildAsync(cancellationToken).ConfigureAwait(false);
         }
+        else if (_views.IsBaselineShed)
+        {
+            // The baseline view was shed without invalidating loader derivation, so no rebuild follows it: materialize
+            // its shell from the current view, and both views hold every open project again, as after a rebuild.
+            await _views.MaterializeBaselineShellAsync(cancellationToken).ConfigureAwait(false);
+        }
 
         var paths = new HashSet<RepoPath>(patch.Paths);
         foreach (var directory in patch.VanishedDirectories)

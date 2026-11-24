@@ -485,8 +485,8 @@ internal sealed class ShadowEmitter
 
     /// <summary>
     ///     Writes <paramref name="bytes"/> to a shadow file, unless an emitter already wrote the same content hash there
-    ///     and the file still has the length and time it had after. Unlinks any existing target before writing so
-    ///     hardlinked originals in build output are never overwritten in place.
+    ///     and the file still has the length and time it had after. The bytes go to a temporary file first, which is
+    ///     moved over the target, so a hardlink there is replaced instead of written through into build output.
     /// </summary>
     private async Task WriteAsync(string path, byte[] bytes, CancellationToken cancellationToken)
     {
@@ -498,9 +498,17 @@ internal sealed class ShadowEmitter
             return;
 
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        // Unlink before writing so a hardlinked file from bin/ is replaced with a distinct file rather than overwritten in place.
-        DeleteBeforeWrite(path);
-        await File.WriteAllBytesAsync(path, bytes, cancellationToken).ConfigureAwait(false);
+        var temp = path + "." + Guid.NewGuid().ToString("N")[..8] + ".tmp";
+        try
+        {
+            await File.WriteAllBytesAsync(temp, bytes, cancellationToken).ConfigureAwait(false);
+            MoveOver(temp, path);
+        }
+        finally
+        {
+            TryDelete(temp);
+        }
+
         file.Refresh();
         lock (_shared.WrittenGate)
         {
@@ -729,10 +737,10 @@ internal sealed class ShadowEmitter
 
     /// <summary>
     ///     Overlays <paramref name="source"/> onto <paramref name="target"/> using OS hardlinks where supported (falling
-    ///     back to <see cref="File.Copy(string, string, bool)"/> when cross-volume or unsupported) for files whose size
+    ///     back to <see cref="File.Copy(string, string)"/> when cross-volume or unsupported) for files whose size
     ///     or time differ; files only in the target stay, and so do the destinations in <paramref name="emitted"/>, which
-    ///     are about to be emitted. Existing destinations are unlinked before linking or copying so hardlinked sources
-    ///     are never corrupted.
+    ///     are about to be emitted. Each new entry is prepared under a temporary name and moved over its destination,
+    ///     so a hardlink there is replaced instead of written through into build output.
     /// </summary>
     internal static void Mirror(string source, string target, IReadOnlyCollection<string> emitted)
     {
@@ -752,35 +760,50 @@ internal sealed class ShadowEmitter
             var directory = Path.GetDirectoryName(destination)!;
             if (createdDirectories.Add(directory))
                 Directory.CreateDirectory(directory);
-            if (to.Exists)
-                DeleteBeforeWrite(destination);
-            if (!hardlinksUnsupported)
+            var temp = destination + "." + Guid.NewGuid().ToString("N")[..8] + ".tmp";
+            try
             {
-                var linkResult = TryCreateHardLink(file, destination);
-                if (linkResult == HardLinkResult.Created)
-                    continue;
-                if (linkResult == HardLinkResult.Unsupported)
-                    hardlinksUnsupported = true;
-            }
+                if (!hardlinksUnsupported)
+                {
+                    var linkResult = TryCreateHardLink(file, temp);
+                    if (linkResult == HardLinkResult.Created)
+                    {
+                        MoveOver(temp, destination);
+                        continue;
+                    }
 
-            File.Copy(file, destination, overwrite: true);
-            File.SetLastWriteTimeUtc(destination, from.LastWriteTimeUtc);
+                    if (linkResult == HardLinkResult.Unsupported)
+                        hardlinksUnsupported = true;
+                }
+
+                File.Copy(file, temp);
+                File.SetLastWriteTimeUtc(temp, from.LastWriteTimeUtc);
+                MoveOver(temp, destination);
+            }
+            finally
+            {
+                TryDelete(temp);
+            }
         }
     }
 
-    /// <summary>Deletes <paramref name="path"/> if present so subsequent writes or links never mutate a hardlink target.</summary>
-    internal static void DeleteBeforeWrite(string path)
+    /// <summary>
+    ///     Replaces <paramref name="destination"/> with <paramref name="temp"/>, a file in the same folder. The move
+    ///     replaces the directory entry, so a hardlink into build output that is still there keeps the file it shares
+    ///     untouched, and a reader never sees the destination missing. A read-only entry is cleared first, because
+    ///     Windows cannot replace one otherwise.
+    /// </summary>
+    private static void MoveOver(string temp, string destination)
     {
-        if (!File.Exists(path))
-            return;
         try
         {
-            File.Delete(path);
+            File.Move(temp, destination, overwrite: true);
         }
         catch (UnauthorizedAccessException)
         {
-            File.SetAttributes(path, FileAttributes.Normal);
-            File.Delete(path);
+            File.SetAttributes(destination, FileAttributes.Normal);
+            File.Delete(destination);
+            File.Move(temp, destination);
         }
     }
 

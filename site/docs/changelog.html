@@ -45,7 +45,7 @@
       "url": "https://fuse.codes/docs/changelog",
       "mainEntityOfPage": "https://fuse.codes/docs/changelog",
       "inLanguage": "en",
-      "dateModified": "2026-11-11",
+      "dateModified": "2026-11-24",
       "image": "https://fuse.codes/assets/og.png",
       "isPartOf": {
         "@type": "WebSite",
@@ -112,7 +112,7 @@
     <p class="crumbs"><a href="./">Docs</a> / Reference</p>
     <h1>Changelog</h1>
     <p class="jump"><a href="#docs-nav">All documentation pages</a></p>
-    <p class="intro">Below are the changes in each Fuse release, newest first, with what to do when you upgrade to each one. Each release groups its changes under Added, Changed, Removed, Fixed, Security and Documentation. Only Fuse 6 is supported. Every version before 5.0.0 is deprecated.</p>
+    <p class="intro">Below are the changes in each Fuse release, newest first, with what to do when you upgrade to each one. Each release groups its changes under Added, Changed, Removed, Fixed, Security and Documentation. Only Fuse 7 is supported. Every version before 5.0.0 is deprecated.</p>
     <div class="audience">
       <p><b>This page is for</b> you if you are upgrading Fuse, or deciding whether to, and want to know what will behave differently.</p>
       <p><b>After reading it</b>, follow the upgrade steps in every release between the version you have and the latest one. <code>fuse --version</code> prints the version you have.</p>
@@ -122,6 +122,7 @@
       <p>On this page</p>
       <ol>
         <li><a href="#supported-versions">Supported versions</a></li>
+        <li><a href="#v7-0-0">7.0.0</a></li>
         <li><a href="#v6-0-0">6.0.0</a></li>
         <li><a href="#v5-7-0">5.7.0</a></li>
         <li><a href="#v5-6-0">5.6.0</a></li>
@@ -140,26 +141,69 @@
     </nav>
 
     <h2 id="supported-versions">Supported versions <a class="anchor" href="#supported-versions" aria-label="Link to this section">#</a></h2>
-    <p>Fixes ship in patch releases of the latest 5.x minor version, security fixes included. The <a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/main/SECURITY.md">security policy</a> states the rule.</p>
+    <p>Fixes ship in patch releases of the latest 7.x minor version, security fixes included. The <a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/main/SECURITY.md">security policy</a> states the rule.</p>
     <div class="table-scroll" role="region" aria-label="Supported versions" tabindex="0">
     <table>
       <thead><tr><th scope="col">Version</th><th scope="col">Status</th></tr></thead>
       <tbody>
-        <tr><th scope="row">6.0.x</th><td>Supported. This is the latest release.</td></tr>
-        <tr><th scope="row">5.7.x</th><td>No longer fixed. Upgrade to 6.0.0 by following the <a href="#upgrading-to-6-0-0">steps below</a>.</td></tr>
-        <tr><th scope="row">5.6.x</th><td>No longer fixed. Upgrade to 6.0.0 by following the <a href="#upgrading-to-5-7-0">steps for 5.7.0</a> and <a href="#upgrading-to-6-0-0">6.0.0</a>.</td></tr>
-        <tr><th scope="row">5.5.x</th><td>No longer fixed. Upgrade to 6.0.0 by following the <a href="#upgrading-to-5-6-0">steps for 5.6.0</a>, <a href="#upgrading-to-5-7-0">5.7.0</a> and <a href="#upgrading-to-6-0-0">6.0.0</a>.</td></tr>
-        <tr><th scope="row">5.4.x</th><td>No longer fixed. Upgrade to 6.0.0 by following the <a href="#upgrading-to-5-5-0">steps for 5.5.0</a>, <a href="#upgrading-to-5-6-0">5.6.0</a>, <a href="#upgrading-to-5-7-0">5.7.0</a> and <a href="#upgrading-to-6-0-0">6.0.0</a>.</td></tr>
-        <tr><th scope="row">5.3.x</th><td>No longer fixed. Upgrade to 6.0.0 by following the <a href="#upgrading-to-5-4-0">steps for 5.4.0</a>, <a href="#upgrading-to-5-5-0">5.5.0</a>, <a href="#upgrading-to-5-6-0">5.6.0</a>, <a href="#upgrading-to-5-7-0">5.7.0</a> and <a href="#upgrading-to-6-0-0">6.0.0</a>.</td></tr>
-        <tr><th scope="row">5.2.x</th><td>No longer fixed. Upgrade to 6.0.0 by following the <a href="#upgrading-to-5-3-0">steps for 5.3.0</a>, <a href="#upgrading-to-5-4-0">5.4.0</a>, <a href="#upgrading-to-5-5-0">5.5.0</a>, <a href="#upgrading-to-5-6-0">5.6.0</a>, <a href="#upgrading-to-5-7-0">5.7.0</a> and <a href="#upgrading-to-6-0-0">6.0.0</a>.</td></tr>
-        <tr><th scope="row">5.1.x</th><td>No longer fixed. Upgrade to 6.0.0 by following the <a href="#upgrading-from-5-1-0">steps below</a> and then the steps for 5.2.0 to <a href="#upgrading-to-6-0-0">6.0.0</a>.</td></tr>
-        <tr><th scope="row">5.0.x</th><td>No longer fixed. Upgrade to 5.1.0 by following the <a href="#upgrading-from-5-0-0">steps below</a>, then upgrade to 6.0.0.</td></tr>
+        <tr><th scope="row">7.0.x</th><td>Supported. This is the latest release.</td></tr>
+        <tr><th scope="row">6.0.x</th><td>No longer fixed. Upgrade to 7.0.0 by following the <a href="#upgrading-to-7-0-0">steps below</a>.</td></tr>
+        <tr><th scope="row">5.7.x</th><td>No longer fixed. Upgrade to 7.0.0 by following the <a href="#upgrading-to-6-0-0">steps for 6.0.0</a> and <a href="#upgrading-to-7-0-0">7.0.0</a>.</td></tr>
+        <tr><th scope="row">5.6.x</th><td>No longer fixed. Upgrade to 7.0.0 by following the <a href="#upgrading-to-5-7-0">steps for 5.7.0</a>, <a href="#upgrading-to-6-0-0">6.0.0</a> and <a href="#upgrading-to-7-0-0">7.0.0</a>.</td></tr>
+        <tr><th scope="row">5.5.x</th><td>No longer fixed. Upgrade to 7.0.0 by following the <a href="#upgrading-to-5-6-0">steps for 5.6.0</a>, <a href="#upgrading-to-5-7-0">5.7.0</a>, <a href="#upgrading-to-6-0-0">6.0.0</a> and <a href="#upgrading-to-7-0-0">7.0.0</a>.</td></tr>
+        <tr><th scope="row">5.4.x</th><td>No longer fixed. Upgrade to 7.0.0 by following the <a href="#upgrading-to-5-5-0">steps for 5.5.0</a>, <a href="#upgrading-to-5-6-0">5.6.0</a>, <a href="#upgrading-to-5-7-0">5.7.0</a>, <a href="#upgrading-to-6-0-0">6.0.0</a> and <a href="#upgrading-to-7-0-0">7.0.0</a>.</td></tr>
+        <tr><th scope="row">5.3.x</th><td>No longer fixed. Upgrade to 7.0.0 by following the <a href="#upgrading-to-5-4-0">steps for 5.4.0</a>, <a href="#upgrading-to-5-5-0">5.5.0</a>, <a href="#upgrading-to-5-6-0">5.6.0</a>, <a href="#upgrading-to-5-7-0">5.7.0</a>, <a href="#upgrading-to-6-0-0">6.0.0</a> and <a href="#upgrading-to-7-0-0">7.0.0</a>.</td></tr>
+        <tr><th scope="row">5.2.x</th><td>No longer fixed. Upgrade to 7.0.0 by following the <a href="#upgrading-to-5-3-0">steps for 5.3.0</a>, <a href="#upgrading-to-5-4-0">5.4.0</a>, <a href="#upgrading-to-5-5-0">5.5.0</a>, <a href="#upgrading-to-5-6-0">5.6.0</a>, <a href="#upgrading-to-5-7-0">5.7.0</a>, <a href="#upgrading-to-6-0-0">6.0.0</a> and <a href="#upgrading-to-7-0-0">7.0.0</a>.</td></tr>
+        <tr><th scope="row">5.1.x</th><td>No longer fixed. Upgrade to 7.0.0 by following the <a href="#upgrading-from-5-1-0">steps below</a> and then the steps for 5.2.0 to <a href="#upgrading-to-7-0-0">7.0.0</a>.</td></tr>
+        <tr><th scope="row">5.0.x</th><td>No longer fixed. Upgrade to 5.1.0 by following the <a href="#upgrading-from-5-0-0">steps below</a>, then upgrade to 7.0.0.</td></tr>
         <tr><th scope="row">1.0.0 to 4.4.0</th><td>Deprecated and unsupported. These versions are a different program under the same name. <a href="#moving-from-4-x">Moving from 4.x</a> says what to remove.</td></tr>
       </tbody>
     </table>
     </div>
     <p>To upgrade the tool itself to the latest release:</p>
     <pre data-label="Shell"><code>dotnet tool update -g Fuse</code></pre>
+
+    <h2 id="v7-0-0">7.0.0 <a class="anchor" href="#v7-0-0" aria-label="Link to this section">#</a></h2>
+    <p class="intro">Released 2026-11-24. Compared with 6.0.0, this release serves every worktree of a repository from one engine, adds the worker gate and judge commands for running several agents at once, and reuses more work across checks, test runs and builds.</p>
+
+    <h3 id="upgrading-to-7-0-0">Upgrading to 7.0.0 <a class="anchor" href="#upgrading-to-7-0-0" aria-label="Link to this section">#</a></h3>
+    <ul>
+      <li><b>No upgrade steps are required.</b> The pipe protocol needs no versioning by hand: a 6.x engine drains its queued and running requests and restarts as 7.0.0 on the next request. Install 7.0.0 and keep working. Worktrees that each ran their own engine now share one; sessions, build locks and logs stay per worktree.</li>
+      <li><b>OpenCode: run fuse init again.</b> Its plugin tries the engine pipe first for post-edit and stop checks. The other harnesses need nothing.</li>
+      <li><b>Scripts that parse build output.</b> <code>fuse build --changed</code> over several projects prints one <code>build (N projects)</code> summary instead of one summary per project. Scripts that match the old shape need the new one under Changed.</li>
+    </ul>
+
+    <h3>Added</h3>
+    <ul>
+      <li><code>fuse gate [--session &lt;name&gt;] [--brief] [--test] [--max-failures &lt;n&gt;] [--json]</code>. Runs one verification pass for a worker: it checks for introduced errors first, and when clean and <code>--test</code> is set, runs the affected tests. It exits 0 when green, 1 when errors or failures remain, and 2 when refused. With <code>--json</code> it prints one object holding <code>passed</code>, <code>exitCode</code>, <code>stage</code>, <code>errorCount</code>, <code>errors</code>, <code>checkOutput</code> and <code>testOutput</code>. <a href="commands#fuse-gate">Commands</a> shows the forms.</li>
+      <li><code>fuse judge (--combine | --race) &lt;patch-or-worktree...&gt; [--json]</code>. Evaluates unified diff patches or worktree diffs in memory, without changing disk or git. <code>--combine</code> applies every patch onto one combined overlay and checks it for introduced errors; <code>--race</code> evaluates each patch on its own and ranks the results. It runs no tests: to run tests, apply the winning patch and run <code>fuse test</code> or <code>fuse gate --test</code>. The text answer starts with <code>fuse judge (&lt;mode&gt;): &lt;summary&gt;</code>, then prints one ranked line per patch with its compile verdict and elapsed milliseconds, and <code>winner: &lt;name&gt;</code> when one patch wins. With <code>--json</code> it prints the <code>JudgeReport</code>. <a href="commands#fuse-judge">Commands</a> shows the forms.</li>
+      <li><code>fuse batch</code>. Reads NDJSON <code>EngineRequest</code> lines on standard input and streams NDJSON <code>EngineResponse</code> lines on standard output over one pipe connection, so a launcher sends many requests without starting a client per request. It takes no arguments, and answers an invalid line with an <code>Unanswered</code> response naming the line's error. <a href="commands#fuse-batch">Commands</a> shows the form.</li>
+      <li><code>fuse graph [--json]</code>. Prints the repository's project graph: <code>fuse: &lt;N&gt; project(s), &lt;M&gt; cluster(s), &lt;T&gt; test project(s) (tree &lt;H&gt;)</code>, one <code>[src]</code> or <code>[test]</code> line per project with the projects it references, one <code>cluster &lt;name&gt;:</code> line per coupling cluster, and one <code>tests &lt;project&gt;:</code> line per test project. With <code>--json</code> it prints the <code>GraphReport</code> with <code>tree</code>, <code>projects</code>, <code>clusters</code> and <code>testOwners</code>. <a href="commands#fuse-graph">Commands</a> shows the forms.</li>
+      <li><code>fuse impact &lt;paths...&gt; [--json]</code>. Prints what the named paths affect: their owning projects, the affected projects and test projects, the affected file count, and whether the reach is broad. With <code>--json</code> it prints the <code>ImpactReport</code>. <a href="commands#fuse-impact">Commands</a> shows the forms.</li>
+      <li><code>fuse session guard &lt;name&gt; --freeze &lt;pattern&gt; [&lt;pattern&gt;...]</code> and <code>--unfreeze</code>. Freezing marks the declarations under contract path patterns as frozen: <code>fuse: guard &lt;name&gt; frozen for &lt;N&gt; path pattern(s); declaration changes will trigger watch alerts</code>. Unfreezing removes them: <code>fuse: guard &lt;name&gt; unfrozen; frozen contract patterns removed</code>. <code>fuse watch</code> prints each violation as <code>fuse: guard &lt;name&gt; violation on &lt;pattern&gt;: &lt;declaration&gt;</code>. <a href="commands#fuse-session">Commands</a> shows both forms.</li>
+      <li><code>fuse watch --all [--json]</code>. Streams every session's stored answers and guard violations until cancelled. In text mode it prints <code>fuse: watching all sessions; no stored answer yet</code> until an answer arrives. <code>--json</code>, also new on <code>fuse watch --session &lt;name&gt;</code>, prints one <code>WatchEvent</code> object per event. <a href="commands#fuse-watch">Commands</a> shows the forms.</li>
+      <li><code>fuse slim [--json]</code>. Asks the running engine to shed transient caches and compact memory, without starting one. It prints <code>fuse: engine reclaimed &lt;X&gt; MB (working set &lt;Y&gt; MB)</code>, or <code>fuse: no engine runs for &lt;path&gt;; nothing to slim</code> when none runs. With <code>--json</code> it prints the reclaimed and working-set bytes. <a href="commands#fuse-slim">Commands</a> shows the forms.</li>
+      <li><code>fuse check --brief</code>. Attaches a repair packet to each error: a <code>using:</code> line naming missing usings, a <code>candidates:</code> list of nearest members or overloads, a <code>stub:</code> with an interface member stub, and a <code>source:</code> window of up to 5 lines around the error. <code>fuse check --json</code> objects gain <code>repair</code> with <code>sourceWindow</code>, <code>candidates</code>, <code>suggestedUsings</code> and <code>interfaceStub</code>. <code>fuse gate --brief</code> passes the packets through. <a href="commands#fuse-check">Commands</a> shows the form.</li>
+      <li><code>fuse test --clean</code>, <code>--no-cache</code> and <code>--max-failures &lt;n&gt;</code>. <code>--clean</code> runs fresh processes, bypassing warm test workers and cached results. <code>--no-cache</code> bypasses cached results. <code>--max-failures</code> stops a run that does not build once <code>&lt;n&gt;</code> tests fail, from 1 to 100000 (default 10); on the .NET 11 SDK a Microsoft.Testing.Platform run passes <code>--maximum-failed-tests &lt;n&gt;</code> unless your arguments already name it. <code>fuse gate --test</code> takes <code>--max-failures</code> too. <a href="commands#fuse-test">Commands</a> shows the forms.</li>
+      <li><code>fuse build --parallel-artifacts</code>. Isolates build output under the state directory so overlapping builds run at the same time. <a href="commands#fuse-build">Commands</a> shows the form.</li>
+      <li><code>fuse status --json</code> gains <code>pipeName</code> and <code>buildId</code>, which the OpenCode plugin reads to reach the engine over its pipe. <a href="commands#fuse-status">Commands</a> shows the object.</li>
+    </ul>
+
+    <h3>Changed</h3>
+    <ul>
+      <li>One engine serves every worktree of a repository. Its pipe and mutex are keyed by the git common directory, and every request names its worktree so the engine answers for the right one. Sessions, build locks and logs stay per worktree, while baselines, summaries, test maps, caches and blueprints are shared. A worktree without its own restore assets loads its projects from another worktree's restored blueprint. <a href="how-it-works">How Fuse works</a> explains it.</li>
+      <li>Memory follows the machine as well as the engine. The engine reads machine memory load from the operating system instead of the garbage collector, and sheds background work, kept answers and caches, session views, HEAD compilations and idle projects progressively as the machine fills, while <code>Busy</code> still answers only past the engine's own 2 GB ceiling. The idlest engine exits first when the machine runs short, counting other processes too. <a href="how-it-works">How Fuse works</a> explains it.</li>
+      <li>Reference search reads a syntax token index, which maps identifier tokens and base types to their files without loading semantic models, and persists across restarts. A post-edit check of body-only edits checks only the edited member spans and skips whole-file binding, falling back to full-file binding when declarations, usings, directives or code outside member bodies changed. Neither changes an answer. <a href="how-it-works#check">How it works</a> explains the search and the spans.</li>
+      <li>Test projects on Microsoft.Testing.Platform with build output run without MSBuild: Fuse emits the changed assemblies into the shadow copy and starts the test applications directly. A project with a .NET Framework target, or a target built without its <code>runtimeconfig.json</code>, still builds with MSBuild. The shadow copy is mirrored with hard links where the system supports them, and copied otherwise. <a href="how-it-works#without-msbuild">How it works</a> explains the runs.</li>
+      <li>Test runs reuse warm workers and cached slices. A pool of warm test workers runs repeated slices without starting a process per run; <code>--clean</code> bypasses it. Each slice result is cached by content hash and reused without executing; <code>--no-cache</code> bypasses the cache. Recorded coverage from earlier runs, and Microsoft.Testing.Platform <code>--collect-test-map</code> output on the .NET 11 SDK, adds tests to the selection and never removes any. The pool and the cache change no selection; the map only adds to it. <a href="how-it-works#test-selection">How it works</a> explains the reuse.</li>
+      <li><code>fuse build --changed</code> builds several projects with one MSBuild traversal run and prints one <code>build (&lt;N&gt; projects)</code> summary. In 6.0.0 it ran one <code>dotnet build</code> per project with one <code>build (&lt;name&gt;)</code> summary each and a final <code>fuse: &lt;F&gt; of &lt;M&gt; project(s) failed</code> line. One project still prints <code>build (&lt;name&gt;)</code>. Builds over disjoint projects run at the same time under per-project locks, while a whole-solution build still takes the repository lock. Fuse adds no <code>-mt</code> of its own; a <code>-mt</code> you pass goes to MSBuild unchanged. <a href="commands#fuse-build">Commands</a> shows the form.</li>
+      <li>For OpenCode, the plugin that <code>fuse init</code> writes tries the engine pipe first for post-edit and stop checks, and falls back to <code>fuse hook</code>. Run <code>fuse init</code> again to update it. <a href="harnesses">Connect your agent</a> shows the plugin.</li>
+    </ul>
+
+    <h3>Documentation</h3>
+    <ul>
+      <li><a href="commands">Commands</a> documents every new command and flag. <a href="how-it-works">How Fuse works</a> explains the shared engine, repair packets, warm test workers and the slice cache.</li>
+    </ul>
 
     <h2 id="v6-0-0">6.0.0 <a class="anchor" href="#v6-0-0" aria-label="Link to this section">#</a></h2>
     <p class="intro">Released 2026-11-11. Compared with 5.7.0, this release rewrites how the engine answers many agents at once. Checks, test plans and builds no longer take turns behind one lock: they pin generations and run in parallel. Workers without hooks get a name, judges can watch workers, and memory follows the change instead of the repository.</p>

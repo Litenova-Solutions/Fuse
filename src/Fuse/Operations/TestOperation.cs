@@ -17,6 +17,10 @@ internal static class TestOperation
 {
     private const int MaxFailuresShown = 10;
     private const int MaxNamesShown = 100;
+    private const int MaxTestMapSearchFolders = 8;
+    private const int MaxTestMapFilesPerFolder = 64;
+    private const int MaxTestMapsPerRun = 16;
+    private const int MaxTestMapBytes = 8_000_000;
 
     /// <summary>Default fail-fast failure cap for <c>--max-failures</c> and .NET 11 MTP <c>--maximum-failed-tests</c>.</summary>
     internal const int DefaultMaxFailures = 10;
@@ -331,9 +335,7 @@ internal static class TestOperation
             async (group, ct) =>
             {
                 // One process per target framework, in parallel. Every run in a shadow group is a shadow run (VSTest or MTP).
-                var results = await Task.WhenAll(group.Select(run => run.UsesTestingPlatform
-                    ? RunShadowPlatformAsync(root, run, maxFailures, ct)
-                    : RunDotnetTestAsync(root, root.Path, [((TestRunMode.Shadow)run.Mode).Assembly], ct, assembly: true, run: run, maxFailures: maxFailures))).ConfigureAwait(false);
+                var results = await Task.WhenAll(group.Select(run => RunShadowOrCachedAsync(root, run, maxFailures, ct))).ConfigureAwait(false);
                 // A shadow run that could not start (a test host or adapter problem) sends the whole project through MSBuild below.
                 if (results.Any(r => r.Outcome is null))
                     return;
@@ -499,7 +501,9 @@ internal static class TestOperation
         foreach (var group in groups)
         {
             var runs = group.ToList();
+            // A run served from the slice cache keeps the filter its verdict was keyed by, so it never splits.
             if (failedFirstByProject.TryGetValue(runs[0].Project, out var names)
+                && runs.All(r => !r.FromCache)
                 && runs.All(r => !r.UsesTestingPlatform)
                 && runs.All(r => r.Filter == runs[0].Filter)
                 && runs[0].Filter is string original
@@ -607,9 +611,7 @@ internal static class TestOperation
             new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2), CancellationToken = cancellationToken },
             async (group, ct) =>
             {
-                var results = await Task.WhenAll(group.Runs.Select(run => run.UsesTestingPlatform
-                    ? RunShadowPlatformAsync(root, run, maxFailures, ct)
-                    : RunDotnetTestAsync(root, root.Path, [((TestRunMode.Shadow)run.Mode).Assembly], ct, assembly: true, run: run, maxFailures: maxFailures))).ConfigureAwait(false);
+                var results = await Task.WhenAll(group.Runs.Select(run => RunShadowOrCachedAsync(root, run, maxFailures, ct))).ConfigureAwait(false);
                 // A shadow run that could not start sends the project back through MSBuild below.
                 if (results.Any(r => r.Outcome is null))
                     return;
@@ -740,6 +742,7 @@ internal static class TestOperation
                 last = process;
             }
 
+            await CollectTestMapsAsync(root, run, [results, .. targets.Select(t => Path.GetDirectoryName(t)).OfType<string>()], cancellationToken).ConfigureAwait(false);
             if (aggregate.Total == 0 && (run.Filter is not null || run.FilterArguments.Length > 0))
                 return (null, new ProcessResult(NoTestRanExitCode, last?.Output ?? ""), log, results);
             return (aggregate, null, log, results);
@@ -754,6 +757,118 @@ internal static class TestOperation
             catch (IOException)
             {
             }
+        }
+    }
+
+    /// <summary>
+    ///     The outcome of a run the engine served from the slice cache, when its cached verdict passed every test, so
+    ///     the run is reused without starting a process. Null when the run is not cached, when its verdict failed a
+    ///     test (which runs fresh, so its failures print with their details), or when its reason parses to nothing.
+    ///     The text is what the engine's plan mapper writes; the engine masks it under <c>--clean</c> and
+    ///     <c>--no-cache</c>, so a masked run always reaches here uncached.
+    /// </summary>
+    internal static TrxResults? CachedPassOutcome(TestRun run)
+    {
+        if (!run.FromCache || run.CacheReason is not { } reason)
+            return null;
+        const string prefix = "slice cache: ";
+        const string passed = " passed, ";
+        const string failed = " failed, ";
+        const string skipped = " skipped";
+        if (!reason.StartsWith(prefix, StringComparison.Ordinal) || !reason.EndsWith(skipped, StringComparison.Ordinal))
+            return null;
+        var body = reason[prefix.Length..^skipped.Length];
+        var first = body.IndexOf(passed, StringComparison.Ordinal);
+        if (first < 0)
+            return null;
+        var second = body.IndexOf(failed, first + passed.Length, StringComparison.Ordinal);
+        if (second < 0)
+            return null;
+        if (!int.TryParse(body[..first], NumberStyles.None, CultureInfo.InvariantCulture, out var passedCount)
+            || !int.TryParse(body[(first + passed.Length)..second], NumberStyles.None, CultureInfo.InvariantCulture, out var failedCount)
+            || !int.TryParse(body[(second + failed.Length)..], NumberStyles.None, CultureInfo.InvariantCulture, out var skippedCount))
+            return null;
+        return failedCount == 0 ? new TrxResults(passedCount, 0, skippedCount, []) : null;
+    }
+
+    /// <summary>Runs one shadow run, or reuses its cached passing verdict without starting a process.</summary>
+    private static Task<(TrxResults? Outcome, ProcessResult? Process, string Log, string ResultsDirectory)> RunShadowOrCachedAsync(RepoRoot root, TestRun run, int maxFailures, CancellationToken cancellationToken) =>
+        CachedPassOutcome(run) is { } reused
+            ? Task.FromResult<(TrxResults? Outcome, ProcessResult? Process, string Log, string ResultsDirectory)>((reused, null, "", ""))
+            : run.UsesTestingPlatform
+                ? RunShadowPlatformAsync(root, run, maxFailures, cancellationToken)
+                : RunDotnetTestAsync(root, root.Path, [((TestRunMode.Shadow)run.Mode).Assembly], cancellationToken, assembly: true, run: run, maxFailures: maxFailures);
+
+    /// <summary>
+    ///     Copies the test maps a finished Microsoft.Testing.Platform run wrote into the incoming folder the engine's
+    ///     next plan ingests, under a subfolder named for the test project. Runs only on the .NET 11 SDK, which is
+    ///     the first to write them; otherwise records nothing. Never fails the run: maps are advisory, and a missed
+    ///     one only costs the next selection its hints.
+    /// </summary>
+    private static async Task CollectTestMapsAsync(RepoRoot root, TestRun? run, IReadOnlyList<string> searchDirectories, CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (run is not { UsesTestingPlatform: true })
+                return;
+            var folders = searchDirectories.Where(Directory.Exists).Take(MaxTestMapSearchFolders).ToList();
+            if (folders.Count == 0)
+                return;
+            if (!(await SdkCapabilities.DetectAsync(root.Path, cancellationToken).ConfigureAwait(false)).SupportsMtpAffectedTests)
+                return;
+            // The engine reads this folder without the client: its path and the hex-encoded project name below match
+            // the dynamic map's incoming folder, which this layer may not name.
+            var incoming = Path.Combine(root.SharedStateDirectory, "test-maps", "incoming", Convert.ToHexStringLower(Encoding.UTF8.GetBytes(root.PathOf(run.Project).Relative)));
+            var copied = 0;
+            foreach (var folder in folders)
+            {
+                foreach (var file in TestMapFiles(folder))
+                {
+                    if (copied >= MaxTestMapsPerRun)
+                        return;
+                    try
+                    {
+                        if (new FileInfo(file).Length > MaxTestMapBytes)
+                            continue;
+                        Directory.CreateDirectory(incoming);
+                        File.Copy(file, Path.Combine(incoming, Path.GetFileName(file)), overwrite: true);
+                        copied++;
+                    }
+                    catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+                    {
+                        // One unreadable map never stops the rest.
+                    }
+                }
+            }
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            // Advisory: a missed map only costs the next selection its hints, never the run its answer.
+        }
+    }
+
+    /// <summary>The test map files under <paramref name="folder"/>: its top level and its test-results folder, bounded.</summary>
+    private static IEnumerable<string> TestMapFiles(string folder)
+    {
+        var files = EnumerateTopFiles(folder).Concat(EnumerateTopFiles(Path.Combine(folder, "TestResults"))).Take(MaxTestMapFilesPerFolder);
+        foreach (var file in files)
+        {
+            var name = Path.GetFileName(file);
+            if (name.Contains("testmap", StringComparison.OrdinalIgnoreCase) || name.Contains("test-map", StringComparison.OrdinalIgnoreCase))
+                yield return file;
+        }
+    }
+
+    /// <summary>The files directly under <paramref name="folder"/>, or none when it cannot be read.</summary>
+    private static IEnumerable<string> EnumerateTopFiles(string folder)
+    {
+        try
+        {
+            return Directory.Exists(folder) ? [.. Directory.EnumerateFiles(folder, "*", SearchOption.TopDirectoryOnly)] : [];
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return [];
         }
     }
 
@@ -814,6 +929,7 @@ internal static class TestOperation
                 return (null, process.ExitCode == 0 ? null : process, "", results);
             if (outcome.Total == 0 && (run.Filter is not null || run.FilterArguments.Length > 0))
                 return (null, new ProcessResult(NoTestRanExitCode, process.Output), "", results);
+            await CollectTestMapsAsync(root, run, [results, Path.GetDirectoryName(shadowAssembly)!], cancellationToken).ConfigureAwait(false);
             return (outcome, null, "", results);
         }
         finally
@@ -923,6 +1039,8 @@ internal static class TestOperation
             var outcome = TrxReader.ReadDirectory(results, root.Path) ?? (testingPlatform ? TestingPlatformOutput.Read(result.Output, root.Path) : null);
             if (outcome is null && earlyFailures.Count > 0)
                 outcome = SynthesizeFailures(earlyFailures);
+            if (outcome is not null)
+                await CollectTestMapsAsync(root, run, [results, .. (run?.TargetPaths ?? []).Select(t => Path.GetDirectoryName(t)).OfType<string>()], cancellationToken).ConfigureAwait(false);
             // Counts that say nothing failed from a run that exited with a code other than 0 do not explain its exit code.
             if (testingPlatform && outcome is { Failed: 0 } && result.ExitCode != 0)
                 outcome = null;

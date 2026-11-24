@@ -148,7 +148,9 @@ internal sealed class Checker
         _introduced.BeginContext(context);
         var syncing = phases.Start();
         IReadOnlyList<RepoPath> known = scope is CheckScope.NamedPaths scoped ? ScopeExpansion.RecentlyWritten(_workspace.Root, scoped.Named) : TargetResolver.NamedPaths(scope);
-        var generation = await _workspace.SyncAndPinAsync(known, cancellationToken).ConfigureAwait(false);
+        // A check of every change confirms the changed set against git: a write the watcher has not reported yet is
+        // otherwise in no set, and the check answers over files it never saw.
+        var generation = await _workspace.SyncAndPinAsync(known, cancellationToken, confirmWithDisk: scope is CheckScope.AllChanges).ConfigureAwait(false);
         phases.Add(Phase.Sync, syncing);
         // A file that matches HEAD again is no longer credited to the sessions that wrote it, whichever check sees it first.
         _sessions.Forget(generation.Changed);

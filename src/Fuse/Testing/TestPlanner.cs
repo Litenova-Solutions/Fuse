@@ -98,8 +98,11 @@ internal sealed class TestPlanner : IDisposable
     /// <param name="cancellationToken">Cancels the plan.</param>
     public async Task<PendingPlan> SelectAsync(TestScope scope, PhaseTimes phases, CancellationToken cancellationToken)
     {
+        await IngestIncomingTestMapsAsync(cancellationToken).ConfigureAwait(false);
         var syncing = phases.Start();
-        var generation = await _workspace.SyncAndPinAsync([], cancellationToken).ConfigureAwait(false);
+        // A plan confirms the changed set against disk where the watcher can report late, as a check of every
+        // change does, so a missed write never narrows the selection to fewer tests.
+        var generation = await _workspace.SyncAndPinAsync([], cancellationToken, confirmWithDisk: OperatingSystem.IsMacOS()).ConfigureAwait(false);
         phases.Add(Phase.Sync, syncing);
         var graph = generation.Graph;
         var testProjects = graph.Projects.Where(p => p.IsTest).ToList();
@@ -292,7 +295,12 @@ internal sealed class TestPlanner : IDisposable
     /// <param name="pending">The plan, with its generation.</param>
     /// <param name="phases">Collects the <see cref="Phase.Mirror"/> and <see cref="Phase.Emit"/> phases.</param>
     /// <param name="cancellationToken">Cancels emitting.</param>
-    public async Task<TestPlanResult> PrepareAsync(PendingPlan pending, PhaseTimes phases, CancellationToken cancellationToken)
+    /// <param name="runWarm">
+    ///     True to run each warm-eligible shadow run that missed the slice cache in the warm pool while preparing,
+    ///     attaching its verdict as the run's cached result; false keeps every shadow run for the client. The router
+    ///     passes false for a clean plan, which bypasses the pool.
+    /// </param>
+    public async Task<TestPlanResult> PrepareAsync(PendingPlan pending, PhaseTimes phases, CancellationToken cancellationToken, bool runWarm = false)
     {
         if (pending.Answered is not null)
             return pending.Answered;
@@ -304,7 +312,7 @@ internal sealed class TestPlanner : IDisposable
             var emitting = new Stopwatch();
             var runs = new List<PlannedRun>();
             foreach (var (node, filter, filterArguments, variants) in pending.Projects)
-                runs.AddRange(await RunsOfAsync(emitter, node, filter, filterArguments, variants, pending, emitting, preparing, cancellationToken).ConfigureAwait(false));
+                runs.AddRange(await RunsOfAsync(emitter, node, filter, filterArguments, variants, pending, emitting, preparing, runWarm, cancellationToken).ConfigureAwait(false));
 
             // Everything in the preparation but the emit is the mirror: judging which assemblies are stale, and the copy.
             phases.Add(Phase.Mirror, preparing.Elapsed.TotalMilliseconds - emitting.Elapsed.TotalMilliseconds);
@@ -350,6 +358,7 @@ internal sealed class TestPlanner : IDisposable
         PendingPlan pending,
         Stopwatch emitting,
         Stopwatch timer,
+        bool runWarm,
         CancellationToken cancellationToken)
     {
         // A configuration or framework was named, or a platform project targets .NET Framework without runtimeconfig:
@@ -400,6 +409,8 @@ internal sealed class TestPlanner : IDisposable
             var sliceKey = SliceCache.ComputeKey(variant, pending.Graph, _workspace.Root, result.Closure, result.Emitted, shadowDir, runSettings, filter, variantFilterArguments);
             var cached = pending.NoCache ? null : SliceCache.TryGet(sliceKey, noCache: false);
             var warmEligible = !node.RequiresContainerRuntime && !IsLegacyNetFramework(variant) && WarmTestPool.IsEligible(node.Framework, TargetFrameworkOf(variant));
+            if (cached is null && runWarm && warmEligible && sliceKey is not null)
+                cached = await TryRunWarmAsync(node, variant, shadow.Assembly, shadowDir, sliceKey, result.Closure, result.Emitted, pending, cancellationToken).ConfigureAwait(false);
             prepared.Add((variant, shadow, filter, variantFilterArguments, sliceKey, cached, warmEligible));
         }
 
@@ -457,6 +468,141 @@ internal sealed class TestPlanner : IDisposable
         var open = variant.Name.LastIndexOf('(');
         var close = variant.Name.LastIndexOf(')');
         return open >= 0 && close > open ? variant.Name[(open + 1)..close] : "";
+    }
+
+    /// <summary>
+    ///     Runs one prepared shadow run in the warm pool and answers its verdict as a slice result, or null when the
+    ///     pool declines it and the client runs the shadow copy instead. A verdict the pool ran is already stored
+    ///     under <paramref name="sliceKey"/>; attaching it here only marks this plan's run as served from it.
+    /// </summary>
+    private async Task<SliceCacheResult?> TryRunWarmAsync(
+        ProjectNode node,
+        Project variant,
+        string shadowAssembly,
+        string? shadowDir,
+        string sliceKey,
+        IReadOnlyList<Project> closure,
+        IReadOnlyDictionary<ProjectId, (EmittedImage Image, string PeHash, string PdbHash)> emitted,
+        PendingPlan pending,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var assemblies = WarmAssemblies(variant, closure, emitted, shadowDir);
+            var testAssembly = SimpleNameOf(variant);
+            if (assemblies is null || testAssembly is null || shadowDir is null)
+                return null;
+            var targetFramework = TargetFrameworkOf(variant);
+            var patterns = pending.Selections is not null
+                && pending.Selections.TryGetValue(node.Path, out var selection)
+                && selection is TestSelection.Methods methods
+                ? (IReadOnlyList<string>)[.. methods.Patterns]
+                : [];
+            var request = new WarmRunRequest(
+                node.Path.Absolute,
+                node.Name,
+                targetFramework,
+                shadowDir,
+                shadowDir,
+                shadowAssembly,
+                testAssembly,
+                assemblies,
+                patterns)
+            {
+                SliceKey = sliceKey,
+                NoCache = pending.NoCache,
+            };
+            var result = await WarmPool.RunAsync(request, cancellationToken).ConfigureAwait(false);
+            if (!result.ExecutedInWarmWorker)
+            {
+                _workspace.Log($"test plan: {node.Name} warm run fell back ({result.FallbackReason}); runs from the shadow copy");
+                return null;
+            }
+
+            return new SliceCacheResult(
+                sliceKey,
+                node.Path.Relative,
+                node.Name,
+                targetFramework,
+                result.Passed,
+                result.Failed,
+                result.Skipped,
+                result.DurationMs,
+                DateTime.UtcNow,
+                result.Failures);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            _workspace.Log($"test plan: {node.Name} warm run failed ({e.Message}); runs from the shadow copy");
+            return null;
+        }
+    }
+
+    /// <summary>
+    ///     The repository assemblies of <paramref name="closure"/> as warm images: the emitted bytes where the plan
+    ///     emitted them, else the bytes the shadow folder holds. Null when any is missing or two share a simple name,
+    ///     so the pool never loads a partial or ambiguous set.
+    /// </summary>
+    private static List<WarmAssemblyImage>? WarmAssemblies(
+        Project testProject,
+        IReadOnlyList<Project> closure,
+        IReadOnlyDictionary<ProjectId, (EmittedImage Image, string PeHash, string PdbHash)> emitted,
+        string? shadowDir)
+    {
+        if (shadowDir is null)
+            return null;
+        var images = new List<WarmAssemblyImage>(closure.Count);
+        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var project in closure.Prepend(testProject).DistinctBy(p => p.Id))
+        {
+            var simpleName = SimpleNameOf(project);
+            if (simpleName is null || !names.Add(simpleName))
+                return null;
+            if (emitted.TryGetValue(project.Id, out var image))
+            {
+                images.Add(new WarmAssemblyImage(simpleName, image.Image.Pe, image.Image.Pdb));
+                continue;
+            }
+
+            if (project.OutputFilePath is null)
+                return null;
+            var assemblyPath = Path.Combine(shadowDir, Path.GetFileName(project.OutputFilePath));
+            var pdbPath = Path.ChangeExtension(assemblyPath, ".pdb");
+            try
+            {
+                if (!File.Exists(assemblyPath))
+                    return null;
+                var pdb = File.Exists(pdbPath) ? File.ReadAllBytes(pdbPath) : [];
+                images.Add(new WarmAssemblyImage(simpleName, File.ReadAllBytes(assemblyPath), pdb));
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                return null;
+            }
+        }
+
+        return images;
+    }
+
+    /// <summary>The simple assembly name of <paramref name="project"/>, or null when none is known.</summary>
+    private static string? SimpleNameOf(Project project)
+    {
+        if (!string.IsNullOrWhiteSpace(project.AssemblyName))
+            return project.AssemblyName;
+        return project.OutputFilePath is { } output && Path.GetFileNameWithoutExtension(output) is { Length: > 0 } stem
+            ? stem
+            : null;
+    }
+
+    /// <summary>
+    ///     Ingests the test maps the client's platform runs left in the incoming folder into the dynamic map, so the
+    ///     selection adds the tests they name. Silent when none arrived.
+    /// </summary>
+    private async Task IngestIncomingTestMapsAsync(CancellationToken cancellationToken)
+    {
+        var ingested = await _dynamicMap.IngestIncomingAsync(_workspace.Root, cancellationToken).ConfigureAwait(false);
+        if (ingested > 0)
+            _workspace.Log($"test plan: ingested {ingested} test mapping(s) from earlier platform runs");
     }
 
     private static async Task<bool> UsesMtpEntryPointAsync(Project variant, bool defaultRunner, CancellationToken cancellationToken)
@@ -586,10 +732,12 @@ internal sealed class TestPlanner : IDisposable
     /// <param name="unknown">Recorded project paths that name no file.</param>
     /// <param name="phases">Collects the <see cref="Phase.Sync"/> and <see cref="Phase.Selection"/> phases.</param>
     /// <param name="cancellationToken">Cancels the plan.</param>
-    public async Task<PendingPlan> SelectFailedAsync(IReadOnlyDictionary<RepoPath, string[]> byProject, IReadOnlyList<string> unknown, PhaseTimes phases, CancellationToken cancellationToken)
+    /// <param name="noCache">True to bypass the slice cache lookup for this plan (<c>--clean</c> / <c>--no-cache</c>).</param>
+    public async Task<PendingPlan> SelectFailedAsync(IReadOnlyDictionary<RepoPath, string[]> byProject, IReadOnlyList<string> unknown, PhaseTimes phases, CancellationToken cancellationToken, bool noCache = false)
     {
+        await IngestIncomingTestMapsAsync(cancellationToken).ConfigureAwait(false);
         var syncing = phases.Start();
-        var generation = await _workspace.SyncAndPinAsync([], cancellationToken).ConfigureAwait(false);
+        var generation = await _workspace.SyncAndPinAsync([], cancellationToken, confirmWithDisk: OperatingSystem.IsMacOS()).ConfigureAwait(false);
         phases.Add(Phase.Sync, syncing);
         var graph = generation.Graph;
         var testProjects = graph.Projects.Where(p => p.IsTest).ToList();
@@ -661,7 +809,7 @@ internal sealed class TestPlanner : IDisposable
             summary.Append("; left out ").Append(name).Append(", which is not a test project in this repository");
         if (reruns.Count == 0)
             return PendingPlan.Of(new TestPlanResult([], 0, total, summary.ToString()), generation);
-        return PendingPlan.ToPrepare(generation, EmitterFor(generation), projects, selected, total, summary.ToString(), runner: runner, selections: selections);
+        return PendingPlan.ToPrepare(generation, EmitterFor(generation), projects, selected, total, summary.ToString(), noCache: noCache, runner: runner, selections: selections);
     }
 
 }

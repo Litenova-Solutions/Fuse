@@ -17,9 +17,7 @@ public class SwarmCliOperationsTests
             new EngineRequest.YieldMemory { WorktreeRoot = @"C:\wt1" },
             new EngineRequest.Judge(new JudgeRequest(
                 JudgeRequest.JudgeMode.Race,
-                [new JudgeRequest.Candidate("cand1", "--- a/A.cs\n+++ b/A.cs\n", @"C:\wt1")],
-                RunTests: true,
-                MaxFailures: 5))
+                [new JudgeRequest.Candidate("cand1", "--- a/A.cs\n+++ b/A.cs\n", @"C:\wt1")]))
             { WorktreeRoot = @"C:\wt1" },
             new EngineRequest.Graph { WorktreeRoot = @"C:\wt1" },
             new EngineRequest.Impact(["Lib/Calc.cs"]) { WorktreeRoot = @"C:\wt1" },
@@ -59,7 +57,7 @@ public class SwarmCliOperationsTests
                 true,
                 "cand1 wins",
                 "cand1",
-                [new JudgeReport.CandidateVerdict("cand1", 1, true, 0, TestsPassed: true, TestsRun: 4, TestsFailed: 0, ElapsedMs: 85, Errors: [err])])),
+                [new JudgeReport.CandidateVerdict("cand1", 1, true, 0, ElapsedMs: 85, Errors: [err])])),
             new EngineResponse.GraphAnswered(new GraphReport(
                 "0123456789ab",
                 [new GraphReport.ProjectNode("Lib", "Lib/Lib.csproj", [], ["App"], false, "net10.0", ["Lib/Calc.cs"])],
@@ -146,10 +144,10 @@ public class SwarmCliOperationsTests
         repo.Replace("Lib/Calc.cs", "{}", "{ public int B => 2; }");
         repo.Write("Lib/NewFile.cs", "public class NewFile {}\n");
 
-        var (parsed, refusal) = JudgeOperation.Parse(["--race", "cand1.patch", ".", "--test", "--json"]);
+        var (parsed, refusal) = JudgeOperation.Parse(["--race", "cand1.patch", ".", "--json"]);
         Assert.Null(refusal);
         Assert.Equal(JudgeRequest.JudgeMode.Race, parsed!.Mode);
-        Assert.True(parsed.RunTests);
+        Assert.True(parsed.Json);
 
         var (c1, e1) = await JudgeOperation.LoadCandidateAsync("cand1.patch", repo.Path, TestContext.Current.CancellationToken);
         var (c2, e2) = await JudgeOperation.LoadCandidateAsync(".", repo.Path, TestContext.Current.CancellationToken);
@@ -165,13 +163,24 @@ public class SwarmCliOperationsTests
             "cand1 won",
             "cand1",
             [
-                new JudgeReport.CandidateVerdict("cand1", 1, true, 0, TestsPassed: true, TestsRun: 2, TestsFailed: 0, ElapsedMs: 42),
+                new JudgeReport.CandidateVerdict("cand1", 1, true, 0, ElapsedMs: 42),
                 new JudgeReport.CandidateVerdict(".", 2, false, 1, ElapsedMs: 30, Errors: [new ReportedError(new CompilerError("Lib/Calc.cs", 1, 1, "CS1002", "; expected"))]),
             ]);
         var rendered = JudgeOperation.Render(report, json: false);
         Assert.Equal(Outcome.Clean, rendered.Outcome);
-        Assert.Contains("#1 cand1: compiles, 2 test(s) passed", rendered.Text, StringComparison.Ordinal);
+        Assert.Contains("#1 cand1: compiles (42 ms)", rendered.Text, StringComparison.Ordinal);
         Assert.Contains("winner: cand1", rendered.Text, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("--test")]
+    [InlineData("--max-failures")]
+    public void Judge_refuses_removed_test_options_as_unknown(string option)
+    {
+        var (parsed, refusal) = JudgeOperation.Parse(["--race", "cand1.patch", option]);
+
+        Assert.Null(parsed);
+        Assert.Contains($"fuse: '{option}' is not a fuse judge option", refusal, StringComparison.Ordinal);
     }
 
     [Fact]

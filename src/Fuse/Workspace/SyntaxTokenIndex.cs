@@ -27,7 +27,7 @@ internal sealed class SyntaxTokenIndex
     private readonly RepoRoot _root;
     private readonly Action<string> _log;
     private readonly Lock _lock = new();
-    private static readonly StringComparer PathComparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+    private static readonly StringComparer PathComparer = StringComparer.FromComparison(RepoPath.Comparison);
 
     private readonly List<DocEntry?> _entries = [];
     private readonly Dictionary<(string Path, string PreprocessorKey), int> _entryLookup = new(EntryKeyComparer.Instance);

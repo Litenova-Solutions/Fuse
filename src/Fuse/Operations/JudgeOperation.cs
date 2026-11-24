@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using Fuse.Dotnet;
@@ -16,20 +15,16 @@ namespace Fuse.Operations;
 internal static class JudgeOperation
 {
     internal const string Usage =
-        "usage: fuse judge (--combine | --race) <patch-or-worktree...> [--test] [--max-failures <n>] [--json]";
+        "usage: fuse judge (--combine | --race) <patch-or-worktree...> [--json]";
 
     internal sealed record JudgeArguments(
         JudgeRequest.JudgeMode Mode,
         IReadOnlyList<string> Targets,
-        bool RunTests,
-        int MaxFailures,
         bool Json);
 
     public static (JudgeArguments? Arguments, string? Refusal) Parse(IReadOnlyList<string> args)
     {
         JudgeRequest.JudgeMode? mode = null;
-        var runTests = false;
-        var maxFailures = TestOperation.DefaultMaxFailures;
         var json = false;
         var targets = new List<string>();
         var options = true;
@@ -67,25 +62,9 @@ internal static class JudgeOperation
                 continue;
             }
 
-            if (token == "--test")
-            {
-                runTests = true;
-                continue;
-            }
-
             if (token == "--json")
             {
                 json = true;
-                continue;
-            }
-
-            if (token == "--max-failures" || token.StartsWith("--max-failures=", StringComparison.Ordinal))
-            {
-                var text = token.StartsWith("--max-failures=", StringComparison.Ordinal)
-                    ? token["--max-failures=".Length..]
-                    : ++i < args.Count ? args[i] : null;
-                if (text is null || !int.TryParse(text, CultureInfo.InvariantCulture, out maxFailures) || maxFailures < 1 || maxFailures > CheckArguments.MaxErrorsLimit)
-                    return (null, $"fuse: --max-failures takes a count of 1 to {CheckArguments.MaxErrorsLimit}, not '{text ?? ""}'");
                 continue;
             }
 
@@ -99,7 +78,7 @@ internal static class JudgeOperation
         if (targets.Count == 0)
             return (null, $"fuse: name at least one patch file or worktree directory\n{Usage}");
 
-        return (new JudgeArguments(mode.Value, targets, runTests, maxFailures, json), null);
+        return (new JudgeArguments(mode.Value, targets, json), null);
     }
 
     public static async Task<OperationResult> RunAsync(
@@ -121,7 +100,7 @@ internal static class JudgeOperation
             candidates.Add(candidate!);
         }
 
-        var request = new EngineRequest.Judge(new JudgeRequest(parsed.Mode, [.. candidates], parsed.RunTests, parsed.MaxFailures));
+        var request = new EngineRequest.Judge(new JudgeRequest(parsed.Mode, [.. candidates]));
         var response = await EngineClient.SendAsync(root, request, TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
         if (response is not EngineResponse.JudgeAnswered answered)
             return OperationResult.Unanswered(response, "judge report");
@@ -207,16 +186,11 @@ internal static class JudgeOperation
         foreach (var verdict in report.Verdicts.OrderBy(v => v.Rank))
         {
             var compilePart = verdict.Compiles ? "compiles" : $"{verdict.ErrorCount} error(s)";
-            var testPart = verdict.TestsPassed is { } tp
-                ? (tp ? $", {verdict.TestsRun} test(s) passed" : $", {verdict.TestsFailed}/{verdict.TestsRun} test(s) failed")
-                : "";
-            sb.Append($"\n  #{verdict.Rank} {verdict.Name}: {compilePart}{testPart} ({verdict.ElapsedMs} ms)");
+            sb.Append($"\n  #{verdict.Rank} {verdict.Name}: {compilePart} ({verdict.ElapsedMs} ms)");
             if (verdict.ConflictReason is { Length: > 0 } reason)
                 sb.Append($"\n    conflict: {reason}");
             foreach (var error in verdict.Errors.Take(10))
                 sb.Append("\n    ").Append(error.Error);
-            foreach (var failedTest in verdict.FailedTests.Take(10))
-                sb.Append("\n    FAILED ").Append(failedTest);
         }
 
         if (report.Winner is { Length: > 0 } winner)

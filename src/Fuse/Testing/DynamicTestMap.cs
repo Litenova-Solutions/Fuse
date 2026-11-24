@@ -16,6 +16,8 @@ namespace Fuse.Testing;
 internal sealed partial class DynamicTestMap
 {
     private const int FormatVersion = 1;
+    internal const int MaxIncomingProjects = 64;
+    internal const int MaxIncomingFileBytes = 8_000_000;
 
     private readonly string _directory;
     private readonly Lock _gate = new();
@@ -30,6 +32,9 @@ internal sealed partial class DynamicTestMap
 
     /// <summary>Directory storing dynamic test coverage maps for <paramref name="sharedStateDirectory"/>.</summary>
     public static string DirectoryFor(string sharedStateDirectory) => Path.Combine(sharedStateDirectory, "test-maps");
+
+    /// <summary>Directory holding the test maps the client's platform runs left for the next plan to ingest.</summary>
+    public static string IncomingDirectoryFor(string sharedStateDirectory) => Path.Combine(DirectoryFor(sharedStateDirectory), "incoming");
 
     /// <summary>Coverage hits collected for one executed test method.</summary>
     internal sealed record CoverageHits(IReadOnlyCollection<string> Methods, IReadOnlyCollection<string> Types, IReadOnlyCollection<string> Files);
@@ -149,6 +154,58 @@ internal sealed partial class DynamicTestMap
             if (!name.Contains("testmap", StringComparison.OrdinalIgnoreCase) && !name.Contains("test-map", StringComparison.OrdinalIgnoreCase))
                 continue;
             total += await IngestMtpTestMapAsync(file, testProjectPath, root, cancellationToken).ConfigureAwait(false);
+        }
+
+        return total;
+    }
+
+    /// <summary>
+    ///     Ingests the test maps the client's platform runs left in the incoming folder, each in a subfolder named
+    ///     for its test project, and removes every subfolder attempted. Maps are advisory: a file that cannot be
+    ///     read or parsed is dropped with its folder, never fails the plan.
+    /// </summary>
+    /// <returns>How many mappings were ingested.</returns>
+    public async Task<int> IngestIncomingAsync(RepoRoot root, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(root);
+        var incoming = Path.Combine(_directory, "incoming");
+        if (!Directory.Exists(incoming))
+            return 0;
+
+        List<string> folders;
+        try
+        {
+            folders = [.. Directory.EnumerateDirectories(incoming).Take(MaxIncomingProjects)];
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return 0;
+        }
+
+        var total = 0;
+        foreach (var folder in folders)
+        {
+            try
+            {
+                DropOversizedMaps(folder);
+                if (ProjectOfIncomingFolder(folder) is { } project)
+                    total += await DiscoverAndIngestFromDirectoryAsync(folder, project, root, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                // A map that cannot be ingested is dropped with its folder below; the static selection stands alone.
+            }
+            finally
+            {
+                try
+                {
+                    Directory.Delete(folder, recursive: true);
+                }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+                {
+                    // A folder that cannot be removed is attempted again by the next plan.
+                }
+            }
         }
 
         return total;
@@ -402,6 +459,40 @@ internal sealed partial class DynamicTestMap
 
     private static string NormalizeProjectPath(string projectPath, RepoRoot root) =>
         root.Contains(projectPath) || !Path.IsPathRooted(projectPath) ? root.PathOf(projectPath).Relative : projectPath.Replace('\\', '/');
+
+    /// <summary>The test project relative path a client-encoded incoming folder names, or null when it names none.</summary>
+    private static string? ProjectOfIncomingFolder(string folder)
+    {
+        var stem = Path.GetFileName(folder);
+        if (string.IsNullOrWhiteSpace(stem))
+            return null;
+        try
+        {
+            var relative = Encoding.UTF8.GetString(Convert.FromHexString(stem));
+            return string.IsNullOrWhiteSpace(relative) ? null : relative;
+        }
+        catch (Exception e) when (e is FormatException or ArgumentException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Deletes the incoming files past the size bound, so one huge file cannot exhaust memory while read.</summary>
+    private static void DropOversizedMaps(string folder)
+    {
+        foreach (var file in Directory.EnumerateFiles(folder))
+        {
+            try
+            {
+                if (new FileInfo(file).Length > MaxIncomingFileBytes)
+                    File.Delete(file);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                // A file that cannot be measured is left for the ingest to attempt or drop.
+            }
+        }
+    }
 
     private static string NormalizeRelativeFile(string path, RepoRoot root)
     {

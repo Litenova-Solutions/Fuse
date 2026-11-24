@@ -50,8 +50,8 @@ internal sealed class JudgeService
         try
         {
             return spec.Mode == JudgeRequest.JudgeMode.Combine
-                ? await CombineAsync(spec, prepared, generation, bases, introduced, reacher, binding, cancellationToken).ConfigureAwait(false)
-                : await RaceAsync(spec, prepared, generation, bases, introduced, reacher, binding, cancellationToken).ConfigureAwait(false);
+                ? await CombineAsync(prepared, generation, bases, introduced, reacher, binding, cancellationToken).ConfigureAwait(false)
+                : await RaceAsync(prepared, generation, bases, introduced, reacher, binding, cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -61,7 +61,6 @@ internal sealed class JudgeService
 
     /// <summary>Scores each candidate on its own fork and ranks the verdicts.</summary>
     private async Task<JudgeReport> RaceAsync(
-        JudgeRequest spec,
         IReadOnlyList<PreparedCandidate> prepared,
         Generation generation,
         IReadOnlyDictionary<RepoPath, string?> bases,
@@ -90,7 +89,7 @@ internal sealed class JudgeService
         var winner = ranked.FirstOrDefault(v => v.ConflictReason is null);
         var clean = ranked.Count == 0 || (winner is not null && winner.ErrorCount == 0);
         _workspace.Log($"judge: race scored {prepared.Count} candidate(s), winner {(winner is null ? "none" : winner.Name)}");
-        return new JudgeReport("race", clean, RaceSummary(prepared.Count, ranked, winner, spec.RunTests), winner?.Name, [.. ranked], []);
+        return new JudgeReport("race", clean, RaceSummary(prepared.Count, ranked, winner), winner?.Name, [.. ranked], []);
     }
 
     /// <summary>Scores one candidate: its fork's introduced errors, or why its patch does not apply.</summary>
@@ -127,7 +126,6 @@ internal sealed class JudgeService
 
     /// <summary>Applies every candidate to one fork in order, reporting overlaps, and checks the fork once.</summary>
     private async Task<JudgeReport> CombineAsync(
-        JudgeRequest spec,
         IReadOnlyList<PreparedCandidate> prepared,
         Generation generation,
         IReadOnlyDictionary<RepoPath, string?> bases,
@@ -187,7 +185,7 @@ internal sealed class JudgeService
         var conflicts = ranked.Where(v => v.ConflictReason is not null).Select(v => $"{v.Name}: {v.ConflictReason}").ToArray();
         var clean = ordered.Count == 0 && conflicts.Length == 0;
         _workspace.Log($"judge: combine scored {prepared.Count} candidate(s), {conflicts.Length} conflict(s)");
-        return new JudgeReport("combine", clean, CombineSummary(prepared.Count, ordered.Count, conflicts.Length, spec.RunTests), null, [.. ranked], conflicts);
+        return new JudgeReport("combine", clean, CombineSummary(prepared.Count, ordered.Count, conflicts.Length), null, [.. ranked], conflicts);
     }
 
     /// <summary>Checks one fork for the errors it introduces compared with the baseline, with the checker's own steps.</summary>
@@ -546,7 +544,7 @@ internal sealed class JudgeService
         });
 
     /// <summary>The one-line verdict over a race.</summary>
-    private static string RaceSummary(int count, List<JudgeReport.CandidateVerdict> ranked, JudgeReport.CandidateVerdict? winner, bool runTests)
+    private static string RaceSummary(int count, List<JudgeReport.CandidateVerdict> ranked, JudgeReport.CandidateVerdict? winner)
     {
         string summary;
         if (ranked.Count == 0)
@@ -567,20 +565,20 @@ internal sealed class JudgeService
                 summary += $", {ConflictsPhrase(conflicts)}";
         }
 
-        return runTests ? summary + "; tests did not run for in-memory candidates" : summary;
+        return summary;
     }
 
     /// <summary>The one-line verdict over a combine.</summary>
-    private static string CombineSummary(int count, int errors, int conflicts, bool runTests)
+    private static string CombineSummary(int count, int errors, int conflicts)
     {
         if (count == 0)
-            return runTests ? "no candidates to judge; tests did not run for in-memory candidates" : "no candidates to judge";
+            return "no candidates to judge";
         var summary = errors == 0
             ? $"combined {count - conflicts} of {count} with no errors introduced"
             : $"combined {count - conflicts} of {count} introduces {ErrorsPhrase(errors)}";
         if (conflicts > 0)
             summary += $", {ConflictsPhrase(conflicts)}";
-        return runTests ? summary + "; tests did not run for in-memory candidates" : summary;
+        return summary;
     }
 
     private static string ErrorsPhrase(int count) => count == 1 ? "1 error" : $"{count} errors";

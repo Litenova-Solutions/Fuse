@@ -19,7 +19,7 @@ internal static class CommandUsage
                                     dotnet build, printing its errors
           fuse gate [--session <name>] [--brief] [--test] [--max-failures <n>] [--json]
                                     run check (and optionally affected tests) as one deterministic worker gate
-          fuse judge (--combine | --race) <patch-or-worktree...> [--test] [--max-failures <n>] [--json]
+          fuse judge (--combine | --race) <patch-or-worktree...> [--json]
                                     evaluate candidate patches or worktrees in memory
           fuse graph [--json]       print the project DAG, coupling clusters, and test ownership map
           fuse impact <paths...> [--json]
@@ -83,12 +83,10 @@ internal static class CommandUsage
         """;
 
     internal const string Judge = """
-        fuse judge (--combine | --race) <patch-or-worktree...> [--test] [--max-failures <n>] [--json]
+        fuse judge (--combine | --race) <patch-or-worktree...> [--json]
           evaluate unified diff patches or git worktrees in memory before modifying disk or git.
-          --combine           apply all patches onto one combined overlay and verify compilation/tests
+          --combine           apply all patches onto one combined overlay and check it for introduced errors
           --race              evaluate each candidate independently and return a ranked scorecard
-          --test              run affected tests for compiling candidates
-          --max-failures <n>  stop candidate tests after n failures (default 10)
           --json              print the JudgeReport JSON object
         """;
 

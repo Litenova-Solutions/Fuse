@@ -6,8 +6,6 @@ using System.IO.Pipes;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Reflection.Metadata;
-using System.Reflection.Metadata.Ecma335;
-using System.Reflection.PortableExecutable;
 using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
 using System.Text;

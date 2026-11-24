@@ -8,7 +8,6 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using Fuse.Changes;
-using Fuse.Graph;
 using Fuse.Paths;
 using Fuse.Testing.Model;
 using Microsoft.CodeAnalysis;

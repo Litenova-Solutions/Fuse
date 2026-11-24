@@ -1,4 +1,3 @@
-using Fuse.Failures;
 using Fuse.Graph;
 using Fuse.Paths;
 using Fuse.Repo;

@@ -1,7 +1,6 @@
 using System.Runtime.InteropServices;
 using Fuse.Engine.Client;
 using Fuse.Graph;
-using Fuse.Paths;
 using Fuse.Tests.Fixtures;
 using Fuse.Workspace;
 using Microsoft.CodeAnalysis;

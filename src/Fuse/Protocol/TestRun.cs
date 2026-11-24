@@ -27,6 +27,13 @@ internal sealed record TestRun(string Project, string Name, TestRunMode Mode, st
     /// <summary>Optional explanation for a cached slice verdict.</summary>
     public string? CacheReason { get; init; }
 
+    /// <summary>
+    ///     The content-addressed slice key of this run's test project closure, which the client sends back with the
+    ///     run's verdict so the next identical plan reuses it. Null when the run has none, or under
+    ///     <c>--no-cache</c>, which neither reads nor writes the cache.
+    /// </summary>
+    public string? SliceKey { get; init; }
+
     // A record compares its fields, and an array field by the array itself; two runs with the same arguments in
     // different arrays are the same run, as one read back from the pipe must equal the one that was sent.
     public bool Equals(TestRun? other) =>

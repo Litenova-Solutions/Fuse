@@ -24,6 +24,7 @@ namespace Fuse.Protocol;
 [JsonDerivedType(typeof(PlanAffectedTests), nameof(PlanAffectedTests))]
 [JsonDerivedType(typeof(PlanAllTests), nameof(PlanAllTests))]
 [JsonDerivedType(typeof(PlanFailedTests), nameof(PlanFailedTests))]
+[JsonDerivedType(typeof(StoreSliceResult), nameof(StoreSliceResult))]
 [JsonDerivedType(typeof(PlanChangedBuild), nameof(PlanChangedBuild))]
 [JsonDerivedType(typeof(Status), nameof(Status))]
 [JsonDerivedType(typeof(YieldMemory), nameof(YieldMemory))]
@@ -329,6 +330,94 @@ internal abstract record EngineRequest
             foreach (var project in Projects)
                 hash.Add(project);
             return hash.ToHashCode();
+        }
+    }
+
+    /// <summary>One failed test of a stored slice verdict.</summary>
+    /// <param name="Name">Fully qualified test name.</param>
+    /// <param name="Message">Failure message.</param>
+    /// <param name="Frames">Stack frames inside the repository.</param>
+    public sealed record SliceFailure(string Name, string Message, string[] Frames)
+    {
+        /// <summary>The test name. A line without it reads as empty.</summary>
+        public string Name { get; init; } = Name ?? "";
+
+        /// <summary>The message. A line without it reads as empty.</summary>
+        public string Message { get; init; } = Message ?? "";
+
+        /// <summary>The frames. A line without the list reads as one that names none.</summary>
+        public string[] Frames { get; init; } = Frames ?? [];
+
+        // A record compares its fields, and an array field by the array itself; two failures with the same frames in
+        // different arrays are the same failure, as one read back from the pipe must equal the one that was sent.
+        public bool Equals(SliceFailure? other) =>
+            other is not null
+            && EqualityContract == other.EqualityContract
+            && Name == other.Name
+            && Message == other.Message
+            && Frames.SequenceEqual(other.Frames);
+
+        public override int GetHashCode()
+        {
+            var hash = new HashCode();
+            hash.Add(Name);
+            hash.Add(Message);
+            foreach (var frame in Frames)
+                hash.Add(frame);
+            return hash.ToHashCode();
+        }
+    }
+
+    /// <summary>
+    ///     Stores one finished test slice's verdict in the slice cache, so the next identical plan reuses a passing
+    ///     verdict without running. Answered at once with <see cref="EngineResponse.Acknowledged"/>, without waiting
+    ///     for the engine to finish loading; a line with no slice key is ignored.
+    /// </summary>
+    public sealed record StoreSliceResult : EngineRequest
+    {
+        private readonly string _sliceKey = "";
+        private readonly string _project = "";
+        private readonly string _projectName = "";
+        private readonly SliceFailure[] _failures = [];
+
+        /// <summary>The slice key the plan gave the run. A line without it reads as empty, which stores nothing.</summary>
+        public string SliceKey
+        {
+            get => _sliceKey;
+            init => _sliceKey = value ?? "";
+        }
+
+        /// <summary>Absolute path of the test project file. A line without it reads as empty.</summary>
+        public string Project
+        {
+            get => _project;
+            init => _project = value ?? "";
+        }
+
+        /// <summary>Project name for output. A line without it reads as empty.</summary>
+        public string ProjectName
+        {
+            get => _projectName;
+            init => _projectName = value ?? "";
+        }
+
+        /// <summary>How many tests passed. A line without it reads as 0.</summary>
+        public int Passed { get; init; }
+
+        /// <summary>How many tests failed. A line without it reads as 0.</summary>
+        public int Failed { get; init; }
+
+        /// <summary>How many tests were skipped. A line without it reads as 0.</summary>
+        public int Skipped { get; init; }
+
+        /// <summary>How long the run took, in milliseconds. A line without it reads as 0.</summary>
+        public double DurationMs { get; init; }
+
+        /// <summary>The failures, bounded by the client. A line without the list reads as one that names none.</summary>
+        public SliceFailure[] Failures
+        {
+            get => _failures;
+            init => _failures = value ?? [];
         }
     }
 

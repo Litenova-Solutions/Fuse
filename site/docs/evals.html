@@ -414,7 +414,7 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
     </div>
 
     <h2 id="result-files">Result files <a class="anchor" href="#result-files" aria-label="Link to this section">#</a></h2>
-    <p>A suite writes <code>evals/results/&lt;suite&gt;-&lt;repo&gt;-&lt;yyyyMMdd-HHmm&gt;.json</code>, with the local time of the run. The repository keeps only the newest file of each suite and repository. Older files stay in git history. Every file records:</p>
+    <p>A suite writes <code>evals/results/&lt;suite&gt;-&lt;repo&gt;-&lt;yyyyMMdd-HHmm&gt;.json</code>, with the local time of the run. Commit one result file per suite and repository from a full run, replacing the older file. Every file records:</p>
     <ul>
       <li><code>suite</code>, <code>repo</code>: what ran on which repository.</li>
       <li><code>commit</code>: the commit the repository was measured at.</li>
@@ -583,7 +583,7 @@ usage: Fuse.Evals &lt;suite&gt; &lt;repo&gt; [--mutations N] [--seed S] [--solut
       </tbody>
     </table>
     </div>
-    <p>Attach the result to the pull request, as <a href="https://github.com/Litenova-Solutions/Fuse/blob/main/CONTRIBUTING.md">Contributing</a> asks. The published set in <a href="benchmarks">Benchmarks</a> is <code>all</code> on each of the 4 open-source repositories: 16 files.</p>
+    <p>Attach the result to the pull request, as <a href="https://github.com/Litenova-Solutions/Fuse/blob/main/CONTRIBUTING.md">Contributing</a> asks. The published set in <a href="benchmarks">Benchmarks</a> is correctness, selection and latency on each of the 4 open-source repositories: 12 files.</p>
 
     <h2 id="quoting-the-numbers">Quoting the numbers <a class="anchor" href="#quoting-the-numbers" aria-label="Link to this section">#</a></h2>
     <p>The rule in <a href="https://github.com/Litenova-Solutions/Fuse/blob/main/AGENTS.md">AGENTS.md</a> binds every page that quotes a benchmark. Numbers come from files in <code>evals/results</code>, and each results table names the files it comes from. Counts are quoted exactly. Times, sizes and percentages are rounded half up: seconds to 2 decimals below 10 s and 1 decimal from 10 s, milliseconds and megabytes to whole numbers, percentages to at most 1 decimal. A speedup is the <code>dotnet</code> median divided by the Fuse median, to 1 decimal.</p>

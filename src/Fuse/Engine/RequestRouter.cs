@@ -234,6 +234,8 @@ internal sealed class RequestRouter : IDisposable
             return await SessionAsync(request, cancellationToken).ConfigureAwait(false);
         if (request is EngineRequest.WatchStream watch)
             return await WatchFirstAsync(watch, cancellationToken).ConfigureAwait(false);
+        if (request is EngineRequest.StoreSliceResult store)
+            return StoreSlice(store);
 
         // The session is credited once, in HandleAsync before the key is taken. A background re-check
         // reaches this call without HandleAsync and credits nothing.
@@ -304,7 +306,7 @@ internal sealed class RequestRouter : IDisposable
                 held = false;
                 lease.Dispose();
                 ScheduleBackground();
-                return AnswerPlan(await _planner.PrepareAsync(pendingFailed, phases, cancellationToken).ConfigureAwait(false), failed.NoCache || failed.Clean);
+                return AnswerPlan(await _planner.PrepareAsync(pendingFailed, phases, cancellationToken).ConfigureAwait(false), failed.NoCache);
             }
 
             var (cleanCache, noCache) = request switch
@@ -330,7 +332,9 @@ internal sealed class RequestRouter : IDisposable
             held = false;
             lease.Dispose();
             ScheduleBackground();
-            return AnswerPlan(await _planner.PrepareAsync(pending, phases, cancellationToken).ConfigureAwait(false), noCache || cleanCache);
+            // Masked only under --no-cache: under --clean the cache was cleared before the selection, so no run
+            // answers from it, but each run keeps its slice key so its verdict refills it.
+            return AnswerPlan(await _planner.PrepareAsync(pending, phases, cancellationToken).ConfigureAwait(false), noCache);
         }
         catch (FuseException e)
         {
@@ -1270,6 +1274,33 @@ internal sealed class RequestRouter : IDisposable
     /// <summary>The answer to a test plan request.</summary>
     /// <param name="noCache">True when the plan skipped the slice cache, so no run answers from it.</param>
     private static EngineResponse.PlanAnswered AnswerPlan(TestPlanResult result, bool noCache = false) => new EngineResponse.PlanAnswered(ResponseMapper.Plan(result, noCache));
+
+    /// <summary>
+    ///     Stores one finished test slice's verdict in the slice cache, without the scheduler and at once: the cache
+    ///     applies a store under its own locks, so a plan that reads it sees the verdict whole or not at all. It
+    ///     waits for no initialization and holds no reader; a store needs only the shared state directory. A line
+    ///     with no slice key is ignored, and the answer is always acknowledged, because a store never fails a run.
+    /// </summary>
+    private EngineResponse.Acknowledged StoreSlice(EngineRequest.StoreSliceResult store)
+    {
+        if (!string.IsNullOrWhiteSpace(store.SliceKey))
+        {
+            _planner.SliceCache.Store(new SliceCacheResult(
+                store.SliceKey,
+                store.Project,
+                store.ProjectName,
+                "",
+                store.Passed,
+                store.Failed,
+                store.Skipped,
+                store.DurationMs,
+                DateTime.UtcNow,
+                [.. store.Failures.Select(f => new SliceTestFailure(f.Name, f.Message, f.Frames))]));
+            _log.Write($"slice cache: stored {store.SliceKey} ({store.Passed} passed, {store.Failed} failed, {store.Skipped} skipped)");
+        }
+
+        return new EngineResponse.Acknowledged();
+    }
 
     /// <summary>
     ///     Checks the paths <paramref name="check"/> names. A path that is empty is answered with

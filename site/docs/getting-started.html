@@ -45,7 +45,7 @@
       "url": "https://fuse.codes/docs/getting-started",
       "mainEntityOfPage": "https://fuse.codes/docs/getting-started",
       "inLanguage": "en",
-      "dateModified": "2026-10-29",
+      "dateModified": "2026-11-24",
       "image": "https://fuse.codes/assets/og.png",
       "isPartOf": {
         "@type": "WebSite",
@@ -147,7 +147,7 @@
     <pre data-label="bash"><code>fuse init</code></pre>
     <pre class="out" data-label="Output"><code>wrote .claude/settings.json
 wrote .gitignore
-fuse: hooks registered by Fuse 5.7.0; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors</code></pre>
+fuse: hooks registered by Fuse 7.0.0; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors</code></pre>
     <p><code>fuse init</code> detects the harnesses your repository uses, such as <code>.cursor/</code> or <code>.gemini/</code>, and adds Fuse's hooks to each one. When it finds none, it sets up Claude Code. Run it again at any time. It replaces only its own entries. That is the whole setup. To remove it, run <a href="commands#fuse-uninit"><code>fuse uninit</code></a>.</p>
     <p>The first Fuse command you run in a repository starts a background process, which loads your solution. That process stays running until it has been idle for 30 minutes, so every later command and hook reuses it.</p>
 

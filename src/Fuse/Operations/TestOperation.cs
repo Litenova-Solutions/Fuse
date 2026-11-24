@@ -29,6 +29,19 @@ internal static class TestOperation
     /// <summary>Default fail-fast failure cap for <c>--max-failures</c> and .NET 11 MTP <c>--maximum-failed-tests</c>.</summary>
     internal const int DefaultMaxFailures = 10;
 
+    /// <summary>
+    ///     The message on every failure of counts made from watched failure lines instead of a result file: the run
+    ///     stopped early after reaching max failures, or ended without results. Such counts are partial, so the slice
+    ///     cache never stores them.
+    /// </summary>
+    internal const string StoppedEarlyMessage = "stopped early after reaching max failures";
+
+    /// <summary>How many failures a stored slice verdict carries at most, so the store request stays small.</summary>
+    private const int MaxStoredFailures = 20;
+
+    /// <summary>How long storing one slice verdict waits for the engine; the run is already answered without it.</summary>
+    private static readonly TimeSpan SliceStoreTimeout = TimeSpan.FromSeconds(30);
+
     /// <param name="session">
     ///     The session the run is for, as its harness identifies it, or null. With one, the affected tests leave out the
     ///     changes only other sessions wrote. The pre-shell hook passes it to <c>fuse test</c>.
@@ -279,7 +292,7 @@ internal static class TestOperation
             {
                 buildLock?.Dispose();
                 buildLock = null;
-            }, () => buildLock ??= BuildLock.AcquireForClient(root), scope, cancellationToken, live, failedRerunCount, failedFirstByProject, key, maxFailures).ConfigureAwait(false);
+            }, () => buildLock ??= BuildLock.AcquireForClient(root), scope, cancellationToken, live, failedRerunCount, failedFirstByProject, key, maxFailures, noCache).ConfigureAwait(false);
         }
         finally
         {
@@ -302,10 +315,11 @@ internal static class TestOperation
         int? failedRerunCount = null,
         IReadOnlyDictionary<string, string[]>? failedFirstByProject = null,
         (string TreeHash, string FullHash, string AssetsHash, string PlanKey)? reuse = null,
-        int maxFailures = DefaultMaxFailures)
+        int maxFailures = DefaultMaxFailures,
+        bool noCache = false)
     {
         if (failedFirstByProject is not null
-            && await RunStagedAsync(root, plan, started, copies, releaseLock, takeLock, scope, live, failedFirstByProject, cancellationToken, reuse, maxFailures).ConfigureAwait(false) is { } staged)
+            && await RunStagedAsync(root, plan, started, copies, releaseLock, takeLock, scope, live, failedFirstByProject, cancellationToken, reuse, maxFailures, noCache).ConfigureAwait(false) is { } staged)
             return staged;
 
         var groups = plan.Runs.GroupBy(r => root.PathOf(r.Project)).ToList();
@@ -339,7 +353,7 @@ internal static class TestOperation
             async (group, ct) =>
             {
                 // One process per target framework, in parallel. Every run in a shadow group is a shadow run (VSTest or MTP).
-                var results = await Task.WhenAll(group.Select(run => RunShadowOrCachedAsync(root, run, maxFailures, ct))).ConfigureAwait(false);
+                var results = await Task.WhenAll(group.Select(run => RunShadowOrCachedAsync(root, run, maxFailures, ct, noCache))).ConfigureAwait(false);
                 // A shadow run that could not start (a test host or adapter problem) sends the whole project through MSBuild below.
                 if (results.Any(r => r.Outcome is null))
                     return;
@@ -496,7 +510,7 @@ internal static class TestOperation
     /// </summary>
     private static async Task<OperationResult?> RunStagedAsync(
         RepoRoot root, TestPlan plan, long started, List<IDisposable> copies, Action releaseLock, Func<BuildLock> takeLock,
-        TestScopeArguments? scope, TextWriter? live, IReadOnlyDictionary<string, string[]> failedFirstByProject, CancellationToken cancellationToken, (string TreeHash, string FullHash, string AssetsHash, string PlanKey)? reuse = null, int maxFailures = DefaultMaxFailures)
+        TestScopeArguments? scope, TextWriter? live, IReadOnlyDictionary<string, string[]> failedFirstByProject, CancellationToken cancellationToken, (string TreeHash, string FullHash, string AssetsHash, string PlanKey)? reuse = null, int maxFailures = DefaultMaxFailures, bool noCache = false)
     {
         var groups = plan.Runs.GroupBy(r => root.PathOf(r.Project)).ToList();
         var priority = new List<(RepoPath Key, List<TestRun> Runs)>();
@@ -513,8 +527,9 @@ internal static class TestOperation
                 && runs[0].Filter is string original
                 && FailedFirstSplit.TrySplit(original, names, out var priorityFilter, out var restFilter))
             {
-                priority.Add((group.Key, runs.Select(r => r with { Filter = priorityFilter }).ToList()));
-                rest.Add((group.Key, runs.Select(r => r with { Filter = restFilter }).ToList()));
+                // A stage runs under another filter than the plan keyed, so it carries no slice key and stores nothing.
+                priority.Add((group.Key, runs.Select(r => r with { Filter = priorityFilter, SliceKey = null }).ToList()));
+                rest.Add((group.Key, runs.Select(r => r with { Filter = restFilter, SliceKey = null }).ToList()));
             }
             else
             {
@@ -549,7 +564,7 @@ internal static class TestOperation
         // Whether dotnet test runs the platform in this repository decides how a platform run is started.
         var runner = GlobalJson.UsesTestingPlatform(root.Path, root.Path);
         string[] buildSwitches = scope?.BuildSwitches ?? [];
-        var first = await RunStageAsync(root, priority, runner, buildSwitches, plan.Summary, started, takeLock, scope, cancellationToken, maxFailures).ConfigureAwait(false);
+        var first = await RunStageAsync(root, priority, runner, buildSwitches, plan.Summary, started, takeLock, scope, cancellationToken, maxFailures, noCache).ConfigureAwait(false);
         if (live is not null)
         {
             live.Write(RenderFailures(first.Aggregate));
@@ -558,7 +573,7 @@ internal static class TestOperation
 
         releaseLock();
         var secondGroups = rest.Concat(single.Select(g => (g.Key, g.ToList()))).ToList();
-        var second = await RunStageAsync(root, secondGroups, runner, buildSwitches, plan.Summary, started, takeLock, scope, cancellationToken, maxFailures).ConfigureAwait(false);
+        var second = await RunStageAsync(root, secondGroups, runner, buildSwitches, plan.Summary, started, takeLock, scope, cancellationToken, maxFailures, noCache).ConfigureAwait(false);
         if (live is not null)
         {
             live.Write(RenderFailures(second.Aggregate));
@@ -606,7 +621,7 @@ internal static class TestOperation
     /// <summary>Runs one stage's groups: its shadow runs in parallel without the lock, then the rest one after another with it.</summary>
     private static async Task<StageOutcome> RunStageAsync(
         RepoRoot root, IReadOnlyList<(RepoPath Key, List<TestRun> Runs)> stage, bool runner, string[] buildSwitches, string summary, long started,
-        Func<BuildLock> takeLock, TestScopeArguments? scope, CancellationToken cancellationToken, int maxFailures = DefaultMaxFailures)
+        Func<BuildLock> takeLock, TestScopeArguments? scope, CancellationToken cancellationToken, int maxFailures = DefaultMaxFailures, bool noCache = false)
     {
         var shadowGroups = stage.Where(g => g.Runs.All(r => r.Mode is TestRunMode.Shadow)).ToList();
         var outcomes = new System.Collections.Concurrent.ConcurrentDictionary<RepoPath, TrxResults>();
@@ -615,7 +630,7 @@ internal static class TestOperation
             new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2), CancellationToken = cancellationToken },
             async (group, ct) =>
             {
-                var results = await Task.WhenAll(group.Runs.Select(run => RunShadowOrCachedAsync(root, run, maxFailures, ct))).ConfigureAwait(false);
+                var results = await Task.WhenAll(group.Runs.Select(run => RunShadowOrCachedAsync(root, run, maxFailures, ct, noCache))).ConfigureAwait(false);
                 // A shadow run that could not start sends the project back through MSBuild below.
                 if (results.Any(r => r.Outcome is null))
                     return;
@@ -795,13 +810,69 @@ internal static class TestOperation
         return failedCount == 0 ? new TrxResults(passedCount, 0, skippedCount, []) : null;
     }
 
-    /// <summary>Runs one shadow run, or reuses its cached passing verdict without starting a process.</summary>
-    private static Task<(TrxResults? Outcome, ProcessResult? Process, string Log, string ResultsDirectory)> RunShadowOrCachedAsync(RepoRoot root, TestRun run, int maxFailures, CancellationToken cancellationToken) =>
-        CachedPassOutcome(run) is { } reused
-            ? Task.FromResult<(TrxResults? Outcome, ProcessResult? Process, string Log, string ResultsDirectory)>((reused, null, "", ""))
-            : run.UsesTestingPlatform
-                ? RunShadowPlatformAsync(root, run, maxFailures, cancellationToken)
-                : RunDotnetTestAsync(root, root.Path, [((TestRunMode.Shadow)run.Mode).Assembly], cancellationToken, assembly: true, run: run, maxFailures: maxFailures);
+    /// <summary>
+    ///     Runs one shadow run, or reuses its cached passing verdict without starting a process. A run that executes
+    ///     stores its verdict in the slice cache, so the next identical plan reuses a passing verdict without running.
+    /// </summary>
+    private static async Task<(TrxResults? Outcome, ProcessResult? Process, string Log, string ResultsDirectory)> RunShadowOrCachedAsync(RepoRoot root, TestRun run, int maxFailures, CancellationToken cancellationToken, bool noCache = false)
+    {
+        if (CachedPassOutcome(run) is { } reused)
+            return (reused, null, "", "");
+        var started = Environment.TickCount64;
+        var ran = run.UsesTestingPlatform
+            ? await RunShadowPlatformAsync(root, run, maxFailures, cancellationToken).ConfigureAwait(false)
+            : await RunDotnetTestAsync(root, root.Path, [((TestRunMode.Shadow)run.Mode).Assembly], cancellationToken, assembly: true, run: run, maxFailures: maxFailures).ConfigureAwait(false);
+        await StoreSliceVerdictAsync(root, run, ran.Outcome, Environment.TickCount64 - started, noCache, cancellationToken).ConfigureAwait(false);
+        return ran;
+    }
+
+    /// <summary>
+    ///     The store request for a finished shadow run's verdict, or null when the verdict is not stored: under
+    ///     <c>--no-cache</c>, when the run has no slice key, when it ended without results or ran no test, or when
+    ///     its counts were made from watched failure lines instead of a result file. A failed verdict is stored, so
+    ///     the next plan sees it; the client runs a cached failure fresh anyway. Only a run of the plan's slice
+    ///     reaches here with its key: a split stage runs under another filter with no key, and a run that fell back
+    ///     to MSBuild stores nothing.
+    /// </summary>
+    internal static EngineRequest.StoreSliceResult? SliceStoreFor(TestRun run, TrxResults? outcome, double durationMs, bool noCache)
+    {
+        if (noCache || outcome is null || outcome.Total == 0 || string.IsNullOrWhiteSpace(run.SliceKey))
+            return null;
+        if (outcome.Failures.Any(f => f.Message == StoppedEarlyMessage))
+            return null;
+        return new EngineRequest.StoreSliceResult
+        {
+            SliceKey = run.SliceKey,
+            Project = run.Project,
+            ProjectName = run.Name,
+            Passed = outcome.Passed,
+            Failed = outcome.Failed,
+            Skipped = outcome.Skipped,
+            DurationMs = durationMs,
+            Failures = [.. outcome.Failures.Take(MaxStoredFailures).Select(f => new EngineRequest.SliceFailure(f.Name, f.Message, [.. f.Frames]))],
+        };
+    }
+
+    /// <summary>
+    ///     Stores a finished shadow run's verdict in the engine's slice cache. Advisory: a verdict that is not
+    ///     stored only costs the next identical plan its reuse, so a store never fails the run, never starts an
+    ///     engine for it, and never stores for a cancelled run.
+    /// </summary>
+    private static async Task StoreSliceVerdictAsync(RepoRoot root, TestRun run, TrxResults? outcome, double durationMs, bool noCache, CancellationToken cancellationToken)
+    {
+        var store = SliceStoreFor(run, outcome, durationMs, noCache);
+        if (store is null || cancellationToken.IsCancellationRequested || !EngineClient.PipeExists(root.PipeName))
+            return;
+        try
+        {
+            // Detached from the run's cancellation: the run is over, and the timeout bounds the store on its own.
+            await EngineClient.SendAsync(root, store, SliceStoreTimeout, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            // Advisory: the next identical plan runs fresh instead of reusing this verdict.
+        }
+    }
 
     /// <summary>
     ///     Copies the test maps a finished Microsoft.Testing.Platform run wrote into the incoming folder the engine's
@@ -1069,7 +1140,7 @@ internal static class TestOperation
     }
 
     private static TrxResults SynthesizeFailures(List<string> failureNames) =>
-        new(0, failureNames.Count, 0, [.. failureNames.Select(n => new TestFailure(n, "stopped early after reaching max failures", []))]);
+        new(0, failureNames.Count, 0, [.. failureNames.Select(n => new TestFailure(n, StoppedEarlyMessage, []))]);
 
     /// <summary>
     ///     Runs a test process while watching stdout for failure lines, terminating the process tree early once

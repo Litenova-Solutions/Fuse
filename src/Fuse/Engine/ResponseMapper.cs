@@ -49,6 +49,7 @@ internal static class ResponseMapper
         {
             FromCache = !noCache && r.CachedResult is not null,
             CacheReason = CacheReasonOf(r.CachedResult, noCache),
+            SliceKey = noCache ? null : r.SliceKey,
         })],
         result.SelectedTests,
         result.TotalTests,

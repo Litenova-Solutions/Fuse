@@ -45,7 +45,7 @@
       "url": "https://fuse.codes/docs/harnesses",
       "mainEntityOfPage": "https://fuse.codes/docs/harnesses",
       "inLanguage": "en",
-      "dateModified": "2026-10-29",
+      "dateModified": "2026-11-24",
       "image": "https://fuse.codes/assets/og.png",
       "isPartOf": {
         "@type": "WebSite",
@@ -200,7 +200,7 @@ wrote .opencode/plugins/fuse.js
 wrote .muse/plugins/fuse/.muse-plugin/plugin.json
 wrote .vscode/mcp.json
 wrote .gitignore
-fuse: hooks registered by Fuse 5.7.0; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors
+fuse: hooks registered by Fuse 7.0.0; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors
 fuse: Muse Code loads hooks from an installed plugin: run `muse plugins install .muse/plugins/fuse --scope project` and `muse plugins approve fuse` once, and `muse plugins update fuse` after a later fuse init</code></pre>
     <p>The settings blocks below show the files from that run, and current builds write them as shown.</p>
     <p><code>fuse init --instructions</code> also writes a Fuse section into <code>AGENTS.md</code>. When <code>CLAUDE.md</code> and <code>GEMINI.md</code> exist, it writes the section into them too, so each agent knows the commands from the start (<a href="commands#fuse-init-instructions">fuse init --instructions</a>).</p>
@@ -438,7 +438,7 @@ fuse: Muse Code loads hooks from an installed plugin: run `muse plugins install 
     </ul>
 
     <h2 id="opencode">OpenCode <a class="anchor" href="#opencode" aria-label="Link to this section">#</a></h2>
-    <p>OpenCode runs JavaScript plugins rather than commands. <code>fuse init</code> therefore writes <code>.opencode/plugins/fuse.js</code>, a plugin that starts <code>fuse hook opencode &lt;event&gt;</code> for each tool event and applies the answer. That plugin carries both plugin formats: OpenCode 2 calls its <code>setup</code> function, and OpenCode 1 calls its <code>server</code> function.</p>
+    <p>OpenCode runs JavaScript plugins rather than commands. <code>fuse init</code> therefore writes <code>.opencode/plugins/fuse.js</code>, a plugin that sends post-edit checks over the engine pipe first and falls back to <code>fuse hook opencode &lt;event&gt;</code>, and runs every other event through the hook. That plugin carries both plugin formats: OpenCode 2 calls its <code>setup</code> function, and OpenCode 1 calls its <code>server</code> function.</p>
     <ul>
       <li><strong>post-edit</strong> runs after the <code>edit</code>, <code>write</code>, <code>multiedit</code>, <code>patch</code> and <code>apply_patch</code> tools. It sends the tool call's <code>sessionID</code> as <code>session_id</code> and appends the errors to the tool's result, which the agent reads next.</li>
       <li><strong>pre-shell</strong> runs before the <code>shell</code> and <code>bash</code> tools, where it sets the rewritten command on the tool's arguments.</li>

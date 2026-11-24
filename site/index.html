@@ -213,24 +213,24 @@
         </div>
         <div class="repo">
           <h3>Date and Time Library <span><a href="https://github.com/nodatime/nodatime">NodaTime</a>, 42,736 tests</span></h3>
-          <div class="lane fuse"><code>fuse test</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">57.7 s</span><span class="range">0.05 to 86.1 s, mean 52.4 s</span></div>
-          <div class="lane"><code>dotnet test</code><span class="track" aria-hidden="true"><span class="fill" style="width:72.2%"></span></span><span class="t">41.7 s</span><span class="range">32.6 to 68.1 s, mean 45.2 s</span></div>
+          <div class="lane fuse"><code>fuse test</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">57.5 s</span><span class="range">0.09 to 113.3 s, mean 54.5 s</span></div>
+          <div class="lane"><code>dotnet test</code><span class="track" aria-hidden="true"><span class="fill" style="width:72.9%"></span></span><span class="t">41.9 s</span><span class="range">32.6 to 64.4 s, mean 46.3 s</span></div>
           <p class="x"><b>1.4x</b> slower at the median: most of its tests run, and one project goes through MSBuild</p>
         </div>
         <div class="repo">
           <h3>Media Server <span><a href="https://github.com/jellyfin/jellyfin">Jellyfin</a>, 2,535 tests</span></h3>
-          <div class="lane fuse"><code>fuse test</code><span class="track" aria-hidden="true"><span class="fill" style="width:61.1%"></span></span><span class="t">101.6 s</span><span class="range">4.64 to 144.5 s, mean 100.4 s</span></div>
-          <div class="lane"><code>dotnet test</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">166.2 s</span><span class="range">132.5 to 177.1 s, mean 164.0 s</span></div>
-          <p class="x"><b>1.6x</b> faster at the median</p>
+          <div class="lane fuse"><code>fuse test</code><span class="track" aria-hidden="true"><span class="fill" style="width:60.0%"></span></span><span class="t">98.4 s</span><span class="range">4.70 to 149.1 s, mean 98.0 s</span></div>
+          <div class="lane"><code>dotnet test</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">164.1 s</span><span class="range">138.2 to 180.1 s, mean 162.9 s</span></div>
+          <p class="x"><b>1.7x</b> faster at the median</p>
         </div>
         <div class="repo">
           <h3>Resilience Library <span><a href="https://github.com/App-vNext/Polly">Polly</a>, 12,329 tests</span></h3>
-          <div class="lane fuse"><code>fuse test</code><span class="track" aria-hidden="true"><span class="fill" style="width:34.7%"></span></span><span class="t">33.1 s</span><span class="range">0.05 to 109.5 s, mean 37.0 s</span></div>
-          <div class="lane"><code>dotnet test</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">95.5 s</span><span class="range">86.3 to 115.6 s, mean 99.7 s</span></div>
-          <p class="x"><b>2.9x</b> faster at the median</p>
+          <div class="lane fuse"><code>fuse test</code><span class="track" aria-hidden="true"><span class="fill" style="width:23.0%"></span></span><span class="t">26.2 s</span><span class="range">0.09 to 100.9 s, mean 27.5 s</span></div>
+          <div class="lane"><code>dotnet test</code><span class="track" aria-hidden="true"><span class="fill" style="width:100%"></span></span><span class="t">114.1 s</span><span class="range">99.9 to 150.1 s, mean 116.8 s</span></div>
+          <p class="x"><b>4.4x</b> faster at the median</p>
         </div>
       </div>
-      <p class="proof">In 40 generated changes, 24 of which made tests fail, <code>fuse test</code> ran every failing test except 1 hedging test in a Polly case. See <a href="docs/benchmarks">Benchmarks</a>.</p>
+      <p class="proof">In 40 generated changes, 23 of which made tests fail, <code>fuse test</code> missed no failing test. See <a href="docs/benchmarks">Benchmarks</a>.</p>
     </section>
 
     <section class="section" aria-labelledby="features-heading">
@@ -245,7 +245,7 @@
         <li><a href="docs/how-it-works#privacy"><span class="ficon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10.5" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.7" r="1.2" fill="currentColor"/></svg></span><b>Runs locally</b><span>Fuse sends no telemetry, makes no network calls of its own, and has no settings to maintain.</span><i>Privacy and footprint -&gt;</i></a></li>
         <li><a href="docs/how-it-works#failure-handling"><span class="ficon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6.5 9H3.5v6h3l4.5 4z"/><path d="m15.5 9.5 5 5M20.5 9.5l-5 5"/></svg></span><b>Silent when it cannot answer</b><span>If Fuse cannot answer, the hook prints nothing and the agent continues. Fuse never edits your code.</span><i>When Fuse cannot answer -&gt;</i></a></li>
       </ul>
-      <p class="proof"><b>The cost is memory.</b> Fuse uses 319 MB to 512 MB once idle in the benchmarks, and more on a machine with more memory. <a href="docs/#what-fuse-costs">What Fuse costs</a></p>
+      <p class="proof"><b>The cost is memory.</b> Fuse uses 350 MB to 714 MB once idle in the benchmarks, and more on a machine with more memory. <a href="docs/#what-fuse-costs">What Fuse costs</a></p>
     </section>
   </main>
 

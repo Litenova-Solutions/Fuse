@@ -1,4 +1,5 @@
 using System.Text;
+using Fuse.Dotnet;
 using Fuse.Engine;
 using Fuse.Operations;
 using Fuse.Protocol;
@@ -10,9 +11,9 @@ using Fuse.Tests.Fixtures;
 namespace Fuse.Tests.Engine;
 
 /// <summary>
-///     The wired test-run paths: a stored slice serves the next plan without executing, a passing cached verdict
-///     reuses its counts on the client while a failing one runs fresh, and an incoming platform test map is
-///     ingested and removed by the next plan.
+///     The wired test-run paths: a finished shadow run fills the cache for the next plan, a stored slice serves the
+///     next plan without executing, a passing cached verdict reuses its counts on the client while a failing one
+///     runs fresh, and an incoming platform test map is ingested and removed by the next plan.
 /// </summary>
 public class TestRunPathTests
 {
@@ -37,6 +38,83 @@ public class TestRunPathTests
 
         Assert.NotNull(cached);
         Assert.Equal((3, 0, 0), (cached.Passed, cached.Failed, cached.Skipped));
+    }
+
+    [Fact]
+    public async Task A_finished_shadow_run_fills_the_cache_for_the_next_plan()
+    {
+        using var repo = FixtureRepo.CreateStandard();
+        await using var engine = await InProcessRequestRouter.StartAsync(repo);
+        // A commutative reordering: the declaration changes, so the plan selects its tests, and every test still passes.
+        repo.Replace("Lib/Calc.cs", "a * b", "b * a");
+        // The check syncs the edit by name, so every plan below sees it without waiting for the watcher.
+        Assert.IsType<EngineResponse.CheckAnswered>(await engine.SendAsync(new EngineRequest.CheckFiles([repo.Full("Lib/Calc.cs")], WaitForLoad: true)));
+        FixtureRepo.Run(repo.Root.Path, "dotnet", "build", "Lib.Tests/Lib.Tests.csproj", "--no-restore", "-nologo", "-v:q");
+
+        var first = Assert.IsType<EngineResponse.PlanAnswered>(await engine.SendAsync(new EngineRequest.PlanAffectedTests())).Plan;
+        var run = Assert.Single(first.Runs);
+        Assert.False(run.FromCache);
+        var shadow = Assert.IsType<TestRunMode.Shadow>(run.Mode);
+
+        var started = Environment.TickCount64;
+        var outcome = await RunShadowAsync(repo, shadow.Assembly, run.Filter);
+        Assert.True(outcome.Total > 0);
+        Assert.Equal(0, outcome.Failed);
+        var store = TestOperation.SliceStoreFor(run, outcome, Environment.TickCount64 - started, noCache: false);
+        Assert.NotNull(store);
+        // Through the pipe records, the way the client sends it.
+        var sent = Assert.IsType<EngineRequest.StoreSliceResult>(ProtocolJson.ReadRequest(ProtocolJson.Serialize(store)));
+        Assert.IsType<EngineResponse.Acknowledged>(await engine.SendAsync(sent));
+
+        var second = Assert.IsType<EngineResponse.PlanAnswered>(await engine.SendAsync(new EngineRequest.PlanAffectedTests())).Plan;
+        var cached = Assert.Single(second.Runs);
+        Assert.True(cached.FromCache);
+        Assert.NotNull(cached.CacheReason);
+        // A cached passing verdict reuses its counts, so the client starts no test process.
+        Assert.NotNull(TestOperation.CachedPassOutcome(cached));
+
+        repo.Replace("Lib/Calc.cs", "a + b", "a + b + 0");
+        Assert.IsType<EngineResponse.CheckAnswered>(await engine.SendAsync(new EngineRequest.CheckFiles([repo.Full("Lib/Calc.cs")], WaitForLoad: true)));
+        var third = Assert.IsType<EngineResponse.PlanAnswered>(await engine.SendAsync(new EngineRequest.PlanAffectedTests())).Plan;
+        Assert.False(Assert.Single(third.Runs).FromCache);
+    }
+
+    [Fact]
+    public void A_slice_verdict_is_stored_only_for_a_complete_run_of_its_slice()
+    {
+        var shadow = new TestRunMode.Shadow("C:/state/shadow/Lib.Tests/Lib.Tests.dll");
+        TestRun Run(string? key) => new("C:/repo/Lib.Tests/Lib.Tests.csproj", "Lib.Tests", shadow, null, false, null, [], []) { SliceKey = key };
+        var passed = new TrxResults(3, 0, 0, []);
+        var failed = new TrxResults(2, 1, 0, [new TestFailure("Lib.Tests.CalcTests.Multiplies", "boom", [])]);
+
+        Assert.NotNull(TestOperation.SliceStoreFor(Run("key"), passed, 4, noCache: false));
+        // A failed verdict is stored too; the client runs a cached failure fresh anyway.
+        var storedFailure = TestOperation.SliceStoreFor(Run("key"), failed, 4, noCache: false);
+        Assert.NotNull(storedFailure);
+        Assert.Equal(1, storedFailure.Failed);
+        Assert.Null(TestOperation.SliceStoreFor(Run("key"), passed, 4, noCache: true));
+        Assert.Null(TestOperation.SliceStoreFor(Run(null), passed, 4, noCache: false));
+        Assert.Null(TestOperation.SliceStoreFor(Run(" "), passed, 4, noCache: false));
+        Assert.Null(TestOperation.SliceStoreFor(Run("key"), null, 4, noCache: false));
+        Assert.Null(TestOperation.SliceStoreFor(Run("key"), TrxResults.Empty, 4, noCache: false));
+        var early = new TrxResults(0, 2, 0, [new TestFailure("Lib.Tests.CalcTests.Multiplies", TestOperation.StoppedEarlyMessage, [])]);
+        Assert.Null(TestOperation.SliceStoreFor(Run("key"), early, 4, noCache: false));
+    }
+
+    /// <summary>Runs a shadow run's test assembly with <c>dotnet test</c>, the way <c>fuse test</c> does, and reads its results.</summary>
+    private static async Task<TrxResults> RunShadowAsync(FixtureRepo repo, string assembly, string? filter)
+    {
+        var results = FixtureRepo.NewDirectory();
+        try
+        {
+            string[] arguments = ["test", assembly, .. filter is null ? Array.Empty<string>() : ["--filter", filter], "--logger", "trx", "--results-directory", results];
+            var run = await ProcessRunner.RunAsync("dotnet", arguments, repo.Root.Path, TestContext.Current.CancellationToken);
+            return TrxReader.ReadDirectory(results, repo.Root.Path) ?? throw new InvalidOperationException($"dotnet test wrote no results (exit code {run.ExitCode}):\n{run.Output}");
+        }
+        finally
+        {
+            Directory.Delete(results, recursive: true);
+        }
     }
 
     [Fact]

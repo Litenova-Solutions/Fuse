@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Security;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace Fuse.Evals;
 
@@ -19,7 +20,7 @@ namespace Fuse.Evals;
 ///     agree as long as both are updated from the same files. The colors and fonts are the site's; a dark variant applies
 ///     when the viewer asks for one.
 /// </summary>
-internal static class ChartRenderer
+internal static partial class ChartRenderer
 {
     private const int Width = 800;
     private const int PadX = 36;
@@ -212,17 +213,33 @@ internal static class ChartRenderer
     private static string Provenance(string results)
     {
         var file = PinnedRepo.All
-            .Select(r => Directory.Exists(results) ? Directory.GetFiles(results, $"correctness-{r.Name}-*.json").OrderBy(f => f, StringComparer.Ordinal).LastOrDefault() : null)
+            .Select(r => Directory.Exists(results) ? Directory.GetFiles(results, $"correctness-{r.Name}-*.json").OrderBy(StampOf, StringComparer.Ordinal).LastOrDefault() : null)
             .OfType<string>()
-            .OrderBy(f => Path.GetFileNameWithoutExtension(f)[^13..], StringComparer.Ordinal)
+            .OrderBy(StampOf, StringComparer.Ordinal)
             .LastOrDefault();
         if (file is null)
             return "";
         using var document = JsonDocument.Parse(File.ReadAllText(file));
-        var version = document.RootElement.GetProperty("fuseBuild").GetString()!.Split('/')[0];
-        var stamp = Path.GetFileNameWithoutExtension(file)[^13..^5];
-        return $"Fuse {version}, measured {stamp[..4]}-{stamp[4..6]}-{stamp[6..]}.";
+        var version = document.RootElement.TryGetProperty("fuseBuild", out var build) && build.GetString() is { Length: > 0 } buildText
+            ? buildText.Split('/')[0]
+            : "unknown";
+        var stamp = StampOf(file);
+        if (stamp.Length < 8)
+            return $"Fuse {version}.";
+        return $"Fuse {version}, measured {stamp[..4]}-{stamp[4..6]}-{stamp[6..8]}.";
     }
+
+    private static string StampOf(string path)
+    {
+        var name = Path.GetFileNameWithoutExtension(path);
+        var match = ResultStamp().Match(name);
+        if (match.Success)
+            return match.Value;
+        return name.Length >= 13 ? name[^13..] : name;
+    }
+
+    [GeneratedRegex(@"\d{8}-\d{4}", RegexOptions.CultureInvariant)]
+    private static partial Regex ResultStamp();
 
     private static void AppendCell(StringBuilder svg, Row row, int x, int y)
     {
@@ -308,6 +325,7 @@ internal static class ChartRenderer
         var latency = new List<(string Repo, string[] Cells, bool[] Good)>();
         var memory = new List<(string Repo, string[] Cells, bool[] Good)>();
         var accuracy = new List<(string Repo, string[] Cells, bool[] Good)>();
+        var swarm = new List<(string Repo, string[] Cells, bool[] Good)>();
         foreach (var repo in PinnedRepo.All)
         {
             var name = SplitLabel(repo.CheckLabel).Name;
@@ -341,6 +359,25 @@ internal static class ChartRenderer
                     $"{missed} of {withFailures} changes",
                 ], [falseGreen == 0, falseRed == 0, missed == 0]));
             }
+
+            if (Latest(results, $"swarm-{repo.Name}-") is { } swarmFile
+                && swarmFile.TryGetProperty("worktrees", out var worktrees)
+                && swarmFile.TryGetProperty("checkBrief", out var checkBrief)
+                && swarmFile.TryGetProperty("batch", out var batch)
+                && worktrees.TryGetProperty("zeroRestoreEditCheck", out var zeroRestore)
+                && zeroRestore.TryGetProperty("p50", out var zeroRestoreP50)
+                && checkBrief.TryGetProperty("latency", out var briefLatency)
+                && briefLatency.TryGetProperty("p50", out var briefP50)
+                && batch.TryGetProperty("totalMs", out var batchMs)
+                && worktrees.TryGetProperty("multiWorktreeWorkingSetMb", out var multiMb))
+            {
+                swarm.Add((name,
+                [
+                    Milliseconds(zeroRestoreP50.GetDouble()),
+                    Milliseconds(briefP50.GetDouble()),
+                    $"{Whole(batchMs.GetDouble())} ms / {Whole(multiMb.GetDouble())} MB",
+                ], [false, false, false]));
+            }
         }
 
         var tables = new List<Table>();
@@ -350,6 +387,8 @@ internal static class ChartRenderer
             tables.Add(new Table("Accuracy against the real build and test run", "Counted against dotnet build and dotnet test on the same edits", ["Build failed, Fuse passed", "Error the build contradicts", "Failing test not run"], accuracy));
         if (memory.Count > 0)
             tables.Add(new Table("Engine memory", "Working set of the engine process", ["After the checks", "Peak", "Idle"], memory));
+        if (swarm.Count > 0)
+            tables.Add(new Table("Swarm hypervisor and CLI", "Zero-restore worktree check, brief check, and 20-request batch / 4-worktree RAM", ["Zero-restore P50", "Brief check P50", "Batch / 4-wt RAM"], swarm));
         return tables;
     }
 

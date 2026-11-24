@@ -10,6 +10,13 @@ namespace Fuse.Protocol;
     UseStringEnumConverter = true)]
 [JsonSerializable(typeof(EngineRequest))]
 [JsonSerializable(typeof(EngineResponse))]
+[JsonSerializable(typeof(ReportedRepairPacket))]
+[JsonSerializable(typeof(JudgeRequest))]
+[JsonSerializable(typeof(JudgeReport))]
+[JsonSerializable(typeof(GraphReport))]
+[JsonSerializable(typeof(ImpactReport))]
+[JsonSerializable(typeof(WatchEvent))]
+[JsonSerializable(typeof(FreezeGuardRequest))]
 internal sealed partial class ProtocolJson : JsonSerializerContext
 {
     private static readonly string BuildIdProperty = JsonNamingPolicy.CamelCase.ConvertName(nameof(Fuse.Protocol.EngineRequest.BuildId));

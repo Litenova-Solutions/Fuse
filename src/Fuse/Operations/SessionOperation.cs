@@ -20,10 +20,10 @@ internal static class SessionOperation
     /// <summary>The environment variable that names a caller's session, the one identity a caller passes in its environment.</summary>
     internal const string SessionVariable = "FUSE_SESSION";
 
-    private const string Usage = "usage: fuse session begin <name> --paths <pattern> [<pattern>...] [--pid <pid>] | fuse session begin --from <file> | fuse session end <name>";
+    private const string Usage = "usage: fuse session begin <name> --paths <pattern> [<pattern>...] [--pid <pid>] | fuse session begin --from <file> | fuse session end <name> | fuse session guard <name> (--freeze <pattern>... | --unfreeze)";
 
     /// <param name="root">The repository whose engine keeps the registration.</param>
-    /// <param name="args">The words after <c>session</c>: <c>begin</c> or <c>end</c> and its arguments.</param>
+    /// <param name="args">The words after <c>session</c>: <c>begin</c>, <c>end</c>, or <c>guard</c> and its arguments.</param>
     /// <param name="cancellationToken">Cancels the wait for the answer.</param>
     public static async Task<OperationResult> RunAsync(RepoRoot root, IReadOnlyList<string> args, CancellationToken cancellationToken)
     {
@@ -33,6 +33,7 @@ internal static class SessionOperation
         {
             "begin" => await BeginAsync(root, args, cancellationToken).ConfigureAwait(false),
             "end" => await EndAsync(root, args, cancellationToken).ConfigureAwait(false),
+            "guard" => await GuardAsync(root, args, cancellationToken).ConfigureAwait(false),
             _ => new OperationResult(Outcome.Unanswered, Usage),
         };
     }
@@ -253,6 +254,46 @@ internal static class SessionOperation
         if (response is EngineResponse.Acknowledged)
             return new OperationResult(Outcome.Clean, $"fuse: session {name} ended; its files now count as no session's");
         return OperationResult.Unanswered(response, "session registration");
+    }
+
+    private static async Task<OperationResult> GuardAsync(RepoRoot root, IReadOnlyList<string> args, CancellationToken cancellationToken)
+    {
+        if (args.Count < 3 || string.IsNullOrWhiteSpace(args[1]))
+            return new OperationResult(Outcome.Unanswered, Usage);
+        var name = args[1];
+        if (!IsValidName(name))
+            return new OperationResult(Outcome.Unanswered, $"fuse: {ErrorMessages.InvalidSessionName(name)}");
+
+        if (args[2] == "--unfreeze")
+        {
+            if (args.Count != 3)
+                return new OperationResult(Outcome.Unanswered, Usage);
+            var unfreezeResponse = await EngineClient.SendAsync(
+                root,
+                new EngineRequest.SessionGuard(new FreezeGuardRequest(name, Unfreeze: true)),
+                Timeout,
+                cancellationToken).ConfigureAwait(false);
+            if (unfreezeResponse is EngineResponse.Acknowledged)
+                return new OperationResult(Outcome.Clean, $"fuse: guard {name} unfrozen; frozen contract patterns removed");
+            return OperationResult.Unanswered(unfreezeResponse, "session guard");
+        }
+
+        if (args[2] != "--freeze" || args.Count < 4)
+            return new OperationResult(Outcome.Unanswered, Usage);
+
+        var specs = args.Skip(3).ToList();
+        var (patterns, refusal) = ValidatePatterns(root, specs);
+        if (patterns is null)
+            return new OperationResult(Outcome.Unanswered, refusal!);
+
+        var response = await EngineClient.SendAsync(
+            root,
+            new EngineRequest.SessionGuard(new FreezeGuardRequest(name, Unfreeze: false, [.. patterns])),
+            Timeout,
+            cancellationToken).ConfigureAwait(false);
+        if (response is EngineResponse.Acknowledged)
+            return new OperationResult(Outcome.Clean, $"fuse: guard {name} frozen for {patterns.Count} path pattern(s); declaration changes will trigger watch alerts");
+        return OperationResult.Unanswered(response, "session guard");
     }
 
     /// <summary>True when <paramref name="name"/> is a name the engine registers, as <see cref="Check.SessionEdits"/> decides.</summary>

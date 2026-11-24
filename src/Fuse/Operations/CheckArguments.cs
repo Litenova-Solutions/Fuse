@@ -2,11 +2,12 @@ using System.Globalization;
 
 namespace Fuse.Operations;
 
-/// <summary>What <c>fuse check</c> was told: which files to check and how many errors to show.</summary>
+/// <summary>What <c>fuse check</c> was told: which files to check, how many errors to show, and in what format.</summary>
 /// <param name="Files">The files, directories and patterns as named, or empty for every change.</param>
 /// <param name="MaxErrors">How many errors to show: 0 for the default count, <see cref="int.MaxValue"/> for every error.</param>
 /// <param name="Json">True for one JSON object per error instead of text.</param>
-internal sealed record CheckArguments(IReadOnlyList<string> Files, int MaxErrors, bool Json)
+/// <param name="Brief">True to include Roslyn repair packets (source window, candidate members/overloads, usings, stubs).</param>
+internal sealed record CheckArguments(IReadOnlyList<string> Files, int MaxErrors, bool Json, bool Brief = false)
 {
     /// <summary>The most errors <c>--max-errors</c> takes; past it the count is a typo, and <c>--all-errors</c> shows every error.</summary>
     internal const int MaxErrorsLimit = 100000;
@@ -22,6 +23,7 @@ internal sealed record CheckArguments(IReadOnlyList<string> Files, int MaxErrors
         var maxErrors = 0;
         var allErrors = false;
         var json = false;
+        var brief = false;
         var options = true;
         for (var i = 0; i < args.Count; i++)
         {
@@ -43,6 +45,12 @@ internal sealed record CheckArguments(IReadOnlyList<string> Files, int MaxErrors
             if (token == "--json")
             {
                 json = true;
+                continue;
+            }
+
+            if (token == "--brief")
+            {
+                brief = true;
                 continue;
             }
 
@@ -69,7 +77,7 @@ internal sealed record CheckArguments(IReadOnlyList<string> Files, int MaxErrors
 
         if (allErrors && maxErrors > 0)
             return (null, "fuse: --all-errors and --max-errors cannot be combined; choose one");
-        return (new CheckArguments(files, allErrors ? int.MaxValue : maxErrors, json), null);
+        return (new CheckArguments(files, allErrors ? int.MaxValue : maxErrors, json, brief), null);
     }
 
     /// <summary>Whether <paramref name="token"/> asks for help, which the command answers before parsing.</summary>

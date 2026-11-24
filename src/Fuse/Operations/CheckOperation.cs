@@ -32,17 +32,19 @@ internal static class CheckOperation
     /// <param name="json">True for one JSON object per error instead of text.</param>
     /// <param name="includeTreeStamp">True to stamp the summary and the results file with the tree the check ended on, for <c>fuse check</c>; hook and MCP answers stay unstamped.</param>
     /// <param name="includeNonCSharp">False to leave the changed files Fuse does not check out of the summary; the post-edit hook sends false.</param>
+    /// <param name="brief">True to request and render Roslyn repair packets (<c>--brief</c>).</param>
+    /// <param name="interactiveFast">True for post-edit hooks so body-only edits can use fast span-level binding.</param>
     public static async Task<(OperationResult Result, EngineResponse Response)> RunAsync(
-        RepoRoot root, IReadOnlyList<string>? files, string? session, bool waitForLoad, bool compilationWideAnalyzers, TimeSpan timeout, CancellationToken cancellationToken, int maxErrors = 0, bool json = false, bool includeTreeStamp = false, bool includeNonCSharp = true)
+        RepoRoot root, IReadOnlyList<string>? files, string? session, bool waitForLoad, bool compilationWideAnalyzers, TimeSpan timeout, CancellationToken cancellationToken, int maxErrors = 0, bool json = false, bool includeTreeStamp = false, bool includeNonCSharp = true, bool brief = false, bool interactiveFast = false)
     {
         EngineRequest request = files is null
-            ? new EngineRequest.CheckChanges(waitForLoad) { Session = session, IsStopping = session is not null, MaxErrors = RequestedFor(maxErrors, json), StampTree = includeTreeStamp }
-            : new EngineRequest.CheckFiles(files, waitForLoad) { Session = session, LeaveOutCompilationWide = !compilationWideAnalyzers, MaxErrors = RequestedFor(maxErrors, json), StampTree = includeTreeStamp };
+            ? new EngineRequest.CheckChanges(waitForLoad) { Session = session, IsStopping = session is not null, MaxErrors = RequestedFor(maxErrors, json), StampTree = includeTreeStamp, Brief = brief }
+            : new EngineRequest.CheckFiles(files, waitForLoad) { Session = session, LeaveOutCompilationWide = !compilationWideAnalyzers, MaxErrors = RequestedFor(maxErrors, json), StampTree = includeTreeStamp, Brief = brief, InteractiveFast = interactiveFast };
         var response = await EngineClient.SendAsync(root, request, timeout, cancellationToken).ConfigureAwait(false);
         if (response is not EngineResponse.CheckAnswered answered)
             return (OperationResult.Unanswered(response, "check result"), response);
         var treeStamp = StampOf(answered.Report);
-        return (Render(answered.Report, ResultsFile.WriteCheck(root, answered.Report, treeStamp), ShownFor(maxErrors, json), json, treeStamp, includeNonCSharp), response);
+        return (Render(answered.Report, ResultsFile.WriteCheck(root, answered.Report, treeStamp), ShownFor(maxErrors, json), json, treeStamp, includeNonCSharp, brief, root.Path), response);
     }
 
     /// <param name="specs">Absolute file and directory paths and absolute glob patterns, in the order named.</param>
@@ -52,15 +54,16 @@ internal static class CheckOperation
     /// <param name="cancellationToken">Cancels the check.</param>
     /// <param name="includeTreeStamp">True to stamp the summary and the results file with the tree the check ended on, for <c>fuse check</c>; hook and MCP answers stay unstamped.</param>
     /// <param name="session">The session the check is answered to (<c>FUSE_SESSION</c>), or null to report every error.</param>
+    /// <param name="brief">True to request and render Roslyn repair packets (<c>--brief</c>).</param>
     public static async Task<(OperationResult Result, EngineResponse Response)> RunScopedAsync(
-        RepoRoot root, IReadOnlyList<string> specs, int maxErrors, bool json, TimeSpan timeout, CancellationToken cancellationToken, bool includeTreeStamp = false, string? session = null)
+        RepoRoot root, IReadOnlyList<string> specs, int maxErrors, bool json, TimeSpan timeout, CancellationToken cancellationToken, bool includeTreeStamp = false, string? session = null, bool brief = false)
     {
-        var request = new EngineRequest.CheckPaths([.. specs], WaitForLoad: true) { MaxErrors = RequestedFor(maxErrors, json), StampTree = includeTreeStamp, Session = session };
+        var request = new EngineRequest.CheckPaths([.. specs], WaitForLoad: true) { MaxErrors = RequestedFor(maxErrors, json), StampTree = includeTreeStamp, Session = session, Brief = brief };
         var response = await EngineClient.SendAsync(root, request, timeout, cancellationToken).ConfigureAwait(false);
         if (response is not EngineResponse.CheckAnswered answered)
             return (OperationResult.Unanswered(response, "check result"), response);
         var treeStamp = StampOf(answered.Report);
-        return (Render(answered.Report, ResultsFile.WriteCheck(root, answered.Report, treeStamp), ShownFor(maxErrors, json), json, treeStamp), response);
+        return (Render(answered.Report, ResultsFile.WriteCheck(root, answered.Report, treeStamp), ShownFor(maxErrors, json), json, treeStamp, brief: brief, repoRootPath: root.Path), response);
     }
 
     /// <summary>How many errors the request asks the engine to send: every error for JSON and <c>--all-errors</c>, else <paramref name="maxErrors"/>.</summary>
@@ -106,9 +109,9 @@ internal static class CheckOperation
     internal static string GeneratedLine(string file) =>
         $"generated: {file} declares it, and Fuse reads that file as the last build wrote it; if it is generated from changed code, run fuse build to write it again";
 
-    /// <summary>One error as the answer prints it: its canonical line, its cause, and the generated-code line once per file.</summary>
+    /// <summary>One error as the answer prints it: its canonical line, its cause, the generated-code line, and any repair packet.</summary>
     /// <param name="showCause">False for a grouped member, whose group header already names the cause.</param>
-    internal static void AppendError(StringBuilder text, ReportedError reported, HashSet<string> generatedShown, bool showCause = true)
+    internal static void AppendError(StringBuilder text, ReportedError reported, HashSet<string> generatedShown, bool showCause = true, bool brief = false, string? repoRootPath = null)
     {
         text.Append(reported.Error).Append('\n');
         // The line under an error in a file the agent did not edit names the declaration change that made the file a candidate.
@@ -117,20 +120,91 @@ internal static class CheckOperation
         // Said once per file: the file may be older than the code it is generated from.
         if (reported.GeneratedFile is { } generated && generatedShown.Add(generated))
             text.Append("  ").Append(GeneratedLine(generated)).Append('\n');
+        if (brief || reported.Repair is not null)
+            AppendRepair(text, EnsureRepairPacket(reported, brief, repoRootPath).Repair);
+    }
+
+    private static ReportedError EnsureRepairPacket(ReportedError reported, bool brief, string? repoRootPath)
+    {
+        if (!brief || reported.Repair is not null || repoRootPath is null)
+            return reported;
+        var window = ReadSourceWindow(repoRootPath, reported.Error.Path, reported.Error.Line);
+        return window is null ? reported : reported with { Repair = new ReportedRepairPacket(SourceWindow: window) };
+    }
+
+    private static void AppendRepair(StringBuilder text, ReportedRepairPacket? repair)
+    {
+        if (repair is null)
+            return;
+        if (repair.SuggestedUsings.Length > 0)
+            text.Append("  using: ").Append(string.Join(" ", repair.SuggestedUsings)).Append('\n');
+        if (repair.Candidates.Length > 0)
+        {
+            text.Append("  candidates:\n");
+            foreach (var candidate in repair.Candidates)
+                text.Append("    ").Append(candidate).Append('\n');
+        }
+
+        if (!string.IsNullOrWhiteSpace(repair.InterfaceStub))
+        {
+            text.Append("  stub:\n");
+            foreach (var line in repair.InterfaceStub.Split('\n'))
+                text.Append("    ").Append(line.TrimEnd('\r')).Append('\n');
+        }
+
+        if (!string.IsNullOrWhiteSpace(repair.SourceWindow))
+        {
+            text.Append("  source:\n");
+            foreach (var line in repair.SourceWindow.Split('\n'))
+                text.Append("    ").Append(line.TrimEnd('\r')).Append('\n');
+        }
+    }
+
+    internal static string? ReadSourceWindow(string repoRootPath, string relativePath, int errorLine)
+    {
+        if (errorLine <= 0 || string.IsNullOrWhiteSpace(relativePath))
+            return null;
+        try
+        {
+            var fullPath = Path.Combine(repoRootPath, relativePath);
+            if (!File.Exists(fullPath))
+                return null;
+            var lines = File.ReadAllLines(fullPath);
+            if (lines.Length == 0)
+                return null;
+            var start = Math.Max(1, errorLine - 2);
+            var end = Math.Min(lines.Length, errorLine + 2);
+            var sb = new StringBuilder();
+            for (var line = start; line <= end; line++)
+            {
+                if (sb.Length > 0)
+                    sb.Append('\n');
+                var marker = line == errorLine ? ">" : " ";
+                sb.Append($"{marker} {line,4}: {lines[line - 1]}");
+            }
+
+            return sb.ToString();
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            return null;
+        }
     }
 
     /// <param name="maxShown">How many errors to print, or <see cref="int.MaxValue"/> for every error.</param>
     /// <param name="json">True for one JSON object per error instead of text, with the summary as the last line.</param>
     /// <param name="treeStamp">The stamp a <c>fuse check</c> summary carries, or null to print none.</param>
     /// <param name="includeNonCSharp">False to leave the changed files Fuse does not check out of the summary.</param>
-    internal static OperationResult Render(CheckReport report, string? resultsPath = null, int maxShown = MaxShown, bool json = false, string? treeStamp = null, bool includeNonCSharp = true)
+    /// <param name="brief">True to render <see cref="ReportedRepairPacket"/> details (and fallback source windows).</param>
+    /// <param name="repoRootPath">Repository root used for fallback source windows when <paramref name="brief"/> is true.</param>
+    internal static OperationResult Render(CheckReport report, string? resultsPath = null, int maxShown = MaxShown, bool json = false, string? treeStamp = null, bool includeNonCSharp = true, bool brief = false, string? repoRootPath = null)
     {
         var text = new StringBuilder();
         IReadOnlyList<(string? Header, ReportedError Error, bool ShowCause)> shown;
         if (json)
         {
             foreach (var reported in report.Errors)
-                text.Append(DiagnosticJson.CheckLine(reported)).Append('\n');
+                text.Append(DiagnosticJson.CheckLine(EnsureRepairPacket(reported, brief, repoRootPath))).Append('\n');
             shown = [.. report.Errors.Select(e => ((string?)null, e, false))];
         }
         else
@@ -145,7 +219,7 @@ internal static class CheckOperation
                 var show = showCause && error.Cause is not null && causeLines < MaxCauseLines;
                 if (showCause && error.Cause is not null && show)
                     causeLines++;
-                AppendError(text, error, generatedShown, show);
+                AppendError(text, error, generatedShown, show, brief, repoRootPath);
             }
         }
 

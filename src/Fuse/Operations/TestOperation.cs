@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 using Fuse.Dotnet;
@@ -17,6 +18,9 @@ internal static class TestOperation
     private const int MaxFailuresShown = 10;
     private const int MaxNamesShown = 100;
 
+    /// <summary>Default fail-fast failure cap for <c>--max-failures</c> and .NET 11 MTP <c>--maximum-failed-tests</c>.</summary>
+    internal const int DefaultMaxFailures = 10;
+
     /// <param name="session">
     ///     The session the run is for, as its harness identifies it, or null. With one, the affected tests leave out the
     ///     changes only other sessions wrote. The pre-shell hook passes it to <c>fuse test</c>.
@@ -26,11 +30,25 @@ internal static class TestOperation
     ///     The command line passes its output; the MCP tool passes null and answers once.
     /// </param>
     /// <param name="failed">True to rerun the tests that failed in the last recorded run instead of planning from the changes.</param>
-    public static async Task<OperationResult> RunAsync(RepoRoot root, string workingDirectory, IReadOnlyList<string> arguments, bool all, CancellationToken cancellationToken, string? session = null, TextWriter? live = null, bool failed = false)
+    /// <param name="clean">True to bypass warm test workers and slice caches (<c>--clean</c>).</param>
+    /// <param name="noCache">True to bypass the slice test cache and reused test results (<c>--no-cache</c>).</param>
+    /// <param name="maxFailures">Maximum test failures before stopping early; 0 disables early stop.</param>
+    public static async Task<OperationResult> RunAsync(
+        RepoRoot root,
+        string workingDirectory,
+        IReadOnlyList<string> arguments,
+        bool all,
+        CancellationToken cancellationToken,
+        string? session = null,
+        TextWriter? live = null,
+        bool failed = false,
+        bool clean = false,
+        bool noCache = false,
+        int maxFailures = DefaultMaxFailures)
     {
         var started = Environment.TickCount64;
         if (failed)
-            return await RunFailedAsync(root, live, all, arguments, started, cancellationToken).ConfigureAwait(false);
+            return await RunFailedAsync(root, live, all, arguments, started, cancellationToken, clean, noCache, maxFailures).ConfigureAwait(false);
         // Arguments that only say where the tests are and how to build them plan the affected tests in that scope;
         // any other argument chooses the tests itself and passes to dotnet test as it is.
         var scope = arguments.Count > 0 ? TestScopeArguments.Parse(workingDirectory, arguments) : null;
@@ -38,9 +56,18 @@ internal static class TestOperation
         {
             // dotnet test with the caller's arguments builds with MSBuild, so it holds the lock until it exits.
             using var argumentsLock = BuildLock.AcquireForClient(root);
+            await EngineClient.TryYieldMemoryAsync(root, cancellationToken).ConfigureAwait(false);
             // On Microsoft.Testing.Platform the arguments go to the test application, which rejects VSTest's logger options.
             var testingPlatform = GlobalJson.UsesTestingPlatform(workingDirectory, root.Path);
-            var (outcome, process, log, resultsDirectory) = await RunDotnetTestAsync(root, workingDirectory, NormalizeArguments(workingDirectory, arguments, testingPlatform), cancellationToken, testingPlatform).ConfigureAwait(false);
+            var normalized = NormalizeArguments(workingDirectory, arguments, testingPlatform);
+            if (testingPlatform && maxFailures > 0 && await BuildOperation.IsNet11OrLaterAsync(workingDirectory, cancellationToken).ConfigureAwait(false)
+                && !normalized.Any(a => a.StartsWith("--maximum-failed-tests", StringComparison.OrdinalIgnoreCase)))
+            {
+                normalized = [.. normalized, "--maximum-failed-tests", maxFailures.ToString(CultureInfo.InvariantCulture)];
+            }
+
+            var (outcome, process, log, resultsDirectory) = await RunDotnetTestAsync(root, workingDirectory, normalized, cancellationToken, testingPlatform, maxFailures: maxFailures).ConfigureAwait(false);
+            await BuildOperation.ShutdownBuildServerIfMemoryTightAsync(workingDirectory).ConfigureAwait(false);
             const string summary = "ran the tests your dotnet test arguments name";
             return outcome is null
                 ? WithoutResults(process, root, ArgumentsRun, summary, Seconds(started), log, resultsDirectory)
@@ -53,7 +80,9 @@ internal static class TestOperation
         var buildLock = BuildLock.AcquireForClient(root);
         try
         {
-            EngineRequest request = all ? new EngineRequest.PlanAllTests() : new EngineRequest.PlanAffectedTests { Session = session, Projects = scope?.Paths ?? [], BuildOnly = scope?.BuildOnly ?? false };
+            EngineRequest request = all
+                ? new EngineRequest.PlanAllTests { Clean = clean, NoCache = noCache, MaxFailures = maxFailures }
+                : new EngineRequest.PlanAffectedTests { Session = session, Projects = scope?.Paths ?? [], BuildOnly = scope?.BuildOnly ?? false, Clean = clean, NoCache = noCache, MaxFailures = maxFailures };
             var response = await EngineClient.SendAsync(root, request, TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
             if (response is not EngineResponse.PlanAnswered answered)
                 return OperationResult.Unanswered(response, "test plan");
@@ -66,7 +95,7 @@ internal static class TestOperation
             var failedFirst = FailedFirstSplit.ForPlan(root, plan);
             var held = buildLock;
             buildLock = null;
-            return await RunPlanAsync(root, plan, started, cancellationToken, held, scope, live: live, failedFirstByProject: failedFirst).ConfigureAwait(false);
+            return await RunPlanAsync(root, plan, started, cancellationToken, held, scope, live: live, failedFirstByProject: failedFirst, clean: clean, noCache: noCache, maxFailures: maxFailures).ConfigureAwait(false);
         }
         finally
         {
@@ -75,7 +104,7 @@ internal static class TestOperation
     }
 
     /// <summary>Reruns the tests that failed in the last recorded run, or answers why there is nothing to rerun.</summary>
-    private static async Task<OperationResult> RunFailedAsync(RepoRoot root, TextWriter? live, bool all, IReadOnlyList<string> arguments, long started, CancellationToken cancellationToken)
+    private static async Task<OperationResult> RunFailedAsync(RepoRoot root, TextWriter? live, bool all, IReadOnlyList<string> arguments, long started, CancellationToken cancellationToken, bool clean = false, bool noCache = false, int maxFailures = DefaultMaxFailures)
     {
         if (all || arguments.Count > 0)
             return new OperationResult(Outcome.Unanswered, "fuse: --failed reruns the tests that failed last time and cannot be combined with other arguments; pass the arguments without --failed to choose the scope");
@@ -97,7 +126,7 @@ internal static class TestOperation
         var buildLock = BuildLock.AcquireForClient(root);
         try
         {
-            EngineRequest request = new EngineRequest.PlanFailedTests([.. reruns.Select(r => new EngineRequest.FailedProject(r.Project, r.Failed))]);
+            EngineRequest request = new EngineRequest.PlanFailedTests([.. reruns.Select(r => new EngineRequest.FailedProject(r.Project, r.Failed))]) { Clean = clean, NoCache = noCache, MaxFailures = maxFailures };
             var response = await EngineClient.SendAsync(root, request, TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
             if (response is not EngineResponse.PlanAnswered answered)
                 return OperationResult.Unanswered(response, "test plan");
@@ -106,7 +135,7 @@ internal static class TestOperation
                 return new OperationResult(Outcome.Unanswered, "fuse: none of the tests that failed last time is in a test project in this repository");
             var held = buildLock;
             buildLock = null;
-            return await RunPlanAsync(root, plan, started, cancellationToken, held, live: live, failedRerunCount: reruns.Sum(r => r.Failed.Length)).ConfigureAwait(false);
+            return await RunPlanAsync(root, plan, started, cancellationToken, held, live: live, failedRerunCount: reruns.Sum(r => r.Failed.Length), clean: clean, noCache: noCache, maxFailures: maxFailures).ConfigureAwait(false);
         }
         finally
         {
@@ -213,11 +242,23 @@ internal static class TestOperation
     ///     and the build lock is released while they run, so another client's build or test plan does not wait for them.
     ///     MSBuild runs share obj and bin folders across projects, so they run one after another, holding the lock.
     /// </remarks>
-    internal static async Task<OperationResult> RunPlanAsync(RepoRoot root, TestPlan plan, long started, CancellationToken cancellationToken, BuildLock? held = null, TestScopeArguments? scope = null, TextWriter? live = null, int? failedRerunCount = null, IReadOnlyDictionary<string, string[]>? failedFirstByProject = null)
+    internal static async Task<OperationResult> RunPlanAsync(
+        RepoRoot root,
+        TestPlan plan,
+        long started,
+        CancellationToken cancellationToken,
+        BuildLock? held = null,
+        TestScopeArguments? scope = null,
+        TextWriter? live = null,
+        int? failedRerunCount = null,
+        IReadOnlyDictionary<string, string[]>? failedFirstByProject = null,
+        bool clean = false,
+        bool noCache = false,
+        int maxFailures = DefaultMaxFailures)
     {
         var stamp = await BuildResultsFile.StampForReuseAsync(root, cancellationToken).ConfigureAwait(false);
         var planKey = stamp is null ? null : PlanKey(plan, scope);
-        if (stamp is not null && planKey is not null && ReusedTestRun(root, stamp.Value, planKey, live) is { } reused)
+        if (!clean && !noCache && stamp is not null && planKey is not null && ReusedTestRun(root, stamp.Value, planKey, live) is { } reused)
             return reused;
         (string TreeHash, string FullHash, string AssetsHash, string PlanKey)? key = null;
         if (stamp is not null && planKey is not null)
@@ -230,7 +271,7 @@ internal static class TestOperation
             {
                 buildLock?.Dispose();
                 buildLock = null;
-            }, () => buildLock ??= BuildLock.AcquireForClient(root), scope, cancellationToken, live, failedRerunCount, failedFirstByProject, key).ConfigureAwait(false);
+            }, () => buildLock ??= BuildLock.AcquireForClient(root), scope, cancellationToken, live, failedRerunCount, failedFirstByProject, key, maxFailures).ConfigureAwait(false);
         }
         finally
         {
@@ -241,17 +282,29 @@ internal static class TestOperation
     }
 
     private static async Task<OperationResult> RunPlanHoldingAsync(
-        RepoRoot root, TestPlan plan, long started, List<IDisposable> copies, Action releaseLock, Func<BuildLock> takeLock, TestScopeArguments? scope, CancellationToken cancellationToken, TextWriter? live = null, int? failedRerunCount = null, IReadOnlyDictionary<string, string[]>? failedFirstByProject = null, (string TreeHash, string FullHash, string AssetsHash, string PlanKey)? reuse = null)
+        RepoRoot root,
+        TestPlan plan,
+        long started,
+        List<IDisposable> copies,
+        Action releaseLock,
+        Func<BuildLock> takeLock,
+        TestScopeArguments? scope,
+        CancellationToken cancellationToken,
+        TextWriter? live = null,
+        int? failedRerunCount = null,
+        IReadOnlyDictionary<string, string[]>? failedFirstByProject = null,
+        (string TreeHash, string FullHash, string AssetsHash, string PlanKey)? reuse = null,
+        int maxFailures = DefaultMaxFailures)
     {
         if (failedFirstByProject is not null
-            && await RunStagedAsync(root, plan, started, copies, releaseLock, takeLock, scope, live, failedFirstByProject, cancellationToken, reuse).ConfigureAwait(false) is { } staged)
+            && await RunStagedAsync(root, plan, started, copies, releaseLock, takeLock, scope, live, failedFirstByProject, cancellationToken, reuse, maxFailures).ConfigureAwait(false) is { } staged)
             return staged;
 
         var groups = plan.Runs.GroupBy(r => root.PathOf(r.Project)).ToList();
         // Whether dotnet test runs the platform in this repository decides how a platform run is started.
         var runner = GlobalJson.UsesTestingPlatform(root.Path, root.Path);
         string[] buildSwitches = scope?.BuildSwitches ?? [];
-        var shadowGroups = groups.Where(g => g.All(r => r.Mode is TestRunMode.Shadow && !r.UsesTestingPlatform)).ToList();
+        var shadowGroups = groups.Where(g => g.All(r => r.Mode is TestRunMode.Shadow)).ToList();
         if (shadowGroups.Count > 0)
         {
             // Every copy is held before the lock goes, so no plan prepared after it writes a copy these runs start from.
@@ -277,14 +330,50 @@ internal static class TestOperation
             new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2), CancellationToken = cancellationToken },
             async (group, ct) =>
             {
-                // One process per target framework, in parallel. Every run in a shadow group is a shadow run.
-                var results = await Task.WhenAll(group.Select(run => RunDotnetTestAsync(
-                    root, root.Path, [((TestRunMode.Shadow)run.Mode).Assembly], ct, assembly: true, run: run))).ConfigureAwait(false);
+                // One process per target framework, in parallel. Every run in a shadow group is a shadow run (VSTest or MTP).
+                var results = await Task.WhenAll(group.Select(run => run.UsesTestingPlatform
+                    ? RunShadowPlatformAsync(root, run, maxFailures, ct)
+                    : RunDotnetTestAsync(root, root.Path, [((TestRunMode.Shadow)run.Mode).Assembly], ct, assembly: true, run: run, maxFailures: maxFailures))).ConfigureAwait(false);
                 // A shadow run that could not start (a test host or adapter problem) sends the whole project through MSBuild below.
                 if (results.Any(r => r.Outcome is null))
                     return;
                 outcomes[group.Key] = results.Aggregate(TrxResults.Empty, (sum, r) => sum.Add(r.Outcome!));
             }).ConfigureAwait(false);
+
+        var remainingGroups = groups.Where(g => !outcomes.ContainsKey(g.Key)).ToList();
+        var parallelBuiltSwitches = buildSwitches;
+        var runRemainingInParallel = false;
+        if (remainingGroups.Count > 0)
+        {
+            await EngineClient.TryYieldMemoryAsync(root, cancellationToken).ConfigureAwait(false);
+            takeLock();
+            if (remainingGroups.Count > 1)
+            {
+                if (buildSwitches.Contains("--no-build"))
+                {
+                    runRemainingInParallel = true;
+                }
+                else
+                {
+                    var isNet11 = await BuildOperation.IsNet11OrLaterAsync(root.Path, cancellationToken).ConfigureAwait(false);
+                    string[] mtArgs = isNet11 ? ["-mt"] : [];
+                    var traversalProjects = remainingGroups.Select(g => g.First().Project).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                    var (traversalResult, _, _, _) = await BuildOperation.RunTraversalBuildAsync(
+                        root,
+                        traversalProjects,
+                        ["--no-restore", .. buildSwitches, .. mtArgs, "-nologo", "-tl:off", "-v:q", "-clp:ErrorsOnly;NoSummary"],
+                        root.Path,
+                        root.StateDirectory,
+                        continueOnError: true,
+                        cancellationToken).ConfigureAwait(false);
+                    if (traversalResult.ExitCode == 0)
+                    {
+                        parallelBuiltSwitches = Built(buildSwitches);
+                        runRemainingInParallel = true;
+                    }
+                }
+            }
+        }
 
         var aggregate = TrxResults.Empty;
         var perProject = new List<(string Project, string Name, TrxResults Outcome)>();
@@ -293,34 +382,83 @@ internal static class TestOperation
         // no counts to add.
         var problems = new List<OperationResult>();
         OperationResult? passedWithoutResults = null;
-        foreach (var group in groups)
+
+        if (runRemainingInParallel)
         {
-            if (outcomes.TryGetValue(group.Key, out var shadowOutcome))
-            {
-                aggregate = aggregate.Add(shadowOutcome);
-                perProject.Add((group.First().Project, group.First().Name, shadowOutcome));
-                continue;
-            }
+            var parallelResults = new System.Collections.Concurrent.ConcurrentDictionary<RepoPath, (TrxResults? Outcome, ProcessResult? Process, string Log, TestRun Run)>();
+            var parallelScope = scope is null
+                ? new TestScopeArguments([], parallelBuiltSwitches, false, null, null)
+                : scope with { BuildSwitches = parallelBuiltSwitches };
+            await Parallel.ForEachAsync(
+                remainingGroups,
+                new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2), CancellationToken = cancellationToken },
+                async (group, ct) =>
+                {
+                    var run = group.First();
+                    var res = run.UsesTestingPlatform
+                        ? await RunPlatformAsync(root, run, runner, parallelScope, ct, maxFailures).ConfigureAwait(false)
+                        : await RunDotnetTestAsync(root, root.Path, [run.Project, "--no-restore", .. parallelBuiltSwitches], ct, run: run, maxFailures: maxFailures).ConfigureAwait(false);
+                    parallelResults[group.Key] = (res.Outcome, res.Process, res.Log, run);
+                }).ConfigureAwait(false);
 
-            // A run with MSBuild writes build output, so it waits for the build lock.
-            takeLock();
-            var run = group.First();
-            var (outcome, process, log, _) = run.UsesTestingPlatform
-                ? await RunPlatformAsync(root, run, runner, scope, cancellationToken).ConfigureAwait(false)
-                : await RunDotnetTestAsync(root, root.Path, [run.Project, "--no-restore", .. buildSwitches], cancellationToken, run: run).ConfigureAwait(false);
-            if (outcome is not null)
+            foreach (var group in groups)
             {
-                aggregate = aggregate.Add(outcome);
-                perProject.Add((run.Project, run.Name, outcome));
-                continue;
-            }
+                if (outcomes.TryGetValue(group.Key, out var shadowOutcome))
+                {
+                    aggregate = aggregate.Add(shadowOutcome);
+                    perProject.Add((group.First().Project, group.First().Name, shadowOutcome));
+                    continue;
+                }
 
-            var answer = WithoutResults(process, root, $"the test run of {run.Name}", plan.Summary, Seconds(started), log);
-            if (answer.Outcome == Outcome.Clean)
-                passedWithoutResults ??= answer;
-            else
-                problems.Add(answer);
+                var (outcome, process, log, run) = parallelResults[group.Key];
+                if (outcome is not null)
+                {
+                    aggregate = aggregate.Add(outcome);
+                    perProject.Add((run.Project, run.Name, outcome));
+                    continue;
+                }
+
+                var answer = WithoutResults(process, root, $"the test run of {run.Name}", plan.Summary, Seconds(started), log);
+                if (answer.Outcome == Outcome.Clean)
+                    passedWithoutResults ??= answer;
+                else
+                    problems.Add(answer);
+            }
         }
+        else
+        {
+            foreach (var group in groups)
+            {
+                if (outcomes.TryGetValue(group.Key, out var shadowOutcome))
+                {
+                    aggregate = aggregate.Add(shadowOutcome);
+                    perProject.Add((group.First().Project, group.First().Name, shadowOutcome));
+                    continue;
+                }
+
+                // A run with MSBuild writes build output, so it waits for the build lock.
+                takeLock();
+                var run = group.First();
+                var (outcome, process, log, _) = run.UsesTestingPlatform
+                    ? await RunPlatformAsync(root, run, runner, scope, cancellationToken, maxFailures).ConfigureAwait(false)
+                    : await RunDotnetTestAsync(root, root.Path, [run.Project, "--no-restore", .. buildSwitches], cancellationToken, run: run, maxFailures: maxFailures).ConfigureAwait(false);
+                if (outcome is not null)
+                {
+                    aggregate = aggregate.Add(outcome);
+                    perProject.Add((run.Project, run.Name, outcome));
+                    continue;
+                }
+
+                var answer = WithoutResults(process, root, $"the test run of {run.Name}", plan.Summary, Seconds(started), log);
+                if (answer.Outcome == Outcome.Clean)
+                    passedWithoutResults ??= answer;
+                else
+                    problems.Add(answer);
+            }
+        }
+
+        if (remainingGroups.Count > 0)
+            await BuildOperation.ShutdownBuildServerIfMemoryTightAsync(root.Path).ConfigureAwait(false);
 
         if (aggregate.Total == 0 && problems.Count == 0 && passedWithoutResults is not null)
         {
@@ -354,7 +492,7 @@ internal static class TestOperation
     /// </summary>
     private static async Task<OperationResult?> RunStagedAsync(
         RepoRoot root, TestPlan plan, long started, List<IDisposable> copies, Action releaseLock, Func<BuildLock> takeLock,
-        TestScopeArguments? scope, TextWriter? live, IReadOnlyDictionary<string, string[]> failedFirstByProject, CancellationToken cancellationToken, (string TreeHash, string FullHash, string AssetsHash, string PlanKey)? reuse = null)
+        TestScopeArguments? scope, TextWriter? live, IReadOnlyDictionary<string, string[]> failedFirstByProject, CancellationToken cancellationToken, (string TreeHash, string FullHash, string AssetsHash, string PlanKey)? reuse = null, int maxFailures = DefaultMaxFailures)
     {
         var groups = plan.Runs.GroupBy(r => root.PathOf(r.Project)).ToList();
         var priority = new List<(RepoPath Key, List<TestRun> Runs)>();
@@ -405,7 +543,7 @@ internal static class TestOperation
         // Whether dotnet test runs the platform in this repository decides how a platform run is started.
         var runner = GlobalJson.UsesTestingPlatform(root.Path, root.Path);
         string[] buildSwitches = scope?.BuildSwitches ?? [];
-        var first = await RunStageAsync(root, priority, runner, buildSwitches, plan.Summary, started, takeLock, scope, cancellationToken).ConfigureAwait(false);
+        var first = await RunStageAsync(root, priority, runner, buildSwitches, plan.Summary, started, takeLock, scope, cancellationToken, maxFailures).ConfigureAwait(false);
         if (live is not null)
         {
             live.Write(RenderFailures(first.Aggregate));
@@ -414,7 +552,7 @@ internal static class TestOperation
 
         releaseLock();
         var secondGroups = rest.Concat(single.Select(g => (g.Key, g.ToList()))).ToList();
-        var second = await RunStageAsync(root, secondGroups, runner, buildSwitches, plan.Summary, started, takeLock, scope, cancellationToken).ConfigureAwait(false);
+        var second = await RunStageAsync(root, secondGroups, runner, buildSwitches, plan.Summary, started, takeLock, scope, cancellationToken, maxFailures).ConfigureAwait(false);
         if (live is not null)
         {
             live.Write(RenderFailures(second.Aggregate));
@@ -462,17 +600,18 @@ internal static class TestOperation
     /// <summary>Runs one stage's groups: its shadow runs in parallel without the lock, then the rest one after another with it.</summary>
     private static async Task<StageOutcome> RunStageAsync(
         RepoRoot root, IReadOnlyList<(RepoPath Key, List<TestRun> Runs)> stage, bool runner, string[] buildSwitches, string summary, long started,
-        Func<BuildLock> takeLock, TestScopeArguments? scope, CancellationToken cancellationToken)
+        Func<BuildLock> takeLock, TestScopeArguments? scope, CancellationToken cancellationToken, int maxFailures = DefaultMaxFailures)
     {
-        var shadowGroups = stage.Where(g => g.Runs.All(r => r.Mode is TestRunMode.Shadow && !r.UsesTestingPlatform)).ToList();
+        var shadowGroups = stage.Where(g => g.Runs.All(r => r.Mode is TestRunMode.Shadow)).ToList();
         var outcomes = new System.Collections.Concurrent.ConcurrentDictionary<RepoPath, TrxResults>();
         await Parallel.ForEachAsync(
             shadowGroups,
             new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2), CancellationToken = cancellationToken },
             async (group, ct) =>
             {
-                var results = await Task.WhenAll(group.Runs.Select(run => RunDotnetTestAsync(
-                    root, root.Path, [((TestRunMode.Shadow)run.Mode).Assembly], ct, assembly: true, run: run))).ConfigureAwait(false);
+                var results = await Task.WhenAll(group.Runs.Select(run => run.UsesTestingPlatform
+                    ? RunShadowPlatformAsync(root, run, maxFailures, ct)
+                    : RunDotnetTestAsync(root, root.Path, [((TestRunMode.Shadow)run.Mode).Assembly], ct, assembly: true, run: run, maxFailures: maxFailures))).ConfigureAwait(false);
                 // A shadow run that could not start sends the project back through MSBuild below.
                 if (results.Any(r => r.Outcome is null))
                     return;
@@ -495,8 +634,8 @@ internal static class TestOperation
             takeLock();
             var run = runs[0];
             var (outcome, process, log, _) = run.UsesTestingPlatform
-                ? await RunPlatformAsync(root, run, runner, scope, cancellationToken).ConfigureAwait(false)
-                : await RunDotnetTestAsync(root, root.Path, [run.Project, "--no-restore", .. buildSwitches], cancellationToken, run: run).ConfigureAwait(false);
+                ? await RunPlatformAsync(root, run, runner, scope, cancellationToken, maxFailures).ConfigureAwait(false)
+                : await RunDotnetTestAsync(root, root.Path, [run.Project, "--no-restore", .. buildSwitches], cancellationToken, run: run, maxFailures: maxFailures).ConfigureAwait(false);
             if (outcome is not null)
             {
                 aggregate = aggregate.Add(outcome);
@@ -534,11 +673,11 @@ internal static class TestOperation
     ///     no-test run, never as a pass.
     /// </summary>
     private static async Task<(TrxResults? Outcome, ProcessResult? Process, string Log, string ResultsDirectory)> RunPlatformAsync(
-        RepoRoot root, TestRun run, bool runner, TestScopeArguments? scope, CancellationToken cancellationToken)
+        RepoRoot root, TestRun run, bool runner, TestScopeArguments? scope, CancellationToken cancellationToken, int maxFailures = DefaultMaxFailures)
     {
         string[] switches = scope?.BuildSwitches ?? [];
         if (runner || run.TargetPaths.Length == 0)
-            return await ThroughDotnetTestAsync(root, run, runner, switches, cancellationToken).ConfigureAwait(false);
+            return await ThroughDotnetTestAsync(root, run, runner, switches, cancellationToken, maxFailures).ConfigureAwait(false);
 
         var results = Path.Combine(root.StateDirectory, "results", Guid.NewGuid().ToString("N")[..8]);
         try
@@ -560,7 +699,7 @@ internal static class TestOperation
             {
                 // dotnet test starts such a target itself, and says in its own words when the build wrote none. The build
                 // above is done, so dotnet test does not build the project again.
-                return await ThroughDotnetTestAsync(root, run, runner, Built(switches), cancellationToken).ConfigureAwait(false);
+                return await ThroughDotnetTestAsync(root, run, runner, Built(switches), cancellationToken, maxFailures).ConfigureAwait(false);
             }
 
             string[] settings = run.Filter is not null || run.RunSettings is not null
@@ -585,8 +724,10 @@ internal static class TestOperation
 
                 arguments.AddRange(run.FilterArguments);
                 arguments.AddRange(settings);
-                var process = await ProcessRunner.RunAsync(file, [.. arguments], Path.GetDirectoryName(target)!, cancellationToken).ConfigureAwait(false);
+                var (process, earlyFailures) = await RunWithEarlyStopAsync(file, [.. arguments], Path.GetDirectoryName(target)!, maxFailures, cancellationToken).ConfigureAwait(false);
                 var outcome = TestingPlatformOutput.Read(process.Output, root.Path) ?? XUnitOutput.Read(process.Output, root.Path);
+                if (outcome is null && earlyFailures.Count > 0)
+                    outcome = SynthesizeFailures(earlyFailures);
                 // Counts that say nothing failed from a run that exited with a code other than 0 do not explain its exit code.
                 if (outcome is { Failed: 0 } && process.ExitCode != 0)
                     outcome = null;
@@ -594,7 +735,7 @@ internal static class TestOperation
                 // MSTest project can reference the platform without being one), so the project runs through dotnet test,
                 // which finds its tests, instead of passing with none.
                 if (outcome is null && process.ExitCode == 0)
-                    return await ThroughDotnetTestAsync(root, run, runner, Built(switches), cancellationToken).ConfigureAwait(false);
+                    return await ThroughDotnetTestAsync(root, run, runner, Built(switches), cancellationToken, maxFailures).ConfigureAwait(false);
                 if (outcome is null)
                     return (null, process, log, results);
                 aggregate = aggregate.Add(outcome);
@@ -604,6 +745,78 @@ internal static class TestOperation
             if (aggregate.Total == 0 && (run.Filter is not null || run.FilterArguments.Length > 0))
                 return (null, new ProcessResult(NoTestRanExitCode, last?.Output ?? ""), log, results);
             return (aggregate, null, log, results);
+        }
+        finally
+        {
+            try
+            {
+                if (Directory.Exists(results))
+                    Directory.Delete(results, recursive: true);
+            }
+            catch (IOException)
+            {
+            }
+        }
+    }
+
+    /// <summary>
+    ///     Runs one Microsoft.Testing.Platform shadow-emitted assembly directly without MSBuild. Returns null outcome
+    ///     when the shadow assembly cannot execute directly so the caller falls back cleanly to MSBuild.
+    /// </summary>
+    private static async Task<(TrxResults? Outcome, ProcessResult? Process, string Log, string ResultsDirectory)> RunShadowPlatformAsync(
+        RepoRoot root, TestRun run, int maxFailures, CancellationToken cancellationToken)
+    {
+        var shadowAssembly = ((TestRunMode.Shadow)run.Mode).Assembly;
+        if (!File.Exists(shadowAssembly))
+            return (null, null, "", "");
+        if (shadowAssembly.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) && !File.Exists(Path.ChangeExtension(shadowAssembly, ".runtimeconfig.json")))
+            return (null, null, "", "");
+
+        var results = Path.Combine(root.StateDirectory, "results", Guid.NewGuid().ToString("N")[..8]);
+        try
+        {
+            string[] settings = run.Filter is not null || run.RunSettings is not null
+                ? ["--settings", RunSettingsFile.Write(results, run.Filter, run.RunSettings)]
+                : [];
+
+            var arguments = new List<string>();
+            string file;
+            var apphost = OperatingSystem.IsWindows()
+                ? Path.ChangeExtension(shadowAssembly, ".exe")
+                : Path.Combine(Path.GetDirectoryName(shadowAssembly)!, Path.GetFileNameWithoutExtension(shadowAssembly));
+            if (shadowAssembly.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+            {
+                if (File.Exists(apphost))
+                {
+                    file = apphost;
+                }
+                else
+                {
+                    file = "dotnet";
+                    arguments.Add("exec");
+                    arguments.Add(shadowAssembly);
+                }
+            }
+            else
+            {
+                file = shadowAssembly;
+            }
+
+            arguments.AddRange(run.FilterArguments);
+            arguments.AddRange(settings);
+            var (process, earlyFailures) = await RunWithEarlyStopAsync(file, [.. arguments], Path.GetDirectoryName(shadowAssembly)!, maxFailures, cancellationToken).ConfigureAwait(false);
+            var outcome = TestingPlatformOutput.Read(process.Output, root.Path)
+                ?? XUnitOutput.Read(process.Output, root.Path)
+                ?? TrxReader.ReadDirectory(results, root.Path);
+            if (outcome is null && earlyFailures.Count > 0)
+                outcome = SynthesizeFailures(earlyFailures);
+            if (outcome is { Failed: 0 } && process.ExitCode != 0)
+                outcome = null;
+            if (outcome is null)
+                return (null, process.ExitCode == 0 ? null : process, "", results);
+            if (outcome.Total == 0 && (run.Filter is not null || run.FilterArguments.Length > 0))
+                return (null, new ProcessResult(NoTestRanExitCode, process.Output), "", results);
+            return (outcome, null, "", results);
         }
         finally
         {
@@ -647,11 +860,20 @@ internal static class TestOperation
     ///     are left out and xUnit v3 and TUnit run whole; MSTest and NUnit still read their VSTest filter there.
     /// </summary>
     private static async Task<(TrxResults? Outcome, ProcessResult? Process, string Log, string ResultsDirectory)> ThroughDotnetTestAsync(
-        RepoRoot root, TestRun run, bool runner, string[] switches, CancellationToken cancellationToken)
+        RepoRoot root, TestRun run, bool runner, string[] switches, CancellationToken cancellationToken, int maxFailures = DefaultMaxFailures)
     {
+        string[] maxFailArgs = [];
+        if (runner && maxFailures > 0
+            && await BuildOperation.IsNet11OrLaterAsync(root.Path, cancellationToken).ConfigureAwait(false)
+            && !switches.Any(s => s.StartsWith("--maximum-failed-tests", StringComparison.OrdinalIgnoreCase))
+            && !run.FilterArguments.Any(s => s.StartsWith("--maximum-failed-tests", StringComparison.OrdinalIgnoreCase)))
+        {
+            maxFailArgs = ["--maximum-failed-tests", maxFailures.ToString(CultureInfo.InvariantCulture)];
+        }
+
         var ran = runner
-            ? await RunDotnetTestAsync(root, root.Path, ["--project", run.Project, "--no-restore", .. switches, .. run.FilterArguments], cancellationToken, testingPlatform: true, run: run).ConfigureAwait(false)
-            : await RunDotnetTestAsync(root, root.Path, [run.Project, "--no-restore", .. switches], cancellationToken, run: run).ConfigureAwait(false);
+            ? await RunDotnetTestAsync(root, root.Path, ["--project", run.Project, "--no-restore", .. switches, .. maxFailArgs, .. run.FilterArguments], cancellationToken, testingPlatform: true, run: run, maxFailures: maxFailures).ConfigureAwait(false)
+            : await RunDotnetTestAsync(root, root.Path, [run.Project, "--no-restore", .. switches], cancellationToken, run: run, maxFailures: maxFailures).ConfigureAwait(false);
         return FilteredNoTest(run, ran);
     }
 
@@ -669,9 +891,10 @@ internal static class TestOperation
     /// </summary>
     /// <param name="assembly">True when <paramref name="arguments"/> name a test assembly: <c>dotnet test</c> then hands them to VSTest, which rejects MSBuild switches.</param>
     /// <param name="run">The planned VSTest run, whose filter and project runsettings go into a runsettings file; null for none.</param>
+    /// <param name="maxFailures">Maximum failures before early-stopping VSTest; 0 disables early stop.</param>
     /// <returns>The results, or the process without them, and the build's file log (<see cref="BuildLog"/>) for a VSTest run that builds with MSBuild, or empty.</returns>
     private static async Task<(TrxResults? Outcome, ProcessResult? Process, string Log, string ResultsDirectory)> RunDotnetTestAsync(
-        RepoRoot root, string workingDirectory, string[] arguments, CancellationToken cancellationToken, bool testingPlatform = false, bool assembly = false, TestRun? run = null)
+        RepoRoot root, string workingDirectory, string[] arguments, CancellationToken cancellationToken, bool testingPlatform = false, bool assembly = false, TestRun? run = null, int maxFailures = DefaultMaxFailures)
     {
         var results = Path.Combine(root.StateDirectory, "results", Guid.NewGuid().ToString("N")[..8]);
         try
@@ -685,10 +908,23 @@ internal static class TestOperation
             // A VSTest run on a project builds it with MSBuild first, so its file log can say what a failed command printed.
             // Arguments that name an assembly go to VSTest, which rejects MSBuild's switches.
             var builds = !testingPlatform && !assembly && !arguments.Any(a => a.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) || a.EndsWith(".exe", StringComparison.OrdinalIgnoreCase));
-            var (result, log) = builds
-                ? await BuildOperation.RunLoggedAsync(command, workingDirectory, results, cancellationToken).ConfigureAwait(false)
-                : (await ProcessRunner.RunAsync("dotnet", command, workingDirectory, cancellationToken).ConfigureAwait(false), "");
+            ProcessResult result;
+            string log;
+            List<string> earlyFailures;
+            if (builds)
+            {
+                (result, log) = await BuildOperation.RunLoggedAsync(command, workingDirectory, results, cancellationToken).ConfigureAwait(false);
+                earlyFailures = [];
+            }
+            else
+            {
+                (result, earlyFailures) = await RunWithEarlyStopAsync("dotnet", command, workingDirectory, maxFailures, cancellationToken).ConfigureAwait(false);
+                log = "";
+            }
+
             var outcome = TrxReader.ReadDirectory(results, root.Path) ?? (testingPlatform ? TestingPlatformOutput.Read(result.Output, root.Path) : null);
+            if (outcome is null && earlyFailures.Count > 0)
+                outcome = SynthesizeFailures(earlyFailures);
             // Counts that say nothing failed from a run that exited with a code other than 0 do not explain its exit code.
             if (testingPlatform && outcome is { Failed: 0 } && result.ExitCode != 0)
                 outcome = null;
@@ -709,6 +945,140 @@ internal static class TestOperation
             {
             }
         }
+    }
+
+    private static TrxResults SynthesizeFailures(List<string> failureNames) =>
+        new(0, failureNames.Count, 0, [.. failureNames.Select(n => new TestFailure(n, "stopped early after reaching max failures", []))]);
+
+    /// <summary>
+    ///     Runs a test process while watching stdout for failure lines, terminating the process tree early once
+    ///     <paramref name="maxFailures"/> distinct failures are observed (after a short grace window for details to flush).
+    /// </summary>
+    private static async Task<(ProcessResult Result, List<string> Failures)> RunWithEarlyStopAsync(
+        string fileName,
+        IReadOnlyList<string> arguments,
+        string workingDirectory,
+        int maxFailures,
+        CancellationToken cancellationToken)
+    {
+        if (maxFailures <= 0)
+            return (await ProcessRunner.RunAsync(fileName, arguments, workingDirectory, cancellationToken).ConfigureAwait(false), []);
+
+        var psi = new ProcessStartInfo(fileName)
+        {
+            WorkingDirectory = workingDirectory,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            RedirectStandardInput = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            StandardOutputEncoding = Encoding.UTF8,
+            StandardErrorEncoding = Encoding.UTF8,
+        };
+        foreach (var argument in arguments)
+            psi.ArgumentList.Add(argument);
+        psi.Environment["DOTNET_CLI_TELEMETRY_OPTOUT"] = "1";
+        psi.Environment["DOTNET_NOLOGO"] = "1";
+        psi.Environment["DOTNET_CLI_UI_LANGUAGE"] = "en";
+
+        var output = new StringBuilder();
+        var failures = new List<string>();
+        using var earlyStopCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var killScheduled = 0;
+
+        using var process = new Process { StartInfo = psi };
+
+        void OnLine(string? line)
+        {
+            if (line is null)
+                return;
+            lock (output)
+            {
+                output.Append(line).Append('\n');
+                if (TryParseFailureName(line) is { } failedName && !failures.Contains(failedName, StringComparer.Ordinal))
+                {
+                    failures.Add(failedName);
+                    if (failures.Count >= maxFailures && Interlocked.Exchange(ref killScheduled, 1) == 0)
+                        earlyStopCts.CancelAfter(TimeSpan.FromMilliseconds(250));
+                }
+            }
+        }
+
+        process.OutputDataReceived += (_, e) => OnLine(e.Data);
+        process.ErrorDataReceived += (_, e) => OnLine(e.Data);
+        try
+        {
+            if (!process.Start())
+                return (new ProcessResult(-1, $"could not start {fileName}"), []);
+        }
+        catch (System.ComponentModel.Win32Exception e)
+        {
+            return (new ProcessResult(-1, $"could not start {fileName}: {e.Message}"), []);
+        }
+
+        process.StandardInput.Close();
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
+        try
+        {
+            await process.WaitForExitAsync(earlyStopCts.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                process.Kill(entireProcessTree: true);
+            }
+            catch (InvalidOperationException)
+            {
+            }
+
+            try
+            {
+                await process.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (InvalidOperationException)
+            {
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            try
+            {
+                process.Kill(entireProcessTree: true);
+            }
+            catch (InvalidOperationException)
+            {
+            }
+
+            throw;
+        }
+
+        lock (output)
+            return (new ProcessResult(process.ExitCode, output.ToString()), [.. failures]);
+    }
+
+    internal static string? TryParseFailureName(string line)
+    {
+        var stripped = AnsiSequences.Strip(line).Trim();
+        if (stripped.StartsWith("Failed ", StringComparison.Ordinal))
+        {
+            var rest = stripped["Failed ".Length..].Trim();
+            var bracket = rest.IndexOf(" [", StringComparison.Ordinal);
+            return bracket > 0 ? rest[..bracket].Trim() : rest;
+        }
+
+        if (stripped.StartsWith("failed ", StringComparison.Ordinal))
+        {
+            var rest = stripped["failed ".Length..].Trim();
+            var paren = rest.IndexOf(" (", StringComparison.Ordinal);
+            return paren > 0 ? rest[..paren].Trim() : rest;
+        }
+
+        if (stripped.StartsWith("[FAIL] ", StringComparison.Ordinal))
+            return stripped["[FAIL] ".Length..].Trim();
+
+        return null;
     }
 
     /// <summary>

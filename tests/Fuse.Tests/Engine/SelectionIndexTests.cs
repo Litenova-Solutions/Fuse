@@ -1,10 +1,8 @@
-using Fuse.Telemetry;
 using Fuse.Testing;
 using Fuse.Testing.Model;
 using Fuse.Tests.Fixtures;
 using Fuse.Workspace;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Fuse.Tests.Engine;
 

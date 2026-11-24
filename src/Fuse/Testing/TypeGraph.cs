@@ -35,7 +35,7 @@ internal sealed class TypeGraph
 
     public IReadOnlyDictionary<TypeKey, TypeEntry> Types => _types;
 
-    /// <summary>Builds the graph over <paramref name="projects"/>, reusing per-file results from <paramref name="cache"/>.</summary>
+    /// <summary>Builds the graph over <paramref name="projects"/> in parallel, reusing per-file results from <paramref name="cache"/>.</summary>
     public static async Task<TypeGraph> BuildAsync(
         IReadOnlyList<Project> projects,
         Func<Project, ProjectNode?> nodeOf,
@@ -43,26 +43,39 @@ internal sealed class TypeGraph
         CancellationToken cancellationToken)
     {
         var graph = new TypeGraph();
-        var facts = new List<(Project Project, FileFacts Facts)>();
+        var items = new List<(Project Project, ProjectNode? Node, Document Document, int Index)>();
         foreach (var project in projects)
         {
             var node = nodeOf(project);
             foreach (var document in project.Documents)
+                items.Add((project, node, document, items.Count));
+        }
+
+        var entries = new (Project Project, ProjectNode? Node, FileFacts Facts)[items.Count];
+        await Parallel.ForEachAsync(
+            items,
+            new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = cancellationToken },
+            async (item, ct) =>
             {
-                var version = await document.GetTextVersionAsync(cancellationToken).ConfigureAwait(false);
-                if (!cache.TryGetValue(document.Id, out var cached) || cached.Version != version)
+                var version = await item.Document.GetTextVersionAsync(ct).ConfigureAwait(false);
+                if (!cache.TryGetValue(item.Document.Id, out var cached) || cached.Version != version)
                 {
-                    var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-                    cached = (version, FileFacts.From(root!, document.FilePath ?? document.Name));
-                    cache[document.Id] = cached;
+                    var root = await item.Document.GetSyntaxRootAsync(ct).ConfigureAwait(false);
+                    cached = (version, FileFacts.From(root!, item.Document.FilePath ?? item.Document.Name));
+                    cache[item.Document.Id] = cached;
                 }
 
-                facts.Add((project, cached.Facts));
-                foreach (var (name, testName) in cached.Facts.Declared)
-                {
-                    var key = new TypeKey(project.Id, name);
-                    graph._types.TryAdd(key, new TypeEntry(node, testName));
-                }
+                entries[item.Index] = (item.Project, item.Node, cached.Facts);
+            }).ConfigureAwait(false);
+
+        var facts = new List<(Project Project, FileFacts Facts)>(entries.Length);
+        foreach (var (project, node, fileFacts) in entries)
+        {
+            facts.Add((project, fileFacts));
+            foreach (var (name, testName) in fileFacts.Declared)
+            {
+                var key = new TypeKey(project.Id, name);
+                graph._types.TryAdd(key, new TypeEntry(node, testName));
             }
         }
 

@@ -22,12 +22,13 @@ namespace Fuse.Testing;
 ///     emits the changed assemblies into the shadow folders, against the generation <see cref="SelectAsync"/>
 ///     pinned, with an emitter of its own, so plans for different sessions prepare at once.
 /// </remarks>
-internal sealed class TestPlanner
+internal sealed class TestPlanner : IDisposable
 {
     /// <summary>How long one container runtime probe answers plans; starting the runtime is noticed at the next plan past it.</summary>
     private static readonly TimeSpan RuntimeProbeLifetime = TimeSpan.FromMinutes(5);
 
     private readonly RepoWorkspace _workspace;
+    private readonly DynamicTestMap _dynamicMap;
     private readonly TestSelector _selector;
     private readonly TestCounter _counter = new();
     private readonly ShadowEmitter.SharedState _shadow = new();
@@ -45,7 +46,11 @@ internal sealed class TestPlanner
     public TestPlanner(RepoWorkspace workspace, TimeProvider? time = null, Func<bool>? containerProbe = null)
     {
         _workspace = workspace;
-        _selector = new TestSelector(workspace, TimeProvider.System);
+        var sharedState = workspace.Root.SharedStateDirectory;
+        _dynamicMap = new DynamicTestMap(sharedState);
+        _selector = new TestSelector(workspace, TimeProvider.System, _dynamicMap);
+        SliceCache = new SliceTestCache(sharedState);
+        WarmPool = new WarmTestPool(workspace.Root, SliceCache, _dynamicMap, workspace.Log);
         Emitter = new ShadowEmitter(workspace, _shadow);
         _time = time ?? TimeProvider.System;
         _containerProbe = containerProbe ?? ContainerRuntime.IsRunning;
@@ -57,6 +62,18 @@ internal sealed class TestPlanner
     ///     its counts here.
     /// </summary>
     public ShadowEmitter Emitter { get; }
+
+    /// <summary>Content-addressed per-slice test cache shared across plans.</summary>
+    internal SliceTestCache SliceCache { get; }
+
+    /// <summary>Persistent dynamic coverage mapping used for selective test resolution.</summary>
+    internal DynamicTestMap DynamicMap => _dynamicMap;
+
+    /// <summary>Pool of warm test worker processes bound to this planner's caches and workspace.</summary>
+    internal WarmTestPool WarmPool { get; }
+
+    /// <summary>Stops pooled warm test workers when the engine tears down.</summary>
+    public void Dispose() => WarmPool.Dispose();
 
     /// <summary>An emitter for one plan, bound to the generation that plan pinned and sharing this planner's emitter state.</summary>
     private ShadowEmitter EmitterFor(Generation generation) => new(_workspace, generation, _shadow);
@@ -208,10 +225,10 @@ internal sealed class TestPlanner
 
             if (node.UsesTestingPlatform)
             {
-                // A platform project has no shadow run; its filter is its framework's, from PlatformRun below.
+                // Keep the framework's platform filter for MSBuild fallback, and also resolve variants so built
+                // platform test projects execute via fast shadow runs.
                 var (platformFilter, arguments) = PlatformRun(node, selection, runner, collapsed, platformCollapsed, reasons);
-                _workspace.Log($"test plan: {node.Name} [testing platform] builds with MSBuild after {timer.ElapsedMilliseconds} ms");
-                projects.Add((node, platformFilter, arguments, []));
+                projects.Add((node, platformFilter, arguments, RepoWorkspace.ProjectsFor(snapshot, node).ToList()));
                 continue;
             }
 
@@ -252,7 +269,19 @@ internal sealed class TestPlanner
         if (outside.Count > 0)
             summary.Append($"; {outside.Count} non-C# file(s) outside every project changed ({OutsideSample(outside)}); a test that reads them by path is not selected");
         summary.Append(outside.Count > 0 ? "; fuse test --all covers them" : "; fuse test --all runs everything");
-        return PendingPlan.ToPrepare(generation, EmitterFor(generation), projects, selected, total, summary.ToString(), scope is TestScope.Affected { BuildOnly: true }, containerGatedTests, [.. containerGatedProjects]);
+        return PendingPlan.ToPrepare(
+            generation,
+            EmitterFor(generation),
+            projects,
+            selected,
+            total,
+            summary.ToString(),
+            scope is TestScope.Affected { BuildOnly: true },
+            containerGatedTests,
+            [.. containerGatedProjects],
+            noCache: scope is TestScope.Affected { NoCache: true },
+            runner: runner,
+            selections: selections);
     }
 
     /// <summary>
@@ -275,12 +304,7 @@ internal sealed class TestPlanner
             var emitting = new Stopwatch();
             var runs = new List<PlannedRun>();
             foreach (var (node, filter, filterArguments, variants) in pending.Projects)
-            {
-                if (node.UsesTestingPlatform)
-                    runs.Add(new PlannedRun(node.Path, node.Name, new RunMode.Build(), filter, true, RunSettingsOf(node), filterArguments, [.. node.TargetPaths]));
-                else
-                    runs.AddRange(await RunsOfAsync(emitter, node, filter, variants, pending.Graph, emitting, preparing, pending.BuildOnly, cancellationToken).ConfigureAwait(false));
-            }
+                runs.AddRange(await RunsOfAsync(emitter, node, filter, filterArguments, variants, pending, emitting, preparing, cancellationToken).ConfigureAwait(false));
 
             // Everything in the preparation but the emit is the mirror: judging which assemblies are stale, and the copy.
             phases.Add(Phase.Mirror, preparing.Elapsed.TotalMilliseconds - emitting.Elapsed.TotalMilliseconds);
@@ -313,31 +337,136 @@ internal sealed class TestPlanner
     }
 
     /// <summary>
-    ///     The runs of one VSTest project: a shadow run per target framework when every one of them can have one, and
-    ///     otherwise one build with MSBuild for the project, which runs every target framework.
+    ///     The runs of one test project (VSTest or Microsoft.Testing.Platform): a shadow run per target framework when
+    ///     every one of them can have one, and otherwise one build with MSBuild for the project, which runs every
+    ///     target framework.
     /// </summary>
-    private async Task<IReadOnlyList<PlannedRun>> RunsOfAsync(ShadowEmitter emitter, ProjectNode node, string? filter, IReadOnlyList<Project> variants, RepoGraph graph, Stopwatch emitting, Stopwatch timer, bool buildOnly, CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<PlannedRun>> RunsOfAsync(
+        ShadowEmitter emitter,
+        ProjectNode node,
+        string? filter,
+        string[] filterArguments,
+        IReadOnlyList<Project> variants,
+        PendingPlan pending,
+        Stopwatch emitting,
+        Stopwatch timer,
+        CancellationToken cancellationToken)
     {
-        // A configuration or framework was named: only a build with MSBuild honors it, so no shadow run is prepared.
-        if (buildOnly)
-            return [new PlannedRun(node.Path, node.Name, new RunMode.Build(), filter, false, node.RunSettings, [], [])];
+        // A configuration or framework was named, or a platform project targets .NET Framework without runtimeconfig:
+        // only a build with MSBuild handles it, so no shadow run is prepared.
+        if (pending.BuildOnly || variants.Count == 0 || (node.UsesTestingPlatform && variants.Any(IsLegacyNetFramework)))
+        {
+            if (node.UsesTestingPlatform)
+            {
+                var reason = variants.Any(IsLegacyNetFramework) ? "targets .NET Framework without runtimeconfig; builds with MSBuild" : $"builds with MSBuild after {timer.ElapsedMilliseconds} ms";
+                _workspace.Log($"test plan: {node.Name} [testing platform] {reason}");
+            }
 
-        var shadows = new List<RunMode.Shadow>();
+            return [new PlannedRun(node.Path, node.Name, new RunMode.Build(), filter, node.UsesTestingPlatform, RunSettingsOf(node), node.UsesTestingPlatform ? filterArguments : [], node.UsesTestingPlatform ? [.. node.TargetPaths] : [])];
+        }
+
+        var prepared = new List<(Project Variant, RunMode.Shadow Shadow, string? Filter, string[] FilterArguments, string? SliceKey, SliceCacheResult? CachedResult, bool WarmEligible)>();
+        var runSettings = RunSettingsOf(node);
         foreach (var variant in variants)
         {
-            if (await emitter.PrepareAsync(variant, graph, _workspace.Log, emitting, cancellationToken).ConfigureAwait(false) is not RunMode.Shadow shadow)
+            var result = await emitter.PrepareDetailedAsync(variant, pending.Graph, _workspace.Log, emitting, cancellationToken).ConfigureAwait(false);
+            if (result.Mode is not RunMode.Shadow shadow)
             {
-                shadows.Clear();
+                prepared.Clear();
                 break;
             }
 
-            shadows.Add(shadow);
+            if (node.UsesTestingPlatform
+                && shadow.Assembly.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
+                && !File.Exists(Path.ChangeExtension(shadow.Assembly, ".runtimeconfig.json")))
+            {
+                _workspace.Log($"test plan: {node.Name} [{variant.Name}] lacks runtimeconfig.json; builds with MSBuild");
+                prepared.Clear();
+                break;
+            }
+
+            var variantFilterArguments = filterArguments;
+            if (node.UsesTestingPlatform
+                && node.Framework == TestFramework.XUnit
+                && pending.Selections is not null
+                && pending.Selections.TryGetValue(node.Path, out var selection))
+            {
+                var shadowRunner = await UsesMtpEntryPointAsync(variant, pending.Runner, cancellationToken).ConfigureAwait(false);
+                if (shadowRunner != pending.Runner)
+                    variantFilterArguments = PlatformFilter.For(node.Framework, selection, shadowRunner).Arguments;
+            }
+
+            var shadowDir = Path.GetDirectoryName(shadow.Assembly);
+            var sliceKey = SliceCache.ComputeKey(variant, pending.Graph, _workspace.Root, result.Closure, result.Emitted, shadowDir, runSettings, filter, variantFilterArguments);
+            var cached = pending.NoCache ? null : SliceCache.TryGet(sliceKey, noCache: false);
+            var warmEligible = !node.RequiresContainerRuntime && !IsLegacyNetFramework(variant) && IsWarmSupported(node);
+            prepared.Add((variant, shadow, filter, variantFilterArguments, sliceKey, cached, warmEligible));
         }
 
-        _workspace.Log($"test plan: {node.Name} [{string.Join(", ", variants.Select(v => v.Name))}] {(shadows.Count == 0 ? "builds with MSBuild" : $"runs from {string.Join(", ", shadows.Select(s => s.Assembly))}")} after {timer.ElapsedMilliseconds} ms");
-        if (shadows.Count == 0)
-            return [new PlannedRun(node.Path, node.Name, new RunMode.Build(), filter, false, node.RunSettings, [], [])];
-        return [.. shadows.Select(s => new PlannedRun(node.Path, node.Name, s, filter, false, node.RunSettings, [], []))];
+        var tag = node.UsesTestingPlatform ? " [testing platform]" : "";
+        _workspace.Log($"test plan: {node.Name}{tag} [{string.Join(", ", variants.Select(v => v.Name))}] {(prepared.Count == 0 ? "builds with MSBuild" : $"runs from {string.Join(", ", prepared.Select(p => p.Shadow.Assembly))}")} after {timer.ElapsedMilliseconds} ms");
+        if (prepared.Count == 0)
+            return [new PlannedRun(node.Path, node.Name, new RunMode.Build(), filter, node.UsesTestingPlatform, runSettings, node.UsesTestingPlatform ? filterArguments : [], node.UsesTestingPlatform ? [.. node.TargetPaths] : [])];
+
+        return
+        [
+            .. prepared.Select(p => new PlannedRun(
+                node.Path,
+                node.Name,
+                p.Shadow,
+                p.Filter,
+                node.UsesTestingPlatform,
+                runSettings,
+                p.FilterArguments,
+                node.UsesTestingPlatform ? [p.Shadow.Assembly] : [])
+            {
+                SliceKey = p.SliceKey,
+                CachedResult = p.CachedResult,
+                WarmEligible = p.WarmEligible,
+            }),
+        ];
+    }
+
+    private static bool IsWarmSupported(ProjectNode node) =>
+        node.Framework is TestFramework.XUnit or TestFramework.NUnit or TestFramework.MSTest;
+
+    private static bool IsLegacyNetFramework(Project variant)
+    {
+        if (variant.OutputFilePath is null)
+            return true;
+        if (!File.Exists(Path.ChangeExtension(variant.OutputFilePath, ".runtimeconfig.json")))
+            return true;
+        var outputDir = Path.GetFileName(Path.GetDirectoryName(variant.OutputFilePath));
+        return outputDir is not null && IsLegacyNetFrameworkTfm(outputDir);
+    }
+
+    private static bool IsLegacyNetFrameworkTfm(string tfm) =>
+        tfm.Length >= 4
+        && tfm.StartsWith("net", StringComparison.OrdinalIgnoreCase)
+        && !tfm.Contains('.')
+        && char.IsDigit(tfm[3])
+        && tfm[3] <= '4';
+
+    private static async Task<bool> UsesMtpEntryPointAsync(Project variant, bool defaultRunner, CancellationToken cancellationToken)
+    {
+        foreach (var document in variant.Documents)
+        {
+            var name = document.Name;
+            var filePath = document.FilePath;
+            if (!name.Contains("XunitAutoGeneratedEntryPoint", StringComparison.OrdinalIgnoreCase)
+                && (filePath is null || !filePath.Contains("XunitAutoGeneratedEntryPoint", StringComparison.OrdinalIgnoreCase)))
+                continue;
+
+            var text = document.TryGetText(out var existing)
+                ? existing.ToString()
+                : (await document.GetTextAsync(cancellationToken).ConfigureAwait(false)).ToString();
+            if (text.Contains("ConsoleRunner.Run", StringComparison.Ordinal))
+                return false;
+            if (text.Contains("TestPlatformTestFramework", StringComparison.Ordinal))
+                return true;
+        }
+
+        return defaultRunner;
     }
 
     /// <summary>
@@ -480,9 +609,11 @@ internal sealed class TestPlanner
         var reasons = new HashSet<string>(StringComparer.Ordinal);
         var selected = 0;
         var snapshot = generation.Current;
+        var selections = new Dictionary<RepoPath, TestSelection>();
         foreach (var (node, names) in reruns)
         {
             TestSelection selection = new TestSelection.Methods([.. names]);
+            selections[node.Path] = selection;
             var tests = _counter.TestsIn(node);
             // A platform project whose framework Fuse cannot filter runs whole, so every test in it counts as run.
             selected += node.UsesTestingPlatform && node.Framework == TestFramework.Unknown
@@ -491,7 +622,7 @@ internal sealed class TestPlanner
             if (node.UsesTestingPlatform)
             {
                 var (platformFilter, arguments) = PlatformRun(node, selection, runner, collapsed, platformCollapsed, reasons);
-                projects.Add((node, platformFilter, arguments, []));
+                projects.Add((node, platformFilter, arguments, RepoWorkspace.ProjectsFor(snapshot, node).ToList()));
                 continue;
             }
 
@@ -518,7 +649,7 @@ internal sealed class TestPlanner
             summary.Append("; left out ").Append(name).Append(", which is not a test project in this repository");
         if (reruns.Count == 0)
             return PendingPlan.Of(new TestPlanResult([], 0, total, summary.ToString()), generation);
-        return PendingPlan.ToPrepare(generation, EmitterFor(generation), projects, selected, total, summary.ToString());
+        return PendingPlan.ToPrepare(generation, EmitterFor(generation), projects, selected, total, summary.ToString(), runner: runner, selections: selections);
     }
 
 }

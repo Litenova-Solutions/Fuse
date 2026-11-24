@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Fuse.Changes;
+using Fuse.Changes.Model;
 using Fuse.Graph;
 using Fuse.Paths;
 using Fuse.Testing.Model;
@@ -45,7 +46,11 @@ internal sealed class MemberWalk
     private readonly ImmutableHashSet<Document> _reachedDocuments;
     private readonly Dictionary<string, ProjectId> _byAssembly;
     private readonly TimeProvider _time;
+    private readonly DynamicTestMap? _dynamicMap;
     private readonly HashSet<ISymbol> _visited = new(SymbolEqualityComparer.Default);
+    private readonly HashSet<ISymbol> _newlyAddedSymbols = new(SymbolEqualityComparer.Default);
+    private readonly HashSet<RepoPath> _dynamicCoveredApplications = [];
+    private readonly HashSet<RepoPath> _unmappedHostApplications = [];
     private readonly Queue<ISymbol> _queue = new();
     private readonly SelectionBuilder _selections = new();
 
@@ -55,6 +60,11 @@ internal sealed class MemberWalk
     /// <param name="reachedProjects">The Roslyn projects of the changed projects and their dependents; references outside it are not searched.</param>
     /// <param name="time">Measures the walk against its 8 second budget.</param>
     public MemberWalk(RepoRoot root, Generation generation, Solution solution, IReadOnlyList<Project> reachedProjects, TimeProvider time)
+        : this(root, generation, solution, reachedProjects, time, null)
+    {
+    }
+
+    internal MemberWalk(RepoRoot root, Generation generation, Solution solution, IReadOnlyList<Project> reachedProjects, TimeProvider time, DynamicTestMap? dynamicMap)
     {
         _root = root;
         _graph = generation.Graph;
@@ -64,10 +74,17 @@ internal sealed class MemberWalk
         _reachedDocuments = [.. reachedProjects.SelectMany(p => p.Documents)];
         _byAssembly = reachedProjects.GroupBy(p => p.AssemblyName).ToDictionary(g => g.Key, g => g.First().Id, StringComparer.Ordinal);
         _time = time;
+        _dynamicMap = dynamicMap;
     }
 
     /// <summary>The selections found so far, keyed by test project file. It grows while the walk runs.</summary>
     public IReadOnlyDictionary<RepoPath, TestSelection> Selections => _selections.Selections;
+
+    /// <summary>Applications whose changed host-called members were resolved via <see cref="DynamicTestMap"/>.</summary>
+    public IReadOnlySet<RepoPath> DynamicCoveredApplications => _dynamicCoveredApplications;
+
+    /// <summary>Applications where at least one changed host-called member had no dynamic mapping and fell back to static rules.</summary>
+    public IReadOnlySet<RepoPath> UnmappedHostApplications => _unmappedHostApplications;
 
     /// <summary>How many changed declarations <see cref="SeedAsync"/> has seen across its calls.</summary>
     public int ChangedDeclarations { get; private set; }
@@ -88,9 +105,9 @@ internal sealed class MemberWalk
             var document = _solution.GetDocument(id);
             if (document is null)
                 continue;
-            var model = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
+            // Parse syntax and diff before forcing SemanticModel binding so comment/whitespace edits cost zero binding.
             var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-            if (model is null || root is null)
+            if (root is null)
                 continue;
             var baselineDocument = _baseline.GetDocument(id);
             var headText = baselineDocument is null ? null : await baselineDocument.GetTextAsync(cancellationToken).ConfigureAwait(false);
@@ -98,11 +115,28 @@ internal sealed class MemberWalk
             var before = headText is null
                 ? null
                 : await CSharpSyntaxTree.ParseText(headText, (CSharpParseOptions)root.SyntaxTree.Options, cancellationToken: cancellationToken).GetRootAsync(cancellationToken).ConfigureAwait(false);
+            var diffs = CodeDiff.Find(before, root);
+            if (diffs.Count == 0)
+                continue;
+
             var node = NodeOf(document.Project);
-            foreach (var changed in CodeDiff.Find(before, root))
+            var oldDeclarations = before is null ? FileDeclarations.Empty : FileDeclarations.Of(before);
+            var currentDeclarations = FileDeclarations.Of(root);
+            var newlyAddedKeys = ComputeNewlyAddedKeys(oldDeclarations, currentDeclarations);
+
+            SemanticModel? model = null;
+            if (diffs.Any(d => d is not CompilationUnitSyntax))
+            {
+                model = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
+                if (model is null)
+                    continue;
+            }
+
+            foreach (var changed in diffs)
             {
                 ChangedDeclarations++;
                 if (changed is not CompilationUnitSyntax
+                    && model is not null
                     && await CompiledCode.SameAsHeadAsync(document, changed, model, _baseline, cancellationToken).ConfigureAwait(false))
                 {
                     DroppedSameCode++;
@@ -114,12 +148,21 @@ internal sealed class MemberWalk
                 {
                     // Top-level statements are the application's entry point.
                     if (node is not null)
+                    {
+                        _unmappedHostApplications.Add(node.Path);
                         SelectDependentsWhole(node, "top-level statements changed");
+                    }
+
                     continue;
                 }
 
+                if (model is null)
+                    continue;
+                var isNewlyAdded = before is null || IsNewlyAddedSyntax(changed, currentDeclarations, newlyAddedKeys);
                 foreach (var symbol in Declared(model, changed, cancellationToken))
                 {
+                    if (isNewlyAdded)
+                        _newlyAddedSymbols.Add(symbol);
                     if (node is { IsTest: true })
                         await SelectInTestProjectAsync(node, symbol, cancellationToken).ConfigureAwait(false);
                     else
@@ -141,6 +184,9 @@ internal sealed class MemberWalk
                 return new WalkOutcome(false, _visited.Count, (long)_time.GetElapsedTime(started).TotalMilliseconds);
 
             var symbol = _queue.Dequeue();
+            var isNewlyAdded = _newlyAddedSymbols.Contains(symbol);
+            var project = _solution.GetProject(symbol.ContainingAssembly is null ? null : FindProjectId(symbol));
+            var node = project is null ? null : NodeOf(project);
             var referenced = false;
             foreach (var related in Related(symbol))
             {
@@ -155,22 +201,67 @@ internal sealed class MemberWalk
             }
 
             if (referenced)
+            {
+                if (node is not null && HostRule.IsCalledByHost(symbol, node))
+                    HostRule.TryResolveDynamicSelections(_dynamicMap, _graph, _root, symbol, isNewlyAdded, _selections);
                 continue;
-            var project = _solution.GetProject(symbol.ContainingAssembly is null ? null : FindProjectId(symbol));
-            var node = project is null ? null : NodeOf(project);
+            }
+
             if (node is null)
                 continue;
             if (HostRule.IsCalledByHost(symbol, node))
-                SelectDependentsWhole(node, $"{symbol.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat)} is called by an application host or a framework");
-            else if (HostRule.IsFrameworkInvoked(symbol) && symbol.ContainingType is { } containing)
             {
-                // A library member called through an external interface or base class (Equals, CompareTo,
-                // ToString): tests reach it through its type.
-                Enqueue(containing);
+                if (HostRule.TryResolveDynamicSelections(_dynamicMap, _graph, _root, symbol, isNewlyAdded, _selections))
+                {
+                    _dynamicCoveredApplications.Add(node.Path);
+                    continue;
+                }
+
+                _unmappedHostApplications.Add(node.Path);
+                SelectDependentsWhole(node, $"{symbol.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat)} is called by an application host or a framework");
+            }
+            else if (HostRule.IsFrameworkInvoked(symbol))
+            {
+                if (HostRule.TryResolveDynamicSelections(_dynamicMap, _graph, _root, symbol, isNewlyAdded, _selections))
+                    continue;
+
+                if (symbol.ContainingType is { } containing)
+                {
+                    // A library member called through an external interface or base class (Equals, CompareTo,
+                    // ToString): tests reach it through its type.
+                    Enqueue(containing);
+                }
             }
         }
 
         return new WalkOutcome(true, _visited.Count, (long)_time.GetElapsedTime(started).TotalMilliseconds);
+    }
+
+    private static HashSet<DeclarationKey> ComputeNewlyAddedKeys(FileDeclarations oldDeclarations, FileDeclarations currentDeclarations)
+    {
+        var added = new HashSet<DeclarationKey>();
+        foreach (var decl in currentDeclarations.All)
+        {
+            if (oldDeclarations.Find(decl.Key) is null)
+                added.Add(decl.Key);
+        }
+
+        return added;
+    }
+
+    private static bool IsNewlyAddedSyntax(SyntaxNode changed, FileDeclarations currentDeclarations, HashSet<DeclarationKey> newlyAddedKeys)
+    {
+        if (newlyAddedKeys.Count == 0)
+            return false;
+        foreach (var decl in currentDeclarations.All)
+        {
+            if (!newlyAddedKeys.Contains(decl.Key))
+                continue;
+            if (decl.Parts.Any(p => ReferenceEquals(p, changed) || p.Span == changed.Span))
+                return true;
+        }
+
+        return false;
     }
 
     /// <summary>

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Security.Cryptography;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Emit;
 
@@ -45,6 +46,16 @@ internal sealed class EmitCache
     /// <param name="cancellationToken">Cancels emitting.</param>
     public async Task<EmittedImage?> GetAsync(Project project, CancellationToken cancellationToken)
     {
+        var (image, _, _) = await GetWithHashesAsync(project, cancellationToken).ConfigureAwait(false);
+        return image;
+    }
+
+    /// <summary>
+    ///     The image of <paramref name="project"/> along with SHA-256 hex hashes of its PE and PDB bytes, computed once
+    ///     per emit and kept with the cache entry.
+    /// </summary>
+    public async Task<(EmittedImage? Image, string PeHash, string PdbHash)> GetWithHashesAsync(Project project, CancellationToken cancellationToken)
+    {
         var output = project.OutputFilePath!;
         var version = await project.GetDependentVersionAsync(cancellationToken).ConfigureAwait(false);
         var built = File.GetLastWriteTimeUtc(output);
@@ -56,13 +67,15 @@ internal sealed class EmitCache
                 _order.Add(output);
             }
 
-            return cached.Image;
+            return (cached.Image, cached.PeHash, cached.PdbHash);
         }
 
         var image = await EmitAsync(project, output, cancellationToken).ConfigureAwait(false);
+        var peHash = image is null ? "" : Convert.ToHexStringLower(SHA256.HashData(image.Pe));
+        var pdbHash = image is null ? "" : Convert.ToHexStringLower(SHA256.HashData(image.Pdb));
         lock (_orderGate)
         {
-            _entries[output] = new Entry(project.Id, version, built, image);
+            _entries[output] = new Entry(project.Id, version, built, image, peHash, pdbHash);
             _order.Remove(output);
             _order.Add(output);
             while (_entries.Count > MaxEntries && _order.Count > 0)
@@ -73,7 +86,7 @@ internal sealed class EmitCache
             }
         }
 
-        return image;
+        return (image, peHash, pdbHash);
     }
 
     private async Task<EmittedImage?> EmitAsync(Project project, string output, CancellationToken cancellationToken)
@@ -94,6 +107,6 @@ internal sealed class EmitCache
         return result.Success ? new EmittedImage(pe.ToArray(), pdb.ToArray()) : null;
     }
 
-    /// <summary>What an image was emitted from, and the image, or null when the project did not compile.</summary>
-    private sealed record Entry(ProjectId Project, VersionStamp Version, DateTime BuiltUtc, EmittedImage? Image);
+    /// <summary>What an image was emitted from, its image, and its PE/PDB content hashes, or null when it did not compile.</summary>
+    private sealed record Entry(ProjectId Project, VersionStamp Version, DateTime BuiltUtc, EmittedImage? Image, string PeHash, string PdbHash);
 }

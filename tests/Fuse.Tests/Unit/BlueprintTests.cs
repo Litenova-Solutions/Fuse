@@ -1,6 +1,9 @@
+using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Text.Json.Nodes;
 using Fuse.Engine.Client;
 using Fuse.Graph;
+using Fuse.Paths;
 using Fuse.Tests.Fixtures;
 using Fuse.Workspace;
 using Microsoft.CodeAnalysis;
@@ -160,6 +163,164 @@ public class BlueprintTests
     }
 
     [Fact]
+    public void SharedResources_head_text_cache_validates_disk_content_and_evicts_least_recently_used()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), "fuse-head-unit-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            var file = Path.Combine(tempDir, "Calc.cs");
+            File.WriteAllText(file, "public class Calc {}\n");
+            using var workspace = new BlueprintWorkspace();
+            var shared = workspace.Shared;
+
+            var first = shared.GetOrReadHeadText("head1", "Lib/Calc.cs", file);
+            Assert.NotNull(first);
+            Assert.Equal("public class Calc {}\n", first.Text.ToString());
+            var cached = shared.GetOrReadHeadText("head1", "Lib/Calc.cs", file);
+            Assert.NotNull(cached);
+            Assert.Same(first.Text, cached.Text);
+
+            File.WriteAllText(file, "public class Calc { public int Add(int a, int b) => a + b; }\n");
+            var updated = shared.GetOrReadHeadText("head1", "Lib/Calc.cs", file);
+            Assert.NotNull(updated);
+            Assert.Contains("Add", updated.Text.ToString(), StringComparison.Ordinal);
+
+            for (var i = 0; i < 1100; i++)
+                shared.GetOrReadHeadText("head-overflow-" + i, "File" + i + ".cs", file);
+            Assert.Equal(1024, shared.HeadTextCount);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+                Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task CompilationBlueprint_covers_rejects_zero_restore_blueprint_when_source_assets_changed()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await using var engine = await InProcessEngine.StartAsync();
+        var graph = await RepoGraph.EvaluateAsync(engine.Repo.Root, cancellationToken);
+        var app = graph.Projects.Single(p => p.Name == "App");
+        var outcome = await BlueprintEvaluator.EnsureProjectsAsync(engine.Repo.Root, graph, [app], _ => { }, cancellationToken);
+        Assert.NotNull(outcome.Blueprint);
+
+        var wt2Dir = Path.Combine(Path.GetTempPath(), "fuse-wt-covers-" + Guid.NewGuid().ToString("N"));
+        string? assetsPath = null;
+        string? originalAssets = null;
+        try
+        {
+            RunGit(engine.Repo.Root.Path, "worktree", "add", "--detach", wt2Dir);
+            var wt2Root = RepoRoot.Find(wt2Dir)!;
+            var wt2Graph = await RepoGraph.EvaluateAsync(wt2Root, cancellationToken);
+            var wt2App = wt2Graph.Projects.Single(p => p.Name == "App");
+
+            Assert.True(outcome.Blueprint.Covers(wt2Root, wt2Graph.ClosureOf(wt2App), allowZeroRestore: true));
+
+            assetsPath = Path.Combine(engine.Repo.Root.Path, "App", "obj", "project.assets.json");
+            originalAssets = File.ReadAllText(assetsPath);
+            var assets = JsonNode.Parse(originalAssets)!;
+            assets["version"] = 999;
+            File.WriteAllText(assetsPath, assets.ToJsonString());
+
+            Assert.False(outcome.Blueprint.Covers(wt2Root, wt2Graph.ClosureOf(wt2App), allowZeroRestore: true));
+        }
+        finally
+        {
+            if (assetsPath is not null && originalAssets is not null && File.Exists(assetsPath))
+                File.WriteAllText(assetsPath, originalAssets);
+            CleanupWorktree(engine.Repo.Root.Path, wt2Dir);
+        }
+    }
+
+    [Fact]
+    public async Task BlueprintWorkspace_resolves_output_paths_under_target_worktree_only()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await using var engine = await InProcessEngine.StartAsync();
+        var graph = await RepoGraph.EvaluateAsync(engine.Repo.Root, cancellationToken);
+        var app = graph.Projects.Single(p => p.Name == "App");
+        var outcome = await BlueprintEvaluator.EnsureProjectsAsync(engine.Repo.Root, graph, [app], _ => { }, cancellationToken);
+        Assert.NotNull(outcome.Blueprint);
+        var storedOutput = outcome.Blueprint.Projects.Single(p => p.Name == "App").OutputPath;
+        Assert.NotNull(storedOutput);
+
+        var wt2Dir = Path.Combine(Path.GetTempPath(), "fuse-wt-output-" + Guid.NewGuid().ToString("N"));
+        var sourceOutput = Path.Combine(engine.Repo.Root.Path, storedOutput.Replace('/', Path.DirectorySeparatorChar));
+        try
+        {
+            RunGit(engine.Repo.Root.Path, "worktree", "add", "--detach", wt2Dir);
+            var wt2Root = RepoRoot.Find(wt2Dir)!;
+            var wt2Graph = await RepoGraph.EvaluateAsync(wt2Root, cancellationToken);
+            var wt2App = wt2Graph.Projects.Single(p => p.Name == "App");
+
+            Directory.CreateDirectory(Path.GetDirectoryName(sourceOutput)!);
+            await File.WriteAllTextAsync(sourceOutput, "stale source worktree binary", cancellationToken);
+
+            using var workspace = new BlueprintWorkspace();
+            workspace.LoadProjects(wt2Root, wt2Graph, outcome.Blueprint, [wt2App], head: null);
+
+            var loaded = workspace.Solution.Projects.Single(p => p.Name == "App");
+            var expected = Path.Combine(wt2Root.Path, storedOutput.Replace('/', Path.DirectorySeparatorChar));
+            Assert.Equal(expected, loaded.OutputFilePath);
+            if (loaded.OutputRefFilePath is not null)
+                Assert.StartsWith(wt2Root.Path, loaded.OutputRefFilePath, StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (File.Exists(sourceOutput))
+                File.Delete(sourceOutput);
+            CleanupWorktree(engine.Repo.Root.Path, wt2Dir);
+        }
+    }
+
+    [Fact]
+    public async Task BlueprintWorkspace_refuses_blueprint_load_when_reference_leaves_repository()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await using var engine = await InProcessEngine.StartAsync();
+        var graph = await RepoGraph.EvaluateAsync(engine.Repo.Root, cancellationToken);
+        var app = graph.Projects.Single(p => p.Name == "App");
+
+        var external = Path.Combine(Path.GetTempPath(), "fuse-outside-" + Guid.NewGuid().ToString("N"), "Outside", "Outside.csproj");
+        var project = new CompilationBlueprint.BlueprintProject(
+            ProjectPath: app.Path.Relative,
+            Name: "App",
+            AssemblyName: "App",
+            Compile: [],
+            ReferencePath: [],
+            Analyzer: [],
+            AdditionalFiles: [],
+            AnalyzerConfigFiles: [],
+            DefineConstants: [],
+            LanguageVersion: "Default",
+            OutputKind: nameof(OutputKind.DynamicallyLinkedLibrary),
+            Nullable: nameof(NullableContextOptions.Disable),
+            AllowUnsafe: false,
+            SpecificDiagnosticOptions: new Dictionary<string, string>(StringComparer.Ordinal),
+            OutputPath: null,
+            ProjectReferences: [new CompilationBlueprint.BlueprintProjectReference(external, "Outside", [], EmbedInteropTypes: false)],
+            TargetFramework: "net10.0",
+            IsTestProject: false,
+            TestFramework: default);
+        var blueprint = new CompilationBlueprint(
+            CompilationBlueprint.FormatVersion,
+            CompilationBlueprint.CurrentBuild,
+            "EXTERNAL",
+            engine.Repo.Root.Path,
+            new Dictionary<string, string>(StringComparer.Ordinal),
+            new Dictionary<string, string>(StringComparer.Ordinal),
+            [project]);
+
+        using var workspace = new BlueprintWorkspace();
+        var thrown = Assert.Throws<InvalidOperationException>(() =>
+            workspace.LoadProjects(engine.Repo.Root, graph, blueprint, [app], head: null));
+        Assert.Contains("outside the repository", thrown.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void EngineLauncher_configures_GC_memory_governance_and_preserves_caller_overrides()
     {
         var gb = 1024L * 1024 * 1024;
@@ -197,6 +358,45 @@ public class BlueprintTests
             Assert.Contains("DOTNET_GCHeapHardLimit=0x80000000", entries);
             Assert.EndsWith("\0\0", text, StringComparison.Ordinal);
             Assert.NotNull(RuntimeInformation.FrameworkDescription);
+        }
+    }
+
+    private static void RunGit(string workingDirectory, params string[] arguments)
+    {
+        var psi = new ProcessStartInfo("git")
+        {
+            WorkingDirectory = workingDirectory,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+        foreach (var argument in arguments)
+            psi.ArgumentList.Add(argument);
+        using var process = Process.Start(psi)!;
+        var stdout = process.StandardOutput.ReadToEnd();
+        var stderr = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+        if (process.ExitCode != 0)
+            throw new InvalidOperationException($"git {string.Join(' ', arguments)} failed: {stderr}{stdout}");
+    }
+
+    private static void CleanupWorktree(string repoPath, string worktreeDir)
+    {
+        if (!Directory.Exists(worktreeDir))
+            return;
+        try
+        {
+            RunGit(repoPath, "worktree", "remove", "--force", worktreeDir);
+        }
+        catch
+        {
+            try
+            {
+                Directory.Delete(worktreeDir, recursive: true);
+            }
+            catch
+            {
+            }
         }
     }
 }

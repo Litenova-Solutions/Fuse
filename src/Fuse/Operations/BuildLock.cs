@@ -18,14 +18,31 @@ internal sealed class BuildLock : IDisposable
     /// <summary>The line a waiting client prints, once, the first time the lock is not free.</summary>
     internal const string WaitingLine = "fuse: waiting for another build or test in this repository";
 
+    /// <summary>At most this many artifact slots one acquisition scans while pruning; the rest wait for the next one.</summary>
+    internal const int MaxSlotsScanned = 128;
+
+    /// <summary>At most this many stale artifact slots one acquisition deletes; the rest wait for the next one.</summary>
+    internal const int MaxSlotsPruned = 8;
+
+    /// <summary>An artifact slot no build holds and nothing wrote within this time is stale and pruned on acquisition.</summary>
+    internal static readonly TimeSpan StaleSlotAge = TimeSpan.FromDays(1);
+
     private readonly string _reason;
     private readonly List<FileStream> _handles = [];
     private FileStream? _file;
 
-    private BuildLock(string reason, string? artifactsPath = null)
+    /// <summary>
+    ///     True when this lock owns its artifact slot: a unique slot this acquisition created, deleted when the lock is
+    ///     released and no build holds it. A slot shared by worker key is never owned, because another build may still
+    ///     use it after this lock goes.
+    /// </summary>
+    private readonly bool _ownsSlot;
+
+    private BuildLock(string reason, string? artifactsPath = null, bool ownsSlot = false)
     {
         _reason = reason;
         ArtifactsPath = artifactsPath;
+        _ownsSlot = ownsSlot;
     }
 
     /// <summary>Whether this process holds the lock file, or runs without it because the state directory cannot be written.</summary>
@@ -164,19 +181,26 @@ internal sealed class BuildLock : IDisposable
     /// <summary>
     ///     Allocates an isolated <c>--artifacts-path</c> folder under <paramref name="root"/>'s state directory and
     ///     holds a lock file inside it so parallel builds never touch the shared repository <c>bin</c>/<c>obj</c> trees.
+    ///     A unique slot is deleted when its lock is released and no build holds it; acquiring also prunes stale
+    ///     slots, so a killed build leaves nothing behind for good.
     /// </summary>
     public static BuildLock AcquireIsolated(RepoRoot root, string? workerKey = null)
     {
-        var slot = string.IsNullOrWhiteSpace(workerKey)
+        // A slot named for a worker key is shared by design, so it is never owned; a unique one is this lock's to delete.
+        var unique = string.IsNullOrWhiteSpace(workerKey);
+        var slot = unique
             ? $"{Environment.ProcessId}-{Guid.NewGuid():N}"[..16]
-            : Hash(workerKey);
-        var artifacts = Path.Combine(root.StateDirectory, "artifacts", slot);
+            : Hash(workerKey!);
+        var parent = Path.Combine(root.StateDirectory, "artifacts");
+        var artifacts = Path.Combine(parent, slot);
         try
         {
             LocalState.RecordRoot(root);
+            Directory.CreateDirectory(parent);
+            PruneStaleSlots(parent);
             Directory.CreateDirectory(artifacts);
             var lockPath = Path.Combine(artifacts, "artifacts.lock");
-            var held = new BuildLock("", artifacts)
+            var held = new BuildLock("", artifacts, ownsSlot: unique)
             {
                 _file = new FileStream(lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None),
             };
@@ -318,12 +342,85 @@ internal sealed class BuildLock : IDisposable
         return Convert.ToHexStringLower(bytes)[..16];
     }
 
+    /// <summary>
+    ///     Deletes the artifact slots under <paramref name="parent"/> that no build holds and nothing wrote within
+    ///     <see cref="StaleSlotAge"/>, scanning at most <see cref="MaxSlotsScanned"/> and deleting at most
+    ///     <see cref="MaxSlotsPruned"/>. A killed build's slot is unheld, so the next acquisition removes it. It never
+    ///     throws: cleanup never breaks the build it runs beside.
+    /// </summary>
+    private static void PruneStaleSlots(string parent)
+    {
+        List<string> entries;
+        try
+        {
+            entries = [.. Directory.EnumerateDirectories(parent).OrderBy(entry => entry, StringComparer.Ordinal).Take(MaxSlotsScanned)];
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return;
+        }
+
+        var pruned = 0;
+        foreach (var entry in entries)
+        {
+            if (pruned >= MaxSlotsPruned)
+                return;
+            try
+            {
+                if (DateTime.UtcNow - Directory.GetLastWriteTimeUtc(entry) < StaleSlotAge || SlotHeld(entry))
+                    continue;
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                continue;
+            }
+
+            if (TryDeleteDirectory(entry))
+                pruned++;
+        }
+    }
+
+    /// <summary>True while a build holds the artifact slot <paramref name="slot"/>: its lock file then opens for nothing else.</summary>
+    private static bool SlotHeld(string slot)
+    {
+        var lockPath = Path.Combine(slot, "artifacts.lock");
+        if (!File.Exists(lockPath))
+            return false;
+        try
+        {
+            using var probe = new FileStream(lockPath, FileMode.Open, FileAccess.Read, FileShare.None);
+            return false;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return true;
+        }
+    }
+
+    /// <summary>Deletes <paramref name="directory"/> with its content; false when anything in it could not be deleted.</summary>
+    private static bool TryDeleteDirectory(string directory)
+    {
+        try
+        {
+            Directory.Delete(directory, recursive: true);
+            return true;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>Releases the lock, and deletes an owned artifact slot nothing holds.</summary>
     public void Dispose()
     {
+        var held = _file is not null;
         _file?.Dispose();
         _file = null;
         foreach (var handle in _handles)
             handle.Dispose();
         _handles.Clear();
+        if (_ownsSlot && held && ArtifactsPath is { } slot && !SlotHeld(slot))
+            TryDeleteDirectory(slot);
     }
 }

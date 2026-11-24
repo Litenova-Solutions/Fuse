@@ -1,4 +1,6 @@
 using Fuse.Engine;
+using Fuse.Failures;
+using Fuse.Operations;
 using Fuse.Protocol;
 using Fuse.Tests.Fixtures;
 
@@ -99,6 +101,84 @@ public class JudgeServiceTests
         Assert.Equal("CS0103", error.Id);
         Assert.False(File.Exists(engine.Repo.Full("Lib/Extra.cs")));
         Assert.Equal("", FixtureRepo.Run(engine.Repo.Root.Path, "git", "status", "--porcelain"));
+    }
+
+    [Fact]
+    public async Task A_candidate_that_touches_no_source_file_conflicts_and_wins_nothing()
+    {
+        await using var engine = await InProcessEngine.StartAsync();
+        var notes = "diff --git a/docs/notes.md b/docs/notes.md\nnew file mode 100644\n--- /dev/null\n+++ b/docs/notes.md\n@@ -0,0 +1 @@\n+hello\n";
+        var service = new JudgeService(engine.Workspace, engine.Repo.Root);
+        var report = await service.RunAsync(
+            new JudgeRequest(JudgeRequest.JudgeMode.Race, [new JudgeRequest.Candidate("notes", notes)]),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal("race", report.Mode);
+        Assert.Null(report.Winner);
+        Assert.False(report.Clean);
+        var verdict = Assert.Single(report.Verdicts);
+        Assert.False(verdict.Compiles);
+        Assert.Contains("no source file", verdict.ConflictReason, StringComparison.Ordinal);
+        Assert.Equal("", FixtureRepo.Run(engine.Repo.Root.Path, "git", "status", "--porcelain"));
+    }
+
+    [Fact]
+    public async Task Too_many_or_too_large_candidates_are_refused()
+    {
+        await using var engine = await InProcessEngine.StartAsync();
+        var service = new JudgeService(engine.Workspace, engine.Repo.Root);
+        var tiny = "diff --git a/f.cs b/f.cs\n--- a/f.cs\n+++ b/f.cs\n@@ -1 +1 @@\n-a\n+b\n";
+
+        var many = Enumerable.Range(0, 17).Select(i => new JudgeRequest.Candidate($"c{i}", tiny)).ToArray();
+        var countError = await Assert.ThrowsAsync<FuseException>(() => service.RunAsync(
+            new JudgeRequest(JudgeRequest.JudgeMode.Race, many),
+            TestContext.Current.CancellationToken));
+        Assert.Equal(ErrorCode.InvalidPath, countError.Code);
+        Assert.Contains("more than the 16", countError.Message, StringComparison.Ordinal);
+
+        var big = new string('x', 1024 * 1024 + 1);
+        var sizeError = await Assert.ThrowsAsync<FuseException>(() => service.RunAsync(
+            new JudgeRequest(JudgeRequest.JudgeMode.Race, [new JudgeRequest.Candidate("big", big)]),
+            TestContext.Current.CancellationToken));
+        Assert.Equal(ErrorCode.InvalidPath, sizeError.Code);
+        Assert.Contains("more than the 1 MB", sizeError.Message, StringComparison.Ordinal);
+
+        var chunk = new string('y', 900 * 1024);
+        var heavy = Enumerable.Range(0, 10).Select(i => new JudgeRequest.Candidate($"t{i}", chunk)).ToArray();
+        var totalError = await Assert.ThrowsAsync<FuseException>(() => service.RunAsync(
+            new JudgeRequest(JudgeRequest.JudgeMode.Race, heavy),
+            TestContext.Current.CancellationToken));
+        Assert.Equal(ErrorCode.InvalidPath, totalError.Code);
+        Assert.Contains("more than the 8 MB", totalError.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task An_untracked_diff_keeps_crlf_and_marks_a_missing_trailing_newline()
+    {
+        using var repo = FixtureRepo.CreateStandard();
+        // Written directly: FixtureRepo.Write normalizes line endings to LF, and this test needs the CRLF bytes.
+        File.WriteAllText(Path.Combine(repo.Path, "crlf.txt"), "a\r\nb\r\n");
+        repo.Write("noeol.txt", "line1\nline2");
+        try
+        {
+            var (candidate, refusal) = await JudgeOperation.LoadCandidateAsync(repo.Root.Path, repo.Root.Path, TestContext.Current.CancellationToken);
+            Assert.Null(refusal);
+            Assert.NotNull(candidate);
+            Assert.Contains("+a\r\n", candidate.Diff, StringComparison.Ordinal);
+            Assert.Contains("\\ No newline at end of file", candidate.Diff, StringComparison.Ordinal);
+
+            var (files, parseError) = UnifiedDiff.Parse(candidate.Diff);
+            Assert.Null(parseError);
+            var noeol = files.Single(f => f.Path == "noeol.txt");
+            var (text, error) = UnifiedDiff.ApplyToText("", noeol);
+            Assert.Null(error);
+            Assert.Equal("line1\nline2", text);
+        }
+        finally
+        {
+            repo.Delete("crlf.txt");
+            repo.Delete("noeol.txt");
+        }
     }
 
     /// <summary>The git diff of replacing oldText with newText in the file, with the file restored after.</summary>

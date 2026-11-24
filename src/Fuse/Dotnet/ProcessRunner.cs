@@ -62,21 +62,40 @@ internal static class ProcessRunner
         }
         catch (OperationCanceledException)
         {
-            try
-            {
-                process.Kill(entireProcessTree: true);
-            }
-            catch (InvalidOperationException)
-            {
-                // Already exited.
-            }
-
+            KillProcessTree(process);
             throw;
         }
 
         // WaitForExitAsync returns after the output streams reach end of file, so the buffer is complete.
         lock (output)
             return new ProcessResult(process.ExitCode, output.ToString());
+    }
+
+    /// <summary>
+    ///     Kills <paramref name="process"/> with its tree, best effort. A process that already exited needs nothing; a
+    ///     tree kill the platform does not cover falls back to the process alone; a kill the operating system refuses
+    ///     is left as it is. It never throws.
+    /// </summary>
+    internal static void KillProcessTree(Process process)
+    {
+        try
+        {
+            process.Kill(entireProcessTree: true);
+        }
+        catch (NotSupportedException)
+        {
+            try
+            {
+                process.Kill();
+            }
+            catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException)
+            {
+            }
+        }
+        catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            // Already exited, or killing is refused; the caller answers without it.
+        }
     }
 
     private static void Append(StringBuilder output, string? line)

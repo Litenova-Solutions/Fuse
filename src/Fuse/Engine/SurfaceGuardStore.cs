@@ -1,3 +1,4 @@
+using Fuse.Failures;
 using Fuse.Paths;
 using Fuse.Protocol;
 
@@ -28,11 +29,14 @@ internal sealed class SurfaceGuardStore
     ///     request unfreezes it, then writes the record to disk.
     /// </summary>
     /// <param name="guard">The freeze or unfreeze request.</param>
+    /// <exception cref="FuseException">The name is not a valid guard name, or a freeze names no pattern to freeze.</exception>
     public void Apply(FreezeGuardRequest guard)
     {
         lock (_lock)
         {
             var name = guard.Name;
+            if (!IsValidName(name))
+                throw new FuseException(ErrorCode.InvalidPath, ErrorMessages.InvalidSessionName(name));
             if (guard.Unfreeze)
             {
                 _guards.Remove(name);
@@ -40,16 +44,25 @@ internal sealed class SurfaceGuardStore
             else
             {
                 var patterns = new List<string>();
+                string? firstBad = null;
                 foreach (var pattern in guard.Patterns)
                 {
-                    if (PathPattern.Normalize(pattern, out var clean) && !patterns.Contains(clean, StringComparer.Ordinal))
+                    if (!PathPattern.Normalize(pattern, out var clean))
+                    {
+                        firstBad ??= pattern;
+                        continue;
+                    }
+
+                    if (!patterns.Contains(clean, StringComparer.Ordinal))
                         patterns.Add(clean);
                 }
 
-                if (IsValidName(name) && patterns.Count > 0)
-                    _guards[name] = patterns;
-                else
-                    _guards.Remove(name);
+                // A freeze that keeps nothing freezes nothing; it is refused instead of acknowledged.
+                if (patterns.Count == 0)
+                    throw new FuseException(ErrorCode.InvalidPath, guard.Patterns.Length == 0
+                        ? "a guard needs at least one path pattern; name one after --freeze"
+                        : ErrorMessages.InvalidSessionPattern(firstBad));
+                _guards[name] = patterns;
             }
 
             Write();

@@ -251,7 +251,7 @@ internal abstract record EngineRequest
         /// </summary>
         public bool BuildOnly { get; init; }
 
-        /// <summary>True to bypass warm test workers and run fresh processes (<c>--clean</c>).</summary>
+        /// <summary>True to clear the slice test cache and run fresh processes (<c>--clean</c>).</summary>
         public bool Clean { get; init; }
 
         /// <summary>True to bypass the content-addressed slice test cache (<c>--no-cache</c>).</summary>
@@ -264,7 +264,7 @@ internal abstract record EngineRequest
     /// <summary>Every test project, run whole. Like <see cref="PlanAffectedTests"/>, it always waits for the engine to finish loading.</summary>
     public sealed record PlanAllTests : EngineRequest
     {
-        /// <summary>True to bypass warm test workers and run fresh processes (<c>--clean</c>).</summary>
+        /// <summary>True to clear the slice test cache and run fresh processes (<c>--clean</c>).</summary>
         public bool Clean { get; init; }
 
         /// <summary>True to bypass the content-addressed slice test cache (<c>--no-cache</c>).</summary>
@@ -309,7 +309,7 @@ internal abstract record EngineRequest
         /// <summary>The projects to rerun. A line without the list reads as one that names none, which runs nothing.</summary>
         public FailedProject[] Projects { get; init; } = Projects ?? [];
 
-        /// <summary>True to bypass warm test workers and run fresh processes (<c>--clean</c>).</summary>
+        /// <summary>True to clear the slice test cache and run fresh processes (<c>--clean</c>).</summary>
         public bool Clean { get; init; }
 
         /// <summary>True to bypass the content-addressed slice test cache (<c>--no-cache</c>).</summary>

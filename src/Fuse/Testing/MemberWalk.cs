@@ -175,7 +175,12 @@ internal sealed class MemberWalk
                     if (node is { IsTest: true })
                         await SelectInTestProjectAsync(node, symbol, cancellationToken).ConfigureAwait(false);
                     else
+                    {
+                        // Recorded coverage only adds tests to the selection; the walk below still follows the
+                        // symbol to its callers, so a test the static walk selects is never dropped.
+                        HostRule.TryResolveDynamicSelections(_dynamicMap, _graph, _root, symbol, isNewlyAdded, _selections);
                         Enqueue(symbol);
+                    }
                 }
             }
         }

@@ -36,7 +36,4 @@ internal sealed record PlannedRun(RepoPath Project, string Name, RunMode Mode, s
 
     /// <summary>Cached slice test result when <see cref="SliceKey"/> hit <c>SliceTestCache</c>, or null on miss or bypass.</summary>
     public SliceCacheResult? CachedResult { get; init; }
-
-    /// <summary>True when this run is eligible for warm pooled test worker execution.</summary>
-    public bool WarmEligible { get; init; }
 }

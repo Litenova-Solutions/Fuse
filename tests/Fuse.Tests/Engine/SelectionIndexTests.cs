@@ -32,7 +32,7 @@ public class SelectionIndexTests
         var patterns = Patterns(actual["Lib.Tests"]);
         Assert.Contains("Lib.Tests.CalcTests.Multiplies", patterns);
         Assert.Equal(throughHelper, patterns.Contains("Lib.Tests.CalcTests.MultipliesThroughHelper"));
-        Assert.Equal(["Lib.Tests.CalcTests."], Patterns(actual["App.Tests"]));
+        Assert.DoesNotContain("App.Tests", actual.Keys);
         Assert.DoesNotContain(patterns, p => p.StartsWith("Lib.Tests.GreeterTests.", StringComparison.Ordinal));
     }
 
@@ -68,9 +68,10 @@ public class SelectionIndexTests
         var expected = await SelectWithoutIndexAsync(engine);
         var actual = await SelectAsync(engine, selector);
 
+        Assert.Equal(["Lib.Tests.CalcTests.Multiplies"], Patterns(expected["Lib.Tests"]));
         Assert.Equal(["Lib.Tests.CalcTests.Adds", "Lib.Tests.CalcTests.Multiplies"], Patterns(actual["Lib.Tests"]));
-        Assert.Equal(["Lib.Tests.CalcTests."], Patterns(actual["App.Tests"]));
-        Assert.Equal(Patterns(expected["App.Tests"]), Patterns(actual["App.Tests"]));
+        Assert.DoesNotContain("App.Tests", expected.Keys);
+        Assert.DoesNotContain("App.Tests", actual.Keys);
     }
 
     [Fact]
@@ -91,7 +92,7 @@ public class SelectionIndexTests
         var selection = await SelectAsync(engine, selector);
 
         Assert.Equal(["Lib.Tests.CalcTests.Multiplies", "Lib.Tests.GreeterTests.Greets"], Patterns(selection["Lib.Tests"]));
-        Assert.Equal(["Lib.Tests.CalcTests."], Patterns(selection["App.Tests"]));
+        Assert.DoesNotContain("App.Tests", selection.Keys);
     }
 
     private static async Task<Dictionary<string, TestSelection>> SelectWithoutIndexAsync(InProcessEngine engine)

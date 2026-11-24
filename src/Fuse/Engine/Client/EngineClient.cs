@@ -285,8 +285,10 @@ internal static class EngineClient
     }
 
     /// <summary>
-    ///     Subscribes to server-push <see cref="WatchEvent"/> messages on a running engine's pipe. Returns false when no
-    ///     engine runs or the engine closes without supporting push streams, so the caller can fall back to polling.
+    ///     Streams server-push <see cref="WatchEvent"/> messages from a running engine's pipe until
+    ///     <paramref name="cancellationToken"/> is cancelled, subscribing again after a drop, for example when the
+    ///     engine restarts. True when cancellation ended the stream, so the caller exits; false when no engine runs
+    ///     or the engine does not support push streams, so the caller falls back to polling.
     /// </summary>
     public static async Task<bool> WatchStreamAsync(
         RepoRoot root,
@@ -297,45 +299,104 @@ internal static class EngineClient
         if (!PipeExists(root.PipeName))
             return false;
         var stamped = (EngineRequest.WatchStream)Stamp(root, request, TimeSpan.FromHours(24));
-        try
+        // True once an event arrived: push works, so a later drop subscribes again instead of falling back to polling.
+        var supported = false;
+        var restarts = 0;
+        while (!cancellationToken.IsCancellationRequested)
         {
-            await using var pipe = new NamedPipeClientStream(".", root.PipeName, PipeDirection.InOut, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
-            await pipe.ConnectAsync(1000, cancellationToken).ConfigureAwait(false);
-            var bytes = Encoding.UTF8.GetBytes(ProtocolJson.Serialize(stamped) + "\n");
-            await pipe.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
-            await pipe.FlushAsync(cancellationToken).ConfigureAwait(false);
-
-            var receivedAny = false;
-            // The engine writes events back to back, so two can arrive in one read; the reader keeps the second.
-            var reader = new PipeLineReader(pipe);
-            while (!cancellationToken.IsCancellationRequested)
+            var dropped = false;
+            try
             {
-                var line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
-                if (line is null)
-                    return receivedAny;
-                if (Read(line, out var response) is not null || response is null)
-                    return receivedAny;
-                if (response is EngineResponse.WatchEventPushed pushed)
+                if (!PipeExists(root.PipeName))
                 {
-                    receivedAny = true;
-                    await onEvent(pushed.Event).ConfigureAwait(false);
+                    // The engine is gone. When push never worked there is nothing to rejoin, so the caller polls;
+                    // after a drop the engine may still be restarting, so wait for its pipe within the start window.
+                    if (!supported)
+                        return false;
+                    var begin = Environment.TickCount64;
+                    while (!PipeExists(root.PipeName))
+                    {
+                        if (Environment.TickCount64 - begin > StartTimeout.TotalMilliseconds)
+                            return false;
+                        await Task.Delay(100, cancellationToken).ConfigureAwait(false);
+                    }
+
                     continue;
                 }
 
-                if (response is EngineResponse.Unanswered or EngineResponse.Restart)
-                    return receivedAny;
+                await using var pipe = new NamedPipeClientStream(".", root.PipeName, PipeDirection.InOut, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+                await pipe.ConnectAsync(1000, cancellationToken).ConfigureAwait(false);
+                var bytes = Encoding.UTF8.GetBytes(ProtocolJson.Serialize(stamped) + "\n");
+                await pipe.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
+                await pipe.FlushAsync(cancellationToken).ConfigureAwait(false);
+
+                // The engine writes events back to back, so two can arrive in one read; the reader keeps the second.
+                var reader = new PipeLineReader(pipe);
+                var restart = false;
+                while (!cancellationToken.IsCancellationRequested && !restart)
+                {
+                    var line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
+                    if (line is null)
+                        break;
+                    if (Read(line, out var response) is not null || response is null)
+                        break;
+                    if (response is EngineResponse.WatchEventPushed pushed)
+                    {
+                        supported = true;
+                        restarts = 0;
+                        await onEvent(pushed.Event).ConfigureAwait(false);
+                        continue;
+                    }
+
+                    if (response is EngineResponse.Restart)
+                    {
+                        // An engine from another build is draining while a matching engine starts, so this
+                        // subscription waits and subscribes again whatever it has read so far.
+                        restarts++;
+                        await Task.Delay(RestartDelay(restarts), cancellationToken).ConfigureAwait(false);
+                        restart = true;
+                    }
+
+                    if (response is EngineResponse.Unanswered)
+                        return false;
+                }
+
+                if (restart)
+                    continue;
+                if (cancellationToken.IsCancellationRequested)
+                    return true;
+                if (!supported)
+                    return false;
+                dropped = true;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return true;
+            }
+            catch (Exception e) when (e is IOException or TimeoutException or UnauthorizedAccessException)
+            {
+                if (cancellationToken.IsCancellationRequested)
+                    return true;
+                if (!supported)
+                    return false;
+                dropped = true;
             }
 
-            return receivedAny;
+            // The stream dropped after events flowed: pause so a flap does not spin, then subscribe again.
+            if (dropped)
+            {
+                try
+                {
+                    await Task.Delay(TimeSpan.FromMilliseconds(250), cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    return true;
+                }
+            }
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            return true;
-        }
-        catch (Exception e) when (e is IOException or TimeoutException or UnauthorizedAccessException)
-        {
-            return false;
-        }
+
+        return true;
     }
 
     private static EngineRequest Stamp(RepoRoot root, EngineRequest request, TimeSpan timeout) =>

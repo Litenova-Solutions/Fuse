@@ -16,6 +16,10 @@ namespace Fuse.Operations;
 internal static class TestOperation
 {
     private const int MaxFailuresShown = 10;
+
+    /// <summary>How long a run waits for a test process it stopped early to exit before answering without it.</summary>
+    private const int EarlyStopExitSeconds = 5;
+
     private const int MaxNamesShown = 100;
     private const int MaxTestMapSearchFolders = 8;
     private const int MaxTestMapFilesPerFolder = 64;
@@ -34,7 +38,7 @@ internal static class TestOperation
     ///     The command line passes its output; the MCP tool passes null and answers once.
     /// </param>
     /// <param name="failed">True to rerun the tests that failed in the last recorded run instead of planning from the changes.</param>
-    /// <param name="clean">True to bypass warm test workers and slice caches (<c>--clean</c>).</param>
+    /// <param name="clean">True to clear the slice test cache and run fresh processes (<c>--clean</c>).</param>
     /// <param name="noCache">True to bypass the slice test cache and reused test results (<c>--no-cache</c>).</param>
     /// <param name="maxFailures">Maximum test failures before stopping early; 0 disables early stop.</param>
     public static async Task<OperationResult> RunAsync(
@@ -683,8 +687,8 @@ internal static class TestOperation
         try
         {
             // --no-build runs what an earlier build wrote, as dotnet test --no-build does.
-            var (built, log) = switches.Contains("--no-build")
-                ? (new ProcessResult(0, ""), "")
+            var (built, log, _) = switches.Contains("--no-build")
+                ? (new ProcessResult(0, ""), "", new List<string>())
                 : await BuildOperation.RunLoggedAsync(["build", run.Project, "--no-restore", "-nologo", "-tl:off", .. switches.Where(s => s != "--no-build")], root.Path, results, cancellationToken).ConfigureAwait(false);
             if (built.ExitCode != 0)
                 return (null, built, log, results);
@@ -1027,8 +1031,9 @@ internal static class TestOperation
             List<string> earlyFailures;
             if (builds)
             {
-                (result, log) = await BuildOperation.RunLoggedAsync(command, workingDirectory, results, cancellationToken).ConfigureAwait(false);
-                earlyFailures = [];
+                // A VSTest run that builds with MSBuild honors the failure cap the same way: the build's own
+                // lines never name a test failure, and the file log still says what a failed command printed.
+                (result, log, earlyFailures) = await BuildOperation.RunLoggedAsync(command, workingDirectory, results, cancellationToken, maxFailures).ConfigureAwait(false);
             }
             else
             {
@@ -1068,9 +1073,10 @@ internal static class TestOperation
 
     /// <summary>
     ///     Runs a test process while watching stdout for failure lines, terminating the process tree early once
-    ///     <paramref name="maxFailures"/> distinct failures are observed (after a short grace window for details to flush).
+    ///     <paramref name="maxFailures"/> distinct failures are observed (after a short grace window for details to
+    ///     flush). With no cap it runs the process to the end, as <see cref="ProcessRunner"/> does.
     /// </summary>
-    private static async Task<(ProcessResult Result, List<string> Failures)> RunWithEarlyStopAsync(
+    internal static async Task<(ProcessResult Result, List<string> Failures)> RunWithEarlyStopAsync(
         string fileName,
         IReadOnlyList<string> arguments,
         string workingDirectory,
@@ -1141,32 +1147,24 @@ internal static class TestOperation
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
+            ProcessRunner.KillProcessTree(process);
             try
             {
-                process.Kill(entireProcessTree: true);
+                using var grace = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                grace.CancelAfter(TimeSpan.FromSeconds(EarlyStopExitSeconds));
+                await process.WaitForExitAsync(grace.Token).ConfigureAwait(false);
             }
             catch (InvalidOperationException)
             {
             }
-
-            try
+            catch (OperationCanceledException)
             {
-                await process.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false);
-            }
-            catch (InvalidOperationException)
-            {
+                cancellationToken.ThrowIfCancellationRequested();
             }
         }
         catch (OperationCanceledException)
         {
-            try
-            {
-                process.Kill(entireProcessTree: true);
-            }
-            catch (InvalidOperationException)
-            {
-            }
-
+            ProcessRunner.KillProcessTree(process);
             throw;
         }
 

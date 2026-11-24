@@ -735,11 +735,22 @@ internal sealed class ShadowEmitter
         }
     }
 
+    /// <summary>True when a shadow copy may link <paramref name="path"/> instead of copying it: an assembly or a program database, which no test process writes.</summary>
+    private static bool IsLinkable(string path)
+    {
+        var extension = Path.GetExtension(path);
+        return extension.Equals(".dll", StringComparison.OrdinalIgnoreCase)
+            || extension.Equals(".exe", StringComparison.OrdinalIgnoreCase)
+            || extension.Equals(".pdb", StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>
-    ///     Overlays <paramref name="source"/> onto <paramref name="target"/> using OS hardlinks where supported (falling
-    ///     back to <see cref="File.Copy(string, string)"/> when cross-volume or unsupported) for files whose size
-    ///     or time differ; files only in the target stay, and so do the destinations in <paramref name="emitted"/>, which
-    ///     are about to be emitted. Each new entry is prepared under a temporary name and moved over its destination,
+    ///     Overlays <paramref name="source"/> onto <paramref name="target"/> for files whose size or time differ; files
+    ///     only in the target stay, and so do the destinations in <paramref name="emitted"/>, which are about to be
+    ///     emitted. Assemblies and program databases are linked where the operating system supports it, falling back to
+    ///     <see cref="File.Copy(string, string)"/> when cross-volume or unsupported; every other file is copied, because
+    ///     a test process writes data, configuration and log files next to its assembly, and through a link such a write
+    ///     would land in build output. Each new entry is prepared under a temporary name and moved over its destination,
     ///     so a hardlink there is replaced instead of written through into build output.
     /// </summary>
     internal static void Mirror(string source, string target, IReadOnlyCollection<string> emitted)
@@ -763,7 +774,7 @@ internal sealed class ShadowEmitter
             var temp = destination + "." + Guid.NewGuid().ToString("N")[..8] + ".tmp";
             try
             {
-                if (!hardlinksUnsupported)
+                if (!hardlinksUnsupported && IsLinkable(file))
                 {
                     var linkResult = TryCreateHardLink(file, temp);
                     if (linkResult == HardLinkResult.Created)
@@ -776,6 +787,8 @@ internal sealed class ShadowEmitter
                         hardlinksUnsupported = true;
                 }
 
+                // The link path moved its temporary into place and continued above, so this temporary holds the
+                // fresh copy, never a link: setting the source write time on it cannot reach build output.
                 File.Copy(file, temp);
                 File.SetLastWriteTimeUtc(temp, from.LastWriteTimeUtc);
                 MoveOver(temp, destination);

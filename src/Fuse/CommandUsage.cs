@@ -56,7 +56,7 @@ internal static class CommandUsage
           tests in that scope; with any other argument, the tests those arguments name.
           --all               run every test (cannot be combined with other arguments)
           --failed            rerun the tests that failed in the last recorded run (cannot be combined with other arguments)
-          --clean             bypass warm test workers and slice caches; run fresh processes
+          --clean             bypass cached results; run fresh processes
           --no-cache          bypass cached test results
           --max-failures <n>  stop after n test failures (default 10)
           Every other argument goes to dotnet test unchanged.

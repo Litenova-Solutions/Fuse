@@ -5,8 +5,9 @@ namespace Fuse.Operations;
 
 /// <summary>
 ///     <c>fuse stop</c>: stops the repository's engine, or with <c>--all</c> the engine of every repository Fuse keeps state
-///     for, and says what it did. The next request starts a new engine, so this is also how an engine restarts, as after
-///     changing an analyzer the repository builds itself.
+///     for, and says what it did. In a secondary worktree it releases only that worktree while the engine keeps serving.
+///     The next request starts a new engine, so this is also how an engine restarts, as after changing an analyzer the
+///     repository builds itself.
 /// </summary>
 internal static class StopOperation
 {
@@ -19,7 +20,7 @@ internal static class StopOperation
         var lines = new List<string>();
         foreach (var each in roots)
         {
-            var (wasRunning, killed) = await EngineStopper.StopAsync(each, cancellationToken).ConfigureAwait(false);
+            var (wasRunning, killed, released) = await EngineStopper.StopOrReleaseAsync(each, cancellationToken).ConfigureAwait(false);
             if (!wasRunning)
             {
                 if (!all)
@@ -27,9 +28,12 @@ internal static class StopOperation
                 continue;
             }
 
-            lines.Add(killed is { } pid
-                ? $"fuse: the engine for {each.Path} did not stop within {EngineStopper.Grace.TotalSeconds:0} s of being asked, so its process {pid} was killed"
-                : $"fuse: stopped the engine for {each.Path}");
+            if (released)
+                lines.Add($"fuse: released worktree {each.Path}; the engine keeps serving the other worktrees");
+            else if (killed is { } pid)
+                lines.Add($"fuse: the engine for {each.Path} did not stop within {EngineStopper.Grace.TotalSeconds:0} s of being asked, so its process {pid} was killed");
+            else
+                lines.Add($"fuse: stopped the engine for {each.Path}");
         }
 
         if (all && lines.Count == 0)

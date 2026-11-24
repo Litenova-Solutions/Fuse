@@ -64,7 +64,6 @@ internal static class Program
                 "mcp" => await McpAsync(rest, cancel.Token).ConfigureAwait(false),
                 "engine" when rest.Length == 1 => await EngineAsync(rest[0]).ConfigureAwait(false),
                 "engine" => PrintCommandUsage(CommandUsage.Engine, 2),
-                "test-worker" => await TestWorkerAsync(rest, cancel.Token).ConfigureAwait(false),
                 "evaluate-blueprint" => await EvaluateBlueprintAsync(rest, cancel.Token).ConfigureAwait(false),
                 "--version" or "version" => PrintVersion(),
                 "help" or "--help" or "-h" => PrintUsage(0),
@@ -709,17 +708,6 @@ internal static class Program
         }
 
         return await EngineServer.RunAsync(root).ConfigureAwait(false);
-    }
-
-    private static async Task<int> TestWorkerAsync(string[] args, CancellationToken cancellationToken)
-    {
-        if (!RuntimeFeature.IsDynamicCodeSupported)
-        {
-            await Console.Error.WriteLineAsync($"fuse: test-worker runs from {EngineVersion.ManagedAssembly} on the .NET runtime, not from the native client").ConfigureAwait(false);
-            return 2;
-        }
-
-        return await Fuse.Testing.WarmTestWorker.RunAsync(args, cancellationToken).ConfigureAwait(false);
     }
 
     private static async Task<int> EvaluateBlueprintAsync(string[] args, CancellationToken cancellationToken)

@@ -104,7 +104,7 @@ fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations chan
 | `fuse init [--instructions]` | Registers Fuse's hooks with the harnesses this repository uses. `--instructions` also adds a Fuse section to `AGENTS.md` |
 | `fuse uninit` | Removes what `fuse init` wrote, keeping every other entry, then stops this repository's engine and deletes its state |
 | `fuse check [paths...] [--brief]` | Reports the errors your changes introduced since HEAD, in every project. With directories or patterns, it checks one slice. `--brief` attaches compact repair packets |
-| `fuse test [args...] [--clean] [--no-cache] [--max-failures <n>]` | Runs the tests affected by your changes. `--clean` bypasses warm workers and slice caches, `--no-cache` bypasses cached results, and `--max-failures` stops after the named number of failures |
+| `fuse test [args...] [--clean] [--no-cache] [--max-failures <n>]` | Runs the tests affected by your changes. `--clean` clears cached results and runs fresh processes, `--no-cache` bypasses cached results, and `--max-failures` stops after the named number of failures |
 | `fuse test --all` | Runs every test |
 | `fuse test --failed` | Reruns the tests that failed in the last run |
 | `fuse build [args...] [--changed]` | Runs `dotnet build` and prints its errors. `--changed` builds only the changed projects and their dependents |

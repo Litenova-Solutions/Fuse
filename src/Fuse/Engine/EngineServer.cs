@@ -219,6 +219,13 @@ internal static class EngineServer
                         await Task.WhenAny(disconnect, Task.Delay(TimeSpan.FromSeconds(5), CancellationToken.None)).ConfigureAwait(false);
                         if (request is EngineRequest.ShutDown)
                         {
+                            if (router.TryReleaseWorktree(request.WorktreeRoot))
+                            {
+                                await requestCancellation.CancelAsync().ConfigureAwait(false);
+                                await disconnect.ConfigureAwait(false);
+                                return;
+                            }
+
                             await shutdown.CancelAsync().ConfigureAwait(false);
                             await requestCancellation.CancelAsync().ConfigureAwait(false);
                             await disconnect.ConfigureAwait(false);

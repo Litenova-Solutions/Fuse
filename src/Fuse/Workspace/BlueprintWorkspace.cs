@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
+using System.Security.Cryptography;
 using System.Text;
 using Fuse.Graph;
 using Fuse.Paths;
@@ -234,7 +235,8 @@ internal sealed class BlueprintWorkspace : IDisposable
         var projectReferences = new List<ProjectReference>(bp.ProjectReferences.Count);
         foreach (var pr in bp.ProjectReferences)
         {
-            var targetPath = targetRoot.PathOf(CompilationBlueprint.ResolvePath(targetRoot, pr.TargetProjectPath));
+            var resolvedTarget = CompilationBlueprint.ResolvePath(targetRoot, pr.TargetProjectPath);
+            var targetPath = targetRoot.PathOf(resolvedTarget);
             if (projectIds.TryGetValue((targetPath, pr.TargetProjectName), out var targetId))
             {
                 projectReferences.Add(new ProjectReference(targetId, [.. pr.Aliases], pr.EmbedInteropTypes));
@@ -242,6 +244,10 @@ internal sealed class BlueprintWorkspace : IDisposable
             else if (_projectsByPath.TryGetValue(targetPath, out var fallbackIds) && fallbackIds.Count > 0)
             {
                 projectReferences.Add(new ProjectReference(fallbackIds[0], [.. pr.Aliases], pr.EmbedInteropTypes));
+            }
+            else if (!targetRoot.Contains(resolvedTarget))
+            {
+                throw new InvalidOperationException($"blueprint cannot load {bp.ProjectPath}: it references {pr.TargetProjectPath} outside the repository");
             }
         }
 
@@ -303,8 +309,8 @@ internal sealed class BlueprintWorkspace : IDisposable
 
         var compilationOptions = BuildCompilationOptions(bp);
         var parseOptions = BuildParseOptions(bp);
-        var outputPath = ResolveOutputPath(targetRoot, sourceRoot, bp.OutputPath, isSecondaryWorktree);
-        var outputRefPath = ResolveOutputPath(targetRoot, sourceRoot, bp.OutputRefPath, isSecondaryWorktree);
+        var outputPath = ResolveOutputPath(targetRoot, bp.OutputPath);
+        var outputRefPath = ResolveOutputPath(targetRoot, bp.OutputRefPath);
 
         return ProjectInfo.Create(
                 id,
@@ -455,15 +461,11 @@ internal sealed class BlueprintWorkspace : IDisposable
         return null;
     }
 
-    private static string? ResolveOutputPath(RepoRoot targetRoot, string sourceRoot, string? storedOutput, bool isSecondaryWorktree)
+    private static string? ResolveOutputPath(RepoRoot targetRoot, string? storedOutput)
     {
         if (string.IsNullOrEmpty(storedOutput))
             return null;
-        var local = CompilationBlueprint.ResolvePath(targetRoot, storedOutput);
-        if (File.Exists(local) || !isSecondaryWorktree || Path.IsPathRooted(storedOutput))
-            return local;
-        var fromSource = Path.GetFullPath(Path.Combine(sourceRoot, storedOutput.Replace('/', Path.DirectorySeparatorChar)));
-        return File.Exists(fromSource) ? fromSource : local;
+        return CompilationBlueprint.ResolvePath(targetRoot, storedOutput);
     }
 
     private static string[] RelativeFolders(string projectDirectory, string filePath)
@@ -583,16 +585,28 @@ internal sealed class BlueprintWorkspace : IDisposable
     /// </summary>
     internal sealed class SharedResources
     {
+        // At most this many HEAD texts stay cached; past it the least recently used goes.
+        private const int MaxHeadTexts = 1024;
+
         private readonly IAnalyzerAssemblyLoader _analyzerLoader;
         private readonly ConcurrentDictionary<string, (long Length, long Ticks, MetadataReference Reference)> _metadata = new(StringComparer.OrdinalIgnoreCase);
         private readonly ConcurrentDictionary<string, (long Length, long Ticks, AnalyzerFileReference Reference)> _analyzers = new(StringComparer.OrdinalIgnoreCase);
-        private readonly ConcurrentDictionary<(string Head, string Relative), TextAndVersion> _headTexts = new();
+        private readonly Lock _headLock = new();
+        private readonly Dictionary<(string Head, string Relative), LinkedListNode<HeadTextEntry>> _headTexts = [];
+        private readonly LinkedList<HeadTextEntry> _headOrder = [];
 
         public SharedResources(IAnalyzerAssemblyLoader analyzerLoader) => _analyzerLoader = analyzerLoader;
 
         public int MetadataCount => _metadata.Count;
 
-        public int HeadTextCount => _headTexts.Count;
+        public int HeadTextCount
+        {
+            get
+            {
+                lock (_headLock)
+                    return _headTexts.Count;
+            }
+        }
 
         public MetadataReference? GetMetadataReference(string path)
         {
@@ -637,18 +651,55 @@ internal sealed class BlueprintWorkspace : IDisposable
 
         public TextAndVersion? GetOrReadHeadText(string head, string relativePath, string diskPath)
         {
-            var key = (head, relativePath);
-            if (_headTexts.TryGetValue(key, out var cached))
-                return cached;
-            if (ReadDiskText(diskPath) is not { } loaded)
+            byte[] bytes;
+            try
+            {
+                bytes = SharedRead.AllBytes(diskPath);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
                 return null;
-            _headTexts[key] = loaded;
-            return loaded;
+            }
+
+            var hash = Convert.ToHexString(SHA256.HashData(bytes));
+            var key = (head, relativePath);
+            lock (_headLock)
+            {
+                if (_headTexts.TryGetValue(key, out var node) && string.Equals(node.Value.ContentHash, hash, StringComparison.Ordinal))
+                {
+                    _headOrder.Remove(node);
+                    _headOrder.AddFirst(node);
+                    return TextAndVersion.Create(node.Value.Text, VersionStamp.Create(), diskPath);
+                }
+
+                var text = SolutionViews.Decode(bytes);
+                if (node is not null)
+                {
+                    node.Value = new HeadTextEntry(key, hash, text);
+                    _headOrder.Remove(node);
+                    _headOrder.AddFirst(node);
+                }
+                else
+                {
+                    _headTexts[key] = _headOrder.AddFirst(new HeadTextEntry(key, hash, text));
+                    while (_headTexts.Count > MaxHeadTexts && _headOrder.Last is { } last)
+                    {
+                        _headOrder.RemoveLast();
+                        _headTexts.Remove(last.Value.Key);
+                    }
+                }
+
+                return TextAndVersion.Create(text, VersionStamp.Create(), diskPath);
+            }
         }
 
         public void TrimUnused(Solution? activeSolution)
         {
-            _headTexts.Clear();
+            lock (_headLock)
+            {
+                _headTexts.Clear();
+                _headOrder.Clear();
+            }
             if (activeSolution is null)
             {
                 _metadata.Clear();
@@ -668,5 +719,7 @@ internal sealed class BlueprintWorkspace : IDisposable
                     _metadata.TryRemove(key, out _);
             }
         }
+
+        private sealed record HeadTextEntry((string Head, string Relative) Key, string ContentHash, SourceText Text);
     }
 }

@@ -5,6 +5,7 @@ using Fuse.Changes;
 using Fuse.Changes.Model;
 using Fuse.Check;
 using Fuse.Check.Model;
+using Fuse.Failures;
 using Fuse.Graph;
 using Fuse.Paths;
 using Fuse.Protocol;
@@ -24,6 +25,15 @@ internal sealed class JudgeService
     /// <summary>How many introduced errors one verdict holds at most; the count itself is not capped.</summary>
     private const int MaxReportedErrors = 200;
 
+    /// <summary>How many candidates one judge call scores; past it the call is refused before anything is parsed.</summary>
+    private const int MaxCandidates = 16;
+
+    /// <summary>How many bytes of diff one candidate holds; past it the call is refused before anything is parsed.</summary>
+    private const int MaxDiffBytes = 1024 * 1024;
+
+    /// <summary>How many bytes of diff one judge call scores in total; past it the call is refused before anything is parsed.</summary>
+    private const int MaxTotalDiffBytes = 8 * 1024 * 1024;
+
     private readonly RepoWorkspace _workspace;
     private readonly RepoRoot _root;
 
@@ -39,6 +49,7 @@ internal sealed class JudgeService
     /// <param name="cancellationToken">Cancels the scoring.</param>
     public async Task<JudgeReport> RunAsync(JudgeRequest spec, CancellationToken cancellationToken)
     {
+        ThrowWhenPastBounds(spec);
         var prepared = spec.Candidates.Select(Prepare).ToList();
         var touched = prepared.SelectMany(p => p.Files).SelectMany(f => f.Target is { } target ? new[] { f.Path, target } : new[] { f.Path }).Distinct().ToList();
         var generation = await _workspace.SyncAndPinAsync([], cancellationToken).ConfigureAwait(false);
@@ -257,7 +268,28 @@ internal sealed class JudgeService
             files.Add(new PatchedFile(patch, path, target));
         }
 
+        // A candidate with no scorable file would check an unchanged fork and win with no errors; it conflicts instead.
+        if (files.Count == 0)
+            return new PreparedCandidate(candidate, [], "the diff touches no source file in this repository");
         return new PreparedCandidate(candidate, files, null);
+    }
+
+    /// <summary>Refuses a request past the candidate bounds, before anything is parsed.</summary>
+    /// <exception cref="FuseException">The request names too many candidates, or too many bytes of diff.</exception>
+    private static void ThrowWhenPastBounds(JudgeRequest spec)
+    {
+        if (spec.Candidates.Length > MaxCandidates)
+            throw new FuseException(ErrorCode.InvalidPath, $"the {spec.Candidates.Length} candidates named are more than the {MaxCandidates} a judge call scores; name fewer");
+        long totalBytes = 0;
+        foreach (var candidate in spec.Candidates)
+        {
+            var bytes = Encoding.UTF8.GetByteCount(candidate.Diff);
+            if (bytes > MaxDiffBytes)
+                throw new FuseException(ErrorCode.InvalidPath, $"the diff of '{candidate.Name}' holds {bytes} bytes, more than the 1 MB a candidate holds; shorten the diff");
+            totalBytes += bytes;
+            if (totalBytes > MaxTotalDiffBytes)
+                throw new FuseException(ErrorCode.InvalidPath, $"the candidates hold {totalBytes} bytes of diff, more than the 8 MB a judge call scores; name fewer or shorten the diffs");
+        }
     }
 
     /// <summary>Pins a generation with the touched files' owners and their dependents loaded, so every fork binds from it.</summary>

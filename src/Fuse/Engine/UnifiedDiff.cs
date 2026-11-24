@@ -107,7 +107,18 @@ internal static class UnifiedDiff
                 if (hunk is null)
                     return ([], hunkError);
                 if (i < lines.Length && IsBodyLine(lines[i]) && !lines[i].StartsWith("--- ", StringComparison.Ordinal) && !lines[i].StartsWith("+++ ", StringComparison.Ordinal))
-                    return ([], $"the hunk at '{line}' holds more lines than its header says");
+                {
+                    // A patch file that ends with a blank line leaves empty lines after the last hunk; they end
+                    // the diff, not the hunk. Anything else past the header counts is still a hunk that is too long.
+                    for (var j = i; j < lines.Length; j++)
+                    {
+                        if (lines[j].Length != 0)
+                            return ([], $"the hunk at '{line}' holds more lines than its header says");
+                    }
+
+                    i = lines.Length;
+                }
+
                 hunks.Add(hunk);
                 continue;
             }

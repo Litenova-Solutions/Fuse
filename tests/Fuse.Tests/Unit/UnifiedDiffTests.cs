@@ -141,6 +141,18 @@ public class UnifiedDiffTests
     }
 
     [Fact]
+    public void Trailing_blank_lines_after_the_last_hunk_are_ignored()
+    {
+        var (files, parseError) = UnifiedDiff.Parse(ModifyDiff + "\n");
+        Assert.Null(parseError);
+        var patch = Assert.Single(files);
+
+        var (text, error) = UnifiedDiff.ApplyToText("line1\nline2\nline3\n", patch);
+        Assert.Null(error);
+        Assert.Equal("line1\nline2 changed\nline3\n", text);
+    }
+
+    [Fact]
     public void Broken_hunk_header_fails_with_reason()
     {
         var (files, error) = UnifiedDiff.Parse("--- a/f.cs\n+++ b/f.cs\n@@ nonsense @@\n");

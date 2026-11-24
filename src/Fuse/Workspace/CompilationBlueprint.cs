@@ -211,6 +211,9 @@ internal sealed partial class CompilationBlueprint
                 var sourceAssets = Path.GetFullPath(Path.Combine(SourceRoot, node.AssetsFile.Relative.Replace('/', Path.DirectorySeparatorChar)));
                 if (!File.Exists(sourceAssets))
                     return false;
+                var sourceRoot = RepoRoot.Find(SourceRoot) ?? root;
+                if (!string.Equals(HashAssets(sourceRoot, sourceAssets), expectedAssets, StringComparison.Ordinal))
+                    return false;
             }
         }
 

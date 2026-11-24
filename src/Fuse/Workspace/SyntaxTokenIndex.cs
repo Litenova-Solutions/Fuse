@@ -14,23 +14,22 @@ namespace Fuse.Workspace;
 ///     Queries avoid <see cref="SemanticModel"/> loading and narrow symbol searches to candidate documents.
 /// </summary>
 /// <remarks>
-///     Each indexed entry is keyed by repository-relative path and preprocessor configuration so multi-targeted
+///     Each indexed entry is keyed by path and preprocessor configuration so multi-targeted
 ///     projects keep distinct conditional compilation branches without overwriting each other.
 /// </remarks>
 internal sealed class SyntaxTokenIndex
 {
     private const uint BinaryMagic = 0x58444946; // "FIDX"
-    private const int BinaryVersion = 1;
+    private const int BinaryVersion = 2;
     private const int WriteLockAttempts = 20;
     private const int WriteLockRetryMs = 50;
 
     private readonly RepoRoot _root;
     private readonly Action<string> _log;
     private readonly Lock _lock = new();
-    private static readonly StringComparer PathComparer = StringComparer.FromComparison(RepoPath.Comparison);
 
     private readonly List<DocEntry?> _entries = [];
-    private readonly Dictionary<(string Path, string PreprocessorKey), int> _entryLookup = new(EntryKeyComparer.Instance);
+    private readonly Dictionary<(RepoPath Path, string PreprocessorKey), int> _entryLookup = [];
     private readonly Dictionary<DocumentId, (VersionStamp Version, int EntryIndex)> _docVersions = [];
     private readonly Dictionary<string, HashSet<int>> _tokenToEntries = new(StringComparer.Ordinal);
     private readonly Dictionary<string, HashSet<int>> _baseTypeToEntries = new(StringComparer.Ordinal);
@@ -76,7 +75,7 @@ internal sealed class SyntaxTokenIndex
         ArgumentNullException.ThrowIfNull(solution);
         ArgumentNullException.ThrowIfNull(projects);
 
-        var toParse = new List<(Document Document, string RelativePath, string PreprocessorKey, long Length, long WrittenTicks, string Checksum)>();
+        var toParse = new List<(Document Document, RepoPath Path, string PreprocessorKey, long Length, long WrittenTicks, string Checksum)>();
 
         foreach (var project in projects)
         {
@@ -90,11 +89,11 @@ internal sealed class SyntaxTokenIndex
                     continue;
 
                 var version = await document.GetTextVersionAsync(cancellationToken).ConfigureAwait(false);
-                var relative = NormalizePath(document.FilePath);
-                if (IsEntryCurrent(document, relative, preprocessorKey, version, out var length, out var writtenTicks, out var checksum))
+                var path = NormalizePath(document.FilePath);
+                if (IsEntryCurrent(document, path, preprocessorKey, version, out var length, out var writtenTicks, out var checksum))
                     continue;
 
-                toParse.Add((document, relative, preprocessorKey, length, writtenTicks, checksum));
+                toParse.Add((document, path, preprocessorKey, length, writtenTicks, checksum));
             }
         }
 
@@ -122,7 +121,7 @@ internal sealed class SyntaxTokenIndex
                 scanned[index] = new ScannedEntry(
                     item.Document.Id,
                     version,
-                    item.RelativePath,
+                    item.Path,
                     item.PreprocessorKey,
                     item.Length,
                     item.WrittenTicks,
@@ -137,7 +136,7 @@ internal sealed class SyntaxTokenIndex
                 if (item is null)
                     continue;
                 var entryIndex = UpsertLocked(
-                    item.RelativePath,
+                    item.Path,
                     item.PreprocessorKey,
                     item.Length,
                     item.WrittenTicks,
@@ -156,15 +155,15 @@ internal sealed class SyntaxTokenIndex
         ArgumentException.ThrowIfNullOrEmpty(filePath);
         ArgumentNullException.ThrowIfNull(root);
 
-        var relative = NormalizePath(filePath);
+        var path = NormalizePath(filePath);
         if (length == 0 && writtenTicks == 0)
-            TryGetDiskStamp(filePath, out length, out writtenTicks);
+            TryGetDiskStamp(path.Absolute, out length, out writtenTicks);
         if (checksum.Length == 0 && root.SyntaxTree.TryGetText(out var text))
             checksum = ChecksumOf(text);
 
         var scan = Scan(root);
         lock (_lock)
-            UpsertLocked(relative, preprocessorKey, length, writtenTicks, checksum, scan);
+            UpsertLocked(path, preprocessorKey, length, writtenTicks, checksum, scan);
     }
 
     /// <summary>Incrementally updates the index for <paramref name="document"/>.</summary>
@@ -178,14 +177,14 @@ internal sealed class SyntaxTokenIndex
             return;
         var text = await document.GetTextAsync(cancellationToken).ConfigureAwait(false);
         var version = await document.GetTextVersionAsync(cancellationToken).ConfigureAwait(false);
-        var relative = NormalizePath(document.FilePath);
+        var path = NormalizePath(document.FilePath);
         var preprocessorKey = PreprocessorKeyFor(document.Project);
-        TryGetDiskStamp(document.FilePath, out var length, out var writtenTicks);
+        TryGetDiskStamp(path.Absolute, out var length, out var writtenTicks);
         var scan = Scan(root);
 
         lock (_lock)
         {
-            var entryIndex = UpsertLocked(relative, preprocessorKey, length, writtenTicks, ChecksumOf(text), scan);
+            var entryIndex = UpsertLocked(path, preprocessorKey, length, writtenTicks, ChecksumOf(text), scan);
             _docVersions[document.Id] = (version, entryIndex);
         }
     }
@@ -194,10 +193,10 @@ internal sealed class SyntaxTokenIndex
     public void RemoveDocument(string filePath)
     {
         ArgumentException.ThrowIfNullOrEmpty(filePath);
-        var relative = NormalizePath(filePath);
+        var path = NormalizePath(filePath);
         lock (_lock)
         {
-            var keys = _entryLookup.Keys.Where(k => PathComparer.Equals(k.Path, relative)).ToList();
+            var keys = _entryLookup.Keys.Where(k => k.Path == path).ToList();
             foreach (var key in keys)
                 RemoveLocked(key);
         }
@@ -229,7 +228,7 @@ internal sealed class SyntaxTokenIndex
             : solution.Projects.Where(p => scopeProjects.Contains(p.Id));
         EnsureIndexedSyncIfNeeded(solution, projects);
 
-        var matchingPaths = CandidatePaths(identifierList, baseList);
+        var matchingPaths = CandidateRepoPaths(identifierList, baseList);
         var builder = ImmutableHashSet.CreateBuilder<Document>();
         foreach (var project in projects)
         {
@@ -275,7 +274,15 @@ internal sealed class SyntaxTokenIndex
         ArgumentNullException.ThrowIfNull(identifiers);
         ArgumentNullException.ThrowIfNull(baseTypeNames);
 
-        var result = new HashSet<string>(PathComparer);
+        var result = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var path in CandidateRepoPaths(identifiers, baseTypeNames))
+            result.Add(path.Relative);
+        return result;
+    }
+
+    private HashSet<RepoPath> CandidateRepoPaths(IEnumerable<string> identifiers, IEnumerable<string> baseTypeNames)
+    {
+        var result = new HashSet<RepoPath>();
         lock (_lock)
         {
             var matchedEntries = new HashSet<int>();
@@ -340,7 +347,7 @@ internal sealed class SyntaxTokenIndex
             foreach (var entryIndex in matchedEntries)
             {
                 if (_entries[entryIndex] is { } entry)
-                    result.Add(entry.RelativePath);
+                    result.Add(entry.Path);
             }
         }
 
@@ -404,52 +411,47 @@ internal sealed class SyntaxTokenIndex
         }
     }
 
-    /// <summary>Loads a persisted index from <see cref="Directory"/> under <paramref name="key"/>, validating disk stamps.</summary>
+    /// <summary>Loads a persisted index from <see cref="Directory"/> under <paramref name="key"/>, validating disk stamps. A file that does not read is deleted so the next save writes it again.</summary>
     public bool TryLoad(string? key = null)
     {
         var file = FilePathFor(key);
         if (!File.Exists(file))
             return false;
 
-        List<DocEntry> loaded;
         try
         {
-            loaded = ReadBinary(file);
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException or EndOfStreamException)
-        {
-            return false;
-        }
-
-        lock (_lock)
-        {
-            ClearLocked();
-            foreach (var entry in loaded)
+            var loaded = ReadBinary(file);
+            lock (_lock)
             {
-                var absolute = AbsolutePath(entry.RelativePath);
-                if (TryGetDiskStamp(absolute, out var length, out var writtenTicks))
+                ClearLocked();
+                foreach (var entry in loaded)
                 {
+                    if (!TryGetDiskStamp(entry.Path.Absolute, out var length, out var writtenTicks))
+                        continue;
                     if (length != entry.Length || writtenTicks != entry.WrittenTicks)
                         continue;
-                }
-                else
-                {
-                    continue;
+
+                    UpsertLocked(
+                        entry.Path,
+                        entry.PreprocessorKey,
+                        entry.Length,
+                        entry.WrittenTicks,
+                        entry.Checksum,
+                        new ScanResult(entry.Tokens, entry.BaseTypes, entry.DeclaredTypes, entry.GlobalAliases));
                 }
 
-                UpsertLocked(
-                    entry.RelativePath,
-                    entry.PreprocessorKey,
-                    entry.Length,
-                    entry.WrittenTicks,
-                    entry.Checksum,
-                    new ScanResult(entry.Tokens, entry.BaseTypes, entry.DeclaredTypes, entry.GlobalAliases));
+                _dirty = false;
             }
 
-            _dirty = false;
+            return true;
         }
-
-        return true;
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            lock (_lock)
+                ClearLocked();
+            TryDelete(file);
+            return false;
+        }
     }
 
     /// <summary>Clears all in-memory index entries.</summary>
@@ -472,7 +474,7 @@ internal sealed class SyntaxTokenIndex
 
     private void EnsureIndexedSyncIfNeeded(Solution solution, IEnumerable<Project> projects)
     {
-        var toParse = new List<(Document Document, string RelativePath, string PreprocessorKey, long Length, long WrittenTicks, string Checksum)>();
+        var toParse = new List<(Document Document, RepoPath Path, string PreprocessorKey, long Length, long WrittenTicks, string Checksum)>();
         foreach (var project in projects)
         {
             if (project.Language != LanguageNames.CSharp)
@@ -483,10 +485,10 @@ internal sealed class SyntaxTokenIndex
                 if (string.IsNullOrEmpty(document.FilePath))
                     continue;
                 var version = document.TryGetTextVersion(out var v) ? v : default;
-                var relative = NormalizePath(document.FilePath);
-                if (IsEntryCurrent(document, relative, preprocessorKey, version, out var length, out var writtenTicks, out var checksum))
+                var path = NormalizePath(document.FilePath);
+                if (IsEntryCurrent(document, path, preprocessorKey, version, out var length, out var writtenTicks, out var checksum))
                     continue;
-                toParse.Add((document, relative, preprocessorKey, length, writtenTicks, checksum));
+                toParse.Add((document, path, preprocessorKey, length, writtenTicks, checksum));
             }
         }
 
@@ -513,7 +515,7 @@ internal sealed class SyntaxTokenIndex
             var scan = Scan(root);
             lock (_lock)
             {
-                var entryIndex = UpsertLocked(item.RelativePath, item.PreprocessorKey, item.Length, item.WrittenTicks, checksum, scan);
+                var entryIndex = UpsertLocked(item.Path, item.PreprocessorKey, item.Length, item.WrittenTicks, checksum, scan);
                 _docVersions[item.Document.Id] = (version, entryIndex);
             }
         }
@@ -521,7 +523,7 @@ internal sealed class SyntaxTokenIndex
 
     private bool IsEntryCurrent(
         Document document,
-        string relative,
+        RepoPath path,
         string preprocessorKey,
         VersionStamp version,
         out long length,
@@ -549,7 +551,7 @@ internal sealed class SyntaxTokenIndex
                 return true;
             }
 
-            if (!_entryLookup.TryGetValue((relative, preprocessorKey), out var entryIndex) || _entries[entryIndex] is not { } entry)
+            if (!_entryLookup.TryGetValue((path, preprocessorKey), out var entryIndex) || _entries[entryIndex] is not { } entry)
                 return false;
 
             if (checksum.Length > 0)
@@ -560,14 +562,14 @@ internal sealed class SyntaxTokenIndex
     }
 
     private int UpsertLocked(
-        string relativePath,
+        RepoPath path,
         string preprocessorKey,
         long length,
         long writtenTicks,
         string checksum,
         ScanResult scan)
     {
-        var key = (relativePath, preprocessorKey);
+        var key = (path, preprocessorKey);
         if (_entryLookup.TryGetValue(key, out var existingIndex) && _entries[existingIndex] is { } existing)
             UnlinkEntryLocked(existingIndex, existing);
         else
@@ -578,7 +580,7 @@ internal sealed class SyntaxTokenIndex
         }
 
         var entry = new DocEntry(
-            relativePath,
+            path,
             preprocessorKey,
             length,
             writtenTicks,
@@ -593,7 +595,7 @@ internal sealed class SyntaxTokenIndex
         return existingIndex;
     }
 
-    private void RemoveLocked((string Path, string PreprocessorKey) key)
+    private void RemoveLocked((RepoPath Path, string PreprocessorKey) key)
     {
         if (!_entryLookup.Remove(key, out var index) || _entries[index] is not { } entry)
             return;
@@ -756,20 +758,17 @@ internal sealed class SyntaxTokenIndex
             _ => null,
         };
 
-    private string NormalizePath(string filePath)
+    private RepoPath NormalizePath(string filePath)
     {
         try
         {
-            return _root.PathOf(filePath).Relative;
+            return _root.PathOf(filePath);
         }
         catch (Exception e) when (e is ArgumentException or PathTooLongException or NotSupportedException)
         {
-            return filePath.Replace('\\', '/');
+            return new RepoPath(_root, filePath.Replace('\0', '_'));
         }
     }
-
-    private string AbsolutePath(string relativeOrFull) =>
-        Path.IsPathRooted(relativeOrFull) ? relativeOrFull : Path.GetFullPath(relativeOrFull, _root.Path);
 
     private string FilePathFor(string? key)
     {
@@ -856,7 +855,7 @@ internal sealed class SyntaxTokenIndex
         writer.Write7BitEncodedInt(entries.Count);
         foreach (var entry in entries)
         {
-            writer.Write(entry.RelativePath);
+            writer.Write(entry.Path.Relative);
             writer.Write7BitEncodedInt(IdOf(entry.PreprocessorKey));
             writer.Write(entry.Length);
             writer.Write(entry.WrittenTicks);
@@ -882,7 +881,7 @@ internal sealed class SyntaxTokenIndex
             writer.Write7BitEncodedInt(idOf(item));
     }
 
-    private static List<DocEntry> ReadBinary(string path)
+    private List<DocEntry> ReadBinary(string path)
     {
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
         using var reader = new BinaryReader(stream, Encoding.UTF8);
@@ -890,44 +889,59 @@ internal sealed class SyntaxTokenIndex
             throw new InvalidDataException("unsupported token index header");
 
         var stringCount = reader.Read7BitEncodedInt();
+        if (stringCount < 0 || stringCount > stream.Length)
+            throw new InvalidDataException("token index string table is out of range");
         var strings = new string[stringCount];
         for (var i = 0; i < stringCount; i++)
             strings[i] = reader.ReadString();
 
         var entryCount = reader.Read7BitEncodedInt();
+        if (entryCount < 0 || entryCount > stream.Length)
+            throw new InvalidDataException("token index entry table is out of range");
         var entries = new List<DocEntry>(entryCount);
         for (var i = 0; i < entryCount; i++)
         {
             var relative = reader.ReadString();
-            var preprocessorKey = strings[reader.Read7BitEncodedInt()];
+            var preprocessorKey = StringAt(strings, reader.Read7BitEncodedInt());
             var length = reader.ReadInt64();
             var writtenTicks = reader.ReadInt64();
             var checksum = reader.ReadString();
 
-            var tokens = ReadIdArray(reader, strings);
-            var baseTypes = ReadIdArray(reader, strings);
-            var declaredTypes = ReadIdArray(reader, strings);
+            var tokens = ReadIdArray(reader, strings, stream.Length);
+            var baseTypes = ReadIdArray(reader, strings, stream.Length);
+            var declaredTypes = ReadIdArray(reader, strings, stream.Length);
 
             var aliasCount = reader.Read7BitEncodedInt();
+            if (aliasCount < 0 || aliasCount > stream.Length)
+                throw new InvalidDataException("token index alias table is out of range");
             var aliases = aliasCount == 0 ? [] : new (string, string)[aliasCount];
             for (var a = 0; a < aliasCount; a++)
-                aliases[a] = (strings[reader.Read7BitEncodedInt()], strings[reader.Read7BitEncodedInt()]);
+                aliases[a] = (StringAt(strings, reader.Read7BitEncodedInt()), StringAt(strings, reader.Read7BitEncodedInt()));
 
-            entries.Add(new DocEntry(relative, preprocessorKey, length, writtenTicks, checksum, tokens, baseTypes, declaredTypes, aliases));
+            entries.Add(new DocEntry(_root.PathOf(relative), preprocessorKey, length, writtenTicks, checksum, tokens, baseTypes, declaredTypes, aliases));
         }
 
         return entries;
     }
 
-    private static string[] ReadIdArray(BinaryReader reader, string[] strings)
+    private static string[] ReadIdArray(BinaryReader reader, string[] strings, long fileLength)
     {
         var count = reader.Read7BitEncodedInt();
         if (count == 0)
             return [];
+        if (count < 0 || count > fileLength)
+            throw new InvalidDataException("token index list is out of range");
         var items = new string[count];
         for (var i = 0; i < count; i++)
-            items[i] = strings[reader.Read7BitEncodedInt()];
+            items[i] = StringAt(strings, reader.Read7BitEncodedInt());
         return items;
+    }
+
+    private static string StringAt(string[] strings, int id)
+    {
+        if ((uint)id >= (uint)strings.Length)
+            throw new InvalidDataException("token index entry names a string outside its table");
+        return strings[id];
     }
 
     private static FileStream? AcquireWriteLock(string directory)
@@ -966,7 +980,7 @@ internal sealed class SyntaxTokenIndex
         (string Alias, string Target)[] GlobalAliases);
 
     private sealed record DocEntry(
-        string RelativePath,
+        RepoPath Path,
         string PreprocessorKey,
         long Length,
         long WrittenTicks,
@@ -979,21 +993,10 @@ internal sealed class SyntaxTokenIndex
     private sealed record ScannedEntry(
         DocumentId DocumentId,
         VersionStamp Version,
-        string RelativePath,
+        RepoPath Path,
         string PreprocessorKey,
         long Length,
         long WrittenTicks,
         string Checksum,
         ScanResult Scan);
-
-    private sealed class EntryKeyComparer : IEqualityComparer<(string Path, string PreprocessorKey)>
-    {
-        public static readonly EntryKeyComparer Instance = new();
-
-        public bool Equals((string Path, string PreprocessorKey) x, (string Path, string PreprocessorKey) y) =>
-            PathComparer.Equals(x.Path, y.Path) && StringComparer.Ordinal.Equals(x.PreprocessorKey, y.PreprocessorKey);
-
-        public int GetHashCode((string Path, string PreprocessorKey) obj) =>
-            HashCode.Combine(PathComparer.GetHashCode(obj.Path), StringComparer.Ordinal.GetHashCode(obj.PreprocessorKey));
-    }
 }

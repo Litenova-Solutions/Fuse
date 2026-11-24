@@ -33,6 +33,9 @@ internal static partial class BuildOperation
     /// <summary>The line printed above the answer when a source file moved during the build and it ran again.</summary>
     internal const string RanAgainLine = "fuse: a source file moved while the build ran, so it ran again";
 
+    /// <summary>The line printed above the answer when a build output was missing and the build ran again without incremental state.</summary>
+    internal const string RebuiltLine = "fuse: a build output was missing, so the build ran again without incremental state";
+
     /// <summary>At most this many lock files the refresh line names; the rest are only counted.</summary>
     internal const int MaxLockFilesShown = 10;
 
@@ -105,7 +108,7 @@ internal static partial class BuildOperation
 
         if (plan.BuildProjects.Length > 1)
         {
-            var (result, log, seconds, ranAgain) = await RunTraversalBuildAsync(
+            var (result, log, seconds, rerunLine) = await RunTraversalBuildAsync(
                 root, plan.BuildProjects, [.. effectiveArgs, .. QuietArguments], workingDirectory, root.StateDirectory, continueOnError: false, cancellationToken).ConfigureAwait(false);
 
             var treeStamp = await StampAsync(root, cancellationToken).ConfigureAwait(false);
@@ -121,14 +124,14 @@ internal static partial class BuildOperation
                 BuildResultsFile.WriteReuse(root, stamp.Value, BuildResultsFile.ChangedScope, plan.BuildProjects, effectiveArgs, RelativeWorkingDirectory(root, workingDirectory), DateTime.UtcNow, [runRecord], treeStamp, diagnostics.Count);
 
             text.Append('\n');
-            if (ranAgain)
-                text.Append(RanAgainLine).Append('\n');
+            if (rerunLine is not null)
+                text.Append(rerunLine).Append('\n');
             var rendered = Render(result, root.Path, seconds, label, options, resultsPath, log, treeStamp, diagnostics.Count);
             text.Append(rendered.Text);
             return new OperationResult(rendered.Outcome, text.ToString());
         }
 
-        var singleRuns = new List<(ProcessResult Result, string Log, double Seconds, bool RanAgain)>(plan.BuildProjects.Length);
+        var singleRuns = new List<(ProcessResult Result, string Log, double Seconds, string? RerunLine)>(plan.BuildProjects.Length);
         foreach (var project in plan.BuildProjects)
             singleRuns.Add(await RunOneAsync(["build", project, .. effectiveArgs, .. QuietArguments], workingDirectory, root.StateDirectory, cancellationToken).ConfigureAwait(false));
 
@@ -145,11 +148,11 @@ internal static partial class BuildOperation
         if (stamp is not null && buildLock.ArtifactsPath is null && ShouldRecord(errors))
             BuildResultsFile.WriteReuse(root, stamp.Value, BuildResultsFile.ChangedScope, plan.BuildProjects, effectiveArgs, RelativeWorkingDirectory(root, workingDirectory), DateTime.UtcNow, parsed, singleStamp, errors.Count);
         var failed = 0;
-        foreach (var ((result, log, seconds, ranAgain), name, project) in singleRuns.Zip(names, plan.BuildProjects))
+        foreach (var ((result, log, seconds, rerunLine), name, project) in singleRuns.Zip(names, plan.BuildProjects))
         {
             text.Append('\n');
-            if (ranAgain)
-                text.Append(RanAgainLine).Append('\n');
+            if (rerunLine is not null)
+                text.Append(rerunLine).Append('\n');
             var rendered = Render(result, root.Path, seconds, $"build ({name})", options, singleResultsPath, log, singleStamp, errors.Count, restoreTarget: RelativeProject(project, root.Path));
             if (rendered.Outcome == Outcome.ProblemsFound)
                 failed++;
@@ -165,7 +168,7 @@ internal static partial class BuildOperation
     ///     Builds multiple <paramref name="projects"/> in a single MSBuild invocation via an ephemeral traversal project
     ///     written under <paramref name="logDirectory"/> (never inside the repository).
     /// </summary>
-    internal static async Task<(ProcessResult Result, string Log, double Seconds, bool RanAgain)> RunTraversalBuildAsync(
+    internal static async Task<(ProcessResult Result, string Log, double Seconds, string? RerunLine)> RunTraversalBuildAsync(
         RepoRoot root,
         IReadOnlyList<string> projects,
         IReadOnlyList<string> buildArguments,
@@ -310,7 +313,7 @@ internal static partial class BuildOperation
             return reused;
         if (resultsRoot is not null)
             await EngineClient.TryYieldMemoryAsync(resultsRoot, cancellationToken).ConfigureAwait(false);
-        var (result, log, seconds, ranAgain) = await RunOneAsync(["build", .. arguments, .. QuietArguments], workingDirectory, logDirectory, cancellationToken).ConfigureAwait(false);
+        var (result, log, seconds, rerunLine) = await RunOneAsync(["build", .. arguments, .. QuietArguments], workingDirectory, logDirectory, cancellationToken).ConfigureAwait(false);
         var treeStamp = includeTreeStamp && resultsRoot is not null ? await StampAsync(resultsRoot, cancellationToken).ConfigureAwait(false) : null;
         var diagnostics = BuildOutputParser.Diagnostics(result.Output, root);
         // A build server holding a locked file is shut down so the next build can copy; any other outcome leaves it running.
@@ -322,7 +325,7 @@ internal static partial class BuildOperation
         if (stamp is not null && resultsRoot is not null && !arguments.Contains("--artifacts-path") && ShouldRecord(diagnostics))
             BuildResultsFile.WriteReuse(resultsRoot, stamp.Value, BuildResultsFile.WholeScope, [], arguments, RelativeWorkingDirectory(resultsRoot, workingDirectory), DateTime.UtcNow, [BuildRun("build", result, log, seconds, diagnostics, warnings, restoreTarget)], treeStamp, null);
         var rendered = Render(result, root, seconds, "build", options, resultsPath, log, treeStamp, restoreTarget: restoreTarget);
-        return ranAgain ? rendered with { Text = RanAgainLine + "\n" + rendered.Text } : rendered;
+        return rerunLine is not null ? rendered with { Text = rerunLine + "\n" + rendered.Text } : rendered;
     }
 
     /// <summary>
@@ -487,29 +490,38 @@ internal static partial class BuildOperation
         return locks;
     }
 
-    /// <summary>Runs one <c>dotnet</c> build with the file log, running again when a source file moved mid-build.</summary>
-    /// <returns>The process, the log's text, the seconds it took, and whether it ran again.</returns>
-    private static async Task<(ProcessResult Result, string Log, double Seconds, bool RanAgain)> RunOneAsync(string[] executableArguments, string workingDirectory, string logDirectory, CancellationToken cancellationToken)
+    /// <summary>Runs one <c>dotnet</c> build with the file log, running again when a source file moved mid-build or a build output is missing.</summary>
+    /// <returns>The process, the log's text, the seconds it took, and the line printed above the answer when it ran again, or null.</returns>
+    private static async Task<(ProcessResult Result, string Log, double Seconds, string? RerunLine)> RunOneAsync(string[] executableArguments, string workingDirectory, string logDirectory, CancellationToken cancellationToken)
     {
         var started = Environment.TickCount64;
-        var (result, log) = await RunLoggedAsync(executableArguments, workingDirectory, logDirectory, cancellationToken).ConfigureAwait(false);
+        var (result, log, _) = await RunLoggedAsync(executableArguments, workingDirectory, logDirectory, cancellationToken).ConfigureAwait(false);
         // A source file that another agent moved while MSBuild compiled is missing from the file list it evaluated.
         // Evaluated again, the list is right, so the build runs once more.
         if (result.ExitCode != 0 && MovedSources(result.Output).Any(path => !File.Exists(path)))
         {
-            (result, log) = await RunLoggedAsync(executableArguments, workingDirectory, logDirectory, cancellationToken).ConfigureAwait(false);
-            return (result, log, (Environment.TickCount64 - started) / 1000.0, true);
+            (result, log, _) = await RunLoggedAsync(executableArguments, workingDirectory, logDirectory, cancellationToken).ConfigureAwait(false);
+            return (result, log, (Environment.TickCount64 - started) / 1000.0, RanAgainLine);
         }
 
-        return (result, log, (Environment.TickCount64 - started) / 1000.0, false);
+        // A build output is missing although MSBuild judged the project that writes it up to date, so it never
+        // rewrote it. Without incremental state the project builds again and the output is there.
+        if (result.ExitCode != 0 && !executableArguments.Contains("--no-incremental") && MissingOutputs(result.Output).Any(path => !File.Exists(path)))
+        {
+            (result, log, _) = await RunLoggedAsync([.. executableArguments, "--no-incremental"], workingDirectory, logDirectory, cancellationToken).ConfigureAwait(false);
+            return (result, log, (Environment.TickCount64 - started) / 1000.0, RebuiltLine);
+        }
+
+        return (result, log, (Environment.TickCount64 - started) / 1000.0, null);
     }
 
     /// <summary>
-    ///     Runs <c>dotnet</c> with <paramref name="arguments"/> and the file log, and returns the process and the log's text,
-    ///     which is empty when MSBuild wrote none, as for a command line it refused.
+    ///     Runs <c>dotnet</c> with <paramref name="arguments"/> and the file log, and returns the process, the log's text
+    ///     (empty when MSBuild wrote none, as for a command line it refused), and the failures seen before an early stop.
     /// </summary>
     /// <param name="logDirectory">Where the log is written; it is deleted once read.</param>
-    internal static async Task<(ProcessResult Result, string Log)> RunLoggedAsync(string[] arguments, string workingDirectory, string logDirectory, CancellationToken cancellationToken)
+    /// <param name="maxFailures">Maximum test failures before stopping early; 0 runs to the end. A build passes 0.</param>
+    internal static async Task<(ProcessResult Result, string Log, List<string> EarlyFailures)> RunLoggedAsync(string[] arguments, string workingDirectory, string logDirectory, CancellationToken cancellationToken, int maxFailures = 0)
     {
         var path = Path.Combine(logDirectory, $"build-{Guid.NewGuid():N}.log");
         try
@@ -521,11 +533,12 @@ internal static partial class BuildOperation
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
                 // Without a place for the log, the build runs as it did before the log existed.
-                return (await ProcessRunner.RunAsync("dotnet", arguments, workingDirectory, cancellationToken).ConfigureAwait(false), "");
+                var (unlogged, unloggedFailures) = await TestOperation.RunWithEarlyStopAsync("dotnet", arguments, workingDirectory, maxFailures, cancellationToken).ConfigureAwait(false);
+                return (unlogged, "", unloggedFailures);
             }
 
-            var result = await ProcessRunner.RunAsync("dotnet", [.. arguments, .. BuildLog.Arguments(path)], workingDirectory, cancellationToken).ConfigureAwait(false);
-            return (result, ReadLog(path));
+            var (result, failures) = await TestOperation.RunWithEarlyStopAsync("dotnet", [.. arguments, .. BuildLog.Arguments(path)], workingDirectory, maxFailures, cancellationToken).ConfigureAwait(false);
+            return (result, ReadLog(path), failures);
         }
         finally
         {
@@ -554,6 +567,17 @@ internal static partial class BuildOperation
     /// <summary>The source files CS2001 says could not be found, as absolute paths.</summary>
     internal static IEnumerable<string> MovedSources(string output) =>
         MissingSource().Matches(output).Select(m => m.Groups["path"].Value).Where(Path.IsPathRooted);
+
+    /// <summary>The build outputs CS0006 says are missing, as absolute paths under an <c>obj</c> or <c>bin</c> folder.</summary>
+    internal static IEnumerable<string> MissingOutputs(string output) =>
+        MissingMetadata().Matches(output).Select(m => m.Groups["path"].Value).Where(path => Path.IsPathRooted(path) && IsUnderBuildOutput(path));
+
+    /// <summary>True when <paramref name="path"/> sits under an <c>obj</c> or <c>bin</c> folder, which holds what a build writes.</summary>
+    private static bool IsUnderBuildOutput(string path) =>
+        path.Contains("/obj/", StringComparison.OrdinalIgnoreCase)
+        || path.Contains("/bin/", StringComparison.OrdinalIgnoreCase)
+        || path.Contains(@"\obj\", StringComparison.OrdinalIgnoreCase)
+        || path.Contains(@"\bin\", StringComparison.OrdinalIgnoreCase);
 
     /// <param name="log">The build's file log (<see cref="BuildLog"/>), or empty when it has none.</param>
     internal static OperationResult Render(ProcessResult result, string root, double seconds, string operation, string log = "") =>
@@ -684,4 +708,7 @@ internal static partial class BuildOperation
 
     [GeneratedRegex(@"error CS2001: Source file '(?<path>[^']+)' could not be found")]
     private static partial Regex MissingSource();
+
+    [GeneratedRegex(@"error CS0006: Metadata file '(?<path>[^']+)' could not be found")]
+    private static partial Regex MissingMetadata();
 }

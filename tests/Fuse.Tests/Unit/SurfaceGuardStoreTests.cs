@@ -1,4 +1,5 @@
 using Fuse.Engine;
+using Fuse.Failures;
 using Fuse.Paths;
 using Fuse.Protocol;
 using Fuse.Tests.Fixtures;
@@ -122,6 +123,61 @@ public class SurfaceGuardStoreTests
 
         Assert.Single(events);
         Assert.Equal("Lib/**", events[0].ViolatedPattern);
+    }
+
+    [Fact]
+    public void An_invalid_guard_name_is_refused_and_freezes_nothing()
+    {
+        using var repo = FixtureRepo.CreateEmpty(StandardFiles());
+        var calc = repo.PathOf("Lib/Calc.cs");
+        var store = new SurfaceGuardStore(repo.Root);
+
+        var error = Assert.Throws<FuseException>(() => store.Apply(Freeze("bad name!", "Lib/**")));
+
+        Assert.Equal(ErrorCode.InvalidPath, error.Code);
+        Assert.Contains("not a valid session name", error.Message, StringComparison.Ordinal);
+        Assert.Empty(store.Violations([calc], Declarations(calc, "public static int Add(int a, int b)")));
+        Assert.False(File.Exists(Path.Combine(repo.Root.StateDirectory, "guards.tsv")));
+    }
+
+    [Fact]
+    public void Patterns_that_all_fail_normalization_are_refused_and_freeze_nothing()
+    {
+        using var repo = FixtureRepo.CreateEmpty(StandardFiles());
+        var calc = repo.PathOf("Lib/Calc.cs");
+        var store = new SurfaceGuardStore(repo.Root);
+
+        var error = Assert.Throws<FuseException>(() => store.Apply(Freeze("contracts", "Lib/../**", "")));
+
+        Assert.Equal(ErrorCode.InvalidPath, error.Code);
+        Assert.Contains("not a valid path pattern", error.Message, StringComparison.Ordinal);
+        Assert.Empty(store.Violations([calc], Declarations(calc, "public static int Add(int a, int b)")));
+    }
+
+    [Fact]
+    public void A_freeze_without_patterns_is_refused()
+    {
+        using var repo = FixtureRepo.CreateEmpty(StandardFiles());
+        var calc = repo.PathOf("Lib/Calc.cs");
+        var store = new SurfaceGuardStore(repo.Root);
+
+        var error = Assert.Throws<FuseException>(() => store.Apply(Freeze("contracts")));
+
+        Assert.Equal(ErrorCode.InvalidPath, error.Code);
+        Assert.Contains("at least one path pattern", error.Message, StringComparison.Ordinal);
+        Assert.Empty(store.Violations([calc], Declarations(calc, "public static int Add(int a, int b)")));
+    }
+
+    [Fact]
+    public void Unfreezing_an_invalid_guard_name_is_refused()
+    {
+        using var repo = FixtureRepo.CreateEmpty(StandardFiles());
+        var store = new SurfaceGuardStore(repo.Root);
+
+        var error = Assert.Throws<FuseException>(() => store.Apply(Unfreeze("bad name!")));
+
+        Assert.Equal(ErrorCode.InvalidPath, error.Code);
+        Assert.Contains("not a valid session name", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]

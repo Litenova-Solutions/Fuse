@@ -17,7 +17,7 @@ namespace Fuse.Tests.Engine;
 public class TestRunPathTests
 {
     [Fact]
-    public async Task Prepare_without_warm_serves_a_stored_slice_without_starting_a_worker()
+    public async Task Prepare_serves_a_stored_slice_without_executing()
     {
         await using var engine = await InProcessEngine.StartAsync();
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
@@ -37,31 +37,6 @@ public class TestRunPathTests
 
         Assert.NotNull(cached);
         Assert.Equal((3, 0, 0), (cached.Passed, cached.Failed, cached.Skipped));
-        Assert.Equal(0, engine.Planner.WarmPool.LiveWorkers);
-    }
-
-    [Fact]
-    public async Task Prepare_with_warm_keeps_a_shadow_run_and_a_slice_key()
-    {
-        await using var engine = await InProcessEngine.StartAsync();
-        engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
-        await engine.SyncAsync("Lib/Calc.cs");
-        var cancellationToken = TestContext.Current.CancellationToken;
-
-        try
-        {
-            var pending = await engine.Planner.SelectAsync(new TestScope.Affected(), PhaseTimes.None, cancellationToken);
-            var run = Assert.Single((await engine.Planner.PrepareAsync(pending, PhaseTimes.None, cancellationToken, runWarm: true)).Runs);
-
-            Assert.IsType<RunMode.Shadow>(run.Mode);
-            Assert.NotNull(run.SliceKey);
-            if (run.CachedResult is { } warm)
-                Assert.Equal(run.SliceKey, warm.SliceKey);
-        }
-        finally
-        {
-            engine.Planner.Dispose();
-        }
     }
 
     [Fact]

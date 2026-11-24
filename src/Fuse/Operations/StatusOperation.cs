@@ -128,7 +128,8 @@ internal static partial class StatusOperation
 
     /// <summary>
     ///     Asks the running engine what the tree holds, through its pipe directly: the usual send would start an
-    ///     engine when the pipe is gone, and status never starts one. Null when no answer arrives in time.
+    ///     engine when the pipe is gone, and status never starts one. It names the caller's worktree, so an engine
+    ///     shared across worktrees answers for it. Null when no answer arrives in time.
     /// </summary>
     private static async Task<EngineStatus?> AskAsync(RepoRoot root, CancellationToken cancellationToken)
     {
@@ -138,7 +139,7 @@ internal static partial class StatusOperation
             using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             deadline.CancelAfter(EngineWait);
             await pipe.ConnectAsync(deadline.Token).ConfigureAwait(false);
-            var request = new EngineRequest.Status { BuildId = EngineVersion.Build, RequestId = EngineClient.NextRequestId(), WaitMs = (long)EngineWait.TotalMilliseconds };
+            var request = new EngineRequest.Status { BuildId = EngineVersion.Build, RequestId = EngineClient.NextRequestId(), WaitMs = (long)EngineWait.TotalMilliseconds, WorktreeRoot = root.Path };
             var bytes = Encoding.UTF8.GetBytes(ProtocolJson.Serialize(request) + "\n");
             await pipe.WriteAsync(bytes, deadline.Token).ConfigureAwait(false);
             await pipe.FlushAsync(deadline.Token).ConfigureAwait(false);

@@ -351,10 +351,16 @@ git worktree add -q -b smoke-wt2 "$wt2" HEAD
     capture "$fuse" check
     assert_code 1 "fuse check in secondary worktree with error"
     assert_contains "smokeWtMissing" "fuse check in secondary worktree with error"
+    capture "$fuse" stop
+    assert_code 0 "fuse stop in secondary worktree"
+    assert_contains "released worktree" "fuse stop in secondary worktree"
 )
 capture "$fuse" check
 assert_code 0 "primary worktree remains clean during secondary worktree error"
 assert_not_contains "smokeWtMissing" "primary worktree check"
+capture "$fuse" status
+assert_code 0 "fuse status in primary after secondary release"
+assert_contains "pid $primary_pid" "fuse status in primary after secondary release"
 git worktree remove --force "$wt2"
 git branch -D smoke-wt2 >/dev/null
 

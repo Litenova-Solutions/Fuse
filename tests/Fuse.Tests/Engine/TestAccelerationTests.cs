@@ -11,8 +11,7 @@ namespace Fuse.Tests.Engine;
 /// <summary>
 ///     The test acceleration paths: a change with an empty syntax diff selects no tests and emits nothing, a shadow
 ///     plan never modifies build output, a Microsoft.Testing.Platform project with build output gets a shadow run, an
-///     ingested test map resolves for a symbol and persists, SDK version strings parse, and the warm pool refuses an
-///     unsupported framework and serves a cached slice without starting a worker.
+///     ingested test map resolves for a symbol and persists, and SDK version strings parse.
 /// </summary>
 public sealed class TestAccelerationTests : IDisposable
 {
@@ -58,7 +57,7 @@ public sealed class TestAccelerationTests : IDisposable
         foreach (var (relative, stamp) in before)
         {
             Assert.True(after.TryGetValue(relative, out var current), $"build output changed by the plan: {relative}");
-            Assert.Equal(stamp, current);
+            Assert.True(stamp == current, $"build output changed by the plan: {relative} went from {stamp} to {current}");
         }
     }
 
@@ -126,35 +125,6 @@ public sealed class TestAccelerationTests : IDisposable
         Assert.Equal(SdkCapabilities.Unknown, SdkCapabilities.FromVersionString(null));
     }
 
-    [Fact]
-    public async Task Warm_pool_refuses_an_unsupported_framework_without_starting_a_worker()
-    {
-        using var pool = new WarmTestPool(FixtureRepo.CheckoutRoot);
-        var refused = await pool.RunAsync(LegacyRequest(), TestContext.Current.CancellationToken);
-
-        Assert.False(refused.ExecutedInWarmWorker);
-        Assert.NotNull(refused.FallbackReason);
-        Assert.Contains("unsupported target framework", refused.FallbackReason, StringComparison.Ordinal);
-        Assert.Equal(0, pool.LiveWorkers);
-    }
-
-    [Fact]
-    public async Task Warm_pool_serves_a_cached_slice_without_starting_a_worker()
-    {
-        var cache = new SliceTestCache(_stateDir);
-        var key = new string('a', 64);
-        cache.Store(new SliceCacheResult(key, "Tests/Tests.csproj", "Tests", "net10.0", 3, 0, 0, 4.0, DateTime.UtcNow, []));
-        using var pool = new WarmTestPool(FixtureRepo.CheckoutRoot, cache);
-        var request = LegacyRequest() with { TargetFramework = "net10.0", SliceKey = key };
-        var hit = await pool.RunAsync(request, TestContext.Current.CancellationToken);
-
-        Assert.True(hit.ExecutedInWarmWorker);
-        Assert.True(hit.FromCache);
-        Assert.Equal(3, hit.Passed);
-        Assert.Equal(0, hit.Failed);
-        Assert.Equal(0, pool.LiveWorkers);
-    }
-
     /// <summary>Length and write time of every file under a <c>bin</c> directory of <paramref name="repo"/>, by relative path.</summary>
     private static Dictionary<string, (long Length, long Ticks)> BinStamps(FixtureRepo repo)
     {
@@ -192,8 +162,4 @@ public sealed class TestAccelerationTests : IDisposable
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
         return compilation.GetTypeByMetadataName("Lib.Calc")!.GetMembers("Add").OfType<IMethodSymbol>().Single();
     }
-
-    /// <summary>A warm run request for a .NET Framework target, which no warm worker supports.</summary>
-    private static WarmRunRequest LegacyRequest() =>
-        new("/repo/Tests/Tests.csproj", "Tests", "net48", "/repo/Tests/bin", "/repo/Tests/bin", "/repo/Tests/bin/Tests.dll", "Tests", [], []);
 }

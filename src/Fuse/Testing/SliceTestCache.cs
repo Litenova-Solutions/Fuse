@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Xml.Linq;
 using Fuse.Graph;
 using Fuse.Paths;
 using Fuse.Testing.Model;
@@ -15,11 +16,13 @@ namespace Fuse.Testing;
 /// <summary>
 ///     Content-addressed per-slice test cache persisted under <c>SharedStateDirectory/test-cache/</c>. Each entry is
 ///     keyed by the deterministic SHA-256 of the test project emit hash, dependency closure hashes, non-source asset
-///     hashes, runsettings hash and filter hash, so edits in disjoint slices hit cached results in ~0 ms.
+///     hashes, runsettings and referenced-settings hashes, the files under the directory the test runs from, and the
+///     filter hash, so edits in disjoint slices hit cached results in ~0 ms. An input that cannot be read declines
+///     caching instead of reusing a stored pass.
 /// </summary>
 internal sealed partial class SliceTestCache
 {
-    private const int FormatVersion = 1;
+    private const int FormatVersion = 2;
     internal const int MaxMemoryEntries = 512;
     internal const int MaxFileHashEntries = 2048;
     internal const int MaxDiskEntries = 2048;
@@ -45,7 +48,9 @@ internal sealed partial class SliceTestCache
         IReadOnlyList<(string Key, string Hash)> ClosureDependencyHashes,
         IReadOnlyList<(string RelativePath, string Hash)> NonSourceHashes,
         string RunSettingsHash,
-        string FilterHash);
+        string FilterHash,
+        IReadOnlyList<(string RelativePath, string Hash)>? OutputHashes = null,
+        string SettingsFileHash = "");
 
     /// <summary>Computes the deterministic SHA-256 key from normalized slice inputs.</summary>
     public static string ComputeKey(KeyInputs inputs)
@@ -71,7 +76,18 @@ internal sealed partial class SliceTestCache
         }
 
         AppendField(builder, "|");
+        if (inputs.OutputHashes is not null)
+        {
+            foreach (var (path, hash) in inputs.OutputHashes.OrderBy(n => n.RelativePath, StringComparer.Ordinal))
+            {
+                AppendField(builder, path);
+                AppendField(builder, hash);
+            }
+        }
+
+        AppendField(builder, "|");
         AppendField(builder, inputs.RunSettingsHash);
+        AppendField(builder, inputs.SettingsFileHash);
         AppendField(builder, inputs.FilterHash);
         return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(builder.ToString())));
     }
@@ -88,8 +104,10 @@ internal sealed partial class SliceTestCache
 
     /// <summary>
     ///     Computes the deterministic SHA-256 slice key for <paramref name="testProject"/> using emitted PE/PDB hashes
-    ///     when present, falling back to shadow or build-output files on disk, plus all dependency, non-source and
-    ///     runsettings hashes across the project's closure (including build-only references).
+    ///     when present, falling back to shadow or build-output files on disk, plus all dependency, non-source,
+    ///     runsettings and referenced-settings hashes across the project's closure (including build-only references),
+    ///     and the content of every file under the directory the test runs from. Null when any input cannot be read,
+    ///     so a missed input never reuses a stored pass.
     /// </summary>
     public string? ComputeKey(
         Project testProject,
@@ -185,11 +203,27 @@ internal sealed partial class SliceTestCache
                 if (!seenNonSources.Add(nonSource))
                     continue;
                 var hash = HashFile(nonSource.Absolute);
-                nonSourceHashes.Add((nonSource.Relative, hash ?? "missing"));
+                if (hash is null)
+                    return null;
+                nonSourceHashes.Add((nonSource.Relative, hash));
             }
         }
 
-        var runSettingsHash = runSettingsPath is null ? "" : HashFile(runSettingsPath) ?? "missing";
+        string runSettingsHash = "";
+        if (runSettingsPath is not null)
+        {
+            var settingsHash = HashFile(runSettingsPath);
+            if (settingsHash is null)
+                return null;
+            runSettingsHash = settingsHash;
+        }
+
+        var referencedSettingsHash = ReferencedSettingsHash(runSettingsPath);
+        if (referencedSettingsHash is null)
+            return null;
+        var outputHashes = OutputFileHashes(shadowDirectory, testProject);
+        if (outputHashes is null)
+            return null;
         var filterHash = HashFilter(filter, filterArguments);
 
         return ComputeKey(new KeyInputs(
@@ -199,7 +233,9 @@ internal sealed partial class SliceTestCache
             depHashes,
             nonSourceHashes,
             runSettingsHash,
-            filterHash));
+            filterHash,
+            outputHashes,
+            referencedSettingsHash));
     }
 
     /// <summary>Returns the cached test result for <paramref name="sliceKey"/>, or null on miss or when <paramref name="noCache"/> is true.</summary>
@@ -308,8 +344,75 @@ internal sealed partial class SliceTestCache
         var peHash = HashFile(assemblyPath);
         if (peHash is null)
             return null;
-        var pdbHash = HashFile(Path.ChangeExtension(assemblyPath, ".pdb")) ?? "no-pdb";
+        var pdbPath = Path.ChangeExtension(assemblyPath, ".pdb");
+        if (!File.Exists(pdbPath))
+            return peHash + ":no-pdb";
+        var pdbHash = HashFile(pdbPath);
+        if (pdbHash is null)
+            return null;
         return peHash + ":" + pdbHash;
+    }
+
+    /// <summary>
+    ///     Content hashes of every file under the directory the test runs from, by path relative to it, so binary-only
+    ///     inputs, native libraries and generated files are key inputs too. The shadow copy when one was prepared, else
+    ///     the test project's build output. Null when the directory cannot be listed or any file cannot be read, which
+    ///     declines caching. The plan's lock files and leftover temporary files are not inputs.
+    /// </summary>
+    private List<(string RelativePath, string Hash)>? OutputFileHashes(string? shadowDirectory, Project testProject)
+    {
+        var directory = shadowDirectory;
+        if (directory is null && testProject.OutputFilePath is { } output)
+            directory = Path.GetDirectoryName(output);
+        if (directory is null)
+            return null;
+        try
+        {
+            var hashes = new List<(string RelativePath, string Hash)>();
+            foreach (var file in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories))
+            {
+                var name = Path.GetFileName(file);
+                if (name.StartsWith(".in-use-", StringComparison.Ordinal) || name.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                var hash = HashFile(file);
+                if (hash is null)
+                    return null;
+                hashes.Add((Path.GetRelativePath(directory, file), hash));
+            }
+
+            return hashes;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    ///     Hash of the settings file the runsettings at <paramref name="runSettingsPath"/> names for MSTest, whose content
+    ///     changes results without changing the runsettings text. Empty when none is named; null when the named file cannot
+    ///     be read, which declines caching. A runsettings file that is not XML names nothing.
+    /// </summary>
+    private string? ReferencedSettingsHash(string? runSettingsPath)
+    {
+        if (runSettingsPath is null)
+            return "";
+        string? referenced;
+        try
+        {
+            referenced = XDocument.Load(runSettingsPath).Root?.Element("MSTest")?.Element("SettingsFile")?.Value.Trim();
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or System.Xml.XmlException)
+        {
+            return "";
+        }
+
+        if (string.IsNullOrEmpty(referenced))
+            return "";
+        var absolute = Path.IsPathRooted(referenced)
+            ? referenced
+            : Path.GetFullPath(Path.Combine(Path.GetDirectoryName(runSettingsPath)!, referenced));
+        return HashFile(absolute);
     }
 
     private string? HashFile(string path)

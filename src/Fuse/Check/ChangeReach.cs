@@ -39,8 +39,10 @@ namespace Fuse.Check;
 ///         </item>
 ///         <item>A removed type: files referencing it. An added type: files mentioning its name (it can clash with a same-named type).</item>
 ///         <item>
-///             A conversion operator: additionally every file mentioning its type's name, because a reference search does
-///             not return the places an implicit conversion is applied.
+///             A member whose call sites a reference search cannot return, because they do not name it: an operator, a
+///             conversion or an indexer reaches every file mentioning its type's name, and a method or property the
+///             language applies by pattern (iteration, deconstruction, awaiting, collection initializers) every file
+///             referencing its type.
 ///         </item>
 ///         <item>
 ///             A changed type header, delegate, global using or assembly attribute can break code that never names it,
@@ -197,12 +199,8 @@ internal sealed class ChangeReach
             return true;
         }
 
-        if ((version.After.Find(change.Key) ?? version.Before.Find(change.Key))?.Node is ConversionOperatorDeclarationSyntax)
-        {
-            // A reference search does not return the places an implicit conversion is applied, so every file that names the
-            // type is a candidate too.
-            routes.Add(new Route.ByName(change.Names[0], cause));
-        }
+        if (ImplicitUseTypeName(change, version) is { } implicitUseType)
+            routes.Add(new Route.ByName(implicitUseType, cause));
 
         if (change.Key is DeclarationKey.NamedType)
         {
@@ -221,6 +219,8 @@ internal sealed class ChangeReach
             routes.Add(new Route.BySymbol(member, IncludesImplementations: true, cause));
             if (member is IMethodSymbol { MethodKind: MethodKind.Constructor, ContainingType: { } constructed })
                 routes.Add(new Route.ByDerivedTypes(constructed, cause));
+            if (ImplicitPatternOwner(member) is { } owner)
+                routes.Add(new Route.BySymbol(owner, IncludesImplementations: false, cause));
             return true;
         }
 
@@ -237,6 +237,9 @@ internal sealed class ChangeReach
             return true;
         }
 
+        if (IsImplicitPatternDeclaration(version.After.Find(change.Key)?.Node))
+            routes.Add(new Route.BySymbol(containingType, IncludesImplementations: false, cause));
+
         var name = change.Names[0];
         for (var type = containingType; type is not null; type = type.BaseType)
             routes.AddRange(type.GetMembers(name).Where(m => !m.IsImplicitlyDeclared).Select(m => new Route.BySymbol(m, IncludesImplementations: false, cause)));
@@ -244,6 +247,42 @@ internal sealed class ChangeReach
             routes.Add(new Route.ByDerivedTypes(containingType, cause));
         return true;
     }
+
+    /// <summary>
+    ///     The containing type's name when <paramref name="change"/> is to an operator, a conversion or an indexer,
+    ///     whose call sites a reference search cannot return, because they do not name the member. Every file that
+    ///     names the type is a candidate too. Null for any other change.
+    /// </summary>
+    private static string? ImplicitUseTypeName(DeclarationChange change, FileVersion version)
+    {
+        var node = (version.After.Find(change.Key) ?? version.Before.Find(change.Key))?.Node;
+        return node is ConversionOperatorDeclarationSyntax or OperatorDeclarationSyntax or IndexerDeclarationSyntax
+            ? change.Names[0]
+            : null;
+    }
+
+    /// <summary>
+    ///     The type that owns <paramref name="member"/> when its call sites a reference search cannot return, because
+    ///     they do not name it: a method or property the language applies by pattern (iteration, deconstruction,
+    ///     awaiting, collection initializers). Every file referencing the type is a candidate too. Null for any other
+    ///     symbol.
+    /// </summary>
+    private static INamedTypeSymbol? ImplicitPatternOwner(ISymbol member) => member switch
+    {
+        IMethodSymbol method when method.ContainingType is { } methodOwner
+            && IsImplicitPatternMember(SimpleMemberName(method.AssociatedSymbol?.Name ?? method.Name)) => methodOwner,
+        IPropertySymbol property when property is { ContainingType: { } propOwner, IsIndexer: false }
+            && IsImplicitPatternMember(SimpleMemberName(property.Name)) => propOwner,
+        _ => null,
+    };
+
+    /// <summary>True when <paramref name="node"/> declares a method or property the language applies by pattern.</summary>
+    private static bool IsImplicitPatternDeclaration(SyntaxNode? node) => node switch
+    {
+        MethodDeclarationSyntax method => IsImplicitPatternMember(method.Identifier.Text),
+        PropertyDeclarationSyntax property => IsImplicitPatternMember(property.Identifier.Text),
+        _ => false,
+    };
 
     /// <summary>
     ///     Each file the routes reach, with the cause of every route that reaches it, in route order, so the causes do not
@@ -476,9 +515,13 @@ internal sealed class ChangeReach
         switch (symbol)
         {
             case IMethodSymbol method:
-                if (method.MethodKind is MethodKind.Constructor or MethodKind.StaticConstructor
-                    or MethodKind.UserDefinedOperator or MethodKind.Conversion
-                    or MethodKind.BuiltinOperator or MethodKind.Destructor)
+                if (method.MethodKind is MethodKind.Constructor or MethodKind.StaticConstructor or MethodKind.SharedConstructor
+                    or MethodKind.UserDefinedOperator or MethodKind.Conversion or MethodKind.BuiltinOperator or MethodKind.Destructor)
+                    return false;
+
+                // An extension method applies without naming it (a query expression, an awaited or iterated
+                // receiver), so no token narrows its search.
+                if (method.IsExtensionMethod)
                     return false;
 
                 if (method.AssociatedSymbol is IPropertySymbol { IsIndexer: true })
@@ -510,6 +553,13 @@ internal sealed class ChangeReach
                 baseTypeNames = evt.ContainingType is { } evtOwner ? [evtOwner.Name] : [];
                 return true;
 
+            case IFieldSymbol field:
+                // A field is always named where it is used.
+                if (string.IsNullOrEmpty(field.Name))
+                    return false;
+                identifiers = [field.Name];
+                return true;
+
             case INamedTypeSymbol type:
                 if (type.IsAnonymousType || type.IsTupleType || string.IsNullOrEmpty(type.Name))
                     return false;
@@ -520,10 +570,8 @@ internal sealed class ChangeReach
                 return true;
 
             default:
-                if (string.IsNullOrEmpty(symbol.Name))
-                    return false;
-                identifiers = [symbol.Name];
-                return true;
+                // A kind the narrowing cannot decide is searched without narrowing, so no call site is missed.
+                return false;
         }
     }
 

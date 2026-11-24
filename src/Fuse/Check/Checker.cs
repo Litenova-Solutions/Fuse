@@ -84,7 +84,7 @@ internal sealed class Checker
         _sessions = sessions;
         _attribution = new SessionAttribution(workspace, _introduced, sessions);
         _generated = new GeneratedSource(workspace.Root);
-        _spanChecker = new SpanChecker(workspace.Root);
+        _spanChecker = new SpanChecker(workspace.Root, () => workspace.ConfigurationGeneration, workspace.Log);
     }
 
     /// <param name="scope">The files to check, or every change since HEAD.</param>

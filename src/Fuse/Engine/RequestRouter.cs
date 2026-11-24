@@ -150,6 +150,7 @@ internal sealed class RequestRouter : IDisposable
         // answer and finds it kept, instead of hashing a record its own request had not written yet.
         NoteSession(request);
         string? key;
+        Generation? keyed;
         if (request is EngineRequest.CheckChanges && _initialization is not { IsCompleted: false })
         {
             // A check of every change answers for the files on disk, not for the tree the watcher last
@@ -163,13 +164,14 @@ internal sealed class RequestRouter : IDisposable
             try
             {
                 await _workspace.SyncAndPinAsync([], cancellationToken, confirmWithDisk: OperatingSystem.IsMacOS()).ConfigureAwait(false);
-                key = CoalesceKey(request);
+                (key, keyed) = CoalesceKey(request);
             }
             catch (FuseException)
             {
                 // The check below surfaces this refusal; no kept answer is served for a tree that could
                 // not be confirmed.
                 key = null;
+                keyed = null;
             }
         }
         else
@@ -177,7 +179,7 @@ internal sealed class RequestRouter : IDisposable
             // The key is taken once, from the request and the generation it pins: a check of every change
             // takes it after its sync above, from the generation that sync published, and no request reads
             // and hashes every changed file twice before its phase timer starts.
-            key = CoalesceKey(request);
+            (key, keyed) = CoalesceKey(request);
         }
 
         if (key is not null && _answers.TryGet(key, out var stored))
@@ -209,10 +211,12 @@ internal sealed class RequestRouter : IDisposable
 
         if (response is EngineResponse.Unanswered or EngineResponse.Busy)
             _requestLog.WriteUnanswered(request, response);
-        if (key is not null)
+        if (key is not null && keyed is not null)
         {
+            // Stored before the answer is shaped for the request, so the store and the published event see
+            // the answer's own tree even when the request asked for no stamp.
+            StoreAnswer(key, request, response, keyed);
             response = ForRequest(request, response);
-            StoreAnswer(key, request, response);
         }
 
         return response;
@@ -271,7 +275,7 @@ internal sealed class RequestRouter : IDisposable
             {
                 var session = SessionEdits.IsValid(changes.Session) ? changes.Session : null;
                 var options = new CheckOptions(IncludeRepairBrief: changes.Brief);
-                var answered = Stamped(ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.AllChanges(), session, analyzers, phases, options, cancellationToken, maxReported: changes.MaxErrors).ConfigureAwait(false)), changes.StampTree);
+                var answered = Stamped(ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.AllChanges(), session, analyzers, phases, options, cancellationToken, maxReported: changes.MaxErrors).ConfigureAwait(false)), stamp: true);
                 await PublishGuardViolationsAsync(cancellationToken).ConfigureAwait(false);
                 return answered;
             }
@@ -300,7 +304,7 @@ internal sealed class RequestRouter : IDisposable
                 held = false;
                 lease.Dispose();
                 ScheduleBackground();
-                return AnswerPlan(await _planner.PrepareAsync(pendingFailed, phases, cancellationToken, runWarm: !failed.Clean).ConfigureAwait(false), failed.NoCache || failed.Clean);
+                return AnswerPlan(await _planner.PrepareAsync(pendingFailed, phases, cancellationToken).ConfigureAwait(false), failed.NoCache || failed.Clean);
             }
 
             var (cleanCache, noCache) = request switch
@@ -326,7 +330,7 @@ internal sealed class RequestRouter : IDisposable
             held = false;
             lease.Dispose();
             ScheduleBackground();
-            return AnswerPlan(await _planner.PrepareAsync(pending, phases, cancellationToken, runWarm: !cleanCache).ConfigureAwait(false), noCache || cleanCache);
+            return AnswerPlan(await _planner.PrepareAsync(pending, phases, cancellationToken).ConfigureAwait(false), noCache || cleanCache);
         }
         catch (FuseException e)
         {
@@ -482,6 +486,33 @@ internal sealed class RequestRouter : IDisposable
     }
 
     /// <summary>
+    ///     Releases the secondary worktree <paramref name="named"/> names, when it names one: removes and disposes its
+    ///     child router, which closes its file watcher and its git reader, and unregisters its overlay. A later request
+    ///     for it starts a fresh child router again, as on first use. Returns true when a secondary worktree was
+    ///     released and the engine keeps serving; false when the shutdown stops the engine: nothing named, the primary
+    ///     named, or a path outside this repository.
+    /// </summary>
+    /// <param name="named">The worktree root the shutdown names, or null when the client named none.</param>
+    public bool TryReleaseWorktree(string? named)
+    {
+        if (string.IsNullOrWhiteSpace(named) || string.Equals(named, _root.Path, StringComparison.Ordinal))
+            return false;
+        var other = RepoRoot.Find(named);
+        if (other is null || !string.Equals(other.PipeName, _root.PipeName, StringComparison.Ordinal))
+            return false;
+        if (string.Equals(other.StateDirectory, _root.StateDirectory, StringComparison.Ordinal))
+            return false;
+        RequestRouter? child;
+        lock (_worktreeLock)
+            _worktreeRouters.Remove(other.StateDirectory, out child);
+        // The hypervisor workspace may hold an overlay with no child router above it, so it is unregistered too.
+        _workspace.UnregisterWorktree(other);
+        child?.Dispose();
+        _log.Write(child is null ? $"released worktree {other.Path} (no router served it)" : $"released worktree {other.Path}");
+        return true;
+    }
+
+    /// <summary>
     ///     Credits the session a request carries with the files it names and marks a stopping session stopped.
     ///     Recorded before anything can refuse the check, so a check answered "still loading" still credits the
     ///     session with its files, and before a kept answer is served, so its record is the one that key held.
@@ -495,9 +526,10 @@ internal sealed class RequestRouter : IDisposable
     }
 
     /// <summary>
-    ///     A kept or shared answer as <paramref name="request"/> asked for it: stamped with the tree it ends on
-    ///     when the request asked for a stamp, and without one when it did not, whatever the check that computed
-    ///     it asked for. The errors a stamp names are the same either way.
+    ///     A kept or shared answer as <paramref name="request"/> asked for it: with the tree the check stamped it
+    ///     with when the request asked for a stamp, and without one when it did not. A kept answer carries no tree,
+    ///     so one that asked for a stamp is stamped from the newest generation, whose content matches it by its key.
+    ///     The errors a stamp names are the same either way.
     /// </summary>
     private EngineResponse ForRequest(EngineRequest request, EngineResponse response)
     {
@@ -511,26 +543,26 @@ internal sealed class RequestRouter : IDisposable
             _ => false,
         };
         if (stamp)
-            return Stamped(response, stamp: true);
+            return answered.Report.Tree is null ? Stamped(response, stamp: true) : response;
         return answered.Report.Tree is null
             ? response
             : new EngineResponse.CheckAnswered(answered.Report with { Tree = null, TreeFiles = 0 });
     }
 
     /// <summary>Keeps a check answer by its content key, as the session file of the session it was answered to, and publishes the session's answer when it changed.</summary>
-    private void StoreAnswer(string key, EngineRequest request, EngineResponse response)
+    /// <param name="keyed">The generation the answer's key was taken from: the check answers from it or from a newer one it synced itself, so the kept and published generation never runs ahead of the errors.</param>
+    private void StoreAnswer(string key, EngineRequest request, EngineResponse response, Generation keyed)
     {
         if (response is not EngineResponse.CheckAnswered answered)
             return;
-        var generation = _workspace.PinGeneration();
-        var tree = answered.Report.Tree ?? TreeStamp.Of(ChangedPairs(generation.Changed));
+        var tree = answered.Report.Tree ?? TreeStamp.Of(ChangedPairs(keyed.Changed));
         var session = RequestLog.SessionOf(request);
         CheckReport? previous = null;
         if (session is not null && _answers.TryGetSession(session, out var kept))
             previous = kept;
-        _answers.Keep(key, session, generation.Number, tree, answered.Report);
+        _answers.Keep(key, session, keyed.Number, tree, answered.Report);
         if (session is not null && _watchHub is not null && AnswerChanged(previous, answered.Report))
-            _watchHub.Publish(new WatchEvent("check", session, _root.Path, generation.Number, tree, answered.Report.ErrorCount, answered.Report.Errors));
+            _watchHub.Publish(new WatchEvent("check", session, _root.Path, keyed.Number, tree, answered.Report.ErrorCount, answered.Report.Errors));
     }
 
     /// <summary>True when <paramref name="report"/> answers differently than <paramref name="previous"/>: a first answer, or different errors.</summary>
@@ -666,7 +698,7 @@ internal sealed class RequestRouter : IDisposable
         new EngineRequest.CheckFiles([.. session.Files.Select(f => f.Absolute)], WaitForLoad: true) { Session = session.Session, StampTree = true };
 
     /// <summary>The content key a background re-check of <paramref name="session"/> coalesces and is stored by.</summary>
-    private string? BackgroundKey(BackgroundCheck.SessionFiles session) => CoalesceKey(BackgroundRequest(session));
+    private string? BackgroundKey(BackgroundCheck.SessionFiles session) => CoalesceKey(BackgroundRequest(session)).Key;
 
     /// <summary>
     ///     The live sessions of the newest generation and the files each wrote in it, from its writers without a
@@ -699,8 +731,8 @@ internal sealed class RequestRouter : IDisposable
     private async Task RunBackgroundCheckAsync(BackgroundCheck.SessionFiles session, CancellationToken cancellationToken)
     {
         var request = BackgroundRequest(session);
-        var key = CoalesceKey(request);
-        if (key is null || _answers.TryGet(key, out _))
+        var (key, keyed) = CoalesceKey(request);
+        if (key is null || keyed is null || _answers.TryGet(key, out _))
             return;
         // The scheduler's background token ties the run to its generation too: a newer one cancels both.
         using var generation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _scheduler.BackgroundToken);
@@ -725,7 +757,7 @@ internal sealed class RequestRouter : IDisposable
 
         if (response is EngineResponse.Unanswered or EngineResponse.Busy)
             _requestLog.WriteUnanswered(request, response);
-        StoreAnswer(key, request, ForRequest(request, response));
+        StoreAnswer(key, request, response, keyed);
     }
 
     /// <summary>Records that <paramref name="session"/> wrote <paramref name="files"/>. A name that is not a valid path is left to the check to refuse.</summary>
@@ -788,11 +820,11 @@ internal sealed class RequestRouter : IDisposable
     }
 
     /// <summary>
-    ///     The content key a check coalesces by, or null when it does not coalesce: its scope, session, analyzer
-    ///     mode and the generation content hash the kept answer keys by. A tree past the kept-answer bound, or a
-    ///     changed file that cannot be read, coalesces nothing.
+    ///     The content key a check coalesces by with the generation it was taken from, or nulls when it does not
+    ///     coalesce: its scope, session, analyzer mode and the generation content hash the kept answer keys by. A
+    ///     tree past the kept-answer bound, or a changed file that cannot be read, coalesces nothing.
     /// </summary>
-    private string? CoalesceKey(EngineRequest request)
+    private (string? Key, Generation? Pinned) CoalesceKey(EngineRequest request)
     {
         string scopeKey;
         string? session;
@@ -819,7 +851,7 @@ internal sealed class RequestRouter : IDisposable
                 maxErrors = paths.MaxErrors;
                 break;
             default:
-                return null;
+                return (null, null);
         }
 
         Generation generation;
@@ -829,11 +861,11 @@ internal sealed class RequestRouter : IDisposable
         }
         catch (Exception e) when (e is InvalidOperationException or ObjectDisposedException)
         {
-            return null;
+            return (null, null);
         }
 
         if (generation.Changed.Count > KeptCheck.MaxChangedFiles)
-            return null;
+            return (null, null);
         var kept = KeptCheck.KeyFor(
             scopeKey,
             maxErrors,
@@ -846,7 +878,7 @@ internal sealed class RequestRouter : IDisposable
             generation.Changed.Select(path => (path.Relative, path.Absolute)));
         // The stamp a request asks for is no part of the key: it names the same errors, and each waiter of a
         // shared check is stamped, or not, for itself when it is answered.
-        return kept is null ? null : $"{scopeKey}|{session ?? ""}|{compilationWide}|{kept}";
+        return kept is null ? (null, null) : ($"{scopeKey}|{session ?? ""}|{compilationWide}|{kept}", generation);
     }
 
     /// <summary>True while the projects are evaluated and first loaded, or while a background load runs, here or in another worktree this router serves.</summary>
@@ -958,7 +990,7 @@ internal sealed class RequestRouter : IDisposable
 
         var session = SessionEdits.IsValid(check.Session) ? check.Session : null;
         var options = new CheckOptions(check.InteractiveFast, check.Brief);
-        var answered = Stamped(ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.Files(paths), session, analyzers, phases, options, cancellationToken, maxReported: check.MaxErrors).ConfigureAwait(false)), check.StampTree);
+        var answered = Stamped(ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.Files(paths), session, analyzers, phases, options, cancellationToken, maxReported: check.MaxErrors).ConfigureAwait(false)), stamp: true);
         await PublishGuardViolationsAsync(cancellationToken).ConfigureAwait(false);
         return answered;
     }
@@ -1145,8 +1177,10 @@ internal sealed class RequestRouter : IDisposable
     }
 
     /// <summary>
-    ///     The check answer with the tree stamp the command line prints, from the changed set the check just synced, so
-    ///     the client does not ask git again. Unchanged when the request did not ask for it or the check was not answered.
+    ///     The check answer with its own tree stamp, from the changed set the check just synced, so the client does
+    ///     not ask git again and the store and the published event name the tree the errors were found on. Every
+    ///     fresh answer is stamped; the answer is shaped for the request afterwards, which strips the stamp when the
+    ///     request asked for none. Unchanged when stamp is false or the check was not answered.
     /// </summary>
     private EngineResponse Stamped(EngineResponse response, bool stamp)
     {
@@ -1204,6 +1238,10 @@ internal sealed class RequestRouter : IDisposable
             _guards.Apply(guard.Guard);
             return new EngineResponse.Acknowledged();
         }
+        catch (FuseException e)
+        {
+            return ResponseMapper.Unanswered(e);
+        }
         catch (Exception e) when (e is not OperationCanceledException)
         {
             _log.Write($"SessionGuard failed: {e}");
@@ -1246,20 +1284,38 @@ internal sealed class RequestRouter : IDisposable
         }
 
         var options = new CheckOptions(IncludeRepairBrief: check.Brief);
-        var answered = Stamped(ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.NamedPaths(check.Paths), SessionEdits.IsValid(check.Session) ? check.Session : null, analyzers, phases, options, cancellationToken, maxReported: check.MaxErrors).ConfigureAwait(false)), check.StampTree);
+        var answered = Stamped(ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.NamedPaths(check.Paths), SessionEdits.IsValid(check.Session) ? check.Session : null, analyzers, phases, options, cancellationToken, maxReported: check.MaxErrors).ConfigureAwait(false)), stamp: true);
         await PublishGuardViolationsAsync(cancellationToken).ConfigureAwait(false);
         return answered;
     }
 
     /// <summary>
-    ///     Waits for the background load and warm to stop, after the shutdown token has been cancelled, so the workspace
-    ///     is never disposed under a project that is still loading or warming.
+    ///     Waits for the background load, warm and re-check to stop, after the shutdown token has been cancelled, so a
+    ///     workspace is never disposed under work that is still running. The worktree child routers wait first, bounded,
+    ///     so their workspaces are never disposed under a project that is still loading either.
     /// </summary>
-    public Task WaitForPreloadAsync() => Task.WhenAll(_preloader.WaitAsync(), _warmer.WaitAsync(), _background.WaitAsync());
+    public async Task WaitForPreloadAsync()
+    {
+        List<RequestRouter> children;
+        lock (_worktreeLock)
+            children = [.. _worktreeRouters.Values];
+        if (children.Count > 0)
+        {
+            try
+            {
+                await Task.WhenAll(children.Select(child => child.WaitForPreloadAsync())).WaitAsync(TimeSpan.FromSeconds(30)).ConfigureAwait(false);
+            }
+            catch (Exception e) when (e is OperationCanceledException or TimeoutException)
+            {
+                _log.Write("shutdown: a worktree preload is still going after 30 s; disposing anyway");
+            }
+        }
+
+        await Task.WhenAll(_preloader.WaitAsync(), _warmer.WaitAsync(), _background.WaitAsync()).ConfigureAwait(false);
+    }
 
     public void Dispose()
     {
-        _planner.Dispose();
         _background.Dispose();
         if (_ownsScheduler)
             _scheduler.Dispose();

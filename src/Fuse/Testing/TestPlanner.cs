@@ -22,7 +22,7 @@ namespace Fuse.Testing;
 ///     emits the changed assemblies into the shadow folders, against the generation <see cref="SelectAsync"/>
 ///     pinned, with an emitter of its own, so plans for different sessions prepare at once.
 /// </remarks>
-internal sealed class TestPlanner : IDisposable
+internal sealed class TestPlanner
 {
     /// <summary>How long one container runtime probe answers plans; starting the runtime is noticed at the next plan past it.</summary>
     private static readonly TimeSpan RuntimeProbeLifetime = TimeSpan.FromMinutes(5);
@@ -50,7 +50,6 @@ internal sealed class TestPlanner : IDisposable
         _dynamicMap = new DynamicTestMap(sharedState);
         _selector = new TestSelector(workspace, TimeProvider.System, _dynamicMap);
         SliceCache = new SliceTestCache(sharedState);
-        WarmPool = new WarmTestPool(workspace.Root, SliceCache, _dynamicMap, workspace.Log);
         Emitter = new ShadowEmitter(workspace, _shadow);
         _time = time ?? TimeProvider.System;
         _containerProbe = containerProbe ?? ContainerRuntime.IsRunning;
@@ -68,12 +67,6 @@ internal sealed class TestPlanner : IDisposable
 
     /// <summary>Persistent dynamic coverage mapping used for selective test resolution.</summary>
     internal DynamicTestMap DynamicMap => _dynamicMap;
-
-    /// <summary>Pool of warm test worker processes bound to this planner's caches and workspace.</summary>
-    internal WarmTestPool WarmPool { get; }
-
-    /// <summary>Stops pooled warm test workers when the engine tears down.</summary>
-    public void Dispose() => WarmPool.Dispose();
 
     /// <summary>An emitter for one plan, bound to the generation that plan pinned and sharing this planner's emitter state.</summary>
     private ShadowEmitter EmitterFor(Generation generation) => new(_workspace, generation, _shadow);
@@ -295,12 +288,7 @@ internal sealed class TestPlanner : IDisposable
     /// <param name="pending">The plan, with its generation.</param>
     /// <param name="phases">Collects the <see cref="Phase.Mirror"/> and <see cref="Phase.Emit"/> phases.</param>
     /// <param name="cancellationToken">Cancels emitting.</param>
-    /// <param name="runWarm">
-    ///     True to run each warm-eligible shadow run that missed the slice cache in the warm pool while preparing,
-    ///     attaching its verdict as the run's cached result; false keeps every shadow run for the client. The router
-    ///     passes false for a clean plan, which bypasses the pool.
-    /// </param>
-    public async Task<TestPlanResult> PrepareAsync(PendingPlan pending, PhaseTimes phases, CancellationToken cancellationToken, bool runWarm = false)
+    public async Task<TestPlanResult> PrepareAsync(PendingPlan pending, PhaseTimes phases, CancellationToken cancellationToken)
     {
         if (pending.Answered is not null)
             return pending.Answered;
@@ -312,7 +300,7 @@ internal sealed class TestPlanner : IDisposable
             var emitting = new Stopwatch();
             var runs = new List<PlannedRun>();
             foreach (var (node, filter, filterArguments, variants) in pending.Projects)
-                runs.AddRange(await RunsOfAsync(emitter, node, filter, filterArguments, variants, pending, emitting, preparing, runWarm, cancellationToken).ConfigureAwait(false));
+                runs.AddRange(await RunsOfAsync(emitter, node, filter, filterArguments, variants, pending, emitting, preparing, cancellationToken).ConfigureAwait(false));
 
             // Everything in the preparation but the emit is the mirror: judging which assemblies are stale, and the copy.
             phases.Add(Phase.Mirror, preparing.Elapsed.TotalMilliseconds - emitting.Elapsed.TotalMilliseconds);
@@ -358,7 +346,6 @@ internal sealed class TestPlanner : IDisposable
         PendingPlan pending,
         Stopwatch emitting,
         Stopwatch timer,
-        bool runWarm,
         CancellationToken cancellationToken)
     {
         // A configuration or framework was named, or a platform project targets .NET Framework without runtimeconfig:
@@ -374,7 +361,7 @@ internal sealed class TestPlanner : IDisposable
             return [new PlannedRun(node.Path, node.Name, new RunMode.Build(), filter, node.UsesTestingPlatform, RunSettingsOf(node), node.UsesTestingPlatform ? filterArguments : [], node.UsesTestingPlatform ? [.. node.TargetPaths] : [])];
         }
 
-        var prepared = new List<(Project Variant, RunMode.Shadow Shadow, string? Filter, string[] FilterArguments, string? SliceKey, SliceCacheResult? CachedResult, bool WarmEligible)>();
+        var prepared = new List<(Project Variant, RunMode.Shadow Shadow, string? Filter, string[] FilterArguments, string? SliceKey, SliceCacheResult? CachedResult)>();
         var runSettings = RunSettingsOf(node);
         foreach (var variant in variants)
         {
@@ -408,10 +395,7 @@ internal sealed class TestPlanner : IDisposable
             var shadowDir = Path.GetDirectoryName(shadow.Assembly);
             var sliceKey = SliceCache.ComputeKey(variant, pending.Graph, _workspace.Root, result.Closure, result.Emitted, shadowDir, runSettings, filter, variantFilterArguments);
             var cached = pending.NoCache ? null : SliceCache.TryGet(sliceKey, noCache: false);
-            var warmEligible = !node.RequiresContainerRuntime && !IsLegacyNetFramework(variant) && WarmTestPool.IsEligible(node.Framework, TargetFrameworkOf(variant));
-            if (cached is null && runWarm && warmEligible && sliceKey is not null)
-                cached = await TryRunWarmAsync(node, variant, shadow.Assembly, shadowDir, sliceKey, result.Closure, result.Emitted, pending, cancellationToken).ConfigureAwait(false);
-            prepared.Add((variant, shadow, filter, variantFilterArguments, sliceKey, cached, warmEligible));
+            prepared.Add((variant, shadow, filter, variantFilterArguments, sliceKey, cached));
         }
 
         var tag = node.UsesTestingPlatform ? " [testing platform]" : "";
@@ -433,7 +417,6 @@ internal sealed class TestPlanner : IDisposable
             {
                 SliceKey = p.SliceKey,
                 CachedResult = p.CachedResult,
-                WarmEligible = p.WarmEligible,
             }),
         ];
     }
@@ -454,145 +437,6 @@ internal sealed class TestPlanner : IDisposable
         && !tfm.Contains('.')
         && char.IsDigit(tfm[3])
         && tfm[3] <= '4';
-
-    /// <summary>The target framework of <paramref name="variant"/>: its output folder's name, or the framework its project name carries.</summary>
-    private static string TargetFrameworkOf(Project variant)
-    {
-        if (variant.OutputFilePath is { } output)
-        {
-            var folder = Path.GetFileName(Path.GetDirectoryName(output));
-            if (!string.IsNullOrEmpty(folder))
-                return folder;
-        }
-
-        var open = variant.Name.LastIndexOf('(');
-        var close = variant.Name.LastIndexOf(')');
-        return open >= 0 && close > open ? variant.Name[(open + 1)..close] : "";
-    }
-
-    /// <summary>
-    ///     Runs one prepared shadow run in the warm pool and answers its verdict as a slice result, or null when the
-    ///     pool declines it and the client runs the shadow copy instead. A verdict the pool ran is already stored
-    ///     under <paramref name="sliceKey"/>; attaching it here only marks this plan's run as served from it.
-    /// </summary>
-    private async Task<SliceCacheResult?> TryRunWarmAsync(
-        ProjectNode node,
-        Project variant,
-        string shadowAssembly,
-        string? shadowDir,
-        string sliceKey,
-        IReadOnlyList<Project> closure,
-        IReadOnlyDictionary<ProjectId, (EmittedImage Image, string PeHash, string PdbHash)> emitted,
-        PendingPlan pending,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            var assemblies = WarmAssemblies(variant, closure, emitted, shadowDir);
-            var testAssembly = SimpleNameOf(variant);
-            if (assemblies is null || testAssembly is null || shadowDir is null)
-                return null;
-            var targetFramework = TargetFrameworkOf(variant);
-            var patterns = pending.Selections is not null
-                && pending.Selections.TryGetValue(node.Path, out var selection)
-                && selection is TestSelection.Methods methods
-                ? (IReadOnlyList<string>)[.. methods.Patterns]
-                : [];
-            var request = new WarmRunRequest(
-                node.Path.Absolute,
-                node.Name,
-                targetFramework,
-                shadowDir,
-                shadowDir,
-                shadowAssembly,
-                testAssembly,
-                assemblies,
-                patterns)
-            {
-                SliceKey = sliceKey,
-                NoCache = pending.NoCache,
-            };
-            var result = await WarmPool.RunAsync(request, cancellationToken).ConfigureAwait(false);
-            if (!result.ExecutedInWarmWorker)
-            {
-                _workspace.Log($"test plan: {node.Name} warm run fell back ({result.FallbackReason}); runs from the shadow copy");
-                return null;
-            }
-
-            return new SliceCacheResult(
-                sliceKey,
-                node.Path.Relative,
-                node.Name,
-                targetFramework,
-                result.Passed,
-                result.Failed,
-                result.Skipped,
-                result.DurationMs,
-                DateTime.UtcNow,
-                result.Failures);
-        }
-        catch (Exception e) when (e is not OperationCanceledException)
-        {
-            _workspace.Log($"test plan: {node.Name} warm run failed ({e.Message}); runs from the shadow copy");
-            return null;
-        }
-    }
-
-    /// <summary>
-    ///     The repository assemblies of <paramref name="closure"/> as warm images: the emitted bytes where the plan
-    ///     emitted them, else the bytes the shadow folder holds. Null when any is missing or two share a simple name,
-    ///     so the pool never loads a partial or ambiguous set.
-    /// </summary>
-    private static List<WarmAssemblyImage>? WarmAssemblies(
-        Project testProject,
-        IReadOnlyList<Project> closure,
-        IReadOnlyDictionary<ProjectId, (EmittedImage Image, string PeHash, string PdbHash)> emitted,
-        string? shadowDir)
-    {
-        if (shadowDir is null)
-            return null;
-        var images = new List<WarmAssemblyImage>(closure.Count);
-        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var project in closure.Prepend(testProject).DistinctBy(p => p.Id))
-        {
-            var simpleName = SimpleNameOf(project);
-            if (simpleName is null || !names.Add(simpleName))
-                return null;
-            if (emitted.TryGetValue(project.Id, out var image))
-            {
-                images.Add(new WarmAssemblyImage(simpleName, image.Image.Pe, image.Image.Pdb));
-                continue;
-            }
-
-            if (project.OutputFilePath is null)
-                return null;
-            var assemblyPath = Path.Combine(shadowDir, Path.GetFileName(project.OutputFilePath));
-            var pdbPath = Path.ChangeExtension(assemblyPath, ".pdb");
-            try
-            {
-                if (!File.Exists(assemblyPath))
-                    return null;
-                var pdb = File.Exists(pdbPath) ? File.ReadAllBytes(pdbPath) : [];
-                images.Add(new WarmAssemblyImage(simpleName, File.ReadAllBytes(assemblyPath), pdb));
-            }
-            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-            {
-                return null;
-            }
-        }
-
-        return images;
-    }
-
-    /// <summary>The simple assembly name of <paramref name="project"/>, or null when none is known.</summary>
-    private static string? SimpleNameOf(Project project)
-    {
-        if (!string.IsNullOrWhiteSpace(project.AssemblyName))
-            return project.AssemblyName;
-        return project.OutputFilePath is { } output && Path.GetFileNameWithoutExtension(output) is { Length: > 0 } stem
-            ? stem
-            : null;
-    }
 
     /// <summary>
     ///     Ingests the test maps the client's platform runs left in the incoming folder into the dynamic map, so the

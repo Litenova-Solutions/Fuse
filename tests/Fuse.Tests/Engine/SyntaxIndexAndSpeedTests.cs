@@ -192,6 +192,57 @@ public class SyntaxIndexAndSpeedTests
     }
 
     [Fact]
+    public async Task ChangeReach_finds_conversion_and_iteration_uses_that_do_not_name_the_member()
+    {
+        var repo = FixtureRepo.CreateStandard();
+        repo.Write("Lib/Sequence.cs", """
+            namespace Lib;
+
+            public class Meter
+            {
+                public static implicit operator int(Meter m) => 1;
+            }
+
+            public class Items
+            {
+                public Enumerator GetEnumerator() => new();
+                public struct Enumerator
+                {
+                    public int Current => 0;
+                    public bool MoveNext() => false;
+                }
+            }
+            """);
+        repo.Write("App/UseSequence.cs", """
+            namespace App;
+
+            public static class UseSequence
+            {
+                public static int Run()
+                {
+                    int n = new Lib.Meter();
+                    var total = n;
+                    foreach (var item in new Lib.Items())
+                        total += item;
+                    return total;
+                }
+            }
+            """);
+        repo.Commit("add implicit conversion and pattern iteration");
+
+        await using var engine = await InProcessEngine.StartAsync(repo);
+
+        repo.Replace("Lib/Sequence.cs", "public static implicit operator int(Meter m) => 1;", "public static implicit operator string(Meter m) => \"1\";");
+        var conversion = await engine.CheckAsync("Lib/Sequence.cs");
+        Assert.Contains(conversion.Errors, e => e.Error.Path == "App/UseSequence.cs" && e.Error.Id == "CS0029");
+
+        repo.Replace("Lib/Sequence.cs", "public static implicit operator string(Meter m) => \"1\";", "public static implicit operator int(Meter m) => 1;");
+        repo.Replace("Lib/Sequence.cs", "public Enumerator GetEnumerator()", "public int GetEnumerator()");
+        var iteration = await engine.CheckAsync("Lib/Sequence.cs");
+        Assert.Contains(iteration.Errors, e => e.Error.Path == "App/UseSequence.cs" && e.Error.Id == "CS0202");
+    }
+
+    [Fact]
     public void SpanChecker_detects_body_only_edits_and_falls_back_outside_bodies()
     {
         var baseSource = """

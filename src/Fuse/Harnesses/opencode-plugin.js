@@ -1,5 +1,5 @@
-// Written by `fuse init`; rerun it to update. Forwards OpenCode tool events to `fuse hook opencode` or directly
-// over the warm Fuse engine pipe for sub-millisecond post-edit and clean stop checks. Carries both plugin shapes:
+// Written by `fuse init`; rerun it to update. Forwards OpenCode tool events to `fuse hook opencode`, or post-edit
+// checks directly over the warm Fuse engine pipe for a sub-millisecond answer. Carries both plugin shapes:
 // OpenCode 2 calls setup(), OpenCode 1 calls server().
 import { spawn } from "node:child_process";
 import net from "node:net";
@@ -9,6 +9,14 @@ import path from "node:path";
 const EDIT_TOOLS = new Set(["edit", "write", "multiedit", "patch", "apply_patch"]);
 const SHELL_TOOLS = new Set(["shell", "bash"]);
 const PATCH_HEADER_RE = /^\*\*\* (?:Add File|Update File|Delete File|Move to): (.+)$/gm;
+
+// The same rule as PathRules.IsSource: the files the compiler reads as sources.
+const SOURCE_EXTENSIONS = [".cs", ".razor", ".cshtml"];
+
+function isSourceFile(file) {
+  const lower = file.toLowerCase();
+  return SOURCE_EXTENSIONS.some((ext) => lower.endsWith(ext));
+}
 
 const pipeCache = new Map();
 let reqCounter = 0;
@@ -173,19 +181,21 @@ const rewrite = async (cwd, sessionID, input) => {
 // working tree. A subagent runs in a child session with an id of its own.
 const check = async (cwd, sessionID, input) => {
   const edited = extractEditedFiles(cwd, input);
-  const csFiles = edited.filter((f) => f.toLowerCase().endsWith(".cs"));
-  if (edited.length > 0 && csFiles.length === 0) return null;
+  const sourceFiles = edited.filter(isSourceFile);
+  if (edited.length > 0 && sourceFiles.length === 0) return null;
 
-  const session = typeof sessionID === "string" && sessionID ? `opencode:${sessionID}` : undefined;
+  const payload = { cwd, tool_input: input };
+  if (typeof sessionID === "string" && sessionID) payload.session_id = sessionID;
+  const session = typeof payload.session_id === "string" ? `opencode:${payload.session_id}` : undefined;
   const cached = pipeCache.get(cwd)?.info;
-  if (cached && csFiles.length > 0) {
+  if (cached && sourceFiles.length > 0) {
     const req = {
       request: "CheckFiles",
       buildId: cached.buildId,
       requestId: `oc-${process.pid}-${++reqCounter}`,
       waitMs: 50000,
       worktreeRoot: cached.rootPath,
-      files: csFiles,
+      files: sourceFiles,
       waitForLoad: false,
       leaveOutCompilationWide: true,
       interactiveFast: true,
@@ -193,17 +203,19 @@ const check = async (cwd, sessionID, input) => {
     };
     const resp = await sendPipeRequest(cached.pipePath, req, 50000);
     if (resp?.status === "CheckAnswered" && resp.report) {
-      if (resp.report.errorCount === 0) return null;
       const text = formatCheckReport(resp.report);
-      if (text) return text;
+      if (resp.report.errorCount === 0 || text) {
+        // The hook records the session's roots and written files before it checks; the pipe answer carries
+        // neither, so with a session the hook still runs for its records while the pipe answer is returned.
+        if (session) void runHook("post-edit", payload, 60000);
+        return text;
+      }
     }
     if (resp?.status === "Restart" || resp?.status === "Unanswered" || resp === null) {
       pipeCache.delete(cwd);
     }
   }
 
-  const payload = { cwd, tool_input: input };
-  if (typeof sessionID === "string" && sessionID) payload.session_id = sessionID;
   const answer = await runHook("post-edit", payload, 60000);
   void refreshPipeInfo(cwd);
   return typeof answer?.additionalContext === "string" ? answer.additionalContext : null;
@@ -219,25 +231,8 @@ function stopGuard(cwd, prompt) {
     checking.add(sessionID);
     try {
       const active = continued.delete(sessionID);
-      if (!active) {
-        const cached = pipeCache.get(cwd)?.info;
-        if (cached) {
-          const req = {
-            request: "CheckChanges",
-            buildId: cached.buildId,
-            requestId: `oc-${process.pid}-${++reqCounter}`,
-            waitMs: 300000,
-            worktreeRoot: cached.rootPath,
-            waitForLoad: true,
-            session: `opencode:${sessionID}`,
-            isStopping: true,
-          };
-          const resp = await sendPipeRequest(cached.pipePath, req, 300000);
-          if (resp?.status === "CheckAnswered" && resp.report && resp.report.errorCount === 0) return;
-          if (resp?.status === "Restart" || resp === null) pipeCache.delete(cwd);
-        }
-      }
-
+      // The stop hook checks every repository the session touched and applies the blocked-stop repeat detector;
+      // the pipe answers one worktree only, so a clean pipe answer must not end the stop.
       const answer = await runHook("stop", { cwd, session_id: sessionID, stop_hook_active: active }, 300000);
       void refreshPipeInfo(cwd);
       if (answer?.decision !== "block" || typeof answer.reason !== "string") return;

@@ -10,7 +10,7 @@ namespace Fuse.Testing;
 
 /// <summary>
 ///     Persists and queries dynamic per-method, per-type and per-file test coverage mappings under
-///     <c>SharedStateDirectory/test-maps/</c>. Populated both from <see cref="WarmTestWorker"/> runs and from
+///     <c>SharedStateDirectory/test-maps/</c>. Populated from recorded coverage and from
 ///     ingested .NET 11 Microsoft.Testing.Platform <c>--collect-test-map</c> output files.
 /// </summary>
 internal sealed partial class DynamicTestMap
@@ -50,7 +50,7 @@ internal sealed partial class DynamicTestMap
     }
 
     /// <summary>
-    ///     Records coverage hits observed by <see cref="WarmTestWorker"/> for one test project, replacing previous hits
+    ///     Records coverage hits observed for one test project, replacing previous hits
     ///     for the tests present in <paramref name="hitsByTestId"/> while preserving hits for other tests in the project.
     /// </summary>
     public void RecordRunCoverage(string testProjectPath, RepoRoot root, IReadOnlyDictionary<string, CoverageHits> hitsByTestId)

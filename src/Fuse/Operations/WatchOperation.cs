@@ -35,7 +35,8 @@ internal static class WatchOperation
         if (!all && SessionOperation.SessionFromValue(session) is null)
             return new OperationResult(Outcome.Unanswered, Usage);
 
-        // Try live server-push NDJSON stream first whenever an engine pipe is up.
+        // The push stream subscribes again after a drop and ends only on cancellation (true) or when the
+        // engine does not support push (false), which falls back to polling below.
         if ((all || json || EngineClient.PipeExists(root.PipeName)) && EngineClient.PipeExists(root.PipeName))
         {
             var streamed = await EngineClient.WatchStreamAsync(

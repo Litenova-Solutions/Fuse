@@ -17,6 +17,10 @@ internal static class JudgeOperation
     internal const string Usage =
         "usage: fuse judge (--combine | --race) <patch-or-worktree...> [--json]";
 
+    private const int MaxCandidates = 16;
+    private const int MaxDiffBytes = 1024 * 1024;
+    private const int MaxTotalDiffBytes = 8 * 1024 * 1024;
+
     internal sealed record JudgeArguments(
         JudgeRequest.JudgeMode Mode,
         IReadOnlyList<string> Targets,
@@ -91,12 +95,22 @@ internal static class JudgeOperation
         if (parsed is null)
             return new OperationResult(Outcome.Unanswered, refusal!);
 
+        if (parsed.Targets.Count > MaxCandidates)
+            return new OperationResult(Outcome.Unanswered, $"fuse: the {parsed.Targets.Count} candidates named are more than the {MaxCandidates} a judge call scores; name fewer");
+
         var candidates = new List<JudgeRequest.Candidate>(parsed.Targets.Count);
+        long totalBytes = 0;
         foreach (var target in parsed.Targets)
         {
             var (candidate, loadError) = await LoadCandidateAsync(target, workingDirectory, cancellationToken).ConfigureAwait(false);
             if (loadError is not null)
                 return new OperationResult(Outcome.Unanswered, loadError);
+            var bytes = Encoding.UTF8.GetByteCount(candidate!.Diff);
+            if (bytes > MaxDiffBytes)
+                return new OperationResult(Outcome.Unanswered, $"fuse: the diff of '{candidate.Name}' holds {bytes} bytes, more than the 1 MB a candidate holds; shorten the diff");
+            totalBytes += bytes;
+            if (totalBytes > MaxTotalDiffBytes)
+                return new OperationResult(Outcome.Unanswered, $"fuse: the candidates hold {totalBytes} bytes of diff, more than the 8 MB a judge call scores; name fewer or shorten the diffs");
             candidates.Add(candidate!);
         }
 
@@ -159,7 +173,7 @@ internal static class JudgeOperation
 
     private static void AppendAddedFileDiff(StringBuilder sb, string relativePath, string content)
     {
-        var lines = content.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+        var lines = content.Split('\n');
         var count = lines.Length > 0 && lines[^1].Length == 0 ? lines.Length - 1 : lines.Length;
         if (sb.Length > 0 && sb[^1] != '\n')
             sb.Append('\n');
@@ -170,6 +184,8 @@ internal static class JudgeOperation
         sb.Append($"@@ -0,0 +1,{count} @@\n");
         for (var i = 0; i < count; i++)
             sb.Append('+').Append(lines[i]).Append('\n');
+        if (count > 0 && !content.EndsWith('\n'))
+            sb.Append("\\ No newline at end of file\n");
     }
 
     internal static OperationResult Render(JudgeReport report, bool json)

@@ -58,7 +58,7 @@ internal static class CommandUsage
           --failed            rerun the tests that failed in the last recorded run (cannot be combined with other arguments)
           --clean             bypass cached results; run fresh processes
           --no-cache          bypass cached test results
-          --max-failures <n>  stop after n test failures (default 10)
+          --max-failures <n>  stop after n test failures (default: run every selected test)
           Every other argument goes to dotnet test unchanged.
         """;
 

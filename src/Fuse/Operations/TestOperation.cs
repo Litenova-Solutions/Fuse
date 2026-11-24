@@ -26,8 +26,11 @@ internal static class TestOperation
     private const int MaxTestMapsPerRun = 16;
     private const int MaxTestMapBytes = 8_000_000;
 
-    /// <summary>Default fail-fast failure cap for <c>--max-failures</c> and .NET 11 MTP <c>--maximum-failed-tests</c>.</summary>
-    internal const int DefaultMaxFailures = 10;
+    /// <summary>
+    ///     The failure cap without <c>--max-failures</c>: 0, no cap, so every selected test runs. A run that stopped at a
+    ///     cap would leave failing tests unreported, which selection exists to prevent; a caller asks for the cap.
+    /// </summary>
+    internal const int DefaultMaxFailures = 0;
 
     /// <summary>
     ///     The message on every failure of counts made from watched failure lines instead of a result file: the run

@@ -340,9 +340,43 @@ internal static class Program
             await GitOrFail(path, "checkout", "--quiet", "--detach", commit);
         }
 
+        // The pinned repositories name their own SDK in global.json, which wins over any SDK the runner installs. To
+        // measure another SDK, the checkout gets one local commit on top of the pinned one that names it, so the tree
+        // stays clean and Fuse sees the setting as part of HEAD rather than as a change.
+        var evalSdk = Environment.GetEnvironmentVariable("FUSE_EVAL_SDK");
+        if (evalSdk is { Length: > 0 } && !evalSdk.StartsWith("10.", StringComparison.Ordinal))
+        {
+            await GitOrFail(path, "checkout", "--quiet", "--force", "--detach", commit);
+            await PinSdkAsync(path, evalSdk);
+            var pinnedNow = await GitAsync(path, "rev-parse", "HEAD~1");
+            Console.WriteLine($"{pinned.Name} at {commit} with SDK {evalSdk} pinned in {path}");
+            return pinnedNow.Output.Trim() == commit ? 0 : 1;
+        }
+
         var now = await GitAsync(path, "rev-parse", "HEAD");
         Console.WriteLine($"{pinned.Name} at {now.Output.Trim()} in {path}");
         return now.Output.Trim() == commit ? 0 : 1;
+    }
+
+    /// <summary>
+    ///     Commits a global.json that names the major version of <paramref name="evalSdk"/> (like <c>11.0.x</c>), keeping
+    ///     every other setting the repository's global.json holds.
+    /// </summary>
+    private static async Task PinSdkAsync(string path, string evalSdk)
+    {
+        var major = evalSdk.Split('.')[0];
+        var file = Path.Combine(path, "global.json");
+        var json = File.Exists(file)
+            ? System.Text.Json.Nodes.JsonNode.Parse(await File.ReadAllTextAsync(file), documentOptions: new System.Text.Json.JsonDocumentOptions { CommentHandling = System.Text.Json.JsonCommentHandling.Skip, AllowTrailingCommas = true })!.AsObject()
+            : new System.Text.Json.Nodes.JsonObject();
+        json["sdk"] = new System.Text.Json.Nodes.JsonObject
+        {
+            ["version"] = $"{major}.0.100",
+            ["rollForward"] = "latestFeature",
+        };
+        await File.WriteAllTextAsync(file, json.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true }) + "\n");
+        await GitOrFail(path, "add", "global.json");
+        await GitOrFail(path, "-c", "user.name=Fuse evals", "-c", "user.email=evals@fuse.invalid", "commit", "--quiet", "--no-verify", "-m", $"Pin SDK {major} for the evals");
     }
 
     private static async Task<ProcessResult> GitAsync(string workingDirectory, params string[] args) =>

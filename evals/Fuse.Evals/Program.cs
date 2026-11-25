@@ -376,6 +376,9 @@ internal static class Program
         };
         await File.WriteAllTextAsync(file, json.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true }) + "\n");
         await GitOrFail(path, "add", "global.json");
+        // A fixed date makes the commit the same in every job, so results from separate jobs name one commit.
+        Environment.SetEnvironmentVariable("GIT_AUTHOR_DATE", "2000-01-01T00:00:00Z");
+        Environment.SetEnvironmentVariable("GIT_COMMITTER_DATE", "2000-01-01T00:00:00Z");
         await GitOrFail(path, "-c", "user.name=Fuse evals", "-c", "user.email=evals@fuse.invalid", "commit", "--quiet", "--no-verify", "-m", $"Pin SDK {major} for the evals");
     }
 

@@ -496,10 +496,10 @@ internal static class SwarmSuite
         // enforces layout (Jellyfin treats StyleCop's SA1137 as an error) sees no error the edit did not mean to make.
         var indent = method.Body!.Statements[0].GetLeadingTrivia().LastOrDefault(t => t.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.WhitespaceTrivia));
         var newline = text.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
-        var statement = SyntaxFactory.ParseStatement(statementText)
-            .WithLeadingTrivia(indent)
-            .WithTrailingTrivia(SyntaxFactory.EndOfLine(newline));
-        return root.ReplaceNode(method.Body!, method.Body!.WithStatements(method.Body.Statements.Insert(0, statement))).ToFullString();
+        // The text can hold several statements; parsed as a block, each one is inserted on its own line.
+        var statements = ((BlockSyntax)SyntaxFactory.ParseStatement("{" + statementText + "}")).Statements
+            .Select(s => s.WithLeadingTrivia(indent).WithTrailingTrivia(SyntaxFactory.EndOfLine(newline)));
+        return root.ReplaceNode(method.Body!, method.Body!.WithStatements(method.Body.Statements.InsertRange(0, statements))).ToFullString();
     }
 
     private static double Mb(long bytes) => bytes / (1024.0 * 1024.0);

@@ -193,7 +193,17 @@ internal sealed class ShadowEmitter
         }
 
         // Every project the test assembly loads, with the build output it would be copied from.
-        var closure = Closure(testProject, graph).ToList();
+        var (closure, refusal) = TryClosure(testProject, graph);
+        if (refusal is not null)
+        {
+            log(refusal);
+            return new PreparationResult(new RunMode.Build(), closure, new Dictionary<ProjectId, (EmittedImage, string, string)>());
+        }
+
+        // Two variants of one project in the closure mean two builds stand where the test project loads one;
+        // the choice of which one emits is logged, so a wrong one can be told from the engine log.
+        foreach (var group in closure.GroupBy(p => p.FilePath ?? p.Id.ToString(), StringComparer.OrdinalIgnoreCase).Where(g => g.Count() > 1))
+            log($"test plan: {testProject.Name} closure holds {group.Count()} variants of {Path.GetFileName(group.Key)}: {string.Join(", ", group.Select(p => p.Name).Order(StringComparer.Ordinal))}");
         var testOutputDirectory = Path.GetDirectoryName(testOutput)!;
         var stale = new HashSet<ProjectId>();
         foreach (var project in closure)
@@ -292,6 +302,16 @@ internal sealed class ShadowEmitter
                 .ToList();
             if (names.Count > 0)
                 log($"test plan: {project.Name}: not emitting {project.Name} again; {string.Join(", ", names)} {(names.Count == 1 ? "compiles" : "compile")} to the same declarations as HEAD");
+        }
+
+        // Two variants writing the same shadow file overwrite each other, and the loser can be a build for
+        // another framework, which then crashes at runtime. When the closure holds two, no shadow run matches the
+        // build, and the project builds with MSBuild instead.
+        var outputs = emit.Select(id => solution.GetProject(id)!).Concat(skipped).ToList();
+        if (outputs.GroupBy(p => Path.GetFileName(p.OutputFilePath!), StringComparer.OrdinalIgnoreCase).FirstOrDefault(g => g.Count() > 1) is { } collision)
+        {
+            log($"{testProject.Name}: two variants share the shadow file {collision.Key}; building with MSBuild");
+            return new PreparationResult(new RunMode.Build(), closure, new Dictionary<ProjectId, (EmittedImage, string, string)>());
         }
 
         var targets = emit.Select(id => Path.Combine(shadow, Path.GetFileName(solution.GetProject(id)!.OutputFilePath!))).ToList();
@@ -626,16 +646,18 @@ internal sealed class ShadowEmitter
     ///     Without this, a non-C# file changed in a library the view supplies by summary was never judged
     ///     stale, and the plan ran from the build output the change had already left behind.
     /// </summary>
-    private IEnumerable<Project> Closure(Project project, RepoGraph graph)
+    /// <returns>The closure, or the reason a shadow run is refused when no single variant of a referenced project can be named.</returns>
+    private (List<Project> Projects, string? Refusal) TryClosure(Project project, RepoGraph graph)
     {
         var seen = new HashSet<ProjectId>();
+        var projects = new List<Project>();
         var stack = new Stack<Project>([project]);
         while (stack.Count > 0)
         {
             var current = stack.Pop();
             if (!seen.Add(current.Id))
                 continue;
-            yield return current;
+            projects.Add(current);
             foreach (var reference in current.ProjectReferences)
             {
                 if (current.Solution.GetProject(reference.ProjectId) is { } referenced)
@@ -649,17 +671,57 @@ internal sealed class ShadowEmitter
                 if (graph.Find(referencePath) is not { } referencedNode)
                     continue;
                 var candidates = RepoWorkspace.ProjectsFor(current.Solution, referencedNode).ToList();
+                if (candidates.Count == 0)
+                    continue;
                 // One project per target framework of the referenced project stands in the solution; the one
-                // this project loads is the one built for the same framework folder of build output, and
-                // every candidate stands when no folder names one, so no loaded project is left out.
+                // this project loads is the one built for the same framework folder of build output.
                 var folder = FrameworkFolder(current);
                 var loaded = folder is null
                     ? candidates
                     : candidates.Where(c => string.Equals(FrameworkFolder(c), folder, StringComparison.OrdinalIgnoreCase)).ToList();
-                foreach (var referenced in loaded.Count > 0 ? loaded : candidates)
+                if (loaded.Count == 0)
+                {
+                    // The referenced project builds for no such folder: MSBuild loads its nearest compatible
+                    // build, so the shadow emits that variant. When no single variant can be named, no shadow
+                    // run matches the build, and the project builds with MSBuild instead.
+                    if (NearestVariant(folder, candidates) is not { } nearest)
+                        return ([], $"{referencedNode.Name}: none of its builds loads in the {folder} output; building with MSBuild");
+                    loaded = [nearest];
+                }
+
+                foreach (var referenced in loaded)
                     stack.Push(referenced);
             }
         }
+
+        return (projects, null);
+    }
+
+    /// <summary>
+    ///     The variant of a referenced project a build for <paramref name="folder"/> loads: the one built for the
+    ///     nearest framework it accepts, preferring its own family, or null when no single variant can be named. A
+    ///     lone candidate stands whatever the folders say: it is the only build the test project can load.
+    /// </summary>
+    internal static Project? NearestVariant(string? folder, IReadOnlyList<Project> candidates)
+    {
+        if (candidates.Count == 1)
+            return candidates[0];
+        if (folder is null || TargetFramework.ParseFolder(folder) is not { } requester)
+            return null;
+        var accepted = new List<(Project Candidate, TargetFramework Framework)>();
+        foreach (var candidate in candidates)
+        {
+            if (FrameworkFolder(candidate) is { } candidateFolder
+                && TargetFramework.ParseFolder(candidateFolder) is { } candidateFramework
+                && requester.Accepts(candidateFramework))
+                accepted.Add((candidate, candidateFramework));
+        }
+
+        return accepted
+            .OrderByDescending(x => x.Framework.Family == requester.Family)
+            .ThenByDescending(x => x.Framework.Version)
+            .Select(x => x.Candidate)
+            .FirstOrDefault();
     }
 
     /// <summary>The framework folder of <paramref name="project"/>'s build output, which names its target framework, or null when it has no build output.</summary>

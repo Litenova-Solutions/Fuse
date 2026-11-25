@@ -29,4 +29,23 @@ public class BlueprintExtractionTests
         Assert.All(outcomes, o => Assert.Empty(o.Failures));
         Assert.Equal(1, evaluations);
     }
+
+    [Fact]
+    public async Task Extraction_runs_in_the_engine_process()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await using var engine = await InProcessEngine.StartAsync();
+        var graph = await RepoGraph.EvaluateAsync(engine.Repo.Root, cancellationToken);
+        var app = graph.Projects.Single(p => p.Name == "App");
+        var lines = new List<string>();
+
+        var outcome = await BlueprintEvaluator.EnsureProjectsAsync(engine.Repo.Root, graph, [app], lines.Add, cancellationToken);
+
+        Assert.NotNull(outcome.Blueprint);
+        Assert.Empty(outcome.Failures);
+        var line = Assert.Single(lines, l => l.Contains("blueprint evaluated", StringComparison.Ordinal));
+        Assert.Contains(" project(s) in ", line, StringComparison.Ordinal);
+        Assert.Contains("(0 failed)", line, StringComparison.Ordinal);
+        Assert.DoesNotContain("child", line, StringComparison.OrdinalIgnoreCase);
+    }
 }

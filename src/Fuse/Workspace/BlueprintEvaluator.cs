@@ -1,7 +1,5 @@
 using System.Collections.Concurrent;
-using System.Reflection;
 using System.Runtime.CompilerServices;
-using Fuse.Dotnet;
 using Fuse.Failures;
 using Fuse.Graph;
 using Fuse.Paths;
@@ -13,17 +11,12 @@ using Microsoft.CodeAnalysis.MSBuild;
 namespace Fuse.Workspace;
 
 /// <summary>
-///     Extracts <see cref="CompilationBlueprint"/> snapshots using MSBuild and immediately disposes
-///     <see cref="MSBuildWorkspace"/> so the resident engine holds no MSBuild evaluation state. Supports an ephemeral
-///     <c>fuse evaluate-blueprint</c> child process (<see cref="EvaluateCliAsync(string, string, CancellationToken)"/>)
-///     that exits and returns 100 percent of MSBuild memory to the OS, with automatic in-process ephemeral fallback
-///     when running inside unit tests or when the child command is unavailable.
+///     Extracts <see cref="CompilationBlueprint"/> snapshots in the engine process with a short-lived
+///     <see cref="MSBuildWorkspace"/>, disposed before the blueprint is captured from its solution snapshot, so only
+///     MSBuild's static caches and loaded assemblies stay resident.
 /// </summary>
 internal static class BlueprintEvaluator
 {
-    private const int MaxCliProjectArguments = 20;
-    private static volatile bool _childCliUnsupported;
-
     /// <summary>
     ///     One extraction lock per shared state directory. Concurrent extractions for the same cache would run
     ///     duplicate MSBuild sessions over the same projects and contend on MSBuild's in-process state, so each
@@ -43,62 +36,6 @@ internal static class BlueprintEvaluator
         ["ProvideCommandLineArgs"] = "true",
         ["DisableMsCoverageReferencedPathMaps"] = "true",
     };
-
-    /// <summary>
-    ///     CLI entrypoint accepting raw <c>fuse evaluate-blueprint &lt;repoRoot&gt; &lt;outputPath&gt; [projectPaths...]</c>
-    ///     arguments.
-    /// </summary>
-    public static Task<int> EvaluateCliAsync(string[] args, CancellationToken cancellationToken = default)
-    {
-        if (args.Length < 2)
-            return Task.FromResult(2);
-        IReadOnlyList<string> projects = args.Length > 2 ? [.. args.Skip(2)] : [];
-        return EvaluateCliAsync(args[0], args[1], projects, cancellationToken);
-    }
-
-    /// <summary>
-    ///     CLI entrypoint for <c>fuse evaluate-blueprint &lt;repoRoot&gt; &lt;outputPath&gt;</c>. Evaluates every
-    ///     project in <paramref name="repoRoot"/> using an ephemeral <see cref="MSBuildWorkspace"/>, writes the
-    ///     blueprint JSON to <paramref name="outputPath"/>, and returns an exit code (0 on success).
-    /// </summary>
-    public static Task<int> EvaluateCliAsync(string repoRoot, string outputPath, CancellationToken cancellationToken = default) =>
-        EvaluateCliAsync(repoRoot, outputPath, [], cancellationToken);
-
-    /// <summary>
-    ///     CLI entrypoint evaluating <paramref name="projectPaths"/> (or every project when empty) in
-    ///     <paramref name="repoRoot"/> and writing the resulting <see cref="CompilationBlueprint"/> to
-    ///     <paramref name="outputPath"/>.
-    /// </summary>
-    public static async Task<int> EvaluateCliAsync(string repoRoot, string outputPath, IReadOnlyList<string> projectPaths, CancellationToken cancellationToken = default)
-    {
-        var root = RepoRoot.Find(repoRoot);
-        if (root is null)
-            return 2;
-        var graph = await RepoGraph.EvaluateAsync(root, cancellationToken).ConfigureAwait(false);
-        if (graph.Projects.Count == 0)
-            return 1;
-
-        var selected = SelectProjects(root, graph, projectPaths);
-        if (selected.Count == 0)
-            return 1;
-
-        var outcome = await ExtractInProcessAsync(root, graph, selected, existing: null, cancellationToken).ConfigureAwait(false);
-        if (outcome.Blueprint is null)
-            return 1;
-
-        var fullOutput = Path.GetFullPath(outputPath);
-        if (!outcome.Blueprint.TryWrite(fullOutput))
-            return 1;
-
-        if (outcome.Failures.Count > 0)
-            return 1;
-
-        var sharedFile = CompilationBlueprint.FileFor(root.SharedStateDirectory, outcome.Blueprint.Key);
-        if (!string.Equals(fullOutput, sharedFile, StringComparison.OrdinalIgnoreCase))
-            outcome.Blueprint.TryWrite(sharedFile);
-
-        return 0;
-    }
 
     /// <summary>
     ///     Returns a valid <see cref="CompilationBlueprint"/> covering <paramref name="projects"/> and their closures
@@ -132,24 +69,10 @@ internal static class BlueprintEvaluator
                 throw RestoreNeeded(unrestored);
 
             var started = Environment.TickCount64;
-            if (ShouldUseChildProcess() && inputs is not null)
-            {
-                var childBlueprint = await TryExtractViaChildProcessAsync(root, toExtract, cancellationToken).ConfigureAwait(false);
-                if (childBlueprint is not null)
-                {
-                    var merged = MergeIntoSharedCache(root, inputs.Value.Key, inputs.Value.InputHashes, cached, childBlueprint);
-                    if (merged.Covers(root, closure, allowZeroRestore: false))
-                    {
-                        log($"blueprint evaluated {toExtract.Count} project(s) via ephemeral child in {Environment.TickCount64 - started} ms");
-                        return new ExtractionOutcome(merged, new Dictionary<RepoPath, string>());
-                    }
-                }
-            }
-
-            var outcome = await ExtractInProcessAsync(root, graph, toExtract, cached, cancellationToken).ConfigureAwait(false);
+            var outcome = await ExtractAsync(root, graph, toExtract, cached, cancellationToken).ConfigureAwait(false);
             if (outcome.Blueprint is not null && outcome.Failures.Count == 0 && inputs is not null)
                 outcome.Blueprint.TryWrite(CompilationBlueprint.FileFor(root.SharedStateDirectory, outcome.Blueprint.Key));
-            log($"blueprint evaluated {toExtract.Count} project(s) in-process in {Environment.TickCount64 - started} ms ({outcome.Failures.Count} failed)");
+            log($"blueprint evaluated {toExtract.Count} project(s) in {Environment.TickCount64 - started} ms ({outcome.Failures.Count} failed)");
             return outcome;
         }
         finally
@@ -187,7 +110,7 @@ internal static class BlueprintEvaluator
     ///     Extracts compiler inputs using a short-lived <see cref="MSBuildWorkspace"/> and immediately disposes it
     ///     before returning. Never retained in memory.
     /// </summary>
-    internal static Task<ExtractionOutcome> ExtractInProcessAsync(
+    internal static Task<ExtractionOutcome> ExtractAsync(
         RepoRoot root,
         RepoGraph graph,
         IReadOnlyList<ProjectNode> projects,
@@ -493,97 +416,6 @@ internal static class BlueprintEvaluator
             return [];
         var wanted = new HashSet<RepoPath>(subset.Select(p => p.Path));
         return [.. all.Where(p => wanted.Contains(p.Path))];
-    }
-
-    private static List<ProjectNode> SelectProjects(RepoRoot root, RepoGraph graph, IReadOnlyList<string> projectPaths)
-    {
-        if (projectPaths.Count == 0)
-            return [.. graph.Projects];
-        var selected = new List<ProjectNode>();
-        foreach (var spec in projectPaths)
-        {
-            if (graph.Find(root.PathOf(spec)) is { } node)
-                selected.Add(node);
-        }
-
-        return ExpandClosure(graph, selected);
-    }
-
-    private static bool ShouldUseChildProcess()
-    {
-        if (_childCliUnsupported)
-            return false;
-        if (string.Equals(Environment.GetEnvironmentVariable("FUSE_BLUEPRINT_INPROC"), "1", StringComparison.Ordinal))
-            return false;
-        if (!string.Equals(Assembly.GetEntryAssembly()?.GetName().Name, "fuse", StringComparison.OrdinalIgnoreCase))
-            return false;
-        return FindFuseAssembly() is not null;
-    }
-
-    private static string? FindFuseAssembly()
-    {
-        var dll = Path.Combine(AppContext.BaseDirectory, "fuse.dll");
-        return File.Exists(dll) ? dll : null;
-    }
-
-    private static async Task<CompilationBlueprint?> TryExtractViaChildProcessAsync(RepoRoot root, List<ProjectNode> projects, CancellationToken cancellationToken)
-    {
-        var assembly = FindFuseAssembly();
-        var host = Environment.ProcessPath;
-        if (assembly is null || string.IsNullOrEmpty(host))
-            return null;
-
-        var tempFile = Path.Combine(Path.GetTempPath(), $"fuse-bp-{Environment.ProcessId}-{Guid.NewGuid():N}.json");
-        try
-        {
-            var args = new List<string>();
-            if (!Path.GetFileNameWithoutExtension(host).Equals("fuse", StringComparison.OrdinalIgnoreCase))
-                args.Add(assembly);
-            args.Add("evaluate-blueprint");
-            args.Add(root.Path);
-            args.Add(tempFile);
-            if (projects.Count <= MaxCliProjectArguments)
-            {
-                foreach (var p in projects)
-                    args.Add(p.Path.Relative);
-            }
-
-            var result = await ProcessRunner.RunAsync(host, args, root.Path, cancellationToken).ConfigureAwait(false);
-            if (result.ExitCode == 2 && result.Output.Contains("usage:", StringComparison.OrdinalIgnoreCase))
-            {
-                _childCliUnsupported = true;
-                return null;
-            }
-
-            if (result.ExitCode != 0)
-                return null;
-            return CompilationBlueprint.TryReadFile(tempFile);
-        }
-        finally
-        {
-            try
-            {
-                if (File.Exists(tempFile))
-                    File.Delete(tempFile);
-            }
-            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-            {
-            }
-        }
-    }
-
-    private static CompilationBlueprint MergeIntoSharedCache(
-        RepoRoot root,
-        string key,
-        Dictionary<string, string> inputHashes,
-        CompilationBlueprint? cached,
-        CompilationBlueprint incoming)
-    {
-        var merged = cached is not null && string.Equals(cached.Key, key, StringComparison.Ordinal)
-            ? cached.Merge(incoming.SourceRoot, inputHashes, incoming.AssetsHashes, incoming.Projects, incoming.KnownSources)
-            : incoming;
-        merged.TryWrite(CompilationBlueprint.FileFor(root.SharedStateDirectory, key));
-        return merged;
     }
 
     private static FuseException RestoreNeeded(List<string> unrestored) =>

@@ -10,8 +10,9 @@ namespace Fuse.Engine;
 ///     has to bind those dependents, and loading them is the slow part of a first check (seconds per project); doing
 ///     it while the agent is busy elsewhere keeps later checks fast. It extracts the whole batch in one MSBuild
 ///     session without any lock, then opens the batch under one hold of the load lock, one project at a time only
-///     when a batch load fails. Requests take precedence: it holds the gate only while it chooses the batch. It
-///     builds no compilation: a check builds what it binds.
+///     when the batch extraction or the batch load fails, so one unrestored project neither blocks nor marks the
+///     rest. Requests take precedence: it holds the gate only while it chooses the batch. It builds no compilation:
+///     a check builds what it binds.
 /// </summary>
 internal sealed class Preloader
 {
@@ -86,19 +87,16 @@ internal sealed class Preloader
             // One extraction for the whole batch, without any lock: extracting project by project would run one
             // ephemeral MSBuild session per project, while a request the batch overlaps only waits on the short
             // loads below, never on the extraction.
+            var extractionFailed = false;
             try
             {
                 await _workspace.EnsureExtractedAsync(batch, shutdown).ConfigureAwait(false);
             }
-            catch (FuseException e)
+            catch (FuseException)
             {
-                // Tried again once the projects reload or a restore rewrites its closure's assets; until then a check that
-                // needs one of the projects loads it itself and reports the failure.
-                var graph = _workspace.PinGeneration().Graph;
-                foreach (var project in batch)
-                    _failed[project.Path] = AttemptOf(project, graph);
-                _log($"preload of {batch.Count} project(s) skipped: {e.Message}");
-                continue;
+                // One unrestored project must neither block nor mark the rest: each project is extracted and
+                // loaded on its own below, which logs per project and retries after a restore.
+                extractionFailed = true;
             }
             catch (OperationCanceledException)
             {
@@ -113,7 +111,7 @@ internal sealed class Preloader
             // One batch load for the whole batch: the extraction above already covered it, so this opens from
             // the cache under one hold of the load lock instead of one hold per project.
             var pending = batch.Where(p => !_workspace.IsLoaded(p)).ToList();
-            if (pending.Count > 0 && !shutdown.IsCancellationRequested)
+            if (!extractionFailed && pending.Count > 0 && !shutdown.IsCancellationRequested)
             {
                 try
                 {

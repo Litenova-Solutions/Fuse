@@ -101,18 +101,19 @@ public class BlueprintTests
     }
 
     [Fact]
-    public async Task BlueprintEvaluator_EvaluateCliAsync_extracts_valid_blueprint_and_ephemerally_disposes_MSBuildWorkspace()
+    public async Task BlueprintEvaluator_EnsureProjectsAsync_extracts_a_valid_blueprint()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         await using var engine = await InProcessEngine.StartAsync();
-        var outputPath = Path.Combine(engine.Repo.Root.SharedStateDirectory, "cli-eval-blueprint.json");
+        var graph = await RepoGraph.EvaluateAsync(engine.Repo.Root, cancellationToken);
+        var app = graph.Projects.Single(p => p.Name == "App");
+        var tests = graph.Projects.Single(p => p.Name == "App.Tests");
 
-        var exitCode = await BlueprintEvaluator.EvaluateCliAsync([engine.Repo.Root.Path, outputPath], cancellationToken);
+        var outcome = await BlueprintEvaluator.EnsureProjectsAsync(engine.Repo.Root, graph, [app, tests], _ => { }, cancellationToken);
 
-        Assert.Equal(0, exitCode);
-        Assert.True(File.Exists(outputPath));
-        var blueprint = CompilationBlueprint.TryReadFile(outputPath);
-        Assert.NotNull(blueprint);
+        Assert.Empty(outcome.Failures);
+        Assert.NotNull(outcome.Blueprint);
+        var blueprint = outcome.Blueprint;
         Assert.Contains(blueprint.Projects, p => p.Name == "Lib");
         Assert.Contains(blueprint.Projects, p => p.Name == "App");
         Assert.Contains(blueprint.Projects, p => p.Name == "App.Tests" && p.IsTestProject);

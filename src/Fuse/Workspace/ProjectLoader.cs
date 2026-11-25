@@ -278,7 +278,6 @@ internal sealed class ProjectLoader : IDisposable
             {
                 try
                 {
-                    var started = Environment.TickCount64;
                     CompilationBlueprint? blueprint;
                     if (reusableZeroRestore is not null)
                     {
@@ -303,16 +302,25 @@ internal sealed class ProjectLoader : IDisposable
 
                     if (blueprint is not null && blueprint.Covers(_root, stillMissing.SelectMany(Graph.ClosureOf), allowZeroRestore: reusableZeroRestore is not null))
                     {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        _blueprintWorkspace.LoadProjects(
-                            _root,
-                            Graph,
-                            blueprint,
-                            stillMissing,
-                            _headProvider?.Invoke(),
-                            _dirtyProvider?.Invoke());
-                        _activeBlueprint = blueprint;
-                        PublishLoadedProjects(_blueprintWorkspace.Solution, stillMissing, started);
+                        // One project at a time, so a request that stops waiting in the middle leaves the rest
+                        // unloaded for the next request instead of opening the whole batch.
+                        foreach (var project in stillMissing)
+                        {
+                            cancellationToken.ThrowIfCancellationRequested();
+                            if (_loaded.ContainsKey(project.Path))
+                                continue;
+                            var projectStarted = Environment.TickCount64;
+                            _blueprintWorkspace.LoadProjects(
+                                _root,
+                                Graph,
+                                blueprint,
+                                [project],
+                                _headProvider?.Invoke(),
+                                _dirtyProvider?.Invoke());
+                            _activeBlueprint = blueprint;
+                            PublishLoadedProjects(_blueprintWorkspace.Solution, project, projectStarted);
+                        }
+
                         loadedViaBlueprint = true;
                     }
                 }
@@ -339,19 +347,23 @@ internal sealed class ProjectLoader : IDisposable
         }
     }
 
-    private void PublishLoadedProjects(Solution solution, IReadOnlyList<ProjectNode> requested, long startedTicks)
+    private void PublishLoadedProjects(Solution solution, ProjectNode requested, long startedTicks)
     {
-        // Published after the workspace solution holds the projects, so a request that finds one loaded also finds
-        // the views behind that solution and derives them again.
+        // Published after the workspace solution holds the project, so a request that finds it loaded also finds
+        // the views behind that solution and derives them again. A load also opens the project's closure, so every
+        // project the solution newly holds is published and logged, not just the requested one: nothing else reports
+        // a closure member, and without its own line it would read as never loaded.
         foreach (var loadedProject in solution.Projects)
         {
-            if (loadedProject.FilePath is not null)
-                _loaded[_root.PathOf(loadedProject.FilePath)] = 0;
+            if (loadedProject.FilePath is null)
+                continue;
+            if (!_loaded.TryAdd(_root.PathOf(loadedProject.FilePath), 0))
+                continue;
+            var name = requested.Path.Matches(loadedProject.FilePath)
+                ? requested.Name
+                : Graph.Find(_root.PathOf(loadedProject.FilePath))?.Name ?? Path.GetFileNameWithoutExtension(loadedProject.FilePath);
+            _log($"loaded {name} in {Environment.TickCount64 - startedTicks} ms ({solution.ProjectIds.Count} projects open)");
         }
-
-        var newlyLoaded = requested.Where(p => _loaded.ContainsKey(p.Path)).Select(p => p.Name).Order(StringComparer.Ordinal).ToList();
-        if (newlyLoaded.Count > 0)
-            _log($"loaded {string.Join(", ", newlyLoaded)} in {Environment.TickCount64 - startedTicks} ms ({solution.ProjectIds.Count} projects open)");
     }
 
     private void ThrowOnRecordedFailures(IReadOnlyList<ProjectNode> missing)
@@ -391,13 +403,7 @@ internal sealed class ProjectLoader : IDisposable
                 throw LoadFailed(project, e.Message);
             }
 
-            foreach (var loadedProject in loader.CurrentSolution.Projects)
-            {
-                if (loadedProject.FilePath is not null)
-                    _loaded[_root.PathOf(loadedProject.FilePath)] = 0;
-            }
-
-            _log($"loaded {project.Name} in {Environment.TickCount64 - started} ms ({loader.CurrentSolution.ProjectIds.Count} projects open)");
+            PublishLoadedProjects(loader.CurrentSolution, project, started);
         }
 
         ThrowOnRecordedFailures(missing);

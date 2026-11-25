@@ -6,7 +6,11 @@ namespace Fuse.Dotnet;
 /// <summary>Result of a finished child process.</summary>
 /// <param name="ExitCode">The process exit code, or -1 when it could not start.</param>
 /// <param name="Output">Standard output and standard error, interleaved in arrival order.</param>
-internal sealed record ProcessResult(int ExitCode, string Output);
+internal sealed record ProcessResult(int ExitCode, string Output)
+{
+    /// <summary>True when the process was killed after writing no output for the caller's inactivity timeout.</summary>
+    public bool TimedOut { get; init; }
+}
 
 /// <summary>Runs child processes with argument lists (never a shell string) and kills the whole tree on cancellation.</summary>
 internal static class ProcessRunner
@@ -14,14 +18,22 @@ internal static class ProcessRunner
     /// <summary>The variables MSBuild Locator sets to point a process at one SDK's MSBuild.</summary>
     internal static readonly string[] MsBuildLocatorVariables = ["MSBUILD_EXE_PATH", "MSBuildExtensionsPath", "MSBuildSDKsPath"];
 
+    /// <summary>How long a run waits for a process tree it killed on inactivity to exit before answering without it.</summary>
+    private static readonly TimeSpan KillGrace = TimeSpan.FromSeconds(10);
+
     /// <summary>Runs a process to completion and captures its output.</summary>
     /// <param name="arguments">Arguments, passed without shell interpretation.</param>
     /// <param name="cancellationToken">Kills the process tree when cancelled.</param>
+    /// <param name="inactivityTimeout">
+    ///     How long the process may write no output before its tree is killed and the result reads timed out, or null
+    ///     to wait without a timeout. Every output line renews it.
+    /// </param>
     public static async Task<ProcessResult> RunAsync(
         string fileName,
         IEnumerable<string> arguments,
         string workingDirectory,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        TimeSpan? inactivityTimeout = null)
     {
         var psi = new ProcessStartInfo(fileName)
         {
@@ -47,9 +59,11 @@ internal static class ProcessRunner
             psi.Environment.Remove(variable);
 
         var output = new StringBuilder();
+        // When the last output line arrived, in Environment.TickCount64 milliseconds; every line renews the timeout.
+        var lastOutput = Environment.TickCount64;
         using var process = new Process { StartInfo = psi };
-        process.OutputDataReceived += (_, e) => Append(output, e.Data);
-        process.ErrorDataReceived += (_, e) => Append(output, e.Data);
+        process.OutputDataReceived += (_, e) => Append(output, e.Data, ref lastOutput);
+        process.ErrorDataReceived += (_, e) => Append(output, e.Data, ref lastOutput);
         try
         {
             if (!process.Start())
@@ -63,19 +77,70 @@ internal static class ProcessRunner
         process.StandardInput.Close();
         process.BeginOutputReadLine();
         process.BeginErrorReadLine();
-        try
+        var timedOut = false;
+        while (true)
         {
-            await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+            if (inactivityTimeout is null)
+            {
+                try
+                {
+                    await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    KillProcessTree(process);
+                    throw;
+                }
+
+                break;
+            }
+
+            var remaining = inactivityTimeout.Value - TimeSpan.FromMilliseconds(Environment.TickCount64 - Volatile.Read(ref lastOutput));
+            if (remaining <= TimeSpan.Zero)
+            {
+                // The process may have exited between its last line and now; only one that is still running is
+                // killed and reported as timed out.
+                if (process.HasExited)
+                    break;
+                KillProcessTree(process);
+                timedOut = true;
+                break;
+            }
+
+            using var slice = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            slice.CancelAfter(remaining);
+            try
+            {
+                await process.WaitForExitAsync(slice.Token).ConfigureAwait(false);
+                break;
+            }
+            catch (OperationCanceledException)
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    KillProcessTree(process);
+                    throw;
+                }
+                // The slice fired; output may have arrived since, so the loop recomputes instead of killing.
+            }
         }
-        catch (OperationCanceledException)
+
+        if (timedOut)
         {
-            KillProcessTree(process);
-            throw;
+            try
+            {
+                using var grace = new CancellationTokenSource(KillGrace);
+                await process.WaitForExitAsync(grace.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                // The tree is killed; a process that still lingers is answered without its exit code.
+            }
         }
 
         // WaitForExitAsync returns after the output streams reach end of file, so the buffer is complete.
         lock (output)
-            return new ProcessResult(process.ExitCode, output.ToString());
+            return new ProcessResult(process.HasExited ? process.ExitCode : -1, output.ToString()) { TimedOut = timedOut };
     }
 
     /// <summary>
@@ -105,10 +170,11 @@ internal static class ProcessRunner
         }
     }
 
-    private static void Append(StringBuilder output, string? line)
+    private static void Append(StringBuilder output, string? line, ref long lastOutput)
     {
         if (line is null)
             return;
+        Volatile.Write(ref lastOutput, Environment.TickCount64);
         lock (output)
             output.Append(line).Append('\n');
     }

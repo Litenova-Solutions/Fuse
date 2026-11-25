@@ -25,7 +25,7 @@ internal static partial class BuildOperation
     /// <summary>A build that takes at least this long says where its time went.</summary>
     internal const double TimesFromSeconds = 10;
 
-    /// <summary>OS memory load fraction past which Fuse shuts down idle MSBuild servers after a build.</summary>
+    /// <summary>OS memory load fraction past which a build or test run sheds memory first and shuts down idle MSBuild servers after.</summary>
     private const double HighMemoryLoadRatio = 0.80;
 
     private static readonly string[] QuietArguments = ["-nologo", "-tl:off", "-v:q", "-clp:ErrorsOnly;NoSummary"];
@@ -104,7 +104,7 @@ internal static partial class BuildOperation
         if (stamp is not null && buildLock.ArtifactsPath is null && ReusedBuild(root, stamp.Value, BuildResultsFile.ChangedScope, plan.BuildProjects, effectiveArgs, workingDirectory, options) is { } reused)
             return reused;
 
-        await EngineClient.TryYieldMemoryAsync(root, cancellationToken).ConfigureAwait(false);
+        await YieldMemoryIfTightAsync(root, cancellationToken).ConfigureAwait(false);
 
         if (plan.BuildProjects.Length > 1)
         {
@@ -229,11 +229,32 @@ internal static partial class BuildOperation
         return capabilities.SupportsMultithreadedBuild;
     }
 
+    /// <summary>True when OS memory load is past <see cref="HighMemoryLoadRatio"/>; unknown memory counts as roomy.</summary>
+    internal static bool MemoryTight()
+    {
+        var info = GC.GetGCMemoryInfo();
+        return MemoryTight(info.MemoryLoadBytes, info.TotalAvailableMemoryBytes);
+    }
+
+    /// <summary>True when <paramref name="memoryLoadBytes"/> of <paramref name="totalAvailableMemoryBytes"/> is past <see cref="HighMemoryLoadRatio"/>.</summary>
+    internal static bool MemoryTight(long memoryLoadBytes, long totalAvailableMemoryBytes) =>
+        totalAvailableMemoryBytes > 0 && memoryLoadBytes >= (long)(totalAvailableMemoryBytes * HighMemoryLoadRatio);
+
+    /// <summary>
+    ///     Asks the engine to yield memory when it is tight, so a build or test run has room. Skipped otherwise: a
+    ///     yield drops views the engine reloads while the build runs, which costs more than it frees.
+    /// </summary>
+    internal static async Task YieldMemoryIfTightAsync(RepoRoot root, CancellationToken cancellationToken)
+    {
+        if (!MemoryTight())
+            return;
+        await EngineClient.TryYieldMemoryAsync(root, cancellationToken).ConfigureAwait(false);
+    }
+
     /// <summary>Shuts down idle MSBuild build servers when OS memory load exceeds <see cref="HighMemoryLoadRatio"/>.</summary>
     internal static async Task ShutdownBuildServerIfMemoryTightAsync(string workingDirectory)
     {
-        var info = GC.GetGCMemoryInfo();
-        if (info.TotalAvailableMemoryBytes <= 0 || info.MemoryLoadBytes < (long)(info.TotalAvailableMemoryBytes * HighMemoryLoadRatio))
+        if (!MemoryTight())
             return;
         try
         {
@@ -312,7 +333,7 @@ internal static partial class BuildOperation
         if (resultsRoot is not null && stamp is not null && !arguments.Contains("--artifacts-path") && ReusedBuild(resultsRoot, stamp.Value, BuildResultsFile.WholeScope, [], arguments, workingDirectory, options) is { } reused)
             return reused;
         if (resultsRoot is not null)
-            await EngineClient.TryYieldMemoryAsync(resultsRoot, cancellationToken).ConfigureAwait(false);
+            await YieldMemoryIfTightAsync(resultsRoot, cancellationToken).ConfigureAwait(false);
         var (result, log, seconds, rerunLine) = await RunOneAsync(["build", .. arguments, .. QuietArguments], workingDirectory, logDirectory, cancellationToken).ConfigureAwait(false);
         var treeStamp = includeTreeStamp && resultsRoot is not null ? await StampAsync(resultsRoot, cancellationToken).ConfigureAwait(false) : null;
         var diagnostics = BuildOutputParser.Diagnostics(result.Output, root);

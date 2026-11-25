@@ -211,7 +211,8 @@ internal sealed class ProjectLoader : IDisposable
     ///     Extracts the blueprints covering <paramref name="projects"/> and their closures into the shared cache, without
     ///     opening anything and without the load lock, so background preloading extracts while requests are served. A
     ///     later load opens from the cache without extracting again. Per-project extraction failures are recorded for
-    ///     the loads to report; only a missing restore is thrown.
+    ///     the loads to report, and a failure a later extraction healed is forgotten; only a missing restore is
+    ///     thrown. A transient host failure is neither recorded nor thrown, so the later load extracts again.
     /// </summary>
     /// <exception cref="FuseException">A project has not been restored and no worktree blueprint covers it.</exception>
     public async Task EnsureExtractedAsync(IEnumerable<ProjectNode> projects, CancellationToken cancellationToken)
@@ -232,8 +233,7 @@ internal sealed class ProjectLoader : IDisposable
         if (missing.Count == 0)
             return;
         var outcome = await BlueprintEvaluator.EnsureProjectsAsync(_root, Graph, missing, _log, cancellationToken).ConfigureAwait(false);
-        foreach (var (failedPath, reason) in outcome.Failures)
-            _loadFailures[failedPath] = reason;
+        RecordOutcome(outcome, requested);
     }
 
     /// <summary>Opens each of <paramref name="missing"/> that is not open yet, extracting first without the load lock.</summary>
@@ -259,9 +259,9 @@ internal sealed class ProjectLoader : IDisposable
             if (unopened.Count > 0)
             {
                 var preOutcome = await BlueprintEvaluator.EnsureProjectsAsync(_root, Graph, unopened, _log, cancellationToken).ConfigureAwait(false);
-                foreach (var (failedPath, reason) in preOutcome.Failures)
-                    _loadFailures[failedPath] = reason;
+                RecordOutcome(preOutcome, unopened);
                 ThrowOnRecordedFailures(unopened);
+                ThrowOnTransient(preOutcome, unopened);
                 extracted = preOutcome.Blueprint;
             }
         }
@@ -293,9 +293,9 @@ internal sealed class ProjectLoader : IDisposable
                             // The cache lost coverage between the lock-free extraction and the lock (a reset
                             // unloaded projects, or a concurrent writer replaced the file): extract the remainder.
                             var outcome = await BlueprintEvaluator.EnsureProjectsAsync(_root, Graph, stillMissing, _log, cancellationToken).ConfigureAwait(false);
-                            foreach (var (failedPath, reason) in outcome.Failures)
-                                _loadFailures[failedPath] = reason;
+                            RecordOutcome(outcome, stillMissing);
                             ThrowOnRecordedFailures(stillMissing);
+                            ThrowOnTransient(outcome, stillMissing);
                             blueprint = outcome.Blueprint;
                         }
                     }
@@ -357,8 +357,10 @@ internal sealed class ProjectLoader : IDisposable
         {
             if (loadedProject.FilePath is null)
                 continue;
-            if (!_loaded.TryAdd(_root.PathOf(loadedProject.FilePath), 0))
+            var loadedPath = _root.PathOf(loadedProject.FilePath);
+            if (!_loaded.TryAdd(loadedPath, 0))
                 continue;
+            _loadFailures.TryRemove(loadedPath, out _);
             var name = requested.Path.Matches(loadedProject.FilePath)
                 ? requested.Name
                 : Graph.Find(_root.PathOf(loadedProject.FilePath))?.Name ?? Path.GetFileNameWithoutExtension(loadedProject.FilePath);
@@ -372,6 +374,42 @@ internal sealed class ProjectLoader : IDisposable
         {
             if (_loadFailures.TryGetValue(node.Path, out var failure))
                 throw LoadFailed(node, failure);
+        }
+    }
+
+    /// <summary>
+    ///     Records <paramref name="outcome"/>'s deterministic failures and forgets the recorded failure of every
+    ///     project in <paramref name="roots"/>' closures that the outcome extracted without failing, so a failure a
+    ///     later extraction healed loads again. A transient host failure is never recorded.
+    /// </summary>
+    private void RecordOutcome(BlueprintEvaluator.ExtractionOutcome outcome, IEnumerable<ProjectNode> roots)
+    {
+        foreach (var (failedPath, reason) in outcome.Failures)
+            _loadFailures[failedPath] = reason;
+        if (outcome.Blueprint is not { } blueprint)
+            return;
+        var captured = blueprint.Projects.Select(p => p.ProjectPath).ToHashSet(StringComparer.Ordinal);
+        foreach (var node in roots.SelectMany(Graph.ClosureOf).DistinctBy(p => p.Path))
+        {
+            if (!outcome.Failures.ContainsKey(node.Path) && captured.Contains(node.Path.Relative))
+                _loadFailures.TryRemove(node.Path, out _);
+        }
+    }
+
+    /// <summary>
+    ///     Throws for a transient host failure that kept a project <paramref name="missing"/> needs out of
+    ///     <paramref name="outcome"/>, without recording it, so the next request extracts again.
+    /// </summary>
+    /// <exception cref="FuseException">A project could not be extracted for a transient host failure.</exception>
+    private void ThrowOnTransient(BlueprintEvaluator.ExtractionOutcome outcome, IReadOnlyList<ProjectNode> missing)
+    {
+        if (outcome.TransientFailure is not { } transient)
+            return;
+        var captured = outcome.Blueprint?.Projects.Select(p => p.ProjectPath).ToHashSet(StringComparer.Ordinal) ?? [];
+        foreach (var node in missing.SelectMany(Graph.ClosureOf))
+        {
+            if (!captured.Contains(node.Path.Relative))
+                throw LoadFailed(node, transient);
         }
     }
 
@@ -421,7 +459,7 @@ internal sealed class ProjectLoader : IDisposable
                 return;
             _log($"workspace: {e.Diagnostic.Message}");
             var path = Graph.Projects.FirstOrDefault(p => e.Diagnostic.Message.Contains(p.Path.Absolute, StringComparison.OrdinalIgnoreCase))?.Path;
-            if (path is { } failed && !LoadFailure.IsWarning(e.Diagnostic.Message))
+            if (path is { } failed && !LoadFailure.IsWarning(e.Diagnostic.Message) && !BlueprintEvaluator.IsTransient(e.Diagnostic.Message))
                 _loadFailures[failed] = e.Diagnostic.Message;
         });
         return loader;

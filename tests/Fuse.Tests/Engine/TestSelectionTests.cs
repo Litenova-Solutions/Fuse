@@ -150,6 +150,124 @@ public class TestSelectionTests
     }
 
     [Fact]
+    public async Task A_generated_file_in_build_output_does_not_select_its_test_project_whole()
+    {
+        await using var engine = await InProcessEngine.StartAsync(WithStaticGlobalUsingOfLib());
+        engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
+        // Past its budget the walk leaves the class-level answer standing, as on the suites it times out on.
+        var selection = await SelectAsync(engine, new TestSelector(engine.Workspace, new LeapingClock()), "Lib/Calc.cs");
+
+        // The generated file names Calc, so the type closure reaches it; the build wrote it, so it selects nothing.
+        Assert.Equal(["Lib.Tests.CalcTests."], Assert.IsType<TestSelection.Methods>(selection["Lib.Tests"]).Patterns);
+        var generated = engine.Workspace.PinGeneration().Current.Projects
+            .SelectMany(p => p.Documents)
+            .Where(d => d.FilePath is not null && d.FilePath.Contains("Lib.Tests", StringComparison.Ordinal) && d.FilePath.Contains("GlobalUsings", StringComparison.Ordinal))
+            .ToList();
+        Assert.NotEmpty(generated);
+        Assert.Contains("Lib.Calc", (await generated[0].GetTextAsync(TestContext.Current.CancellationToken)).ToString());
+    }
+
+    [Fact]
+    public async Task A_classless_test_file_reached_through_changed_code_selects_its_project_whole()
+    {
+        await using var engine = await InProcessEngine.StartAsync(WithClasslessTestFile());
+        engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
+        var selection = await SelectAsync(engine, new TestSelector(engine.Workspace, new LeapingClock()), "Lib/Calc.cs");
+
+        var whole = Assert.IsType<TestSelection.Whole>(selection["Lib.Tests"]);
+        Assert.Equal("a test file without classes changed", whole.Reason);
+    }
+
+    [Fact]
+    public async Task An_uncalled_interface_implementer_selects_tests_through_its_type()
+    {
+        await using var engine = await InProcessEngine.StartAsync(WithPlainAndAttributedImplementers());
+        engine.Repo.Replace("Lib/Plain.cs", "public int Work(int x) => x;", "public int Work(int x) => x * 2;");
+        engine.Repo.Replace("Lib/Uncalled.cs", "public int Work(int x) => x + 1;", "public int Work(int x) => x + 2;");
+        // Plain.cs seeds first, so the shared interface member already searched empty when the walk reaches Uncalled.Work.
+        var selection = await SelectAsync(engine, "Lib/Plain.cs", "Lib/Uncalled.cs");
+
+        Assert.Equal(["Lib.Tests.UncalledTests.NamesTheType"], Assert.IsType<TestSelection.Methods>(selection["Lib.Tests"]).Patterns);
+    }
+
+    /// <summary>The standard repository with a static global using of Lib.Calc in Lib.Tests, generated under obj/.</summary>
+    private static FixtureRepo WithStaticGlobalUsingOfLib()
+    {
+        var repo = FixtureRepo.CreateStandard();
+        repo.Replace("Lib.Tests/Lib.Tests.csproj", "<Using Include=\"Xunit\" />", "<Using Include=\"Xunit\" />\n            <Using Include=\"Lib.Calc\" Static=\"true\" />");
+        repo.Commit("add a static global using of Lib.Calc to Lib.Tests");
+        return repo;
+    }
+
+    /// <summary>The standard repository with a committed classless file in Lib.Tests that names Calc.</summary>
+    private static FixtureRepo WithClasslessTestFile()
+    {
+        var repo = FixtureRepo.CreateStandard();
+        repo.Write("Lib.Tests/CalcMetadata.cs", """
+            using Lib;
+
+            [assembly: System.Reflection.AssemblyMetadata("calc", nameof(Calc))]
+            """);
+        repo.Commit("add a classless file that names Calc to Lib.Tests");
+        return repo;
+    }
+
+    /// <summary>
+    ///     The standard repository with two uncalled implementers of one interface: a plain one, and the attributed
+    ///     Uncalled, while a test names the Uncalled type.
+    /// </summary>
+    private static FixtureRepo WithPlainAndAttributedImplementers()
+    {
+        var repo = FixtureRepo.CreateStandard();
+        repo.Write("Lib/Worker.cs", """
+            namespace Lib;
+
+            public interface IWorker
+            {
+                int Work(int x);
+            }
+
+            public sealed class WorkAttribute : System.Attribute
+            {
+            }
+            """);
+        repo.Write("Lib/Plain.cs", """
+            namespace Lib;
+
+            public sealed class Plain : IWorker
+            {
+                public int Work(int x) => x;
+            }
+            """);
+        repo.Write("Lib/Uncalled.cs", """
+            namespace Lib;
+
+            [Work]
+            public sealed class Uncalled : IWorker
+            {
+                public int Work(int x) => x + 1;
+            }
+            """);
+        repo.Write("Lib.Tests/UncalledTests.cs", """
+            using Lib;
+
+            namespace Lib.Tests;
+
+            public class UncalledTests
+            {
+                [Fact]
+                public void NamesTheType()
+                {
+                    Uncalled? u = null;
+                    Assert.Null(u);
+                }
+            }
+            """);
+        repo.Commit("add a plain and an attributed implementer of IWorker");
+        return repo;
+    }
+
+    [Fact]
     public async Task Dependent_test_projects_include_a_test_project_itself()
     {
         await using var engine = await InProcessEngine.StartAsync();

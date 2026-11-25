@@ -105,9 +105,15 @@ internal sealed class TypeWalk
             if (entry.Node.IsTest)
             {
                 if (TypeGraph.IsFileKey(key.Name))
-                    selections.SelectWhole(entry.Node, "a test file without classes changed");
+                {
+                    // A file the build wrote carries no selection: tests do not live in build output.
+                    if (!PathRules.IsBuildOutput(root.Path, TypeGraph.FilePathOfKey(key.Name)))
+                        selections.SelectWhole(entry.Node, "a test file without classes changed");
+                }
                 else
+                {
                     selections.Add(entry.Node, entry.TestName + ".");
+                }
             }
             else if (entry.Node.IsExecutable)
             {

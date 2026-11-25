@@ -120,8 +120,16 @@ internal sealed class Preloader
                         _failed.Remove(project.Path);
                     pending.Clear();
                 }
-                catch (FuseException)
+                catch (FuseException e)
                 {
+                    if (IsTransientLoad(e, pending))
+                    {
+                        // The host is down, not the projects: each project below would fail the same way, so the
+                        // batch waits for the next schedule instead of extracting project by project against it.
+                        _log($"preload deferred: {e.Message}");
+                        return;
+                    }
+
                     // Retried one project at a time below, so one unloadable project neither blocks the rest nor
                     // marks them failed.
                     pending = pending.Where(p => !_workspace.IsLoaded(p)).ToList();
@@ -151,6 +159,14 @@ internal sealed class Preloader
                 }
                 catch (FuseException e)
                 {
+                    if (IsTransientLoad(e, [project]))
+                    {
+                        // The host is down, not the project: the rest of the batch would fail the same way, so
+                        // the batch waits for the next schedule, unmarked.
+                        _log($"preload of {project.Name} deferred: {e.Message}");
+                        return;
+                    }
+
                     // Tried again once the projects reload or a restore rewrites its closure's assets; until then a check that
                     // needs the project loads it itself and reports the failure.
                     _failed[project.Path] = attempt;
@@ -182,6 +198,19 @@ internal sealed class Preloader
         catch (Exception e) when (e is OperationCanceledException or TimeoutException)
         {
         }
+    }
+
+    /// <summary>
+    ///     True when <paramref name="failure"/> answers a transient host failure for <paramref name="batch"/>: a
+    ///     deterministic load failure is recorded for the batch's closures, so a load failure with nothing recorded
+    ///     and host wording can only be transient. A restore failure is never transient: it waits for a restore.
+    /// </summary>
+    private bool IsTransientLoad(FuseException failure, IReadOnlyCollection<ProjectNode> batch)
+    {
+        if (failure.Code != ErrorCode.LoadFailed || !BlueprintEvaluator.IsTransient(failure.Message))
+            return false;
+        var graph = _workspace.PinGeneration().Graph;
+        return !batch.SelectMany(graph.ClosureOf).Any(p => _workspace.LoadFailureOf(p) is not null);
     }
 
     /// <summary>

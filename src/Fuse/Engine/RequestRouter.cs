@@ -151,19 +151,21 @@ internal sealed class RequestRouter : IDisposable
         NoteSession(request);
         string? key;
         Generation? keyed;
-        if (request is EngineRequest.CheckChanges && _initialization is not { IsCompleted: false })
+        var isCheck = request is EngineRequest.CheckChanges or EngineRequest.CheckFiles or EngineRequest.CheckPaths;
+        if (isCheck && _initialization is not { IsCompleted: false })
         {
-            // A check of every change answers for the files on disk, not for the tree the watcher last
-            // reported: a shell write it has not reported yet is in no generation yet, and the kept answer of
-            // the tree without it would answer for that tree (and stamp it). The sync confirms the changed
-            // set against disk before any kept answer is served, and the key is taken from the generation
-            // it publishes. Hooks name their files, which the check itself syncs in by name, so they are
-            // not affected by this. Only macOS confirms with git: its file watcher can report a write late,
-            // while Windows and Linux report it before another process can ask, and git costs tens of
+            // A check answers for the files on disk, not for the tree the watcher last reported: a write it
+            // has not reported yet is in no generation yet, and the kept answer of the tree without it would
+            // answer for that tree (and stamp it). The sync confirms the changed set against disk before any
+            // kept answer is served, and the key is taken from the generation it publishes. A check that
+            // names files syncs them by name, so the key holds what the hook just wrote; the check itself
+            // syncing them later would compute the right answer but keep it under this stale key. A check of
+            // every change names none. Only macOS confirms with git: its file watcher can report a write
+            // late, while Windows and Linux report it before another process can ask, and git costs tens of
             // milliseconds on a large repository.
             try
             {
-                await _workspace.SyncAndPinAsync([], cancellationToken, confirmWithDisk: OperatingSystem.IsMacOS()).ConfigureAwait(false);
+                await _workspace.SyncAndPinAsync(KnownPathsOf(request), cancellationToken, confirmWithDisk: OperatingSystem.IsMacOS()).ConfigureAwait(false);
                 (key, keyed) = CoalesceKey(request);
             }
             catch (FuseException)
@@ -176,9 +178,9 @@ internal sealed class RequestRouter : IDisposable
         }
         else
         {
-            // The key is taken once, from the request and the generation it pins: a check of every change
-            // takes it after its sync above, from the generation that sync published, and no request reads
-            // and hashes every changed file twice before its phase timer starts.
+            // The key is taken once, from the request and the generation it pins: a check takes it after
+            // its sync above, from the generation that sync published, and no request reads and hashes
+            // every changed file twice before its phase timer starts.
             (key, keyed) = CoalesceKey(request);
         }
 
@@ -785,6 +787,34 @@ internal sealed class RequestRouter : IDisposable
         // The next sync takes these files whoever runs it, so a credit is never forgotten as if its file matched HEAD
         // because an answer was served from the result store before the watcher reported the write.
         _workspace.Tracker.ReportWritten(paths);
+    }
+
+    /// <summary>
+    ///     The files a check names for the sync that runs before its content key is taken, so the key holds what is
+    ///     on disk now: a files check its files, a paths check its recently written sources, and a check of every
+    ///     change none. A name that is not a valid path is left to the check to refuse.
+    /// </summary>
+    private List<RepoPath> KnownPathsOf(EngineRequest request)
+    {
+        if (request is EngineRequest.CheckPaths paths)
+            return ScopeExpansion.RecentlyWritten(_workspace.Root, paths.Paths);
+        if (request is not EngineRequest.CheckFiles files)
+            return [];
+        var known = new List<RepoPath>(files.Files.Count);
+        foreach (var file in files.Files)
+        {
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(file))
+                    known.Add(_workspace.Root.PathOfNamed(file));
+            }
+            catch (Exception e) when (e is ArgumentException or PathTooLongException)
+            {
+                // CheckFilesAsync answers this file with InvalidPath.
+            }
+        }
+
+        return known;
     }
 
     /// <summary>

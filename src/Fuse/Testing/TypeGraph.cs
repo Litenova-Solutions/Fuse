@@ -187,6 +187,10 @@ internal sealed class TypeGraph
     /// <summary>True when <paramref name="name"/> keys a file without type declarations rather than a type.</summary>
     internal static bool IsFileKey(string name) => name.StartsWith(FilePrefix, StringComparison.Ordinal);
 
+    /// <summary>The path a file key names.</summary>
+    internal static string FilePathOfKey(string name) =>
+        name.StartsWith(FilePrefix, StringComparison.Ordinal) ? name[FilePrefix.Length..] : name;
+
     /// <summary>Namespace-qualified name with nested types joined by <c>+</c>, as test adapters report it.</summary>
     internal static string QualifiedName(SyntaxNode type)
     {

@@ -96,7 +96,7 @@ internal static class TestOperation
         {
             // dotnet test with the caller's arguments builds with MSBuild, so it holds the lock until it exits.
             using var argumentsLock = BuildLock.AcquireForClient(root);
-            await EngineClient.TryYieldMemoryAsync(root, cancellationToken).ConfigureAwait(false);
+            await BuildOperation.YieldMemoryIfTightAsync(root, cancellationToken).ConfigureAwait(false);
             // On Microsoft.Testing.Platform the arguments go to the test application, which rejects VSTest's logger options.
             var testingPlatform = GlobalJson.UsesTestingPlatform(workingDirectory, root.Path);
             var normalized = NormalizeArguments(workingDirectory, arguments, testingPlatform);
@@ -399,7 +399,7 @@ internal static class TestOperation
         var runRemainingInParallel = false;
         if (remainingGroups.Count > 0)
         {
-            await EngineClient.TryYieldMemoryAsync(root, cancellationToken).ConfigureAwait(false);
+            await BuildOperation.YieldMemoryIfTightAsync(root, cancellationToken).ConfigureAwait(false);
             takeLock();
             if (remainingGroups.Count > 1)
             {

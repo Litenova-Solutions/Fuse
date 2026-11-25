@@ -25,6 +25,14 @@ internal static class BlueprintEvaluator
     /// </summary>
     private static readonly ConcurrentDictionary<string, SemaphoreSlim> _extractionLocks = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    ///     Test seam: when set, called with each project's absolute path before it opens during an extraction. A
+    ///     non-null return is thrown and classified exactly as if <c>OpenProjectAsync</c> had thrown it, so tests
+    ///     fail one extraction transiently without waiting for a real BuildHost timeout. Tests key it on their own
+    ///     repository's paths and reset it afterwards, because other tests extract in the same process.
+    /// </summary>
+    internal static Func<string, Exception?>? TestOpenFault { get; set; }
+
     // Global properties for the ephemeral extraction workspace. MSBuildWorkspace runs a CoreCompile execution
     // pass for the compiler command-line arguments, and MsCoverageReferencedPathMaps (Microsoft.CodeCoverage)
     // writes .msCoverageSourceRootsMapping_* into bin/ from it unless DisableMsCoverageReferencedPathMaps is set.
@@ -70,7 +78,8 @@ internal static class BlueprintEvaluator
 
             var started = Environment.TickCount64;
             var outcome = await ExtractAsync(root, graph, toExtract, cached, cancellationToken).ConfigureAwait(false);
-            if (outcome.Blueprint is not null && outcome.Failures.Count == 0 && inputs is not null)
+            outcome = await RetryTransientAsync(root, graph, toExtract, outcome, log, cancellationToken).ConfigureAwait(false);
+            if (outcome.Blueprint is not null && outcome.Failures.Count == 0 && outcome.TransientFailure is null && inputs is not null)
                 outcome.Blueprint.TryWrite(CompilationBlueprint.FileFor(root.SharedStateDirectory, outcome.Blueprint.Key));
             log($"blueprint evaluated {toExtract.Count} project(s) in {Environment.TickCount64 - started} ms ({outcome.Failures.Count} failed)");
             return outcome;
@@ -79,6 +88,35 @@ internal static class BlueprintEvaluator
         {
             extraction.Release();
         }
+    }
+
+    /// <summary>
+    ///     Extracts again the projects a transient host failure kept out of <paramref name="outcome"/>, once, with a
+    ///     fresh workspace and so a fresh BuildHost. A transient report with every project captured anyway clears
+    ///     without extracting again. The retry merges into the first attempt's blueprint; a transient failure the
+    ///     retry also hits stays on the outcome for the caller to answer without recording.
+    /// </summary>
+    private static async Task<ExtractionOutcome> RetryTransientAsync(
+        RepoRoot root,
+        RepoGraph graph,
+        IReadOnlyList<ProjectNode> attempted,
+        ExtractionOutcome outcome,
+        Action<string> log,
+        CancellationToken cancellationToken)
+    {
+        if (outcome.TransientFailure is not { } transient)
+            return outcome;
+        var captured = outcome.Blueprint?.Projects.Select(p => p.ProjectPath).ToHashSet(StringComparer.Ordinal) ?? [];
+        var retry = attempted.Where(p => !captured.Contains(p.Path.Relative) && !outcome.Failures.ContainsKey(p.Path)).ToList();
+        if (retry.Count == 0)
+            return outcome with { TransientFailure = null };
+        cancellationToken.ThrowIfCancellationRequested();
+        log($"blueprint extraction hit a transient failure, retrying {retry.Count} project(s): {FirstLine(transient)}");
+        var second = await ExtractAsync(root, graph, retry, outcome.Blueprint, cancellationToken).ConfigureAwait(false);
+        var failures = new Dictionary<RepoPath, string>(outcome.Failures);
+        foreach (var (failedPath, reason) in second.Failures)
+            failures[failedPath] = reason;
+        return new ExtractionOutcome(second.Blueprint ?? outcome.Blueprint, failures, second.TransientFailure);
     }
 
     /// <summary>Returns the shared cache's blueprint when its key and input hashes match <paramref name="inputs"/>, or null.</summary>
@@ -133,6 +171,7 @@ internal static class BlueprintEvaluator
         CancellationToken cancellationToken)
     {
         var failures = new ConcurrentDictionary<RepoPath, string>();
+        string? transientFailure = null;
         RepoPath? currentProject = null;
 
         Solution? extractedSolution;
@@ -146,6 +185,12 @@ internal static class BlueprintEvaluator
                     return;
                 if (LoadFailure.IsWarning(e.Diagnostic.Message))
                     return;
+                if (IsTransient(e.Diagnostic.Message))
+                {
+                    Interlocked.CompareExchange(ref transientFailure, e.Diagnostic.Message, null);
+                    return;
+                }
+
                 var matched = graph.Projects.FirstOrDefault(p => e.Diagnostic.Message.Contains(p.Path.Absolute, StringComparison.OrdinalIgnoreCase))?.Path
                     ?? currentProject;
                 if (matched is { } failed)
@@ -160,11 +205,16 @@ internal static class BlueprintEvaluator
                 currentProject = project.Path;
                 try
                 {
+                    if (TestOpenFault?.Invoke(project.Path.Absolute) is { } fault)
+                        throw fault;
                     await workspace.OpenProjectAsync(project.Path.Absolute, cancellationToken: cancellationToken).ConfigureAwait(false);
                 }
-                catch (Exception e) when (e is InvalidOperationException or IOException or ArgumentException)
+                catch (Exception e) when (e is InvalidOperationException or IOException or ArgumentException or TimeoutException)
                 {
-                    failures.TryAdd(project.Path, e.Message);
+                    if (e is TimeoutException || e is IOException || IsTransient(e.Message))
+                        Interlocked.CompareExchange(ref transientFailure, e.Message, null);
+                    else
+                        failures.TryAdd(project.Path, e.Message);
                 }
             }
 
@@ -197,7 +247,7 @@ internal static class BlueprintEvaluator
             ? existing.Merge(root.Path, inputHashes, assetsHashes, blueprintProjects, knownSources)
             : new CompilationBlueprint(CompilationBlueprint.FormatVersion, CompilationBlueprint.CurrentBuild, key, root.Path, inputHashes, assetsHashes, blueprintProjects, knownSources);
 
-        return new ExtractionOutcome(blueprint, failureMap);
+        return new ExtractionOutcome(blueprint, failureMap, transientFailure);
     }
 
     private static async Task<CompilationBlueprint.BlueprintProject?> CaptureProjectAsync(
@@ -423,6 +473,44 @@ internal static class BlueprintEvaluator
             ErrorCode.RestoreNeeded,
             $"restore needed: run `dotnet restore {unrestored[0]}`{(unrestored.Count > 1 ? " and the same for each project listed" : "")} ({string.Join(", ", unrestored.Take(3))}{(unrestored.Count > 3 ? ", ..." : "")} not restored)");
 
-    /// <summary>Result of extracting a blueprint: the blueprint (when any project loaded) and per-project MSBuild load failures.</summary>
-    internal sealed record ExtractionOutcome(CompilationBlueprint? Blueprint, IReadOnlyDictionary<RepoPath, string> Failures);
+    /// <summary>
+    ///     True when <paramref name="message"/> reports the extraction host rather than the project: the BuildHost
+    ///     did not respond, exited, disconnected or timed out. Such a failure is never recorded as the project's
+    ///     load failure, and the extraction is tried once more. Each marker needs a non-letter-or-digit on both
+    ///     sides, so a project or directory named like one (a timeout policy test) does not read as a host failure.
+    /// </summary>
+    internal static bool IsTransient(string message) =>
+        ContainsBounded(message, "buildhost pid")
+        || ContainsBounded(message, "buildhost process")
+        || ContainsBounded(message, "build host")
+        || ContainsBounded(message, "not responding")
+        || ContainsBounded(message, "timed out")
+        || ContainsBounded(message, "timeout")
+        || ContainsBounded(message, "disconnected")
+        || ContainsBounded(message, "disconnect");
+
+    private static bool ContainsBounded(string message, string marker)
+    {
+        var index = 0;
+        while ((index = message.IndexOf(marker, index, StringComparison.OrdinalIgnoreCase)) >= 0)
+        {
+            var before = index == 0 || !char.IsLetterOrDigit(message[index - 1]);
+            var end = index + marker.Length;
+            var after = end == message.Length || !char.IsLetterOrDigit(message[end]);
+            if (before && after)
+                return true;
+            index++;
+        }
+
+        return false;
+    }
+
+    private static string FirstLine(string message)
+    {
+        var end = message.IndexOfAny(['\r', '\n']);
+        return end < 0 ? message : message[..end];
+    }
+
+    /// <summary>Result of extracting a blueprint: the blueprint (when any project loaded), per-project deterministic MSBuild load failures, and the first transient host failure (when one struck), which the caller answers without recording.</summary>
+    internal sealed record ExtractionOutcome(CompilationBlueprint? Blueprint, IReadOnlyDictionary<RepoPath, string> Failures, string? TransientFailure = null);
 }

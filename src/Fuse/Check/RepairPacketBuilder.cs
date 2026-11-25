@@ -107,81 +107,88 @@ internal static class RepairPacketBuilder
         if (errors.Count == 0)
             return errors;
 
-        var fileCache = new Dictionary<string, DocumentSnapshot?>(StringComparer.Ordinal);
+        var documents = new Dictionary<string, List<Document>>(StringComparer.Ordinal);
+        var snapshots = new Dictionary<DocumentId, DocumentSnapshot?>();
         var result = new List<IntroducedError>(errors.Count);
 
         foreach (var entry in errors)
         {
             var error = entry.Error;
-            if (!fileCache.TryGetValue(error.Path, out var snapshot))
+            if (!documents.TryGetValue(error.Path, out var candidates))
             {
-                snapshot = await LoadSnapshotAsync(solution, root, error.Path, cancellationToken).ConfigureAwait(false);
-                fileCache[error.Path] = snapshot;
+                candidates = DocumentsOf(solution, root, error.Path);
+                documents[error.Path] = candidates;
             }
 
-            if (snapshot is null)
+            // A file shared by several target frameworks has one document per framework, and code inside an #if
+            // branch binds in only some of them: the packet comes from the first document that has the error.
+            RepairPacket? packet = null;
+            DocumentSnapshot? first = null;
+            foreach (var document in candidates)
+            {
+                if (!snapshots.TryGetValue(document.Id, out var snapshot))
+                {
+                    snapshot = await LoadSnapshotAsync(document, cancellationToken).ConfigureAwait(false);
+                    snapshots[document.Id] = snapshot;
+                }
+
+                if (snapshot is null)
+                    continue;
+                first ??= snapshot;
+                packet = BuildForError(error, snapshot, solution, cancellationToken);
+                if (packet is not null)
+                    break;
+            }
+
+            if (first is null)
             {
                 result.Add(entry);
                 continue;
             }
 
-            var packet = BuildForError(error, snapshot, solution, cancellationToken);
+            packet ??= new RepairPacket(BuildSourceWindow(first.Text, LineIndexOf(error, first.Text)), [], [], null);
             result.Add(entry with { Repair = packet, Error = error with { Repair = packet } });
         }
 
         return result;
     }
 
-    private static async Task<DocumentSnapshot?> LoadSnapshotAsync(
-        Solution solution,
-        RepoRoot root,
-        string relativePath,
-        CancellationToken cancellationToken)
+    private static List<Document> DocumentsOf(Solution solution, RepoRoot root, string relativePath)
     {
         var absolute = root.PathOf(relativePath).Absolute;
-        var ids = solution.GetDocumentIdsWithFilePath(absolute);
-        if (ids.IsEmpty)
-            return null;
-
-        Document? document = null;
-        foreach (var id in ids)
+        var found = new List<Document>();
+        foreach (var id in solution.GetDocumentIdsWithFilePath(absolute))
         {
-            if (solution.GetDocument(id) is { } found)
-            {
-                document = found;
-                break;
-            }
+            if (solution.GetDocument(id) is { } document)
+                found.Add(document);
         }
 
-        if (document is null)
-            return null;
-
-        var model = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
-        var text = await document.GetTextAsync(cancellationToken).ConfigureAwait(false);
-        if (model is null)
-            return null;
-
-        return new DocumentSnapshot(model, model.Compilation, text);
+        return found;
     }
 
-    private static RepairPacket BuildForError(
+    private static async Task<DocumentSnapshot?> LoadSnapshotAsync(Document document, CancellationToken cancellationToken)
+    {
+        var model = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
+        var text = await document.GetTextAsync(cancellationToken).ConfigureAwait(false);
+        return model is null ? null : new DocumentSnapshot(model, model.Compilation, text);
+    }
+
+    private static int LineIndexOf(CompilerError error, SourceText text) => Math.Clamp(error.Line - 1, 0, Math.Max(0, text.Lines.Count - 1));
+
+    /// <summary>The packet built from the diagnostic in <paramref name="snapshot"/> that matches the error, or null when the document has none.</summary>
+    private static RepairPacket? BuildForError(
         CompilerError error,
         DocumentSnapshot snapshot,
         Solution solution,
         CancellationToken cancellationToken)
     {
-        var lineIndex = Math.Clamp(error.Line - 1, 0, Math.Max(0, snapshot.Text.Lines.Count - 1));
-        if (!error.FromAnalyzer && error.Line >= 1 && error.Line <= snapshot.Text.Lines.Count)
-        {
-            var lineSpan = snapshot.Text.Lines[lineIndex].Span;
-            var diagnostics = snapshot.Model.GetDiagnostics(lineSpan, cancellationToken);
-            var matched = diagnostics.FirstOrDefault(d => Matches(d, error))
-                ?? diagnostics.FirstOrDefault(d => d.Id == error.Id && d.Location.GetMappedLineSpan().StartLinePosition.Line + 1 == error.Line);
-            if (matched is not null)
-                return Build(matched, snapshot.Model, snapshot.Compilation, snapshot.Text, solution, cancellationToken);
-        }
-
-        return new RepairPacket(BuildSourceWindow(snapshot.Text, lineIndex), [], [], null);
+        if (error.FromAnalyzer || error.Line < 1 || error.Line > snapshot.Text.Lines.Count)
+            return null;
+        var lineSpan = snapshot.Text.Lines[LineIndexOf(error, snapshot.Text)].Span;
+        var diagnostics = snapshot.Model.GetDiagnostics(lineSpan, cancellationToken);
+        var matched = diagnostics.FirstOrDefault(d => Matches(d, error))
+            ?? diagnostics.FirstOrDefault(d => d.Id == error.Id && d.Location.GetMappedLineSpan().StartLinePosition.Line + 1 == error.Line);
+        return matched is null ? null : Build(matched, snapshot.Model, snapshot.Compilation, snapshot.Text, solution, cancellationToken);
     }
 
     private static bool Matches(Diagnostic diagnostic, CompilerError error)

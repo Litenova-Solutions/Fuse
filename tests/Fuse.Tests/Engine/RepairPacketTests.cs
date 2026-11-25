@@ -172,6 +172,54 @@ public class RepairPacketTests
         Assert.Contains(extPacket.Candidates, c => c.Contains("Triple()", StringComparison.Ordinal) && c.Contains("extension", StringComparison.Ordinal));
     }
 
+    [Theory]
+    [InlineData("tenth")]
+    [InlineData("eighth")]
+    public async Task Brief_names_candidates_for_an_error_inside_one_framework_branch(string branch)
+    {
+        using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string>
+        {
+            [".gitignore"] = "bin/\nobj/\n",
+            ["Fixture.slnx"] = "<Solution>\n  <Project Path=\"Lib/Lib.csproj\" />\n</Solution>\n",
+            ["Lib/Lib.csproj"] = """
+                <Project Sdk="Microsoft.NET.Sdk">
+                  <PropertyGroup>
+                    <TargetFrameworks>net10.0;net8.0</TargetFrameworks>
+                    <Nullable>enable</Nullable>
+                  </PropertyGroup>
+                </Project>
+                """,
+            ["Lib/Marker.cs"] = """
+                namespace Lib;
+
+                public static class Marker
+                {
+                #if NET10_0_OR_GREATER
+                    public static string Which() => "tenth".ToString();
+                #else
+                    public static string Which() => "eighth".ToString();
+                #endif
+                }
+                """,
+        });
+        FixtureRepo.Run(repo.Root.Path, "dotnet", "restore", "Fixture.slnx", "-nologo", "-v:q");
+        await using var engine = await InProcessEngine.StartAsync(repo);
+        engine.Repo.Replace("Lib/Marker.cs", $"\"{branch}\".ToString()", $"\"{branch}\".ToStrin()");
+        await engine.SyncAsync("Lib/Marker.cs");
+
+        var report = await engine.Checker.CheckAsync(
+            new CheckScope.AllChanges(),
+            null,
+            AnalyzerRun.Full,
+            PhaseTimes.None,
+            new CheckOptions(IncludeRepairBrief: true),
+            TestContext.Current.CancellationToken);
+
+        var error = Assert.Single(report.Errors);
+        Assert.Equal("CS1061", error.Error.Id);
+        Assert.Contains(error.Repair!.Candidates, c => c.Contains("ToString", StringComparison.Ordinal));
+    }
+
     [Fact]
     public async Task Default_options_leave_repair_null_and_do_not_collide_with_brief_cache()
     {

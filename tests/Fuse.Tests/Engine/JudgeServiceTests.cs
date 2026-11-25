@@ -181,6 +181,53 @@ public class JudgeServiceTests
         }
     }
 
+    [Fact]
+    public async Task Combine_applies_a_hunk_below_one_that_added_lines()
+    {
+        await using var engine = await InProcessEngine.StartAsync(WithSteps());
+        // The first candidate adds a line, so the second one's hunk sits a line lower once the first is applied.
+        var first = PatchFor(engine, "Lib/Steps.cs", "public int Step1() => 1;", "public int Step1() => 1;\n    public int Step0() => 0;");
+        var second = PatchFor(engine, "Lib/Steps.cs", "public int Step30() => 30;", "public int Step30() => 30 + 0;");
+        var service = new JudgeService(engine.Workspace, engine.Repo.Root);
+        var report = await service.RunAsync(
+            new JudgeRequest(JudgeRequest.JudgeMode.Combine, [new JudgeRequest.Candidate("first", first), new JudgeRequest.Candidate("second", second)]),
+            TestContext.Current.CancellationToken);
+
+        Assert.Empty(report.Conflicts);
+        Assert.True(report.Clean);
+        Assert.All(report.Verdicts, v => Assert.Null(v.ConflictReason));
+    }
+
+    [Fact]
+    public async Task A_diff_that_drops_the_byte_order_mark_still_applies()
+    {
+        await using var engine = await InProcessEngine.StartAsync(WithSteps(byteOrderMark: true));
+        var path = Path.Combine(engine.Repo.Root.Path, "Lib", "Steps.cs");
+        var original = File.ReadAllBytes(path);
+        // .NET's File.WriteAllText, like many editors, writes UTF-8 without the mark the file had.
+        File.WriteAllText(path, File.ReadAllText(path).Replace("public int Step1() => 1;", "public int Step1() => 1 + 0;", StringComparison.Ordinal));
+        var diff = FixtureRepo.Run(engine.Repo.Root.Path, "git", "diff", "--no-color", "--", "Lib/Steps.cs");
+        File.WriteAllBytes(path, original);
+        var service = new JudgeService(engine.Workspace, engine.Repo.Root);
+        var report = await service.RunAsync(
+            new JudgeRequest(JudgeRequest.JudgeMode.Race, [new JudgeRequest.Candidate("clean", diff)]),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal("clean", report.Winner);
+        Assert.Empty(report.Conflicts);
+    }
+
+    /// <summary>The standard repository with a committed <c>Lib/Steps.cs</c> of 30 one-line methods.</summary>
+    private static FixtureRepo WithSteps(bool byteOrderMark = false)
+    {
+        var repo = FixtureRepo.CreateStandard();
+        var methods = string.Join("\n", Enumerable.Range(1, 30).Select(n => $"    public int Step{n}() => {n};"));
+        var text = $"namespace Lib;\n\npublic class Steps\n{{\n{methods}\n}}\n";
+        File.WriteAllText(Path.Combine(repo.Path, "Lib", "Steps.cs"), text, new System.Text.UTF8Encoding(byteOrderMark));
+        repo.Commit("add steps");
+        return repo;
+    }
+
     /// <summary>The git diff of replacing oldText with newText in the file, with the file restored after.</summary>
     private static string PatchFor(InProcessEngine engine, string relative, string oldText, string newText)
     {

@@ -119,7 +119,8 @@ internal static class UnifiedDiff
                     i = lines.Length;
                 }
 
-                hunks.Add(hunk);
+                if (!ChangesNothing(hunk))
+                    hunks.Add(hunk);
                 continue;
             }
 
@@ -139,6 +140,8 @@ internal static class UnifiedDiff
     {
         var newline = baseText.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
         var lines = SplitLines(baseText, out var baseEndsWithNewline);
+        if (lines.Count > 0)
+            lines[0] = WithoutByteOrderMark(lines[0]);
         var baseCount = lines.Count;
         var offset = 0;
         for (var h = 0; h < patch.Hunks.Count; h++)
@@ -149,18 +152,21 @@ internal static class UnifiedDiff
             foreach (var hunkLine in hunk.Lines)
             {
                 if (hunkLine.Kind is ' ' or '-')
-                    oldLines.Add(hunkLine.Text);
+                    oldLines.Add(WithoutByteOrderMark(hunkLine.Text));
                 if (hunkLine.Kind is ' ' or '+')
-                    newLines.Add(hunkLine.Text);
+                    newLines.Add(WithoutByteOrderMark(hunkLine.Text));
             }
 
-            var pos = (hunk.OldStart == 0 ? 0 : hunk.OldStart - 1) + offset;
-            if (pos < 0 || pos + oldLines.Count > lines.Count)
+            var expected = (hunk.OldStart == 0 ? 0 : hunk.OldStart - 1) + offset;
+            if (expected < 0 || expected + oldLines.Count > lines.Count)
                 return (null, $"{patch.Path}: hunk {h + 1} reaches past the end of the file");
-            for (var j = 0; j < oldLines.Count; j++)
+            var pos = NearestMatch(lines, oldLines, expected);
+            if (pos < 0)
             {
-                if (lines[pos + j] != oldLines[j])
-                    return (null, $"{patch.Path}: hunk {h + 1} does not match at line {pos + j + 1}: expected '{oldLines[j]}' but found '{lines[pos + j]}'");
+                var j = 0;
+                while (lines[expected + j] == oldLines[j])
+                    j++;
+                return (null, $"{patch.Path}: hunk {h + 1} does not match at line {expected + j + 1}: expected '{oldLines[j]}' but found '{lines[expected + j]}'");
             }
 
             if (h == patch.Hunks.Count - 1 && hunk.OldStart + hunk.OldCount - 1 == baseCount && baseCount > 0)
@@ -188,6 +194,54 @@ internal static class UnifiedDiff
 
         return (string.Join(newline, lines) + (endsWithNewline ? newline : ""), null);
     }
+
+    /// <summary>
+    ///     Where <paramref name="oldLines"/> match <paramref name="lines"/> exactly, nearest to <paramref name="expected"/>
+    ///     first, or -1 when they match nowhere. Another candidate applied before this one, or a hunk of the same patch,
+    ///     can move the lines a hunk names by the lines it added or removed above them.
+    /// </summary>
+    private static int NearestMatch(List<string> lines, List<string> oldLines, int expected)
+    {
+        for (var distance = 0; distance <= lines.Count; distance++)
+        {
+            if (MatchesAt(lines, oldLines, expected - distance))
+                return expected - distance;
+            if (distance > 0 && MatchesAt(lines, oldLines, expected + distance))
+                return expected + distance;
+            if (expected - distance < 0 && expected + distance + oldLines.Count > lines.Count)
+                break;
+        }
+
+        return -1;
+    }
+
+    /// <summary>
+    ///     True when the hunk's old and new lines are the same once a byte order mark is left out: a hunk that only adds
+    ///     or drops the mark changes no text, so it neither applies nor claims lines another candidate could overlap.
+    /// </summary>
+    private static bool ChangesNothing(Hunk hunk) =>
+        hunk.Lines.Where(l => l.Kind is ' ' or '-').Select(l => WithoutByteOrderMark(l.Text))
+            .SequenceEqual(hunk.Lines.Where(l => l.Kind is ' ' or '+').Select(l => WithoutByteOrderMark(l.Text)), StringComparer.Ordinal)
+        && hunk.OldNoNewline == hunk.NewNoNewline;
+
+    private static bool MatchesAt(List<string> lines, List<string> oldLines, int pos)
+    {
+        if (pos < 0 || pos + oldLines.Count > lines.Count)
+            return false;
+        for (var j = 0; j < oldLines.Count; j++)
+        {
+            if (lines[pos + j] != oldLines[j])
+                return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    ///     The line without a leading UTF-8 byte order mark. A solution's text never holds the mark, while a diff from an
+    ///     editor that dropped or added it names it on the first line.
+    /// </summary>
+    private static string WithoutByteOrderMark(string line) => line.StartsWith('﻿') ? line[1..] : line;
 
     /// <summary>Reads the hunk at lines[i], leaving the index past its body.</summary>
     /// <returns>The hunk, or null with the reason the hunk is not one.</returns>

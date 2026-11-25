@@ -492,7 +492,13 @@ internal static class SwarmSuite
             .Where(m => m.Body is { Statements.Count: > 0 })
             .ToList();
         var method = methodIndex < methods.Count ? methods[methodIndex] : methods[0];
-        var statement = SyntaxFactory.ParseStatement(statementText + "\n");
+        // Indented like the statement it goes before and ended with the file's own line ending, so a repository that
+        // enforces layout (Jellyfin treats StyleCop's SA1137 as an error) sees no error the edit did not mean to make.
+        var indent = method.Body!.Statements[0].GetLeadingTrivia().LastOrDefault(t => t.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.WhitespaceTrivia));
+        var newline = text.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
+        var statement = SyntaxFactory.ParseStatement(statementText)
+            .WithLeadingTrivia(indent)
+            .WithTrailingTrivia(SyntaxFactory.EndOfLine(newline));
         return root.ReplaceNode(method.Body!, method.Body!.WithStatements(method.Body.Statements.Insert(0, statement))).ToFullString();
     }
 

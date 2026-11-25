@@ -274,8 +274,18 @@ internal sealed class TestSelector
                 var baseDoc = generation.Baseline.GetDocument(docIds[0]);
                 if (doc is not null)
                 {
-                    var afterRoot = await doc.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
+                    // One document parses with one target framework's symbols, so an edit inside an #if branch another
+                    // framework compiles looks like no change here. A file with directives goes to the semantic walk,
+                    // which sees every framework's project, as the disk comparison below does.
+                    var currentText = await doc.GetTextAsync(cancellationToken).ConfigureAwait(false);
                     var headText = baseDoc is null ? null : await baseDoc.GetTextAsync(cancellationToken).ConfigureAwait(false);
+                    if (ContainsPreprocessorDirective(currentText) || (headText is not null && ContainsPreprocessorDirective(headText)))
+                    {
+                        active.Add(path);
+                        continue;
+                    }
+
+                    var afterRoot = await doc.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
                     if (afterRoot is not null)
                     {
                         var beforeRoot = headText is null

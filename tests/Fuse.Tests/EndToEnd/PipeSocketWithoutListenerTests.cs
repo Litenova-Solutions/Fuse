@@ -1,7 +1,5 @@
-using System.Net.Sockets;
+using System.Diagnostics;
 using System.Text.Json;
-using Fuse.Engine.Client;
-using Fuse.Paths;
 using Fuse.Tests.Fixtures;
 
 namespace Fuse.Tests.EndToEnd;
@@ -9,7 +7,7 @@ namespace Fuse.Tests.EndToEnd;
 /// <summary>
 ///     A killed engine leaves its pipe's socket file behind with no listener. The next command starts an engine,
 ///     which removes the file once it holds the root's mutex, and status reports no engine instead of waiting on one
-///     that never answers. The plant binds a socket where the engine's pipe will be and closes it without unlinking.
+///     that never answers. The plant kills a running engine, as a crash would.
 /// </summary>
 public class PipeSocketWithoutListenerTests
 {
@@ -20,8 +18,8 @@ public class PipeSocketWithoutListenerTests
         using var repo = FixtureRepo.CreateStandard();
         try
         {
-            PlantSocketWithoutListener(repo.Root);
-            Assert.True(EngineClient.PipeExists(repo.Root.PipeName));
+            await PlantSocketWithoutListener(repo);
+            Assert.True(File.Exists(Path.Combine(Path.GetTempPath(), "CoreFxPipe_" + repo.Root.PipeName)));
 
             var check = await FuseProcess.RunAsync(repo.Path, null, "check");
             Assert.Equal(0, check.ExitCode);
@@ -43,7 +41,7 @@ public class PipeSocketWithoutListenerTests
         using var repo = FixtureRepo.CreateStandard();
         try
         {
-            PlantSocketWithoutListener(repo.Root);
+            await PlantSocketWithoutListener(repo);
 
             var status = await FuseProcess.RunAsync(repo.Path, null, "status");
             Assert.Equal(0, status.ExitCode);
@@ -65,12 +63,22 @@ public class PipeSocketWithoutListenerTests
     ///     listener, as after a killed engine. The path is spelled as the runtime builds it, not read from the
     ///     product, so the plant cannot pass vacuously at a path the product never looks at.
     /// </summary>
-    private static void PlantSocketWithoutListener(RepoRoot root)
+    /// <summary>
+    ///     Leaves the engine's socket file without a listener the way a crash does: starts an engine and kills it, which
+    ///     on Linux and macOS sends SIGKILL, so the engine never closes its pipe. A socket .NET binds itself is not a
+    ///     plant: disposing it deletes the file.
+    /// </summary>
+    private static async Task PlantSocketWithoutListener(FixtureRepo repo)
     {
-        var path = Path.Combine(Path.GetTempPath(), "CoreFxPipe_" + root.PipeName);
-        if (File.Exists(path))
-            File.Delete(path);
-        using var socket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
-        socket.Bind(new UnixDomainSocketEndPoint(path));
+        var started = await FuseProcess.RunAsync(repo.Path, null, "check");
+        Assert.Equal(0, started.ExitCode);
+        var status = await FuseProcess.RunAsync(repo.Path, null, "status", "--json");
+        using var document = JsonDocument.Parse(status.Stdout);
+        using var engine = Process.GetProcessById(document.RootElement.GetProperty("pid").GetInt32());
+        engine.Kill();
+        await engine.WaitForExitAsync(TestContext.Current.CancellationToken);
+        var path = Path.Combine(Path.GetTempPath(), "CoreFxPipe_" + repo.Root.PipeName);
+        Assert.True(File.Exists(path), $"the killed engine's socket file {path} is gone, so there is nothing to recover from");
+        Assert.False(FuseProcess.EngineRunning(repo.Root));
     }
 }

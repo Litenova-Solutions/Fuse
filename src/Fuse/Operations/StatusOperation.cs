@@ -55,12 +55,13 @@ internal static partial class StatusOperation
     {
         EngineStatus? engine = null;
         var silentEngine = false;
-        // A pipe's socket file without a listener is left behind by a killed engine: no engine runs, so status
-        // reads the tree from git instead of waiting on an engine that never answers.
-        if (EngineClient.PipeExists(root.PipeName) && EngineClient.PipeHasListener(root.PipeName))
+        if (EngineClient.PipeExists(root.PipeName))
         {
             engine = await AskAsync(root, cancellationToken).ConfigureAwait(false);
-            silentEngine = engine is null;
+            // A pipe's socket file without a listener is left behind by a killed engine: no engine runs. The probe
+            // runs only after the engine did not answer, because a probe connection takes the engine's waiting pipe
+            // instance and would delay the request itself.
+            silentEngine = engine is null && EngineClient.PipeHasListener(root.PipeName);
         }
 
         string tree;

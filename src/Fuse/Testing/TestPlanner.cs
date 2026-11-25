@@ -93,9 +93,9 @@ internal sealed class TestPlanner
     {
         await IngestIncomingTestMapsAsync(cancellationToken).ConfigureAwait(false);
         var syncing = phases.Start();
-        // A plan confirms the changed set against disk where the watcher can report late, as a check of every
+        // A plan confirms the changed set against git when the watcher reported nothing, as a check of every
         // change does, so a missed write never narrows the selection to fewer tests.
-        var generation = await _workspace.SyncAndPinAsync([], cancellationToken, confirmWithDisk: OperatingSystem.IsMacOS()).ConfigureAwait(false);
+        var generation = await _workspace.SyncAndPinAsync([], cancellationToken, confirmWithDisk: true).ConfigureAwait(false);
         phases.Add(Phase.Sync, syncing);
         var graph = generation.Graph;
         var testProjects = graph.Projects.Where(p => p.IsTest).ToList();
@@ -581,7 +581,7 @@ internal sealed class TestPlanner
     {
         await IngestIncomingTestMapsAsync(cancellationToken).ConfigureAwait(false);
         var syncing = phases.Start();
-        var generation = await _workspace.SyncAndPinAsync([], cancellationToken, confirmWithDisk: OperatingSystem.IsMacOS()).ConfigureAwait(false);
+        var generation = await _workspace.SyncAndPinAsync([], cancellationToken, confirmWithDisk: true).ConfigureAwait(false);
         phases.Add(Phase.Sync, syncing);
         var graph = generation.Graph;
         var testProjects = graph.Projects.Where(p => p.IsTest).ToList();

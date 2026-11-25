@@ -56,6 +56,12 @@ internal sealed partial record TestPlanCounts(
                 var assemblies = viaMsBuild ? 0 : mode.Groups[4].Value.Split(", ", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Length;
                 modes.Add((name, viaMsBuild, assemblies));
             }
+            else if (PlatformBuildLine().Match(line) is { Success: true } platform)
+            {
+                // test plan: Core.Tests [testing platform] targets .NET Framework without runtimeconfig; builds with MSBuild
+                planned.Add(platform.Groups[1].Value);
+                modes.Add((platform.Groups[1].Value, true, 0));
+            }
             else if (line.StartsWith("test plan: ", StringComparison.Ordinal) && line.Contains("collapsed to", StringComparison.Ordinal))
             {
                 collapses.Add(line);
@@ -128,6 +134,9 @@ internal sealed partial record TestPlanCounts(
 
     [GeneratedRegex(@"^test plan: (.+?) \[(.*)\] (builds with MSBuild|runs from (.+?)) after [\d.]+ ms$", RegexOptions.CultureInvariant)]
     private static partial Regex ModeLine();
+
+    [GeneratedRegex(@"^test plan: (.+?) \[testing platform\] [^\[]*; builds with MSBuild$", RegexOptions.CultureInvariant)]
+    private static partial Regex PlatformBuildLine();
 
     [GeneratedRegex(@"\(whole projects where ([^)]*)\)", RegexOptions.CultureInvariant)]
     private static partial Regex WholeReasons();

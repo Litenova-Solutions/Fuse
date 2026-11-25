@@ -20,12 +20,12 @@
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 8.1x to 27.7x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 3.4x to 16.9x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Fuse Architecture: Layers, Engine and Rules">
 <meta name="twitter:description" content="How the Fuse code is organized: its namespaces as layers, the engine and the client, the pipe protocol, the rules each change follows and the words it uses.">
 <meta name="twitter:image" content="https://fuse.codes/assets/og.png">
-<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 8.1x to 27.7x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 3.4x to 16.9x faster than dotnet build. dotnet tool install -g Fuse.">
 <link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
 <link rel="icon" href="../assets/fuse-icon.svg" type="image/svg+xml" sizes="any">
 <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -45,7 +45,7 @@
       "url": "https://fuse.codes/docs/architecture",
       "mainEntityOfPage": "https://fuse.codes/docs/architecture",
       "inLanguage": "en",
-      "dateModified": "2026-11-24",
+      "dateModified": "2026-11-25",
       "image": "https://fuse.codes/assets/og.png",
       "isPartOf": {
         "@type": "WebSite",
@@ -588,7 +588,7 @@
           
           
           
-          <tr><th scope="row">D14</th><td>The client ships as native code for win-x64, linux-x64, linux-arm64 and osx-arm64, and the engine always runs <code>fuse.dll</code> on the .NET runtime. One project builds both: a native publish also publishes <code>fuse.dll</code> beside the native client, and the build id is the module id of that <code>fuse.dll</code> on both sides. The Linux and macOS packages are native tool packages; the win-x64 package is framework-dependent with the native client as its packaged shim, because the SDK puts a native tool behind a <code>.cmd</code> file on Windows, which Git Bash cannot run. The musl RIDs and every other platform install <code>fuse.dll</code>.</td><td>A check of an unchanged tree spends almost all its time in the client: on NodaTime it took 218 ms with the managed client and 28 ms with the native client on the same runner (<code>evals/results/managed/latency-NodaTime-20261029-1900.json</code> and <code>evals/results/latency-NodaTime-20261029-1858.json</code>), and every check gains about the same (<a href="benchmarks#native-client">Benchmarks</a>). The engine cannot be native, because it loads MSBuild and analyzers at run time. Keeping one project keeps D3.</td></tr>
+          <tr><th scope="row">D14</th><td>The client ships as native code for win-x64, linux-x64, linux-arm64 and osx-arm64, and the engine always runs <code>fuse.dll</code> on the .NET runtime. One project builds both: a native publish also publishes <code>fuse.dll</code> beside the native client, and the build id is the module id of that <code>fuse.dll</code> on both sides. The Linux and macOS packages are native tool packages; the win-x64 package is framework-dependent with the native client as its packaged shim, because the SDK puts a native tool behind a <code>.cmd</code> file on Windows, which Git Bash cannot run. The musl RIDs and every other platform install <code>fuse.dll</code>.</td><td>A check of an unchanged tree spends almost all its time in the client: on NodaTime it took 313 ms with the managed client and 37 ms with the native client on the same runner (<code>evals/results/managed/latency-NodaTime-20261125-1507.json</code> and <code>evals/results/latency-NodaTime-20261125-1505.json</code>), and every check gains about the same (<a href="benchmarks#native-client">Benchmarks</a>). The engine cannot be native, because it loads MSBuild and analyzers at run time. Keeping one project keeps D3.</td></tr>
           <tr><th scope="row">D15</th><td>No session is settled by its stop. A stopped top-level session keeps its errors from every other session; only a stopped subagent's edits count as its parent's.</td><td>A harness fires a top-level session's stop at the end of every turn while it keeps working, so settling on stop would hand every agent's half-written files to every other agent after one turn.</td></tr>
           <tr><th scope="row">D16</th><td><code>fuse build</code> carries no session, and <code>FUSE_SESSION</code> is the one environment variable, for identity only.</td><td>A build has no session-filtered answer to give, and a behavior that needs a setting is a behavior to decide: identity from the orchestrator is data, not a knob. The reader pool size, the session view count, the debounce and the memory ceiling are decided defaults for the same reason.</td></tr>
           <tr><th scope="row">D17</th><td>Checks pin generations and run on readers; the writer alone mutates, and projects outside the change cone are supplied from project summaries.</td><td>One lock made callers wait while the engine's own work stayed small, and holding every project as source made memory follow the repository instead of the change. Summaries ship behind the differential proof that answers with and without them are identical.</td></tr>

@@ -12,8 +12,8 @@ AI agents check their work by running `dotnet build` and `dotnet test`, often do
 
 Fuse fixes that. It keeps your solution loaded in the background. After each edit, it tells the agent:
 
-- which compiler errors the edit introduced, 5.3x to 44.4x faster than `dotnet build` at the median on 4 open-source repositories
-- which affected tests fail, up to 4.4x faster than `dotnet test`
+- which compiler errors the edit introduced, 3.4x to 16.9x faster than `dotnet build` at the median on 4 open-source repositories
+- which affected tests fail, up to 2.4x faster than `dotnet test`
 
 Run `fuse init` once. After that, the harness, the program your agent runs in (Claude Code, Cursor, Codex and others), runs Fuse by itself.
 
@@ -34,9 +34,9 @@ Run `fuse init` once. After that, the harness, the program your agent runs in (C
 
 ## What it costs
 
-- **Memory.** Fuse keeps the loaded projects in memory until it has been idle for 30 minutes. That costs 350 MB to 714 MB once idle in the [benchmarks](https://fuse.codes/docs/benchmarks), up to 1,463 MB while it checks, and more on a machine with more memory. The repository's git worktrees share one engine.
+- **Memory.** Fuse keeps the loaded projects in memory until it has been idle for 30 minutes. That costs 338 MB to 698 MB once idle in the [benchmarks](https://fuse.codes/docs/benchmarks), up to 1,074 MB while it checks, and more on a machine with more memory. The repository's git worktrees share one engine.
 - **Memory pressure.** Fuse sheds transient caches as memory runs short. `fuse slim` asks a running engine to release memory without starting one.
-- **A slow first check across projects.** The first edit that affects other projects has to load them. On Jellyfin (40 projects), that took up to 76.9 s. The median signature edit took 60 ms.
+- **A slow first check across projects.** The first edit that affects other projects has to load them. On Jellyfin (40 projects), that took up to 84.8 s. The median signature edit took 133 ms.
 - **Many agents, one engine.** Checks and test plans from several sessions run at the same time on pinned generations, each answered about its own edits. A worker without hooks sets `FUSE_SESSION`; a judge can `fuse watch --all --json` every session and route errors by `causedBy`.
 - **Not a full build.** Fuse checks C# only and picks tests by reading the code, so a few cases still need `fuse build` or `fuse test --all`. [Limits](https://fuse.codes/docs/limits) lists them.
 

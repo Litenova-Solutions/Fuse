@@ -101,6 +101,57 @@ public class BlueprintTests
     }
 
     [Fact]
+    public void Reading_a_blueprint_twice_reflects_a_rewrite()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), "fuse-bp-reread-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            var file = CompilationBlueprint.FileFor(tempDir, "REREAD");
+            var first = new CompilationBlueprint(
+                CompilationBlueprint.FormatVersion,
+                CompilationBlueprint.CurrentBuild,
+                "REREAD",
+                tempDir,
+                new Dictionary<string, string>(StringComparer.Ordinal),
+                new Dictionary<string, string>(StringComparer.Ordinal),
+                []);
+            Assert.True(first.TryWrite(file));
+            Assert.Equal(tempDir, CompilationBlueprint.TryReadFile(file)?.SourceRoot);
+
+            var second = new CompilationBlueprint(
+                CompilationBlueprint.FormatVersion,
+                CompilationBlueprint.CurrentBuild,
+                "REREAD",
+                tempDir + "-moved",
+                new Dictionary<string, string>(StringComparer.Ordinal),
+                new Dictionary<string, string>(StringComparer.Ordinal),
+                []);
+            Assert.True(second.TryWrite(file));
+            Assert.Equal(tempDir + "-moved", CompilationBlueprint.TryReadFile(file)?.SourceRoot);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+                Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Blueprint_inputs_cover_project_ancestor_imports_and_exclude_orphan_directories()
+    {
+        await using var engine = await InProcessEngine.StartAsync();
+        engine.Repo.Write("Directory.Build.props", "<Project></Project>\n");
+        engine.Repo.Write("docs/notes/Directory.Build.props", "<Project></Project>\n");
+
+        var inputs = CompilationBlueprint.ComputeInputs(engine.Repo.Root, engine.Workspace.Graph);
+
+        Assert.NotNull(inputs);
+        Assert.Contains("Directory.Build.props", inputs.Value.InputHashes.Keys, StringComparer.Ordinal);
+        Assert.DoesNotContain("docs/notes/Directory.Build.props", inputs.Value.InputHashes.Keys, StringComparer.Ordinal);
+    }
+
+    [Fact]
     public async Task BlueprintEvaluator_EnsureProjectsAsync_extracts_a_valid_blueprint()
     {
         var cancellationToken = TestContext.Current.CancellationToken;

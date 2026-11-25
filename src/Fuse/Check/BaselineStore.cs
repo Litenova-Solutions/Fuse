@@ -1,7 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Fuse.Check.Model;
 using Fuse.Graph;
@@ -95,7 +94,7 @@ internal sealed partial class BaselineStore
                 lines.Add("project:" + node.Path.Relative);
                 foreach (var input in node.EvaluationInputs.OrderBy(p => p.Relative, StringComparer.Ordinal))
                     lines.Add("input:" + input.Relative + "=" + HashFile(input.Absolute));
-                if (HashAssets(root, node.AssetsFile.Absolute) is not { } assetsHash)
+                if (CompilationBlueprint.HashAssets(root, node.AssetsFile.Absolute) is not { } assetsHash)
                     return null;
                 lines.Add("assets:" + node.AssetsFile.Relative + "=" + assetsHash);
                 var references = group.SelectMany(p => p.AnalyzerReferences).ToList();
@@ -132,7 +131,7 @@ internal sealed partial class BaselineStore
                 }
             }
 
-            foreach (var config in ConfigFiles(root))
+            foreach (var config in SummaryCache.ConfigFiles(root, graph))
                 lines.Add("config:" + config.Relative + "=" + HashFile(config.Absolute));
             return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join("\n", lines))));
         }
@@ -140,20 +139,6 @@ internal sealed partial class BaselineStore
         {
             return null;
         }
-    }
-
-    /// <summary>Every editorconfig and globalconfig file under the root, which set analyzer severities no project file names.</summary>
-    private static List<RepoPath> ConfigFiles(RepoRoot root)
-    {
-        var result = new List<RepoPath>();
-        foreach (var name in new[] { ".editorconfig", ".globalconfig" })
-        {
-            foreach (var file in Directory.EnumerateFiles(root.Path, name, SearchOption.AllDirectories))
-                result.Add(root.PathOf(file));
-        }
-
-        result.Sort((a, b) => string.Compare(a.Relative, b.Relative, StringComparison.Ordinal));
-        return result;
     }
 
     private static string HashFile(string path) => Convert.ToHexString(SHA256.HashData(SharedRead.AllBytes(path)));
@@ -176,68 +161,6 @@ internal sealed partial class BaselineStore
             return null;
         }
     }
-
-    /// <summary>
-    ///     The hash of the restore output <paramref name="path"/> holds, with every path under the repository replaced
-    ///     by its repository-relative form, so worktrees of one repository hash it alike although restore writes their
-    ///     own absolute paths into it. Paths outside the repository, such as the package cache, are hashed as they are.
-    ///     Null when it cannot be hashed, and nothing is kept for the baseline then.
-    /// </summary>
-    internal static string? HashAssets(RepoRoot root, string path)
-    {
-        try
-        {
-            if (JsonNode.Parse(File.ReadAllText(path)) is not { } assets)
-                return HashFile(path);
-            MaskWorktreePaths(assets, root);
-            return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(assets.ToJsonString())));
-        }
-        catch (Exception e) when (e is ArgumentException or JsonException)
-        {
-            return null;
-        }
-    }
-
-    /// <summary>
-    ///     Replaces every string under <paramref name="node"/> that names a path under <paramref name="root"/> with its
-    ///     repository-relative form. That holds for the name of a property as well as for its value: restore output names
-    ///     a referenced project as the property name of its entry, with its project path as a value under it, so a
-    ///     worktree's own path would reach the key through the name alone.
-    /// </summary>
-    private static void MaskWorktreePaths(JsonNode node, RepoRoot root)
-    {
-        if (node is JsonObject obj)
-        {
-            foreach (var key in obj.Select(pair => pair.Key).ToList())
-            {
-                if (obj[key] is JsonValue value && value.TryGetValue<string>(out var text) && MaskedPath(text, root) is { } masked)
-                    obj[key] = JsonValue.Create(masked);
-                else if (obj[key] is { } child)
-                    MaskWorktreePaths(child, root);
-            }
-
-            var pairs = obj.ToList();
-            if (pairs.All(pair => MaskedPath(pair.Key, root) is null))
-                return;
-            obj.Clear();
-            foreach (var pair in pairs)
-                obj[MaskedPath(pair.Key, root) ?? pair.Key] = pair.Value;
-        }
-        else if (node is JsonArray array)
-        {
-            for (var i = 0; i < array.Count; i++)
-            {
-                if (array[i] is JsonValue value && value.TryGetValue<string>(out var text) && MaskedPath(text, root) is { } masked)
-                    array[i] = JsonValue.Create(masked);
-                else if (array[i] is { } child)
-                    MaskWorktreePaths(child, root);
-            }
-        }
-    }
-
-    /// <summary>The repository-relative form of <paramref name="value"/> when it names a path under <paramref name="root"/>, or null otherwise.</summary>
-    private static string? MaskedPath(string value, RepoRoot root) =>
-        value.Length > root.Path.Length && root.Contains(value) ? root.PathOf(value).Relative : null;
 
     /// <summary>
     ///     What identifies a project's stored result: its project file and the Roslyn project's name, which a target

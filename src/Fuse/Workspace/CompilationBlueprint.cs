@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -17,7 +18,7 @@ namespace Fuse.Workspace;
 /// </summary>
 internal sealed partial class CompilationBlueprint
 {
-    internal const int FormatVersion = 2;
+    internal const int FormatVersion = 3;
 
     private const string RootTokenNative = "${FUSE_REPO_ROOT}";
     private const string RootTokenForward = "${FUSE_REPO_ROOT_FWD}";
@@ -27,6 +28,35 @@ internal sealed partial class CompilationBlueprint
 
     private const int WriteLockAttempts = 20;
     private const int WriteLockRetryMs = 50;
+
+    /// <summary>
+    ///     The blueprint file read last for each blueprints directory, with the length and write time it had when it
+    ///     was read. Every load validates the cache by reading the file for its key, so without this the same file is
+    ///     read and deserialized again on every load; the stamp check answers the same for an unchanged file.
+    /// </summary>
+    private static readonly ConcurrentDictionary<string, BlueprintFileCacheEntry> _fileCache = new();
+
+    /// <summary>
+    ///     The masked hash read last for each restore output path, with the length and write time it had when it was
+    ///     hashed. Coverage checks hash every project's restore output on every load; the stamp check answers the same
+    ///     for an unchanged file. Only successful hashes are kept: a file that cannot be hashed is tried again.
+    /// </summary>
+    private static readonly ConcurrentDictionary<string, AssetsCacheEntry> _assetsCache = new();
+
+    /// <summary>The blueprint file read last for one blueprints directory: its path, and the stamp the read saw.</summary>
+    private sealed record BlueprintFileCacheEntry(string Path, long Length, DateTime WrittenUtc, CompilationBlueprint Blueprint);
+
+    /// <summary>The masked hash read last for one restore output path, and the stamp the read saw.</summary>
+    private sealed record AssetsCacheEntry(long Length, DateTime WrittenUtc, string Hash);
+
+    /// <summary>
+    ///     How old a file's write time must be before a cached stamp is trusted. A file written within this window
+    ///     is read again, so a rewrite the timestamp cannot tell apart from the cached read never answers stale.
+    /// </summary>
+    private static readonly TimeSpan SettledWindow = TimeSpan.FromSeconds(2);
+
+    /// <summary>True when <paramref name="writtenUtc"/> is old enough that no live writer can still hold the file.</summary>
+    private static bool IsSettled(DateTime writtenUtc) => DateTime.UtcNow - writtenUtc >= SettledWindow;
 
     public CompilationBlueprint(
         int version,
@@ -121,7 +151,7 @@ internal sealed partial class CompilationBlueprint
                 }
             }
 
-            foreach (var relative in AutoImports(root))
+            foreach (var relative in AutoImports(root, graph))
             {
                 if (inputs.ContainsKey(relative))
                     continue;
@@ -163,17 +193,29 @@ internal sealed partial class CompilationBlueprint
     {
         try
         {
-            if (!File.Exists(filePath))
+            var info = new FileInfo(filePath);
+            if (!info.Exists)
                 return null;
+            var directory = Path.GetDirectoryName(filePath) ?? "";
+            if (_fileCache.TryGetValue(directory, out var cached)
+                && string.Equals(cached.Path, filePath, StringComparison.Ordinal)
+                && cached.Length == info.Length
+                && cached.WrittenUtc == info.LastWriteTimeUtc
+                && IsSettled(info.LastWriteTimeUtc))
+                return cached.Blueprint;
+            var stamp = (info.Length, info.LastWriteTimeUtc);
             var json = ReadText(filePath);
             var blueprint = JsonSerializer.Deserialize(json, BlueprintJson.Default.CompilationBlueprint);
             if (blueprint is null || blueprint.Version != FormatVersion || !string.Equals(blueprint.Build, CurrentBuild, StringComparison.Ordinal))
                 return null;
             if (blueprint.Projects is null || blueprint.InputHashes is null || blueprint.AssetsHashes is null || string.IsNullOrEmpty(blueprint.SourceRoot))
                 return null;
+            info.Refresh();
+            if (info.Exists && info.Length == stamp.Length && info.LastWriteTimeUtc == stamp.LastWriteTimeUtc)
+                _fileCache[directory] = new BlueprintFileCacheEntry(filePath, stamp.Length, stamp.LastWriteTimeUtc, blueprint);
             return blueprint;
         }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException or NotSupportedException)
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or JsonException or NotSupportedException)
         {
             return null;
         }
@@ -346,10 +388,25 @@ internal sealed partial class CompilationBlueprint
     {
         try
         {
+            var info = new FileInfo(path);
+            if (!info.Exists)
+                return null;
+            if (_assetsCache.TryGetValue(path, out var cached) && cached.Length == info.Length && cached.WrittenUtc == info.LastWriteTimeUtc && IsSettled(info.LastWriteTimeUtc))
+                return cached.Hash;
+            var stamp = (info.Length, info.LastWriteTimeUtc);
+            string hash;
             if (JsonNode.Parse(ReadText(path)) is not { } assets)
-                return HashFile(path);
-            MaskWorktreePaths(assets, root);
-            return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(assets.ToJsonString())));
+                hash = HashFile(path);
+            else
+            {
+                MaskWorktreePaths(assets, root);
+                hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(assets.ToJsonString())));
+            }
+
+            info.Refresh();
+            if (info.Exists && info.Length == stamp.Length && info.LastWriteTimeUtc == stamp.LastWriteTimeUtc)
+                _assetsCache[path] = new AssetsCacheEntry(stamp.Length, stamp.LastWriteTimeUtc, hash);
+            return hash;
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or JsonException)
         {
@@ -357,18 +414,32 @@ internal sealed partial class CompilationBlueprint
         }
     }
 
-    private static List<string> AutoImports(RepoRoot root)
+    /// <summary>
+    ///     Every MSBuild and NuGet auto-import of <paramref name="graph"/>'s projects: the well-known file names in
+    ///     each project's directory and its ancestors up to the root, which is where MSBuild and NuGet look them up.
+    ///     A same-named file with no project beneath it is never imported, so it stays out of the key.
+    /// </summary>
+    private static List<string> AutoImports(RepoRoot root, RepoGraph graph)
     {
-        var result = new List<string>();
-        foreach (var name in AutoImportNames)
+        var found = new HashSet<string>(StringComparer.Ordinal);
+        HashSet<string> seenDirs = [];
+        foreach (var project in graph.Projects)
         {
-            foreach (var file in Directory.EnumerateFiles(root.Path, name, SearchOption.AllDirectories))
+            var directory = Path.GetDirectoryName(project.Path.Absolute);
+            while (directory is not null && root.Contains(directory) && seenDirs.Add(directory))
             {
-                if (!PathRules.IsBuildOutput(root.Path, file))
-                    result.Add(root.PathOf(file).Relative);
+                foreach (var name in AutoImportNames)
+                {
+                    var candidate = Path.Combine(directory, name);
+                    if (File.Exists(candidate) && !PathRules.IsBuildOutput(root.Path, candidate))
+                        found.Add(root.PathOf(candidate).Relative);
+                }
+
+                directory = Path.GetDirectoryName(directory);
             }
         }
 
+        var result = found.ToList();
         result.Sort(StringComparer.Ordinal);
         return result;
     }

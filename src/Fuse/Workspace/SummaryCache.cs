@@ -40,6 +40,26 @@ internal sealed class SummaryCache
     private readonly ConcurrentDictionary<string, MetadataReference> _references = new(StringComparer.OrdinalIgnoreCase);
     private bool _writeLogged;
 
+    /// <summary>
+    ///     The masked hash read last for each restore output path, with the length and write time it had when it was
+    ///     hashed. Keying a summary hashes every project's restore output in its closure, so without this the same
+    ///     files are parsed again for every key; the stamp check answers the same for an unchanged file. Only
+    ///     successful hashes are kept: a file that cannot be hashed is tried again.
+    /// </summary>
+    private static readonly ConcurrentDictionary<string, AssetsCacheEntry> _assetsCache = new();
+
+    /// <summary>The masked hash read last for one restore output path, and the stamp the read saw.</summary>
+    private sealed record AssetsCacheEntry(long Length, DateTime WrittenUtc, string Hash);
+
+    /// <summary>
+    ///     How old a file's write time must be before a cached stamp is trusted. A file written within this window
+    ///     is hashed again, so a rewrite the timestamp cannot tell apart from the cached read never answers stale.
+    /// </summary>
+    private static readonly TimeSpan SettledWindow = TimeSpan.FromSeconds(2);
+
+    /// <summary>True when <paramref name="writtenUtc"/> is old enough that no live writer can still hold the file.</summary>
+    private static bool IsSettled(DateTime writtenUtc) => DateTime.UtcNow - writtenUtc >= SettledWindow;
+
     /// <param name="root">The repository, for the shared directory its summaries are kept in.</param>
     /// <param name="log">Where a write that fails is written, once.</param>
     /// <param name="fallbackAssetsHash">Optional masked assets hash lookup for zero-restore worktrees without a local <c>project.assets.json</c>.</param>
@@ -97,7 +117,7 @@ internal sealed class SummaryCache
                 }
             }
 
-            foreach (var config in ConfigFiles())
+            foreach (var config in ConfigFiles(_root, graph))
                 lines.Add("config:" + config.Relative + "=" + HashFile(config.Absolute));
             return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join("\n", lines))));
         }
@@ -469,18 +489,51 @@ internal sealed class SummaryCache
         }
     }
 
-    /// <summary>Every editorconfig and globalconfig file under the root, which set analyzer severities no project file names.</summary>
-    private List<RepoPath> ConfigFiles()
+    /// <summary>Option file names that set analyzer behavior for the sources beneath their directory.</summary>
+    private static readonly string[] ConfigNames = [".editorconfig", ".globalconfig"];
+
+    /// <summary>
+    ///     Every editorconfig and globalconfig file that can set options for <paramref name="graph"/>'s projects:
+    ///     the two names in each project's directory, its restore output directory, each source's directory, and
+    ///     their ancestors up to the root, which is where option lookup finds them. A same-named file with no
+    ///     project source beneath it sets nothing, so it stays out of the key.
+    /// </summary>
+    internal static List<RepoPath> ConfigFiles(RepoRoot root, RepoGraph graph)
     {
-        var result = new List<RepoPath>();
-        foreach (var name in new[] { ".editorconfig", ".globalconfig" })
+        var found = new HashSet<RepoPath>();
+        HashSet<string> seenDirs = [];
+        foreach (var project in graph.Projects)
         {
-            foreach (var file in System.IO.Directory.EnumerateFiles(_root.Path, name, SearchOption.AllDirectories))
-                result.Add(_root.PathOf(file));
+            CollectConfigs(root, project.Directory.Absolute, found, seenDirs);
+            if (Path.GetDirectoryName(project.AssetsFile.Absolute) is { } assetsDir)
+                CollectConfigs(root, assetsDir, found, seenDirs);
+            foreach (var source in project.Sources)
+            {
+                if (Path.GetDirectoryName(source.Absolute) is { } sourceDir)
+                    CollectConfigs(root, sourceDir, found, seenDirs);
+            }
         }
 
+        var result = found.ToList();
         result.Sort((a, b) => string.Compare(a.Relative, b.Relative, StringComparison.Ordinal));
         return result;
+    }
+
+    /// <summary>Adds the option files in <paramref name="start"/> and its ancestors up to the root to <paramref name="found"/>.</summary>
+    private static void CollectConfigs(RepoRoot root, string start, HashSet<RepoPath> found, HashSet<string> seenDirs)
+    {
+        var directory = start;
+        while (directory is not null && root.Contains(directory) && seenDirs.Add(directory))
+        {
+            foreach (var name in ConfigNames)
+            {
+                var candidate = Path.Combine(directory, name);
+                if (File.Exists(candidate))
+                    found.Add(root.PathOf(candidate));
+            }
+
+            directory = Path.GetDirectoryName(directory);
+        }
     }
 
     private static string HashFile(string path) => Convert.ToHexString(SHA256.HashData(SharedRead.AllBytes(path)));
@@ -510,12 +563,27 @@ internal sealed class SummaryCache
     {
         try
         {
+            var info = new FileInfo(path);
+            if (!info.Exists)
+                return null;
+            if (_assetsCache.TryGetValue(path, out var cached) && cached.Length == info.Length && cached.WrittenUtc == info.LastWriteTimeUtc && IsSettled(info.LastWriteTimeUtc))
+                return cached.Hash;
+            var stamp = (info.Length, info.LastWriteTimeUtc);
+            string hash;
             if (JsonNode.Parse(File.ReadAllText(path)) is not { } assets)
-                return HashFile(path);
-            MaskWorktreePaths(assets, _root);
-            return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(assets.ToJsonString())));
+                hash = HashFile(path);
+            else
+            {
+                MaskWorktreePaths(assets, _root);
+                hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(assets.ToJsonString())));
+            }
+
+            info.Refresh();
+            if (info.Exists && info.Length == stamp.Length && info.LastWriteTimeUtc == stamp.LastWriteTimeUtc)
+                _assetsCache[path] = new AssetsCacheEntry(stamp.Length, stamp.LastWriteTimeUtc, hash);
+            return hash;
         }
-        catch (Exception e) when (e is ArgumentException or JsonException)
+        catch (Exception e) when (e is ArgumentException or JsonException or IOException or UnauthorizedAccessException)
         {
             return null;
         }

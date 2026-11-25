@@ -64,14 +64,14 @@ public class SharedBaselineTests
         first.Write("Lib/obj/project.assets.json", AssetsFor(first.Root.Path));
         second.Write("Lib/obj/project.assets.json", AssetsFor(second.Root.Path));
 
-        var firstHash = BaselineStore.HashAssets(first.Root, first.Full("Lib/obj/project.assets.json"));
-        var secondHash = BaselineStore.HashAssets(second.Root, second.Full("Lib/obj/project.assets.json"));
+        var firstHash = CompilationBlueprint.HashAssets(first.Root, first.Full("Lib/obj/project.assets.json"));
+        var secondHash = CompilationBlueprint.HashAssets(second.Root, second.Full("Lib/obj/project.assets.json"));
         Assert.NotNull(firstHash);
         Assert.NotNull(secondHash);
         Assert.Equal(firstHash, secondHash);
 
         second.Write("Lib/obj/project.assets.json", AssetsFor(second.Root.Path).Replace("Lib/1.0.0", "Lib/2.0.0", StringComparison.Ordinal));
-        Assert.NotEqual(firstHash, BaselineStore.HashAssets(second.Root, second.Full("Lib/obj/project.assets.json")));
+        Assert.NotEqual(firstHash, CompilationBlueprint.HashAssets(second.Root, second.Full("Lib/obj/project.assets.json")));
     }
 
     [Fact]

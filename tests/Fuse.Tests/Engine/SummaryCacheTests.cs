@@ -172,6 +172,21 @@ public class SummaryCacheTests
         Assert.Empty((await engine.CheckAsync("App/Report.cs")).Errors);
     }
 
+    [Fact]
+    public async Task Summary_keys_cover_project_ancestor_option_files_and_exclude_orphan_directories()
+    {
+        await using var engine = await InProcessEngine.StartAsync();
+        engine.Repo.Write(".editorconfig", "root = true\n");
+        engine.Repo.Write("Lib/.editorconfig", "[*.cs]\nindent_size = 2\n");
+        engine.Repo.Write("docs/notes/.editorconfig", "[*.cs]\nindent_size = 8\n");
+
+        var configs = SummaryCache.ConfigFiles(engine.Repo.Root, engine.Workspace.Graph).Select(p => p.Relative).ToList();
+
+        Assert.Contains(".editorconfig", configs, StringComparer.Ordinal);
+        Assert.Contains("Lib/.editorconfig", configs, StringComparer.Ordinal);
+        Assert.DoesNotContain("docs/notes/.editorconfig", configs, StringComparer.Ordinal);
+    }
+
     /// <summary>
     ///     Loads the fixture projects with a first check, emits every loaded project's summary the way the
     ///     background warm does, and derives the views from the loader again, which is the moment a kept

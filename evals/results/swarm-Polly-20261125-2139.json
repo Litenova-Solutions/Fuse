@@ -2,73 +2,74 @@
   "suite": "swarm",
   "repo": "Polly",
   "commit": "31d7ac300743b10163d00ef72fccea88f3acabad",
-  "fuseBuild": "7.0.0/6d0df0a03dd04ce495752010115def4e",
+  "fuseBuild": "7.0.0/d5b451ae944d4553b3561833d504ac51",
   "dotnetSdk": "10.0.404",
   "worktrees": {
     "secondaryWorktrees": 3,
     "singleWorktreeEngineCount": 1,
-    "singleWorktreeWorkingSetMb": 293.1,
-    "singleWorktreePeakWorkingSetMb": 313.1,
+    "singleWorktreeWorkingSetMb": 305.2,
+    "singleWorktreePeakWorkingSetMb": 324.9,
     "multiWorktreeEngineCount": 1,
     "sharedEnginePidCount": 1,
-    "multiWorktreeWorkingSetMb": 667.5,
-    "multiWorktreePeakWorkingSetMb": 667.5,
-    "multiWorktreeIdleWorkingSetMb": 1269.7,
-    "workingSetPerWorktreeMb": 166.9,
+    "multiWorktreeWorkingSetMb": 673.6,
+    "multiWorktreePeakWorkingSetMb": 677.6,
+    "multiWorktreeIdleWorkingSetMb": 1281.8,
+    "workingSetPerWorktreeMb": 168.4,
     "zeroRestoreColdCheck": {
-      "p50": 1070.4,
-      "p95": 1604.9,
-      "max": 1604.9,
+      "p50": 1098.4,
+      "p95": 1709.6,
+      "max": 1709.6,
       "n": 3
     },
     "zeroRestoreEditCheck": {
-      "p50": 4752.3,
-      "p95": 6376,
-      "max": 6376,
+      "p50": 5762.5,
+      "p95": 7711.3,
+      "max": 7711.3,
       "n": 3
     }
   },
   "slim": {
-    "wallMs": 954.2,
+    "wallMs": 1203.1,
     "exitCode": 0,
-    "beforeWorkingSetMb": 691.4,
-    "afterWorkingSetMb": 669.2,
-    "reclaimedMb": 22.3
+    "beforeWorkingSetMb": 702.9,
+    "afterWorkingSetMb": 677,
+    "reclaimedMb": 26
   },
   "checkBrief": {
     "target": "src/Polly.Core/CircuitBreaker/BrokenCircuitException.cs",
     "latency": {
-      "p50": 851.4,
-      "p95": 6831.9,
-      "max": 6831.9,
+      "p50": 971.2,
+      "p95": 7145.5,
+      "max": 7145.5,
       "n": 5
     },
-    "hintsFound": 0,
+    "hintsFound": 5,
     "rounds": 5
   },
   "gate": {
-    "failCheckMs": 53674,
+    "failCheckMs": 51766.4,
     "failCheckExitCode": 1,
     "passTest": {
-      "p50": 731.3,
-      "p95": 892.6,
-      "max": 892.6,
+      "p50": 593.5,
+      "p95": 818.9,
+      "max": 818.9,
       "n": 3
     },
-    "passFailures": 0
+    "passFailures": 0,
+    "passFailureOutputs": []
   },
   "judge": {
     "combine": {
-      "p50": 590.1,
-      "p95": 682.2,
-      "max": 682.2,
+      "p50": 671.4,
+      "p95": 776.9,
+      "max": 776.9,
       "n": 3
     },
     "combinePassed": true,
     "race": {
-      "p50": 1934,
-      "p95": 2737.4,
-      "max": 2737.4,
+      "p50": 1422.3,
+      "p95": 2191.1,
+      "max": 2191.1,
       "n": 3
     },
     "racePassed": true
@@ -76,22 +77,22 @@
   "batch": {
     "requests": 20,
     "responses": 20,
-    "totalMs": 488.4,
-    "perRequestMs": 24.42,
+    "totalMs": 249.7,
+    "perRequestMs": 12.49,
     "exitCode": 0
   },
   "graph": {
     "graphJson": {
-      "p50": 84.8,
-      "p95": 742.7,
-      "max": 742.7,
+      "p50": 64,
+      "p95": 94.3,
+      "max": 94.3,
       "n": 5
     },
     "graphBytes": 49285,
     "impactJson": {
-      "p50": 133.5,
-      "p95": 298,
-      "max": 298,
+      "p50": 392.4,
+      "p95": 801.1,
+      "max": 801.1,
       "n": 5
     },
     "impactBytes": 527
@@ -99,9 +100,9 @@
   "shadow": {
     "target": "bench/Polly.Benchmarks/Cache.cs",
     "testRound": {
-      "p50": 214.7,
-      "p95": 361.2,
-      "max": 361.2,
+      "p50": 215.6,
+      "p95": 301.2,
+      "max": 301.2,
       "n": 3
     },
     "shadowRuns": 0,
@@ -133,22 +134,22 @@
           "n": 3
         },
         "sync": {
-          "p50": 84.6,
-          "p95": 129.6,
-          "max": 129.6,
+          "p50": 71.8,
+          "p95": 100.1,
+          "max": 100.1,
           "n": 3
         },
         "total": {
-          "p50": 93,
-          "p95": 156,
-          "max": 156,
+          "p50": 78,
+          "p95": 125,
+          "max": 125,
           "n": 3
         }
       },
       "outsideEngine": {
-        "p50": 76.9,
-        "p95": 268.2,
-        "max": 268.2,
+        "p50": 90.6,
+        "p95": 223.2,
+        "max": 223.2,
         "n": 3
       },
       "n": 3

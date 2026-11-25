@@ -1,97 +1,98 @@
 {
   "suite": "swarm",
   "repo": "NodaTime",
-  "commit": "fcd80e11216ba403ccce0abbcedc41ba37bb352e",
-  "fuseBuild": "7.0.0/6d0df0a03dd04ce495752010115def4e",
-  "dotnetSdk": "10.0.404",
+  "commit": "bbd6bc37d13ce607266439c64c71ce15b276f465",
+  "fuseBuild": "7.0.0/d5b451ae944d4553b3561833d504ac51",
+  "dotnetSdk": "11.0.100",
   "worktrees": {
     "secondaryWorktrees": 3,
     "singleWorktreeEngineCount": 1,
-    "singleWorktreeWorkingSetMb": 303.6,
-    "singleWorktreePeakWorkingSetMb": 313.4,
+    "singleWorktreeWorkingSetMb": 228.8,
+    "singleWorktreePeakWorkingSetMb": 240.4,
     "multiWorktreeEngineCount": 1,
     "sharedEnginePidCount": 1,
-    "multiWorktreeWorkingSetMb": 506.8,
-    "multiWorktreePeakWorkingSetMb": 506.8,
-    "multiWorktreeIdleWorkingSetMb": 758.4,
-    "workingSetPerWorktreeMb": 126.7,
+    "multiWorktreeWorkingSetMb": 306,
+    "multiWorktreePeakWorkingSetMb": 306,
+    "multiWorktreeIdleWorkingSetMb": 606.1,
+    "workingSetPerWorktreeMb": 76.5,
     "zeroRestoreColdCheck": {
-      "p50": 510.9,
-      "p95": 922.1,
-      "max": 922.1,
+      "p50": 620.1,
+      "p95": 1972.5,
+      "max": 1972.5,
       "n": 3
     },
     "zeroRestoreEditCheck": {
-      "p50": 2305.5,
-      "p95": 3274.2,
-      "max": 3274.2,
+      "p50": 111.5,
+      "p95": 120,
+      "max": 120,
       "n": 3
     }
   },
   "slim": {
-    "wallMs": 1055.8,
+    "wallMs": 253.6,
     "exitCode": 0,
-    "beforeWorkingSetMb": 593,
-    "afterWorkingSetMb": 488.5,
-    "reclaimedMb": 104.5
+    "beforeWorkingSetMb": 368.1,
+    "afterWorkingSetMb": 333.8,
+    "reclaimedMb": 34.3
   },
   "checkBrief": {
     "target": "src/NodaTime/AnnualDate.cs",
     "latency": {
-      "p50": 1424.7,
-      "p95": 3081.6,
-      "max": 3081.6,
+      "p50": 330.2,
+      "p95": 1910.8,
+      "max": 1910.8,
       "n": 5
     },
     "hintsFound": 5,
     "rounds": 5
   },
   "gate": {
-    "failCheckMs": 26906.4,
+    "failCheckMs": 7073.1,
     "failCheckExitCode": 1,
     "passTest": {
-      "p50": 668.4,
-      "p95": 1299.6,
-      "max": 1299.6,
+      "p50": 408.8,
+      "p95": 2445.2,
+      "max": 2445.2,
       "n": 3
     },
-    "passFailures": 0
+    "passFailures": 0,
+    "passFailureOutputs": []
   },
   "judge": {
     "combine": {
-      "p50": 45.9,
-      "p95": 2196.2,
-      "max": 2196.2,
+      "p50": 544,
+      "p95": 1679.7,
+      "max": 1679.7,
       "n": 3
     },
-    "combinePassed": false,
+    "combinePassed": true,
     "race": {
-      "p50": 48.2,
-      "p95": 57.4,
-      "max": 57.4,
+      "p50": 1165.1,
+      "p95": 1330.8,
+      "max": 1330.8,
       "n": 3
     },
-    "racePassed": false
+    "racePassed": true
   },
   "batch": {
     "requests": 20,
     "responses": 20,
-    "totalMs": 112,
-    "perRequestMs": 5.6,
+    "totalMs": 231.4,
+    "perRequestMs": 11.57,
     "exitCode": 0
   },
   "graph": {
     "graphJson": {
-      "p50": 44.1,
-      "p95": 129.2,
-      "max": 129.2,
+      "p50": 49.1,
+      "p95": 83.6,
+      "max": 83.6,
       "n": 5
     },
     "graphBytes": 28573,
     "impactJson": {
-      "p50": 55.9,
-      "p95": 83.5,
-      "max": 83.5,
+      "p50": 265.9,
+      "p95": 568.2,
+      "max": 568.2,
       "n": 5
     },
     "impactBytes": 517
@@ -99,9 +100,9 @@
   "shadow": {
     "target": "src/NodaTime.Benchmarks/Program.cs",
     "testRound": {
-      "p50": 175.4,
-      "p95": 218.8,
-      "max": 218.8,
+      "p50": 93.3,
+      "p95": 288.9,
+      "max": 288.9,
       "n": 3
     },
     "shadowRuns": 0,
@@ -133,22 +134,22 @@
           "n": 3
         },
         "sync": {
-          "p50": 69,
-          "p95": 74,
-          "max": 74,
+          "p50": 46.3,
+          "p95": 131.4,
+          "max": 131.4,
           "n": 3
         },
         "total": {
-          "p50": 78,
-          "p95": 94,
-          "max": 94,
+          "p50": 47,
+          "p95": 141,
+          "max": 141,
           "n": 3
         }
       },
       "outsideEngine": {
-        "p50": 97.4,
-        "p95": 140.8,
-        "max": 140.8,
+        "p50": 46.3,
+        "p95": 147.9,
+        "max": 147.9,
         "n": 3
       },
       "n": 3

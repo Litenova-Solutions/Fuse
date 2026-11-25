@@ -1,0 +1,686 @@
+{
+  "suite": "latency",
+  "repo": "Polly",
+  "commit": "fa11e1c86dc752589232a5aa696b43ccca71b617",
+  "fuseBuild": "7.0.0/d5b451ae944d4553b3561833d504ac51",
+  "target": "src/Polly.Core/Utils/CancellationTokenSourcePool.cs",
+  "method": "Get",
+  "referencingFilesInOtherProjects": 109,
+  "coldCleanMs": 5807.4539,
+  "coldBodyEditMs": 8578.673,
+  "bodyEdit": {
+    "p50": 191.2,
+    "p95": 282.2,
+    "max": 282.2,
+    "n": 15
+  },
+  "signatureEdit": {
+    "p50": 656.4,
+    "p95": 23563.2,
+    "max": 23563.2,
+    "n": 10
+  },
+  "signatureEditSample": "fuse: 14 error(s) introduced in 3 file(s) (Polly.Core, Polly.Core.Tests); Polly.Core declarations changed, 14 dependent project(s) checked; tree 0240eab2bc99 over 1 changed file(s)",
+  "warmUnchanged": {
+    "p50": 40,
+    "p95": 49.3,
+    "max": 49.3,
+    "n": 10
+  },
+  "part": "all",
+  "testRound": {
+    "p50": 52297.9,
+    "p95": 63715.6,
+    "max": 63715.6,
+    "n": 5
+  },
+  "bodyEditPhases": {
+    "phases": {
+      "bindAnalyzers": {
+        "p50": 48,
+        "p95": 68,
+        "max": 68,
+        "n": 15
+      },
+      "bindCompiler": {
+        "p50": 44,
+        "p95": 59,
+        "max": 59,
+        "n": 15
+      },
+      "bindFrameworks": {
+        "p50": 6,
+        "p95": 6,
+        "max": 6,
+        "n": 15
+      },
+      "bindTargets": {
+        "p50": 117.6,
+        "p95": 149.2,
+        "max": 149.2,
+        "n": 15
+      },
+      "bindUpdate": {
+        "p50": 10,
+        "p95": 46,
+        "max": 46,
+        "n": 15
+      },
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 15
+      },
+      "load": {
+        "p50": 0,
+        "p95": 0.1,
+        "max": 0.1,
+        "n": 15
+      },
+      "surfaceDiff": {
+        "p50": 1,
+        "p95": 17.7,
+        "max": 17.7,
+        "n": 15
+      },
+      "sync": {
+        "p50": 1.6,
+        "p95": 1.8,
+        "max": 1.8,
+        "n": 15
+      },
+      "total": {
+        "p50": 125,
+        "p95": 156,
+        "max": 156,
+        "n": 15
+      }
+    },
+    "outsideEngine": {
+      "p50": 66.2,
+      "p95": 172.2,
+      "max": 172.2,
+      "n": 15
+    },
+    "n": 15
+  },
+  "signatureEditPhases": {
+    "phases": {
+      "bindAnalyzers": {
+        "p50": 19,
+        "p95": 70,
+        "max": 70,
+        "n": 10
+      },
+      "bindCandidates": {
+        "p50": 418.4,
+        "p95": 1880.8,
+        "max": 1880.8,
+        "n": 10
+      },
+      "bindCompiler": {
+        "p50": 15,
+        "p95": 58,
+        "max": 58,
+        "n": 10
+      },
+      "bindFrameworks": {
+        "p50": 6,
+        "p95": 6,
+        "max": 6,
+        "n": 10
+      },
+      "bindTargets": {
+        "p50": 62.2,
+        "p95": 140,
+        "max": 140,
+        "n": 10
+      },
+      "bindUpdate": {
+        "p50": 8,
+        "p95": 32,
+        "max": 32,
+        "n": 10
+      },
+      "gate": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 10
+      },
+      "load": {
+        "p50": 0,
+        "p95": 0.1,
+        "max": 0.1,
+        "n": 10
+      },
+      "loadDependents": {
+        "p50": 0.1,
+        "p95": 16630.5,
+        "max": 16630.5,
+        "n": 10
+      },
+      "referenceSearch": {
+        "p50": 32.4,
+        "p95": 4616.6,
+        "max": 4616.6,
+        "n": 10
+      },
+      "surfaceDiff": {
+        "p50": 0.6,
+        "p95": 2.6,
+        "max": 2.6,
+        "n": 10
+      },
+      "sync": {
+        "p50": 4,
+        "p95": 5.1,
+        "max": 5.1,
+        "n": 10
+      },
+      "total": {
+        "p50": 609,
+        "p95": 23296,
+        "max": 23296,
+        "n": 10
+      }
+    },
+    "outsideEngine": {
+      "p50": 49.8,
+      "p95": 267.2,
+      "max": 267.2,
+      "n": 10
+    },
+    "n": 10
+  },
+  "warmUnchangedPhases": {
+    "phases": {
+      "bindAnalyzers": {
+        "p50": 400,
+        "p95": 400,
+        "max": 400,
+        "n": 1
+      },
+      "bindCompiler": {
+        "p50": 1797,
+        "p95": 1797,
+        "max": 1797,
+        "n": 1
+      },
+      "bindFrameworks": {
+        "p50": 6,
+        "p95": 6,
+        "max": 6,
+        "n": 1
+      },
+      "bindTargets": {
+        "p50": 5327.4,
+        "p95": 5327.4,
+        "max": 5327.4,
+        "n": 1
+      },
+      "bindUpdate": {
+        "p50": 2535,
+        "p95": 2535,
+        "max": 2535,
+        "n": 1
+      },
+      "gate": {
+        "p50": 0,
+        "p95": 2.6,
+        "max": 2.6,
+        "n": 10
+      },
+      "load": {
+        "p50": 0.3,
+        "p95": 0.3,
+        "max": 0.3,
+        "n": 1
+      },
+      "surfaceDiff": {
+        "p50": 25.6,
+        "p95": 25.6,
+        "max": 25.6,
+        "n": 1
+      },
+      "sync": {
+        "p50": 41.2,
+        "p95": 46.2,
+        "max": 46.2,
+        "n": 2
+      },
+      "total": {
+        "p50": 0,
+        "p95": 5421,
+        "max": 5421,
+        "n": 10
+      }
+    },
+    "outsideEngine": {
+      "p50": 38.4,
+      "p95": 46.7,
+      "max": 46.7,
+      "n": 10
+    },
+    "n": 10
+  },
+  "testRoundPhases": {
+    "phases": {
+      "emit": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 5
+      },
+      "gate": {
+        "p50": 0,
+        "p95": 0.1,
+        "max": 0.1,
+        "n": 5
+      },
+      "mirror": {
+        "p50": 0.9,
+        "p95": 11.1,
+        "max": 11.1,
+        "n": 5
+      },
+      "selection": {
+        "p50": 8505.7,
+        "p95": 10097.4,
+        "max": 10097.4,
+        "n": 5
+      },
+      "sync": {
+        "p50": 89.9,
+        "p95": 392.3,
+        "max": 392.3,
+        "n": 5
+      },
+      "total": {
+        "p50": 8750,
+        "p95": 10188,
+        "max": 10188,
+        "n": 5
+      }
+    },
+    "outsideEngine": {
+      "p50": 43563.9,
+      "p95": 54965.6,
+      "max": 54965.6,
+      "n": 5
+    },
+    "n": 5
+  },
+  "noCodeChange": {
+    "edits": [
+      {
+        "kind": "comment",
+        "checkMs": 211.3095,
+        "filesChecked": 1,
+        "checkErrors": 0,
+        "testMs": 1315.0191,
+        "testsSelected": 0,
+        "testsRun": 0,
+        "noCodeChange": true,
+        "note": null
+      },
+      {
+        "kind": "local-rename",
+        "checkMs": null,
+        "filesChecked": null,
+        "checkErrors": null,
+        "testMs": null,
+        "testsSelected": null,
+        "testsRun": null,
+        "noCodeChange": null,
+        "note": "no method in the target file declares a local variable"
+      },
+      {
+        "kind": "reformat",
+        "checkMs": 240.4045,
+        "filesChecked": 1,
+        "checkErrors": 0,
+        "testMs": 177.274,
+        "testsSelected": 0,
+        "testsRun": 0,
+        "noCodeChange": true,
+        "note": null
+      },
+      {
+        "kind": "using-sort",
+        "checkMs": null,
+        "filesChecked": null,
+        "checkErrors": null,
+        "testMs": null,
+        "testsSelected": null,
+        "testsRun": null,
+        "noCodeChange": null,
+        "note": "the target file has fewer than two using directives"
+      },
+      {
+        "kind": "whitespace",
+        "checkMs": 195.2945,
+        "filesChecked": 1,
+        "checkErrors": 0,
+        "testMs": 154.6738,
+        "testsSelected": 0,
+        "testsRun": 0,
+        "noCodeChange": true,
+        "note": null
+      }
+    ],
+    "check": {
+      "p50": 211.3,
+      "p95": 240.4,
+      "max": 240.4,
+      "n": 3
+    },
+    "testRound": {
+      "p50": 177.3,
+      "p95": 1315,
+      "max": 1315,
+      "n": 3
+    },
+    "checkPhases": {
+      "phases": {
+        "bindAnalyzers": {
+          "p50": 47,
+          "p95": 54,
+          "max": 54,
+          "n": 3
+        },
+        "bindCompiler": {
+          "p50": 36,
+          "p95": 75,
+          "max": 75,
+          "n": 3
+        },
+        "bindFrameworks": {
+          "p50": 6,
+          "p95": 6,
+          "max": 6,
+          "n": 3
+        },
+        "bindTargets": {
+          "p50": 102.1,
+          "p95": 134.9,
+          "max": 134.9,
+          "n": 3
+        },
+        "bindUpdate": {
+          "p50": 10,
+          "p95": 10,
+          "max": 10,
+          "n": 3
+        },
+        "gate": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 3
+        },
+        "load": {
+          "p50": 0,
+          "p95": 0.1,
+          "max": 0.1,
+          "n": 3
+        },
+        "surfaceDiff": {
+          "p50": 1,
+          "p95": 1.1,
+          "max": 1.1,
+          "n": 3
+        },
+        "sync": {
+          "p50": 1.7,
+          "p95": 12,
+          "max": 12,
+          "n": 3
+        },
+        "total": {
+          "p50": 110,
+          "p95": 140,
+          "max": 140,
+          "n": 3
+        }
+      },
+      "outsideEngine": {
+        "p50": 85.3,
+        "p95": 146.4,
+        "max": 146.4,
+        "n": 3
+      },
+      "n": 3
+    },
+    "testRoundPhases": {
+      "phases": {
+        "gate": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 3
+        },
+        "selection": {
+          "p50": 52.6,
+          "p95": 312.1,
+          "max": 312.1,
+          "n": 3
+        },
+        "sync": {
+          "p50": 51.8,
+          "p95": 52.4,
+          "max": 52.4,
+          "n": 3
+        },
+        "total": {
+          "p50": 125,
+          "p95": 1250,
+          "max": 1250,
+          "n": 3
+        }
+      },
+      "outsideEngine": {
+        "p50": 60.7,
+        "p95": 65,
+        "max": 65,
+        "n": 3
+      },
+      "n": 3
+    }
+  },
+  "multiAgent": {
+    "writers": {
+      "clients": 4,
+      "editsPerClient": 10,
+      "wallMs": 184844.4348,
+      "checks": 40,
+      "unanswered": 0,
+      "notRun": 0,
+      "gate": {
+        "p50": 196,
+        "p95": 463.3,
+        "max": 1035.8,
+        "n": 40
+      },
+      "gateByHolder": {
+        "CheckChanges": {
+          "p50": 150,
+          "p95": 1035.8,
+          "max": 1035.8,
+          "n": 4
+        },
+        "CheckFiles": {
+          "p50": 5.9,
+          "p95": 302.4,
+          "max": 302.4,
+          "n": 4
+        },
+        "PlanAffectedTests": {
+          "p50": 221.1,
+          "p95": 444.2,
+          "max": 463.3,
+          "n": 31
+        }
+      },
+      "engineTotal": {
+        "p50": 125,
+        "p95": 281,
+        "max": 844,
+        "n": 40
+      },
+      "singleClientTotalP50": 188
+    },
+    "builds": {
+      "clients": 3,
+      "rounds": 5,
+      "wallMs": 85477.431,
+      "each": {
+        "p50": 384.8,
+        "p95": 83154.4,
+        "max": 83154.4,
+        "n": 15
+      },
+      "collisions": 0,
+      "collisionSamples": []
+    },
+    "rounds": [
+      {
+        "index": 1,
+        "project": "Polly.TestUtils.csproj",
+        "edit": "test\\Polly.TestUtils\\FakeTelemetryListener.cs",
+        "ms": 26051.1665,
+        "testProjects": [
+          "Polly.Extensions.Tests"
+        ],
+        "failingTests": 0
+      },
+      {
+        "index": 2,
+        "project": "Polly.RateLimiting.csproj",
+        "edit": "src\\Polly.RateLimiting\\RateLimiterRejectedException.cs",
+        "ms": 65912.7474,
+        "testProjects": [
+          "Polly.Core.Tests",
+          "Polly.Extensions.Tests",
+          "Polly.RateLimiting.Tests",
+          "Polly.Testing.Tests"
+        ],
+        "failingTests": 0
+      },
+      {
+        "index": 3,
+        "project": "Polly.RateLimiting.csproj",
+        "edit": "src\\Polly.RateLimiting\\RateLimiterRejectedException.cs",
+        "ms": 63519.8497,
+        "testProjects": [
+          "Polly.Core.Tests",
+          "Polly.Extensions.Tests",
+          "Polly.RateLimiting.Tests",
+          "Polly.Testing.Tests"
+        ],
+        "failingTests": 0
+      }
+    ],
+    "attribution": {
+      "renamedIn": "src/Polly.Core/CircuitBreaker/CircuitBreakerManualControl.cs",
+      "method": "IsolateAsync",
+      "brokenIn": "bench/Polly.Core.Benchmarks/Utils/Helper.CircuitBreaker.cs",
+      "ownWithoutSessions": 11,
+      "otherWithoutSessions": 2,
+      "ownWithSessions": 11,
+      "otherWithSessions": 0,
+      "leftToOtherSessions": 2,
+      "msWithoutSessions": 269.3909,
+      "msWithSessions": 431.1471
+    },
+    "stops": {
+      "changedFiles": 9,
+      "firstMs": 1257.613,
+      "repeat": {
+        "p50": 309.9,
+        "p95": 362.4,
+        "max": 362.4,
+        "n": 5
+      },
+      "mostReused": 34
+    },
+    "tests": {
+      "edit": "test/Polly.TestUtils/FakeTelemetryListener.cs",
+      "aloneMs": 11838.2801,
+      "pairWallMs": 12826.7222,
+      "pairEach": {
+        "p50": 11596.2,
+        "p95": 12826.4,
+        "max": 12826.4,
+        "n": 2
+      },
+      "notPassed": 0
+    },
+    "stopsUnchangedRepeat": [
+      {
+        "ms": 46.6549,
+        "documentsBound": 0
+      },
+      {
+        "ms": 73.5962,
+        "documentsBound": 0
+      },
+      {
+        "ms": 60.0689,
+        "documentsBound": 0
+      }
+    ],
+    "scopeOnly": [
+      {
+        "form": "directory",
+        "arg": "test/Polly.Core.Tests",
+        "projectsPlanned": 3,
+        "testsSelected": 192,
+        "mode": "msbuild",
+        "ms": 40698.0483
+      },
+      {
+        "form": "project",
+        "arg": "test/Polly.Core.Tests/Polly.Core.Tests.csproj",
+        "projectsPlanned": 3,
+        "testsSelected": 192,
+        "mode": "msbuild",
+        "ms": 41742.31
+      },
+      {
+        "form": "build-only",
+        "arg": "--no-build",
+        "projectsPlanned": 3,
+        "testsSelected": 223,
+        "mode": "msbuild",
+        "ms": 41812.1374
+      }
+    ],
+    "plainRun": {
+      "form": "plain",
+      "arg": "",
+      "projectsPlanned": 3,
+      "testsSelected": 223,
+      "mode": "msbuild",
+      "ms": 49334.4831
+    },
+    "wholeRun": {
+      "form": "all",
+      "arg": "--all",
+      "projectsPlanned": 5,
+      "testsSelected": 12329,
+      "mode": "msbuild",
+      "ms": 84855.0522
+    },
+    "scopeRefusal": {
+      "arg": "bench/Polly.Benchmarks",
+      "refused": true,
+      "exitCode": 2
+    }
+  },
+  "engineWorkingSetMb": 728.9,
+  "enginePeakWorkingSetMb": 1027.7,
+  "engineIdleWorkingSetMb": 688.8,
+  "treeCleanAfter": true
+}

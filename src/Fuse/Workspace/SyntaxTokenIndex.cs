@@ -24,9 +24,13 @@ internal sealed class SyntaxTokenIndex
     private const int WriteLockAttempts = 20;
     private const int WriteLockRetryMs = 50;
 
+    private static readonly Lock _liveLock = new();
+    private static readonly List<WeakReference<SyntaxTokenIndex>> _live = [];
+
     private readonly RepoRoot _root;
     private readonly Action<string> _log;
     private readonly Lock _lock = new();
+    private readonly Lock _reloadLock = new();
 
     private readonly List<DocEntry?> _entries = [];
     private readonly Dictionary<(RepoPath Path, string PreprocessorKey), int> _entryLookup = [];
@@ -37,6 +41,8 @@ internal sealed class SyntaxTokenIndex
     private readonly Dictionary<string, HashSet<string>> _globalAliases = new(StringComparer.Ordinal);
     private bool _dirty;
     private bool _writeLogged;
+    private string? _lastKey;
+    private int _released;
 
     /// <param name="root">The repository, for canonical relative paths and shared state persistence.</param>
     /// <param name="log">Optional sink for persistence diagnostics.</param>
@@ -44,6 +50,88 @@ internal sealed class SyntaxTokenIndex
     {
         _root = root;
         _log = log ?? (_ => { });
+        RegisterLive(this);
+    }
+
+    private static void RegisterLive(SyntaxTokenIndex index)
+    {
+        lock (_liveLock)
+        {
+            for (var i = _live.Count - 1; i >= 0; i--)
+            {
+                if (!_live[i].TryGetTarget(out _))
+                    _live.RemoveAt(i);
+            }
+
+            _live.Add(new WeakReference<SyntaxTokenIndex>(index));
+        }
+    }
+
+    /// <summary>
+    ///     Releases every live index's in-memory entries, after persisting them, so an idle engine returns that
+    ///     memory; the next query loads them from disk again instead of parsing every file.
+    /// </summary>
+    /// <returns>How many document entries were dropped across every live index.</returns>
+    public static int ReleaseIdleAll()
+    {
+        List<SyntaxTokenIndex> targets;
+        lock (_liveLock)
+        {
+            targets = [];
+            for (var i = _live.Count - 1; i >= 0; i--)
+            {
+                if (_live[i].TryGetTarget(out var target))
+                    targets.Add(target);
+                else
+                    _live.RemoveAt(i);
+            }
+        }
+
+        var dropped = 0;
+        foreach (var target in targets)
+            dropped += target.ReleaseIdle();
+        return dropped;
+    }
+
+    /// <summary>
+    ///     Persists this index and drops its in-memory entries, so an idle engine returns that memory; the next
+    ///     query loads them from disk again instead of parsing every file.
+    /// </summary>
+    /// <returns>How many document entries were dropped.</returns>
+    public int ReleaseIdle()
+    {
+        string? key;
+        lock (_lock)
+            key = _lastKey;
+        SaveIfDirty(key);
+        lock (_lock)
+        {
+            if (_lastKey is null && _entryLookup.Count == 0 && !_dirty)
+                return 0;
+            var dropped = _entryLookup.Count;
+            ClearLocked();
+            Interlocked.Exchange(ref _released, 1);
+            return dropped;
+        }
+    }
+
+    /// <summary>
+    ///     Loads the persisted entries back after <see cref="ReleaseIdle"/> dropped them, once: the first query
+    ///     loads from disk while every concurrent one waits behind it, so none of them parses every file again.
+    /// </summary>
+    private void ReloadIfReleased()
+    {
+        if (Volatile.Read(ref _released) == 0)
+            return;
+        lock (_reloadLock)
+        {
+            if (Interlocked.Exchange(ref _released, 0) == 0)
+                return;
+            string? key;
+            lock (_lock)
+                key = _lastKey;
+            TryLoad(key);
+        }
     }
 
     /// <summary>Directory under <see cref="RepoRoot.SharedStateDirectory"/> where persisted index files live.</summary>
@@ -74,6 +162,7 @@ internal sealed class SyntaxTokenIndex
     {
         ArgumentNullException.ThrowIfNull(solution);
         ArgumentNullException.ThrowIfNull(projects);
+        ReloadIfReleased();
 
         var toParse = new List<(Document Document, RepoPath Path, string PreprocessorKey, long Length, long WrittenTicks, string Checksum)>();
 
@@ -157,6 +246,7 @@ internal sealed class SyntaxTokenIndex
     {
         ArgumentException.ThrowIfNullOrEmpty(filePath);
         ArgumentNullException.ThrowIfNull(root);
+        ReloadIfReleased();
 
         var path = NormalizePath(filePath);
         if (length == 0 && writtenTicks == 0)
@@ -173,6 +263,7 @@ internal sealed class SyntaxTokenIndex
     public async Task UpdateDocumentAsync(Document document, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(document);
+        ReloadIfReleased();
         if (string.IsNullOrEmpty(document.FilePath))
             return;
         var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
@@ -196,6 +287,7 @@ internal sealed class SyntaxTokenIndex
     public void RemoveDocument(string filePath)
     {
         ArgumentException.ThrowIfNullOrEmpty(filePath);
+        ReloadIfReleased();
         var path = NormalizePath(filePath);
         lock (_lock)
         {
@@ -225,6 +317,7 @@ internal sealed class SyntaxTokenIndex
 
         var identifierList = identifiers as IReadOnlyCollection<string> ?? [.. identifiers];
         var baseList = baseTypeNames as IReadOnlyCollection<string> ?? [.. baseTypeNames];
+        ReloadIfReleased();
 
         var projects = scopeProjects is null
             ? solution.Projects
@@ -248,10 +341,11 @@ internal sealed class SyntaxTokenIndex
     }
 
     /// <summary>
-    ///     Queries candidate documents from the entries already held, without parsing, hashing or touching disk, for a
-    ///     search on the request path. Documents whose indexed entry is current narrow by token; every other document
-    ///     is a candidate too, so the answer is the same set a search without narrowing covers while the background
-    ///     warm (see <c>EnsureIndexedAsync</c>) has not indexed it yet.
+    ///     Queries candidate documents from the entries already held, without parsing or hashing, for a search on
+    ///     the request path; after an idle release it loads the persisted entries from disk once first. Documents
+    ///     whose indexed entry is current narrow by token; every other document is a candidate too, so the answer
+    ///     is the same set a search without narrowing covers while the background warm (see
+    ///     <c>EnsureIndexedAsync</c>) has not indexed it yet.
     /// </summary>
     /// <param name="solution">The solution whose documents are filtered.</param>
     /// <param name="identifiers">Identifier token names to match (attribute names also match omitted <c>Attribute</c> suffix).</param>
@@ -273,6 +367,7 @@ internal sealed class SyntaxTokenIndex
         var projects = scopeProjects is null
             ? solution.Projects
             : solution.Projects.Where(p => scopeProjects.Contains(p.Id));
+        ReloadIfReleased();
         var matchingPaths = CandidateRepoPaths(identifierList, baseList);
         var builder = ImmutableHashSet.CreateBuilder<Document>();
         foreach (var project in projects)
@@ -333,6 +428,7 @@ internal sealed class SyntaxTokenIndex
         var projects = (scopeProjects is null
             ? solution.Projects
             : solution.Projects.Where(p => scopeProjects.Contains(p.Id))).ToList();
+        ReloadIfReleased();
         await EnsureIndexedAsync(solution, projects, cancellationToken).ConfigureAwait(false);
         return CandidateDocuments(solution, identifiers, baseTypeNames, scopeProjects);
     }
@@ -345,6 +441,7 @@ internal sealed class SyntaxTokenIndex
     {
         ArgumentNullException.ThrowIfNull(identifiers);
         ArgumentNullException.ThrowIfNull(baseTypeNames);
+        ReloadIfReleased();
 
         var result = new HashSet<string>(StringComparer.Ordinal);
         foreach (var path in CandidateRepoPaths(identifiers, baseTypeNames))
@@ -446,6 +543,7 @@ internal sealed class SyntaxTokenIndex
         {
             snapshot = [.. _entries.Where(e => e is not null).Select(e => e!)];
             _dirty = false;
+            _lastKey = key;
         }
 
         try
@@ -486,6 +584,9 @@ internal sealed class SyntaxTokenIndex
     /// <summary>Loads a persisted index from <see cref="Directory"/> under <paramref name="key"/>, validating disk stamps. A file that does not read is deleted so the next save writes it again.</summary>
     public bool TryLoad(string? key = null)
     {
+        Interlocked.Exchange(ref _released, 0);
+        lock (_lock)
+            _lastKey = key;
         var file = FilePathFor(key);
         if (!File.Exists(file))
             return false;

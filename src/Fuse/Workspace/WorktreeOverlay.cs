@@ -299,6 +299,15 @@ internal sealed class WorktreeOverlay : IDisposable
     public void TrimTransientCaches(bool clearSessionViews = true, bool dropCompiledBaseline = true)
     {
         Views.ClearTransientCaches(clearSessionViews, dropCompiledBaseline);
+        ReleaseIdle();
+    }
+
+    /// <summary>
+    ///     Drops the shared HEAD texts and the metadata references no live project holds, and the delta entries of
+    ///     files that match HEAD again, so an idle engine returns that memory; the next load reads them again.
+    /// </summary>
+    public void ReleaseIdle()
+    {
         Projects.TrimCaches();
         lock (_deltaLock)
         {

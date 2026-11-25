@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO.Pipes;
+using System.Runtime;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
@@ -9,6 +10,7 @@ using Fuse.Graph;
 using Fuse.Paths;
 using Fuse.Protocol;
 using Fuse.Telemetry;
+using Fuse.Testing;
 using Fuse.Workspace;
 
 namespace Fuse.Engine;
@@ -444,9 +446,9 @@ internal static class EngineServer
     }
 
     /// <summary>
-    ///     Collects and compacts the whole heap and returns the free memory to the operating system. A check on a large
-    ///     repository allocates gigabytes that the background collector frees without returning, so an idle engine would
-    ///     otherwise keep the size it peaked at.
+    ///     Releases the cheaply rebuilt caches and then collects and compacts the whole heap, returning the free
+    ///     memory to the operating system. A check on a large repository allocates gigabytes that the background
+    ///     collector frees without returning, so an idle engine would otherwise keep the size it peaked at.
     /// </summary>
     /// <summary>
     ///     An engine leaves after the shortened idle when another engine needs memory; that decision is below.
@@ -455,6 +457,24 @@ internal static class EngineServer
     private static void ReleaseMemory(EngineLog log)
     {
         var before = Environment.WorkingSet;
+        try
+        {
+            var indexes = SyntaxTokenIndex.ReleaseIdleAll();
+            var slices = SliceTestCache.ReleaseIdleAll();
+            var maps = DynamicTestMap.ReleaseIdleAll();
+            RepoWorkspace.ReleaseIdleAll();
+            log.Write($"idle release: dropped {indexes} token index entries, {slices} slice cache entries and {maps} dynamic map projects");
+        }
+        catch (Exception e)
+        {
+            // The release must never stop the idle watch: the collection below still returns what is free.
+            log.Write($"idle release skipped: {e.Message}");
+        }
+
+        GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
+        GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, blocking: true, compacting: true);
+        GC.WaitForPendingFinalizers();
+        GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
         GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, blocking: true, compacting: true);
         log.Write($"released memory: working set {before / (1024 * 1024)} MB before, {Environment.WorkingSet / (1024 * 1024)} MB after");
     }

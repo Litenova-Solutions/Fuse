@@ -35,6 +35,18 @@ internal sealed class ProjectLoader : IDisposable
     private MSBuildWorkspace? _msbuildFallback;
     private CompilationBlueprint? _activeBlueprint;
 
+    // Global properties for the fallback workspace, as in BlueprintEvaluator: the design-time build
+    // properties keep the CoreCompile execution pass from compiling, and DisableMsCoverageReferencedPathMaps
+    // keeps MsCoverageReferencedPathMaps from writing .msCoverageSourceRootsMapping_* into bin/.
+    private static readonly Dictionary<string, string> DesignTimeProperties = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["DesignTimeBuild"] = "true",
+        ["BuildingProject"] = "false",
+        ["SkipCompilerExecution"] = "true",
+        ["ProvideCommandLineArgs"] = "true",
+        ["DisableMsCoverageReferencedPathMaps"] = "true",
+    };
+
     public ProjectLoader(
         RepoRoot root,
         Action<string> log,
@@ -364,7 +376,7 @@ internal sealed class ProjectLoader : IDisposable
     [MethodImpl(MethodImplOptions.NoInlining)]
     private MSBuildWorkspace CreateFallbackLoader()
     {
-        var loader = MSBuildWorkspace.Create();
+        var loader = MSBuildWorkspace.Create(DesignTimeProperties);
         loader.LoadMetadataForReferencedProjects = false;
         loader.SkipUnrecognizedProjects = true;
         loader.RegisterWorkspaceFailedHandler(e =>

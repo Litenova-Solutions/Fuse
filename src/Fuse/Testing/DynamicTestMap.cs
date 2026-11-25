@@ -19,6 +19,9 @@ internal sealed partial class DynamicTestMap
     internal const int MaxIncomingProjects = 64;
     internal const int MaxIncomingFileBytes = 8_000_000;
 
+    private static readonly Lock _liveLock = new();
+    private static readonly List<WeakReference<DynamicTestMap>> _live = [];
+
     private readonly string _directory;
     private readonly Lock _gate = new();
     private readonly ConcurrentDictionary<string, ProjectMap> _maps = new(StringComparer.OrdinalIgnoreCase);
@@ -28,6 +31,16 @@ internal sealed partial class DynamicTestMap
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sharedStateDirectory);
         _directory = DirectoryFor(sharedStateDirectory);
+        lock (_liveLock)
+        {
+            for (var i = _live.Count - 1; i >= 0; i--)
+            {
+                if (!_live[i].TryGetTarget(out _))
+                    _live.RemoveAt(i);
+            }
+
+            _live.Add(new WeakReference<DynamicTestMap>(this));
+        }
     }
 
     /// <summary>Directory storing dynamic test coverage maps for <paramref name="sharedStateDirectory"/>.</summary>
@@ -47,6 +60,48 @@ internal sealed partial class DynamicTestMap
             RefreshFromDisk();
             return !_maps.IsEmpty;
         }
+    }
+
+    /// <summary>
+    ///     Drops this map's in-memory project mappings, keeping what is on disk, so an idle engine returns that
+    ///     memory; the next lookup reads the stored mappings again.
+    /// </summary>
+    /// <returns>How many project mappings were dropped.</returns>
+    public int ReleaseIdle()
+    {
+        lock (_gate)
+        {
+            var dropped = _maps.Count;
+            _maps.Clear();
+            _loadedStamps.Clear();
+            return dropped;
+        }
+    }
+
+    /// <summary>
+    ///     Releases every live dynamic map's in-memory mappings, keeping what is on disk, so an idle engine
+    ///     returns that memory.
+    /// </summary>
+    /// <returns>How many project mappings were dropped across every live map.</returns>
+    public static int ReleaseIdleAll()
+    {
+        List<DynamicTestMap> targets;
+        lock (_liveLock)
+        {
+            targets = [];
+            for (var i = _live.Count - 1; i >= 0; i--)
+            {
+                if (_live[i].TryGetTarget(out var target))
+                    targets.Add(target);
+                else
+                    _live.RemoveAt(i);
+            }
+        }
+
+        var dropped = 0;
+        foreach (var target in targets)
+            dropped += target.ReleaseIdle();
+        return dropped;
     }
 
     /// <summary>

@@ -27,6 +27,9 @@ internal sealed partial class SliceTestCache
     internal const int MaxFileHashEntries = 2048;
     internal const int MaxDiskEntries = 2048;
 
+    private static readonly Lock _liveLock = new();
+    private static readonly List<WeakReference<SliceTestCache>> _live = [];
+
     private readonly string _directory;
     private readonly ConcurrentDictionary<string, SliceCacheResult> _memory = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, (long Length, DateTime WrittenUtc, string Hash)> _fileHashes = new(StringComparer.OrdinalIgnoreCase);
@@ -35,6 +38,16 @@ internal sealed partial class SliceTestCache
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sharedStateDirectory);
         _directory = DirectoryFor(sharedStateDirectory);
+        lock (_liveLock)
+        {
+            for (var i = _live.Count - 1; i >= 0; i--)
+            {
+                if (!_live[i].TryGetTarget(out _))
+                    _live.RemoveAt(i);
+            }
+
+            _live.Add(new WeakReference<SliceTestCache>(this));
+        }
     }
 
     /// <summary>Directory where slice test cache files are stored for <paramref name="sharedStateDirectory"/>.</summary>
@@ -314,6 +327,45 @@ internal sealed partial class SliceTestCache
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
         }
+    }
+
+    /// <summary>
+    ///     Drops this cache's in-memory results and file hashes, keeping what is on disk, so an idle engine
+    ///     returns that memory; the next lookup reads the stored result again or hashes the file again.
+    /// </summary>
+    /// <returns>How many in-memory entries were dropped.</returns>
+    public int ReleaseIdle()
+    {
+        var dropped = _memory.Count + _fileHashes.Count;
+        _memory.Clear();
+        _fileHashes.Clear();
+        return dropped;
+    }
+
+    /// <summary>
+    ///     Releases every live slice cache's in-memory entries, keeping what is on disk, so an idle engine
+    ///     returns that memory.
+    /// </summary>
+    /// <returns>How many in-memory entries were dropped across every live cache.</returns>
+    public static int ReleaseIdleAll()
+    {
+        List<SliceTestCache> targets;
+        lock (_liveLock)
+        {
+            targets = [];
+            for (var i = _live.Count - 1; i >= 0; i--)
+            {
+                if (_live[i].TryGetTarget(out var target))
+                    targets.Add(target);
+                else
+                    _live.RemoveAt(i);
+            }
+        }
+
+        var dropped = 0;
+        foreach (var target in targets)
+            dropped += target.ReleaseIdle();
+        return dropped;
     }
 
     private string PathFor(string sliceKey) => Path.Combine(_directory, sliceKey + ".json");

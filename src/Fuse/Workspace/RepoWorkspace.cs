@@ -17,6 +17,9 @@ namespace Fuse.Workspace;
 /// </summary>
 internal sealed class RepoWorkspace : IDisposable
 {
+    private static readonly Lock _liveLock = new();
+    private static readonly List<WeakReference<RepoWorkspace>> _live = [];
+
     private readonly Action<string> _log;
     private readonly ConcurrentDictionary<string, WorktreeOverlay> _overlays = new(StringComparer.Ordinal);
     private readonly SemaphoreSlim _registerLock = new(1, 1);
@@ -26,6 +29,16 @@ internal sealed class RepoWorkspace : IDisposable
         Root = root;
         _log = log;
         PrimaryOverlay = new WorktreeOverlay(root, log);
+        lock (_liveLock)
+        {
+            for (var i = _live.Count - 1; i >= 0; i--)
+            {
+                if (!_live[i].TryGetTarget(out _))
+                    _live.RemoveAt(i);
+            }
+
+            _live.Add(new WeakReference<RepoWorkspace>(this));
+        }
     }
 
     /// <summary>The primary worktree overlay opened when this workspace was created.</summary>
@@ -287,6 +300,37 @@ internal sealed class RepoWorkspace : IDisposable
         YieldMemory(clearSessionViews: true, dropCompiledBaseline: true);
     }
 
+    /// <summary>
+    ///     Drops the cheaply rebuilt caches of every overlay of this workspace, the shared HEAD texts and the
+    ///     metadata references no live project holds, so an idle engine returns that memory; the views and their
+    ///     compilations stay warm for the next request.
+    /// </summary>
+    public void ReleaseIdle()
+    {
+        foreach (var overlay in Worktrees)
+            overlay.ReleaseIdle();
+    }
+
+    /// <summary>Releases every live workspace's cheaply rebuilt caches, so an idle engine returns that memory.</summary>
+    public static void ReleaseIdleAll()
+    {
+        List<RepoWorkspace> targets;
+        lock (_liveLock)
+        {
+            targets = [];
+            for (var i = _live.Count - 1; i >= 0; i--)
+            {
+                if (_live[i].TryGetTarget(out var target))
+                    targets.Add(target);
+                else
+                    _live.RemoveAt(i);
+            }
+        }
+
+        foreach (var target in targets)
+            target.ReleaseIdle();
+    }
+
     /// <inheritdoc cref="SolutionViews.HeadText"/>
     public SourceText? HeadText(RepoPath path) => PrimaryOverlay.HeadText(path);
 
@@ -308,5 +352,13 @@ internal sealed class RepoWorkspace : IDisposable
             overlay.Dispose();
         _overlays.Clear();
         _registerLock.Dispose();
+        lock (_liveLock)
+        {
+            for (var i = _live.Count - 1; i >= 0; i--)
+            {
+                if (!_live[i].TryGetTarget(out var target) || ReferenceEquals(target, this))
+                    _live.RemoveAt(i);
+            }
+        }
     }
 }

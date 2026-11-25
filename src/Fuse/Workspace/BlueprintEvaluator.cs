@@ -24,6 +24,18 @@ internal static class BlueprintEvaluator
     private const int MaxCliProjectArguments = 20;
     private static volatile bool _childCliUnsupported;
 
+    // Global properties for the ephemeral extraction workspace. MSBuildWorkspace runs a CoreCompile execution
+    // pass for the compiler command-line arguments, and MsCoverageReferencedPathMaps (Microsoft.CodeCoverage)
+    // writes .msCoverageSourceRootsMapping_* into bin/ from it unless DisableMsCoverageReferencedPathMaps is set.
+    private static readonly Dictionary<string, string> DesignTimeProperties = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["DesignTimeBuild"] = "true",
+        ["BuildingProject"] = "false",
+        ["SkipCompilerExecution"] = "true",
+        ["ProvideCommandLineArgs"] = "true",
+        ["DisableMsCoverageReferencedPathMaps"] = "true",
+    };
+
     /// <summary>
     ///     CLI entrypoint accepting raw <c>fuse evaluate-blueprint &lt;repoRoot&gt; &lt;outputPath&gt; [projectPaths...]</c>
     ///     arguments.
@@ -177,7 +189,7 @@ internal static class BlueprintEvaluator
         RepoPath? currentProject = null;
 
         Solution? extractedSolution;
-        using (var workspace = MSBuildWorkspace.Create())
+        using (var workspace = MSBuildWorkspace.Create(DesignTimeProperties))
         {
             workspace.LoadMetadataForReferencedProjects = false;
             workspace.SkipUnrecognizedProjects = true;

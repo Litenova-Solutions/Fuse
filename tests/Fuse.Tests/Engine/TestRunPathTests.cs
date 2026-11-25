@@ -76,7 +76,8 @@ public class TestRunPathTests
         repo.Replace("Lib/Calc.cs", "a + b", "a + b + 0");
         Assert.IsType<EngineResponse.CheckAnswered>(await engine.SendAsync(new EngineRequest.CheckFiles([repo.Full("Lib/Calc.cs")], WaitForLoad: true)));
         var third = Assert.IsType<EngineResponse.PlanAnswered>(await engine.SendAsync(new EngineRequest.PlanAffectedTests())).Plan;
-        Assert.False(Assert.Single(third.Runs).FromCache);
+        // The Add change reaches App.Tests too, through App's entry point, so the plan holds two runs.
+        Assert.False(Assert.Single(third.Runs, r => r.Name == "Lib.Tests").FromCache);
     }
 
     [Fact]

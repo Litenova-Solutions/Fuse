@@ -1,0 +1,1068 @@
+{
+  "suite": "concurrency",
+  "repo": "Jellyfin",
+  "commit": "1d7c6af520da5c84ceac1c21a1d2da34837540ac",
+  "fuseBuild": "7.0.0/6d0df0a03dd04ce495752010115def4e",
+  "coldStartMs": 3083.4646,
+  "levels": [
+    {
+      "callers": 1,
+      "wallMs": 1216.8285,
+      "wall": {
+        "p50": 1212.4,
+        "p95": 1212.4,
+        "max": 1212.4,
+        "n": 1
+      },
+      "queue": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 2
+      },
+      "engine": {
+        "p50": 0,
+        "p95": 828,
+        "max": 828,
+        "n": 2
+      },
+      "gateByHolder": {},
+      "calls": [
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-1-1",
+          "file": "Emby.Naming/AudioBook/AudioBookFileInfo.cs",
+          "wallMs": 1212.3764,
+          "exitCode": 2,
+          "errors": 7,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        }
+      ],
+      "errors": 7,
+      "timeouts": 0,
+      "busyAnswers": 0,
+      "unanswered": 0,
+      "stopTimeouts": 0,
+      "statusTimeouts": 0,
+      "byKind": {
+        "post-edit": {
+          "calls": 1,
+          "wall": {
+            "p50": 1212.4,
+            "p95": 1212.4,
+            "max": 1212.4,
+            "n": 1
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 2
+          },
+          "engine": {
+            "p50": 0,
+            "p95": 828,
+            "max": 828,
+            "n": 2
+          },
+          "errors": 7,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "scoped": {
+          "calls": 0,
+          "wall": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 0
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 0
+          },
+          "engine": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 0
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "stop": {
+          "calls": 0,
+          "wall": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 0
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 0
+          },
+          "engine": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 0
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "test-plan": {
+          "calls": 0,
+          "wall": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 0
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 0
+          },
+          "engine": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 0
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        }
+      },
+      "status": {
+        "calls": 1,
+        "wall": {
+          "p50": 382.2,
+          "p95": 382.2,
+          "max": 382.2,
+          "n": 1
+        },
+        "queue": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 1
+        },
+        "engine": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 1
+        },
+        "timeouts": 0,
+        "busyAnswers": 0,
+        "unanswered": 0
+      },
+      "enginePeakWorkingSetMb": 349.1
+    },
+    {
+      "callers": 4,
+      "wallMs": 153095.7746,
+      "wall": {
+        "p50": 40176.2,
+        "p95": 151762.8,
+        "max": 151762.8,
+        "n": 4
+      },
+      "queue": {
+        "p50": 0,
+        "p95": 38039.8,
+        "max": 38039.8,
+        "n": 5
+      },
+      "engine": {
+        "p50": 39266,
+        "p95": 41390,
+        "max": 41390,
+        "n": 5
+      },
+      "gateByHolder": {
+        "CheckChanges": {
+          "p50": 0,
+          "p95": 38039.8,
+          "max": 38039.8,
+          "n": 3
+        }
+      },
+      "calls": [
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-4-1",
+          "file": "Emby.Naming/AudioBook/AudioBookFileInfo.cs",
+          "wallMs": 39550.5512,
+          "exitCode": 2,
+          "errors": 7,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "scoped",
+          "session": "eval-concurrency-4-2",
+          "file": "Emby.Photos/PhotoProvider.cs",
+          "wallMs": 40176.1653,
+          "exitCode": 1,
+          "errors": 2,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "stop",
+          "session": "eval-concurrency-4-3",
+          "file": "Emby.Server.Implementations/AppBase/BaseApplicationPaths.cs",
+          "wallMs": 41486.8846,
+          "exitCode": 0,
+          "errors": 11,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "test-plan",
+          "session": "eval-concurrency-4-4",
+          "file": "Jellyfin.Api/Auth/AnonymousLanAccessPolicy/AnonymousLanAccessHandler.cs",
+          "wallMs": 151762.7691,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        }
+      ],
+      "errors": 20,
+      "timeouts": 0,
+      "busyAnswers": 0,
+      "unanswered": 0,
+      "stopTimeouts": 0,
+      "statusTimeouts": 2,
+      "byKind": {
+        "post-edit": {
+          "calls": 1,
+          "wall": {
+            "p50": 39550.6,
+            "p95": 39550.6,
+            "max": 39550.6,
+            "n": 1
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 2
+          },
+          "engine": {
+            "p50": 0,
+            "p95": 39266,
+            "max": 39266,
+            "n": 2
+          },
+          "errors": 7,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "scoped": {
+          "calls": 1,
+          "wall": {
+            "p50": 40176.2,
+            "p95": 40176.2,
+            "max": 40176.2,
+            "n": 1
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 1
+          },
+          "engine": {
+            "p50": 40000,
+            "p95": 40000,
+            "max": 40000,
+            "n": 1
+          },
+          "errors": 2,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "stop": {
+          "calls": 1,
+          "wall": {
+            "p50": 41486.9,
+            "p95": 41486.9,
+            "max": 41486.9,
+            "n": 1
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 1
+          },
+          "engine": {
+            "p50": 41390,
+            "p95": 41390,
+            "max": 41390,
+            "n": 1
+          },
+          "errors": 11,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "test-plan": {
+          "calls": 1,
+          "wall": {
+            "p50": 151762.8,
+            "p95": 151762.8,
+            "max": 151762.8,
+            "n": 1
+          },
+          "queue": {
+            "p50": 38039.8,
+            "p95": 38039.8,
+            "max": 38039.8,
+            "n": 1
+          },
+          "engine": {
+            "p50": 22281,
+            "p95": 22281,
+            "max": 22281,
+            "n": 1
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        }
+      },
+      "status": {
+        "calls": 4,
+        "wall": {
+          "p50": 824.3,
+          "p95": 3164.2,
+          "max": 3164.2,
+          "n": 4
+        },
+        "queue": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 4
+        },
+        "engine": {
+          "p50": 31,
+          "p95": 2031,
+          "max": 2031,
+          "n": 4
+        },
+        "timeouts": 2,
+        "busyAnswers": 0,
+        "unanswered": 2
+      },
+      "enginePeakWorkingSetMb": 896.5
+    },
+    {
+      "callers": 10,
+      "wallMs": 172848.9181,
+      "wall": {
+        "p50": 2095.8,
+        "p95": 172848,
+        "max": 172848,
+        "n": 10
+      },
+      "queue": {
+        "p50": 0,
+        "p95": 6705.5,
+        "max": 6705.5,
+        "n": 13
+      },
+      "engine": {
+        "p50": 500,
+        "p95": 30266,
+        "max": 30266,
+        "n": 13
+      },
+      "gateByHolder": {
+        "CheckChanges": {
+          "p50": 368.7,
+          "p95": 667.6,
+          "max": 667.6,
+          "n": 3
+        },
+        "CheckPaths": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 2
+        },
+        "PlanAffectedTests": {
+          "p50": 1784,
+          "p95": 6705.5,
+          "max": 6705.5,
+          "n": 3
+        }
+      },
+      "calls": [
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-10-1",
+          "file": "Emby.Naming/AudioBook/AudioBookFileInfo.cs",
+          "wallMs": 686.6703,
+          "exitCode": 2,
+          "errors": 7,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "scoped",
+          "session": "eval-concurrency-10-2",
+          "file": "Emby.Photos/PhotoProvider.cs",
+          "wallMs": 573.4904,
+          "exitCode": 1,
+          "errors": 2,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "stop",
+          "session": "eval-concurrency-10-3",
+          "file": "Emby.Server.Implementations/AppBase/BaseApplicationPaths.cs",
+          "wallMs": 2095.8286,
+          "exitCode": 0,
+          "errors": 20,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "test-plan",
+          "session": "eval-concurrency-10-4",
+          "file": "Jellyfin.Api/Auth/AnonymousLanAccessPolicy/AnonymousLanAccessHandler.cs",
+          "wallMs": 154507.0039,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-10-5",
+          "file": "Jellyfin.Data/DayOfWeekHelper.cs",
+          "wallMs": 6872.1443,
+          "exitCode": 2,
+          "errors": 1,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "scoped",
+          "session": "eval-concurrency-10-6",
+          "file": "Jellyfin.Server/Configuration/CorsPolicyProvider.cs",
+          "wallMs": 7521.0361,
+          "exitCode": 1,
+          "errors": 4,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "stop",
+          "session": "eval-concurrency-10-7",
+          "file": "Jellyfin.Server.Implementations/Activity/ActivityManager.cs",
+          "wallMs": 2095.4253,
+          "exitCode": 0,
+          "errors": 20,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "test-plan",
+          "session": "eval-concurrency-10-8",
+          "file": "MediaBrowser.Common/Configuration/EncodingConfigurationExtensions.cs",
+          "wallMs": 172848.0025,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-10-9",
+          "file": "MediaBrowser.Controller/BaseItemManager/BaseItemManager.cs",
+          "wallMs": 1030.9629,
+          "exitCode": 2,
+          "errors": 5,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "scoped",
+          "session": "eval-concurrency-10-10",
+          "file": "MediaBrowser.LocalMetadata/BaseXmlProvider.cs",
+          "wallMs": 7017.0259,
+          "exitCode": 1,
+          "errors": 6,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        }
+      ],
+      "errors": 65,
+      "timeouts": 0,
+      "busyAnswers": 0,
+      "unanswered": 0,
+      "stopTimeouts": 0,
+      "statusTimeouts": 0,
+      "byKind": {
+        "post-edit": {
+          "calls": 3,
+          "wall": {
+            "p50": 1031,
+            "p95": 6872.1,
+            "max": 6872.1,
+            "n": 3
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 1773.1,
+            "max": 1773.1,
+            "n": 6
+          },
+          "engine": {
+            "p50": 0,
+            "p95": 4766,
+            "max": 4766,
+            "n": 6
+          },
+          "errors": 13,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "scoped": {
+          "calls": 3,
+          "wall": {
+            "p50": 7017,
+            "p95": 7521,
+            "max": 7521,
+            "n": 3
+          },
+          "queue": {
+            "p50": 1784,
+            "p95": 6705.5,
+            "max": 6705.5,
+            "n": 3
+          },
+          "engine": {
+            "p50": 500,
+            "p95": 4922,
+            "max": 4922,
+            "n": 3
+          },
+          "errors": 12,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "stop": {
+          "calls": 2,
+          "wall": {
+            "p50": 2095.4,
+            "p95": 2095.8,
+            "max": 2095.8,
+            "n": 2
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 667.6,
+            "max": 667.6,
+            "n": 2
+          },
+          "engine": {
+            "p50": 1093,
+            "p95": 1984,
+            "max": 1984,
+            "n": 2
+          },
+          "errors": 40,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "test-plan": {
+          "calls": 2,
+          "wall": {
+            "p50": 154507,
+            "p95": 172848,
+            "max": 172848,
+            "n": 2
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 2
+          },
+          "engine": {
+            "p50": 26578,
+            "p95": 30266,
+            "max": 30266,
+            "n": 2
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        }
+      },
+      "status": {
+        "calls": 10,
+        "wall": {
+          "p50": 475.3,
+          "p95": 545.4,
+          "max": 545.4,
+          "n": 10
+        },
+        "queue": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 10
+        },
+        "engine": {
+          "p50": 16,
+          "p95": 157,
+          "max": 157,
+          "n": 10
+        },
+        "timeouts": 0,
+        "busyAnswers": 0,
+        "unanswered": 0
+      },
+      "enginePeakWorkingSetMb": 963.1
+    },
+    {
+      "callers": 20,
+      "wallMs": 225082.8093,
+      "wall": {
+        "p50": 5503.5,
+        "p95": 196105.1,
+        "max": 222069.6,
+        "n": 20
+      },
+      "queue": {
+        "p50": 645,
+        "p95": 5544.9,
+        "max": 5565.1,
+        "n": 25
+      },
+      "engine": {
+        "p50": 297,
+        "p95": 40031,
+        "max": 40375,
+        "n": 25
+      },
+      "gateByHolder": {
+        "CheckChanges": {
+          "p50": 0,
+          "p95": 2068.4,
+          "max": 2068.4,
+          "n": 8
+        },
+        "PlanAffectedTests": {
+          "p50": 2579.5,
+          "p95": 5565.1,
+          "max": 5565.1,
+          "n": 11
+        }
+      },
+      "calls": [
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-20-1",
+          "file": "Emby.Naming/AudioBook/AudioBookFileInfo.cs",
+          "wallMs": 453.255,
+          "exitCode": 2,
+          "errors": 7,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "scoped",
+          "session": "eval-concurrency-20-2",
+          "file": "Emby.Photos/PhotoProvider.cs",
+          "wallMs": 431.3559,
+          "exitCode": 1,
+          "errors": 2,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "stop",
+          "session": "eval-concurrency-20-3",
+          "file": "Emby.Server.Implementations/AppBase/BaseApplicationPaths.cs",
+          "wallMs": 3610.0518,
+          "exitCode": 0,
+          "errors": 20,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "test-plan",
+          "session": "eval-concurrency-20-4",
+          "file": "Jellyfin.Api/Auth/AnonymousLanAccessPolicy/AnonymousLanAccessHandler.cs",
+          "wallMs": 167143.8742,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-20-5",
+          "file": "Jellyfin.Data/DayOfWeekHelper.cs",
+          "wallMs": 4247.8712,
+          "exitCode": 2,
+          "errors": 1,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "scoped",
+          "session": "eval-concurrency-20-6",
+          "file": "Jellyfin.Server/Configuration/CorsPolicyProvider.cs",
+          "wallMs": 5944.1131,
+          "exitCode": 1,
+          "errors": 4,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "stop",
+          "session": "eval-concurrency-20-7",
+          "file": "Jellyfin.Server.Implementations/Activity/ActivityManager.cs",
+          "wallMs": 3034.3482,
+          "exitCode": 0,
+          "errors": 20,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "test-plan",
+          "session": "eval-concurrency-20-8",
+          "file": "MediaBrowser.Common/Configuration/EncodingConfigurationExtensions.cs",
+          "wallMs": 173341.2089,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-20-9",
+          "file": "MediaBrowser.Controller/BaseItemManager/BaseItemManager.cs",
+          "wallMs": 5630.6552,
+          "exitCode": 2,
+          "errors": 5,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "scoped",
+          "session": "eval-concurrency-20-10",
+          "file": "MediaBrowser.LocalMetadata/BaseXmlProvider.cs",
+          "wallMs": 5774.6176,
+          "exitCode": 1,
+          "errors": 6,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "stop",
+          "session": "eval-concurrency-20-11",
+          "file": "MediaBrowser.MediaEncoding/Attachments/AttachmentExtractor.cs",
+          "wallMs": 5563.75,
+          "exitCode": 0,
+          "errors": 20,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "test-plan",
+          "session": "eval-concurrency-20-12",
+          "file": "MediaBrowser.Model/Configuration/LibraryOptions.cs",
+          "wallMs": 196105.1108,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-20-13",
+          "file": "MediaBrowser.Providers/Books/AudioBookMetadataService.cs",
+          "wallMs": 5503.499,
+          "exitCode": 2,
+          "errors": 5,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "scoped",
+          "session": "eval-concurrency-20-14",
+          "file": "MediaBrowser.XbmcMetadata/Configuration/NfoConfigurationExtension.cs",
+          "wallMs": 5722.2516,
+          "exitCode": 1,
+          "errors": 1,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "stop",
+          "session": "eval-concurrency-20-15",
+          "file": "src/Jellyfin.CodeAnalysis/AsyncDisposalPatternAnalyzer.cs",
+          "wallMs": 3309.3286,
+          "exitCode": 0,
+          "errors": 20,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "test-plan",
+          "session": "eval-concurrency-20-16",
+          "file": "src/Jellyfin.Database/Jellyfin.Database.Implementations/Entities/ActivityLog.cs",
+          "wallMs": 222069.6112,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-20-17",
+          "file": "src/Jellyfin.Database/Jellyfin.Database.Providers.Sqlite/DoNotUseReturningClauseConvention.cs",
+          "wallMs": 2591.6761,
+          "exitCode": 2,
+          "errors": 1,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "scoped",
+          "session": "eval-concurrency-20-18",
+          "file": "src/Jellyfin.Drawing/ImageProcessor.cs",
+          "wallMs": 2766.5644,
+          "exitCode": 1,
+          "errors": 20,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "stop",
+          "session": "eval-concurrency-20-19",
+          "file": "src/Jellyfin.Drawing.Skia/PercentPlayedDrawer.cs",
+          "wallMs": 1960.9429,
+          "exitCode": 0,
+          "errors": 20,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "test-plan",
+          "session": "eval-concurrency-20-20",
+          "file": "src/Jellyfin.Extensions/CopyToExtensions.cs",
+          "wallMs": 194288.7747,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        }
+      ],
+      "errors": 152,
+      "timeouts": 0,
+      "busyAnswers": 0,
+      "unanswered": 0,
+      "stopTimeouts": 0,
+      "statusTimeouts": 0,
+      "byKind": {
+        "post-edit": {
+          "calls": 5,
+          "wall": {
+            "p50": 4247.9,
+            "p95": 5630.7,
+            "max": 5630.7,
+            "n": 5
+          },
+          "queue": {
+            "p50": 284,
+            "p95": 3292.6,
+            "max": 3292.6,
+            "n": 10
+          },
+          "engine": {
+            "p50": 172,
+            "p95": 1391,
+            "max": 1391,
+            "n": 10
+          },
+          "errors": 19,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "scoped": {
+          "calls": 5,
+          "wall": {
+            "p50": 5722.3,
+            "p95": 5944.1,
+            "max": 5944.1,
+            "n": 5
+          },
+          "queue": {
+            "p50": 5525.5,
+            "p95": 5565.1,
+            "max": 5565.1,
+            "n": 5
+          },
+          "engine": {
+            "p50": 46,
+            "p95": 329,
+            "max": 329,
+            "n": 5
+          },
+          "errors": 33,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "stop": {
+          "calls": 5,
+          "wall": {
+            "p50": 3309.3,
+            "p95": 5563.8,
+            "max": 5563.8,
+            "n": 5
+          },
+          "queue": {
+            "p50": 819.1,
+            "p95": 2064.2,
+            "max": 2064.2,
+            "n": 5
+          },
+          "engine": {
+            "p50": 1562,
+            "p95": 3250,
+            "max": 3250,
+            "n": 5
+          },
+          "errors": 100,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "test-plan": {
+          "calls": 5,
+          "wall": {
+            "p50": 194288.8,
+            "p95": 222069.6,
+            "max": 222069.6,
+            "n": 5
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 5
+          },
+          "engine": {
+            "p50": 35922,
+            "p95": 40375,
+            "max": 40375,
+            "n": 5
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        }
+      },
+      "status": {
+        "calls": 20,
+        "wall": {
+          "p50": 602.7,
+          "p95": 2057.4,
+          "max": 2218.9,
+          "n": 20
+        },
+        "queue": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 20
+        },
+        "engine": {
+          "p50": 16,
+          "p95": 187,
+          "max": 1454,
+          "n": 20
+        },
+        "timeouts": 0,
+        "busyAnswers": 0,
+        "unanswered": 0
+      },
+      "enginePeakWorkingSetMb": 963.1
+    }
+  ],
+  "enginePeakWorkingSetMb": 963.1,
+  "engineIdleWorkingSetMb": 494.5,
+  "treeCleanAfter": true
+}

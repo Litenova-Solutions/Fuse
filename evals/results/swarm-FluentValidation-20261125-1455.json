@@ -1,0 +1,158 @@
+{
+  "suite": "swarm",
+  "repo": "FluentValidation",
+  "commit": "fa3c160b17796ff67d6aa5ae6c4b05b471f1a791",
+  "fuseBuild": "7.0.0/6d0df0a03dd04ce495752010115def4e",
+  "dotnetSdk": "10.0.404",
+  "worktrees": {
+    "secondaryWorktrees": 3,
+    "singleWorktreeEngineCount": 1,
+    "singleWorktreeWorkingSetMb": 208.2,
+    "singleWorktreePeakWorkingSetMb": 219.1,
+    "multiWorktreeEngineCount": 1,
+    "sharedEnginePidCount": 1,
+    "multiWorktreeWorkingSetMb": 419.7,
+    "multiWorktreePeakWorkingSetMb": 444.7,
+    "multiWorktreeIdleWorkingSetMb": 519.7,
+    "workingSetPerWorktreeMb": 104.9,
+    "zeroRestoreColdCheck": {
+      "p50": 865.1,
+      "p95": 1082.9,
+      "max": 1082.9,
+      "n": 3
+    },
+    "zeroRestoreEditCheck": {
+      "p50": 1161.4,
+      "p95": 1908.5,
+      "max": 1908.5,
+      "n": 3
+    }
+  },
+  "slim": {
+    "wallMs": 406.3,
+    "exitCode": 0,
+    "beforeWorkingSetMb": 431.3,
+    "afterWorkingSetMb": 436.8,
+    "reclaimedMb": 0
+  },
+  "checkBrief": {
+    "target": "src/FluentValidation/AbstractValidator.cs",
+    "latency": {
+      "p50": 318.1,
+      "p95": 852.6,
+      "max": 852.6,
+      "n": 5
+    },
+    "hintsFound": 5,
+    "rounds": 5
+  },
+  "gate": {
+    "failCheckMs": 353.2,
+    "failCheckExitCode": 1,
+    "passTest": {
+      "p50": 13117.5,
+      "p95": 20109.1,
+      "max": 20109.1,
+      "n": 3
+    },
+    "passFailures": 0
+  },
+  "judge": {
+    "combine": {
+      "p50": 167.1,
+      "p95": 910,
+      "max": 910,
+      "n": 3
+    },
+    "combinePassed": false,
+    "race": {
+      "p50": 193.6,
+      "p95": 197.4,
+      "max": 197.4,
+      "n": 3
+    },
+    "racePassed": true
+  },
+  "batch": {
+    "requests": 20,
+    "responses": 20,
+    "totalMs": 58.6,
+    "perRequestMs": 2.93,
+    "exitCode": 0
+  },
+  "graph": {
+    "graphJson": {
+      "p50": 28.1,
+      "p95": 46.6,
+      "max": 46.6,
+      "n": 5
+    },
+    "graphBytes": 13994,
+    "impactJson": {
+      "p50": 43.3,
+      "p95": 56.9,
+      "max": 56.9,
+      "n": 5
+    },
+    "impactBytes": 375
+  },
+  "shadow": {
+    "target": "src/FluentValidation/AbstractValidator.cs",
+    "testRound": {
+      "p50": 6013,
+      "p95": 6500.4,
+      "max": 6500.4,
+      "n": 3
+    },
+    "shadowRuns": 3,
+    "msbuildRuns": 0,
+    "phases": {
+      "phases": {
+        "emit": {
+          "p50": 276.9,
+          "p95": 1057.2,
+          "max": 1057.2,
+          "n": 3
+        },
+        "gate": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 3
+        },
+        "mirror": {
+          "p50": 169.3,
+          "p95": 199.9,
+          "max": 199.9,
+          "n": 3
+        },
+        "selection": {
+          "p50": 44.7,
+          "p95": 63.9,
+          "max": 63.9,
+          "n": 3
+        },
+        "sync": {
+          "p50": 28.6,
+          "p95": 31,
+          "max": 31,
+          "n": 3
+        },
+        "total": {
+          "p50": 532,
+          "p95": 1297,
+          "max": 1297,
+          "n": 3
+        }
+      },
+      "outsideEngine": {
+        "p50": 5396.4,
+        "p95": 5481,
+        "max": 5481,
+        "n": 3
+      },
+      "n": 3
+    }
+  },
+  "treeCleanAfter": true
+}

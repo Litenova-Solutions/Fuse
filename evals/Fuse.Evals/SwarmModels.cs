@@ -51,12 +51,13 @@ internal sealed record SwarmResult(
         int HintsFound,
         int Rounds);
 
-    /// <summary><c>fuse gate --brief --test</c> latency on failing check and passing body-edit test rounds.</summary>
+    /// <summary><c>fuse gate --brief --test</c> latency on failing check and passing body-edit test rounds, with the exit code and output of each passing round that failed.</summary>
     internal sealed record GateMeasure(
         double FailCheckMs,
         int FailCheckExitCode,
         LatencyStats PassTest,
-        int PassFailures);
+        int PassFailures,
+        IReadOnlyList<string> PassFailureOutputs);
 
     /// <summary><c>fuse judge --combine</c> and <c>fuse judge --race</c> speculative in-memory verification.</summary>
     internal sealed record JudgeMeasure(

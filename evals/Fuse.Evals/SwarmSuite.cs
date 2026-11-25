@@ -244,6 +244,7 @@ internal static class SwarmSuite
         int failExit;
         var passMs = new List<double>();
         var passFailures = 0;
+        var passFailureOutputs = new List<string>();
 
         try
         {
@@ -258,7 +259,10 @@ internal static class SwarmSuite
                 var passRun = await repo.FuseTimedAsync("gate", "--brief", "--test");
                 passMs.Add(passRun.Milliseconds);
                 if (passRun.ExitCode != 0)
+                {
                     passFailures++;
+                    passFailureOutputs.Add($"exit {passRun.ExitCode}: {passRun.Output[..Math.Min(2000, passRun.Output.Length)]}");
+                }
             }
         }
         finally
@@ -267,7 +271,7 @@ internal static class SwarmSuite
             await repo.FuseAsync("check");
         }
 
-        return new SwarmResult.GateMeasure(Math.Round(failMs, 1), failExit, LatencyStats.Of(passMs), passFailures);
+        return new SwarmResult.GateMeasure(Math.Round(failMs, 1), failExit, LatencyStats.Of(passMs), passFailures, passFailureOutputs);
     }
 
     private static async Task<SwarmResult.JudgeMeasure> MeasureJudgeAsync(

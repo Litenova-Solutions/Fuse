@@ -95,7 +95,7 @@ jobs:
 
       - name: Test
         shell: bash
-        run: dotnet test --solution Fuse.slnx -c Release --no-build --hangdump --hangdump-timeout 20m ${{ matrix.shard.filter }}
+        run: dotnet test --solution Fuse.slnx -c Release --no-build --hangdump --hangdump-timeout 10m ${{ matrix.shard.filter }}
 
       - name: Tests still running at a hang
         if: failure()
@@ -223,7 +223,7 @@ jobs:
         env:
           FILTER: ${{ inputs.filter }}
         # The filter splits into its arguments on purpose.
-        run: dotnet test --solution Fuse.slnx -c Release --no-build --hangdump --hangdump-timeout 20m $FILTER
+        run: dotnet test --solution Fuse.slnx -c Release --no-build --hangdump --hangdump-timeout 10m $FILTER
 
       - name: Tests still running at a hang
         if: failure()

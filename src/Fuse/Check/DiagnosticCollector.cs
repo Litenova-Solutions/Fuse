@@ -146,56 +146,28 @@ internal sealed class DiagnosticCollector
     /// <returns>The errors, and whether the analyzers the check runs all finished on the file.</returns>
     private async Task<(List<CompilerError> Errors, bool AnalyzersFinished)> ForFileAsync(Solution solution, RepoPath path, bool baseline, CheckContext context, CancellationToken cancellationToken)
     {
-        var ids = solution.GetDocumentIdsWithFilePath(path.Absolute);
-        if (ids.IsEmpty)
-            return ([], true);
-
-        if (ids.Length == 1)
+        var result = new List<CompilerError>();
+        var finished = true;
+        foreach (var id in solution.GetDocumentIdsWithFilePath(path.Absolute))
         {
-            var id = ids[0];
-            if (solution.GetDocument(id) is { } document)
+            var document = solution.GetDocument(id);
+            if (document is not null)
             {
                 var (errors, documentFinished) = await ForDocumentAsync(document, baseline, context, cancellationToken).ConfigureAwait(false);
-                return (Distinct(errors), documentFinished);
+                result.AddRange(errors);
+                finished &= documentFinished;
+                continue;
             }
 
             if (solution.GetAdditionalDocument(id) is { } additional)
             {
                 var (errors, generatedFinished) = await ForGeneratedFromAsync(solution.GetProject(additional.Project.Id)!, path, baseline, context, cancellationToken).ConfigureAwait(false);
-                return (Distinct(errors), generatedFinished);
+                result.AddRange(errors);
+                finished &= generatedFinished;
             }
-
-            return ([], true);
         }
 
-        var result = new ConcurrentBag<CompilerError>();
-        var finished = true;
-        await Parallel.ForEachAsync(
-            ids,
-            new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = cancellationToken },
-            async (id, ct) =>
-            {
-                if (solution.GetDocument(id) is { } document)
-                {
-                    var (errors, documentFinished) = await ForDocumentAsync(document, baseline, context, ct).ConfigureAwait(false);
-                    foreach (var error in errors)
-                        result.Add(error);
-                    if (!documentFinished)
-                        Volatile.Write(ref finished, false);
-                    return;
-                }
-
-                if (solution.GetAdditionalDocument(id) is { } additional)
-                {
-                    var (errors, generatedFinished) = await ForGeneratedFromAsync(solution.GetProject(additional.Project.Id)!, path, baseline, context, ct).ConfigureAwait(false);
-                    foreach (var error in errors)
-                        result.Add(error);
-                    if (!generatedFinished)
-                        Volatile.Write(ref finished, false);
-                }
-            }).ConfigureAwait(false);
-
-        return (Distinct(result), Volatile.Read(ref finished));
+        return (Distinct(result), finished);
     }
 
     /// <summary>
@@ -520,34 +492,28 @@ internal sealed class DiagnosticCollector
         if (documents.Count == 0)
             return (CompilerErrors(compilation, cancellationToken), true);
 
-        var result = new ConcurrentBag<CompilerError>();
+        var result = new List<CompilerError>();
         var finished = true;
-        await Parallel.ForEachAsync(
-            documents,
-            new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = cancellationToken },
-            async (document, ct) =>
-            {
-                var (errors, documentFinished) = await ForDocumentAsync(document, baseline, context, ct, wholeProject: true).ConfigureAwait(false);
-                foreach (var error in errors)
-                    result.Add(error);
-                if (!documentFinished)
-                    Volatile.Write(ref finished, false);
-            }).ConfigureAwait(false);
+        foreach (var document in documents)
+        {
+            // The model of this document is the only one the stream holds; the next iteration drops it.
+            var (errors, documentFinished) = await ForDocumentAsync(document, baseline, context, cancellationToken, wholeProject: true).ConfigureAwait(false);
+            result.AddRange(errors);
+            finished &= documentFinished;
+        }
 
-        var allErrors = new List<CompilerError>(result);
-        var allFinished = Volatile.Read(ref finished);
-        if (allFinished && _analyzers.For(project, compilation) is { } withAnalyzers
+        if (finished && _analyzers.For(project, compilation) is { } withAnalyzers
             && await FirstModelAsync(project, cancellationToken).ConfigureAwait(false) is { } probe)
         {
             var plan = await _analyzers.PlanAsync(project, withAnalyzers, probe, cancellationToken).ConfigureAwait(false);
             if (!plan.CompilationWide.IsEmpty)
             {
                 var all = await CompilationWideAsync(project, baseline, withAnalyzers, plan.CompilationWideAnalyzers, context, cancellationToken).ConfigureAwait(false);
-                allErrors.AddRange(all.Where(d => d.Location.SourceTree is null && IsError(d)).Select(d => ToCompilerError(d, fromAnalyzer: true)).OfType<CompilerError>());
+                result.AddRange(all.Where(d => d.Location.SourceTree is null && IsError(d)).Select(d => ToCompilerError(d, fromAnalyzer: true)).OfType<CompilerError>());
             }
         }
 
-        return (Distinct(allErrors), allFinished);
+        return (Distinct(result), finished);
     }
 
     private List<CompilerError> CompilerErrors(Compilation compilation, CancellationToken cancellationToken) =>

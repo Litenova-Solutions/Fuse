@@ -215,6 +215,10 @@ internal sealed class WorktreeOverlay : IDisposable
     public Task PreloadAsync(ProjectNode project, CancellationToken cancellationToken) =>
         Projects.PreloadAsync(project, cancellationToken);
 
+    /// <summary>Preloads <paramref name="projects"/> outside request handling (see <see cref="PreloadAsync(ProjectNode, CancellationToken)"/>), in one batch.</summary>
+    public Task PreloadAsync(IReadOnlyCollection<ProjectNode> projects, CancellationToken cancellationToken) =>
+        Projects.PreloadAsync(projects, cancellationToken);
+
     /// <summary>Extracts the blueprints covering <paramref name="projects"/> into the shared cache, without opening anything.</summary>
     public Task EnsureExtractedAsync(IEnumerable<ProjectNode> projects, CancellationToken cancellationToken) =>
         Projects.EnsureExtractedAsync(projects, cancellationToken);

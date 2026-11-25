@@ -17,7 +17,7 @@ namespace Fuse.Workspace;
 /// </summary>
 internal sealed partial class CompilationBlueprint
 {
-    internal const int FormatVersion = 1;
+    internal const int FormatVersion = 2;
 
     private const string RootTokenNative = "${FUSE_REPO_ROOT}";
     private const string RootTokenForward = "${FUSE_REPO_ROOT_FWD}";
@@ -35,7 +35,8 @@ internal sealed partial class CompilationBlueprint
         string sourceRoot,
         Dictionary<string, string> inputHashes,
         Dictionary<string, string> assetsHashes,
-        List<BlueprintProject> projects)
+        List<BlueprintProject> projects,
+        Dictionary<string, List<string>>? knownSources = null)
     {
         Version = version;
         Build = build;
@@ -44,6 +45,7 @@ internal sealed partial class CompilationBlueprint
         InputHashes = inputHashes;
         AssetsHashes = assetsHashes;
         Projects = projects;
+        KnownSources = knownSources ?? new Dictionary<string, List<string>>(StringComparer.Ordinal);
     }
 
     /// <summary>Schema version of this blueprint file.</summary>
@@ -66,6 +68,15 @@ internal sealed partial class CompilationBlueprint
 
     /// <summary>Compiler inputs for each evaluated project/target-framework pair.</summary>
     public List<BlueprintProject> Projects { get; }
+
+    /// <summary>
+    ///     Every source file MSBuild evaluated for each project file at extraction time, by stored project path. A
+    ///     working-tree source the graph names that is not in here was added after the extraction, so the load adds
+    ///     it; one that is in here but missing from a variant's compile list was excluded for that variant on
+    ///     purpose, so the load leaves it out. Blueprints written before this map existed carry an empty one, and
+    ///     the load falls back to the union of the variants' compile lists.
+    /// </summary>
+    public Dictionary<string, List<string>> KnownSources { get; }
 
     /// <summary>Current Fuse/Roslyn build stamp used to invalidate stale blueprints across upgrades.</summary>
     public static string CurrentBuild =>
@@ -220,8 +231,8 @@ internal sealed partial class CompilationBlueprint
         return true;
     }
 
-    /// <summary>Returns a new blueprint merging <paramref name="updatedProjects"/> and <paramref name="updatedAssets"/> into this blueprint.</summary>
-    public CompilationBlueprint Merge(string sourceRoot, Dictionary<string, string> inputHashes, Dictionary<string, string> updatedAssets, IReadOnlyList<BlueprintProject> updatedProjects)
+    /// <summary>Returns a new blueprint merging <paramref name="updatedProjects"/>, <paramref name="updatedAssets"/> and <paramref name="updatedKnownSources"/> into this blueprint.</summary>
+    public CompilationBlueprint Merge(string sourceRoot, Dictionary<string, string> inputHashes, Dictionary<string, string> updatedAssets, IReadOnlyList<BlueprintProject> updatedProjects, IReadOnlyDictionary<string, List<string>>? updatedKnownSources = null)
     {
         var mergedAssets = new Dictionary<string, string>(AssetsHashes, StringComparer.Ordinal);
         foreach (var (path, hash) in updatedAssets)
@@ -236,7 +247,19 @@ internal sealed partial class CompilationBlueprint
             return byPath != 0 ? byPath : string.Compare(a.Name, b.Name, StringComparison.Ordinal);
         });
 
-        return new CompilationBlueprint(FormatVersion, CurrentBuild, Key, sourceRoot, inputHashes, mergedAssets, mergedProjects);
+        var mergedKnownSources = new Dictionary<string, List<string>>(KnownSources, StringComparer.Ordinal);
+        if (updatedKnownSources is not null)
+        {
+            foreach (var path in replacedPaths)
+                mergedKnownSources.Remove(path);
+            foreach (var (path, sources) in updatedKnownSources)
+            {
+                if (replacedPaths.Contains(path))
+                    mergedKnownSources[path] = sources;
+            }
+        }
+
+        return new CompilationBlueprint(FormatVersion, CurrentBuild, Key, sourceRoot, inputHashes, mergedAssets, mergedProjects, mergedKnownSources);
     }
 
     /// <summary>Atomically writes this blueprint to <paramref name="filePath"/> using a staging file and directory write lock.</summary>
@@ -430,6 +453,12 @@ internal sealed partial class CompilationBlueprint
     internal sealed record BlueprintProjectReference(string TargetProjectPath, string TargetProjectName, IReadOnlyList<string> Aliases, bool EmbedInteropTypes);
 
     /// <summary>Exact compiler inputs for one evaluated Roslyn project (one target framework).</summary>
+    /// <remarks>
+    ///     <c>CryptoPublicKey</c> is the key bytes as hex: null when unset, empty when explicitly empty, so the load
+    ///     restores the same state MSBuild gave. <c>CryptoKeyFile</c> is a stored path (see <see cref="StorePath"/>).
+    ///     <c>StrongNameProvider</c> is the provider type's full name. Fields added after the first release keep
+    ///     defaults, so blueprints written before them still read.
+    /// </remarks>
     internal sealed record BlueprintProject(
         string ProjectPath,
         string Name,
@@ -460,7 +489,15 @@ internal sealed partial class CompilationBlueprint
         string MetadataImportOptions = "Public",
         string DocumentationMode = "Parse",
         IReadOnlyDictionary<string, string>? Features = null,
-        IReadOnlyList<string>? Usings = null);
+        IReadOnlyList<string>? Usings = null,
+        string? ModuleName = null,
+        string? MainTypeName = null,
+        string? ScriptClassName = null,
+        string? CryptoKeyFile = null,
+        string? CryptoKeyContainer = null,
+        bool? DelaySign = null,
+        string? CryptoPublicKey = null,
+        string? StrongNameProvider = null);
 
     [JsonSourceGenerationOptions(WriteIndented = false)]
     [JsonSerializable(typeof(CompilationBlueprint))]

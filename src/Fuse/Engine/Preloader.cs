@@ -9,8 +9,9 @@ namespace Fuse.Engine;
 ///     Loads, in the background, the projects that depend on projects with uncommitted changes. A declaration change
 ///     has to bind those dependents, and loading them is the slow part of a first check (seconds per project); doing
 ///     it while the agent is busy elsewhere keeps later checks fast. It extracts the whole batch in one MSBuild
-///     session without any lock, then opens the projects one at a time under the load lock. Requests take precedence:
-///     it holds the gate only while it chooses the batch. It builds no compilation: a check builds what it binds.
+///     session without any lock, then opens the batch under one hold of the load lock, one project at a time only
+///     when a batch load fails. Requests take precedence: it holds the gate only while it chooses the batch. It
+///     builds no compilation: a check builds what it binds.
 /// </summary>
 internal sealed class Preloader
 {
@@ -109,7 +110,36 @@ internal sealed class Preloader
                 return;
             }
 
-            foreach (var project in batch)
+            // One batch load for the whole batch: the extraction above already covered it, so this opens from
+            // the cache under one hold of the load lock instead of one hold per project.
+            var pending = batch.Where(p => !_workspace.IsLoaded(p)).ToList();
+            if (pending.Count > 0 && !shutdown.IsCancellationRequested)
+            {
+                try
+                {
+                    await _workspace.PreloadAsync(pending, shutdown).ConfigureAwait(false);
+                    foreach (var project in pending)
+                        _failed.Remove(project.Path);
+                    pending.Clear();
+                }
+                catch (FuseException)
+                {
+                    // Retried one project at a time below, so one unloadable project neither blocks the rest nor
+                    // marks them failed.
+                    pending = pending.Where(p => !_workspace.IsLoaded(p)).ToList();
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
+                catch (Exception e)
+                {
+                    _log($"preload failed: {e}");
+                    return;
+                }
+            }
+
+            foreach (var project in pending)
             {
                 if (shutdown.IsCancellationRequested)
                     return;

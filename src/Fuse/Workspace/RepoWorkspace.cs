@@ -215,6 +215,14 @@ internal sealed class RepoWorkspace : IDisposable
         PrimaryOverlay.PreloadAsync(project, cancellationToken);
 
     /// <summary>
+    ///     Loads <paramref name="projects"/> into the loader (see <see cref="PreloadAsync(ProjectNode, CancellationToken)"/>),
+    ///     in one batch under one hold of the load lock.
+    /// </summary>
+    /// <exception cref="FuseException">A project has not been restored or failed to load.</exception>
+    public Task PreloadAsync(IReadOnlyCollection<ProjectNode> projects, CancellationToken cancellationToken) =>
+        PrimaryOverlay.PreloadAsync(projects, cancellationToken);
+
+    /// <summary>
     ///     Extracts the blueprints covering <paramref name="projects"/> and their closures into the shared cache,
     ///     without opening anything, so a later load opens from the cache without extracting again.
     /// </summary>

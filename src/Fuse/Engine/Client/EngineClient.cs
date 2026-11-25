@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.IO.Pipes;
+using System.Net.Sockets;
 using System.Text;
 using Fuse.Failures;
 using Fuse.Paths;
@@ -185,9 +186,8 @@ internal static class EngineClient
         {
             if (OperatingSystem.IsWindows())
                 exists = Directory.EnumerateFiles(@"\\.\pipe\", name).Any();
-            // .NET implements named pipes on Unix as domain sockets in the temp directory.
             else
-                exists = File.Exists(Path.Combine(Path.GetTempPath(), "CoreFxPipe_" + name));
+                exists = File.Exists(PipeSocketPath(name));
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException)
         {
@@ -196,6 +196,43 @@ internal static class EngineClient
 
         PipeExistence[name] = (exists, now + PipeExistsCacheMs);
         return exists;
+    }
+
+    /// <summary>
+    ///     The socket file .NET listens on for the pipe <paramref name="name"/> on Linux and macOS: the temp directory
+    ///     with <c>CoreFxPipe_</c> before the name, as the runtime's <c>PipeStream.Unix.GetPipePath</c> builds it. It
+    ///     names no file on Windows, where a pipe is not a file.
+    /// </summary>
+    internal static string PipeSocketPath(string name) => Path.Combine(Path.GetTempPath(), "CoreFxPipe_" + name);
+
+    /// <summary>
+    ///     True when a process listens on the pipe's socket: the probe connects a raw socket and closes it at once,
+    ///     which a live engine accepts and drops. False when the socket file is missing or the connect is refused,
+    ///     because the engine was killed without closing its pipe. True on Windows, where a pipe is not a file, and
+    ///     whenever the probe cannot tell, so the caller keeps its existing behavior.
+    /// </summary>
+    internal static bool PipeHasListener(string name)
+    {
+        if (OperatingSystem.IsWindows())
+            return true;
+        var path = PipeSocketPath(name);
+        if (!File.Exists(path))
+            return false;
+        try
+        {
+            using var socket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
+            socket.Connect(new UnixDomainSocketEndPoint(path));
+            return true;
+        }
+        catch (SocketException e)
+        {
+            // Only a refused connect proves no process listens; anything else keeps the existing behavior.
+            return e.SocketErrorCode != SocketError.ConnectionRefused;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or ObjectDisposedException)
+        {
+            return true;
+        }
     }
 
     private static async Task<NamedPipeClientStream> ConnectAsync(RepoRoot root, CancellationToken cancellationToken)
@@ -224,6 +261,15 @@ internal static class EngineClient
                 catch (Exception e) when (e is TimeoutException or IOException)
                 {
                     await pipe.DisposeAsync().ConfigureAwait(false);
+                    if (!PipeHasListener(root.PipeName) && Environment.TickCount64 - lastStart > 1500)
+                    {
+                        // No process listens on the pipe's socket: the engine was killed without closing its
+                        // pipe. Start one as when the pipe is missing; it removes the file once it holds the
+                        // root's mutex. On Windows the probe always answers true, so this changes nothing there.
+                        // A redundant start is harmless: the second engine exits at once.
+                        EngineLauncher.Start(root.Path);
+                        lastStart = Environment.TickCount64;
+                    }
                 }
             }
             else if (Environment.TickCount64 - lastStart > 1500)

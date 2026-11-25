@@ -11,6 +11,9 @@ internal sealed record ProcessResult(int ExitCode, string Output);
 /// <summary>Runs child processes with argument lists (never a shell string) and kills the whole tree on cancellation.</summary>
 internal static class ProcessRunner
 {
+    /// <summary>The variables MSBuild Locator sets to point a process at one SDK's MSBuild.</summary>
+    internal static readonly string[] MsBuildLocatorVariables = ["MSBUILD_EXE_PATH", "MSBuildExtensionsPath", "MSBuildSDKsPath"];
+
     /// <summary>Runs a process to completion and captures its output.</summary>
     /// <param name="arguments">Arguments, passed without shell interpretation.</param>
     /// <param name="cancellationToken">Kills the process tree when cancelled.</param>
@@ -38,6 +41,10 @@ internal static class ProcessRunner
         psi.Environment["DOTNET_CLI_TELEMETRY_OPTOUT"] = "1";
         psi.Environment["DOTNET_NOLOGO"] = "1";
         psi.Environment["DOTNET_CLI_UI_LANGUAGE"] = "en";
+        // MSBuild Locator points these at the SDK the engine loaded. A child dotnet must resolve its own SDK from the
+        // global.json of the directory it runs in, which can name another SDK, for example in another worktree.
+        foreach (var variable in MsBuildLocatorVariables)
+            psi.Environment.Remove(variable);
 
         var output = new StringBuilder();
         using var process = new Process { StartInfo = psi };

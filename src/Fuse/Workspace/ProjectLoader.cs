@@ -195,6 +195,19 @@ internal sealed class ProjectLoader : IDisposable
     }
 
     /// <summary>
+    ///     Opens <paramref name="projects"/> outside a request (see <see cref="PreloadAsync(ProjectNode, CancellationToken)"/>),
+    ///     in one batch under one hold of the load lock.
+    /// </summary>
+    /// <exception cref="FuseException">A project has not been restored or failed to load.</exception>
+    public async Task PreloadAsync(IReadOnlyCollection<ProjectNode> projects, CancellationToken cancellationToken)
+    {
+        var missing = projects.DistinctBy(p => p.Path).Where(p => !_loaded.ContainsKey(p.Path)).ToList();
+        if (missing.Count == 0)
+            return;
+        await OpenAsync(missing, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
     ///     Extracts the blueprints covering <paramref name="projects"/> and their closures into the shared cache, without
     ///     opening anything and without the load lock, so background preloading extracts while requests are served. A
     ///     later load opens from the cache without extracting again. Per-project extraction failures are recorded for
@@ -223,7 +236,7 @@ internal sealed class ProjectLoader : IDisposable
             _loadFailures[failedPath] = reason;
     }
 
-    /// <summary>Opens each of <paramref name="missing"/> that is not open yet, under the load lock.</summary>
+    /// <summary>Opens each of <paramref name="missing"/> that is not open yet, extracting first without the load lock.</summary>
     private async Task OpenAsync(IReadOnlyList<ProjectNode> missing, CancellationToken cancellationToken)
     {
         var closure = missing.SelectMany(Graph.ClosureOf).DistinctBy(p => p.Path).ToList();
@@ -234,6 +247,23 @@ internal sealed class ProjectLoader : IDisposable
             reusableZeroRestore = BlueprintEvaluator.TryFindReusableBlueprint(_root, Graph, missing);
             if (reusableZeroRestore is null)
                 throw RestoreNeeded(unrestored);
+        }
+
+        // Brings the shared cache up to date before taking the load lock: a request that arrives while the
+        // background preload extracts joins that extraction instead of running its own under the lock, so the
+        // preload's own loads are never blocked behind it, and the lock then only covers the short load.
+        CompilationBlueprint? extracted = null;
+        if (_msbuildFallback is null && reusableZeroRestore is null)
+        {
+            var unopened = missing.Where(p => !_loaded.ContainsKey(p.Path)).ToList();
+            if (unopened.Count > 0)
+            {
+                var preOutcome = await BlueprintEvaluator.EnsureProjectsAsync(_root, Graph, unopened, _log, cancellationToken).ConfigureAwait(false);
+                foreach (var (failedPath, reason) in preOutcome.Failures)
+                    _loadFailures[failedPath] = reason;
+                ThrowOnRecordedFailures(unopened);
+                extracted = preOutcome.Blueprint;
+            }
         }
 
         await _loadLock.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -258,32 +288,31 @@ internal sealed class ProjectLoader : IDisposable
                     }
                     else
                     {
-                        var outcome = await BlueprintEvaluator.EnsureProjectsAsync(_root, Graph, stillMissing, _log, cancellationToken).ConfigureAwait(false);
-                        foreach (var (failedPath, reason) in outcome.Failures)
-                            _loadFailures[failedPath] = reason;
-                        ThrowOnRecordedFailures(stillMissing);
-                        blueprint = outcome.Blueprint;
+                        blueprint = extracted;
+                        if (blueprint is null || !blueprint.Covers(_root, stillMissing.SelectMany(Graph.ClosureOf), allowZeroRestore: false))
+                        {
+                            // The cache lost coverage between the lock-free extraction and the lock (a reset
+                            // unloaded projects, or a concurrent writer replaced the file): extract the remainder.
+                            var outcome = await BlueprintEvaluator.EnsureProjectsAsync(_root, Graph, stillMissing, _log, cancellationToken).ConfigureAwait(false);
+                            foreach (var (failedPath, reason) in outcome.Failures)
+                                _loadFailures[failedPath] = reason;
+                            ThrowOnRecordedFailures(stillMissing);
+                            blueprint = outcome.Blueprint;
+                        }
                     }
 
                     if (blueprint is not null && blueprint.Covers(_root, stillMissing.SelectMany(Graph.ClosureOf), allowZeroRestore: reusableZeroRestore is not null))
                     {
-                        foreach (var project in stillMissing)
-                        {
-                            cancellationToken.ThrowIfCancellationRequested();
-                            if (_loaded.ContainsKey(project.Path))
-                                continue;
-                            var projectStarted = Environment.TickCount64;
-                            _blueprintWorkspace.LoadProjects(
-                                _root,
-                                Graph,
-                                blueprint,
-                                [project],
-                                _headProvider?.Invoke(),
-                                _dirtyProvider?.Invoke());
-                            _activeBlueprint = blueprint;
-                            PublishLoadedProjects(_blueprintWorkspace.Solution, project, projectStarted);
-                        }
-
+                        cancellationToken.ThrowIfCancellationRequested();
+                        _blueprintWorkspace.LoadProjects(
+                            _root,
+                            Graph,
+                            blueprint,
+                            stillMissing,
+                            _headProvider?.Invoke(),
+                            _dirtyProvider?.Invoke());
+                        _activeBlueprint = blueprint;
+                        PublishLoadedProjects(_blueprintWorkspace.Solution, stillMissing, started);
                         loadedViaBlueprint = true;
                     }
                 }
@@ -310,9 +339,9 @@ internal sealed class ProjectLoader : IDisposable
         }
     }
 
-    private void PublishLoadedProjects(Solution solution, ProjectNode requested, long startedTicks)
+    private void PublishLoadedProjects(Solution solution, IReadOnlyList<ProjectNode> requested, long startedTicks)
     {
-        // Published after the workspace solution holds the project, so a request that finds it loaded also finds
+        // Published after the workspace solution holds the projects, so a request that finds one loaded also finds
         // the views behind that solution and derives them again.
         foreach (var loadedProject in solution.Projects)
         {
@@ -320,8 +349,9 @@ internal sealed class ProjectLoader : IDisposable
                 _loaded[_root.PathOf(loadedProject.FilePath)] = 0;
         }
 
-        if (_loaded.ContainsKey(requested.Path))
-            _log($"loaded {requested.Name} in {Environment.TickCount64 - startedTicks} ms ({solution.ProjectIds.Count} projects open)");
+        var newlyLoaded = requested.Where(p => _loaded.ContainsKey(p.Path)).Select(p => p.Name).Order(StringComparer.Ordinal).ToList();
+        if (newlyLoaded.Count > 0)
+            _log($"loaded {string.Join(", ", newlyLoaded)} in {Environment.TickCount64 - startedTicks} ms ({solution.ProjectIds.Count} projects open)");
     }
 
     private void ThrowOnRecordedFailures(IReadOnlyList<ProjectNode> missing)

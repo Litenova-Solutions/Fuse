@@ -82,12 +82,13 @@ internal sealed class BlueprintWorkspace : IDisposable
         foreach (var (path, _, bp) in ordered)
             pendingIds[(path, bp.Name)] = ProjectId.CreateNewId(debugName: bp.Name);
 
+        var knownByPath = KnownSourcesByPath(targetRoot, byPath, blueprint);
         var infos = new List<ProjectInfo>(ordered.Count);
         var addedByPath = new Dictionary<RepoPath, List<(string Name, ProjectId Id)>>();
         foreach (var (path, node, bp) in ordered)
         {
             var id = pendingIds[(path, bp.Name)];
-            var info = BuildProjectInfo(id, targetRoot, node, bp, blueprint.SourceRoot, pendingIds, head, dirtyPaths);
+            var info = BuildProjectInfo(id, targetRoot, node, bp, blueprint.SourceRoot, pendingIds, head, dirtyPaths, knownByPath[path]);
             infos.Add(info);
             if (!addedByPath.TryGetValue(path, out var list))
                 addedByPath[path] = list = [];
@@ -218,6 +219,46 @@ internal sealed class BlueprintWorkspace : IDisposable
     /// <summary>Drops transient HEAD text caches and metadata references no longer held by any live project.</summary>
     public void TrimCaches() => _shared.TrimUnused(_workspace.CurrentSolution);
 
+    /// <summary>
+    ///     The sources MSBuild evaluated at extraction time for each project path in <paramref name="byPath"/>, as
+    ///     repository paths under <paramref name="targetRoot"/>. Paths a blueprint from before the extraction
+    ///     recorded them fall back to the union of their variants' compile lists.
+    /// </summary>
+    private static Dictionary<RepoPath, HashSet<RepoPath>> KnownSourcesByPath(
+        RepoRoot targetRoot,
+        Dictionary<RepoPath, List<CompilationBlueprint.BlueprintProject>> byPath,
+        CompilationBlueprint blueprint)
+    {
+        var result = new Dictionary<RepoPath, HashSet<RepoPath>>(byPath.Count);
+        foreach (var (path, variants) in byPath)
+        {
+            var known = new HashSet<RepoPath>();
+            var recorded = false;
+            foreach (var variant in variants)
+            {
+                if (blueprint.KnownSources.TryGetValue(variant.ProjectPath, out var sources))
+                {
+                    recorded = true;
+                    foreach (var relative in sources)
+                        known.Add(targetRoot.PathOf(relative));
+                }
+            }
+
+            if (!recorded)
+            {
+                foreach (var variant in variants)
+                {
+                    foreach (var doc in variant.Compile)
+                        known.Add(targetRoot.PathOf(CompilationBlueprint.ResolvePath(targetRoot, doc.Path)));
+                }
+            }
+
+            result[path] = known;
+        }
+
+        return result;
+    }
+
     private ProjectInfo BuildProjectInfo(
         ProjectId id,
         RepoRoot targetRoot,
@@ -226,7 +267,8 @@ internal sealed class BlueprintWorkspace : IDisposable
         string sourceRoot,
         Dictionary<(RepoPath Path, string Name), ProjectId> projectIds,
         string? head,
-        IReadOnlySet<RepoPath>? dirtyPaths)
+        IReadOnlySet<RepoPath>? dirtyPaths,
+        HashSet<RepoPath> knownSources)
     {
         var projectFile = targetRoot.PathOf(CompilationBlueprint.ResolvePath(targetRoot, bp.ProjectPath)).Absolute;
         var projectDir = Path.GetDirectoryName(projectFile) ?? targetRoot.Path;
@@ -287,10 +329,12 @@ internal sealed class BlueprintWorkspace : IDisposable
                 filePath: resolved));
         }
 
-        // Include new working-tree sources discovered by RepoGraph after the blueprint was cached.
+        // Include working-tree sources the graph names that the extraction never evaluated: files added after
+        // the blueprint was cached. A source the extraction evaluated but this variant does not compile was left
+        // out of it on purpose (a file conditioned on another target framework), so it stays out.
         foreach (var sourcePath in node.Sources)
         {
-            if (!seenDocPaths.Add(sourcePath) || !File.Exists(sourcePath.Absolute))
+            if (knownSources.Contains(sourcePath) || !seenDocPaths.Add(sourcePath) || !File.Exists(sourcePath.Absolute))
                 continue;
             var textAndVersion = LoadDocumentText(targetRoot, sourceRoot, sourcePath, sourcePath.Absolute, inlineText: null, isGenerated: false, isSecondaryWorktree, head, dirtyPaths);
             if (textAndVersion is null)
@@ -307,7 +351,7 @@ internal sealed class BlueprintWorkspace : IDisposable
         var additional = BuildSupplementaryDocuments(id, targetRoot, sourceRoot, projectDir, bp.AdditionalFiles, isSecondaryWorktree);
         var analyzerConfigs = BuildSupplementaryDocuments(id, targetRoot, sourceRoot, projectDir, bp.AnalyzerConfigFiles, isSecondaryWorktree);
 
-        var compilationOptions = BuildCompilationOptions(bp);
+        var compilationOptions = BuildCompilationOptions(bp, targetRoot);
         var parseOptions = BuildParseOptions(bp);
         var outputPath = ResolveOutputPath(targetRoot, bp.OutputPath);
         var outputRefPath = ResolveOutputPath(targetRoot, bp.OutputRefPath);
@@ -479,7 +523,7 @@ internal sealed class BlueprintWorkspace : IDisposable
         return rel.Split([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar], StringSplitOptions.RemoveEmptyEntries);
     }
 
-    private static CSharpCompilationOptions BuildCompilationOptions(CompilationBlueprint.BlueprintProject bp)
+    private static CSharpCompilationOptions BuildCompilationOptions(CompilationBlueprint.BlueprintProject bp, RepoRoot targetRoot)
     {
         var outputKind = Enum.TryParse<OutputKind>(bp.OutputKind, out var ok) ? ok : OutputKind.DynamicallyLinkedLibrary;
         var nullable = Enum.TryParse<NullableContextOptions>(bp.Nullable, out var nc) ? nc : NullableContextOptions.Disable;
@@ -495,20 +539,28 @@ internal sealed class BlueprintWorkspace : IDisposable
                 specific[id] = report;
         }
 
+        var cryptoPublicKey = bp.CryptoPublicKey is null
+            ? default(ImmutableArray<byte>)
+            : ImmutableArray.CreateRange(Convert.FromHexString(bp.CryptoPublicKey));
+        StrongNameProvider? strongNameProvider = string.Equals(bp.StrongNameProvider, typeof(DesktopStrongNameProvider).FullName, StringComparison.Ordinal)
+            ? new DesktopStrongNameProvider()
+            : null;
+
         return new CSharpCompilationOptions(
             outputKind: outputKind,
             reportSuppressedDiagnostics: false,
-            moduleName: null,
-            mainTypeName: null,
-            scriptClassName: null,
+            moduleName: bp.ModuleName,
+            mainTypeName: bp.MainTypeName,
+            scriptClassName: bp.ScriptClassName,
             usings: bp.Usings is { Count: > 0 } ? bp.Usings : null,
             optimizationLevel: optimization,
             checkOverflow: bp.CheckOverflow,
             allowUnsafe: bp.AllowUnsafe,
-            cryptoKeyContainer: null,
-            cryptoKeyFile: null,
-            cryptoPublicKey: default,
-            delaySign: null,
+            cryptoKeyContainer: bp.CryptoKeyContainer,
+            cryptoKeyFile: string.IsNullOrEmpty(bp.CryptoKeyFile) ? null : CompilationBlueprint.ResolvePath(targetRoot, bp.CryptoKeyFile),
+            cryptoPublicKey: cryptoPublicKey,
+            delaySign: bp.DelaySign,
+            strongNameProvider: strongNameProvider,
             platform: platform,
             generalDiagnosticOption: generalDiag,
             warningLevel: bp.WarningLevel,
@@ -517,6 +569,9 @@ internal sealed class BlueprintWorkspace : IDisposable
             deterministic: bp.Deterministic,
             xmlReferenceResolver: XmlFileResolver.Default,
             sourceReferenceResolver: SourceFileResolver.Default,
+            // MSBuildWorkspace sets its own workspace-bound resolver here, whose type Roslyn keeps internal,
+            // so no public API can build the same instance. It only resolves #r directives and missing
+            // assemblies at emit, which a check never does, so the default stays.
             metadataReferenceResolver: null,
             assemblyIdentityComparer: DesktopAssemblyIdentityComparer.Default,
             nullableContextOptions: nullable)

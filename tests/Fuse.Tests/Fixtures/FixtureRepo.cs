@@ -162,6 +162,10 @@ internal sealed class FixtureRepo : IDisposable
         psi.Environment["DOTNET_CLI_TELEMETRY_OPTOUT"] = "1";
         psi.Environment["DOTNET_NOLOGO"] = "1";
         psi.Environment["MSBUILDDISABLENODEREUSE"] = "1";
+        // An in-process engine test registers one SDK's MSBuild in this process; the child resolves its own from the
+        // fixture's global.json instead.
+        foreach (var variable in Fuse.Dotnet.ProcessRunner.MsBuildLocatorVariables)
+            psi.Environment.Remove(variable);
         using var process = Process.Start(psi)!;
         var stdout = process.StandardOutput.ReadToEndAsync();
         var stderr = process.StandardError.ReadToEndAsync();

@@ -54,6 +54,8 @@ internal static class EngineServer
 
         var log = new EngineLog(root.StateDirectory);
         log.Write($"engine {EngineVersion.Build} started for {root.Path} (pid {Environment.ProcessId})");
+        if (!OperatingSystem.IsWindows())
+            RemovePipeSocketWithoutListener(root, log);
         using var copy = HoldEngineCopy(log);
         _ = Task.Run(() => CleanUpLocalState(root, log));
         using var shutdown = new CancellationTokenSource();
@@ -117,6 +119,27 @@ internal static class EngineServer
         }
 
         return 0;
+    }
+
+    /// <summary>
+    ///     Removes the pipe's socket file when a killed engine left it behind without closing its pipe. The mutex
+    ///     above proves no other engine serves this pipe, so the file has no listener. The runtime unlinks before it
+    ///     binds either way; this names the recovery in the log.
+    /// </summary>
+    private static void RemovePipeSocketWithoutListener(RepoRoot root, EngineLog log)
+    {
+        var path = Path.Combine(Path.GetTempPath(), "CoreFxPipe_" + root.PipeName);
+        if (!File.Exists(path))
+            return;
+        try
+        {
+            File.Delete(path);
+            log.Write($"removed the pipe socket no engine listens on at {path}");
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            log.Write($"could not remove the pipe socket no engine listens on at {path}: {e.Message}");
+        }
     }
 
     /// <summary>

@@ -24,6 +24,14 @@ internal static class BlueprintEvaluator
     private const int MaxCliProjectArguments = 20;
     private static volatile bool _childCliUnsupported;
 
+    /// <summary>
+    ///     One extraction lock per shared state directory. Concurrent extractions for the same cache would run
+    ///     duplicate MSBuild sessions over the same projects and contend on MSBuild's in-process state, so each
+    ///     extraction waits here and re-reads the cache after it acquires the lock, extracting only what is still
+    ///     missing instead of repeating the extraction it waited for. One entry per directory seen, never removed.
+    /// </summary>
+    private static readonly ConcurrentDictionary<string, SemaphoreSlim> _extractionLocks = new(StringComparer.OrdinalIgnoreCase);
+
     // Global properties for the ephemeral extraction workspace. MSBuildWorkspace runs a CoreCompile execution
     // pass for the compiler command-line arguments, and MsCoverageReferencedPathMaps (Microsoft.CodeCoverage)
     // writes .msCoverageSourceRootsMapping_* into bin/ from it unless DisableMsCoverageReferencedPathMaps is set.
@@ -105,44 +113,60 @@ internal static class BlueprintEvaluator
     {
         var closure = ExpandClosure(graph, projects);
         var inputs = CompilationBlueprint.ComputeInputs(root, graph);
-        CompilationBlueprint? cached = null;
-        if (inputs is var (key, inputHashes))
-        {
-            var candidate = CompilationBlueprint.TryReadFile(CompilationBlueprint.FileFor(root.SharedStateDirectory, key));
-            if (candidate is not null && candidate.MatchesInputs(key, inputHashes))
-            {
-                cached = candidate;
-                if (cached.Covers(root, closure, allowZeroRestore: true))
-                    return new ExtractionOutcome(cached, new Dictionary<RepoPath, string>());
-            }
-        }
+        if (TryReadValid(root, inputs) is { } hit && hit.Covers(root, closure, allowZeroRestore: true))
+            return new ExtractionOutcome(hit, new Dictionary<RepoPath, string>());
 
-        // Only evaluate projects whose blueprint entry is missing or whose local assets changed.
-        var toExtract = MissingOrStaleProjects(root, cached, closure);
-        var unrestored = toExtract.Where(p => !File.Exists(p.AssetsFile.Absolute)).Select(p => p.Path.Relative).Distinct(StringComparer.Ordinal).ToList();
-        if (unrestored.Count > 0)
-            throw RestoreNeeded(unrestored);
-
-        var started = Environment.TickCount64;
-        if (ShouldUseChildProcess() && inputs is not null)
+        var extraction = _extractionLocks.GetOrAdd(root.SharedStateDirectory, _ => new SemaphoreSlim(1, 1));
+        await extraction.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
         {
-            var childBlueprint = await TryExtractViaChildProcessAsync(root, toExtract, cancellationToken).ConfigureAwait(false);
-            if (childBlueprint is not null)
+            // An extraction that ran while this call waited may have covered the closure already.
+            var cached = TryReadValid(root, inputs);
+            if (cached is not null && cached.Covers(root, closure, allowZeroRestore: true))
+                return new ExtractionOutcome(cached, new Dictionary<RepoPath, string>());
+
+            // Only evaluate projects whose blueprint entry is missing or whose local assets changed.
+            var toExtract = MissingOrStaleProjects(root, cached, closure);
+            var unrestored = toExtract.Where(p => !File.Exists(p.AssetsFile.Absolute)).Select(p => p.Path.Relative).Distinct(StringComparer.Ordinal).ToList();
+            if (unrestored.Count > 0)
+                throw RestoreNeeded(unrestored);
+
+            var started = Environment.TickCount64;
+            if (ShouldUseChildProcess() && inputs is not null)
             {
-                var merged = MergeIntoSharedCache(root, inputs.Value.Key, inputs.Value.InputHashes, cached, childBlueprint);
-                if (merged.Covers(root, closure, allowZeroRestore: false))
+                var childBlueprint = await TryExtractViaChildProcessAsync(root, toExtract, cancellationToken).ConfigureAwait(false);
+                if (childBlueprint is not null)
                 {
-                    log($"blueprint evaluated {toExtract.Count} project(s) via ephemeral child in {Environment.TickCount64 - started} ms");
-                    return new ExtractionOutcome(merged, new Dictionary<RepoPath, string>());
+                    var merged = MergeIntoSharedCache(root, inputs.Value.Key, inputs.Value.InputHashes, cached, childBlueprint);
+                    if (merged.Covers(root, closure, allowZeroRestore: false))
+                    {
+                        log($"blueprint evaluated {toExtract.Count} project(s) via ephemeral child in {Environment.TickCount64 - started} ms");
+                        return new ExtractionOutcome(merged, new Dictionary<RepoPath, string>());
+                    }
                 }
             }
-        }
 
-        var outcome = await ExtractInProcessAsync(root, graph, toExtract, cached, cancellationToken).ConfigureAwait(false);
-        if (outcome.Blueprint is not null && outcome.Failures.Count == 0 && inputs is not null)
-            outcome.Blueprint.TryWrite(CompilationBlueprint.FileFor(root.SharedStateDirectory, outcome.Blueprint.Key));
-        log($"blueprint evaluated {toExtract.Count} project(s) in-process in {Environment.TickCount64 - started} ms ({outcome.Failures.Count} failed)");
-        return outcome;
+            var outcome = await ExtractInProcessAsync(root, graph, toExtract, cached, cancellationToken).ConfigureAwait(false);
+            if (outcome.Blueprint is not null && outcome.Failures.Count == 0 && inputs is not null)
+                outcome.Blueprint.TryWrite(CompilationBlueprint.FileFor(root.SharedStateDirectory, outcome.Blueprint.Key));
+            log($"blueprint evaluated {toExtract.Count} project(s) in-process in {Environment.TickCount64 - started} ms ({outcome.Failures.Count} failed)");
+            return outcome;
+        }
+        finally
+        {
+            extraction.Release();
+        }
+    }
+
+    /// <summary>Returns the shared cache's blueprint when its key and input hashes match <paramref name="inputs"/>, or null.</summary>
+    private static CompilationBlueprint? TryReadValid(
+        RepoRoot root,
+        (string Key, Dictionary<string, string> InputHashes)? inputs)
+    {
+        if (inputs is not var (key, inputHashes))
+            return null;
+        var candidate = CompilationBlueprint.TryReadFile(CompilationBlueprint.FileFor(root.SharedStateDirectory, key));
+        return candidate is not null && candidate.MatchesInputs(key, inputHashes) ? candidate : null;
     }
 
     /// <summary>
@@ -227,6 +251,7 @@ internal static class BlueprintEvaluator
         var failureMap = new Dictionary<RepoPath, string>(failures);
         var blueprintProjects = new List<CompilationBlueprint.BlueprintProject>();
         var assetsHashes = new Dictionary<string, string>(StringComparer.Ordinal);
+        var knownSources = new Dictionary<string, List<string>>(StringComparer.Ordinal);
         foreach (var roslynProject in extractedSolution.Projects)
         {
             if (roslynProject.FilePath is null)
@@ -235,16 +260,19 @@ internal static class BlueprintEvaluator
             var bp = await CaptureProjectAsync(root, extractedSolution, roslynProject, node, cancellationToken).ConfigureAwait(false);
             if (bp is not null)
                 blueprintProjects.Add(bp);
-            if (node is not null && File.Exists(node.AssetsFile.Absolute) && CompilationBlueprint.HashAssets(root, node.AssetsFile.Absolute) is { } hash)
+            if (node is null)
+                continue;
+            if (File.Exists(node.AssetsFile.Absolute) && CompilationBlueprint.HashAssets(root, node.AssetsFile.Absolute) is { } hash)
                 assetsHashes[node.AssetsFile.Relative] = hash;
+            knownSources[node.Path.Relative] = [.. node.Sources.Select(s => s.Relative).Order(StringComparer.Ordinal)];
         }
 
         var computed = CompilationBlueprint.ComputeInputs(root, graph);
         var key = computed?.Key ?? existing?.Key ?? Guid.NewGuid().ToString("N");
         var inputHashes = computed?.InputHashes ?? existing?.InputHashes ?? new Dictionary<string, string>(StringComparer.Ordinal);
         var blueprint = existing is not null && string.Equals(existing.Key, key, StringComparison.Ordinal)
-            ? existing.Merge(root.Path, inputHashes, assetsHashes, blueprintProjects)
-            : new CompilationBlueprint(CompilationBlueprint.FormatVersion, CompilationBlueprint.CurrentBuild, key, root.Path, inputHashes, assetsHashes, blueprintProjects);
+            ? existing.Merge(root.Path, inputHashes, assetsHashes, blueprintProjects, knownSources)
+            : new CompilationBlueprint(CompilationBlueprint.FormatVersion, CompilationBlueprint.CurrentBuild, key, root.Path, inputHashes, assetsHashes, blueprintProjects, knownSources);
 
         return new ExtractionOutcome(blueprint, failureMap);
     }
@@ -350,11 +378,23 @@ internal static class BlueprintEvaluator
             ? new Dictionary<string, string>(StringComparer.Ordinal)
             : csharpParse.Features.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.Ordinal);
 
+        string? cryptoKeyFile = null;
+        if (!string.IsNullOrEmpty(csharpOptions?.CryptoKeyFile))
+        {
+            // MSBuild spells the key against the project directory without normalizing (eng\..\key.snk), so it is
+            // resolved first; the stored spelling then matches what the load resolves it to.
+            cryptoKeyFile = CompilationBlueprint.StorePath(root, Path.GetFullPath(Path.Combine(projectDir, csharpOptions.CryptoKeyFile)));
+        }
+
         string? tfm = null;
         if (project.AnalyzerOptions.AnalyzerConfigOptionsProvider.GlobalOptions.TryGetValue("build_property.TargetFramework", out var buildTfm) && !string.IsNullOrWhiteSpace(buildTfm))
             tfm = buildTfm;
         else
             tfm = InferTargetFrameworkFromName(project.Name);
+
+        string? cryptoPublicKey = null;
+        if (csharpOptions is not null && !csharpOptions.CryptoPublicKey.IsDefault)
+            cryptoPublicKey = Convert.ToHexString(csharpOptions.CryptoPublicKey.AsSpan());
 
         return new CompilationBlueprint.BlueprintProject(
             ProjectPath: CompilationBlueprint.StorePath(root, project.FilePath),
@@ -386,7 +426,15 @@ internal static class BlueprintEvaluator
             MetadataImportOptions: (csharpOptions?.MetadataImportOptions ?? MetadataImportOptions.Public).ToString(),
             DocumentationMode: (csharpParse?.DocumentationMode ?? DocumentationMode.Parse).ToString(),
             Features: features,
-            Usings: csharpOptions is null ? [] : [.. csharpOptions.Usings]);
+            Usings: csharpOptions is null ? [] : [.. csharpOptions.Usings],
+            ModuleName: csharpOptions?.ModuleName,
+            MainTypeName: csharpOptions?.MainTypeName,
+            ScriptClassName: csharpOptions?.ScriptClassName,
+            CryptoKeyFile: cryptoKeyFile,
+            CryptoKeyContainer: csharpOptions?.CryptoKeyContainer,
+            DelaySign: csharpOptions?.DelaySign,
+            CryptoPublicKey: cryptoPublicKey,
+            StrongNameProvider: csharpOptions?.StrongNameProvider?.GetType().FullName);
     }
 
     private static string? InferTargetFrameworkFromName(string projectName)
@@ -532,7 +580,7 @@ internal static class BlueprintEvaluator
         CompilationBlueprint incoming)
     {
         var merged = cached is not null && string.Equals(cached.Key, key, StringComparison.Ordinal)
-            ? cached.Merge(incoming.SourceRoot, inputHashes, incoming.AssetsHashes, incoming.Projects)
+            ? cached.Merge(incoming.SourceRoot, inputHashes, incoming.AssetsHashes, incoming.Projects, incoming.KnownSources)
             : incoming;
         merged.TryWrite(CompilationBlueprint.FileFor(root.SharedStateDirectory, key));
         return merged;

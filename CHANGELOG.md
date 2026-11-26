@@ -6,7 +6,7 @@ The [changelog page](https://fuse.codes/docs/changelog) explains each release wi
 
 ## 7.0.0
 
-Released 2026-11-24. Compared with 6.0.0, this release serves every worktree of a repository from one engine, adds the worker gate and judge commands for running several agents at once, and reuses more work across checks, test runs and builds. No upgrade steps are required. Update with `dotnet tool update -g Fuse`. A 6.x engine drains its queued and running requests and restarts as 7.0.0 on the next request, because every request carries its build. If you use OpenCode, run `fuse init` again to update its plugin.
+Released 2026-11-26. Compared with 6.0.0, this release serves every worktree of a repository from one engine, adds the worker gate and judge commands for running several agents at once, and reuses more work across checks, test runs and builds. No upgrade steps are required. Update with `dotnet tool update -g Fuse`. A 6.x engine drains its queued and running requests and restarts as 7.0.0 on the next request, because every request carries its build. If you use OpenCode, run `fuse init` again to update its plugin.
 
 ### Added
 
@@ -36,6 +36,7 @@ Released 2026-11-24. Compared with 6.0.0, this release serves every worktree of 
 ### Documentation
 
 - [Commands](https://fuse.codes/docs/commands) documents every new command and flag. [How Fuse works](https://fuse.codes/docs/how-it-works) explains the shared engine, repair packets and the slice cache.
+- [Benchmarks](https://fuse.codes/docs/benchmarks) quotes the 7.0.0 results, with sections for the worktree and swarm commands and for FluentValidation, NodaTime and Polly on the .NET 11 SDK.
 
 ## 6.0.0
 

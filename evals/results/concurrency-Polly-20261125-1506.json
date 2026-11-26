@@ -1,0 +1,1074 @@
+{
+  "suite": "concurrency",
+  "repo": "Polly",
+  "commit": "31d7ac300743b10163d00ef72fccea88f3acabad",
+  "fuseBuild": "7.0.0/6d0df0a03dd04ce495752010115def4e",
+  "coldStartMs": 7254.3375,
+  "levels": [
+    {
+      "callers": 1,
+      "wallMs": 796.5852,
+      "wall": {
+        "p50": 794,
+        "p95": 794,
+        "max": 794,
+        "n": 1
+      },
+      "queue": {
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "n": 1
+      },
+      "engine": {
+        "p50": 578,
+        "p95": 578,
+        "max": 578,
+        "n": 1
+      },
+      "gateByHolder": {},
+      "calls": [
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-1-1",
+          "file": "bench/Polly.Benchmarks/Cache.cs",
+          "wallMs": 794.0066,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        }
+      ],
+      "errors": 0,
+      "timeouts": 0,
+      "busyAnswers": 0,
+      "unanswered": 0,
+      "stopTimeouts": 0,
+      "statusTimeouts": 0,
+      "byKind": {
+        "post-edit": {
+          "calls": 1,
+          "wall": {
+            "p50": 794,
+            "p95": 794,
+            "max": 794,
+            "n": 1
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 1
+          },
+          "engine": {
+            "p50": 578,
+            "p95": 578,
+            "max": 578,
+            "n": 1
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "scoped": {
+          "calls": 0,
+          "wall": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 0
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 0
+          },
+          "engine": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 0
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "stop": {
+          "calls": 0,
+          "wall": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 0
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 0
+          },
+          "engine": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 0
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "test-plan": {
+          "calls": 0,
+          "wall": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 0
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 0
+          },
+          "engine": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 0
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        }
+      },
+      "status": {
+        "calls": 1,
+        "wall": {
+          "p50": 59.3,
+          "p95": 59.3,
+          "max": 59.3,
+          "n": 1
+        },
+        "queue": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 1
+        },
+        "engine": {
+          "p50": 15,
+          "p95": 15,
+          "max": 15,
+          "n": 1
+        },
+        "timeouts": 0,
+        "busyAnswers": 0,
+        "unanswered": 0
+      },
+      "enginePeakWorkingSetMb": 397.7
+    },
+    {
+      "callers": 4,
+      "wallMs": 235405.0629,
+      "wall": {
+        "p50": 56359.4,
+        "p95": 233622.9,
+        "max": 233622.9,
+        "n": 4
+      },
+      "queue": {
+        "p50": 0,
+        "p95": 54251.1,
+        "max": 54251.1,
+        "n": 4
+      },
+      "engine": {
+        "p50": 5344,
+        "p95": 56266,
+        "max": 56266,
+        "n": 4
+      },
+      "gateByHolder": {
+        "CheckPaths": {
+          "p50": 322,
+          "p95": 54251.1,
+          "max": 54251.1,
+          "n": 3
+        }
+      },
+      "calls": [
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-4-1",
+          "file": "bench/Polly.Benchmarks/Cache.cs",
+          "wallMs": 56094.0035,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "scoped",
+          "session": "eval-concurrency-4-2",
+          "file": "bench/Polly.Core.Benchmarks/BridgeBenchmark.cs",
+          "wallMs": 56359.3702,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "stop",
+          "session": "eval-concurrency-4-3",
+          "file": "src/Polly/AsyncPolicy.ContextAndKeys.cs",
+          "wallMs": 61454.6027,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "test-plan",
+          "session": "eval-concurrency-4-4",
+          "file": "src/Polly.Core/CircuitBreaker/BrokenCircuitException.cs",
+          "wallMs": 233622.8866,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        }
+      ],
+      "errors": 0,
+      "timeouts": 0,
+      "busyAnswers": 0,
+      "unanswered": 0,
+      "stopTimeouts": 0,
+      "statusTimeouts": 3,
+      "byKind": {
+        "post-edit": {
+          "calls": 1,
+          "wall": {
+            "p50": 56094,
+            "p95": 56094,
+            "max": 56094,
+            "n": 1
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 1
+          },
+          "engine": {
+            "p50": 55969,
+            "p95": 55969,
+            "max": 55969,
+            "n": 1
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "scoped": {
+          "calls": 1,
+          "wall": {
+            "p50": 56359.4,
+            "p95": 56359.4,
+            "max": 56359.4,
+            "n": 1
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 1
+          },
+          "engine": {
+            "p50": 56266,
+            "p95": 56266,
+            "max": 56266,
+            "n": 1
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "stop": {
+          "calls": 1,
+          "wall": {
+            "p50": 61454.6,
+            "p95": 61454.6,
+            "max": 61454.6,
+            "n": 1
+          },
+          "queue": {
+            "p50": 322,
+            "p95": 322,
+            "max": 322,
+            "n": 1
+          },
+          "engine": {
+            "p50": 5344,
+            "p95": 5344,
+            "max": 5344,
+            "n": 1
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "test-plan": {
+          "calls": 1,
+          "wall": {
+            "p50": 233622.9,
+            "p95": 233622.9,
+            "max": 233622.9,
+            "n": 1
+          },
+          "queue": {
+            "p50": 54251.1,
+            "p95": 54251.1,
+            "max": 54251.1,
+            "n": 1
+          },
+          "engine": {
+            "p50": 4641,
+            "p95": 4641,
+            "max": 4641,
+            "n": 1
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        }
+      },
+      "status": {
+        "calls": 4,
+        "wall": {
+          "p50": 2186.5,
+          "p95": 3230.5,
+          "max": 3230.5,
+          "n": 4
+        },
+        "queue": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 4
+        },
+        "engine": {
+          "p50": 1937,
+          "p95": 2516,
+          "max": 2516,
+          "n": 4
+        },
+        "timeouts": 3,
+        "busyAnswers": 0,
+        "unanswered": 3
+      },
+      "enginePeakWorkingSetMb": 895.5
+    },
+    {
+      "callers": 10,
+      "wallMs": 103135.8952,
+      "wall": {
+        "p50": 2643.2,
+        "p95": 103135,
+        "max": 103135,
+        "n": 10
+      },
+      "queue": {
+        "p50": 0,
+        "p95": 2128.3,
+        "max": 2128.3,
+        "n": 10
+      },
+      "engine": {
+        "p50": 422,
+        "p95": 2593,
+        "max": 2593,
+        "n": 10
+      },
+      "gateByHolder": {
+        "CheckPaths": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 1
+        },
+        "PlanAffectedTests": {
+          "p50": 510.5,
+          "p95": 2128.3,
+          "max": 2128.3,
+          "n": 7
+        }
+      },
+      "calls": [
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-10-1",
+          "file": "bench/Polly.Benchmarks/Cache.cs",
+          "wallMs": 2654.613,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "scoped",
+          "session": "eval-concurrency-10-2",
+          "file": "bench/Polly.Core.Benchmarks/BridgeBenchmark.cs",
+          "wallMs": 413.1383,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "stop",
+          "session": "eval-concurrency-10-3",
+          "file": "src/Polly/AsyncPolicy.ContextAndKeys.cs",
+          "wallMs": 2644.5237,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "test-plan",
+          "session": "eval-concurrency-10-4",
+          "file": "src/Polly.Core/CircuitBreaker/BrokenCircuitException.cs",
+          "wallMs": 103135.0309,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-10-5",
+          "file": "src/Polly.Extensions/DependencyInjection/AddResiliencePipelineContext.cs",
+          "wallMs": 2280.7057,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "scoped",
+          "session": "eval-concurrency-10-6",
+          "file": "src/Polly.RateLimiting/RateLimiterRejectedException.cs",
+          "wallMs": 1000.264,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "stop",
+          "session": "eval-concurrency-10-7",
+          "file": "src/Polly.Testing/ResiliencePipelineExtensions.cs",
+          "wallMs": 2643.229,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "test-plan",
+          "session": "eval-concurrency-10-8",
+          "file": "src/Snippets/Docs/Chaos.Behavior.cs",
+          "wallMs": 102145.1624,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-10-9",
+          "file": "test/Polly.TestUtils/FakeTelemetryListener.cs",
+          "wallMs": 844.5738,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "scoped",
+          "session": "eval-concurrency-10-10",
+          "file": "bench/Polly.Benchmarks/Retry.cs",
+          "wallMs": 2651.3926,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        }
+      ],
+      "errors": 0,
+      "timeouts": 0,
+      "busyAnswers": 0,
+      "unanswered": 0,
+      "stopTimeouts": 0,
+      "statusTimeouts": 0,
+      "byKind": {
+        "post-edit": {
+          "calls": 3,
+          "wall": {
+            "p50": 2280.7,
+            "p95": 2654.6,
+            "max": 2654.6,
+            "n": 3
+          },
+          "queue": {
+            "p50": 510.5,
+            "p95": 2115.1,
+            "max": 2115.1,
+            "n": 3
+          },
+          "engine": {
+            "p50": 422,
+            "p95": 1281,
+            "max": 1281,
+            "n": 3
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "scoped": {
+          "calls": 3,
+          "wall": {
+            "p50": 1000.3,
+            "p95": 2651.4,
+            "max": 2651.4,
+            "n": 3
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 2128.3,
+            "max": 2128.3,
+            "n": 3
+          },
+          "engine": {
+            "p50": 250,
+            "p95": 547,
+            "max": 547,
+            "n": 3
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "stop": {
+          "calls": 2,
+          "wall": {
+            "p50": 2643.2,
+            "p95": 2644.5,
+            "max": 2644.5,
+            "n": 2
+          },
+          "queue": {
+            "p50": 384.1,
+            "p95": 1783,
+            "max": 1783,
+            "n": 2
+          },
+          "engine": {
+            "p50": 344,
+            "p95": 1782,
+            "max": 1782,
+            "n": 2
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "test-plan": {
+          "calls": 2,
+          "wall": {
+            "p50": 102145.2,
+            "p95": 103135,
+            "max": 103135,
+            "n": 2
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 2
+          },
+          "engine": {
+            "p50": 750,
+            "p95": 2593,
+            "max": 2593,
+            "n": 2
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        }
+      },
+      "status": {
+        "calls": 10,
+        "wall": {
+          "p50": 256.2,
+          "p95": 502.3,
+          "max": 502.3,
+          "n": 10
+        },
+        "queue": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 10
+        },
+        "engine": {
+          "p50": 94,
+          "p95": 125,
+          "max": 125,
+          "n": 10
+        },
+        "timeouts": 0,
+        "busyAnswers": 0,
+        "unanswered": 0
+      },
+      "enginePeakWorkingSetMb": 900.3
+    },
+    {
+      "callers": 20,
+      "wallMs": 188757.7373,
+      "wall": {
+        "p50": 2587.9,
+        "p95": 185801.3,
+        "max": 187897,
+        "n": 20
+      },
+      "queue": {
+        "p50": 81.2,
+        "p95": 2788.7,
+        "max": 2844.3,
+        "n": 20
+      },
+      "engine": {
+        "p50": 344,
+        "p95": 3297,
+        "max": 7906,
+        "n": 20
+      },
+      "gateByHolder": {
+        "CheckChanges": {
+          "p50": 422.3,
+          "p95": 785.2,
+          "max": 785.2,
+          "n": 3
+        },
+        "CheckFiles": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 3
+        },
+        "CheckPaths": {
+          "p50": 615.1,
+          "p95": 615.1,
+          "max": 615.1,
+          "n": 1
+        },
+        "PlanAffectedTests": {
+          "p50": 2092.4,
+          "p95": 2844.3,
+          "max": 2844.3,
+          "n": 8
+        }
+      },
+      "calls": [
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-20-1",
+          "file": "bench/Polly.Benchmarks/Cache.cs",
+          "wallMs": 978.2893,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "scoped",
+          "session": "eval-concurrency-20-2",
+          "file": "bench/Polly.Core.Benchmarks/BridgeBenchmark.cs",
+          "wallMs": 782.5584,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "stop",
+          "session": "eval-concurrency-20-3",
+          "file": "src/Polly/AsyncPolicy.ContextAndKeys.cs",
+          "wallMs": 3338.4832,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "test-plan",
+          "session": "eval-concurrency-20-4",
+          "file": "src/Polly.Core/CircuitBreaker/BrokenCircuitException.cs",
+          "wallMs": 108658.752,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-20-5",
+          "file": "src/Polly.Extensions/DependencyInjection/AddResiliencePipelineContext.cs",
+          "wallMs": 2491.4231,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "scoped",
+          "session": "eval-concurrency-20-6",
+          "file": "src/Polly.RateLimiting/RateLimiterRejectedException.cs",
+          "wallMs": 1116.6979,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "stop",
+          "session": "eval-concurrency-20-7",
+          "file": "src/Polly.Testing/ResiliencePipelineExtensions.cs",
+          "wallMs": 2487.7403,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "test-plan",
+          "session": "eval-concurrency-20-8",
+          "file": "src/Snippets/Docs/Chaos.Behavior.cs",
+          "wallMs": 187896.969,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-20-9",
+          "file": "test/Polly.TestUtils/FakeTelemetryListener.cs",
+          "wallMs": 2630.8196,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "scoped",
+          "session": "eval-concurrency-20-10",
+          "file": "bench/Polly.Benchmarks/Retry.cs",
+          "wallMs": 3074.5099,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "stop",
+          "session": "eval-concurrency-20-11",
+          "file": "bench/Polly.Core.Benchmarks/CircuitBreakerBenchmark.cs",
+          "wallMs": 2600.8319,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "test-plan",
+          "session": "eval-concurrency-20-12",
+          "file": "src/Polly/AsyncPolicy.ExecuteOverloads.cs",
+          "wallMs": 185801.3188,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-20-13",
+          "file": "src/Polly.Core/CircuitBreaker/CircuitBreakerManualControl.cs",
+          "wallMs": 2587.8861,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "scoped",
+          "session": "eval-concurrency-20-14",
+          "file": "src/Polly.Extensions/DependencyInjection/AddResiliencePipelinesContext.cs",
+          "wallMs": 3105.1962,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "stop",
+          "session": "eval-concurrency-20-15",
+          "file": "src/Polly.RateLimiting/RateLimiterResiliencePipelineBuilderExtensions.cs",
+          "wallMs": 2463.8096,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "test-plan",
+          "session": "eval-concurrency-20-16",
+          "file": "src/Snippets/Docs/Chaos.Fault.cs",
+          "wallMs": 183213.3054,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "post-edit",
+          "session": "eval-concurrency-20-17",
+          "file": "test/Polly.TestUtils/OutcomeExtensions.cs",
+          "wallMs": 692.6744,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "scoped",
+          "session": "eval-concurrency-20-18",
+          "file": "bench/Polly.Benchmarks/Workloads.cs",
+          "wallMs": 913.2616,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "stop",
+          "session": "eval-concurrency-20-19",
+          "file": "bench/Polly.Core.Benchmarks/CircuitBreakerOpenedBenchmark.cs",
+          "wallMs": 637.8153,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        },
+        {
+          "kind": "test-plan",
+          "session": "eval-concurrency-20-20",
+          "file": "src/Polly/AsyncPolicy.TResult.ExecuteOverloads.cs",
+          "wallMs": 185027.0769,
+          "exitCode": 0,
+          "errors": 0,
+          "timedOut": false,
+          "busy": false,
+          "unanswered": false
+        }
+      ],
+      "errors": 0,
+      "timeouts": 0,
+      "busyAnswers": 0,
+      "unanswered": 0,
+      "stopTimeouts": 0,
+      "statusTimeouts": 0,
+      "byKind": {
+        "post-edit": {
+          "calls": 5,
+          "wall": {
+            "p50": 2491.4,
+            "p95": 2630.8,
+            "max": 2630.8,
+            "n": 5
+          },
+          "queue": {
+            "p50": 422.3,
+            "p95": 2117.8,
+            "max": 2117.8,
+            "n": 5
+          },
+          "engine": {
+            "p50": 281,
+            "p95": 672,
+            "max": 672,
+            "n": 5
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "scoped": {
+          "calls": 5,
+          "wall": {
+            "p50": 1116.7,
+            "p95": 3105.2,
+            "max": 3105.2,
+            "n": 5
+          },
+          "queue": {
+            "p50": 615.1,
+            "p95": 2844.3,
+            "max": 2844.3,
+            "n": 5
+          },
+          "engine": {
+            "p50": 156,
+            "p95": 641,
+            "max": 641,
+            "n": 5
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "stop": {
+          "calls": 5,
+          "wall": {
+            "p50": 2487.7,
+            "p95": 3338.5,
+            "max": 3338.5,
+            "n": 5
+          },
+          "queue": {
+            "p50": 785.2,
+            "p95": 2173.1,
+            "max": 2173.1,
+            "n": 5
+          },
+          "engine": {
+            "p50": 344,
+            "p95": 3046,
+            "max": 3046,
+            "n": 5
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        },
+        "test-plan": {
+          "calls": 5,
+          "wall": {
+            "p50": 185027.1,
+            "p95": 187897,
+            "max": 187897,
+            "n": 5
+          },
+          "queue": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "n": 5
+          },
+          "engine": {
+            "p50": 1547,
+            "p95": 7906,
+            "max": 7906,
+            "n": 5
+          },
+          "errors": 0,
+          "timeouts": 0,
+          "busyAnswers": 0,
+          "unanswered": 0
+        }
+      },
+      "status": {
+        "calls": 20,
+        "wall": {
+          "p50": 417,
+          "p95": 1370.2,
+          "max": 1501.6,
+          "n": 20
+        },
+        "queue": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 20
+        },
+        "engine": {
+          "p50": 15,
+          "p95": 125,
+          "max": 140,
+          "n": 20
+        },
+        "timeouts": 0,
+        "busyAnswers": 0,
+        "unanswered": 0
+      },
+      "enginePeakWorkingSetMb": 978.9
+    }
+  ],
+  "enginePeakWorkingSetMb": 978.9,
+  "engineIdleWorkingSetMb": 544.6,
+  "treeCleanAfter": true
+}

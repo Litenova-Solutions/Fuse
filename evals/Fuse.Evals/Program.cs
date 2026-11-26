@@ -19,7 +19,7 @@ internal static class Program
                Fuse.Evals chart
                Fuse.Evals clone <repo>
                Fuse.Evals clean
-          suite: correctness | selection | latency | attribution | analyzers | scale | stale | concurrency | all
+          suite: correctness | selection | latency | attribution | analyzers | scale | stale | concurrency | swarm | all
           repo:  fixture (generated under evals/.work/fixture), analyzer-fixture (generated under evals/.work/analyzer-fixture),
                  scale-fixture (generated under evals/.work/scale-fixture), a pinned repository name, or a path to a git repository
           truth: runs shard K of N of the truth side (the real dotnet build or dotnet test) and writes it to a file; the
@@ -37,6 +37,8 @@ internal static class Program
           concurrency: 1, 4, 10 and 20 simultaneous callers from distinct sessions (post-edit checks, scoped checks,
                  stops and test plans) with a status probe per caller: queue and engine time, errors, timeouts,
                  Busy answers, cold-start time and the engine's idle and peak working set; no truth
+          swarm: shared hypervisor RAM across git worktrees, zero-restore worktree checks, fuse slim, fuse check --brief,
+                 fuse gate --brief --test, fuse judge (--combine/--race), fuse batch throughput, fuse graph/impact, and shadow tests
           --part: for latency, what to measure: all (the default); checks, the checks alone; main, the checks and
                  the test rounds; agents, the multi-agent scenario after the cold checks and body edits
           --failed-rounds: for selection on fixture, three fix-and-rerun rounds with fuse test --failed afterwards
@@ -109,7 +111,7 @@ internal static class Program
         if (command == "truth")
             return await TruthAsync(suite, repo, solution, await KeyAsync(suite), seed, Mutations(suite), options);
 
-        var suites = suite == "all" ? new[] { "correctness", "selection", "latency" } : [suite];
+        var suites = suite == "all" ? new[] { "correctness", "selection", "latency", "swarm" } : [suite];
         foreach (var name in suites)
         {
             object result;
@@ -137,6 +139,10 @@ internal static class Program
             else if (name == "concurrency")
             {
                 result = await ConcurrencySuite.RunAsync(repo, solution);
+            }
+            else if (name == "swarm")
+            {
+                result = await SwarmSuite.RunAsync(repo, solution);
             }
             else
             {
@@ -226,7 +232,10 @@ internal static class Program
     private static async Task<string> SdkAsync(string repoPath)
     {
         var result = await ProcessRunner.RunAsync("dotnet", ["--version"], repoPath, CancellationToken.None);
-        return result.ExitCode == 0 ? result.Output.Trim() : throw new InvalidOperationException($"dotnet --version failed in {repoPath}: {result.Output}");
+        if (result.ExitCode != 0)
+            throw new InvalidOperationException($"dotnet --version failed in {repoPath}: {result.Output}");
+        var version = result.Output.Trim();
+        return Environment.GetEnvironmentVariable("FUSE_EVAL_MSBUILD_MT") == "1" ? $"{version}-mt" : version;
     }
 
     /// <summary>
@@ -331,9 +340,46 @@ internal static class Program
             await GitOrFail(path, "checkout", "--quiet", "--detach", commit);
         }
 
+        // The pinned repositories name their own SDK in global.json, which wins over any SDK the runner installs. To
+        // measure another SDK, the checkout gets one local commit on top of the pinned one that names it, so the tree
+        // stays clean and Fuse sees the setting as part of HEAD rather than as a change.
+        var evalSdk = Environment.GetEnvironmentVariable("FUSE_EVAL_SDK");
+        if (evalSdk is { Length: > 0 } && !evalSdk.StartsWith("10.", StringComparison.Ordinal))
+        {
+            await GitOrFail(path, "checkout", "--quiet", "--force", "--detach", commit);
+            await PinSdkAsync(path, evalSdk);
+            var pinnedNow = await GitAsync(path, "rev-parse", "HEAD~1");
+            Console.WriteLine($"{pinned.Name} at {commit} with SDK {evalSdk} pinned in {path}");
+            return pinnedNow.Output.Trim() == commit ? 0 : 1;
+        }
+
         var now = await GitAsync(path, "rev-parse", "HEAD");
         Console.WriteLine($"{pinned.Name} at {now.Output.Trim()} in {path}");
         return now.Output.Trim() == commit ? 0 : 1;
+    }
+
+    /// <summary>
+    ///     Commits a global.json that names the major version of <paramref name="evalSdk"/> (like <c>11.0.x</c>), keeping
+    ///     every other setting the repository's global.json holds.
+    /// </summary>
+    private static async Task PinSdkAsync(string path, string evalSdk)
+    {
+        var major = evalSdk.Split('.')[0];
+        var file = Path.Combine(path, "global.json");
+        var json = File.Exists(file)
+            ? System.Text.Json.Nodes.JsonNode.Parse(await File.ReadAllTextAsync(file), documentOptions: new System.Text.Json.JsonDocumentOptions { CommentHandling = System.Text.Json.JsonCommentHandling.Skip, AllowTrailingCommas = true })!.AsObject()
+            : new System.Text.Json.Nodes.JsonObject();
+        json["sdk"] = new System.Text.Json.Nodes.JsonObject
+        {
+            ["version"] = $"{major}.0.100",
+            ["rollForward"] = "latestFeature",
+        };
+        await File.WriteAllTextAsync(file, json.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true }) + "\n");
+        await GitOrFail(path, "add", "global.json");
+        // A fixed date makes the commit the same in every job, so results from separate jobs name one commit.
+        Environment.SetEnvironmentVariable("GIT_AUTHOR_DATE", "2000-01-01T00:00:00Z");
+        Environment.SetEnvironmentVariable("GIT_COMMITTER_DATE", "2000-01-01T00:00:00Z");
+        await GitOrFail(path, "-c", "user.name=Fuse evals", "-c", "user.email=evals@fuse.invalid", "commit", "--quiet", "--no-verify", "-m", $"Pin SDK {major} for the evals");
     }
 
     private static async Task<ProcessResult> GitAsync(string workingDirectory, params string[] args) =>

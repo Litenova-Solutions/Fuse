@@ -281,7 +281,7 @@ internal static class FixtureTemplate
             ["Tests/CalcTests.cs"] = PlatformTests(framework),
         };
         if (optIn)
-            files["global.json"] = """{ "test": { "runner": "Microsoft.Testing.Platform" } }""";
+            files["global.json"] = "{ " + FixtureRepo.SdkSelection + """, "test": { "runner": "Microsoft.Testing.Platform" } }""";
         return files;
     }
 

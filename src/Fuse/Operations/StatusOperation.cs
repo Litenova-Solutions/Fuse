@@ -58,7 +58,10 @@ internal static partial class StatusOperation
         if (EngineClient.PipeExists(root.PipeName))
         {
             engine = await AskAsync(root, cancellationToken).ConfigureAwait(false);
-            silentEngine = engine is null;
+            // A pipe's socket file without a listener is left behind by a killed engine: no engine runs. The probe
+            // runs only after the engine did not answer, because a probe connection takes the engine's waiting pipe
+            // instance and would delay the request itself.
+            silentEngine = engine is null && EngineClient.PipeHasListener(root.PipeName);
         }
 
         string tree;
@@ -92,7 +95,7 @@ internal static partial class StatusOperation
             int? inReach = engine is null ? null : engine.ChangedSourcesInReach;
             int? touched = engine is null ? null : engine.TouchedCount;
             return new OperationResult(Outcome.Clean, JsonSerializer.Serialize(
-                new StatusLine(state, engine?.Pid, memoryMB, count, head, tree, inReach, touched, TouchedLimit, KeptAnswerAt, WholeProjectAt, ReloadAt, ReloadAt, engine?.ReloadMs, engine?.GateHolder, memoryCeilingBytes, memoryLoadBytes, engine?.WorkingSetBytes),
+                new StatusLine(state, engine?.Pid, memoryMB, count, head, tree, inReach, touched, TouchedLimit, KeptAnswerAt, WholeProjectAt, ReloadAt, ReloadAt, engine?.ReloadMs, engine?.GateHolder, memoryCeilingBytes, memoryLoadBytes, engine?.WorkingSetBytes, root.PipeName, EngineVersion.Build),
                 StatusJson.Default.StatusLine));
         }
         var text = new StringBuilder();
@@ -128,7 +131,8 @@ internal static partial class StatusOperation
 
     /// <summary>
     ///     Asks the running engine what the tree holds, through its pipe directly: the usual send would start an
-    ///     engine when the pipe is gone, and status never starts one. Null when no answer arrives in time.
+    ///     engine when the pipe is gone, and status never starts one. It names the caller's worktree, so an engine
+    ///     shared across worktrees answers for it. Null when no answer arrives in time.
     /// </summary>
     private static async Task<EngineStatus?> AskAsync(RepoRoot root, CancellationToken cancellationToken)
     {
@@ -138,7 +142,7 @@ internal static partial class StatusOperation
             using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             deadline.CancelAfter(EngineWait);
             await pipe.ConnectAsync(deadline.Token).ConfigureAwait(false);
-            var request = new EngineRequest.Status { BuildId = EngineVersion.Build, RequestId = EngineClient.NextRequestId(), WaitMs = (long)EngineWait.TotalMilliseconds };
+            var request = new EngineRequest.Status { BuildId = EngineVersion.Build, RequestId = EngineClient.NextRequestId(), WaitMs = (long)EngineWait.TotalMilliseconds, WorktreeRoot = root.Path };
             var bytes = Encoding.UTF8.GetBytes(ProtocolJson.Serialize(request) + "\n");
             await pipe.WriteAsync(bytes, deadline.Token).ConfigureAwait(false);
             await pipe.FlushAsync(deadline.Token).ConfigureAwait(false);
@@ -175,7 +179,7 @@ internal static partial class StatusOperation
     ///     <c>head</c>, <c>tree</c> and <c>reloadAt</c> names stay beside the names the branch added, so a reader of either
     ///     set finds its limit.
     /// </summary>
-    private sealed record StatusLine(string Engine, int? Pid, int? MemoryMB, int ChangedFiles, string? Head, string Tree, int? ChangedSourcesInReach, int? TouchedPaths, int TouchedLimit, int KeptAnswerAt, int WholeProjectAt, int SyncReloadAt, int ReloadAt, long? ReloadMs, string? GateHolder, long? MemoryCeilingBytes, long? MemoryLoadBytes, long? MemoryWorkingSetBytes);
+    private sealed record StatusLine(string Engine, int? Pid, int? MemoryMB, int ChangedFiles, string? Head, string Tree, int? ChangedSourcesInReach, int? TouchedPaths, int TouchedLimit, int KeptAnswerAt, int WholeProjectAt, int SyncReloadAt, int ReloadAt, long? ReloadMs, string? GateHolder, long? MemoryCeilingBytes, long? MemoryLoadBytes, long? MemoryWorkingSetBytes, string? PipeName = null, string? BuildId = null);
 
     [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonSerializable(typeof(StatusLine))]

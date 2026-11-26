@@ -1,8 +1,10 @@
 name: Smoke
 
 # Packs the Fuse tool, installs it from the packages and drives it on a generated multi-project
-# repository (.github/smoke/smoke.sh): fuse init, the hooks, checks, sessions, FUSE_SESSION,
-# 10 and 20 concurrent checks with status probes, fuse stop, fuse test and fuse build. Package
+# repository (.github/smoke/smoke.sh): fuse init, the hooks, checks (including --brief), sessions,
+# session guard, FUSE_SESSION, 10 and 20 concurrent checks with status probes, fuse graph/impact,
+# fuse gate, fuse slim, fuse batch, fuse judge, fuse watch --all --json, secondary git worktree
+# zero-restore shared hypervisor checks, fuse stop, fuse test and fuse build. Package
 # (.github/workflows/package.yml) checks that each platform's package installs; this workflow
 # checks what the installed command does. It runs 4 jobs, and each
 # workflow stays within the repository's 20 concurrent jobs on its own.
@@ -53,6 +55,14 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', '**/*.csproj') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
 
       - name: Git identity for the generated repository
         run: |

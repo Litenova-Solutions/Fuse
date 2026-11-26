@@ -1,5 +1,7 @@
+using System.Collections;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text;
 using Fuse.Paths;
@@ -156,6 +158,10 @@ internal static class EngineLauncher
         }
     }
 
+    private const long MinHeapHardLimitBytes = 768L * 1024 * 1024;
+    private const long MaxHeapHardLimitBytes = 2L * 1024 * 1024 * 1024;
+    private const long FallbackHeapHardLimitBytes = 1024L * 1024 * 1024;
+
     private static void StartUnix(string fileName, List<string> arguments, string root)
     {
         // Redirecting all three streams gives the child fresh pipes instead of the caller's descriptors; .NET opens
@@ -168,6 +174,8 @@ internal static class EngineLauncher
             RedirectStandardOutput = true,
             RedirectStandardError = true,
         };
+        foreach (var (key, value) in GcEnvironmentOverrides(Environment.GetEnvironmentVariable, ReadPhysicalMemoryBytes()))
+            psi.Environment[key] = value;
         foreach (var argument in arguments)
             psi.ArgumentList.Add(argument);
         using var process = Process.Start(psi);
@@ -187,22 +195,154 @@ internal static class EngineLauncher
         foreach (var argument in arguments)
             commandLine.Append(' ').Append(Quote(argument));
 
+        var environmentBlock = BuildCurrentWindowsEnvironmentBlock();
         var flags = detachedProcess | createNewProcessGroup | createUnicodeEnvironment;
-        if (!TryCreate(commandLine.ToString(), flags | createBreakawayFromJob, root)
-            && !TryCreate(commandLine.ToString(), flags, root))
+        if (!TryCreate(commandLine.ToString(), flags | createBreakawayFromJob, root, environmentBlock)
+            && !TryCreate(commandLine.ToString(), flags, root, environmentBlock))
             throw new Win32Exception(Marshal.GetLastWin32Error());
     }
 
-    private static bool TryCreate(string commandLine, uint flags, string directory)
+    private static bool TryCreate(string commandLine, uint flags, string directory, char[] environmentBlock)
     {
         var startup = new Native.StartupInfo { cb = Marshal.SizeOf<Native.StartupInfo>() };
         // CreateProcessW may write to the command-line buffer, so it gets a private, null-terminated copy.
         var buffer = (commandLine + "\0").ToCharArray();
-        if (!Native.CreateProcessW(null, buffer, 0, 0, false, flags, 0, directory, ref startup, out var info))
-            return false;
-        Native.CloseHandle(info.hProcess);
-        Native.CloseHandle(info.hThread);
-        return true;
+        var envHandle = GCHandle.Alloc(environmentBlock, GCHandleType.Pinned);
+        try
+        {
+            if (!Native.CreateProcessW(null, buffer, 0, 0, false, flags, envHandle.AddrOfPinnedObject(), directory, ref startup, out var info))
+                return false;
+            Native.CloseHandle(info.hProcess);
+            Native.CloseHandle(info.hThread);
+            return true;
+        }
+        finally
+        {
+            envHandle.Free();
+        }
+    }
+
+    /// <summary>
+    ///     Computes the engine heap hard limit in bytes: 25 percent of physical RAM clamped between 768 MB and 2 GB,
+    ///     falling back to 1 GB when physical RAM cannot be read.
+    /// </summary>
+    internal static long ComputeHeapHardLimitBytes(long totalPhysicalBytes)
+    {
+        if (totalPhysicalBytes <= 0)
+            return FallbackHeapHardLimitBytes;
+        return Math.Clamp(totalPhysicalBytes / 4, MinHeapHardLimitBytes, MaxHeapHardLimitBytes);
+    }
+
+    /// <summary>
+    ///     The GC tuning variables to apply to the launched engine when not already set in the caller's environment:
+    ///     aggressive memory conservation, DATAS dynamic adaptation, and a bounded heap hard limit.
+    /// </summary>
+    internal static IReadOnlyDictionary<string, string> GcEnvironmentOverrides(Func<string, string?> getVariable, long totalPhysicalBytes)
+    {
+        var overrides = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (IsUnset(getVariable, "DOTNET_GCConserveMemory", "COMPlus_GCConserveMemory"))
+            overrides["DOTNET_GCConserveMemory"] = "9";
+        if (IsUnset(getVariable, "DOTNET_GCDynamicAdaptationMode", "COMPlus_GCDynamicAdaptationMode"))
+            overrides["DOTNET_GCDynamicAdaptationMode"] = "1";
+        if (IsUnset(getVariable, "DOTNET_GCHeapHardLimit", "COMPlus_GCHeapHardLimit"))
+            overrides["DOTNET_GCHeapHardLimit"] = "0x" + ComputeHeapHardLimitBytes(totalPhysicalBytes).ToString("x", CultureInfo.InvariantCulture);
+        return overrides;
+    }
+
+    private static bool IsUnset(Func<string, string?> getVariable, string primaryName, string legacyName) =>
+        string.IsNullOrWhiteSpace(getVariable(primaryName)) && string.IsNullOrWhiteSpace(getVariable(legacyName));
+
+    private static char[] BuildCurrentWindowsEnvironmentBlock()
+    {
+        var entries = new SortedDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (DictionaryEntry entry in Environment.GetEnvironmentVariables())
+        {
+            if (entry.Key is string key && key.Length > 0 && entry.Value is string value)
+                entries[key] = value;
+        }
+
+        foreach (var (key, value) in GcEnvironmentOverrides(k => entries.GetValueOrDefault(k), ReadPhysicalMemoryBytes()))
+            entries[key] = value;
+
+        return BuildWindowsEnvironmentBlock(entries);
+    }
+
+    /// <summary>Formats sorted <c>KEY=VALUE\0...\0\0</c> UTF-16 entries for <c>CreateProcessW</c>.</summary>
+    internal static char[] BuildWindowsEnvironmentBlock(IEnumerable<KeyValuePair<string, string>> entries)
+    {
+        var sorted = new SortedDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (key, value) in entries)
+        {
+            if (!string.IsNullOrEmpty(key) && key.IndexOf('\0') < 0 && value.IndexOf('\0') < 0)
+                sorted[key] = value;
+        }
+
+        var builder = new StringBuilder();
+        foreach (var (key, value) in sorted)
+            builder.Append(key).Append('=').Append(value).Append('\0');
+        if (builder.Length == 0)
+            builder.Append('\0');
+        builder.Append('\0');
+        var chars = new char[builder.Length];
+        builder.CopyTo(0, chars, 0, builder.Length);
+        return chars;
+    }
+
+    internal static long ReadPhysicalMemoryBytes()
+    {
+        if (OperatingSystem.IsWindows() && ReadWindowsPhysicalMemoryBytes() is var winBytes && winBytes > 0)
+            return winBytes;
+        if (OperatingSystem.IsLinux() && ReadLinuxPhysicalMemoryBytes() is var linuxBytes && linuxBytes > 0)
+            return linuxBytes;
+
+        var info = GC.GetGCMemoryInfo();
+        if (info.HighMemoryLoadThresholdBytes > info.TotalAvailableMemoryBytes)
+            return (long)(info.HighMemoryLoadThresholdBytes / 0.9);
+        return Math.Max(0, info.TotalAvailableMemoryBytes);
+    }
+
+    private static long ReadWindowsPhysicalMemoryBytes()
+    {
+        try
+        {
+            var status = new Native.PhysicalMemoryStatus { dwLength = (uint)Marshal.SizeOf<Native.PhysicalMemoryStatus>() };
+            if (Native.GlobalMemoryStatusEx(ref status) && status.ullTotalPhys > 0)
+                return (long)Math.Min(status.ullTotalPhys, (ulong)long.MaxValue);
+        }
+        catch (Exception e) when (e is DllNotFoundException or EntryPointNotFoundException)
+        {
+        }
+
+        return 0;
+    }
+
+    private static long ReadLinuxPhysicalMemoryBytes()
+    {
+        try
+        {
+            if (File.Exists("/proc/meminfo"))
+            {
+                foreach (var line in File.ReadLines("/proc/meminfo"))
+                {
+                    if (!line.StartsWith("MemTotal:", StringComparison.Ordinal))
+                        continue;
+                    var colon = line.IndexOf(':');
+                    if (colon >= 0)
+                    {
+                        var rest = line.AsSpan(colon + 1).Trim();
+                        var space = rest.IndexOf(' ');
+                        var number = space >= 0 ? rest[..space] : rest;
+                        if (long.TryParse(number, NumberStyles.Integer, CultureInfo.InvariantCulture, out var kb) && kb > 0)
+                            return kb * 1024;
+                    }
+                }
+            }
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+        }
+
+        return 0;
     }
 
     /// <summary>Quotes one argument by the rules <c>CommandLineToArgvW</c> and the C runtime use.</summary>
@@ -250,6 +390,20 @@ internal static class EngineLauncher
             public int dwProcessId, dwThreadId;
         }
 
+        [StructLayout(LayoutKind.Sequential)]
+        public struct PhysicalMemoryStatus
+        {
+            public uint dwLength;
+            public uint dwMemoryLoad;
+            public ulong ullTotalPhys;
+            public ulong ullAvailPhys;
+            public ulong ullTotalPageFile;
+            public ulong ullAvailPageFile;
+            public ulong ullTotalVirtual;
+            public ulong ullAvailVirtual;
+            public ulong ullAvailExtendedVirtual;
+        }
+
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool CreateProcessW(
@@ -260,5 +414,9 @@ internal static class EngineLauncher
         [DllImport("kernel32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool CloseHandle(nint handle);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool GlobalMemoryStatusEx(ref PhysicalMemoryStatus lpBuffer);
     }
 }

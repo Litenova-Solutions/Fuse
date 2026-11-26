@@ -397,7 +397,11 @@ internal static partial class MultiAgentScenario
             var watch = Stopwatch.StartNew();
             var run = await repo.FuseTimedAsync("check", file);
             var ms = watch.Elapsed.TotalMilliseconds;
-            var phases = RequestPhases.TakeNewest(repo.EngineLogLines(), taken);
+            // Every writer takes lines from the one set, so a line is taken once; the writers run at the same time.
+            var logLines = repo.EngineLogLines();
+            RequestPhases? phases;
+            lock (taken)
+                phases = RequestPhases.TakeNewest(logLines, taken);
             // A request with no gate phase did not wait for the gate at all; it is not a zero-length wait.
             double? gate = phases is not null && phases.Phases.TryGetValue(Phase.Gate, out var waited) ? waited : null;
             report(ms, gate, phases?.GateHolder, phases?.Total, run.ExitCode);

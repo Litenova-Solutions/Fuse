@@ -1,10 +1,9 @@
 name: CI
 
-# This workflow never runs more than 18 jobs at once: the build and format gate runs first, then the test
-# matrix peaks at 18 (6 shards on 3 operating systems, capped by max-parallel below), and Package runs after
-# the tests. The
-# smoke workflow (.github/workflows/smoke.yml, 4 jobs) and the evals are separate workflows; no workflow
-# passes the repository's 20 concurrent jobs on its own.
+# This workflow never runs more than 20 jobs at once: the build and format gate runs first, then the test
+# matrix peaks at 18 (6 shards on 3 operating systems, capped by max-parallel below) alongside 1 net11-compat job
+# (19 concurrent jobs total), and Package runs after the tests. The smoke workflow (.github/workflows/smoke.yml,
+# 4 jobs) and the evals are separate workflows; no workflow passes the repository's 20 concurrent jobs on its own.
 
 on:
   push:
@@ -22,6 +21,10 @@ on:
         description: Operating systems as a JSON array.
         default: '["ubuntu-latest", "windows-latest", "macos-latest"]'
         required: true
+      sdk:
+        description: Optional additional .NET SDK version to install alongside global.json, such as 11.0.x.
+        default: ''
+        required: false
 
 permissions:
   contents: read
@@ -45,31 +48,42 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
         shard:
           - name: e2e-locks
-            filter: --filter-class Fuse.Tests.EndToEnd.BuildLockTests
+            filter: --filter-class Fuse.Tests.EndToEnd.BuildLockTests --filter-class Fuse.Tests.Unit.DagBuildLockTests --filter-class Fuse.Tests.Unit.SwarmCliOperationsTests
           - name: e2e-builds
-            filter: --filter-class Fuse.Tests.EndToEnd.PlanRunTests --filter-class Fuse.Tests.EndToEnd.AnalyzerLockTests --filter-class Fuse.Tests.EndToEnd.BuildOutputTests
+            filter: --filter-class Fuse.Tests.EndToEnd.PlanRunTests --filter-class Fuse.Tests.EndToEnd.AnalyzerLockTests --filter-class Fuse.Tests.EndToEnd.BuildOutputTests --filter-class Fuse.Tests.Engine.TestAccelerationTests --filter-class Fuse.Tests.Unit.SliceTestCacheTests
           - name: e2e-checks
-            filter: --filter-class Fuse.Tests.EndToEnd.EngineProcessTests --filter-class Fuse.Tests.EndToEnd.NonAsciiPathTests
+            filter: --filter-class Fuse.Tests.EndToEnd.EngineProcessTests --filter-class Fuse.Tests.EndToEnd.NonAsciiPathTests --filter-class Fuse.Tests.Engine.HypervisorMemoryTests --filter-class Fuse.Tests.Unit.BlueprintTests
           - name: engine-heavy
-            filter: --filter-class Fuse.Tests.Engine.CheckerTests --filter-class Fuse.Tests.Engine.RequestRouterTests
+            filter: --filter-class Fuse.Tests.Engine.CheckerTests --filter-class Fuse.Tests.Engine.RequestRouterTests --filter-class Fuse.Tests.Engine.RepairPacketTests
           - name: engine-selection
-            filter: --filter-class Fuse.Tests.Engine.TestSelectionTests --filter-class Fuse.Tests.Engine.SessionAttributionTests --filter-class Fuse.Tests.Engine.CauseLinesTests --filter-class Fuse.Tests.Engine.ShadowPreparationTests --filter-class Fuse.Tests.Engine.PhaseTimingTests --filter-class Fuse.Tests.Engine.EngineClientTests --filter-class Fuse.Tests.Engine.ChangeReachTests --filter-class Fuse.Tests.Engine.ReusedErrorsTests
+            filter: --filter-class Fuse.Tests.Engine.TestSelectionTests --filter-class Fuse.Tests.Engine.SessionAttributionTests --filter-class Fuse.Tests.Engine.CauseLinesTests --filter-class Fuse.Tests.Engine.ShadowPreparationTests --filter-class Fuse.Tests.Engine.PhaseTimingTests --filter-class Fuse.Tests.Engine.EngineClientTests --filter-class Fuse.Tests.Engine.ChangeReachTests --filter-class Fuse.Tests.Engine.ReusedErrorsTests --filter-class Fuse.Tests.Engine.SyntaxIndexAndSpeedTests
           - name: rest
             filter: >-
-              --filter-not-class Fuse.Tests.EndToEnd.BuildLockTests --filter-not-class Fuse.Tests.EndToEnd.PlanRunTests
-              --filter-not-class Fuse.Tests.EndToEnd.AnalyzerLockTests --filter-not-class Fuse.Tests.EndToEnd.BuildOutputTests
+              --filter-not-class Fuse.Tests.EndToEnd.BuildLockTests --filter-not-class Fuse.Tests.Unit.DagBuildLockTests --filter-not-class Fuse.Tests.Unit.SwarmCliOperationsTests
+              --filter-not-class Fuse.Tests.EndToEnd.PlanRunTests --filter-not-class Fuse.Tests.EndToEnd.AnalyzerLockTests
+              --filter-not-class Fuse.Tests.EndToEnd.BuildOutputTests --filter-not-class Fuse.Tests.Engine.TestAccelerationTests --filter-not-class Fuse.Tests.Unit.SliceTestCacheTests
               --filter-not-class Fuse.Tests.EndToEnd.EngineProcessTests --filter-not-class Fuse.Tests.EndToEnd.NonAsciiPathTests
-              --filter-not-class Fuse.Tests.Engine.CheckerTests --filter-not-class Fuse.Tests.Engine.RequestRouterTests
+              --filter-not-class Fuse.Tests.Engine.HypervisorMemoryTests --filter-not-class Fuse.Tests.Unit.BlueprintTests
+              --filter-not-class Fuse.Tests.Engine.CheckerTests --filter-not-class Fuse.Tests.Engine.RequestRouterTests --filter-not-class Fuse.Tests.Engine.RepairPacketTests
               --filter-not-class Fuse.Tests.Engine.TestSelectionTests --filter-not-class Fuse.Tests.Engine.SessionAttributionTests
               --filter-not-class Fuse.Tests.Engine.CauseLinesTests --filter-not-class Fuse.Tests.Engine.ShadowPreparationTests
               --filter-not-class Fuse.Tests.Engine.PhaseTimingTests --filter-not-class Fuse.Tests.Engine.EngineClientTests
               --filter-not-class Fuse.Tests.Engine.ChangeReachTests --filter-not-class Fuse.Tests.Engine.ReusedErrorsTests
+              --filter-not-class Fuse.Tests.Engine.SyntaxIndexAndSpeedTests
     steps:
       - uses: actions/checkout@v7
 
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', '**/*.csproj') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
 
       - name: Git identity for fixture repositories
         run: |
@@ -81,12 +95,90 @@ jobs:
 
       - name: Test
         shell: bash
-        run: dotnet test --solution Fuse.slnx -c Release --no-build --hangdump --hangdump-timeout 20m ${{ matrix.shard.filter }}
+        run: dotnet test --solution Fuse.slnx -c Release --no-build --hangdump --hangdump-timeout 10m ${{ matrix.shard.filter }}
 
       - name: Tests still running at a hang
         if: failure()
         shell: bash
         run: cat TestResults/*_hang.log 2>/dev/null || true
+
+  net11-compat:
+    name: Validate .NET 11 SDK compatibility (ubuntu-latest)
+    needs: [format]
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Install .NET 11 SDK
+        id: setup-net11
+        continue-on-error: true
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '11.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', '**/*.csproj') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+
+      - name: Git identity for fixture repositories
+        run: |
+          git config --global user.email "ci@fuse.invalid"
+          git config --global user.name "Fuse CI"
+
+      - name: Build and verify .NET 11 compatibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! dotnet --list-sdks | grep -q '^11\.'; then
+            echo "::notice::.NET 11 SDK is not available on this runner; skipping .NET 11 compatibility checks."
+            exit 0
+          fi
+
+          dotnet build Fuse.slnx -c Release
+          dotnet test --solution Fuse.slnx -c Release --no-build --hangdump --hangdump-timeout 15m \
+            --filter-class Fuse.Tests.Unit.GlobalJsonTests \
+            --filter-class Fuse.Tests.Architecture.NamespaceDependencyTests \
+            --filter-class Fuse.Tests.EndToEnd.EngineProcessTests
+
+          fuse_bin="$PWD/src/Fuse/bin/Release/net10.0/fuse"
+          net11_repo=$(mktemp -d)
+          trap 'rm -rf "$net11_repo"' EXIT
+          cd "$net11_repo"
+          git init -q
+          printf '{ "sdk": { "version": "11.0.100", "rollForward": "latestMajor" } }\n' > global.json
+          dotnet new sln -n Net11Compat >/dev/null
+          dotnet new classlib -n Lib -o Lib -f net11.0 >/dev/null
+          dotnet new xunit -n Tests -o Tests -f net11.0 >/dev/null
+          sln_file=$(echo Net11Compat.sln*)
+          dotnet sln "$sln_file" add Lib/Lib.csproj Tests/Tests.csproj >/dev/null
+          dotnet add Tests/Tests.csproj reference Lib/Lib.csproj >/dev/null
+          printf 'namespace Lib;\n\npublic static class Math11\n{\n    public static int Twice(int x) => x * 2;\n}\n' > Lib/Class1.cs
+          printf 'using Lib;\n\npublic class Math11Tests\n{\n    [Fact]\n    public void Twice_works() => Assert.Equal(6, Math11.Twice(3));\n}\n' > Tests/UnitTest1.cs
+          printf 'bin/\nobj/\n' > .gitignore
+          git add -A && git commit -qm init
+          dotnet restore "$sln_file" >/dev/null
+
+          "$fuse_bin" check
+          printf 'namespace Lib;\n\npublic static class Math11\n{\n    public static int Twice(int x) => x + x;\n}\n' > Lib/Class1.cs
+          "$fuse_bin" check
+          "$fuse_bin" test
+          "$fuse_bin" build
+          printf 'namespace Lib;\n\npublic sealed class Cat\n{\n    public string Name { get; init; } = "";\n}\n\npublic sealed class Dog\n{\n    public string Name { get; init; } = "";\n}\n' > Lib/Animals.cs
+          printf 'namespace Lib;\n\npublic union Pet(Cat, Dog);\n' > Lib/Pets.cs
+          check_out=$("$fuse_bin" check)
+          printf '%s\n' "$check_out"
+          printf '%s\n' "$check_out" | grep -q "no errors introduced"
+          "$fuse_bin" stop
 
   targeted:
     name: Test ${{ inputs.filter }} (${{ matrix.os }})
@@ -104,6 +196,20 @@ jobs:
         with:
           global-json-file: global.json
 
+      - name: Install additional .NET SDK
+        if: inputs.sdk != ''
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: ${{ inputs.sdk }}
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', '**/*.csproj') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+
       - name: Git identity for fixture repositories
         run: |
           git config --global user.email "ci@fuse.invalid"
@@ -117,7 +223,7 @@ jobs:
         env:
           FILTER: ${{ inputs.filter }}
         # The filter splits into its arguments on purpose.
-        run: dotnet test --solution Fuse.slnx -c Release --no-build --hangdump --hangdump-timeout 20m $FILTER
+        run: dotnet test --solution Fuse.slnx -c Release --no-build --hangdump --hangdump-timeout 10m $FILTER
 
       - name: Tests still running at a hang
         if: failure()
@@ -135,6 +241,14 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', '**/*.csproj') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
 
       - name: Build
         run: dotnet build Fuse.slnx -c Release

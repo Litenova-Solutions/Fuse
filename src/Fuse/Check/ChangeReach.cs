@@ -39,8 +39,10 @@ namespace Fuse.Check;
 ///         </item>
 ///         <item>A removed type: files referencing it. An added type: files mentioning its name (it can clash with a same-named type).</item>
 ///         <item>
-///             A conversion operator: additionally every file mentioning its type's name, because a reference search does
-///             not return the places an implicit conversion is applied.
+///             A member whose call sites a reference search cannot return, because they do not name it: an operator, a
+///             conversion or an indexer reaches every file mentioning its type's name, and a method or property the
+///             language applies by pattern (iteration, deconstruction, awaiting, collection initializers) every file
+///             referencing its type.
 ///         </item>
 ///         <item>
 ///             A changed type header, delegate, global using or assembly attribute can break code that never names it,
@@ -54,11 +56,35 @@ internal sealed class ChangeReach
     internal const int MaxCacheEntries = 128;
 
     private readonly RepoWorkspace _workspace;
+    private readonly SyntaxTokenIndex _tokenIndex;
     private readonly ConcurrentDictionary<string, HashSet<RepoPath>> _cache = new(StringComparer.Ordinal);
     private readonly List<string> _cacheOrder = [];
     private readonly Lock _cacheLock = new();
+    private volatile bool _tokenIndexLoaded;
 
-    public ChangeReach(RepoWorkspace workspace) => _workspace = workspace;
+    public ChangeReach(RepoWorkspace workspace)
+        : this(workspace, new SyntaxTokenIndex(workspace.Root, workspace.Log))
+    {
+    }
+
+    public ChangeReach(RepoWorkspace workspace, SyntaxTokenIndex tokenIndex)
+    {
+        _workspace = workspace;
+        _tokenIndex = tokenIndex;
+    }
+
+    /// <summary>Syntax token and inheritance index used to narrow symbol searches.</summary>
+    internal SyntaxTokenIndex TokenIndex => _tokenIndex;
+
+    /// <summary>
+    ///     Indexes the baseline documents of <paramref name="projects"/> for later searches, for the background warm.
+    ///     A search never waits for it: what it has not indexed yet is searched fully.
+    /// </summary>
+    internal Task WarmIndexAsync(Solution baseline, IEnumerable<Project> projects, CancellationToken cancellationToken) =>
+        _tokenIndex.EnsureIndexedAsync(baseline, projects, cancellationToken);
+
+    /// <summary>Persists the search index when the background warm changed it.</summary>
+    internal void SaveIndex() => _tokenIndex.SaveIfDirty("baseline");
 
     /// <summary>How many reference sets are kept.</summary>
     public int CachedSets => _cache.Count;
@@ -73,7 +99,7 @@ internal sealed class ChangeReach
     /// <summary>True when the file has a declaration change in the pinned generation.</summary>
     public async Task<bool> HasDeclarationChangeAsync(RepoPath path, Generation generation, CancellationToken cancellationToken)
     {
-        var head = _workspace.HeadText(path);
+        var head = await BaselineTextAsync(path, generation.Baseline, cancellationToken).ConfigureAwait(false) ?? _workspace.HeadText(path);
         var now = await CurrentTextAsync(path, generation.Current, cancellationToken).ConfigureAwait(false);
         if (head is not null && now is not null && head.ContentEquals(now))
             return false;
@@ -183,12 +209,8 @@ internal sealed class ChangeReach
             return true;
         }
 
-        if ((version.After.Find(change.Key) ?? version.Before.Find(change.Key))?.Node is ConversionOperatorDeclarationSyntax)
-        {
-            // A reference search does not return the places an implicit conversion is applied, so every file that names the
-            // type is a candidate too.
-            routes.Add(new Route.ByName(change.Names[0], cause));
-        }
+        if (ImplicitUseTypeName(change, version) is { } implicitUseType)
+            routes.Add(new Route.ByName(implicitUseType, cause));
 
         if (change.Key is DeclarationKey.NamedType)
         {
@@ -207,6 +229,8 @@ internal sealed class ChangeReach
             routes.Add(new Route.BySymbol(member, IncludesImplementations: true, cause));
             if (member is IMethodSymbol { MethodKind: MethodKind.Constructor, ContainingType: { } constructed })
                 routes.Add(new Route.ByDerivedTypes(constructed, cause));
+            if (ImplicitPatternOwner(member) is { } owner)
+                routes.Add(new Route.BySymbol(owner, IncludesImplementations: false, cause));
             return true;
         }
 
@@ -223,6 +247,9 @@ internal sealed class ChangeReach
             return true;
         }
 
+        if (IsImplicitPatternDeclaration(version.After.Find(change.Key)?.Node))
+            routes.Add(new Route.BySymbol(containingType, IncludesImplementations: false, cause));
+
         var name = change.Names[0];
         for (var type = containingType; type is not null; type = type.BaseType)
             routes.AddRange(type.GetMembers(name).Where(m => !m.IsImplicitlyDeclared).Select(m => new Route.BySymbol(m, IncludesImplementations: false, cause)));
@@ -230,6 +257,42 @@ internal sealed class ChangeReach
             routes.Add(new Route.ByDerivedTypes(containingType, cause));
         return true;
     }
+
+    /// <summary>
+    ///     The containing type's name when <paramref name="change"/> is to an operator, a conversion or an indexer,
+    ///     whose call sites a reference search cannot return, because they do not name the member. Every file that
+    ///     names the type is a candidate too. Null for any other change.
+    /// </summary>
+    private static string? ImplicitUseTypeName(DeclarationChange change, FileVersion version)
+    {
+        var node = (version.After.Find(change.Key) ?? version.Before.Find(change.Key))?.Node;
+        return node is ConversionOperatorDeclarationSyntax or OperatorDeclarationSyntax or IndexerDeclarationSyntax
+            ? change.Names[0]
+            : null;
+    }
+
+    /// <summary>
+    ///     The type that owns <paramref name="member"/> when its call sites a reference search cannot return, because
+    ///     they do not name it: a method or property the language applies by pattern (iteration, deconstruction,
+    ///     awaiting, collection initializers). Every file referencing the type is a candidate too. Null for any other
+    ///     symbol.
+    /// </summary>
+    private static INamedTypeSymbol? ImplicitPatternOwner(ISymbol member) => member switch
+    {
+        IMethodSymbol method when method.ContainingType is { } methodOwner
+            && IsImplicitPatternMember(SimpleMemberName(method.AssociatedSymbol?.Name ?? method.Name)) => methodOwner,
+        IPropertySymbol property when property is { ContainingType: { } propOwner, IsIndexer: false }
+            && IsImplicitPatternMember(SimpleMemberName(property.Name)) => propOwner,
+        _ => null,
+    };
+
+    /// <summary>True when <paramref name="node"/> declares a method or property the language applies by pattern.</summary>
+    private static bool IsImplicitPatternDeclaration(SyntaxNode? node) => node switch
+    {
+        MethodDeclarationSyntax method => IsImplicitPatternMember(method.Identifier.Text),
+        PropertyDeclarationSyntax property => IsImplicitPatternMember(property.Identifier.Text),
+        _ => false,
+    };
 
     /// <summary>
     ///     Each file the routes reach, with the cause of every route that reaches it, in route order, so the causes do not
@@ -245,6 +308,14 @@ internal sealed class ChangeReach
         var baselineProjects = baseline.Projects.Where(p => searchedIds.Contains(p.Id)).ToImmutableHashSet();
         var baselineDocuments = baselineProjects.SelectMany(p => p.Documents).ToImmutableHashSet();
 
+        // The persisted entries are read once; what they do not hold yet is indexed in the background
+        // (see WarmIndexAsync), and searched fully until then, so a search never waits for the index.
+        if (!_tokenIndexLoaded)
+        {
+            _tokenIndex.TryLoad("baseline");
+            _tokenIndexLoaded = true;
+        }
+
         // The indexes in routes of the routes that reach each file.
         var reachedBy = new Dictionary<RepoPath, SortedSet<int>>();
         void Add(RepoPath file, int index)
@@ -257,51 +328,282 @@ internal sealed class ChangeReach
         var searched = new HashSet<ISymbol>(SymbolEqualityComparer.Default);
         var searchedWithImplementations = new HashSet<ISymbol>(SymbolEqualityComparer.Default);
         var searchedTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+        var workItems = new List<(int Index, Route Route)>();
         for (var index = 0; index < routes.Count; index++)
         {
             // A route whose symbol or type an earlier route searched reaches no file first, so it is not searched again.
-            var files = new List<RepoPath>();
             if (routes[index] is Route.BySymbol symbol && (symbol.IncludesImplementations ? searchedWithImplementations : searched).Add(symbol.Symbol))
             {
                 searched.Add(symbol.Symbol);
-                files.AddRange(await ReferencingFilesAsync(symbol.Symbol, searchKey, baseline, baselineDocuments, generation, cancellationToken).ConfigureAwait(false));
-                if (symbol.IncludesImplementations)
-                {
-                    files.AddRange(Declarations(await SymbolFinder.FindImplementationsAsync(symbol.Symbol, baseline, baselineProjects, cancellationToken).ConfigureAwait(false)));
-                    files.AddRange(Declarations(await SymbolFinder.FindOverridesAsync(symbol.Symbol, baseline, baselineProjects, cancellationToken).ConfigureAwait(false)));
-                }
+                workItems.Add((index, symbol));
             }
             else if (routes[index] is Route.ByDerivedTypes derived && searchedTypes.Add(derived.Type))
             {
-                files.AddRange(Declarations(await SymbolFinder.FindDerivedClassesAsync(derived.Type, baseline, transitive: true, baselineProjects, cancellationToken).ConfigureAwait(false)));
-                if (derived.Type.TypeKind == TypeKind.Interface)
-                    files.AddRange(Declarations(await SymbolFinder.FindImplementationsAsync(derived.Type, baseline, baselineProjects, cancellationToken).ConfigureAwait(false)));
+                workItems.Add((index, derived));
             }
+        }
 
-            foreach (var file in files)
-                Add(file, index);
+        if (workItems.Count > 0)
+        {
+            var routeHits = new ConcurrentBag<(int Index, List<RepoPath> Files)>();
+            await Parallel.ForEachAsync(
+                workItems,
+                new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = cancellationToken },
+                async (item, ct) =>
+                {
+                    var files = new List<RepoPath>();
+                    if (item.Route is Route.BySymbol symbol)
+                    {
+                        var candidateDocs = CandidateDocumentsForSymbol(symbol.Symbol, baseline, searchedIds, baselineDocuments);
+                        files.AddRange(await ReferencingFilesAsync(symbol.Symbol, searchKey, baseline, candidateDocs, generation, ct).ConfigureAwait(false));
+                        if (symbol.IncludesImplementations)
+                        {
+                            var implProjects = CandidateProjectsForImplementations(symbol.Symbol, baseline, searchedIds, baselineProjects);
+                            if (!implProjects.IsEmpty)
+                                files.AddRange(Declarations(await SymbolFinder.FindImplementationsAsync(symbol.Symbol, baseline, implProjects, ct).ConfigureAwait(false)));
+
+                            var overrideProjects = CandidateProjectsForOverrides(symbol.Symbol, baseline, searchedIds, baselineProjects);
+                            if (!overrideProjects.IsEmpty)
+                                files.AddRange(Declarations(await SymbolFinder.FindOverridesAsync(symbol.Symbol, baseline, overrideProjects, ct).ConfigureAwait(false)));
+                        }
+                    }
+                    else if (item.Route is Route.ByDerivedTypes derived)
+                    {
+                        var derivedProjects = CandidateProjectsForDerived(derived.Type, baseline, searchedIds, baselineProjects);
+                        if (!derivedProjects.IsEmpty)
+                        {
+                            files.AddRange(Declarations(await SymbolFinder.FindDerivedClassesAsync(derived.Type, baseline, transitive: true, derivedProjects, ct).ConfigureAwait(false)));
+                            if (derived.Type.TypeKind == TypeKind.Interface)
+                                files.AddRange(Declarations(await SymbolFinder.FindImplementationsAsync(derived.Type, baseline, derivedProjects, ct).ConfigureAwait(false)));
+                        }
+                    }
+
+                    if (files.Count > 0)
+                        routeHits.Add((item.Index, files));
+                }).ConfigureAwait(false);
+
+            foreach (var (index, files) in routeHits)
+            {
+                foreach (var file in files)
+                    Add(file, index);
+            }
         }
 
         var byName = routes.Select((route, index) => (Route: route as Route.ByName, Index: index)).Where(r => r.Route is not null).ToList();
         if (byName.Count > 0)
         {
-            foreach (var document in projects.SelectMany(p => p.Documents.Concat<TextDocument>(p.AdditionalDocuments)))
-            {
-                if (document.FilePath is null)
-                    continue;
-                var text = (await document.GetTextAsync(cancellationToken).ConfigureAwait(false)).ToString();
-                RepoPath? file = null;
-                foreach (var (route, index) in byName)
+            var textDocuments = projects.SelectMany(p => p.Documents.Concat<TextDocument>(p.AdditionalDocuments))
+                .Where(d => d.FilePath is not null)
+                .ToList();
+            var nameHits = new ConcurrentBag<(RepoPath File, int Index)>();
+            await Parallel.ForEachAsync(
+                textDocuments,
+                new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = cancellationToken },
+                async (document, ct) =>
                 {
-                    if (!text.Contains(route!.Name, StringComparison.Ordinal))
-                        continue;
-                    file ??= _workspace.Root.PathOf(document.FilePath);
-                    Add(file.Value, index);
-                }
-            }
+                    var text = (await document.GetTextAsync(ct).ConfigureAwait(false)).ToString();
+                    RepoPath? file = null;
+                    foreach (var (route, index) in byName)
+                    {
+                        if (!text.Contains(route!.Name, StringComparison.Ordinal))
+                            continue;
+                        file ??= _workspace.Root.PathOf(document.FilePath!);
+                        nameHits.Add((file.Value, index));
+                    }
+                }).ConfigureAwait(false);
+
+            foreach (var (file, index) in nameHits)
+                Add(file, index);
         }
 
         return reachedBy.ToDictionary(f => f.Key, IReadOnlyList<Cause> (f) => [.. f.Value.Select(i => routes[i].Cause).Distinct()]);
+    }
+
+    private ImmutableHashSet<Document> CandidateDocumentsForSymbol(
+        ISymbol symbol,
+        Solution baseline,
+        HashSet<ProjectId> searchedIds,
+        ImmutableHashSet<Document> allDocuments)
+    {
+        if (!TryGetSymbolFilterTokens(symbol, out var identifiers, out _))
+            return allDocuments;
+
+        var candidates = _tokenIndex.CandidateDocumentsSnapshot(baseline, identifiers, [], searchedIds);
+        return WithUnindexedAndDeclaring(candidates, symbol, baseline, searchedIds, allDocuments);
+    }
+
+    private ImmutableHashSet<Project> CandidateProjectsForImplementations(
+        ISymbol symbol,
+        Solution baseline,
+        HashSet<ProjectId> searchedIds,
+        ImmutableHashSet<Project> allProjects)
+    {
+        if (!TryGetSymbolFilterTokens(symbol, out var identifiers, out var baseTypeNames))
+            return allProjects;
+
+        var candidates = _tokenIndex.CandidateDocumentsSnapshot(baseline, identifiers, baseTypeNames, searchedIds);
+        return ProjectsForCandidates(candidates, allProjects);
+    }
+
+    private ImmutableHashSet<Project> CandidateProjectsForOverrides(
+        ISymbol symbol,
+        Solution baseline,
+        HashSet<ProjectId> searchedIds,
+        ImmutableHashSet<Project> allProjects)
+    {
+        if (!TryGetSymbolFilterTokens(symbol, out var identifiers, out _))
+            return allProjects;
+
+        var candidates = _tokenIndex.CandidateDocumentsSnapshot(baseline, identifiers, [], searchedIds);
+        return ProjectsForCandidates(candidates, allProjects);
+    }
+
+    private ImmutableHashSet<Project> CandidateProjectsForDerived(
+        INamedTypeSymbol type,
+        Solution baseline,
+        HashSet<ProjectId> searchedIds,
+        ImmutableHashSet<Project> allProjects)
+    {
+        if (type.IsAnonymousType || type.IsTupleType || string.IsNullOrEmpty(type.Name))
+            return allProjects;
+
+        var candidates = _tokenIndex.CandidateDocumentsSnapshot(baseline, [], [type.Name], searchedIds);
+        return ProjectsForCandidates(candidates, allProjects);
+    }
+
+    private static ImmutableHashSet<Document> WithUnindexedAndDeclaring(
+        ImmutableHashSet<Document> candidates,
+        ISymbol symbol,
+        Solution baseline,
+        HashSet<ProjectId> searchedIds,
+        ImmutableHashSet<Document> allDocuments)
+    {
+        var builder = candidates.ToBuilder();
+        foreach (var doc in allDocuments)
+        {
+            if (string.IsNullOrEmpty(doc.FilePath))
+                builder.Add(doc);
+        }
+
+        foreach (var syntaxRef in symbol.DeclaringSyntaxReferences)
+        {
+            if (baseline.GetDocument(syntaxRef.SyntaxTree) is { } doc && searchedIds.Contains(doc.Project.Id))
+                builder.Add(doc);
+        }
+
+        return builder.ToImmutable();
+    }
+
+    private static ImmutableHashSet<Project> ProjectsForCandidates(
+        ImmutableHashSet<Document> candidates,
+        ImmutableHashSet<Project> allProjects)
+    {
+        var builder = ImmutableHashSet.CreateBuilder<Project>();
+        foreach (var doc in candidates)
+            builder.Add(doc.Project);
+        foreach (var project in allProjects)
+        {
+            if (project.Documents.Any(d => string.IsNullOrEmpty(d.FilePath)))
+                builder.Add(project);
+        }
+
+        return builder.ToImmutable();
+    }
+
+    private static bool TryGetSymbolFilterTokens(
+        ISymbol symbol,
+        out IReadOnlyList<string> identifiers,
+        out IReadOnlyList<string> baseTypeNames)
+    {
+        identifiers = [];
+        baseTypeNames = [];
+
+        if (symbol.IsImplicitlyDeclared)
+            return false;
+
+        switch (symbol)
+        {
+            case IMethodSymbol method:
+                if (method.MethodKind is MethodKind.Constructor or MethodKind.StaticConstructor or MethodKind.SharedConstructor
+                    or MethodKind.UserDefinedOperator or MethodKind.Conversion or MethodKind.BuiltinOperator or MethodKind.Destructor)
+                    return false;
+
+                // An extension method applies without naming it (a query expression, an awaited or iterated
+                // receiver), so no token narrows its search.
+                if (method.IsExtensionMethod)
+                    return false;
+
+                if (method.AssociatedSymbol is IPropertySymbol { IsIndexer: true })
+                    return false;
+
+                var methodName = SimpleMemberName(method.AssociatedSymbol?.Name ?? method.Name);
+                if (string.IsNullOrEmpty(methodName) || IsImplicitPatternMember(methodName))
+                    return false;
+
+                identifiers = [methodName];
+                baseTypeNames = method.ContainingType is { } methodOwner ? [methodOwner.Name] : [];
+                return true;
+
+            case IPropertySymbol property:
+                if (property.IsIndexer)
+                    return false;
+                var propName = SimpleMemberName(property.Name);
+                if (string.IsNullOrEmpty(propName) || IsImplicitPatternMember(propName))
+                    return false;
+                identifiers = [propName];
+                baseTypeNames = property.ContainingType is { } propOwner ? [propOwner.Name] : [];
+                return true;
+
+            case IEventSymbol evt:
+                var evtName = SimpleMemberName(evt.Name);
+                if (string.IsNullOrEmpty(evtName))
+                    return false;
+                identifiers = [evtName];
+                baseTypeNames = evt.ContainingType is { } evtOwner ? [evtOwner.Name] : [];
+                return true;
+
+            case IFieldSymbol field:
+                // A field is always named where it is used.
+                if (string.IsNullOrEmpty(field.Name))
+                    return false;
+                identifiers = [field.Name];
+                return true;
+
+            case INamedTypeSymbol type:
+                if (type.IsAnonymousType || type.IsTupleType || string.IsNullOrEmpty(type.Name))
+                    return false;
+                identifiers = type.Name.Length > "Attribute".Length && type.Name.EndsWith("Attribute", StringComparison.Ordinal)
+                    ? [type.Name, type.Name[..^"Attribute".Length]]
+                    : [type.Name];
+                baseTypeNames = [type.Name];
+                return true;
+
+            default:
+                // A kind the narrowing cannot decide is searched without narrowing, so no call site is missed.
+                return false;
+        }
+    }
+
+    private static string SimpleMemberName(string name)
+    {
+        var dot = name.LastIndexOf('.');
+        return dot >= 0 ? name[(dot + 1)..] : name;
+    }
+
+    private static bool IsImplicitPatternMember(string name) =>
+        name is "GetEnumerator" or "GetAsyncEnumerator" or "MoveNext" or "MoveNextAsync"
+            or "Current" or "Dispose" or "DisposeAsync"
+            or "GetAwaiter" or "IsCompleted" or "GetResult" or "OnCompleted" or "UnsafeOnCompleted"
+            or "Deconstruct" or "Add" or "Slice" or "Length" or "Count"
+            or "GetPinnableReference" or "PrintMembers" or "EqualityContract" or "<Clone>$";
+
+    private static async Task<SourceText?> BaselineTextAsync(RepoPath path, Solution baseline, CancellationToken cancellationToken)
+    {
+        var ids = baseline.GetDocumentIdsWithFilePath(path.Absolute);
+        if (ids.IsEmpty)
+            return null;
+        TextDocument? doc = baseline.GetDocument(ids[0]) ?? (TextDocument?)baseline.GetAdditionalDocument(ids[0]);
+        return doc is null ? null : await doc.GetTextAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>

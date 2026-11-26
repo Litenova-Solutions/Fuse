@@ -111,12 +111,22 @@ internal sealed partial class EvalRepo
     private async Task<(List<string> Errors, int ExitCode, double Seconds)> BuildOnceAsync()
     {
         var watch = Stopwatch.StartNew();
+        List<string> args = ["build", BuildTarget, "--no-restore", "-nologo", "-tl:off", "-v:q", "-clp:ErrorsOnly;NoSummary"];
+        if (Environment.GetEnvironmentVariable("FUSE_EVAL_MSBUILD_MT") == "1")
+            args.Add("-mt");
         var result = await ProcessRunner.RunAsync(
             "dotnet",
-            ["build", BuildTarget, "--no-restore", "-nologo", "-tl:off", "-v:q", "-clp:ErrorsOnly;NoSummary"],
+            args,
             Root,
             CancellationToken.None);
         return (BuildOutputParser.Errors(result.Output, Root), result.ExitCode, watch.Elapsed.TotalSeconds);
+    }
+
+    /// <summary>The .NET SDK version <c>dotnet</c> resolves inside <see cref="Root"/>.</summary>
+    public async Task<string> SdkVersionAsync()
+    {
+        var result = await ProcessRunner.RunAsync("dotnet", ["--version"], Root, CancellationToken.None);
+        return result.ExitCode == 0 ? result.Output.Trim() : "";
     }
 
     /// <summary>Runs <c>fuse</c> with arguments in the repository and returns its output and wall time.</summary>
@@ -132,6 +142,76 @@ internal sealed partial class EvalRepo
     {
         var (result, milliseconds) = await FuseAsync(args);
         return new FuseRun(result, milliseconds);
+    }
+
+    /// <summary>Runs fuse in <paramref name="workingDirectory"/> (such as a secondary worktree) and returns its output and wall time.</summary>
+    public async Task<FuseRun> FuseInAsync(string workingDirectory, params string[] args)
+    {
+        var watch = Stopwatch.StartNew();
+        var result = await ProcessRunner.RunAsync(Fuse, args, workingDirectory, CancellationToken.None);
+        return new FuseRun(result, watch.Elapsed.TotalMilliseconds);
+    }
+
+    /// <summary>Runs fuse in <paramref name="workingDirectory"/> with <paramref name="stdin"/> piped on standard input.</summary>
+    public async Task<FuseRun> FuseStdinAsync(string workingDirectory, string stdin, params string[] args)
+    {
+        var watch = Stopwatch.StartNew();
+        var psi = new ProcessStartInfo(Fuse)
+        {
+            WorkingDirectory = workingDirectory,
+            RedirectStandardInput = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            StandardInputEncoding = new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
+            StandardOutputEncoding = System.Text.Encoding.UTF8,
+            StandardErrorEncoding = System.Text.Encoding.UTF8,
+        };
+        foreach (var argument in args)
+            psi.ArgumentList.Add(argument);
+        using var process = Process.Start(psi)!;
+        var output = process.StandardOutput.ReadToEndAsync();
+        var error = process.StandardError.ReadToEndAsync();
+        await process.StandardInput.WriteAsync(stdin);
+        process.StandardInput.Close();
+        await process.WaitForExitAsync();
+        return new FuseRun(new ProcessResult(process.ExitCode, await output + await error), watch.Elapsed.TotalMilliseconds);
+    }
+
+    /// <summary>Reads the running engine PID and working set bytes from <c>fuse status --json</c> in <paramref name="workingDirectory"/>, or null when stopped.</summary>
+    public async Task<(int Pid, long WorkingSetBytes, long PeakWorkingSetBytes)?> StatusEngineAsync(string? workingDirectory = null)
+    {
+        var run = await FuseInAsync(workingDirectory ?? Root, "status", "--json");
+        if (run.ExitCode != 0)
+            return null;
+        try
+        {
+            using var document = System.Text.Json.JsonDocument.Parse(run.Output.Trim());
+            var root = document.RootElement;
+            if (!root.TryGetProperty("pid", out var pidElement) || pidElement.ValueKind != System.Text.Json.JsonValueKind.Number)
+                return null;
+            var pid = pidElement.GetInt32();
+            long ws = 0;
+            if (root.TryGetProperty("memoryWorkingSetBytes", out var wsElement) && wsElement.ValueKind == System.Text.Json.JsonValueKind.Number)
+                ws = wsElement.GetInt64();
+            else
+            {
+                try
+                {
+                    ws = Process.GetProcessById(pid).WorkingSet64;
+                }
+                catch (Exception e) when (e is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception)
+                {
+                }
+            }
+
+            return (pid, ws, PeakOf(pid, ws));
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return null;
+        }
     }
 
     /// <summary>

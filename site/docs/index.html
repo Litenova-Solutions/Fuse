@@ -20,12 +20,12 @@
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 8.1x to 27.7x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 3.4x to 16.9x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Fuse Docs: Faster dotnet build and test for AI Agents">
 <meta name="twitter:description" content="Fuse documentation: install it, connect your AI coding agent, and learn how it checks each .NET edit and runs only the affected tests, faster than dotnet build.">
 <meta name="twitter:image" content="https://fuse.codes/assets/og.png">
-<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 8.1x to 27.7x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 3.4x to 16.9x faster than dotnet build. dotnet tool install -g Fuse.">
 <link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
 <link rel="icon" href="../assets/fuse-icon.svg" type="image/svg+xml" sizes="any">
 <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -45,7 +45,7 @@
       "url": "https://fuse.codes/docs/",
       "mainEntityOfPage": "https://fuse.codes/docs/",
       "inLanguage": "en",
-      "dateModified": "2026-11-06",
+      "dateModified": "2026-11-25",
       "image": "https://fuse.codes/assets/og.png",
       "isPartOf": {
         "@type": "WebSite",
@@ -126,7 +126,7 @@
     <h2 id="the-problem">Problem <a class="anchor" href="#the-problem" aria-label="Link to this section">#</a></h2>
     <p>An AI agent checks its work by running <code>dotnet build</code> and <code>dotnet test</code>, often dozens of times in one task. That is slow and noisy:</p>
     <ul>
-      <li><strong>Every build starts from scratch.</strong> The median build took 1.66 s to 28.7 s on the benchmark repositories, and the agent waits for it after every edit.</li>
+      <li><strong>Every build starts from scratch.</strong> The median build took 2.28 s to 37.4 s on the benchmark repositories, and the agent waits for it after every edit.</li>
       <li><strong>A build lists every error.</strong> Errors that existed before the agent started appear as well, so the agent must work out which ones its own edits introduced.</li>
       <li><strong>A test run runs every test</strong> and prints the passing tests as well.</li>
       <li><strong>Subagents add load.</strong> Several builds at once use a lot of memory and fail on files that another build has locked in <code>obj</code> and <code>bin</code>.</li>
@@ -142,12 +142,12 @@
       <li><b>The agent reads the result</b><span>the 2 callers with errors, or nothing when the edit is clean.</span></li>
     </ol>
     <ul>
-      <li><strong>Faster checks.</strong> Checks run 8.1x to 27.7x faster than <code>dotnet build</code> on 4 open-source repositories (<a href="benchmarks">Benchmarks</a>). A change inside a method body is checked in the edited file only.</li>
-      <li><strong>Only affected tests.</strong> Test runs are 1.2x to 2.9x faster than <code>dotnet test</code>, except on NodaTime, where the median run was slower. When only <code>.cs</code> files changed, tests run without a rebuild.</li>
+      <li><strong>Faster checks.</strong> Checks run 3.4x to 16.9x faster than <code>dotnet build</code> on 4 open-source repositories (<a href="benchmarks">Benchmarks</a>). A change inside a method body is checked in the edited file only.</li>
+      <li><strong>Only affected tests.</strong> Test runs are 1.2x to 2.4x faster than <code>dotnet test</code> on 3 of the 4 repositories, and about tied on NodaTime (59.9 s against 61.5 s). When only <code>.cs</code> files changed, tests run without a rebuild.</li>
       <li><strong>Only introduced errors.</strong> Errors that are already in HEAD are not reported.</li>
       <li><strong>Errors in dependent projects.</strong> Each caller that a change breaks is listed with that change.</li>
       <li><strong>Short output.</strong> An answer holds at most 20 errors or 10 test failures, plus one summary line. It reports nothing when the edit is clean.</li>
-      <li><strong>Made for subagents.</strong> All agents in a repository share one engine, so the solution is loaded once. Builds through Fuse take turns, and parallel builds reported 0 locked-file errors in the benchmarks. Each git worktree runs its own engine, so agents in different worktrees never wait for each other.</li>
+      <li><strong>Made for subagents.</strong> All agents in a repository share one engine, so the solution is loaded once. Builds through Fuse take turns, and parallel builds reported 0 locked-file errors in the benchmarks. All git worktrees of a repository share one engine, and agents in different worktrees never wait for each other's builds.</li>
       <li><strong>Made for judges and workers.</strong> External writers register their paths as sessions, and the judge checks one slice with <code>fuse check</code> on a folder. With <code>--json</code>, the errors split into briefs.</li>
       <li><strong>Safe.</strong> If Fuse cannot answer, the hook stays silent and the agent continues. The stop hook sends the agent back at most once. Fuse never edits your code. It runs locally and has no telemetry.</li>
       <li><strong>No configuration.</strong> <code>fuse init</code> is the only setup, and <code>dotnet tool update</code> works while Fuse runs.</li>
@@ -155,8 +155,8 @@
 
     <h2 id="what-fuse-costs">Costs <a class="anchor" href="#what-fuse-costs" aria-label="Link to this section">#</a></h2>
     <ul>
-      <li><strong>Memory.</strong> The engine keeps loaded projects in memory until it has been idle for 30 minutes. When idle, it holds 319 MB on the 15-project NodaTime and 512 MB on the 4-project FluentValidation, and up to 1,091 MB while it checks, on runners with 16 GB of memory. On a machine with more memory, the engine uses more (<a href="benchmarks">Benchmarks</a>). Each git worktree runs its own engine.</li>
-      <li><strong>A slow first check across projects.</strong> The first edit that affects other projects must load them. On Jellyfin (40 projects), that took up to 68.9 s. The median signature edit took 58 ms.</li>
+      <li><strong>Memory.</strong> The engine keeps loaded projects in memory until it has been idle for 30 minutes. When idle, it holds 338 MB on the 15-project NodaTime and 483 MB on the 4-project FluentValidation, and up to 1,074 MB while it checks, on runners with 16 GB of memory. On a machine with more memory, the engine uses more (<a href="benchmarks">Benchmarks</a>). All git worktrees of a repository share one engine.</li>
+      <li><strong>A slow first check across projects.</strong> The first edit that affects other projects must load them. On Jellyfin (40 projects), that took up to 84.8 s. The median signature edit took 133 ms.</li>
       <li><strong>Many agents, one engine.</strong> Checks and test plans from several sessions run at the same time, each answered about its own edits.</li>
       <li><strong>Not a full build.</strong> Fuse checks C# only and selects tests by reading the code, so a few cases still need <code>fuse build</code> or <code>fuse test --all</code>. <a href="limits">Limits</a> lists them.</li>
     </ul>

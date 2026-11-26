@@ -30,8 +30,15 @@ internal abstract record TestScope
         ///     shadow run serves a build the command did not make.
         /// </summary>
         public bool BuildOnly { get; init; }
+
+        /// <summary>True to bypass <c>SliceTestCache</c> lookup (<c>--clean</c> / <c>--no-cache</c>).</summary>
+        public bool NoCache { get; init; }
     }
 
     /// <summary>Every test project, run whole with no filter, whatever changed.</summary>
-    public sealed record All : TestScope;
+    public sealed record All : TestScope
+    {
+        /// <summary>True to bypass <c>SliceTestCache</c> lookup (<c>--clean</c> / <c>--no-cache</c>).</summary>
+        public bool NoCache { get; init; }
+    }
 }

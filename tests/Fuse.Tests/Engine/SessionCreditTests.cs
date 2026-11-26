@@ -1,4 +1,6 @@
+using Fuse.Engine;
 using Fuse.Protocol;
+using Fuse.Telemetry;
 using Fuse.Tests.Fixtures;
 
 namespace Fuse.Tests.Engine;
@@ -39,7 +41,7 @@ public class SessionCreditTests
     public async Task A_credit_from_an_answer_kept_by_the_result_store_survives_the_background_read()
     {
         using var repo = FixtureRepo.CreateStandard();
-        await using var engine = await InProcessRequestRouter.StartAsync(repo);
+        await using var engine = await QuietBudgetRouter.StartAsync(repo);
         repo.Replace("Lib/Calc.cs", "public int Add(", "public int Plus(");
         var first = await engine.SendAsync(new EngineRequest.CheckFiles([repo.Full("Lib/Calc.cs")], WaitForLoad: true) { Session = "claude:smoke-a" });
         Assert.IsType<EngineResponse.CheckAnswered>(first);
@@ -76,5 +78,64 @@ public class SessionCreditTests
         Assert.Contains(report.Errors, e => e.Error.Message.Contains(GreetMissing, StringComparison.Ordinal));
         Assert.True(report.LeftToOtherSessions > 0);
         Assert.Contains("Lib/Calc.cs\tclaude:smoke-a", File.ReadAllLines(Path.Combine(repo.Root.StateDirectory, "sessions.tsv")));
+    }
+
+    /// <summary>
+    ///     The engine's request loop with a memory budget that reports no load, so no request sheds a kept
+    ///     answer mid-test: the live budget reads the machine's memory load, which tests running alongside
+    ///     push past the shed thresholds on a loaded runner.
+    /// </summary>
+    private sealed class QuietBudgetRouter : IAsyncDisposable
+    {
+        private readonly RequestRouter _router;
+        private readonly EngineLog _log;
+        private readonly CancellationTokenSource _shutdown;
+
+        private QuietBudgetRouter(RequestRouter router, EngineLog log, CancellationTokenSource shutdown)
+        {
+            _router = router;
+            _log = log;
+            _shutdown = shutdown;
+        }
+
+        /// <summary>Starts a router over <paramref name="repo"/>, initialized as the engine initializes it.</summary>
+        public static async Task<QuietBudgetRouter> StartAsync(FixtureRepo repo)
+        {
+            var log = new EngineLog(repo.Root.StateDirectory);
+            var budget = new MemoryBudget(workingSet: () => 0L, memoryLoad: () => 0L, totalAvailable: () => long.MaxValue);
+            var router = new RequestRouter(repo.Root, log, new Scheduler(Scheduler.DefaultReaderCount), budget);
+            var shutdown = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+            await router.InitializeAsync(shutdown.Token);
+            return new QuietBudgetRouter(router, log, shutdown);
+        }
+
+        /// <summary>Sends one request, with the build id a client sends.</summary>
+        public Task<EngineResponse> SendAsync(EngineRequest request) =>
+            _router.HandleAsync(request with { BuildId = EngineVersion.Build }, TestContext.Current.CancellationToken);
+
+        /// <summary>What the router wrote to its log, for a test that needs to see the request lifecycle.</summary>
+        /// <remarks>
+        ///     Read with write sharing: the engine appends while a test reads, and an append that meets a
+        ///     reader that does not share writing fails, which the engine log drops.
+        /// </remarks>
+        public string Log
+        {
+            get
+            {
+                if (!File.Exists(_log.FilePath))
+                    return "";
+                using var stream = new FileStream(_log.FilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                using var reader = new StreamReader(stream);
+                return reader.ReadToEnd();
+            }
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            await _shutdown.CancelAsync();
+            await _router.WaitForPreloadAsync();
+            _router.Dispose();
+            _shutdown.Dispose();
+        }
     }
 }

@@ -35,6 +35,18 @@ internal sealed class MuseCode : Harness
     /// <summary>Muse's tools that write files; its post-edit hook also runs after every tool that only reads one.</summary>
     public override bool WritesFiles(string? toolName) => toolName is "edit_file" or "write_file" or "apply_patch";
 
+    /// <summary>
+    ///     True when <paramref name="toolName"/> is a known read-only or search tool across Muse Code and sibling
+    ///     harnesses, allowing the pre-root fast path to exit 0 immediately without touching git or the engine.
+    /// </summary>
+    internal static bool IsReadOnlyTool(string? toolName) => toolName is
+        "read_file" or "Read" or
+        "view_file" or "view_file_outline" or "view_code_item" or
+        "grep" or "Grep" or "grep_search" or "search" or "Search" or
+        "glob" or "Glob" or "find_by_name" or
+        "ls" or "LS" or "list_dir" or
+        "web_fetch" or "WebFetch" or "web_search" or "WebSearch";
+
     /// <summary>What to run once after <c>fuse init</c>, so Muse loads the bundle.</summary>
     public override string? NextStep =>
         $"Muse Code loads hooks from an installed plugin: run `muse plugins install {BundleFolder} --scope project` and `muse plugins approve fuse` once, and `muse plugins update fuse` after a later fuse init";

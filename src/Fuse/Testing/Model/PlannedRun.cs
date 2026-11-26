@@ -29,4 +29,11 @@ namespace Fuse.Testing.Model;
 ///     repository whose <c>global.json</c> does not opt <c>dotnet test</c> in: the client builds the project and runs
 ///     the test application directly. Empty for every other run.
 /// </param>
-internal sealed record PlannedRun(RepoPath Project, string Name, RunMode Mode, string? Filter, bool UsesTestingPlatform, string? RunSettings, string[] FilterArguments, string[] TargetPaths);
+internal sealed record PlannedRun(RepoPath Project, string Name, RunMode Mode, string? Filter, bool UsesTestingPlatform, string? RunSettings, string[] FilterArguments, string[] TargetPaths)
+{
+    /// <summary>Content-addressed SHA-256 slice key for per-slice test caching, or null when not computed.</summary>
+    public string? SliceKey { get; init; }
+
+    /// <summary>Cached slice test result when <see cref="SliceKey"/> hit <c>SliceTestCache</c>, or null on miss or bypass.</summary>
+    public SliceCacheResult? CachedResult { get; init; }
+}

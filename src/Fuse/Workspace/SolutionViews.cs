@@ -117,13 +117,19 @@ internal sealed class SolutionViews
     /// </summary>
     private string? _baselineHead;
 
+    /// <summary>Projects shed by <see cref="ClearIdleConeProjects"/> so syncs keep them unloaded until requested again.</summary>
+    private readonly HashSet<RepoPath> _shedProjects = [];
+
+    /// <summary>True when <see cref="ClearHeadCompilations"/> has dropped the baseline view without triggering a full rebuild.</summary>
+    private bool _baselineShed;
+
     public SolutionViews(RepoRoot root, ChangeTracker tracker, ProjectLoader projects, Action<string>? log = null)
     {
         _root = root;
         _tracker = tracker;
         _projects = projects;
         _analyzers = new AnalyzerShadow(root);
-        _summaries = new SummaryCache(root, log ?? (_ => { }));
+        _summaries = new SummaryCache(root, log ?? (_ => { }), projects.AssetsHashFallback);
     }
 
     /// <summary>The summaries the views supply references from, in the shared directory.</summary>
@@ -159,6 +165,9 @@ internal sealed class SolutionViews
     /// </remarks>
     public bool HoldEveryOpenProject => _projects.Solution is not { } loaded || ReferenceEquals(loaded, _derivedFrom);
 
+    /// <summary>True when <see cref="ClearHeadCompilations"/> has shed the baseline view and no request has materialized it again yet.</summary>
+    public bool IsBaselineShed => _baselineShed;
+
     /// <summary>Empties both views, after the loader closed every project, and increments <see cref="BaselineGeneration"/>.</summary>
     public void Clear()
     {
@@ -169,6 +178,8 @@ internal sealed class SolutionViews
         _summarySourceCurrent = _sourceCurrent;
         _summarySourceBaseline = _sourceBaseline;
         _derivedFrom = null;
+        _shedProjects.Clear();
+        _baselineShed = false;
         _generatedFiles = [];
         _generated.Clear();
         _rewritten.Clear();
@@ -199,31 +210,28 @@ internal sealed class SolutionViews
 
     /// <summary>
     ///     Sheds the HEAD compilations by dropping the baseline view, so every compilation built over HEAD can go.
-    ///     The working tree view stays. The next sync derives both views from the loader again, because the views no
-    ///     longer hold what it has open, and reads HEAD's errors from the stored results in the meantime. The
-    ///     baseline's content is the same when it is derived again, so <see cref="BaselineGeneration"/> stays.
+    ///     The working tree view and loader derivation stay intact, avoiding an immediate rebuild on the next sync.
+    ///     When a subsequent request needs the baseline view, <see cref="MaterializeBaselineShellAsync"/> rebuilds
+    ///     only its shell without throwing away working tree compilations.
     /// </summary>
     public void ClearHeadCompilations()
     {
         _sourceBaseline = new AdhocWorkspace().CurrentSolution;
         _summaryBaseline = _sourceBaseline;
         _summarySourceBaseline = _sourceBaseline;
-        _derivedFrom = null;
-        _generatedFiles = [];
+        _baselineShed = true;
         _baselineHead = _tracker.Head;
     }
 
     /// <summary>
-    ///     Sheds the idle cone projects: the projects in neither view after this call are the dependents a changed
-    ///     file reaches and every other loaded project, except the projects that own changed files and everything
-    ///     they reference, which stay. The loader keeps them open, and the next sync derives both views from it
-    ///     again, so a later request that reaches a shed project binds it from source as it would have anyway; what
-    ///     goes is only the compilations binding it had built.
+    ///     Sheds the idle cone projects: removes projects outside changed owners and their transitive closure from
+    ///     both views while keeping loader derivation synchronized so subsequent edits do not trigger an immediate
+    ///     rebuild. Returns the project paths shed so the loader can unload them.
     /// </summary>
-    public void ClearIdleConeProjects()
+    public IReadOnlyList<RepoPath> ClearIdleConeProjects()
     {
         if (_sourceCurrent is null || _sourceBaseline is null || _projects.Graph is not { } graph)
-            return;
+            return [];
         var keep = new HashSet<RepoPath>();
         foreach (var path in _tracker.Changed)
         {
@@ -236,7 +244,7 @@ internal sealed class SolutionViews
 
         var current = _sourceCurrent;
         var baseline = _sourceBaseline;
-        var shed = false;
+        var shed = new List<RepoPath>();
         foreach (var project in _sourceCurrent.Projects.ToList())
         {
             if (project.FilePath is not { } file || graph.Find(_root.PathOf(file)) is not { } node || keep.Contains(node.Path))
@@ -244,16 +252,56 @@ internal sealed class SolutionViews
             current = current.RemoveProject(project.Id);
             if (baseline.GetProject(project.Id) is not null)
                 baseline = baseline.RemoveProject(project.Id);
-            shed = true;
+            _shedProjects.Add(node.Path);
+            shed.Add(node.Path);
         }
 
-        if (!shed)
-            return;
+        if (shed.Count == 0)
+            return shed;
         _sourceCurrent = current;
         _sourceBaseline = baseline;
-        _derivedFrom = null;
+        if (_baselineShed)
+        {
+            _summaryBaseline = baseline;
+            _summarySourceBaseline = baseline;
+        }
+
         ClearSessionViews();
         RefreshSummaryViewsFromCache();
+        return shed;
+    }
+
+    /// <summary>Marks <paramref name="projectPaths"/> as needed again so the next load or rebuild keeps them.</summary>
+    /// <returns>True when any requested project had been shed and is missing from <see cref="Current"/>.</returns>
+    public bool Unshed(IEnumerable<RepoPath> projectPaths)
+    {
+        var needsRebuild = false;
+        foreach (var path in projectPaths)
+        {
+            if (_shedProjects.Remove(path)
+                && _projects.Graph?.Find(path) is { } node
+                && _sourceCurrent is { } current
+                && !RepoWorkspace.ProjectsFor(current, node).Any())
+                needsRebuild = true;
+        }
+
+        return needsRebuild;
+    }
+
+    /// <summary>Aligns the loader reference with <see cref="ProjectLoader.Solution"/> after unloading shed projects.</summary>
+    public void SyncDerivedFromLoader() => _derivedFrom = _projects.Solution;
+
+    /// <summary>Drops session views and any cached baseline Roslyn compilations while keeping active project shells alive.</summary>
+    public void ClearTransientCaches(bool clearSessionViews = true, bool dropCompiledBaseline = true)
+    {
+        if (clearSessionViews)
+            _sessionViews.Clear();
+        if (dropCompiledBaseline && !_baselineShed && _sourceBaseline is { ProjectIds.Count: > 0 } baseline)
+        {
+            var fresh = CloneUncompiled(baseline);
+            _sourceBaseline = fresh;
+            RefreshSummaryViewsFromCache();
+        }
     }
 
     /// <summary>The project files of the change cone: the owners of the changed files, and every dependent of an owner.</summary>
@@ -340,6 +388,13 @@ internal sealed class SolutionViews
             return _summaryReferences.TryGetValue(baselineProject.Id, out var entry) && entry.Version == baselineProject.Version ? entry.Reference : null;
     }
 
+    /// <summary>The summary last kept for <paramref name="projectId"/> regardless of project version, used while the baseline shell is shed.</summary>
+    private MetadataReference? CachedSummary(ProjectId projectId)
+    {
+        lock (_summaryLock)
+            return _summaryReferences.TryGetValue(projectId, out var entry) ? entry.Reference : null;
+    }
+
     /// <summary>True when a summary was looked up for <paramref name="baselineProject"/> at the version it is now, kept or not, so a rebuild does not key it again.</summary>
     private bool HasSummaryEntry(Project baselineProject)
     {
@@ -375,6 +430,11 @@ internal sealed class SolutionViews
             _summaryCurrent = _sourceCurrent;
             _summaryBaseline = _sourceBaseline;
         }
+        else if (_baselineShed)
+        {
+            _summaryCurrent = WithSummaries(_sourceCurrent, _sourceCurrent, cone, project => supplied.Contains(project.Id) ? CachedSummary(project.Id) : null);
+            _summaryBaseline = _sourceBaseline;
+        }
         else
         {
             _summaryCurrent = WithSummaries(_sourceCurrent, _sourceBaseline, cone, baselineProject => supplied.Contains(baselineProject.Id) ? CachedSummary(baselineProject) : null);
@@ -397,15 +457,17 @@ internal sealed class SolutionViews
         lock (_summaryLock)
             applied = [.. _appliedSummaries];
         var retained = new HashSet<ProjectId>();
-        if (!UseSummaries || _sourceBaseline is null || _projects.Graph is not { } graph)
+        var lookup = _baselineShed ? _sourceCurrent : _sourceBaseline;
+        if (!UseSummaries || lookup is null || _projects.Graph is not { } graph)
             return retained;
         foreach (var id in applied)
         {
-            if (_sourceBaseline.GetProject(id) is not { } baselineProject || baselineProject.FilePath is not { } file)
+            if (lookup.GetProject(id) is not { } project || project.FilePath is not { } file)
                 continue;
             if (graph.Find(_root.PathOf(file)) is not { } node || cone.Contains(node.Path))
                 continue;
-            if (CachedSummary(baselineProject) is not null)
+            var summary = _baselineShed ? CachedSummary(id) : CachedSummary(project);
+            if (summary is not null)
                 retained.Add(id);
         }
 
@@ -436,7 +498,7 @@ internal sealed class SolutionViews
     /// </summary>
     private async Task RefreshSummaryViewsAsync(CancellationToken cancellationToken)
     {
-        if (_sourceCurrent is null || _sourceBaseline is null)
+        if (_sourceCurrent is null || _sourceBaseline is null || _baselineShed)
             return;
         var cone = ConePaths();
         var supplied = new HashSet<ProjectId>();
@@ -472,35 +534,100 @@ internal sealed class SolutionViews
     }
 
     /// <summary>
-    ///     Emits the summary of <paramref name="node"/> from its HEAD compilation, for the background warm, when
-    ///     the project is outside the current change cone and no summary is kept for its version. It reads the
-    ///     baseline snapshot it starts from and writes only the summary cache and the kept references, so it
-    ///     runs with no writer lock held and changes neither view: a summary it emits is supplied only when the
-    ///     views are next derived from the loader. A failure to key or emit keeps none, and binds source.
+    ///     Emits the summary of <paramref name="node"/> inside a transient <see cref="AdhocWorkspace"/> and disposes
+    ///     that workspace right after emitting so no baseline Roslyn compilation stays pinned in memory.
     /// </summary>
     /// <param name="node">The project whose summary the warm emits, in each target framework it is loaded for.</param>
     /// <param name="cancellationToken">Cancels building the compilation and emitting it.</param>
     /// <returns>True when a summary became kept for a target framework of the project in this call.</returns>
     public async Task<bool> EmitSummaryAsync(ProjectNode node, CancellationToken cancellationToken)
     {
-        if (!UseSummaries || _sourceBaseline is not { } baseline || _projects.Graph is not { } graph)
+        if (!UseSummaries || _projects.Graph is not { } graph)
             return false;
         if (ConePaths(graph).Contains(node.Path))
             return false;
+        var sourceView = !_baselineShed && _sourceBaseline is { ProjectIds.Count: > 0 } ? _sourceBaseline : _sourceCurrent;
+        if (sourceView is null)
+            return false;
         var head = _tracker.Head;
         var emitted = false;
-        foreach (var baselineProject in RepoWorkspace.ProjectsFor(baseline, node).ToList())
+        foreach (var sourceProject in RepoWorkspace.ProjectsFor(sourceView, node).ToList())
         {
-            if (CachedSummary(baselineProject) is not null)
+            if (!_baselineShed && CachedSummary(sourceProject) is not null)
                 continue;
             MetadataReference? reference = null;
-            if (await _summaries.KeyForAsync(head, baselineProject, graph, cancellationToken).ConfigureAwait(false) is { } key)
-                reference = await _summaries.GetOrEmitAsync(baselineProject, key, cancellationToken).ConfigureAwait(false);
-            StoreSummaryEntry(baselineProject, reference);
+            using var transient = await CloneClosureIntoTransientAsync(sourceView, [sourceProject.Id], applyHeadTexts: _baselineShed, cancellationToken).ConfigureAwait(false);
+            if (transient.Solution.GetProject(sourceProject.Id) is { } transientProject
+                && await _summaries.KeyForAsync(head, transientProject, graph, cancellationToken).ConfigureAwait(false) is { } key)
+            {
+                reference = await _summaries.GetOrEmitAsync(transientProject, key, cancellationToken).ConfigureAwait(false);
+            }
+
+            StoreSummaryEntry(sourceProject, reference);
             emitted |= reference is not null;
         }
 
         return emitted;
+    }
+
+    /// <summary>
+    ///     Materializes the baseline view shell from <see cref="Current"/> with HEAD contents applied for changed
+    ///     files, without rebuilding <see cref="Current"/> or re-loading shed projects.
+    /// </summary>
+    public async Task MaterializeBaselineShellAsync(CancellationToken cancellationToken)
+    {
+        if (!_baselineShed || _sourceCurrent is null)
+            return;
+        var baseline = await CloneSolutionAsync(_sourceCurrent, applyHeadTexts: true, cancellationToken).ConfigureAwait(false);
+        _sourceBaseline = baseline;
+        _baselineShed = false;
+        _baselineHead = _tracker.Head;
+        await RefreshSummaryViewsAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    ///     Builds a transient HEAD compilation view for <paramref name="projects"/> and their transitive dependencies
+    ///     directly from git HEAD blobs (<see cref="ChangeTracker.ReadHead"/>) so a BaselineStore miss can compile on
+    ///     demand and release 100% of baseline Roslyn compilations on disposal.
+    /// </summary>
+    public async Task<TransientBaseline> BuildTransientBaselineAsync(IReadOnlyCollection<ProjectNode> projects, CancellationToken cancellationToken)
+    {
+        if (_projects.Graph is { } graph && _projects.ActiveBlueprint is { } blueprint && _projects.IsLoadedFromBlueprint)
+        {
+            var closure = projects.SelectMany(graph.ClosureOf).DistinctBy(p => p.Path).ToList();
+            if (closure.Count > 0 && blueprint.Covers(_root, closure, allowZeroRestore: _projects.IsUsingZeroRestoreBlueprint))
+            {
+                var transient = new BlueprintWorkspace(_projects.SharedResources);
+                try
+                {
+                    var changedSet = new HashSet<RepoPath>(_tracker.Changed);
+                    transient.LoadProjects(_root, graph, blueprint, closure, _tracker.Head, changedSet);
+                    var solution = transient.Solution;
+                    foreach (var path in TouchedAndChangedPaths())
+                        solution = await WithHeadContentAsync(solution, path, cancellationToken).ConfigureAwait(false);
+                    return new TransientBaseline(transient, solution);
+                }
+                catch
+                {
+                    transient.Dispose();
+                    throw;
+                }
+            }
+        }
+
+        if (_sourceCurrent is { } source && _projects.Graph is { } activeGraph)
+        {
+            var projectIds = projects
+                .SelectMany(activeGraph.ClosureOf)
+                .SelectMany(node => RepoWorkspace.ProjectsFor(source, node))
+                .Select(p => p.Id)
+                .Distinct()
+                .ToList();
+            return await CloneClosureIntoTransientAsync(source, projectIds, applyHeadTexts: true, cancellationToken).ConfigureAwait(false);
+        }
+
+        var empty = new AdhocWorkspace();
+        return new TransientBaseline(empty, empty.CurrentSolution);
     }
 
     /// <summary>
@@ -546,12 +673,18 @@ internal sealed class SolutionViews
             return;
         // The repository's own analyzers load from a copy, so a real build can still overwrite them.
         var current = _analyzers.Apply(loaded);
+        if (_shedProjects.Count > 0 && _projects.Graph is { } graph)
+        {
+            foreach (var project in current.Projects.ToList())
+            {
+                if (project.FilePath is { } file && graph.Find(_root.PathOf(file)) is { } node && _shedProjects.Contains(node.Path))
+                    current = current.RemoveProject(project.Id);
+            }
+        }
+
         var baseline = current;
         var head = _tracker.Head;
-        List<RepoPath> touched;
-        lock (_touchedLock)
-            touched = [.. _touched];
-        foreach (var path in touched.Concat(_tracker.Changed).Distinct())
+        foreach (var path in TouchedAndChangedPaths())
         {
             current = await WithDiskContentAsync(current, path, cancellationToken).ConfigureAwait(false);
             baseline = await WithHeadContentAsync(baseline, path, cancellationToken).ConfigureAwait(false);
@@ -559,6 +692,7 @@ internal sealed class SolutionViews
 
         _sourceCurrent = current;
         _sourceBaseline = baseline;
+        _baselineShed = false;
         _derivedFrom = loaded;
         if (!string.Equals(head, _baselineHead, StringComparison.Ordinal))
         {
@@ -609,7 +743,8 @@ internal sealed class SolutionViews
         // The summary views follow the generated files only when they are in step with the source views; in a
         // rebuild they are derived from the updated sources after this, so applying the files here would be
         // work on views that are about to go.
-        var summaryInStep = ReferenceEquals(_summarySourceCurrent, _sourceCurrent) && ReferenceEquals(_summarySourceBaseline, _sourceBaseline);
+        var summaryInStep = ReferenceEquals(_summarySourceCurrent, _sourceCurrent)
+            && (_baselineShed || ReferenceEquals(_summarySourceBaseline, _sourceBaseline));
         var applied = new List<(RepoPath Path, SourceText Text)>();
         var current = _sourceCurrent!;
         var baseline = _sourceBaseline!;
@@ -635,14 +770,15 @@ internal sealed class SolutionViews
             _generated[path] = stamp;
             var previous = current;
             current = await WithContentAsync(current, path, text, cancellationToken).ConfigureAwait(false);
-            baseline = await WithContentAsync(baseline, path, text, cancellationToken).ConfigureAwait(false);
+            if (!_baselineShed)
+                baseline = await WithContentAsync(baseline, path, text, cancellationToken).ConfigureAwait(false);
             if (!ReferenceEquals(previous, current))
                 _rewritten[path] = text;
             applied.Add((path, text));
         }
 
         _sourceCurrent = current;
-        if (!ReferenceEquals(baseline, _sourceBaseline))
+        if (!_baselineShed && !ReferenceEquals(baseline, _sourceBaseline))
         {
             _sourceBaseline = baseline;
             BaselineGeneration++;
@@ -655,7 +791,8 @@ internal sealed class SolutionViews
             foreach (var (path, text) in applied)
             {
                 summaryCurrent = await WithContentAsync(summaryCurrent, path, text, cancellationToken).ConfigureAwait(false);
-                summaryBaseline = await WithContentAsync(summaryBaseline, path, text, cancellationToken).ConfigureAwait(false);
+                if (!_baselineShed)
+                    summaryBaseline = await WithContentAsync(summaryBaseline, path, text, cancellationToken).ConfigureAwait(false);
             }
 
             _summaryCurrent = summaryCurrent;
@@ -707,7 +844,8 @@ internal sealed class SolutionViews
         if (paths.Count == 0 || _projects.Solution is null)
             return;
         var before = Current;
-        var summaryInStep = ReferenceEquals(_summarySourceCurrent, _sourceCurrent) && ReferenceEquals(_summarySourceBaseline, _sourceBaseline);
+        var summaryInStep = ReferenceEquals(_summarySourceCurrent, _sourceCurrent)
+            && (_baselineShed || ReferenceEquals(_summarySourceBaseline, _sourceBaseline));
         HashSet<ProjectId> appliedBefore;
         lock (_summaryLock)
             appliedBefore = [.. _appliedSummaries];
@@ -718,11 +856,12 @@ internal sealed class SolutionViews
             lock (_touchedLock)
                 _touched.Add(path);
             current = await WithDiskContentAsync(current, path, cancellationToken).ConfigureAwait(false);
-            baseline = await WithHeadContentAsync(baseline, path, cancellationToken).ConfigureAwait(false);
+            if (!_baselineShed)
+                baseline = await WithHeadContentAsync(baseline, path, cancellationToken).ConfigureAwait(false);
         }
 
         _sourceCurrent = current;
-        if (!ReferenceEquals(baseline, _sourceBaseline))
+        if (!_baselineShed && !ReferenceEquals(baseline, _sourceBaseline))
         {
             _sourceBaseline = baseline;
             BaselineGeneration++;
@@ -741,7 +880,8 @@ internal sealed class SolutionViews
             foreach (var path in paths)
             {
                 summaryCurrent = await WithDiskContentAsync(summaryCurrent, path, cancellationToken).ConfigureAwait(false);
-                summaryBaseline = await WithHeadContentAsync(summaryBaseline, path, cancellationToken).ConfigureAwait(false);
+                if (!_baselineShed)
+                    summaryBaseline = await WithHeadContentAsync(summaryBaseline, path, cancellationToken).ConfigureAwait(false);
             }
 
             _summaryCurrent = summaryCurrent;
@@ -891,7 +1031,7 @@ internal sealed class SolutionViews
 
     /// <summary>Makes every document for <paramref name="path"/> hold <paramref name="text"/>, adding or removing documents as needed.</summary>
     /// <remarks>A document that already holds the same content is left alone, so its compilation stays cached.</remarks>
-    private async Task<Solution> WithContentAsync(Solution solution, RepoPath path, SourceText? text, CancellationToken cancellationToken)
+    internal async Task<Solution> WithContentAsync(Solution solution, RepoPath path, SourceText? text, CancellationToken cancellationToken)
     {
         var ids = solution.GetDocumentIdsWithFilePath(path.Absolute);
         var isCSharp = path.Absolute.EndsWith(".cs", StringComparison.OrdinalIgnoreCase);
@@ -942,5 +1082,170 @@ internal sealed class SolutionViews
         }
 
         return solution;
+    }
+
+    private List<RepoPath> TouchedAndChangedPaths()
+    {
+        List<RepoPath> touched;
+        lock (_touchedLock)
+            touched = [.. _touched];
+        return [.. touched.Concat(_tracker.Changed).Distinct()];
+    }
+
+    private static Solution CloneUncompiled(Solution source)
+    {
+        var workspace = new AdhocWorkspace();
+        var projects = new List<ProjectInfo>(source.ProjectIds.Count);
+        foreach (var project in source.Projects)
+            projects.Add(CopyProjectInfoSync(project));
+        return workspace.AddSolution(SolutionInfo.Create(SolutionId.CreateNewId(), VersionStamp.Create(), projects: projects));
+    }
+
+    private async Task<Solution> CloneSolutionAsync(Solution source, bool applyHeadTexts, CancellationToken cancellationToken)
+    {
+        var workspace = new AdhocWorkspace();
+        var projects = new List<ProjectInfo>(source.ProjectIds.Count);
+        foreach (var project in source.Projects)
+            projects.Add(await CopyProjectInfoAsync(project, cancellationToken).ConfigureAwait(false));
+        var cloned = workspace.AddSolution(SolutionInfo.Create(SolutionId.CreateNewId(), VersionStamp.Create(), projects: projects));
+        if (applyHeadTexts)
+        {
+            foreach (var path in TouchedAndChangedPaths())
+                cloned = await WithHeadContentAsync(cloned, path, cancellationToken).ConfigureAwait(false);
+        }
+
+        return cloned;
+    }
+
+    private async Task<TransientBaseline> CloneClosureIntoTransientAsync(
+        Solution source,
+        IReadOnlyCollection<ProjectId> roots,
+        bool applyHeadTexts,
+        CancellationToken cancellationToken)
+    {
+        var closure = new HashSet<ProjectId>();
+        var queue = new Queue<ProjectId>(roots);
+        while (queue.Count > 0)
+        {
+            var id = queue.Dequeue();
+            if (!closure.Add(id) || source.GetProject(id) is not { } project)
+                continue;
+            foreach (var reference in project.ProjectReferences)
+                queue.Enqueue(reference.ProjectId);
+        }
+
+        var workspace = new AdhocWorkspace();
+        try
+        {
+            var projects = new List<ProjectInfo>(closure.Count);
+            foreach (var id in closure)
+            {
+                if (source.GetProject(id) is { } project)
+                    projects.Add(await CopyProjectInfoAsync(project, cancellationToken).ConfigureAwait(false));
+            }
+
+            var cloned = workspace.AddSolution(SolutionInfo.Create(SolutionId.CreateNewId(), VersionStamp.Create(), projects: projects));
+            if (applyHeadTexts)
+            {
+                foreach (var path in TouchedAndChangedPaths())
+                    cloned = await WithHeadContentAsync(cloned, path, cancellationToken).ConfigureAwait(false);
+            }
+
+            return new TransientBaseline(workspace, cloned);
+        }
+        catch
+        {
+            workspace.Dispose();
+            throw;
+        }
+    }
+
+    private static ProjectInfo CopyProjectInfoSync(Project project) =>
+        CreateProjectInfo(
+            project,
+            CopyTextDocumentsSync(project.Documents, isSource: true),
+            CopyTextDocumentsSync(project.AdditionalDocuments, isSource: false),
+            CopyTextDocumentsSync(project.AnalyzerConfigDocuments, isSource: false));
+
+    private static async Task<ProjectInfo> CopyProjectInfoAsync(Project project, CancellationToken cancellationToken) =>
+        CreateProjectInfo(
+            project,
+            await CopyTextDocumentsAsync(project.Documents, isSource: true, cancellationToken).ConfigureAwait(false),
+            await CopyTextDocumentsAsync(project.AdditionalDocuments, isSource: false, cancellationToken).ConfigureAwait(false),
+            await CopyTextDocumentsAsync(project.AnalyzerConfigDocuments, isSource: false, cancellationToken).ConfigureAwait(false));
+
+    private static List<DocumentInfo> CopyTextDocumentsSync(IEnumerable<TextDocument> documents, bool isSource)
+    {
+        var result = new List<DocumentInfo>();
+        foreach (var doc in documents)
+        {
+            var text = doc.TryGetText(out var loaded) ? loaded : doc.GetTextAsync().GetAwaiter().GetResult();
+            var version = doc.GetTextVersionAsync().GetAwaiter().GetResult();
+            result.Add(ToDocumentInfo(doc, isSource && doc is Document source ? source.SourceCodeKind : SourceCodeKind.Regular, text, version));
+        }
+
+        return result;
+    }
+
+    private static async Task<List<DocumentInfo>> CopyTextDocumentsAsync(IEnumerable<TextDocument> documents, bool isSource, CancellationToken cancellationToken)
+    {
+        var result = new List<DocumentInfo>();
+        foreach (var doc in documents)
+        {
+            var text = doc.TryGetText(out var loaded) ? loaded : await doc.GetTextAsync(cancellationToken).ConfigureAwait(false);
+            var version = await doc.GetTextVersionAsync(cancellationToken).ConfigureAwait(false);
+            result.Add(ToDocumentInfo(doc, isSource && doc is Document source ? source.SourceCodeKind : SourceCodeKind.Regular, text, version));
+        }
+
+        return result;
+    }
+
+    private static DocumentInfo ToDocumentInfo(TextDocument doc, SourceCodeKind kind, SourceText text, VersionStamp version) =>
+        DocumentInfo.Create(
+            doc.Id,
+            doc.Name,
+            doc.Folders,
+            kind,
+            TextLoader.From(TextAndVersion.Create(text, version, doc.FilePath)),
+            doc.FilePath);
+
+    private static ProjectInfo CreateProjectInfo(
+        Project project,
+        List<DocumentInfo> documents,
+        List<DocumentInfo> additional,
+        List<DocumentInfo> analyzerConfigs) =>
+        ProjectInfo.Create(
+                project.Id,
+                project.Version,
+                project.Name,
+                project.AssemblyName,
+                project.Language,
+                filePath: project.FilePath,
+                outputFilePath: project.OutputFilePath,
+                compilationOptions: project.CompilationOptions,
+                parseOptions: project.ParseOptions,
+                documents: documents,
+                projectReferences: project.ProjectReferences,
+                metadataReferences: project.MetadataReferences,
+                analyzerReferences: project.AnalyzerReferences,
+                additionalDocuments: additional)
+            .WithOutputRefFilePath(project.OutputRefFilePath)
+            .WithAnalyzerConfigDocuments(analyzerConfigs);
+
+    /// <summary>An isolated transient HEAD solution whose backing workspace releases every compiled state on disposal.</summary>
+    internal sealed class TransientBaseline : IDisposable
+    {
+        private readonly IDisposable _owner;
+
+        public TransientBaseline(IDisposable owner, Solution solution)
+        {
+            _owner = owner;
+            Solution = solution;
+        }
+
+        /// <summary>The transient HEAD solution snapshot.</summary>
+        public Solution Solution { get; }
+
+        public void Dispose() => _owner.Dispose();
     }
 }

@@ -11,7 +11,9 @@ namespace Fuse.Engine;
 ///     released when its errors are stored, so the warm holds no baseline compilation. For the same project it
 ///     also emits the project's summary when the project is outside the change cone, which is the one place a
 ///     summary is emitted: off the request path, at this background priority and never under the writer lock,
-///     so a sync only ever reads a summary that is already kept. Only loaded projects are filled; the warm loads none itself. Requests take precedence: it holds the gate only while it chooses a project, between
+///     so a sync only ever reads a summary that is already kept. For the same project it also indexes the token
+///     search entries a later reference search narrows by, so a search never builds the index on the request path.
+///     Only loaded projects are filled; the warm loads none itself. Requests take precedence: it holds the gate only while it chooses a project, between
 ///     projects.
 /// </summary>
 internal sealed class BaselineWarmer
@@ -93,7 +95,10 @@ internal sealed class BaselineWarmer
             }
 
             if (next is null)
+            {
+                _checker.SaveSearchIndex();
                 return;
+            }
 
             _warmedProjects.Add(next.Path);
             var warming = System.Diagnostics.Stopwatch.GetTimestamp();
@@ -103,6 +108,7 @@ internal sealed class BaselineWarmer
                     _log($"summary emitted: {next.Name}");
                 if (await _checker.WarmBaselineAsync(next, shutdown).ConfigureAwait(false))
                     _log($"baseline warm: {next.Name} compilation-wide analyzers done in {(System.Diagnostics.Stopwatch.GetTimestamp() - warming) * 1000 / System.Diagnostics.Stopwatch.Frequency} ms");
+                await _checker.WarmSearchIndexAsync(next, shutdown).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {

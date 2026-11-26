@@ -1,5 +1,7 @@
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.Json;
 using Fuse.Engine;
 using Fuse.Failures;
 using Fuse.Harnesses;
@@ -14,10 +16,17 @@ namespace Fuse;
 internal static class Program
 {
     /// <summary>Fuse's own options of <c>fuse test</c>: a near miss of one is refused, and every other token goes to <c>dotnet test</c>.</summary>
-    private static readonly string[] TestFuseOptions = ["--all", "--failed", "--help"];
+    private static readonly string[] TestFuseOptions = ["--all", "--failed", "--clean", "--no-cache", "--max-failures", "--help"];
+
+    private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: false);
 
     public static async Task<int> Main(string[] args)
     {
+        // Ultra-fast pre-root exit for read-only PostToolUse hooks (e.g. Muse Code / Claude Code Read/Grep/Glob/LS):
+        // peeks tool_name directly from UTF-8 stdin bytes without initializing git roots, harnesses, or cancellations.
+        if (args is ["hook", var hookHarness, HookEvent.PostEdit])
+            return await FastPostEditHookAsync(hookHarness).ConfigureAwait(false);
+
         Console.OutputEncoding = new UTF8Encoding(false);
         using var cancel = new CancellationTokenSource();
         Console.CancelKeyPress += (_, e) =>
@@ -41,6 +50,12 @@ internal static class Program
                 "check" => await CheckAsync(rest, cancel.Token).ConfigureAwait(false),
                 "test" => await TestAsync(rest, cancel.Token).ConfigureAwait(false),
                 "build" => await BuildAsync(rest, cancel.Token).ConfigureAwait(false),
+                "gate" => await GateAsync(rest, cancel.Token).ConfigureAwait(false),
+                "judge" => await JudgeAsync(rest, cancel.Token).ConfigureAwait(false),
+                "graph" => await GraphAsync(rest, cancel.Token).ConfigureAwait(false),
+                "impact" => await ImpactAsync(rest, cancel.Token).ConfigureAwait(false),
+                "slim" => await SlimAsync(rest, cancel.Token).ConfigureAwait(false),
+                "batch" => await BatchAsync(rest, cancel.Token).ConfigureAwait(false),
                 "status" => await StatusAsync(rest, cancel.Token).ConfigureAwait(false),
                 "watch" => await WatchAsync(rest, cancel.Token).ConfigureAwait(false),
                 "session" => await SessionAsync(rest, cancel.Token).ConfigureAwait(false),
@@ -57,6 +72,182 @@ internal static class Program
         catch (OperationCanceledException) when (cancel.IsCancellationRequested)
         {
             return 130;
+        }
+    }
+
+    /// <summary>
+    ///     Reads stdin once for <c>fuse hook &lt;harness&gt; post-edit</c> and exits 0 immediately when the payload names a
+    ///     read-only tool, avoiding <see cref="RepoRoot.Find"/> and harness allocations. When the tool can write files,
+    ///     runs the post-edit check directly from the already-read bytes with <c>interactiveFast: true</c>.
+    /// </summary>
+    private static async Task<int> FastPostEditHookAsync(string harnessName)
+    {
+        byte[] stdinBytes;
+        try
+        {
+            await using var stdin = Console.OpenStandardInput();
+            using var buffer = new MemoryStream();
+            await stdin.CopyToAsync(buffer).ConfigureAwait(false);
+            stdinBytes = buffer.ToArray();
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return 0;
+        }
+
+        if (IsReadOnlyPostEditPayload(harnessName, stdinBytes))
+            return 0;
+
+        Console.OutputEncoding = new UTF8Encoding(false);
+        using var cancel = new CancellationTokenSource();
+        Console.CancelKeyPress += (_, e) =>
+        {
+            e.Cancel = true;
+            cancel.Cancel();
+        };
+
+        var harness = SupportedHarnesses.Find(harnessName);
+        if (harness is null)
+        {
+            await Console.Error.WriteLineAsync($"usage: fuse hook <{string.Join('|', SupportedHarnesses.All.Select(h => h.Name))}> <{HookEvent.PostEdit}|{HookEvent.PreShell}|{HookEvent.Stop}>").ConfigureAwait(false);
+            return 0;
+        }
+
+        HookPayload payload;
+        try
+        {
+            var text = Utf8NoBom.GetString(stdinBytes);
+            payload = HookPayload.Parse(text);
+        }
+        catch (JsonException e)
+        {
+            LogHook(Environment.CurrentDirectory, $"{harness.Name} {HookEvent.PostEdit} payload was not valid JSON: {e.Message}");
+            return 0;
+        }
+
+        if (harness.IsAlsoRunByCursor && payload.FromCursor)
+            return 0;
+
+        try
+        {
+            if (!harness.WritesFiles(payload.ToolName))
+                return 0;
+            var edited = payload.EditedFiles().Where(PathRules.IsSource).ToList();
+            if (edited.Count == 0)
+                return 0;
+            var root = RepoRoot.Find(Path.GetDirectoryName(edited[0])!);
+            if (root is null)
+                return 0;
+
+            var files = edited.Select(root.PathOf).Distinct().Select(p => p.Absolute).ToList();
+            var background = harness.RunsPostEditInBackground;
+            var session = payload.Session is { } id ? $"{harness.Name}:{id}" : null;
+            if (session is not null)
+            {
+                SessionRoots.Record(session, root);
+                BlockedStops.NoteWrittenOnce(root, session, files.Select(f => Path.GetRelativePath(root.Path, f).Replace('\\', '/')));
+            }
+
+            var started = Environment.TickCount64;
+            TimeSpan Remaining() => HookCommand.LongWait - TimeSpan.FromMilliseconds(Environment.TickCount64 - started);
+            Task<(OperationResult Result, EngineResponse Response)> Check(CancellationToken ct) => CheckOperation.RunAsync(
+                root,
+                files,
+                session,
+                waitForLoad: background,
+                compilationWideAnalyzers: false,
+                background ? Remaining() : TimeSpan.FromSeconds(50),
+                ct,
+                includeNonCSharp: false,
+                interactiveFast: true);
+
+            var answer = await HookCommand.PostEditAsync(harness, Check, Remaining, message => LogHook(root.Path, message), cancel.Token).ConfigureAwait(false);
+            if (answer.StandardOutput.Length > 0)
+                Console.Out.Write(answer.StandardOutput);
+            if (answer.StandardError.Length > 0)
+                Console.Error.Write(answer.StandardError);
+            return answer.ExitCode;
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            LogHook(payload.Cwd, $"{harness.Name} {HookEvent.PostEdit} failed: {e}");
+            return 0;
+        }
+    }
+
+    /// <summary>
+    ///     Zero-DOM <see cref="Utf8JsonReader"/> pre-root check: returns true when <paramref name="utf8Json"/> is a valid
+    ///     JSON object whose top-level <c>tool_name</c> / <c>toolName</c> is a known read-only tool (or, for
+    ///     <c>muse</c>, any tool other than <c>edit_file</c>, <c>write_file</c>, or <c>apply_patch</c>). Malformed JSON
+    ///     returns false so the full parser logs it to <c>hook.log</c>.
+    /// </summary>
+    internal static bool IsReadOnlyPostEditPayload(string harnessName, ReadOnlySpan<byte> utf8Json)
+    {
+        if (utf8Json.IsEmpty)
+            return false;
+        try
+        {
+            var reader = new Utf8JsonReader(utf8Json, new JsonReaderOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true });
+            if (!reader.Read() || reader.TokenType != JsonTokenType.StartObject)
+                return false;
+
+            string? toolName = null;
+            var cursor = false;
+            var depth = 0;
+            while (reader.Read())
+            {
+                if (reader.TokenType is JsonTokenType.StartObject or JsonTokenType.StartArray)
+                {
+                    depth++;
+                    continue;
+                }
+
+                if (reader.TokenType is JsonTokenType.EndObject or JsonTokenType.EndArray)
+                {
+                    if (depth == 0)
+                        break;
+                    depth--;
+                    continue;
+                }
+
+                if (depth != 0 || reader.TokenType != JsonTokenType.PropertyName)
+                    continue;
+
+                if (reader.ValueTextEquals("tool_name") || reader.ValueTextEquals("toolName"))
+                {
+                    if (reader.Read() && reader.TokenType == JsonTokenType.String)
+                        toolName = reader.GetString();
+                }
+                else if (reader.ValueTextEquals("cursor_version"))
+                {
+                    cursor = true;
+                }
+            }
+
+            if (cursor || string.IsNullOrWhiteSpace(toolName))
+                return false;
+            if (harnessName == "muse")
+                return toolName is not ("edit_file" or "write_file" or "apply_patch");
+            return MuseCode.IsReadOnlyTool(toolName);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+
+    private static void LogHook(string cwd, string message)
+    {
+        try
+        {
+            var root = RepoRoot.Find(cwd);
+            if (root is null)
+                return;
+            LocalState.RecordRoot(root);
+            File.AppendAllText(Path.Combine(root.StateDirectory, "hook.log"), $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {message}{Environment.NewLine}");
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
         }
     }
 
@@ -80,6 +271,12 @@ internal static class Program
         "check" => CommandUsage.Check,
         "test" => CommandUsage.Test,
         "build" => CommandUsage.Build,
+        "gate" => CommandUsage.Gate,
+        "judge" => CommandUsage.Judge,
+        "graph" => CommandUsage.Graph,
+        "impact" => CommandUsage.Impact,
+        "slim" => CommandUsage.Slim,
+        "batch" => CommandUsage.Batch,
         "stop" => CommandUsage.Stop,
         "status" => CommandUsage.Status,
         "watch" => WatchOperation.Usage,
@@ -111,7 +308,7 @@ internal static class Program
             var (specs, specsRefusal) = CheckOperation.ResolveFiles(parsed.Files, Path.GetFullPath);
             if (specsRefusal is not null)
                 return Print(specsRefusal);
-            var (scoped, _) = await CheckOperation.RunScopedAsync(root, specs, parsed.MaxErrors, parsed.Json, TimeSpan.FromMinutes(10), cancellationToken, includeTreeStamp: true, session: SessionOperation.EnvironmentSession).ConfigureAwait(false);
+            var (scoped, _) = await CheckOperation.RunScopedAsync(root, specs, parsed.MaxErrors, parsed.Json, TimeSpan.FromMinutes(10), cancellationToken, includeTreeStamp: true, session: SessionOperation.EnvironmentSession, brief: parsed.Brief).ConfigureAwait(false);
             return Print(scoped);
         }
 
@@ -125,7 +322,7 @@ internal static class Program
 
         // FUSE_SESSION names the caller's session in its environment, as a hook names one in its payload: with files it
         // credits them to the session, and without files it answers for that session alone.
-        var (result, _) = await CheckOperation.RunAsync(root, absolute, session: SessionOperation.EnvironmentSession, waitForLoad: true, compilationWideAnalyzers: true, TimeSpan.FromMinutes(10), cancellationToken, parsed.MaxErrors, parsed.Json, includeTreeStamp: true).ConfigureAwait(false);
+        var (result, _) = await CheckOperation.RunAsync(root, absolute, session: SessionOperation.EnvironmentSession, waitForLoad: true, compilationWideAnalyzers: true, TimeSpan.FromMinutes(10), cancellationToken, parsed.MaxErrors, parsed.Json, includeTreeStamp: true, brief: parsed.Brief).ConfigureAwait(false);
         return Print(result);
     }
 
@@ -179,9 +376,46 @@ internal static class Program
         if (fromRewrite)
             args = [.. args.Where(a => a != "--from-rewrite")];
 
-        var all = args.Contains("--all");
-        var failed = args.Contains("--failed");
-        var head = args.Where(a => a != "--all" && a != "--failed").ToList();
+        var clean = false;
+        var noCache = false;
+        var maxFailures = TestOperation.DefaultMaxFailures;
+        var remaining = new List<string>(args.Length);
+        for (var i = 0; i < args.Length; i++)
+        {
+            var token = args[i];
+            if (token == "--clean")
+            {
+                clean = true;
+                continue;
+            }
+
+            if (token == "--no-cache")
+            {
+                noCache = true;
+                continue;
+            }
+
+            if (token == "--max-failures" || token.StartsWith("--max-failures=", StringComparison.Ordinal))
+            {
+                var value = token.StartsWith("--max-failures=", StringComparison.Ordinal)
+                    ? token["--max-failures=".Length..]
+                    : ++i < args.Length ? args[i] : null;
+                if (value is null || !int.TryParse(value, CultureInfo.InvariantCulture, out maxFailures) || maxFailures < 1 || maxFailures > CheckArguments.MaxErrorsLimit)
+                {
+                    Console.Error.WriteLine($"fuse: --max-failures takes a count of 1 to {CheckArguments.MaxErrorsLimit}, not '{value ?? ""}'");
+                    return 2;
+                }
+
+                continue;
+            }
+
+            remaining.Add(token);
+        }
+
+        var strippedArgs = remaining.ToArray();
+        var all = strippedArgs.Contains("--all");
+        var failed = strippedArgs.Contains("--failed");
+        var head = strippedArgs.Where(a => a != "--all" && a != "--failed").ToList();
         var passthrough = head.Concat(tail).ToList();
         if (failed && (all || passthrough.Count > 0))
         {
@@ -211,7 +445,7 @@ internal static class Program
             return 2;
         if (fromRewrite)
             Console.Error.WriteLine("fuse: dotnet test routed to fuse test (tests affected by your changes; fuse test --all runs every test)");
-        var result = await TestOperation.RunAsync(root, Environment.CurrentDirectory, passthrough, all, cancellationToken, session, live: Console.Out, failed: failed).ConfigureAwait(false);
+        var result = await TestOperation.RunAsync(root, Environment.CurrentDirectory, passthrough, all, cancellationToken, session, live: Console.Out, failed: failed, clean: clean, noCache: noCache, maxFailures: maxFailures).ConfigureAwait(false);
         return Print(result);
     }
 
@@ -245,6 +479,97 @@ internal static class Program
         return Print(result);
     }
 
+    private static async Task<int> GateAsync(string[] args, CancellationToken cancellationToken)
+    {
+        var root = RequireRoot();
+        if (root is null)
+            return 2;
+        var result = await GateOperation.RunAsync(root, Environment.CurrentDirectory, args, Console.Out, cancellationToken).ConfigureAwait(false);
+        if (result.Outcome == Outcome.Unanswered && result.Text.Contains(GateOperation.Usage, StringComparison.Ordinal))
+        {
+            Console.Error.WriteLine(result.Text);
+            return 2;
+        }
+
+        return Print(result);
+    }
+
+    private static async Task<int> JudgeAsync(string[] args, CancellationToken cancellationToken)
+    {
+        var root = RequireRoot();
+        if (root is null)
+            return 2;
+        var result = await JudgeOperation.RunAsync(root, Environment.CurrentDirectory, args, cancellationToken).ConfigureAwait(false);
+        if (result.Outcome == Outcome.Unanswered)
+        {
+            Console.Error.WriteLine(result.Text);
+            return 2;
+        }
+
+        return Print(result);
+    }
+
+    private static async Task<int> GraphAsync(string[] args, CancellationToken cancellationToken)
+    {
+        var root = RequireRoot();
+        if (root is null)
+            return 2;
+        var result = await GraphOperation.RunGraphAsync(root, args, cancellationToken).ConfigureAwait(false);
+        if (result.Outcome == Outcome.Unanswered)
+        {
+            Console.Error.WriteLine(result.Text);
+            return 2;
+        }
+
+        return Print(result);
+    }
+
+    private static async Task<int> ImpactAsync(string[] args, CancellationToken cancellationToken)
+    {
+        var root = RequireRoot();
+        if (root is null)
+            return 2;
+        var result = await GraphOperation.RunImpactAsync(root, args, cancellationToken).ConfigureAwait(false);
+        if (result.Outcome == Outcome.Unanswered)
+        {
+            Console.Error.WriteLine(result.Text);
+            return 2;
+        }
+
+        return Print(result);
+    }
+
+    private static async Task<int> SlimAsync(string[] args, CancellationToken cancellationToken)
+    {
+        var root = RequireRoot();
+        if (root is null)
+            return 2;
+        var result = await SlimOperation.RunAsync(root, args, cancellationToken).ConfigureAwait(false);
+        if (result.Outcome == Outcome.Unanswered)
+        {
+            Console.Error.WriteLine(result.Text);
+            return 2;
+        }
+
+        return Print(result);
+    }
+
+    private static async Task<int> BatchAsync(string[] args, CancellationToken cancellationToken)
+    {
+        var root = RequireRoot();
+        if (root is null)
+            return 2;
+        Console.InputEncoding = new UTF8Encoding(false);
+        var result = await BatchOperation.RunAsync(root, args, Console.In, Console.Out, cancellationToken).ConfigureAwait(false);
+        if (result.Outcome == Outcome.Unanswered)
+        {
+            Console.Error.WriteLine(result.Text);
+            return 2;
+        }
+
+        return result.ExitCode;
+    }
+
     /// <summary><c>fuse status</c>: the engine and the changed files, or the usage failure for an argument it does not take.</summary>
     private static async Task<int> StatusAsync(string[] args, CancellationToken cancellationToken)
     {
@@ -268,16 +593,22 @@ internal static class Program
         return Print(await StatusOperation.RunAsync(root, json, cancellationToken).ConfigureAwait(false));
     }
 
-    /// <summary><c>fuse watch --session &lt;name&gt;</c>: streams the stored answers of one session until it is cancelled; any other argument is a usage failure.</summary>
+    /// <summary><c>fuse watch (--session &lt;name&gt; | --all) [--json]</c>: streams answers and guard violations until cancelled.</summary>
     private static async Task<int> WatchAsync(string[] args, CancellationToken cancellationToken)
     {
         string? session = null;
+        var all = false;
+        var json = false;
         for (var i = 0; i < args.Length; i++)
         {
             if (args[i] == "--session" && session is null && i + 1 < args.Length)
                 session = args[++i];
             else if (args[i].StartsWith("--session=", StringComparison.Ordinal) && session is null && args[i].Length > "--session=".Length)
                 session = args[i]["--session=".Length..];
+            else if (args[i] == "--all" && !all)
+                all = true;
+            else if (args[i] == "--json" && !json)
+                json = true;
             else
             {
                 Console.Error.WriteLine(WatchOperation.Usage);
@@ -285,7 +616,7 @@ internal static class Program
             }
         }
 
-        if (session is null)
+        if ((all && session is not null) || (!all && session is null))
         {
             Console.Error.WriteLine(WatchOperation.Usage);
             return 2;
@@ -294,7 +625,7 @@ internal static class Program
         var root = RequireRoot();
         if (root is null)
             return 2;
-        var result = await WatchOperation.RunAsync(root, session, Console.Out, cancellationToken).ConfigureAwait(false);
+        var result = await WatchOperation.RunAsync(root, session, all, json, Console.Out, cancellationToken).ConfigureAwait(false);
         if (result.Outcome == Outcome.Unanswered)
         {
             Console.Error.WriteLine(result.Text);

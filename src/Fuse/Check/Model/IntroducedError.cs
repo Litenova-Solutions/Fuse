@@ -24,4 +24,10 @@ internal sealed record IntroducedError(CompilerError Error, Cause? Cause = null,
     ///     wrote it, or null. A judge routes the error to that session.
     /// </summary>
     public string? CausedBy { get; init; }
+
+    /// <summary>
+    ///     Optional compiler facts for fixing this error without opening other files, populated when repair briefs
+    ///     are requested.
+    /// </summary>
+    public RepairPacket? Repair { get; init; }
 }

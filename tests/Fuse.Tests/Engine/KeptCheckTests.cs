@@ -1,6 +1,8 @@
 using Fuse.Check;
 using Fuse.Check.Model;
+using Fuse.Engine;
 using Fuse.Protocol;
+using Fuse.Telemetry;
 using Fuse.Tests.Fixtures;
 
 namespace Fuse.Tests.Engine;
@@ -122,7 +124,7 @@ public class KeptCheckTests
     public async Task A_repeated_check_without_edits_is_answered_from_what_was_kept()
     {
         using var repo = FixtureRepo.CreateStandard();
-        await using var engine = await InProcessRequestRouter.StartAsync(repo);
+        await using var engine = await QuietBudgetRouter.StartAsync(repo);
         repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
         var file = repo.Full("Lib/Calc.cs");
 
@@ -139,7 +141,7 @@ public class KeptCheckTests
     public async Task An_edit_after_a_kept_answer_runs_the_check_again()
     {
         using var repo = FixtureRepo.CreateStandard();
-        await using var engine = await InProcessRequestRouter.StartAsync(repo);
+        await using var engine = await QuietBudgetRouter.StartAsync(repo);
         repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
         var file = repo.Full("Lib/Calc.cs");
         var kept = Assert.IsType<EngineResponse.CheckAnswered>(await engine.CheckAsync(file)).Report;
@@ -158,7 +160,7 @@ public class KeptCheckTests
     public async Task A_check_from_another_session_runs_the_check_again_then_keeps_it()
     {
         using var repo = FixtureRepo.CreateStandard();
-        await using var engine = await InProcessRequestRouter.StartAsync(repo);
+        await using var engine = await QuietBudgetRouter.StartAsync(repo);
         repo.Replace("Lib/Calc.cs", "a * b;", "a * b + 1;");
         var file = repo.Full("Lib/Calc.cs");
         Assert.IsType<EngineResponse.CheckAnswered>(await engine.CheckAsync(file));
@@ -174,7 +176,7 @@ public class KeptCheckTests
     }
 
     /// <summary>How many checks bound anything: a check answered from what was kept binds nothing more.</summary>
-    private static int BindingCount(InProcessRequestRouter engine) =>
+    private static int BindingCount(QuietBudgetRouter engine) =>
         engine.Log.Split('\n').Count(l => l.Contains("check: binding ", StringComparison.Ordinal));
 
     private static void InTempDirectory(Action<string> test)
@@ -188,6 +190,69 @@ public class KeptCheckTests
         finally
         {
             Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    /// <summary>
+    ///     The engine's request loop with a memory budget that reports no load, so no request sheds a kept
+    ///     answer mid-test: the live budget reads the machine's memory load, which tests running alongside
+    ///     push past the shed thresholds on a loaded runner.
+    /// </summary>
+    private sealed class QuietBudgetRouter : IAsyncDisposable
+    {
+        private readonly RequestRouter _router;
+        private readonly EngineLog _log;
+        private readonly CancellationTokenSource _shutdown;
+
+        private QuietBudgetRouter(RequestRouter router, EngineLog log, CancellationTokenSource shutdown)
+        {
+            _router = router;
+            _log = log;
+            _shutdown = shutdown;
+        }
+
+        /// <summary>Starts a router over <paramref name="repo"/>, initialized as the engine initializes it.</summary>
+        public static async Task<QuietBudgetRouter> StartAsync(FixtureRepo repo)
+        {
+            var log = new EngineLog(repo.Root.StateDirectory);
+            var budget = new MemoryBudget(workingSet: () => 0L, memoryLoad: () => 0L, totalAvailable: () => long.MaxValue);
+            var router = new RequestRouter(repo.Root, log, new Scheduler(Scheduler.DefaultReaderCount), budget);
+            var shutdown = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+            await router.InitializeAsync(shutdown.Token);
+            return new QuietBudgetRouter(router, log, shutdown);
+        }
+
+        /// <summary>Sends one request, with the build id a client sends.</summary>
+        public Task<EngineResponse> SendAsync(EngineRequest request) =>
+            _router.HandleAsync(request with { BuildId = EngineVersion.Build }, TestContext.Current.CancellationToken);
+
+        /// <summary>Sends a check for the given repository-relative files, or for every change when none are given.</summary>
+        public Task<EngineResponse> CheckAsync(params string[] files) =>
+            SendAsync(files.Length == 0 ? new EngineRequest.CheckChanges(WaitForLoad: true) : new EngineRequest.CheckFiles(files, WaitForLoad: true));
+
+        /// <summary>What the router wrote to its log, for a test that needs to see the request lifecycle.</summary>
+        /// <remarks>
+        ///     Read with write sharing: the engine appends while a test reads, and an append that meets a
+        ///     reader that does not share writing fails, which the engine log drops.
+        /// </remarks>
+        public string Log
+        {
+            get
+            {
+                if (!File.Exists(_log.FilePath))
+                    return "";
+                using var stream = new FileStream(_log.FilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                using var reader = new StreamReader(stream);
+                return reader.ReadToEnd();
+            }
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            await _shutdown.CancelAsync();
+            await _router.WaitForPreloadAsync();
+            _router.Dispose();
+            _shutdown.Dispose();
         }
     }
 }

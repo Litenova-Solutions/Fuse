@@ -12,8 +12,8 @@ AI agents check their work by running `dotnet build` and `dotnet test`, often do
 
 Fuse fixes that. It keeps your solution loaded in the background. After each edit, it tells the agent:
 
-- which compiler errors the edit introduced, 8.1x to 27.7x faster than `dotnet build` at the median on 4 open-source repositories
-- which affected tests fail, up to 2.9x faster than `dotnet test`
+- which compiler errors the edit introduced, 3.4x to 16.9x faster than `dotnet build` at the median on 4 open-source repositories
+- which affected tests fail, up to 2.4x faster than `dotnet test`
 
 Run `fuse init` once. After that, the harness, the program your agent runs in (Claude Code, Cursor, Codex and others), runs Fuse by itself.
 
@@ -27,16 +27,17 @@ Run `fuse init` once. After that, the harness, the program your agent runs in (C
 - **Breaks in other projects.** When you rename a method, Fuse lists every broken caller in every project, with the change that broke it.
 - **Only affected tests.** Tests the change cannot reach do not run. When only `.cs` files changed, the tests run without a rebuild.
 - **Short output.** A check prints at most 20 errors, and a test run prints at most 10 failures, plus one summary line. When the edit is clean, Fuse prints nothing at all.
-- **Made for subagents.** All agents in a repository share one Fuse process, so Fuse loads the solution once. Builds through Fuse take turns, so parallel builds do not fail on locked files. Each git worktree gets its own process.
-- **Made for judges and workers.** External writers register their paths as sessions. The judge checks one slice with `fuse check <folder>`. The `--json` errors split into briefs.
+- **Made for subagents.** All agents and git worktrees in a repository share one engine, with a separate working-tree view for each. Builds through Fuse take turns, so parallel builds do not fail on locked files.
+- **Made for judges and workers.** A judge uses `fuse graph --json` and `fuse impact` to split work, `fuse session guard` to freeze declaration changes under contract paths, and `fuse watch --all --json` to follow every session. Workers can register their paths as sessions and finish with `fuse gate`; the judge evaluates patches or worktrees in memory with `fuse judge --combine` or `--race`.
 - **Safe.** If Fuse cannot answer, the hook stays silent and the agent carries on. Fuse never edits your code, runs locally and has no telemetry.
 - **No configuration.** `fuse init` is the only setup.
 
 ## What it costs
 
-- **Memory.** Fuse keeps the loaded projects in memory until it has been idle for 30 minutes. That costs 319 MB to 512 MB once idle in the [benchmarks](https://fuse.codes/docs/benchmarks), up to 1,091 MB while it checks, and more on a machine with more memory. Each git worktree uses its own.
-- **A slow first check across projects.** The first edit that affects other projects has to load them. On Jellyfin (40 projects) that took up to 68.9 s. The median signature edit took 58 ms.
-- **Many agents, one engine.** Checks and test plans from several sessions run at the same time on pinned generations, each answered about its own edits. A worker without hooks sets `FUSE_SESSION`; a judge can `fuse watch` a worker and route errors by `causedBy`.
+- **Memory.** Fuse keeps the loaded projects in memory until it has been idle for 30 minutes. That costs 338 MB to 698 MB once idle in the [benchmarks](https://fuse.codes/docs/benchmarks), up to 1,074 MB while it checks, and more on a machine with more memory. The repository's git worktrees share one engine.
+- **Memory pressure.** Fuse sheds transient caches as memory runs short. `fuse slim` asks a running engine to release memory without starting one.
+- **A slow first check across projects.** The first edit that affects other projects has to load them. On Jellyfin (40 projects), that took up to 84.8 s. The median signature edit took 133 ms.
+- **Many agents, one engine.** Checks and test plans from several sessions run at the same time on pinned generations, each answered about its own edits. A worker without hooks sets `FUSE_SESSION`; a judge can `fuse watch --all --json` every session and route errors by `causedBy`.
 - **Not a full build.** Fuse checks C# only and picks tests by reading the code, so a few cases still need `fuse build` or `fuse test --all`. [Limits](https://fuse.codes/docs/limits) lists them.
 
 ## Supported harnesses
@@ -81,7 +82,7 @@ fuse init
 ```text
 wrote .claude/settings.json
 wrote .gitignore
-fuse: hooks registered by Fuse 6.0.0; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors
+fuse: hooks registered by Fuse 7.0.0; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors
 ```
 
 That is the whole setup. The agent now hears from Fuse only when an edit introduced an error.
@@ -102,15 +103,22 @@ fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations chan
 | --- | --- |
 | `fuse init [--instructions]` | Registers Fuse's hooks with the harnesses this repository uses. `--instructions` also adds a Fuse section to `AGENTS.md` |
 | `fuse uninit` | Removes what `fuse init` wrote, keeping every other entry, then stops this repository's engine and deletes its state |
-| `fuse check [paths...]` | Reports the errors your changes introduced since HEAD, in every project. With directories or patterns, it checks one slice |
-| `fuse test [args...]` | Runs the tests affected by your changes |
+| `fuse check [paths...] [--brief]` | Reports the errors your changes introduced since HEAD, in every project. With directories or patterns, it checks one slice. `--brief` attaches compact repair packets |
+| `fuse test [args...] [--clean] [--no-cache] [--max-failures <n>]` | Runs the tests affected by your changes. `--clean` clears cached results and runs fresh processes, `--no-cache` bypasses cached results, and `--max-failures` stops after the named number of failures |
 | `fuse test --all` | Runs every test |
 | `fuse test --failed` | Reruns the tests that failed in the last run |
 | `fuse build [args...] [--changed]` | Runs `dotnet build` and prints its errors. `--changed` builds only the changed projects and their dependents |
+| `fuse gate [--session <name>] [--brief] [--test] [--max-failures <n>] [--json]` | Runs a worker's check, then affected tests when the check is clean and `--test` is set |
+| `fuse judge (--combine \| --race) <patch-or-worktree...> [--json]` | Evaluates candidate patches or worktrees in memory. `--combine` checks them together; `--race` scores each independently and ranks the results |
+| `fuse graph [--json]` | Prints project references, coupling clusters and test ownership |
+| `fuse impact <paths...> [--json]` | Prints the projects, files and test projects the named paths affect |
+| `fuse slim [--json]` | Asks a running engine to release transient caches and compact memory without starting one |
+| `fuse batch` | Processes newline-delimited JSON engine requests and responses over one persistent pipe |
 | `fuse status [--json]` | Shows the engine and the changed files |
 | `fuse session begin <name> [--pid <pid>] --paths <pattern>...` | Registers an external writer as a session for its paths, so a judge's stop leaves the writer's errors to the writer; `--pid` ends it when that process exits |
 | `fuse session begin --from <file>` | Registers every session in a file of name, tab and pattern lines |
-| `fuse watch --session <name>` | Streams that session's newest errors each time the engine checks them |
+| `fuse session guard <name> (--freeze <pattern>... \| --unfreeze)` | Freezes declaration changes under contract path patterns, or removes the guard's frozen patterns |
+| `fuse watch (--session <name> \| --all) [--json]` | Streams check answers and guard violations for one session or every session |
 | `fuse session end <name>` | Ends the registration |
 | `fuse stop [--all]` | Stops this repository's engine, or every engine. The next command starts a new one |
 | `fuse mcp` | Serves `fuse_check`, `fuse_test` and `fuse_build` over stdio to an MCP host |

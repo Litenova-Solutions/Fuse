@@ -1,3 +1,4 @@
+using System.Security;
 using System.Text;
 using System.Text.RegularExpressions;
 using Fuse.Dotnet;
@@ -24,10 +25,16 @@ internal static partial class BuildOperation
     /// <summary>A build that takes at least this long says where its time went.</summary>
     internal const double TimesFromSeconds = 10;
 
+    /// <summary>OS memory load fraction past which a build or test run sheds memory first and shuts down idle MSBuild servers after.</summary>
+    private const double HighMemoryLoadRatio = 0.80;
+
     private static readonly string[] QuietArguments = ["-nologo", "-tl:off", "-v:q", "-clp:ErrorsOnly;NoSummary"];
 
     /// <summary>The line printed above the answer when a source file moved during the build and it ran again.</summary>
     internal const string RanAgainLine = "fuse: a source file moved while the build ran, so it ran again";
+
+    /// <summary>The line printed above the answer when a build output was missing and the build ran again without incremental state.</summary>
+    internal const string RebuiltLine = "fuse: a build output was missing, so the build ran again without incremental state";
 
     /// <summary>At most this many lock files the refresh line names; the rest are only counted.</summary>
     internal const int MaxLockFilesShown = 10;
@@ -37,40 +44,51 @@ internal static partial class BuildOperation
 
     /// <param name="options">How many errors to print, in what form, and whether the warnings are listed.</param>
     /// <param name="includeTreeStamp">True to stamp the summary and the results file with the tree the build ended on, for <c>fuse build</c>; the MCP answer and the test build stay unstamped.</param>
-    public static async Task<OperationResult> RunAsync(RepoRoot? root, string workingDirectory, IReadOnlyList<string> arguments, BuildOptions options, CancellationToken cancellationToken, bool includeTreeStamp = false)
+    /// <param name="parallelArtifacts">True to isolate MSBuild output under the state directory via <c>--artifacts-path</c>.</param>
+    public static async Task<OperationResult> RunAsync(RepoRoot? root, string workingDirectory, IReadOnlyList<string> arguments, BuildOptions options, CancellationToken cancellationToken, bool includeTreeStamp = false, bool parallelArtifacts = false)
     {
+        var (filteredArgs, hasParallelFlag) = StripParallelArtifactsFlag(arguments);
+        parallelArtifacts |= hasParallelFlag;
+
         // The arguments are the user's, unchanged, so an implicit restore still happens: an agent that has just added a
         // package reference and then builds needs it. Fuse adds the lock and leaves the command as it is.
         if (root is null)
-            return await BuildAsync(workingDirectory, workingDirectory, Path.GetTempPath(), arguments, options, null, false, cancellationToken).ConfigureAwait(false);
+            return await BuildAsync(workingDirectory, workingDirectory, Path.GetTempPath(), filteredArgs, options, null, includeTreeStamp: false, cancellationToken).ConfigureAwait(false);
 
-        using var buildLock = BuildLock.AcquireForClient(root);
-        return await BuildAsync(workingDirectory, root.Path, root.StateDirectory, arguments, options, root, includeTreeStamp, cancellationToken).ConfigureAwait(false);
+        using var buildLock = parallelArtifacts
+            ? BuildLock.AcquireForProjectsForClient(root, [], parallelArtifacts: true)
+            : BuildLock.AcquireForClient(root);
+        var effectiveArgs = WithArtifactsPath(filteredArgs, buildLock.ArtifactsPath);
+        return await BuildAsync(workingDirectory, root.Path, root.StateDirectory, effectiveArgs, options, root, includeTreeStamp, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
-    ///     Builds the projects owning the files changed since HEAD and their dependents, one <c>dotnet build</c> per
-    ///     highest project under one lock, each with <paramref name="arguments"/>. When nothing changed it builds
-    ///     nothing; when the selection cannot be trusted it builds the whole solution instead.
+    ///     Builds the projects owning the files changed since HEAD and their dependents, using one ephemeral MSBuild
+    ///     traversal build when multiple projects are affected, under a DAG-aware closure lock. When nothing changed it
+    ///     builds nothing; when the selection cannot be trusted it builds the whole solution instead.
     /// </summary>
     /// <param name="root">The repository to build the changed projects of.</param>
     /// <param name="workingDirectory">Where <c>dotnet build</c> runs.</param>
     /// <param name="arguments">The arguments for each <c>dotnet build</c>, unchanged.</param>
     /// <param name="options">How many errors to print, in what form, and whether the warnings are listed.</param>
     /// <param name="cancellationToken">Cancels the plan and the builds.</param>
-    public static async Task<OperationResult> RunChangedAsync(RepoRoot root, string workingDirectory, IReadOnlyList<string> arguments, BuildOptions options, CancellationToken cancellationToken)
+    /// <param name="parallelArtifacts">True to isolate MSBuild output under the state directory via <c>--artifacts-path</c>.</param>
+    public static async Task<OperationResult> RunChangedAsync(RepoRoot root, string workingDirectory, IReadOnlyList<string> arguments, BuildOptions options, CancellationToken cancellationToken, bool parallelArtifacts = false)
     {
+        var (filteredArgs, hasParallelFlag) = StripParallelArtifactsFlag(arguments);
+        parallelArtifacts |= hasParallelFlag;
+
         var response = await EngineClient.SendAsync(root, new EngineRequest.PlanChangedBuild(), TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
         if (response is not EngineResponse.ChangedBuildAnswered { Plan: not null } answered)
             return OperationResult.Unanswered(response, "changed build plan");
         var plan = answered.Plan;
         if (plan.FallbackReason.Length > 0)
-            return await FallbackAsync(root, workingDirectory, arguments, options, plan.FallbackReason, cancellationToken).ConfigureAwait(false);
+            return await FallbackAsync(root, workingDirectory, filteredArgs, options, plan.FallbackReason, cancellationToken, parallelArtifacts).ConfigureAwait(false);
         if (plan.BuildProjects.Length == 0)
         {
             if (plan.ChangedFileCount == 0)
                 return new OperationResult(Outcome.Clean, $"fuse: no C# changes since HEAD; nothing to build (tree {plan.TreeHash})");
-            return await FallbackAsync(root, workingDirectory, arguments, options, $"{plan.ChangedFileCount} changed file(s) in no project", cancellationToken).ConfigureAwait(false);
+            return await FallbackAsync(root, workingDirectory, filteredArgs, options, $"{plan.ChangedFileCount} changed file(s) in no project", cancellationToken, parallelArtifacts).ConfigureAwait(false);
         }
 
         var names = plan.BuildProjects.Select(project => Path.GetFileNameWithoutExtension(project) ?? project).ToArray();
@@ -80,30 +98,62 @@ internal static partial class BuildOperation
             text.Append($"; changes in {string.Join(", ", plan.ChangedInProjects)}");
         if (plan.UnownedFileCount > 0)
             text.Append($"; {plan.UnownedFileCount} changed file(s) in no project");
-        using var buildLock = BuildLock.AcquireForClient(root);
+        using var buildLock = BuildLock.AcquireForProjectsForClient(root, plan.BuildProjects, parallelArtifacts);
+        var effectiveArgs = WithArtifactsPath(filteredArgs, buildLock.ArtifactsPath);
         var stamp = await BuildResultsFile.StampForReuseAsync(root, cancellationToken).ConfigureAwait(false);
-        if (stamp is not null && ReusedBuild(root, stamp.Value, BuildResultsFile.ChangedScope, plan.BuildProjects, arguments, workingDirectory, options) is { } reused)
+        if (stamp is not null && buildLock.ArtifactsPath is null && ReusedBuild(root, stamp.Value, BuildResultsFile.ChangedScope, plan.BuildProjects, effectiveArgs, workingDirectory, options) is { } reused)
             return reused;
-        var runs = new List<(ProcessResult Result, string Log, double Seconds, bool RanAgain)>(plan.BuildProjects.Length);
+
+        await YieldMemoryIfTightAsync(root, cancellationToken).ConfigureAwait(false);
+
+        if (plan.BuildProjects.Length > 1)
+        {
+            var (result, log, seconds, rerunLine) = await RunTraversalBuildAsync(
+                root, plan.BuildProjects, [.. effectiveArgs, .. QuietArguments], workingDirectory, root.StateDirectory, continueOnError: false, cancellationToken).ConfigureAwait(false);
+
+            var treeStamp = await StampAsync(root, cancellationToken).ConfigureAwait(false);
+            var diagnostics = BuildOutputParser.Diagnostics(result.Output, root.Path);
+            // A build server holding a locked file is shut down so the next build can copy; any other outcome leaves it running.
+            if (result.ExitCode != 0 && diagnostics.Any(NamesBuildServerLock))
+                await SdkCapabilities.ShutdownMsBuildServerAsync(workingDirectory, cancellationToken).ConfigureAwait(false);
+            var warnings = log.Length == 0 ? [] : BuildLog.WarningsList(log, root.Path);
+            var resultsPath = BuildResultsFile.WriteBuild(root, diagnostics, warnings, options.Json, treeStamp);
+            var label = $"build ({plan.BuildProjects.Length} projects)";
+            var runRecord = BuildRun(label, result, log, seconds, diagnostics, warnings, restoreTarget: null);
+            if (stamp is not null && buildLock.ArtifactsPath is null && ShouldRecord(diagnostics))
+                BuildResultsFile.WriteReuse(root, stamp.Value, BuildResultsFile.ChangedScope, plan.BuildProjects, effectiveArgs, RelativeWorkingDirectory(root, workingDirectory), DateTime.UtcNow, [runRecord], treeStamp, diagnostics.Count);
+
+            text.Append('\n');
+            if (rerunLine is not null)
+                text.Append(rerunLine).Append('\n');
+            var rendered = Render(result, root.Path, seconds, label, options, resultsPath, log, treeStamp, diagnostics.Count);
+            text.Append(rendered.Text);
+            return new OperationResult(rendered.Outcome, text.ToString());
+        }
+
+        var singleRuns = new List<(ProcessResult Result, string Log, double Seconds, string? RerunLine)>(plan.BuildProjects.Length);
         foreach (var project in plan.BuildProjects)
-            runs.Add(await RunOneAsync(["build", project, .. arguments, .. QuietArguments], workingDirectory, root.StateDirectory, cancellationToken).ConfigureAwait(false));
+            singleRuns.Add(await RunOneAsync(["build", project, .. effectiveArgs, .. QuietArguments], workingDirectory, root.StateDirectory, cancellationToken).ConfigureAwait(false));
 
         // The results file holds every project at once; each summary names it with the combined count.
-        var treeStamp = await StampAsync(root, cancellationToken).ConfigureAwait(false);
-        var parsed = runs.Select((run, i) => BuildRun($"build ({names[i]})", run.Result, run.Log, run.Seconds, BuildOutputParser.Diagnostics(run.Result.Output, root.Path), run.Log.Length == 0 ? [] : BuildLog.WarningsList(run.Log, root.Path), RelativeProject(plan.BuildProjects[i], root.Path))).ToList();
+        var singleStamp = await StampAsync(root, cancellationToken).ConfigureAwait(false);
+        var parsed = singleRuns.Select((run, i) => BuildRun($"build ({names[i]})", run.Result, run.Log, run.Seconds, BuildOutputParser.Diagnostics(run.Result.Output, root.Path), run.Log.Length == 0 ? [] : BuildLog.WarningsList(run.Log, root.Path), RelativeProject(plan.BuildProjects[i], root.Path))).ToList();
+        // A build server holding a locked file is shut down so the next build can copy; any other outcome leaves it running.
+        if (parsed.Any(run => run.ExitCode != 0 && run.Errors.Any(NamesBuildServerLock)))
+            await SdkCapabilities.ShutdownMsBuildServerAsync(workingDirectory, cancellationToken).ConfigureAwait(false);
         var errors = parsed.SelectMany(run => run.Errors).ToList();
-        var warnings = parsed.SelectMany(run => run.Warnings).ToList();
+        var allWarnings = parsed.SelectMany(run => run.Warnings).ToList();
 
-        var resultsPath = BuildResultsFile.WriteBuild(root, errors, warnings, options.Json, treeStamp);
-        if (stamp is not null && ShouldRecord(errors))
-            BuildResultsFile.WriteReuse(root, stamp.Value, BuildResultsFile.ChangedScope, plan.BuildProjects, arguments, RelativeWorkingDirectory(root, workingDirectory), DateTime.UtcNow, parsed, treeStamp, errors.Count);
+        var singleResultsPath = BuildResultsFile.WriteBuild(root, errors, allWarnings, options.Json, singleStamp);
+        if (stamp is not null && buildLock.ArtifactsPath is null && ShouldRecord(errors))
+            BuildResultsFile.WriteReuse(root, stamp.Value, BuildResultsFile.ChangedScope, plan.BuildProjects, effectiveArgs, RelativeWorkingDirectory(root, workingDirectory), DateTime.UtcNow, parsed, singleStamp, errors.Count);
         var failed = 0;
-        foreach (var ((result, log, seconds, ranAgain), name, project) in runs.Zip(names, plan.BuildProjects))
+        foreach (var ((result, log, seconds, rerunLine), name, project) in singleRuns.Zip(names, plan.BuildProjects))
         {
             text.Append('\n');
-            if (ranAgain)
-                text.Append(RanAgainLine).Append('\n');
-            var rendered = Render(result, root.Path, seconds, $"build ({name})", options, resultsPath, log, treeStamp, errors.Count, restoreTarget: RelativeProject(project, root.Path));
+            if (rerunLine is not null)
+                text.Append(rerunLine).Append('\n');
+            var rendered = Render(result, root.Path, seconds, $"build ({name})", options, singleResultsPath, log, singleStamp, errors.Count, restoreTarget: RelativeProject(project, root.Path));
             if (rendered.Outcome == Outcome.ProblemsFound)
                 failed++;
             text.Append(rendered.Text);
@@ -114,10 +164,152 @@ internal static partial class BuildOperation
         return new OperationResult(failed > 0 ? Outcome.ProblemsFound : Outcome.Clean, text.ToString());
     }
 
-    /// <summary>Builds the whole solution because <paramref name="reason"/> says the changed projects cannot be selected, saying so first.</summary>
-    private static async Task<OperationResult> FallbackAsync(RepoRoot root, string workingDirectory, IReadOnlyList<string> arguments, BuildOptions options, string reason, CancellationToken cancellationToken)
+    /// <summary>
+    ///     Builds multiple <paramref name="projects"/> in a single MSBuild invocation via an ephemeral traversal project
+    ///     written under <paramref name="logDirectory"/> (never inside the repository).
+    /// </summary>
+    internal static async Task<(ProcessResult Result, string Log, double Seconds, string? RerunLine)> RunTraversalBuildAsync(
+        RepoRoot root,
+        IReadOnlyList<string> projects,
+        IReadOnlyList<string> buildArguments,
+        string workingDirectory,
+        string logDirectory,
+        bool continueOnError,
+        CancellationToken cancellationToken)
     {
-        var whole = await RunAsync(root, workingDirectory, arguments, options, cancellationToken, includeTreeStamp: true).ConfigureAwait(false);
+        Directory.CreateDirectory(logDirectory);
+        var traversalPath = Path.Combine(logDirectory, $"traversal-{Guid.NewGuid():N}.proj");
+        try
+        {
+            await File.WriteAllTextAsync(traversalPath, BuildTraversalProjectXml(projects, continueOnError), cancellationToken).ConfigureAwait(false);
+            return await RunOneAsync(["build", traversalPath, .. buildArguments], workingDirectory, logDirectory, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            try
+            {
+                File.Delete(traversalPath);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+            }
+        }
+    }
+
+    /// <summary>Creates an SDK-free inline MSBuild traversal project referencing <paramref name="projects"/>.</summary>
+    internal static string BuildTraversalProjectXml(IReadOnlyList<string> projects, bool continueOnError = false)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("<Project>");
+        sb.AppendLine("  <ItemGroup>");
+        foreach (var project in projects)
+            sb.Append("    <ProjectReference Include=\"").Append(SecurityElement.Escape(project)).AppendLine("\" />");
+        sb.AppendLine("  </ItemGroup>");
+        var cont = continueOnError ? " ContinueOnError=\"ErrorAndContinue\"" : "";
+        sb.AppendLine("  <Target Name=\"Build\">");
+        sb.Append("    <MSBuild Projects=\"@(ProjectReference)\" BuildInParallel=\"true\" Targets=\"Build\"").Append(cont).AppendLine(" />");
+        sb.AppendLine("  </Target>");
+        sb.AppendLine("  <Target Name=\"Rebuild\">");
+        sb.Append("    <MSBuild Projects=\"@(ProjectReference)\" BuildInParallel=\"true\" Targets=\"Rebuild\"").Append(cont).AppendLine(" />");
+        sb.AppendLine("  </Target>");
+        sb.AppendLine("  <Target Name=\"Clean\">");
+        sb.Append("    <MSBuild Projects=\"@(ProjectReference)\" BuildInParallel=\"true\" Targets=\"Clean\"").Append(cont).AppendLine(" />");
+        sb.AppendLine("  </Target>");
+        sb.AppendLine("  <Target Name=\"Restore\">");
+        sb.Append("    <MSBuild Projects=\"@(ProjectReference)\" BuildInParallel=\"true\" Targets=\"Restore\"").Append(cont).AppendLine(" />");
+        sb.AppendLine("  </Target>");
+        sb.AppendLine("</Project>");
+        return sb.ToString();
+    }
+
+    /// <summary>True when the active .NET SDK in <paramref name="workingDirectory"/> is major version 11 or higher.</summary>
+    internal static async Task<bool> IsNet11OrLaterAsync(string workingDirectory, CancellationToken cancellationToken)
+    {
+        var capabilities = await SdkCapabilities.DetectAsync(workingDirectory, cancellationToken).ConfigureAwait(false);
+        return capabilities.SupportsMultithreadedBuild;
+    }
+
+    /// <summary>True when OS memory load is past <see cref="HighMemoryLoadRatio"/>; unknown memory counts as roomy.</summary>
+    internal static bool MemoryTight()
+    {
+        var info = GC.GetGCMemoryInfo();
+        return MemoryTight(info.MemoryLoadBytes, info.TotalAvailableMemoryBytes);
+    }
+
+    /// <summary>True when <paramref name="memoryLoadBytes"/> of <paramref name="totalAvailableMemoryBytes"/> is past <see cref="HighMemoryLoadRatio"/>.</summary>
+    internal static bool MemoryTight(long memoryLoadBytes, long totalAvailableMemoryBytes) =>
+        totalAvailableMemoryBytes > 0 && memoryLoadBytes >= (long)(totalAvailableMemoryBytes * HighMemoryLoadRatio);
+
+    /// <summary>
+    ///     Asks the engine to yield memory when it is tight, so a build or test run has room. Skipped otherwise: a
+    ///     yield drops views the engine reloads while the build runs, which costs more than it frees.
+    /// </summary>
+    internal static async Task YieldMemoryIfTightAsync(RepoRoot root, CancellationToken cancellationToken)
+    {
+        if (!MemoryTight())
+            return;
+        await EngineClient.TryYieldMemoryAsync(root, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Shuts down idle MSBuild build servers when OS memory load exceeds <see cref="HighMemoryLoadRatio"/>.</summary>
+    internal static async Task ShutdownBuildServerIfMemoryTightAsync(string workingDirectory)
+    {
+        if (!MemoryTight())
+            return;
+        try
+        {
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            await ProcessRunner.RunAsync("dotnet", ["build-server", "shutdown", "--msbuild"], workingDirectory, timeout.Token).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is OperationCanceledException or IOException or InvalidOperationException)
+        {
+        }
+    }
+
+    private static (IReadOnlyList<string> Filtered, bool ParallelArtifacts) StripParallelArtifactsFlag(IReadOnlyList<string> arguments)
+    {
+        var parallel = false;
+        var filtered = new List<string>(arguments.Count);
+        foreach (var arg in arguments)
+        {
+            if (arg == "--parallel-artifacts")
+                parallel = true;
+            else
+                filtered.Add(arg);
+        }
+
+        return (filtered, parallel);
+    }
+
+    private static IReadOnlyList<string> WithArtifactsPath(IReadOnlyList<string> arguments, string? artifactsPath)
+    {
+        if (artifactsPath is null || arguments.Any(a => a == "--artifacts-path" || a.StartsWith("--artifacts-path=", StringComparison.Ordinal)))
+            return arguments;
+        return [.. arguments, "--artifacts-path", artifactsPath];
+    }
+
+    /// <summary>
+    ///     True when <paramref name="diagnostic"/> is a file lock error that names a build server process. It mirrors
+    ///     the names <see cref="LockLine"/> decides by; its holder reports "name (pid n)".
+    /// </summary>
+    private static bool NamesBuildServerLock(BuildDiagnostic diagnostic)
+    {
+        var holder = LockLine.Holder(diagnostic);
+        if (holder is null)
+            return false;
+        var pid = holder.LastIndexOf(" (pid ", StringComparison.Ordinal);
+        var name = pid < 0 ? holder : holder[..pid];
+        var bare = name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? name[..^4] : name;
+        return bare.Equals("dotnet", StringComparison.OrdinalIgnoreCase)
+            || bare.Equals("msbuild", StringComparison.OrdinalIgnoreCase)
+            || bare.Equals("vbcscompiler", StringComparison.OrdinalIgnoreCase)
+            || bare.Equals("testhost", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Builds the whole solution because <paramref name="reason"/> says the changed projects cannot be selected, saying so first.</summary>
+    private static async Task<OperationResult> FallbackAsync(RepoRoot root, string workingDirectory, IReadOnlyList<string> arguments, BuildOptions options, string reason, CancellationToken cancellationToken, bool parallelArtifacts = false)
+    {
+        var whole = await RunAsync(root, workingDirectory, arguments, options, cancellationToken, includeTreeStamp: true, parallelArtifacts: parallelArtifacts).ConfigureAwait(false);
         return whole with { Text = $"fuse: {reason}; building the whole solution instead\n" + whole.Text };
     }
 
@@ -138,18 +330,23 @@ internal static partial class BuildOperation
     private static async Task<OperationResult> BuildAsync(string workingDirectory, string root, string logDirectory, IReadOnlyList<string> arguments, BuildOptions options, RepoRoot? resultsRoot, bool includeTreeStamp, CancellationToken cancellationToken)
     {
         var stamp = resultsRoot is null ? null : await BuildResultsFile.StampForReuseAsync(resultsRoot, cancellationToken).ConfigureAwait(false);
-        if (resultsRoot is not null && stamp is not null && ReusedBuild(resultsRoot, stamp.Value, BuildResultsFile.WholeScope, [], arguments, workingDirectory, options) is { } reused)
+        if (resultsRoot is not null && stamp is not null && !arguments.Contains("--artifacts-path") && ReusedBuild(resultsRoot, stamp.Value, BuildResultsFile.WholeScope, [], arguments, workingDirectory, options) is { } reused)
             return reused;
-        var (result, log, seconds, ranAgain) = await RunOneAsync(["build", .. arguments, .. QuietArguments], workingDirectory, logDirectory, cancellationToken).ConfigureAwait(false);
+        if (resultsRoot is not null)
+            await YieldMemoryIfTightAsync(resultsRoot, cancellationToken).ConfigureAwait(false);
+        var (result, log, seconds, rerunLine) = await RunOneAsync(["build", .. arguments, .. QuietArguments], workingDirectory, logDirectory, cancellationToken).ConfigureAwait(false);
         var treeStamp = includeTreeStamp && resultsRoot is not null ? await StampAsync(resultsRoot, cancellationToken).ConfigureAwait(false) : null;
         var diagnostics = BuildOutputParser.Diagnostics(result.Output, root);
+        // A build server holding a locked file is shut down so the next build can copy; any other outcome leaves it running.
+        if (result.ExitCode != 0 && diagnostics.Any(NamesBuildServerLock))
+            await SdkCapabilities.ShutdownMsBuildServerAsync(workingDirectory, cancellationToken).ConfigureAwait(false);
         var warnings = log.Length == 0 ? [] : BuildLog.WarningsList(log, root);
         var resultsPath = resultsRoot is null ? null : BuildResultsFile.WriteBuild(resultsRoot, diagnostics, warnings, options.Json, treeStamp);
         var restoreTarget = resultsRoot is null ? null : RestoreTargetHint(arguments, workingDirectory, root);
-        if (stamp is not null && resultsRoot is not null && ShouldRecord(diagnostics))
+        if (stamp is not null && resultsRoot is not null && !arguments.Contains("--artifacts-path") && ShouldRecord(diagnostics))
             BuildResultsFile.WriteReuse(resultsRoot, stamp.Value, BuildResultsFile.WholeScope, [], arguments, RelativeWorkingDirectory(resultsRoot, workingDirectory), DateTime.UtcNow, [BuildRun("build", result, log, seconds, diagnostics, warnings, restoreTarget)], treeStamp, null);
         var rendered = Render(result, root, seconds, "build", options, resultsPath, log, treeStamp, restoreTarget: restoreTarget);
-        return ranAgain ? rendered with { Text = RanAgainLine + "\n" + rendered.Text } : rendered;
+        return rerunLine is not null ? rendered with { Text = rerunLine + "\n" + rendered.Text } : rendered;
     }
 
     /// <summary>
@@ -314,29 +511,38 @@ internal static partial class BuildOperation
         return locks;
     }
 
-    /// <summary>Runs one <c>dotnet</c> build with the file log, running again when a source file moved mid-build.</summary>
-    /// <returns>The process, the log's text, the seconds it took, and whether it ran again.</returns>
-    private static async Task<(ProcessResult Result, string Log, double Seconds, bool RanAgain)> RunOneAsync(string[] executableArguments, string workingDirectory, string logDirectory, CancellationToken cancellationToken)
+    /// <summary>Runs one <c>dotnet</c> build with the file log, running again when a source file moved mid-build or a build output is missing.</summary>
+    /// <returns>The process, the log's text, the seconds it took, and the line printed above the answer when it ran again, or null.</returns>
+    private static async Task<(ProcessResult Result, string Log, double Seconds, string? RerunLine)> RunOneAsync(string[] executableArguments, string workingDirectory, string logDirectory, CancellationToken cancellationToken)
     {
         var started = Environment.TickCount64;
-        var (result, log) = await RunLoggedAsync(executableArguments, workingDirectory, logDirectory, cancellationToken).ConfigureAwait(false);
+        var (result, log, _) = await RunLoggedAsync(executableArguments, workingDirectory, logDirectory, cancellationToken).ConfigureAwait(false);
         // A source file that another agent moved while MSBuild compiled is missing from the file list it evaluated.
         // Evaluated again, the list is right, so the build runs once more.
         if (result.ExitCode != 0 && MovedSources(result.Output).Any(path => !File.Exists(path)))
         {
-            (result, log) = await RunLoggedAsync(executableArguments, workingDirectory, logDirectory, cancellationToken).ConfigureAwait(false);
-            return (result, log, (Environment.TickCount64 - started) / 1000.0, true);
+            (result, log, _) = await RunLoggedAsync(executableArguments, workingDirectory, logDirectory, cancellationToken).ConfigureAwait(false);
+            return (result, log, (Environment.TickCount64 - started) / 1000.0, RanAgainLine);
         }
 
-        return (result, log, (Environment.TickCount64 - started) / 1000.0, false);
+        // A build output is missing although MSBuild judged the project that writes it up to date, so it never
+        // rewrote it. Without incremental state the project builds again and the output is there.
+        if (result.ExitCode != 0 && !executableArguments.Contains("--no-incremental") && MissingOutputs(result.Output).Any(path => !File.Exists(path)))
+        {
+            (result, log, _) = await RunLoggedAsync([.. executableArguments, "--no-incremental"], workingDirectory, logDirectory, cancellationToken).ConfigureAwait(false);
+            return (result, log, (Environment.TickCount64 - started) / 1000.0, RebuiltLine);
+        }
+
+        return (result, log, (Environment.TickCount64 - started) / 1000.0, null);
     }
 
     /// <summary>
-    ///     Runs <c>dotnet</c> with <paramref name="arguments"/> and the file log, and returns the process and the log's text,
-    ///     which is empty when MSBuild wrote none, as for a command line it refused.
+    ///     Runs <c>dotnet</c> with <paramref name="arguments"/> and the file log, and returns the process, the log's text
+    ///     (empty when MSBuild wrote none, as for a command line it refused), and the failures seen before an early stop.
     /// </summary>
     /// <param name="logDirectory">Where the log is written; it is deleted once read.</param>
-    internal static async Task<(ProcessResult Result, string Log)> RunLoggedAsync(string[] arguments, string workingDirectory, string logDirectory, CancellationToken cancellationToken)
+    /// <param name="maxFailures">Maximum test failures before stopping early; 0 runs to the end. A build passes 0.</param>
+    internal static async Task<(ProcessResult Result, string Log, List<string> EarlyFailures)> RunLoggedAsync(string[] arguments, string workingDirectory, string logDirectory, CancellationToken cancellationToken, int maxFailures = 0)
     {
         var path = Path.Combine(logDirectory, $"build-{Guid.NewGuid():N}.log");
         try
@@ -348,11 +554,12 @@ internal static partial class BuildOperation
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
                 // Without a place for the log, the build runs as it did before the log existed.
-                return (await ProcessRunner.RunAsync("dotnet", arguments, workingDirectory, cancellationToken).ConfigureAwait(false), "");
+                var (unlogged, unloggedFailures) = await TestOperation.RunWithEarlyStopAsync("dotnet", arguments, workingDirectory, maxFailures, cancellationToken).ConfigureAwait(false);
+                return (unlogged, "", unloggedFailures);
             }
 
-            var result = await ProcessRunner.RunAsync("dotnet", [.. arguments, .. BuildLog.Arguments(path)], workingDirectory, cancellationToken).ConfigureAwait(false);
-            return (result, ReadLog(path));
+            var (result, failures) = await TestOperation.RunWithEarlyStopAsync("dotnet", [.. arguments, .. BuildLog.Arguments(path)], workingDirectory, maxFailures, cancellationToken).ConfigureAwait(false);
+            return (result, ReadLog(path), failures);
         }
         finally
         {
@@ -381,6 +588,17 @@ internal static partial class BuildOperation
     /// <summary>The source files CS2001 says could not be found, as absolute paths.</summary>
     internal static IEnumerable<string> MovedSources(string output) =>
         MissingSource().Matches(output).Select(m => m.Groups["path"].Value).Where(Path.IsPathRooted);
+
+    /// <summary>The build outputs CS0006 says are missing, as absolute paths under an <c>obj</c> or <c>bin</c> folder.</summary>
+    internal static IEnumerable<string> MissingOutputs(string output) =>
+        MissingMetadata().Matches(output).Select(m => m.Groups["path"].Value).Where(path => Path.IsPathRooted(path) && IsUnderBuildOutput(path));
+
+    /// <summary>True when <paramref name="path"/> sits under an <c>obj</c> or <c>bin</c> folder, which holds what a build writes.</summary>
+    private static bool IsUnderBuildOutput(string path) =>
+        path.Contains("/obj/", StringComparison.OrdinalIgnoreCase)
+        || path.Contains("/bin/", StringComparison.OrdinalIgnoreCase)
+        || path.Contains(@"\obj\", StringComparison.OrdinalIgnoreCase)
+        || path.Contains(@"\bin\", StringComparison.OrdinalIgnoreCase);
 
     /// <param name="log">The build's file log (<see cref="BuildLog"/>), or empty when it has none.</param>
     internal static OperationResult Render(ProcessResult result, string root, double seconds, string operation, string log = "") =>
@@ -511,4 +729,7 @@ internal static partial class BuildOperation
 
     [GeneratedRegex(@"error CS2001: Source file '(?<path>[^']+)' could not be found")]
     private static partial Regex MissingSource();
+
+    [GeneratedRegex(@"error CS0006: Metadata file '(?<path>[^']+)' could not be found")]
+    private static partial Regex MissingMetadata();
 }

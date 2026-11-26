@@ -21,9 +21,9 @@ public class ChangedBuildProcessTests
             var first = changed.Stdout.Split('\n')[0];
             Assert.StartsWith("fuse: building 2 project(s) for 1 changed file(s) (tree ", first, StringComparison.Ordinal);
             Assert.Contains(": App.Tests, Lib.Tests; changes in Lib", first, StringComparison.Ordinal);
-            Assert.Contains("fuse: build (App.Tests) succeeded in ", changed.Stdout, StringComparison.Ordinal);
-            Assert.Contains("fuse: build (Lib.Tests) succeeded in ", changed.Stdout, StringComparison.Ordinal);
-            Assert.Equal("fuse: 0 of 2 project(s) failed", changed.Stdout.Split('\n')[^1]);
+            // Several projects build in one traversal run, which answers with one summary for all of them.
+            Assert.StartsWith("fuse: build (2 projects) succeeded in ", changed.Stdout.Split('\n')[^1], StringComparison.Ordinal);
+            Assert.DoesNotContain("project(s) failed", changed.Stdout, StringComparison.Ordinal);
             Assert.DoesNotContain("build (Multi)", changed.Stdout, StringComparison.Ordinal);
             Assert.DoesNotContain("build (Strict)", changed.Stdout, StringComparison.Ordinal);
             Assert.Contains("; tree ", changed.Stdout, StringComparison.Ordinal);

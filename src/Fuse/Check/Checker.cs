@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using Fuse.Check.Model;
 using Fuse.Failures;
@@ -65,6 +66,7 @@ internal sealed class Checker
     private readonly SessionEdits _sessions;
     private readonly SessionAttribution _attribution;
     private readonly GeneratedSource _generated;
+    private readonly SpanChecker _spanChecker;
     private readonly KeptCheck _kept = new();
 
     /// <summary>Drops every kept answer, for the memory budget's shed order; a later check binds again.</summary>
@@ -82,6 +84,7 @@ internal sealed class Checker
         _sessions = sessions;
         _attribution = new SessionAttribution(workspace, _introduced, sessions);
         _generated = new GeneratedSource(workspace.Root);
+        _spanChecker = new SpanChecker(workspace.Root, () => workspace.ConfigurationGeneration, workspace.Log);
     }
 
     /// <param name="scope">The files to check, or every change since HEAD.</param>
@@ -106,13 +109,24 @@ internal sealed class Checker
     /// <param name="phases">Collects how long each phase of this check took; <see cref="PhaseTimes.None"/> collects nothing.</param>
     /// <param name="cancellationToken">Cancels the check.</param>
     /// <param name="maxReported">How many errors the answer holds at most; 0 keeps the default cap.</param>
-    public async Task<CheckResult> CheckAsync(CheckScope scope, string? session, AnalyzerRun analyzers, PhaseTimes phases, CancellationToken cancellationToken, int maxReported = 0)
+    public Task<CheckResult> CheckAsync(CheckScope scope, string? session, AnalyzerRun analyzers, PhaseTimes phases, CancellationToken cancellationToken, int maxReported = 0) =>
+        CheckAsync(scope, session, analyzers, phases, CheckOptions.Default, cancellationToken, maxReported);
+
+    /// <param name="scope">The files to check, or every change since HEAD.</param>
+    /// <param name="session">The session the answer is for, or null to answer with every error.</param>
+    /// <param name="analyzers">How analyzers run on the working tree.</param>
+    /// <param name="phases">Collects how long each phase of this check took; <see cref="PhaseTimes.None"/> collects nothing.</param>
+    /// <param name="options">Optional fast-path and repair-packet controls.</param>
+    /// <param name="cancellationToken">Cancels the check.</param>
+    /// <param name="maxReported">How many errors the answer holds at most; 0 keeps the default cap.</param>
+    public async Task<CheckResult> CheckAsync(CheckScope scope, string? session, AnalyzerRun analyzers, PhaseTimes phases, CheckOptions options, CancellationToken cancellationToken, int maxReported = 0)
     {
+        var effectiveOptions = options ?? CheckOptions.Default;
         for (var restart = 0; ; restart++)
         {
             try
             {
-                return await CheckOnceAsync(scope, session, analyzers, phases, maxReported, cancellationToken).ConfigureAwait(false);
+                return await CheckOnceAsync(scope, session, analyzers, phases, effectiveOptions, maxReported, cancellationToken).ConfigureAwait(false);
             }
             catch (CoverageRestartException) when (restart < MaxCoverageRestarts)
             {
@@ -128,13 +142,15 @@ internal sealed class Checker
         }
     }
 
-    private async Task<CheckResult> CheckOnceAsync(CheckScope scope, string? session, AnalyzerRun analyzers, PhaseTimes phases, int maxReported, CancellationToken cancellationToken)
+    private async Task<CheckResult> CheckOnceAsync(CheckScope scope, string? session, AnalyzerRun analyzers, PhaseTimes phases, CheckOptions options, int maxReported, CancellationToken cancellationToken)
     {
         var context = new CheckContext(analyzers, reuse: scope is CheckScope.AllChanges);
         _introduced.BeginContext(context);
         var syncing = phases.Start();
         IReadOnlyList<RepoPath> known = scope is CheckScope.NamedPaths scoped ? ScopeExpansion.RecentlyWritten(_workspace.Root, scoped.Named) : TargetResolver.NamedPaths(scope);
-        var generation = await _workspace.SyncAndPinAsync(known, cancellationToken).ConfigureAwait(false);
+        // A check of every change confirms the changed set against git: a write the watcher has not reported yet is
+        // otherwise in no set, and the check answers over files it never saw.
+        var generation = await _workspace.SyncAndPinAsync(known, cancellationToken, confirmWithDisk: scope is CheckScope.AllChanges).ConfigureAwait(false);
         phases.Add(Phase.Sync, syncing);
         // A file that matches HEAD again is no longer credited to the sessions that wrote it, whichever check sees it first.
         _sessions.Forget(generation.Changed);
@@ -153,15 +169,24 @@ internal sealed class Checker
 
         // The sync above has folded in every edit, so what the pinned generation holds keys the answer a repeat of
         // this check gets. A check of every change answers from a kept answer only when its views hold the tree on
-        // disk; an answer bound from older text is never kept under the current tree's key.
+        // disk; an answer bound from older text is never kept under the current tree's key. Only paths whose view
+        // disagrees with disk are re-patched under the writer lock.
         var fresh = true;
-        if (scope is CheckScope.AllChanges)
+        if (scope is CheckScope.AllChanges && generation.Changed.Count > 0)
         {
-            // The writer reapplies every changed file, so an edit the watcher has not reported yet is in the
-            // views this check binds. Nothing has bound yet, so the check adopts the generation that round
-            // published instead of restarting.
-            generation = await _workspace.PatchAndPinAsync(generation.Changed, cancellationToken).ConfigureAwait(false);
-            fresh = await ViewsMatchDiskAsync(generation, cancellationToken).ConfigureAwait(false);
+            var (stale, unreadable) = await FindStaleChangedAsync(generation, cancellationToken).ConfigureAwait(false);
+            if (stale.Count > 0)
+            {
+                generation = await _workspace.PatchAndPinAsync(stale, cancellationToken).ConfigureAwait(false);
+                var (remainingStale, afterUnreadable) = await FindStaleChangedAsync(generation, stale, cancellationToken).ConfigureAwait(false);
+                unreadable += afterUnreadable + remainingStale.Count;
+            }
+
+            if (unreadable > 0)
+            {
+                fresh = false;
+                _workspace.Log($"check: {unreadable} changed file(s) could not be read from disk, so this answer is not kept");
+            }
         }
         // Past the bound the kept answer costs more hashing than it saves; the check runs as usual.
         var changedFiles = generation.Changed.Count;
@@ -169,7 +194,7 @@ internal sealed class Checker
         if (changedFiles > KeptCheck.MaxChangedFiles)
             _workspace.Log($"check: kept answer skipped, {changedFiles} changed file(s) past {KeptCheck.MaxChangedFiles}");
         else if (fresh)
-            keptKey = KeptKeyFor(scope, session, analyzers, maxReported, generation);
+            keptKey = KeptKeyFor(scope, session, analyzers, options, maxReported, generation);
         if (keptKey is not null && _kept.TryGet(keptKey, out var kept))
         {
             _workspace.Log("check: kept answer");
@@ -181,7 +206,39 @@ internal sealed class Checker
         phases.Add(Phase.Load, loading);
 
         var timer = Stopwatch.StartNew();
-        var errors = await _introduced.InFilesAsync(targets, generation, context, cancellationToken).ConfigureAwait(false);
+        var errors = new List<CompilerError>();
+        List<RepoPath> surfaceCheckTargets;
+        if (options.InteractiveFast)
+        {
+            var spanErrors = new ConcurrentBag<CompilerError>();
+            var fallbackTargets = new ConcurrentBag<RepoPath>();
+            await Parallel.ForEachAsync(
+                targets,
+                new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = cancellationToken },
+                async (target, ct) =>
+                {
+                    if (await _spanChecker.TryCheckFileAsync(target, generation, context, ct).ConfigureAwait(false) is { } fastErrors)
+                    {
+                        foreach (var error in fastErrors)
+                            spanErrors.Add(error);
+                    }
+                    else
+                    {
+                        fallbackTargets.Add(target);
+                    }
+                }).ConfigureAwait(false);
+
+            errors.AddRange(spanErrors);
+            surfaceCheckTargets = [.. fallbackTargets];
+            if (surfaceCheckTargets.Count > 0)
+                errors.AddRange(await _introduced.InFilesAsync(surfaceCheckTargets, generation, context, cancellationToken).ConfigureAwait(false));
+        }
+        else
+        {
+            errors = await _introduced.InFilesAsync(targets, generation, context, cancellationToken).ConfigureAwait(false);
+            surfaceCheckTargets = [.. targets];
+        }
+
         var targetsMs = timer.ElapsedMilliseconds;
         phases.Add(Phase.BindTargets, timer);
         var parts = context.TakeBindParts();
@@ -192,12 +249,7 @@ internal sealed class Checker
 
         // Which targets have declaration changes (syntax only), then what those changes can reach.
         var diffing = phases.Start();
-        var changedTargets = new List<RepoPath>();
-        foreach (var path in targets)
-        {
-            if (await _reach.HasDeclarationChangeAsync(path, generation, cancellationToken).ConfigureAwait(false))
-                changedTargets.Add(path);
-        }
+        var changedTargets = await ChangedTargetsAsync(surfaceCheckTargets, generation, cancellationToken).ConfigureAwait(false);
 
         phases.Add(Phase.SurfaceDiff, diffing);
         var changedIn = OwnersOf(generation.Graph, changedTargets);
@@ -277,6 +329,8 @@ internal sealed class Checker
         var reported = CauseLines.Attach(ordered, reach, root, targets, _sessions.WritersOf(generation.Changed));
         reported = [.. reported.Take(maxReported == 0 ? MaxReported : maxReported)];
         reported = await _generated.AttachAsync(generation.Current, reported, cancellationToken).ConfigureAwait(false);
+        if (options.IncludeRepairBrief && reported.Count > 0)
+            reported = await RepairPacketBuilder.AttachAsync(generation.Current, root, reported, cancellationToken).ConfigureAwait(false);
         var result = new CheckResult(
             reported,
             filesChecked,
@@ -323,10 +377,29 @@ internal sealed class Checker
     }
 
     /// <summary>
+    ///     Indexes the baseline documents of <paramref name="node"/>, one target framework at a time, for the
+    ///     background warm, so a later reference search narrows by token instead of searching fully. A search never
+    ///     waits for it: what it has not indexed yet is searched fully.
+    /// </summary>
+    public async Task WarmSearchIndexAsync(ProjectNode node, CancellationToken cancellationToken)
+    {
+        var generation = _workspace.PinGeneration();
+        foreach (var project in RepoWorkspace.ProjectsFor(generation.Baseline, node).ToList())
+        {
+            if (_workspace.PinGeneration().BaselineGeneration != generation.BaselineGeneration)
+                return;
+            await _reach.WarmIndexAsync(generation.Baseline, [project], cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>Persists the search index when the background warm changed it.</summary>
+    public void SaveSearchIndex() => _reach.SaveIndex();
+
+    /// <summary>
     ///     The key the kept answer for this check is kept under, from the pinned generation, or null when no answer is
     ///     kept for it because a changed file cannot be read. The check runs as usual then.
     /// </summary>
-    private string? KeptKeyFor(CheckScope scope, string? session, AnalyzerRun analyzers, int maxReported, Generation generation)
+    private string? KeptKeyFor(CheckScope scope, string? session, AnalyzerRun analyzers, CheckOptions options, int maxReported, Generation generation)
     {
         var scopeKey = scope switch
         {
@@ -334,6 +407,10 @@ internal sealed class Checker
             CheckScope.NamedPaths paths => "paths:" + string.Join(",", ScopeExpansion.DisplaySpecs(_workspace.Root, paths.Named).Order(StringComparer.Ordinal)),
             _ => "all",
         };
+        if (options.InteractiveFast)
+            scopeKey += "|fast";
+        if (options.IncludeRepairBrief)
+            scopeKey += "|brief";
         // A paths scope keys by its display specs, distinct from all changes and from any file list.
         return KeptCheck.KeyFor(
             scopeKey,
@@ -347,29 +424,51 @@ internal sealed class Checker
             generation.Changed.Select(path => (path.Relative, path.Absolute)));
     }
 
-    /// <summary>
-    ///     True when every document the pinned generation's current view holds for a changed file has the content the
-    ///     disk holds. A file with no document in the view is not compared: its project is not bound yet. The writer
-    ///     sync at the start of the check applied the changed files, so a disagreement here is a file that changed
-    ///     after the pin or could not be read, and this answer is not kept.
-    /// </summary>
-    /// <returns>False when a changed file could not be read or still disagrees, so this answer is not kept.</returns>
-    private async Task<bool> ViewsMatchDiskAsync(Generation generation, CancellationToken cancellationToken)
+    private async Task<List<RepoPath>> ChangedTargetsAsync(List<RepoPath> targets, Generation generation, CancellationToken cancellationToken)
     {
-        var stale = 0;
-        foreach (var path in generation.Changed)
+        if (targets.Count == 0)
+            return [];
+        if (targets.Count == 1)
         {
-            if (!await MatchesDiskAsync(generation.Current, path, cancellationToken).ConfigureAwait(false))
-                stale++;
+            return await _reach.HasDeclarationChangeAsync(targets[0], generation, cancellationToken).ConfigureAwait(false)
+                ? [targets[0]]
+                : [];
         }
 
-        if (stale > 0)
-            _workspace.Log($"check: {stale} changed file(s) could not be read from disk, so this answer is not kept");
-        return stale == 0;
+        var changed = new ConcurrentBag<RepoPath>();
+        await Parallel.ForEachAsync(
+            targets,
+            new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = cancellationToken },
+            async (path, ct) =>
+            {
+                if (await _reach.HasDeclarationChangeAsync(path, generation, ct).ConfigureAwait(false))
+                    changed.Add(path);
+            }).ConfigureAwait(false);
+        return [.. changed.OrderBy(p => p.Relative, StringComparer.Ordinal)];
     }
 
-    /// <summary>True when every document the current view holds for <paramref name="path"/> has the content the disk holds now.</summary>
-    private static async Task<bool> MatchesDiskAsync(Solution current, RepoPath path, CancellationToken cancellationToken)
+    private static Task<(List<RepoPath> Stale, int Unreadable)> FindStaleChangedAsync(Generation generation, CancellationToken cancellationToken) =>
+        FindStaleChangedAsync(generation, generation.Changed, cancellationToken);
+
+    private static async Task<(List<RepoPath> Stale, int Unreadable)> FindStaleChangedAsync(Generation generation, IReadOnlyCollection<RepoPath> paths, CancellationToken cancellationToken)
+    {
+        var stale = new ConcurrentBag<RepoPath>();
+        var unreadable = 0;
+        await Parallel.ForEachAsync(
+            paths,
+            new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = cancellationToken },
+            async (path, ct) =>
+            {
+                var status = await CheckFileFreshnessAsync(generation, path, ct).ConfigureAwait(false);
+                if (status == FileFreshness.Stale)
+                    stale.Add(path);
+                else if (status == FileFreshness.Unreadable)
+                    Interlocked.Increment(ref unreadable);
+            }).ConfigureAwait(false);
+        return ([.. stale], Volatile.Read(ref unreadable));
+    }
+
+    private static async Task<FileFreshness> CheckFileFreshnessAsync(Generation generation, RepoPath path, CancellationToken cancellationToken)
     {
         byte[]? bytes;
         try
@@ -378,24 +477,37 @@ internal sealed class Checker
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
-            bytes = null;
+            return FileFreshness.Unreadable;
         }
 
-        if (bytes is null)
-            return false;
-
+        var current = generation.Current;
         var ids = current.GetDocumentIdsWithFilePath(path.Absolute);
+        if (bytes is null)
+            return ids.IsEmpty ? FileFreshness.Unreadable : FileFreshness.Stale;
+
         if (ids.IsEmpty)
-            return true;
+        {
+            return generation.Graph.OwnersOf(path).Any(o => RepoWorkspace.ProjectsFor(current, o).Any())
+                ? FileFreshness.Stale
+                : FileFreshness.Fresh;
+        }
+
         var disk = SolutionViews.Decode(bytes);
         foreach (var id in ids)
         {
             TextDocument? document = current.GetDocument(id) ?? (TextDocument?)current.GetAdditionalDocument(id);
             if (document is not null && !(await document.GetTextAsync(cancellationToken).ConfigureAwait(false)).ContentEquals(disk))
-                return false;
+                return FileFreshness.Stale;
         }
 
-        return true;
+        return FileFreshness.Fresh;
+    }
+
+    private enum FileFreshness
+    {
+        Fresh,
+        Stale,
+        Unreadable,
     }
 
     /// <summary>

@@ -20,12 +20,12 @@
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 8.1x to 27.7x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 3.4x to 16.9x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Get Started with Fuse: Install and First Check">
 <meta name="twitter:description" content="Install Fuse with dotnet tool install, run fuse init, and see what your AI coding agent gets after an edit: the errors it introduced and the affected tests.">
 <meta name="twitter:image" content="https://fuse.codes/assets/og.png">
-<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 8.1x to 27.7x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 3.4x to 16.9x faster than dotnet build. dotnet tool install -g Fuse.">
 <link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
 <link rel="icon" href="../assets/fuse-icon.svg" type="image/svg+xml" sizes="any">
 <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -45,7 +45,7 @@
       "url": "https://fuse.codes/docs/getting-started",
       "mainEntityOfPage": "https://fuse.codes/docs/getting-started",
       "inLanguage": "en",
-      "dateModified": "2026-10-29",
+      "dateModified": "2026-11-24",
       "image": "https://fuse.codes/assets/og.png",
       "isPartOf": {
         "@type": "WebSite",
@@ -147,7 +147,7 @@
     <pre data-label="bash"><code>fuse init</code></pre>
     <pre class="out" data-label="Output"><code>wrote .claude/settings.json
 wrote .gitignore
-fuse: hooks registered by Fuse 5.7.0; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors</code></pre>
+fuse: hooks registered by Fuse 7.0.0; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors</code></pre>
     <p><code>fuse init</code> detects the harnesses your repository uses, such as <code>.cursor/</code> or <code>.gemini/</code>, and adds Fuse's hooks to each one. When it finds none, it sets up Claude Code. Run it again at any time. It replaces only its own entries. That is the whole setup. To remove it, run <a href="commands#fuse-uninit"><code>fuse uninit</code></a>.</p>
     <p>The first Fuse command you run in a repository starts a background process, which loads your solution. That process stays running until it has been idle for 30 minutes, so every later command and hook reuses it.</p>
 

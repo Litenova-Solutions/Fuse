@@ -94,9 +94,18 @@ internal sealed class FixtureRepo : IDisposable
     }
 
 
+    /// <summary>
+    ///     The SDK selection every fixture repository uses, the same as the repository's own global.json. A machine with a
+    ///     newer major SDK installed would otherwise build the fixtures with it, because a fixture outside the repository
+    ///     finds no global.json of its own.
+    /// </summary>
+    internal const string SdkSelection = "\"sdk\": { \"version\": \"10.0.100\", \"rollForward\": \"latestFeature\" }";
+
+    private static readonly Lazy<string> TestsRoot = new(CreateTestsRoot, LazyThreadSafetyMode.ExecutionAndPublication);
+
     internal static string NewDirectory()
     {
-        var path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "fuse-tests", Guid.NewGuid().ToString("N")[..10]);
+        var path = System.IO.Path.Combine(TestsRoot.Value, Guid.NewGuid().ToString("N")[..10]);
         Directory.CreateDirectory(path);
         return path;
     }
@@ -107,9 +116,27 @@ internal sealed class FixtureRepo : IDisposable
     /// </summary>
     internal static string NewNonAsciiDirectory()
     {
-        var path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "fuse-tests", "blåbærgrød-" + Guid.NewGuid().ToString("N")[..8]);
+        var path = System.IO.Path.Combine(TestsRoot.Value, "blåbærgrød-" + Guid.NewGuid().ToString("N")[..8]);
         Directory.CreateDirectory(path);
         return path;
+    }
+
+    /// <summary>The <c>fuse-tests</c> folder every fixture lives under, with a global.json that selects the SDK for all of them.</summary>
+    private static string CreateTestsRoot()
+    {
+        var root = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "fuse-tests");
+        Directory.CreateDirectory(root);
+        var globalJson = System.IO.Path.Combine(root, "global.json");
+        var content = "{ " + SdkSelection + " }\n";
+        if (!File.Exists(globalJson) || File.ReadAllText(globalJson) != content)
+        {
+            // Another test process can write the same file at the same time; each writes the same text.
+            var temporary = globalJson + "." + Environment.ProcessId + ".tmp";
+            File.WriteAllText(temporary, content);
+            File.Move(temporary, globalJson, overwrite: true);
+        }
+
+        return root;
     }
 
     internal static void GitInit(string directory)
@@ -135,6 +162,10 @@ internal sealed class FixtureRepo : IDisposable
         psi.Environment["DOTNET_CLI_TELEMETRY_OPTOUT"] = "1";
         psi.Environment["DOTNET_NOLOGO"] = "1";
         psi.Environment["MSBUILDDISABLENODEREUSE"] = "1";
+        // An in-process engine test registers one SDK's MSBuild in this process; the child resolves its own from the
+        // fixture's global.json instead.
+        foreach (var variable in Fuse.Dotnet.ProcessRunner.MsBuildLocatorVariables)
+            psi.Environment.Remove(variable);
         using var process = Process.Start(psi)!;
         var stdout = process.StandardOutput.ReadToEndAsync();
         var stderr = process.StandardError.ReadToEndAsync();

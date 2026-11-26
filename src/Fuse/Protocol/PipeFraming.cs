@@ -9,8 +9,9 @@ namespace Fuse.Protocol;
 internal static class PipeFraming
 {
     /// <summary>
-    ///     Reads one newline-terminated UTF-8 line in 4 KB chunks. Each connection carries exactly one message in each
-    ///     direction, so anything after the newline cannot exist and nothing is lost by reading ahead.
+    ///     Reads one newline-terminated UTF-8 line in 4 KB chunks. It is for a connection with at most one message in
+    ///     flight in its direction, a request, its answer or the next request of a batch, so nothing follows the newline
+    ///     in the same read. A stream of messages written back to back is read with <see cref="PipeLineReader"/>.
     /// </summary>
     /// <returns>The line without its newline, or null when the stream ended before anything was read.</returns>
     public static async Task<string?> ReadLineAsync(Stream stream, CancellationToken cancellationToken)

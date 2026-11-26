@@ -20,12 +20,12 @@
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 8.1x to 27.7x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 3.4x to 16.9x faster than dotnet build. dotnet tool install -g Fuse.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Fuse FAQ: .NET Build and Test for AI Coding Agents">
 <meta name="twitter:description" content="Answers to common questions about Fuse: what it costs, how it differs from dotnet build, dotnet watch and language servers, and which AI agents it supports.">
 <meta name="twitter:image" content="https://fuse.codes/assets/og.png">
-<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 8.1x to 27.7x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 3.4x to 16.9x faster than dotnet build. dotnet tool install -g Fuse.">
 <link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
 <link rel="icon" href="../assets/fuse-icon.svg" type="image/svg+xml" sizes="any">
 <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -45,7 +45,7 @@
       "url": "https://fuse.codes/docs/faq",
       "mainEntityOfPage": "https://fuse.codes/docs/faq",
       "inLanguage": "en",
-      "dateModified": "2026-10-29",
+      "dateModified": "2026-11-25",
       "image": "https://fuse.codes/assets/og.png",
       "isPartOf": {
         "@type": "WebSite",
@@ -108,7 +108,7 @@
           "name": "Why does Fuse exist?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Agents check their work by running dotnet build and dotnet test, often dozens of times in one task. Each run is slow, lists errors the edit introduced next to errors that were already there, and prints far more than the agent needs. When several subagents build at once, the builds also use a lot of memory and fail on files another build has locked. Fuse removes that wait. On the benchmark repositories, a check took 0.15 to 2.90 seconds at the median, where dotnet build took 1.66 to 28.7 seconds. fuse test was 1.2x to 2.9x faster than dotnet test, except on NodaTime, where the median run was slower (Benchmarks). All agents in a repository share one Fuse process, so their builds take turns."
+            "text": "Agents check their work by running dotnet build and dotnet test, often dozens of times in one task. Each run is slow, lists errors the edit introduced next to errors that were already there, and prints far more than the agent needs. When several subagents build at once, the builds also use a lot of memory and fail on files another build has locked. Fuse removes that wait. On the benchmark repositories, a check took 0.25 to 5.32 seconds at the median, where dotnet build took 2.28 to 37.4 seconds. fuse test was 1.2x to 2.4x faster than dotnet test on 3 of the 4 repositories, and about tied on NodaTime (59.9 s against 61.5 s) (Benchmarks). All agents in a repository share one Fuse process, so their builds take turns."
           }
         },
         {
@@ -124,7 +124,7 @@
           "name": "What does Fuse cost?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "It costs mainly memory. Fuse keeps the loaded projects in memory until it has been idle for 30 minutes. That took 319 MB to 512 MB once idle in the benchmarks, and up to 1,091 MB while it checked. A machine with more memory uses more. Each git worktree runs its own copy. The first edit that affects other projects has to load them, which took up to 68.9 s on Jellyfin. Agents in one repository wait for each other's checks. What Fuse costs lists every cost."
+            "text": "It costs mainly memory. Fuse keeps the loaded projects in memory until it has been idle for 30 minutes. That took 338 MB to 698 MB once idle in the benchmarks, and up to 1,074 MB while it checked. A machine with more memory uses more. All git worktrees of a repository share one engine. The first edit that affects other projects has to load them, which took up to 84.8 s on Jellyfin. Agents in one repository have their checks answered at the same time. What Fuse costs lists every cost."
           }
         },
         {
@@ -140,7 +140,7 @@
           "name": "Does Fuse need configuration?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "No. Run fuse init once in the repository, and it writes the hook settings for each harness it finds. Fuse has no configuration file and no environment variables of its own. It needs the .NET 10 SDK and restored projects. If a restore is missing, it says so and names the dotnet restore command to run."
+            "text": "No. Run fuse init once in the repository, and it writes the hook settings for each harness it finds. Fuse has no configuration file. Its one environment variable is FUSE_SESSION, which names a caller's session. It needs the .NET 10 SDK and restored projects. If a restore is missing, it says so and names the dotnet restore command to run."
           }
         },
         {
@@ -172,7 +172,7 @@
           "name": "What comes next for Fuse?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "What comes next is even faster feedback. We are exploring an index of the solution that survives restarts, so that Fuse can answer the moment an edit is saved instead of first loading the projects. Fuse does not index code today. The changelog will say when it does."
+            "text": "What comes next is even faster feedback. We are exploring an index of the solution that survives restarts, so that Fuse can answer the moment an edit is saved instead of first loading the projects. Fuse keeps a syntax token index of identifier tokens and base types to narrow reference searches, but it has no semantic code search; it answers after the edit. The changelog will say when that changes."
           }
         },
         {
@@ -180,7 +180,7 @@
           "name": "Which tools overlap with Fuse?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Fuse does 3 jobs for an agent: it reports the compiler errors the changes introduced, in every project they can break; it runs the tests the changes can reach; and it prints only the errors of a build. Other tools do one of these jobs, or part of one. Most are built for a person in an editor or for CI rather than for an agent's hooks. We know of no other tool that does all 3 for an agent. The table below lists the kinds of tool people compare Fuse with, with examples of each as of September 2026. The benchmarks compare Fuse with dotnet build and dotnet test only, not with these tools. Kinds of tool that overlap with Fuse Kind of toolExamplesWhat it answersWhere Fuse differs C# language serverscsharp-ls, the Roslyn language server behind the C# extension for VS CodeErrors, warnings, completion and navigation for the files an editor or harness opensReports only errors HEAD does not have, including in files the agent did not open, and runs tests and builds Code intelligence MCP serversSharpLensMcp, RoselineMCP, AgenticDotNet, SerenaNavigation, refactoring and diagnostics, when the agent calls a toolRuns from hooks after every edit, so the agent does not have to call anything Code search and indexingCOA CodeSearch, code graph MCP serversWhere a symbol is defined and used, so the agent reads fewer filesDoes not index or search; answers after the edit Test impact analysisdotnet-affected, dotnet-tia, NCrunch, Live Unit Testing in Visual Studio EnterpriseWhich projects or tests a change affects, in CI or in an IDESelects tests when the agent runs dotnet test, from the changes against HEAD, and prints only failures Build log optionsMSBuild's -clp:ErrorsOnly and -v quietA shorter build logfuse build runs the same build, prints only its errors, and holds a build lock so agents' builds do not collide"
+            "text": "Fuse does 3 jobs for an agent: it reports the compiler errors the changes introduced, in every project they can break; it runs the tests the changes can reach; and it prints only the errors of a build. Other tools do one of these jobs, or part of one. Most are built for a person in an editor or for CI rather than for an agent's hooks. We know of no other tool that does all 3 for an agent. The table below lists the kinds of tool people compare Fuse with, with examples of each as of September 2026. The benchmarks compare Fuse with dotnet build and dotnet test only, not with these tools. Kinds of tool that overlap with Fuse Kind of toolExamplesWhat it answersWhere Fuse differs C# language serverscsharp-ls, the Roslyn language server behind the C# extension for VS CodeErrors, warnings, completion and navigation for the files an editor or harness opensReports only errors HEAD does not have, including in files the agent did not open, and runs tests and builds Code intelligence MCP serversSharpLensMcp, RoselineMCP, AgenticDotNet, SerenaNavigation, refactoring and diagnostics, when the agent calls a toolRuns from hooks after every edit, so the agent does not have to call anything Code search and indexingCOA CodeSearch, code graph MCP serversWhere a symbol is defined and used, so the agent reads fewer filesKeeps a syntax token index to narrow reference searches, but has no semantic code search; answers after the edit Test impact analysisdotnet-affected, dotnet-tia, NCrunch, Live Unit Testing in Visual Studio EnterpriseWhich projects or tests a change affects, in CI or in an IDESelects tests when the agent runs dotnet test, from the changes against HEAD, and prints only failures Build log optionsMSBuild's -clp:ErrorsOnly and -v quietA shorter build logfuse build runs the same build, prints only its errors, and holds a build lock so agents' builds do not collide"
           }
         },
         {
@@ -188,7 +188,7 @@
           "name": "How is Fuse different from dotnet build?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "dotnet build starts MSBuild, builds the projects and lists every error, including errors that already exist. Fuse keeps the solution compiled in memory and reports only the errors an edit introduced, so it answers sooner. In the benchmarks, the median check took between 0.15 and 2.90 seconds, where the median dotnet build took between 1.66 and 28.7 seconds. It does not replace the build. fuse build runs the real dotnet build."
+            "text": "dotnet build starts MSBuild, builds the projects and lists every error, including errors that already exist. Fuse keeps the solution compiled in memory and reports only the errors an edit introduced, so it answers sooner. In the benchmarks, the median check took between 0.25 and 5.32 seconds, where the median dotnet build took between 2.28 and 37.4 seconds. It does not replace the build. fuse build runs the real dotnet build."
           }
         },
         {
@@ -220,7 +220,7 @@
           "name": "How is Fuse different from code search and indexing tools?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Code search and indexing tools, such as COA CodeSearch, code graph MCP servers and Serena's symbol tools, build an index of the code so an agent can find where something is defined and used and read fewer files before it edits. Fuse does not index or search the code today. It answers after an edit: which errors the edit introduced, and which tests the edit can break. The 2 kinds of tool work at different points of a task and can run together."
+            "text": "Code search and indexing tools, such as COA CodeSearch, code graph MCP servers and Serena's symbol tools, build an index of the code so an agent can find where something is defined and used and read fewer files before it edits. Fuse keeps a syntax token index of identifier tokens and base types to narrow reference searches, but it has no semantic code search. It answers after an edit: which errors the edit introduced, and which tests the edit can break. The 2 kinds of tool work at different points of a task and can run together."
           }
         },
         {
@@ -289,19 +289,19 @@
 
     <h3 id="why-does-fuse-exist">Why does Fuse exist? <a class="anchor" href="#why-does-fuse-exist" aria-label="Link to this section">#</a></h3>
     <p>Agents check their work by running <code>dotnet build</code> and <code>dotnet test</code>, often dozens of times in one task. Each run is slow, lists errors the edit introduced next to errors that were already there, and prints far more than the agent needs. When several subagents build at once, the builds also use a lot of memory and fail on files another build has locked.</p>
-    <p>Fuse removes that wait. On the benchmark repositories, a check took 0.15 to 2.90 seconds at the median, where <code>dotnet build</code> took 1.66 to 28.7 seconds. <code>fuse test</code> was 1.2x to 2.9x faster than <code>dotnet test</code>, except on NodaTime, where the median run was slower (<a href="benchmarks">Benchmarks</a>). All agents in a repository share one Fuse process, so their builds take turns.</p>
+    <p>Fuse removes that wait. On the benchmark repositories, a check took 0.25 to 5.32 seconds at the median, where <code>dotnet build</code> took 2.28 to 37.4 seconds. <code>fuse test</code> was 1.2x to 2.4x faster than <code>dotnet test</code> on 3 of the 4 repositories, and about tied on NodaTime (59.9 s against 61.5 s) (<a href="benchmarks">Benchmarks</a>). All agents in a repository share one Fuse process, so their builds take turns.</p>
 
     <h3 id="is-fuse-for-people-or-for-agents">Is Fuse for people or for agents? <a class="anchor" href="#is-fuse-for-people-or-for-agents" aria-label="Link to this section">#</a></h3>
     <p>Fuse is for agents. The hooks run Fuse without the agent asking for it, and the output holds only what an agent needs to act on. You run <code>fuse init</code> once, and you can use the commands to try Fuse or to see what the agent gets. For your own editing, your IDE is the better tool.</p>
 
     <h3 id="what-does-fuse-cost">What does Fuse cost? <a class="anchor" href="#what-does-fuse-cost" aria-label="Link to this section">#</a></h3>
-    <p>It costs mainly memory. Fuse keeps the loaded projects in memory until it has been idle for 30 minutes. That took 319 MB to 512 MB once idle in the <a href="benchmarks">benchmarks</a>, and up to 1,091 MB while it checked. A machine with more memory uses more. Each git worktree runs its own copy. The first edit that affects other projects has to load them, which took up to 68.9 s on Jellyfin. Agents in one repository wait for each other's checks. <a href="./#what-fuse-costs">What Fuse costs</a> lists every cost.</p>
+    <p>It costs mainly memory. Fuse keeps the loaded projects in memory until it has been idle for 30 minutes. That took 338 MB to 698 MB once idle in the <a href="benchmarks">benchmarks</a>, and up to 1,074 MB while it checked. A machine with more memory uses more. All git worktrees of a repository share one engine. The first edit that affects other projects has to load them, which took up to 84.8 s on Jellyfin. Agents in one repository have their checks answered at the same time. <a href="./#what-fuse-costs">What Fuse costs</a> lists every cost.</p>
 
     <h3 id="which-harnesses-does-fuse-support">Which harnesses does Fuse support? <a class="anchor" href="#which-harnesses-does-fuse-support" aria-label="Link to this section">#</a></h3>
     <p>Fuse supports Claude Code, Cursor, Gemini CLI, Codex, GitHub Copilot CLI, OpenCode and Muse Code through hooks. VS Code agent mode and any other MCP host reach it through <code>fuse mcp</code>. Claude Code, OpenCode and Muse Code are tested end to end. Each of the others follows its harness's documented hook format and is covered by payload tests. <a href="harnesses">Connect your agent</a> lists what <code>fuse init</code> writes for each one.</p>
 
     <h3 id="does-fuse-need-configuration">Does Fuse need configuration? <a class="anchor" href="#does-fuse-need-configuration" aria-label="Link to this section">#</a></h3>
-    <p>No. Run <code>fuse init</code> once in the repository, and it writes the hook settings for each harness it finds. Fuse has no configuration file and no environment variables of its own. It needs the .NET 10 SDK and restored projects. If a restore is missing, it says so and names the <code>dotnet restore</code> command to run.</p>
+    <p>No. Run <code>fuse init</code> once in the repository, and it writes the hook settings for each harness it finds. Fuse has no configuration file. Its one environment variable is <code>FUSE_SESSION</code>, which names a caller's session. It needs the .NET 10 SDK and restored projects. If a restore is missing, it says so and names the <code>dotnet restore</code> command to run.</p>
 
     <h3 id="does-fuse-send-my-code-or-data-anywhere">Does Fuse send my code or data anywhere? <a class="anchor" href="#does-fuse-send-my-code-or-data-anywhere" aria-label="Link to this section">#</a></h3>
     <p>No. Everything runs locally: Fuse has no telemetry and makes no network calls of its own. It never edits your code. The only files it writes in your repository are the hook settings and the <code>.gitignore</code> line from <code>fuse init</code>, plus, with <code>fuse init --instructions</code>, its section in <code>AGENTS.md</code> and the other instruction files your agents read. Commands Fuse runs for you, such as <code>dotnet build</code>, act as they normally would.</p>
@@ -313,7 +313,7 @@
     <p>Fuse checks C# only. A check cannot see custom MSBuild targets that change compiler inputs or IL weaving. It runs compilation-end analyzers only when it compiles whole projects, which happens past 500 files in reach. <code>fuse build</code> runs the real build. Because test selection is static, a test that reaches code only through reflection may not be selected. <a href="limits">Limits</a> lists every case.</p>
 
     <h3 id="what-comes-next-for-fuse">What comes next for Fuse? <a class="anchor" href="#what-comes-next-for-fuse" aria-label="Link to this section">#</a></h3>
-    <p>What comes next is even faster feedback. We are exploring an index of the solution that survives restarts, so that Fuse can answer the moment an edit is saved instead of first loading the projects. Fuse does not index code today. The <a href="changelog">changelog</a> will say when it does.</p>
+    <p>What comes next is even faster feedback. We are exploring an index of the solution that survives restarts, so that Fuse can answer the moment an edit is saved instead of first loading the projects. Fuse keeps a syntax token index of identifier tokens and base types to narrow reference searches, but it has no semantic code search; it answers after the edit. The <a href="changelog">changelog</a> will say when that changes.</p>
 
     <h2 id="fuse-and-other-tools">Fuse and other tools <a class="anchor" href="#fuse-and-other-tools" aria-label="Link to this section">#</a></h2>
 
@@ -327,7 +327,7 @@
         <tbody>
           <tr><th scope="row"><a href="#how-is-fuse-different-from-a-language-server">C# language servers</a></th><td><a href="https://github.com/razzmatazz/csharp-language-server">csharp-ls</a>, the Roslyn language server behind the C# extension for VS Code</td><td>Errors, warnings, completion and navigation for the files an editor or harness opens</td><td>Reports only errors HEAD does not have, including in files the agent did not open, and runs tests and builds</td></tr>
           <tr><th scope="row"><a href="#how-is-fuse-different-from-roslyn-mcp-servers">Code intelligence MCP servers</a></th><td><a href="https://www.nuget.org/packages/SharpLensMcp">SharpLensMcp</a>, <a href="https://www.nuget.org/packages/RoselineMCP">RoselineMCP</a>, <a href="https://www.nuget.org/packages/AgenticDotNet">AgenticDotNet</a>, <a href="https://github.com/oraios/serena">Serena</a></td><td>Navigation, refactoring and diagnostics, when the agent calls a tool</td><td>Runs from hooks after every edit, so the agent does not have to call anything</td></tr>
-          <tr><th scope="row"><a href="#how-is-fuse-different-from-code-search-and-indexing-tools">Code search and indexing</a></th><td><a href="https://github.com/anortham/coa-codesearch-mcp">COA CodeSearch</a>, code graph MCP servers</td><td>Where a symbol is defined and used, so the agent reads fewer files</td><td>Does not index or search; answers after the edit</td></tr>
+          <tr><th scope="row"><a href="#how-is-fuse-different-from-code-search-and-indexing-tools">Code search and indexing</a></th><td><a href="https://github.com/anortham/coa-codesearch-mcp">COA CodeSearch</a>, code graph MCP servers</td><td>Where a symbol is defined and used, so the agent reads fewer files</td><td>Keeps a syntax token index to narrow reference searches, but has no semantic code search; answers after the edit</td></tr>
           <tr><th scope="row"><a href="#how-is-fuse-different-from-test-impact-analysis-tools">Test impact analysis</a></th><td><a href="https://github.com/leonardochaia/dotnet-affected">dotnet-affected</a>, <a href="https://github.com/SebHenn/dotnet-tia">dotnet-tia</a>, <a href="https://www.ncrunch.net/">NCrunch</a>, <a href="https://learn.microsoft.com/visualstudio/test/live-unit-testing">Live Unit Testing</a> in Visual Studio Enterprise</td><td>Which projects or tests a change affects, in CI or in an IDE</td><td>Selects tests when the agent runs <code>dotnet test</code>, from the changes against HEAD, and prints only failures</td></tr>
           <tr><th scope="row">Build log options</th><td>MSBuild's <code>-clp:ErrorsOnly</code> and <code>-v quiet</code></td><td>A shorter build log</td><td><code>fuse build</code> runs the same build, prints only its errors, and holds a build lock so agents' builds do not collide</td></tr>
         </tbody>
@@ -335,7 +335,7 @@
     </div>
 
     <h3 id="how-is-fuse-different-from-dotnet-build">How is Fuse different from dotnet build? <a class="anchor" href="#how-is-fuse-different-from-dotnet-build" aria-label="Link to this section">#</a></h3>
-    <p><code>dotnet build</code> starts MSBuild, builds the projects and lists every error, including errors that already exist. Fuse keeps the solution compiled in memory and reports only the errors an edit introduced, so it answers sooner. In the benchmarks, the median check took between 0.15 and 2.90 seconds, where the median <code>dotnet build</code> took between 1.66 and 28.7 seconds. It does not replace the build. <code>fuse build</code> runs the real <code>dotnet build</code>.</p>
+    <p><code>dotnet build</code> starts MSBuild, builds the projects and lists every error, including errors that already exist. Fuse keeps the solution compiled in memory and reports only the errors an edit introduced, so it answers sooner. In the benchmarks, the median check took between 0.25 and 5.32 seconds, where the median <code>dotnet build</code> took between 2.28 and 37.4 seconds. It does not replace the build. <code>fuse build</code> runs the real <code>dotnet build</code>.</p>
 
     <h3 id="how-is-fuse-different-from-a-language-server">How is Fuse different from a language server (LSP)? <a class="anchor" href="#how-is-fuse-different-from-a-language-server" aria-label="Link to this section">#</a></h3>
     <p>A language server gives an editor, or an agent's harness, the errors, warnings, completion and navigation for the files it has open. It speaks to them over the Language Server Protocol (LSP). For C# that is <a href="https://github.com/razzmatazz/csharp-language-server">csharp-ls</a>, which Claude Code's <a href="https://code.claude.com/docs/en/plugins/code-intelligence">csharp-lsp plugin</a> runs, or the Roslyn language server behind the C# extension for VS Code, which OpenCode runs. In a harness that runs one, the agent gets the diagnostics of the file it just edited. Fuse answers a narrower question, which errors the changes introduced, and differs in 4 ways:</p>
@@ -355,7 +355,7 @@
     <p>Fuse runs from hooks, so every edit is checked without the agent calling anything. Its MCP server has 3 tools, <code>fuse_check</code>, <code>fuse_test</code> and <code>fuse_build</code>, for MCP hosts that run no hooks, such as VS Code agent mode. A navigation server and Fuse can run side by side.</p>
 
     <h3 id="how-is-fuse-different-from-code-search-and-indexing-tools">How is Fuse different from code search and indexing tools? <a class="anchor" href="#how-is-fuse-different-from-code-search-and-indexing-tools" aria-label="Link to this section">#</a></h3>
-    <p>Code search and indexing tools, such as <a href="https://github.com/anortham/coa-codesearch-mcp">COA CodeSearch</a>, code graph MCP servers and Serena's symbol tools, build an index of the code so an agent can find where something is defined and used and read fewer files before it edits. Fuse does not index or search the code today. It answers after an edit: which errors the edit introduced, and which tests the edit can break. The 2 kinds of tool work at different points of a task and can run together.</p>
+    <p>Code search and indexing tools, such as <a href="https://github.com/anortham/coa-codesearch-mcp">COA CodeSearch</a>, code graph MCP servers and Serena's symbol tools, build an index of the code so an agent can find where something is defined and used and read fewer files before it edits. Fuse keeps a syntax token index of identifier tokens and base types to narrow reference searches, but it has no semantic code search. It answers after an edit: which errors the edit introduced, and which tests the edit can break. The 2 kinds of tool work at different points of a task and can run together.</p>
 
     <h3 id="how-is-fuse-different-from-test-impact-analysis-tools">How is Fuse different from test impact analysis tools? <a class="anchor" href="#how-is-fuse-different-from-test-impact-analysis-tools" aria-label="Link to this section">#</a></h3>
     <p>Test impact analysis tools choose which tests to run for a change:</p>

@@ -93,9 +93,14 @@ internal sealed class WorkspaceSync
     /// <exception cref="FuseException">A project has not been restored or failed to load.</exception>
     public async Task EnsureLoadedAsync(IEnumerable<ProjectNode> projects, CancellationToken cancellationToken)
     {
-        await _projects.LoadAsync(projects, cancellationToken).ConfigureAwait(false);
-        if (!_views.HoldEveryOpenProject)
+        var requested = projects as IReadOnlyList<ProjectNode> ?? [.. projects];
+        var needsUnshedRebuild = requested.Count > 0
+            && _views.Unshed(requested.SelectMany(_projects.Graph.ClosureOf).Select(p => p.Path));
+        await _projects.LoadAsync(requested, cancellationToken).ConfigureAwait(false);
+        if (!_views.HoldEveryOpenProject || needsUnshedRebuild)
             await _views.RebuildAsync(cancellationToken).ConfigureAwait(false);
+        else if (_views.IsBaselineShed && requested.Count > 0)
+            await _views.MaterializeBaselineShellAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Applies each of <paramref name="paths"/> to both views again: its disk content to the current view and its HEAD content to the baseline.</summary>
@@ -144,6 +149,12 @@ internal sealed class WorkspaceSync
             // the rebuild applies them too.
             _views.Touch(patch.Paths);
             await _views.RebuildAsync(cancellationToken).ConfigureAwait(false);
+        }
+        else if (_views.IsBaselineShed)
+        {
+            // The baseline view was shed without invalidating loader derivation, so no rebuild follows it: materialize
+            // its shell from the current view, and both views hold every open project again, as after a rebuild.
+            await _views.MaterializeBaselineShellAsync(cancellationToken).ConfigureAwait(false);
         }
 
         var paths = new HashSet<RepoPath>(patch.Paths);

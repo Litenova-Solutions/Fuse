@@ -1,54 +1,56 @@
 name: Evals
 
-# Runs the eval suites on GitHub-hosted runners. Adding the evals label to a pull request runs the latency suite, which
-# every change to a request's path needs; starting the workflow from the Actions tab chooses the repositories and the
-# suites, all three by default.
+# Runs the eval suites on GitHub-hosted runners. Adding the evals label to a pull request runs the latency, analyzers
+# and swarm suites; starting the workflow from the Actions tab chooses a preset (custom, quick, release, net11-compare),
+# the repositories, the suites, and the target .NET SDK (10.0.x or 11.0.x).
 #
 # One build job compiles Fuse once, so every job measures the same build. The latency suite runs in two jobs per
 # repository: one runs the checks and the test rounds with the native client, the fuse command a release installs on
 # win-x64, then the checks alone again with the managed client on the same VM; the other runs the multi-agent scenario.
 # A merge job puts the multi-agent result into the first job's file.
 #
-# The correctness and selection suites run in evals-suite.yml, called once per suite and repository: truth jobs split
-# into shards, then a measure job. Each call waits only for its own truth, so a small repository's results do not wait
-# for a large repository's truth. The truth does not change while the repository's tree, the seed, the SDK and the eval
-# code stay the same, so it is kept in the Actions cache and a later run skips those jobs.
+# The correctness and selection suites run in evals-suite.yml, called once per suite, repository and SDK: truth jobs
+# split into shards, then a measure job. Each call waits only for its own truth, so a small repository's results do not
+# wait for a large repository's truth. The truth does not change while the repository's tree, the seed, the SDK and the
+# eval code stay the same, so it is kept in the Actions cache and a later run skips those jobs.
 #
-# Each measure job and each latency merge job uploads evals-<repo>-<suite>: results/ holds the file to commit to evals/results,
-# managed/ the managed client's latency file for evals/results/managed, truth/ the merged truth, and runner.txt
-# describes the runner. Each truth job uploads its shard and its runner.txt.
-#
-# The attribution suite is the light one: one job per repository checks two writers whose breaking changes reach each
-# other through the post-edit hook, without and with sessions, and uploads evals-<repo>-attribution. It needs no truth
-# and runs no tests, so it is not in the default set; ask for it in the suites input.
-#
-# The analyzers suite is lighter still: one job generates a small repository whose analyzer reads the whole project at
-# error severity, measures the post-edit hook, checks of one and twenty files and the engine's memory, and uploads
-# evals-analyzer-fixture-analyzers. The evals label runs it with the latency suite.
-#
-# The scale suite is check-only on a generated large tree: one job generates thousands of files, changes a quarter of
-# them, and measures one cold check and the engine's memory, uploading evals-scale-fixture-scale. Like attribution, it
-# runs only when the suites input names it.
-#
-# The concurrency suite is one job per repository: 1, 4, 10 and 20 simultaneous callers from distinct
-# sessions (post-edit checks, scoped checks, stops and test plans) against the repository, recording
-# queue time, engine time, errors, Busy answers, idle and peak working set and cold-start time, and
-# uploads evals-<repo>-concurrency. Like attribution and scale, it runs only when the suites input
-# names it.
+# The swarm suite measures multi-worktree shared hypervisor RAM, zero-restore worktree check latency, fuse slim,
+# fuse check --brief, fuse gate --brief --test, fuse judge (--combine and --race), fuse batch throughput, fuse graph/impact,
+# and hardlink/MTP shadow test speed, uploading evals-<repo>-swarm.
 
 on:
   pull_request:
     types: [labeled]
   workflow_dispatch:
     inputs:
+      preset:
+        description: Benchmark preset (custom uses repos/suites/sdk below; quick runs fixture+FluentValidation; release runs all suites; net11-compare benchmarks both 10.0.x and 11.0.x).
+        type: choice
+        options:
+          - custom
+          - quick
+          - release
+          - net11-compare
+        default: custom
       repos:
         description: Repositories to measure, as a JSON array (FluentValidation, NodaTime, Jellyfin, Polly, or fixture for the generated solution).
         default: '["FluentValidation", "NodaTime", "Jellyfin", "Polly"]'
         required: true
       suites:
-        description: Suites to run, as a JSON array (correctness, selection, latency, attribution, analyzers, scale, concurrency).
-        default: '["correctness", "selection", "latency"]'
+        description: Suites to run, as a JSON array (correctness, selection, latency, attribution, analyzers, scale, concurrency, swarm).
+        default: '["correctness", "selection", "latency", "swarm"]'
         required: true
+      sdk:
+        description: Target .NET SDK for measured repositories (ignored by net11-compare, which runs both).
+        type: choice
+        options:
+          - 10.0.x
+          - 11.0.x
+        default: 10.0.x
+      msbuild-mt:
+        description: Pass -mt to dotnet build during truth runs (.NET 11+).
+        type: boolean
+        default: false
       fresh-truth:
         description: Ignore the cached truth and run the real dotnet build and dotnet test again, as after a flaky test.
         type: boolean
@@ -65,6 +67,7 @@ env:
   DOTNET_NOLOGO: '1'
   DOTNET_CLI_TELEMETRY_OPTOUT: '1'
   EVALS: dotnet evals/Fuse.Evals/bin/Release/net10.0/Fuse.Evals.dll
+  FUSE_EVAL_MSBUILD_MT: ${{ inputs.msbuild-mt && '1' || '0' }}
 
 jobs:
   plan:
@@ -73,27 +76,67 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       latency: ${{ steps.matrix.outputs.latency }}
+      latency_parts: ${{ steps.matrix.outputs.latency_parts }}
       attribution: ${{ steps.matrix.outputs.attribution }}
       analyzers: ${{ steps.matrix.outputs.analyzers }}
       scale: ${{ steps.matrix.outputs.scale }}
       concurrency: ${{ steps.matrix.outputs.concurrency }}
+      swarm: ${{ steps.matrix.outputs.swarm }}
+      sdks: ${{ steps.matrix.outputs.sdks }}
       measure: ${{ steps.matrix.outputs.measure }}
     steps:
       - id: matrix
         shell: python
         env:
+          EVENT_NAME: ${{ github.event_name }}
+          PRESET: ${{ inputs.preset || 'custom' }}
           REPOS: ${{ inputs.repos || '["FluentValidation", "NodaTime", "Jellyfin", "Polly"]' }}
-          SUITES: ${{ inputs.suites || '["latency", "analyzers"]' }}
+          SUITES: ${{ inputs.suites || '["latency", "analyzers", "swarm"]' }}
+          SDK: ${{ inputs.sdk || '10.0.x' }}
+          LATENCY_PARTS: ${{ inputs.latency_parts || '["main", "agents"]' }}
         run: |
           import json, os
-          repos = json.loads(os.environ["REPOS"])
-          suites = json.loads(os.environ["SUITES"])
-          # Truth shards per repository, from the 5.4.0 run's dotnet times; Polly's are a first estimate, to rebalance
-          # from its first run's truth job times. A Jellyfin case takes about 4 minutes and HEAD 14, so its shards hold two cases each. A
-          # correctness case is one build, so its shards hold about eight cases on the larger repositories.
+
+          def sdk_entry(ver):
+              if ver == "10.0.x":
+                  return {"version": ver, "tag": ""}
+              major = ver.split(".")[0]
+              return {"version": ver, "tag": f"-net{major}"}
+
+          event = os.environ["EVENT_NAME"]
+          preset = os.environ["PRESET"]
+          if event != "workflow_dispatch":
+              repos = ["FluentValidation", "NodaTime", "Jellyfin", "Polly"]
+              suites = ["latency", "analyzers", "swarm"]
+              sdks = [sdk_entry("10.0.x")]
+              latency_parts = ["main", "agents"]
+          elif preset == "quick":
+              repos = ["fixture", "FluentValidation"]
+              suites = ["latency", "analyzers", "swarm"]
+              sdks = [sdk_entry(os.environ["SDK"])]
+              latency_parts = ["main"]
+          elif preset == "release":
+              repos = ["FluentValidation", "NodaTime", "Jellyfin", "Polly"]
+              suites = ["correctness", "selection", "latency", "attribution", "analyzers", "scale", "concurrency", "swarm"]
+              sdks = [sdk_entry(os.environ["SDK"])]
+              latency_parts = ["main", "agents"]
+          elif preset == "net11-compare":
+              repos = json.loads(os.environ["REPOS"])
+              suites = ["correctness", "selection", "latency", "swarm"]
+              sdks = [sdk_entry("10.0.x"), sdk_entry("11.0.x")]
+              latency_parts = json.loads(os.environ["LATENCY_PARTS"])
+          else:
+              repos = json.loads(os.environ["REPOS"])
+              suites = json.loads(os.environ["SUITES"])
+              sdks = [sdk_entry(os.environ["SDK"])]
+              latency_parts = json.loads(os.environ["LATENCY_PARTS"])
+
+          # Truth shards rebalanced from 6.0.0 dotnet truth durations so no shard holds a long tail:
+          # Polly correctness (1076 s) 2 -> 4 shards; NodaTime correctness (131 s) 2 -> 1;
+          # Polly selection (1168 s) 4 -> 5 shards; NodaTime selection (463 s) 4 -> 3.
           shards = {
-              "correctness": {"fixture": 1, "FluentValidation": 1, "NodaTime": 2, "Jellyfin": 4, "Polly": 2},
-              "selection": {"fixture": 1, "FluentValidation": 1, "NodaTime": 4, "Jellyfin": 6, "Polly": 4},
+              "correctness": {"fixture": 1, "FluentValidation": 1, "NodaTime": 1, "Jellyfin": 4, "Polly": 4},
+              "selection": {"fixture": 1, "FluentValidation": 1, "NodaTime": 3, "Jellyfin": 6, "Polly": 5},
           }
           staged = [s for s in ("correctness", "selection") if s in suites]
           latency = [r for r in repos] if "latency" in suites else []
@@ -101,16 +144,35 @@ jobs:
           analyzers = "analyzers" in suites
           scale = "scale" in suites
           concurrency = [r for r in repos] if "concurrency" in suites else []
-          # One call of evals-suite.yml per suite and repository, so a repository's measure job waits only for its own
-          # truth. Jobs start in matrix order when the runners are all busy, so the longest go first: selection before
-          # correctness, and the largest repositories first.
+          swarm = [r for r in repos] if "swarm" in suites else []
+
           order = {"Jellyfin": 0, "NodaTime": 1, "Polly": 2, "FluentValidation": 3, "fixture": 4}
-          measure = [{"suite": s, "repo": r, "shards": shards[s].get(r, 1), "shard_list": json.dumps(list(range(shards[s].get(r, 1))))} for s in staged for r in repos]
-          measure.sort(key=lambda m: (m["suite"] != "selection", order.get(m["repo"], 4)))
+          measure = [
+              {
+                  "suite": s,
+                  "repo": r,
+                  "sdk": sdk["version"],
+                  "sdk_tag": sdk["tag"],
+                  "shards": shards[s].get(r, 1),
+                  "shard_list": json.dumps(list(range(shards[s].get(r, 1)))),
+              }
+              for sdk in sdks
+              for s in staged
+              for r in repos
+          ]
+          measure.sort(key=lambda m: (m["suite"] != "selection", order.get(m["repo"], 4), m["sdk"]))
           with open(os.environ["GITHUB_OUTPUT"], "a") as out:
               out.write(f"analyzers={str(analyzers).lower()}\n")
               out.write(f"scale={str(scale).lower()}\n")
-              for name, value in (("latency", latency), ("attribution", attribution), ("measure", measure), ("concurrency", concurrency)):
+              for name, value in (
+                  ("latency", latency),
+                  ("latency_parts", latency_parts),
+                  ("attribution", attribution),
+                  ("concurrency", concurrency),
+                  ("swarm", swarm),
+                  ("sdks", sdks),
+                  ("measure", measure),
+              ):
                   out.write(f"{name}={json.dumps(value)}\n")
                   print(f"{name}: {json.dumps(value)}")
 
@@ -142,19 +204,23 @@ jobs:
           retention-days: 3
 
   latency:
-    name: latency (${{ matrix.part }}) on ${{ matrix.repo }}
+    name: latency (${{ matrix.part }}) on ${{ matrix.repo }} (${{ matrix.sdk.version }})
     needs: [plan, build]
     if: needs.plan.outputs.latency != '[]'
     runs-on: windows-latest
     timeout-minutes: 180
     strategy:
       fail-fast: false
+      max-parallel: 8
       matrix:
         repo: ${{ fromJSON(needs.plan.outputs.latency) }}
-        part: ${{ fromJSON(inputs.latency_parts || '["main", "agents"]') }}
+        part: ${{ fromJSON(needs.plan.outputs.latency_parts) }}
+        sdk: ${{ fromJSON(needs.plan.outputs.sdks) }}
     defaults:
       run:
         shell: bash
+    env:
+      FUSE_EVAL_SDK: ${{ matrix.sdk.version }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
@@ -164,6 +230,11 @@ jobs:
             8.0.x
             9.0.x
           global-json-file: global.json
+      - name: Install target .NET SDK (${{ matrix.sdk.version }})
+        if: ${{ matrix.sdk.version != '10.0.x' }}
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: ${{ matrix.sdk.version }}
       - uses: actions/download-artifact@v8
         with:
           name: build
@@ -177,7 +248,9 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/.nuget/packages
-          key: nuget-${{ matrix.repo }}-${{ hashFiles('evals/Fuse.Evals/PinnedRepo.cs', 'evals/Fuse.Evals/FixtureGenerator.cs') }}
+          key: nuget-${{ matrix.repo }}-${{ matrix.sdk.version }}-${{ hashFiles('evals/Fuse.Evals/PinnedRepo.cs', 'evals/Fuse.Evals/FixtureGenerator.cs') }}
+          restore-keys: |
+            nuget-${{ matrix.repo }}-
       - &clone
         name: Clone the pinned repository
         if: matrix.repo != 'fixture'
@@ -202,7 +275,7 @@ jobs:
           $cores = (Get-CimInstance Win32_Processor | Measure-Object NumberOfLogicalProcessors -Sum).Sum
           $memory = [math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB)
           New-Item -ItemType Directory -Force out | Out-Null
-          "runner: $env:ImageOS $env:ImageVersion`ncpu: $cpu, $cores logical processors`nmemory: $memory GB`nsdk: $(dotnet --version)`ncommit: $env:GITHUB_SHA" | Set-Content out/runner.txt
+          "runner: $env:ImageOS $env:ImageVersion`ncpu: $cpu, $cores logical processors`nmemory: $memory GB`nsdk: $(dotnet --version)`ntarget_sdk: $env:FUSE_EVAL_SDK`nmsbuild_mt: $env:FUSE_EVAL_MSBUILD_MT`ncommit: $env:GITHUB_SHA" | Set-Content out/runner.txt
           Get-Content out/runner.txt
       - name: Keep the engine logs
         if: always()
@@ -218,23 +291,85 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: latency-${{ matrix.part }}-${{ matrix.repo }}
+          name: latency-${{ matrix.part }}-${{ matrix.repo }}${{ matrix.sdk.tag }}
+          path: out/
+          if-no-files-found: error
+
+  swarm:
+    name: swarm on ${{ matrix.repo }} (${{ matrix.sdk.version }})
+    needs: [plan, build]
+    if: needs.plan.outputs.swarm != '[]'
+    runs-on: windows-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        repo: ${{ fromJSON(needs.plan.outputs.swarm) }}
+        sdk: ${{ fromJSON(needs.plan.outputs.sdks) }}
+    defaults:
+      run:
+        shell: bash
+    env:
+      FUSE_EVAL_SDK: ${{ matrix.sdk.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+          global-json-file: global.json
+      - name: Install target .NET SDK (${{ matrix.sdk.version }})
+        if: ${{ matrix.sdk.version != '10.0.x' }}
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: ${{ matrix.sdk.version }}
+      - uses: actions/download-artifact@v8
+        with:
+          name: build
+      - *identity
+      - *packages
+      - *clone
+      - name: Run swarm with the native client
+        run: |
+          $EVALS swarm "${{ matrix.repo }}" --fuse "$(cygpath -w "$PWD/artifacts/native/fuse.exe")"
+          mkdir -p out/results
+          git ls-files --others --exclude-standard evals/results | xargs -I{} mv {} out/results/
+      - *runner
+      - name: Keep the engine logs
+        if: always()
+        run: |
+          mkdir -p out/engine-logs
+          for d in "$(cygpath -u "$LOCALAPPDATA")"/fuse/repos/*/; do
+            [ -d "$d" ] || continue
+            n=$(basename "$d"); mkdir -p "out/engine-logs/$n"
+            cp "$d"engine.log "$d"hook.log "$d"root "out/engine-logs/$n/" 2>/dev/null || true
+          done
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: evals-${{ matrix.repo }}-swarm${{ matrix.sdk.tag }}
           path: out/
           if-no-files-found: error
 
   attribution:
-    name: attribution on ${{ matrix.repo }}
+    name: attribution on ${{ matrix.repo }} (${{ matrix.sdk.version }})
     needs: [plan, build]
     if: needs.plan.outputs.attribution != '[]'
     runs-on: windows-latest
     timeout-minutes: 60
     strategy:
       fail-fast: false
+      max-parallel: 4
       matrix:
         repo: ${{ fromJSON(needs.plan.outputs.attribution) }}
+        sdk: ${{ fromJSON(needs.plan.outputs.sdks) }}
     defaults:
       run:
         shell: bash
+    env:
+      FUSE_EVAL_SDK: ${{ matrix.sdk.version }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
@@ -244,6 +379,11 @@ jobs:
             8.0.x
             9.0.x
           global-json-file: global.json
+      - name: Install target .NET SDK (${{ matrix.sdk.version }})
+        if: ${{ matrix.sdk.version != '10.0.x' }}
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: ${{ matrix.sdk.version }}
       - uses: actions/download-artifact@v8
         with:
           name: build
@@ -259,24 +399,35 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: evals-${{ matrix.repo }}-attribution
+          name: evals-${{ matrix.repo }}-attribution${{ matrix.sdk.tag }}
           path: out/
           if-no-files-found: error
 
   analyzers:
-    name: analyzers on the analyzer fixture
+    name: analyzers on the analyzer fixture (${{ matrix.sdk.version }})
     needs: [plan, build]
     if: needs.plan.outputs.analyzers == 'true'
     runs-on: windows-latest
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        sdk: ${{ fromJSON(needs.plan.outputs.sdks) }}
     defaults:
       run:
         shell: bash
+    env:
+      FUSE_EVAL_SDK: ${{ matrix.sdk.version }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
+      - name: Install target .NET SDK (${{ matrix.sdk.version }})
+        if: ${{ matrix.sdk.version != '10.0.x' }}
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: ${{ matrix.sdk.version }}
       - uses: actions/download-artifact@v8
         with:
           name: build
@@ -290,24 +441,35 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: evals-analyzer-fixture-analyzers
+          name: evals-analyzer-fixture-analyzers${{ matrix.sdk.tag }}
           path: out/
           if-no-files-found: error
 
   scale:
-    name: scale on the scale fixture
+    name: scale on the scale fixture (${{ matrix.sdk.version }})
     needs: [plan, build]
     if: needs.plan.outputs.scale == 'true'
     runs-on: windows-latest
     timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        sdk: ${{ fromJSON(needs.plan.outputs.sdks) }}
     defaults:
       run:
         shell: bash
+    env:
+      FUSE_EVAL_SDK: ${{ matrix.sdk.version }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
+      - name: Install target .NET SDK (${{ matrix.sdk.version }})
+        if: ${{ matrix.sdk.version != '10.0.x' }}
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: ${{ matrix.sdk.version }}
       - uses: actions/download-artifact@v8
         with:
           name: build
@@ -321,23 +483,27 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: evals-scale-fixture-scale
+          name: evals-scale-fixture-scale${{ matrix.sdk.tag }}
           path: out/
           if-no-files-found: error
 
   concurrency:
-    name: concurrency on ${{ matrix.repo }}
+    name: concurrency on ${{ matrix.repo }} (${{ matrix.sdk.version }})
     needs: [plan, build]
     if: needs.plan.outputs.concurrency != '[]'
     runs-on: windows-latest
     timeout-minutes: 180
     strategy:
       fail-fast: false
+      max-parallel: 4
       matrix:
         repo: ${{ fromJSON(needs.plan.outputs.concurrency) }}
+        sdk: ${{ fromJSON(needs.plan.outputs.sdks) }}
     defaults:
       run:
         shell: bash
+    env:
+      FUSE_EVAL_SDK: ${{ matrix.sdk.version }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
@@ -347,6 +513,11 @@ jobs:
             8.0.x
             9.0.x
           global-json-file: global.json
+      - name: Install target .NET SDK (${{ matrix.sdk.version }})
+        if: ${{ matrix.sdk.version != '10.0.x' }}
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: ${{ matrix.sdk.version }}
       - uses: actions/download-artifact@v8
         with:
           name: build
@@ -373,27 +544,28 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: evals-${{ matrix.repo }}-concurrency
+          name: evals-${{ matrix.repo }}-concurrency${{ matrix.sdk.tag }}
           path: out/
           if-no-files-found: error
 
   latency-merge:
-    name: merge latency on ${{ matrix.repo }}
+    name: merge latency on ${{ matrix.repo }} (${{ matrix.sdk.version }})
     needs: [plan, latency]
-    if: ${{ !cancelled() && needs.plan.outputs.latency != '[]' && (!inputs.latency_parts || (contains(inputs.latency_parts, 'main') && contains(inputs.latency_parts, 'agents'))) }}
+    if: ${{ !cancelled() && needs.plan.outputs.latency != '[]' && contains(needs.plan.outputs.latency_parts, 'main') && contains(needs.plan.outputs.latency_parts, 'agents') }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         repo: ${{ fromJSON(needs.plan.outputs.latency) }}
+        sdk: ${{ fromJSON(needs.plan.outputs.sdks) }}
     steps:
       - uses: actions/download-artifact@v8
         with:
-          name: latency-main-${{ matrix.repo }}
+          name: latency-main-${{ matrix.repo }}${{ matrix.sdk.tag }}
           path: main
       - uses: actions/download-artifact@v8
         with:
-          name: latency-agents-${{ matrix.repo }}
+          name: latency-agents-${{ matrix.repo }}${{ matrix.sdk.tag }}
           path: agents
       - name: Put the multi-agent result into the latency file
         shell: python
@@ -416,16 +588,17 @@ jobs:
           shutil.copy("agents/runner.txt", "out/runner-agents.txt")
       - uses: actions/upload-artifact@v7
         with:
-          name: evals-${{ matrix.repo }}-latency
+          name: evals-${{ matrix.repo }}-latency${{ matrix.sdk.tag }}
           path: out/
           if-no-files-found: error
 
   suite:
-    name: ${{ matrix.suite }} on ${{ matrix.repo }}
+    name: ${{ matrix.suite }} on ${{ matrix.repo }} (${{ matrix.sdk }})
     needs: [plan, build]
     if: needs.plan.outputs.measure != '[]'
     strategy:
       fail-fast: false
+      max-parallel: 3
       matrix:
         include: ${{ fromJSON(needs.plan.outputs.measure) }}
     uses: ./.github/workflows/evals-suite.yml
@@ -435,3 +608,6 @@ jobs:
       shards: ${{ matrix.shards }}
       shard-list: ${{ matrix.shard_list }}
       fresh-truth: ${{ inputs.fresh-truth == true }}
+      sdk: ${{ matrix.sdk }}
+      sdk-tag: ${{ matrix.sdk_tag }}
+      msbuild-mt: ${{ inputs.msbuild-mt == true }}

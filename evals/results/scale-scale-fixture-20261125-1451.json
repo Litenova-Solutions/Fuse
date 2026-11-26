@@ -1,0 +1,19 @@
+{
+  "suite": "scale",
+  "repo": "scale-fixture",
+  "commit": "4374a8d12ca0ed8d18b61ebd9d8d0c06f7ff5d41",
+  "fuseBuild": "7.0.0/6d0df0a03dd04ce495752010115def4e",
+  "filesTotal": 6002,
+  "filesChanged": 1500,
+  "projectsTotal": 31,
+  "projectsLoaded": 30,
+  "checkMs": 73657.4886,
+  "filesChecked": 1500,
+  "wholeProjectsBound": false,
+  "enginePeakWorkingSetMb": 310.1,
+  "engineIdleWorkingSetMb": 314.6,
+  "scaleFactor": 2.5,
+  "checkMsPer1kChanged": 49105,
+  "verdict": "answered",
+  "treeCleanAfter": true
+}

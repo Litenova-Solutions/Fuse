@@ -31,11 +31,25 @@ on:
         description: Ignore the cached truth and run the real dotnet build and dotnet test again.
         type: boolean
         default: false
+      sdk:
+        description: Target .NET SDK version for the measured repository (10.0.x or 11.0.x).
+        type: string
+        default: '10.0.x'
+      sdk-tag:
+        description: Artifact name suffix for the selected SDK (empty for 10.0.x, -net11 for 11.0.x).
+        type: string
+        default: ''
+      msbuild-mt:
+        description: Pass -mt to dotnet build during truth runs (.NET 11+).
+        type: boolean
+        default: false
 
 env:
   DOTNET_NOLOGO: '1'
   DOTNET_CLI_TELEMETRY_OPTOUT: '1'
   EVALS: dotnet evals/Fuse.Evals/bin/Release/net10.0/Fuse.Evals.dll
+  FUSE_EVAL_SDK: ${{ inputs.sdk }}
+  FUSE_EVAL_MSBUILD_MT: ${{ inputs.msbuild-mt && '1' || '0' }}
 
 jobs:
   truth:
@@ -58,6 +72,11 @@ jobs:
             8.0.x
             9.0.x
           global-json-file: global.json
+      - name: Install target .NET SDK (${{ inputs.sdk }})
+        if: ${{ inputs.sdk != '10.0.x' }}
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: ${{ inputs.sdk }}
       - uses: actions/download-artifact@v8
         with:
           name: build
@@ -71,7 +90,9 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/.nuget/packages
-          key: nuget-${{ inputs.repo }}-${{ hashFiles('evals/Fuse.Evals/PinnedRepo.cs', 'evals/Fuse.Evals/FixtureGenerator.cs') }}
+          key: nuget-${{ inputs.repo }}-${{ inputs.sdk }}-${{ hashFiles('evals/Fuse.Evals/PinnedRepo.cs', 'evals/Fuse.Evals/FixtureGenerator.cs') }}
+          restore-keys: |
+            nuget-${{ inputs.repo }}-
       - &clone
         name: Clone the pinned repository
         if: inputs.repo != 'fixture'
@@ -102,12 +123,12 @@ jobs:
           $cores = (Get-CimInstance Win32_Processor | Measure-Object NumberOfLogicalProcessors -Sum).Sum
           $memory = [math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB)
           New-Item -ItemType Directory -Force out | Out-Null
-          "runner: $env:ImageOS $env:ImageVersion`ncpu: $cpu, $cores logical processors`nmemory: $memory GB`nsdk: $(dotnet --version)`ncommit: $env:GITHUB_SHA" | Set-Content out/runner.txt
+          "runner: $env:ImageOS $env:ImageVersion`ncpu: $cpu, $cores logical processors`nmemory: $memory GB`nsdk: $(dotnet --version)`ntarget_sdk: $env:FUSE_EVAL_SDK`nmsbuild_mt: $env:FUSE_EVAL_MSBUILD_MT`ncommit: $env:GITHUB_SHA" | Set-Content out/runner.txt
           Get-Content out/runner.txt
       - uses: actions/upload-artifact@v7
         if: steps.cached.outputs.cache-hit != 'true'
         with:
-          name: truth-${{ inputs.suite }}-${{ inputs.repo }}-${{ matrix.shard }}
+          name: truth-${{ inputs.suite }}-${{ inputs.repo }}-${{ inputs.sdk }}-s${{ matrix.shard }}
           path: out/
           if-no-files-found: error
 
@@ -130,6 +151,11 @@ jobs:
             8.0.x
             9.0.x
           global-json-file: global.json
+      - name: Install target .NET SDK (${{ inputs.sdk }})
+        if: ${{ inputs.sdk != '10.0.x' }}
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: ${{ inputs.sdk }}
       - uses: actions/download-artifact@v8
         with:
           name: build
@@ -149,7 +175,7 @@ jobs:
         continue-on-error: true
         uses: actions/download-artifact@v8
         with:
-          pattern: truth-${{ inputs.suite }}-${{ inputs.repo }}-*
+          pattern: truth-${{ inputs.suite }}-${{ inputs.repo }}-${{ inputs.sdk }}-s*
           path: shards
       - name: Run ${{ inputs.suite }} with the native client
         run: |
@@ -177,6 +203,6 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: evals-${{ inputs.repo }}-${{ inputs.suite }}
+          name: evals-${{ inputs.repo }}-${{ inputs.suite }}${{ inputs.sdk-tag }}
           path: out/
           if-no-files-found: error

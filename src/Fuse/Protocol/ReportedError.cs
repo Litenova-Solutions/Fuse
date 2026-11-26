@@ -20,4 +20,11 @@ internal sealed record ReportedError(CompilerError Error, ReportedCause? Cause =
     ///     its cause's file has no writer or several writers.
     /// </summary>
     public string? CausedBy { get; init; }
+
+    /// <summary>Deterministic Roslyn repair context when requested with <c>--brief</c>, or null.</summary>
+    public ReportedRepairPacket? Repair { get; init; }
+
+    /// <summary>Creates a <see cref="ReportedError"/> from raw diagnostic fields without requiring callers to import <c>Fuse.Check.Model</c>.</summary>
+    public static ReportedError Create(string path, int line, int column, string id, string message, bool fromAnalyzer = false) =>
+        new(new CompilerError(path, line, column, id, message, fromAnalyzer));
 }

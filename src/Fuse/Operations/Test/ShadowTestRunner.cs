@@ -140,9 +140,9 @@ internal static class ShadowTestRunner
                 return;
             if (!(await SdkCapabilities.DetectAsync(root.Path, cancellationToken).ConfigureAwait(false)).SupportsMtpAffectedTests)
                 return;
-            // The engine reads this folder without the client: its path and the hex-encoded project name below match
-            // the dynamic map's incoming folder, which this layer may not name.
-            var incoming = Path.Combine(root.SharedStateDirectory, "test-maps", "incoming", Convert.ToHexStringLower(Encoding.UTF8.GetBytes(root.PathOf(run.Project).Relative)));
+            // The engine reads this folder without the client: its path is the dynamic map's incoming folder
+            // with the hex-encoded project name below it.
+            var incoming = Path.Combine(LocalState.DynamicMapIncomingDirectory(root.SharedStateDirectory), Convert.ToHexStringLower(Encoding.UTF8.GetBytes(root.PathOf(run.Project).Relative)));
             var copied = 0;
             foreach (var folder in folders)
             {

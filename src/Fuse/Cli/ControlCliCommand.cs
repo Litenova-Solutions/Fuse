@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using Fuse.Identity;
 using Fuse.Harnesses;
 using Fuse.Harnesses.Adapters;
 using Fuse.Hooks;
@@ -98,14 +99,19 @@ internal static class ControlCliCommand
             TimeSpan Remaining() => HookCommand.LongWait - TimeSpan.FromMilliseconds(Environment.TickCount64 - started);
             Task<(OperationResult Result, EngineResponse Response)> Check(CancellationToken ct) => CheckOperation.RunAsync(
                 root,
-                files,
-                session,
-                waitForLoad: background,
-                compilationWideAnalyzers: false,
+                new CheckInvocation(
+                    Files: files,
+                    Session: SessionId.TryParse(session, out var fastSession) ? fastSession : null,
+                    WaitForLoad: background,
+                    CompilationWideAnalyzers: false,
+                    Limit: ErrorLimit.Default,
+                    Json: false,
+                    IncludeTreeStamp: false,
+                    IncludeNonCSharp: false,
+                    Brief: false,
+                    InteractiveFast: true),
                 background ? Remaining() : TimeSpan.FromSeconds(50),
-                ct,
-                includeNonCSharp: false,
-                interactiveFast: true);
+                ct);
 
             var answer = await HookCommand.PostEditAsync(harness, Check, Remaining, message => LogHook(root.Path, message), cancel.Token).ConfigureAwait(false);
             if (answer.StandardOutput.Length > 0)

@@ -10,36 +10,21 @@ namespace Fuse.Operations.Check;
 /// <summary>Asks the engine for the errors introduced since HEAD and renders them.</summary>
 internal static class CheckOperation
 {
-    /// <param name="files">Absolute paths of the files to check, or null for every change.</param>
-    /// <param name="session">
-    ///     The session that just wrote <paramref name="files"/>, or that is stopping when <paramref name="files"/> is null,
-    ///     as its harness identifies it, or null. With one, the answer leaves out the errors other sessions' edits caused
-    ///     without it.
-    /// </param>
-    /// <param name="waitForLoad">Wait for the engine to finish loading, or return immediately with <see cref="ErrorCode.Loading"/>.</param>
-    /// <param name="compilationWideAnalyzers">
-    ///     False to leave out the analyzers that read the whole compilation, which the summary then names. Ignored when
-    ///     <paramref name="files"/> is null: a check of every change runs them.
-    /// </param>
+    /// <param name="root">The repository the engine checks.</param>
+    /// <param name="invocation">What to check, whose edits it answers, and how to show it.</param>
     /// <param name="timeout">How long to wait for the answer.</param>
     /// <param name="cancellationToken">Cancels the check.</param>
-    /// <param name="maxErrors">How many errors to show: 0 for the default count, <see cref="int.MaxValue"/> for every error.</param>
-    /// <param name="json">True for one JSON object per error instead of text.</param>
-    /// <param name="includeTreeStamp">True to stamp the summary and the results file with the tree the check ended on, for <c>fuse check</c>; hook and MCP answers stay unstamped.</param>
-    /// <param name="includeNonCSharp">False to leave the changed files Fuse does not check out of the summary; the post-edit hook sends false.</param>
-    /// <param name="brief">True to request and render Roslyn repair packets (<c>--brief</c>).</param>
-    /// <param name="interactiveFast">True for post-edit hooks so body-only edits can use fast span-level binding.</param>
     public static async Task<(OperationResult Result, EngineResponse Response)> RunAsync(
-        RepoRoot root, IReadOnlyList<string>? files, string? session, bool waitForLoad, bool compilationWideAnalyzers, TimeSpan timeout, CancellationToken cancellationToken, int maxErrors = 0, bool json = false, bool includeTreeStamp = false, bool includeNonCSharp = true, bool brief = false, bool interactiveFast = false)
+        RepoRoot root, CheckInvocation invocation, TimeSpan timeout, CancellationToken cancellationToken)
     {
-        EngineRequest request = files is null
-            ? new EngineRequest.CheckChanges(waitForLoad) { Session = session, IsStopping = session is not null, MaxErrors = RequestedFor(maxErrors, json), StampTree = includeTreeStamp, Brief = brief }
-            : new EngineRequest.CheckFiles(files, waitForLoad) { Session = session, LeaveOutCompilationWide = !compilationWideAnalyzers, MaxErrors = RequestedFor(maxErrors, json), StampTree = includeTreeStamp, Brief = brief, InteractiveFast = interactiveFast };
+        EngineRequest request = invocation.Files is null
+            ? new EngineRequest.CheckChanges(invocation.WaitForLoad) { Session = invocation.Session?.StorageKey, Mode = invocation.Session is not null ? SessionCheckMode.Stop : SessionCheckMode.Check, MaxErrors = RequestedFor(invocation.Limit.ToCount(), invocation.Json), StampTree = invocation.IncludeTreeStamp, Brief = invocation.Brief }
+            : new EngineRequest.CheckFiles(invocation.Files, invocation.WaitForLoad) { Session = invocation.Session?.StorageKey, LeaveOutCompilationWide = !invocation.CompilationWideAnalyzers, MaxErrors = RequestedFor(invocation.Limit.ToCount(), invocation.Json), StampTree = invocation.IncludeTreeStamp, Brief = invocation.Brief, InteractiveFast = invocation.InteractiveFast };
         var response = await EngineClient.SendAsync(root, request, timeout, cancellationToken).ConfigureAwait(false);
         if (response is not EngineResponse.CheckAnswered answered)
             return (OperationResult.Unanswered(response, "check result"), response);
         var treeStamp = StampOf(answered.Report);
-        return (Render(answered.Report, ResultsFile.WriteCheck(root, answered.Report, treeStamp), ShownFor(maxErrors, json), json, treeStamp, includeNonCSharp, brief, root.Path), response);
+        return (Render(answered.Report, ResultsFile.WriteCheck(root, answered.Report, treeStamp), ShownFor(invocation.Limit.ToCount(), invocation.Json), invocation.Json, treeStamp, invocation.IncludeNonCSharp, invocation.Brief, root.Path), response);
     }
 
     /// <param name="specs">Absolute file and directory paths and absolute glob patterns, in the order named.</param>

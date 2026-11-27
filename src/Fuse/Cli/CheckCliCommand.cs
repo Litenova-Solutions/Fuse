@@ -1,3 +1,4 @@
+using Fuse.Identity;
 using Fuse.Operations;
 using Fuse.Operations.Check;
 using Fuse.Operations.Session;
@@ -9,38 +10,53 @@ internal static class CheckCliCommand
     /// <summary>Runs <c>fuse check</c>: errors the working tree has that HEAD does not.</summary>
     internal static async Task<int> CheckAsync(string[] args, CancellationToken cancellationToken)
     {
-        var (parsed, refusal) = CheckArguments.Parse(args);
-        if (parsed is null)
+        var parsed = CheckArguments.Parse(args);
+        if (parsed is ParseResult<CheckArguments>.Refused refused)
         {
-            Console.Error.WriteLine(refusal);
+            Console.Error.WriteLine(refused.Message);
             Console.Error.WriteLine(CommandUsage.Check);
             return 2;
         }
 
+        var arguments = ((ParseResult<CheckArguments>.Parsed)parsed).Value;
         var root = CommandDispatcher.RequireRoot();
         if (root is null)
             return 2;
         // A directory or a pattern scopes the check to the changed sources under it; files alone check as named.
-        if (parsed.Files.Count > 0 && parsed.Files.Any(IsScopedSpec))
+        if (arguments.Files.Count > 0 && arguments.Files.Any(IsScopedSpec))
         {
-            var (specs, specsRefusal) = CheckOperation.ResolveFiles(parsed.Files, Path.GetFullPath);
+            var (specs, specsRefusal) = CheckOperation.ResolveFiles(arguments.Files, Path.GetFullPath);
             if (specsRefusal is not null)
                 return CommandDispatcher.Print(specsRefusal);
-            var (scoped, _) = await CheckOperation.RunScopedAsync(root, specs, parsed.MaxErrors, parsed.Json, TimeSpan.FromMinutes(10), cancellationToken, includeTreeStamp: true, session: SessionOperation.EnvironmentSession, brief: parsed.Brief).ConfigureAwait(false);
+            var (scoped, _) = await CheckOperation.RunScopedAsync(root, specs, arguments.Limit.ToCount(), arguments.Json, TimeSpan.FromMinutes(10), cancellationToken, includeTreeStamp: true, session: SessionOperation.EnvironmentSession, brief: arguments.Brief).ConfigureAwait(false);
             return CommandDispatcher.Print(scoped);
         }
 
         IReadOnlyList<string>? absolute = null;
-        if (parsed.Files.Count > 0)
+        if (arguments.Files.Count > 0)
         {
-            (absolute, var filesRefusal) = CheckOperation.ResolveFiles(parsed.Files, Path.GetFullPath);
+            (absolute, var filesRefusal) = CheckOperation.ResolveFiles(arguments.Files, Path.GetFullPath);
             if (filesRefusal is not null)
                 return CommandDispatcher.Print(filesRefusal);
         }
 
         // FUSE_SESSION names the caller's session in its environment, as a hook names one in its payload: with files it
         // credits them to the session, and without files it answers for that session alone.
-        var (result, _) = await CheckOperation.RunAsync(root, absolute, session: SessionOperation.EnvironmentSession, waitForLoad: true, compilationWideAnalyzers: true, TimeSpan.FromMinutes(10), cancellationToken, parsed.MaxErrors, parsed.Json, includeTreeStamp: true, brief: parsed.Brief).ConfigureAwait(false);
+        var (result, _) = await CheckOperation.RunAsync(
+            root,
+            new CheckInvocation(
+                Files: absolute,
+                Session: SessionId.TryParse(SessionOperation.EnvironmentSession, out var checkSession) ? checkSession : null,
+                WaitForLoad: true,
+                CompilationWideAnalyzers: true,
+                Limit: arguments.Limit,
+                Json: arguments.Json,
+                IncludeTreeStamp: true,
+                IncludeNonCSharp: true,
+                Brief: arguments.Brief,
+                InteractiveFast: false),
+            TimeSpan.FromMinutes(10),
+            cancellationToken).ConfigureAwait(false);
         return CommandDispatcher.Print(result);
     }
 

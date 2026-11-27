@@ -1,4 +1,5 @@
 using System.Globalization;
+using Fuse.Identity;
 using Fuse.Operations;
 using Fuse.Operations.Check;
 using Fuse.Operations.Session;
@@ -115,7 +116,8 @@ internal static class TestCliCommand
             return 2;
         if (fromRewrite)
             Console.Error.WriteLine("fuse: dotnet test routed to fuse test (tests affected by your changes; fuse test --all runs every test)");
-        var result = await TestOperation.RunAsync(root, Environment.CurrentDirectory, passthrough, all, cancellationToken, session, live: Console.Out, failed: failed, clean: clean, noCache: noCache, maxFailures: maxFailures).ConfigureAwait(false);
+        var invocation = new TestInvocation(root, Environment.CurrentDirectory, passthrough, all, session, Console.Out, failed, clean, noCache, ErrorLimit.FromCount(maxFailures));
+        var result = await TestOperation.RunAsync(invocation, cancellationToken).ConfigureAwait(false);
         return CommandDispatcher.Print(result);
     }
 }

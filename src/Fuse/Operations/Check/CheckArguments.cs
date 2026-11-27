@@ -1,12 +1,13 @@
 using System.Globalization;
+using Fuse.Identity;
 namespace Fuse.Operations.Check;
 
 /// <summary>What <c>fuse check</c> was told: which files to check, how many errors to show, and in what format.</summary>
 /// <param name="Files">The files, directories and patterns as named, or empty for every change.</param>
-/// <param name="MaxErrors">How many errors to show: 0 for the default count, <see cref="int.MaxValue"/> for every error.</param>
+/// <param name="Limit">How many errors to show: the default count, an asked count, or every error.</param>
 /// <param name="Json">True for one JSON object per error instead of text.</param>
 /// <param name="Brief">True to include Roslyn repair packets (source window, candidate members/overloads, usings, stubs).</param>
-internal sealed record CheckArguments(IReadOnlyList<string> Files, int MaxErrors, bool Json, bool Brief = false)
+internal sealed record CheckArguments(IReadOnlyList<string> Files, ErrorLimit Limit, bool Json, bool Brief = false)
 {
     /// <summary>The most errors <c>--max-errors</c> takes; past it the count is a typo, and <c>--all-errors</c> shows every error.</summary>
     internal const int MaxErrorsLimit = 100000;
@@ -15,8 +16,8 @@ internal sealed record CheckArguments(IReadOnlyList<string> Files, int MaxErrors
     ///     Parses <paramref name="args"/>. Help tokens are dropped: the command prints help before parsing, so one here
     ///     never reaches a check. After <c>--</c> every token is a file, even one that looks like an option.
     /// </summary>
-    /// <returns>The arguments, or the usage failure to print when they do not parse.</returns>
-    public static (CheckArguments? Arguments, string? Refusal) Parse(IReadOnlyList<string> args)
+    /// <returns>The parsed arguments, or the refusal to print when they do not parse.</returns>
+    public static ParseResult<CheckArguments> Parse(IReadOnlyList<string> args)
     {
         var files = new List<string>();
         var maxErrors = 0;
@@ -63,20 +64,20 @@ internal sealed record CheckArguments(IReadOnlyList<string> Files, int MaxErrors
             {
                 var refusal = TakeCount(token, args, ref i, out var count);
                 if (refusal is not null)
-                    return (null, refusal);
+                    return new ParseResult<CheckArguments>.Refused(refusal);
                 maxErrors = count;
                 continue;
             }
 
             if (token.StartsWith("--", StringComparison.Ordinal))
-                return (null, $"fuse: check takes files and [--max-errors <n>|--all-errors] [--json]; '{token}' is not one");
+                return new ParseResult<CheckArguments>.Refused($"fuse: check takes files and [--max-errors <n>|--all-errors] [--json]; '{token}' is not one");
             // A single dash that is not help starts a file, such as -h.cs.
             files.Add(token);
         }
 
         if (allErrors && maxErrors > 0)
-            return (null, "fuse: --all-errors and --max-errors cannot be combined; choose one");
-        return (new CheckArguments(files, allErrors ? int.MaxValue : maxErrors, json, brief), null);
+            return new ParseResult<CheckArguments>.Refused("fuse: --all-errors and --max-errors cannot be combined; choose one");
+        return new ParseResult<CheckArguments>.Parsed(new CheckArguments(files, allErrors ? ErrorLimit.All : ErrorLimit.FromCount(maxErrors), json, brief));
     }
 
     /// <summary>Whether <paramref name="token"/> asks for help, which the command answers before parsing.</summary>

@@ -1,4 +1,5 @@
 using Fuse.Failures;
+using Fuse.Operations;
 using Fuse.Operations.Build;
 using Fuse.Paths;
 namespace Fuse.Cli;
@@ -9,18 +10,19 @@ internal static class BuildCliCommand
     /// <summary>Runs <c>fuse build</c>: dotnet build over the working tree, or over the changed projects with <c>--changed</c>.</summary>
     internal static async Task<int> BuildAsync(string[] args, CancellationToken cancellationToken)
     {
-        var (parsed, refusal) = BuildArguments.Parse(args);
-        if (parsed is null)
+        var parsed = BuildArguments.Parse(args);
+        if (parsed is ParseResult<BuildArguments>.Refused refused)
         {
-            Console.Error.WriteLine(refusal);
+            Console.Error.WriteLine(refused.Message);
             Console.Error.WriteLine(CommandUsage.Build);
             return 2;
         }
 
-        if (parsed.FromRewrite)
+        var arguments = ((ParseResult<BuildArguments>.Parsed)parsed).Value;
+        if (arguments.FromRewrite)
             Console.Error.WriteLine("fuse: dotnet build routed to fuse build (first 20 errors; fuse build --all-errors for every error)");
         var root = RepoRoot.Find(Environment.CurrentDirectory);
-        if (parsed.Changed)
+        if (arguments.Changed)
         {
             // Changed is meaningless without HEAD; a whole build outside a repository still runs.
             if (root is null)
@@ -29,11 +31,11 @@ internal static class BuildCliCommand
                 return 2;
             }
 
-            var changed = await BuildOperation.RunChangedAsync(root, Environment.CurrentDirectory, parsed.Passthrough, parsed.ToOptions(), cancellationToken).ConfigureAwait(false);
+            var changed = await BuildOperation.RunChangedAsync(root, Environment.CurrentDirectory, arguments.Passthrough, arguments.ToOptions(), cancellationToken).ConfigureAwait(false);
             return CommandDispatcher.Print(changed);
         }
 
-        var result = await BuildOperation.RunAsync(root, Environment.CurrentDirectory, parsed.Passthrough, parsed.ToOptions(), cancellationToken, includeTreeStamp: true).ConfigureAwait(false);
+        var result = await BuildOperation.RunAsync(root, Environment.CurrentDirectory, arguments.Passthrough, arguments.ToOptions(), cancellationToken, includeTreeStamp: true).ConfigureAwait(false);
         return CommandDispatcher.Print(result);
     }
 }

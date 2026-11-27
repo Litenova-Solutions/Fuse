@@ -42,37 +42,28 @@ internal static class TestOperation
     /// </summary>
     internal const string StoppedEarlyMessage = "stopped early after reaching max failures";
 
-    /// <param name="session">
-    ///     The session the run is for, as its harness identifies it, or null. With one, the affected tests leave out the
-    ///     changes only other sessions wrote. The pre-shell hook passes it to <c>fuse test</c>.
-    /// </param>
-    /// <param name="live">
-    ///     What the first stage's failures print to as soon as they are known, or null to print nothing until the answer.
-    ///     The command line passes its output; the MCP tool passes null and answers once.
-    /// </param>
-    /// <param name="failed">True to rerun the tests that failed in the last recorded run instead of planning from the changes.</param>
-    /// <param name="clean">True to clear the slice test cache and run fresh processes (<c>--clean</c>).</param>
-    /// <param name="noCache">True to bypass the slice test cache and reused test results (<c>--no-cache</c>).</param>
-    /// <param name="maxFailures">Maximum test failures before stopping early; 0 disables early stop.</param>
-    public static async Task<OperationResult> RunAsync(
-        RepoRoot root,
-        string workingDirectory,
-        IReadOnlyList<string> arguments,
-        bool all,
-        CancellationToken cancellationToken,
-        string? session = null,
-        TextWriter? live = null,
-        bool failed = false,
-        bool clean = false,
-        bool noCache = false,
-        int maxFailures = DefaultMaxFailures)
+    /// <param name="invocation">What the test run runs.</param>
+    /// <param name="cancellationToken">Kills the running <c>dotnet test</c> processes.</param>
+    public static async Task<OperationResult> RunAsync(TestInvocation invocation, CancellationToken cancellationToken)
     {
+        var root = invocation.Root;
+        var workingDirectory = invocation.WorkingDirectory;
+        var arguments = invocation.Arguments;
+        var all = invocation.All;
+        var session = invocation.Session;
+        var live = invocation.Live;
+        var failed = invocation.Failed;
+        var clean = invocation.Clean;
+        var noCache = invocation.NoCache;
+        var maxFailures = invocation.MaxFailures.ToCount();
         var started = Environment.TickCount64;
         if (failed)
             return await RunFailedAsync(root, live, all, arguments, started, cancellationToken, clean, noCache, maxFailures).ConfigureAwait(false);
         // Arguments that only say where the tests are and how to build them plan the affected tests in that scope;
         // any other argument chooses the tests itself and passes to dotnet test as it is.
-        var scope = arguments.Count > 0 ? TestScopeArguments.Parse(workingDirectory, arguments) : null;
+        TestScopeArguments? scope = null;
+        if (arguments.Count > 0 && TestScopeArguments.Parse(workingDirectory, arguments) is ParseResult<TestScopeArguments?>.Parsed parsedScope)
+            scope = parsedScope.Value;
         if (arguments.Count > 0 && scope is null)
         {
             // dotnet test with the caller's arguments builds with MSBuild, so it holds the lock until it exits.

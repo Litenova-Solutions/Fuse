@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Fuse.Identity;
 using Fuse.Operations.Session;
 using Fuse.Operations.Test;
 using Fuse.Paths;
@@ -20,7 +21,7 @@ internal static partial class GateOperation
 
     internal sealed record GateArguments(string? Session, bool Brief, bool RunTests, int MaxFailures, bool Json);
 
-    public static (GateArguments? Arguments, string? Refusal) Parse(IReadOnlyList<string> args)
+    public static ParseResult<GateArguments> Parse(IReadOnlyList<string> args)
     {
         string? session = null;
         var brief = false;
@@ -57,7 +58,7 @@ internal static partial class GateOperation
                     ? token["--session=".Length..]
                     : ++i < args.Count ? args[i] : null;
                 if (string.IsNullOrWhiteSpace(value))
-                    return (null, "fuse: --session takes the session's id");
+                    return new ParseResult<GateArguments>.Refused("fuse: --session takes the session's id");
                 session = value;
                 continue;
             }
@@ -68,14 +69,14 @@ internal static partial class GateOperation
                     ? token["--max-failures=".Length..]
                     : ++i < args.Count ? args[i] : null;
                 if (text is null || !int.TryParse(text, CultureInfo.InvariantCulture, out maxFailures) || maxFailures < 1 || maxFailures > CheckArguments.MaxErrorsLimit)
-                    return (null, $"fuse: --max-failures takes a count of 1 to {CheckArguments.MaxErrorsLimit}, not '{text ?? ""}'");
+                    return new ParseResult<GateArguments>.Refused($"fuse: --max-failures takes a count of 1 to {CheckArguments.MaxErrorsLimit}, not '{text ?? ""}'");
                 continue;
             }
 
-            return (null, $"fuse: '{token}' is not a fuse gate option\n{Usage}");
+            return new ParseResult<GateArguments>.Refused($"fuse: '{token}' is not a fuse gate option\n{Usage}");
         }
 
-        return (new GateArguments(session, brief, runTests, maxFailures, json), null);
+        return new ParseResult<GateArguments>.Parsed(new GateArguments(session, brief, runTests, maxFailures, json));
     }
 
     public static async Task<OperationResult> RunAsync(
@@ -85,29 +86,32 @@ internal static partial class GateOperation
         TextWriter? live,
         CancellationToken cancellationToken)
     {
-        var (parsed, refusal) = Parse(args);
-        if (parsed is null)
-            return new OperationResult(Outcome.Unanswered, refusal!);
+        var parsed = Parse(args);
+        if (parsed is ParseResult<GateArguments>.Refused refused)
+            return new OperationResult(Outcome.Unanswered, refused.Message);
+        var arguments = ((ParseResult<GateArguments>.Parsed)parsed).Value;
 
-        var session = parsed.Session ?? SessionOperation.EnvironmentSession;
+        var session = arguments.Session ?? SessionOperation.EnvironmentSession;
         var (checkResult, checkResponse) = await CheckOperation.RunAsync(
             root,
-            files: null,
-            session: session,
-            waitForLoad: true,
-            compilationWideAnalyzers: true,
-            timeout: TimeSpan.FromMinutes(10),
-            cancellationToken: cancellationToken,
-            maxErrors: parsed.Json ? int.MaxValue : 0,
-            json: false,
-            includeTreeStamp: true,
-            includeNonCSharp: true,
-            brief: parsed.Brief).ConfigureAwait(false);
+            new CheckInvocation(
+                Files: null,
+                Session: SessionId.TryParse(session, out var checkSession) ? checkSession : null,
+                WaitForLoad: true,
+                CompilationWideAnalyzers: true,
+                Limit: arguments.Json ? ErrorLimit.All : ErrorLimit.Default,
+                Json: false,
+                IncludeTreeStamp: true,
+                IncludeNonCSharp: true,
+                Brief: arguments.Brief,
+                InteractiveFast: false),
+            TimeSpan.FromMinutes(10),
+            cancellationToken).ConfigureAwait(false);
 
         var checkReport = (checkResponse as EngineResponse.CheckAnswered)?.Report;
         if (checkResult.Outcome != Outcome.Clean)
         {
-            if (parsed.Json)
+            if (arguments.Json)
             {
                 var payload = new GateJsonReport(
                     Passed: false,
@@ -123,9 +127,9 @@ internal static partial class GateOperation
             return checkResult;
         }
 
-        if (!parsed.RunTests)
+        if (!arguments.RunTests)
         {
-            if (parsed.Json)
+            if (arguments.Json)
             {
                 var payload = new GateJsonReport(
                     Passed: true,
@@ -141,18 +145,9 @@ internal static partial class GateOperation
             return checkResult;
         }
 
-        var testResult = await TestOperation.RunAsync(
-            root,
-            workingDirectory,
-            arguments: [],
-            all: false,
-            cancellationToken: cancellationToken,
-            session: session,
-            live: parsed.Json ? null : live,
-            failed: false,
-            maxFailures: parsed.MaxFailures).ConfigureAwait(false);
+        var testResult = await TestOperation.RunAsync(new TestInvocation(root, workingDirectory, [], false, session, arguments.Json ? null : live, false, false, false, ErrorLimit.FromCount(arguments.MaxFailures)), cancellationToken).ConfigureAwait(false);
 
-        if (parsed.Json)
+        if (arguments.Json)
         {
             var payload = new GateJsonReport(
                 Passed: testResult.Outcome == Outcome.Clean,

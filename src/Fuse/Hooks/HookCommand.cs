@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using Fuse.Failures;
 using Fuse.Harnesses;
+using Fuse.Identity;
 using Fuse.Operations;
 using Fuse.Operations.Check;
 using Fuse.Paths;
@@ -126,7 +127,20 @@ internal static class HookCommand
         var started = Environment.TickCount64;
         TimeSpan Remaining() => LongWait - TimeSpan.FromMilliseconds(Environment.TickCount64 - started);
         Task<(OperationResult Result, EngineResponse Response)> Check(CancellationToken ct) => CheckOperation.RunAsync(
-            root, files, session, waitForLoad: background, compilationWideAnalyzers: false, background ? Remaining() : TimeSpan.FromSeconds(50), ct, includeNonCSharp: false);
+            root,
+            new CheckInvocation(
+                Files: files,
+                Session: SessionId.TryParse(session, out var postEditSession) ? postEditSession : null,
+                WaitForLoad: background,
+                CompilationWideAnalyzers: false,
+                Limit: ErrorLimit.Default,
+                Json: false,
+                IncludeTreeStamp: false,
+                IncludeNonCSharp: false,
+                Brief: false,
+                InteractiveFast: false),
+            background ? Remaining() : TimeSpan.FromSeconds(50),
+            ct);
         return await PostEditAsync(harness, Check, Remaining, message => Log(root.Path, message), cancellationToken).ConfigureAwait(false);
     }
 
@@ -200,7 +214,21 @@ internal static class HookCommand
         // The stop hook checks every change in the working tree. Answered to the stopping session, it blocks on the errors
         // that session's edits cause, alone or with other sessions' edits, and on those no session's edits are credited
         // with; an error another session's edits cause without it is left to that session, which may still be writing.
-        var (result, response) = await CheckOperation.RunAsync(root, null, session, waitForLoad: true, compilationWideAnalyzers: true, LongWait, cancellationToken).ConfigureAwait(false);
+        var (result, response) = await CheckOperation.RunAsync(
+            root,
+            new CheckInvocation(
+                Files: null,
+                Session: SessionId.TryParse(session, out var stopSession) ? stopSession : null,
+                WaitForLoad: true,
+                CompilationWideAnalyzers: true,
+                Limit: ErrorLimit.Default,
+                Json: false,
+                IncludeTreeStamp: false,
+                IncludeNonCSharp: true,
+                Brief: false,
+                InteractiveFast: false),
+            LongWait,
+            cancellationToken).ConfigureAwait(false);
         if (!ShouldReport(result, response))
             return null;
         // A missing restore is not an error the changes introduced; its message already names the command to run.

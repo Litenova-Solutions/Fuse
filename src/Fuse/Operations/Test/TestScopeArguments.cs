@@ -18,10 +18,10 @@ namespace Fuse.Operations.Test;
 /// <param name="Framework">The framework named, or null.</param>
 internal sealed record TestScopeArguments(string[] Paths, string[] BuildSwitches, bool BuildOnly, string? Configuration, string? Framework)
 {
-    /// <summary>The scope <paramref name="arguments"/> name, or null when any of them is not a scope argument.</summary>
+    /// <summary>The scope <paramref name="arguments"/> name, as parsed, or a parsed null when any of them is not a scope argument.</summary>
     /// <param name="workingDirectory">The directory relative paths are read from.</param>
     /// <param name="arguments">The caller's <c>dotnet test</c> arguments.</param>
-    public static TestScopeArguments? Parse(string workingDirectory, IReadOnlyList<string> arguments)
+    public static ParseResult<TestScopeArguments?> Parse(string workingDirectory, IReadOnlyList<string> arguments)
     {
         var paths = new List<string>();
         var switches = new List<string>();
@@ -43,17 +43,17 @@ internal sealed record TestScopeArguments(string[] Paths, string[] BuildSwitches
             switch (option)
             {
                 case "--":
-                    return null;
+                    return new ParseResult<TestScopeArguments?>.Parsed(null);
                 case "--project":
                 case "--solution":
                     if (Value(ref i) is not { } named || Absolute(workingDirectory, named) is not { } project)
-                        return null;
+                        return new ParseResult<TestScopeArguments?>.Parsed(null);
                     paths.Add(project);
                     break;
                 case "-c":
                 case "--configuration":
                     if (Value(ref i) is not { } config)
-                        return null;
+                        return new ParseResult<TestScopeArguments?>.Parsed(null);
                     configuration = config;
                     switches.Add("-c");
                     switches.Add(config);
@@ -61,7 +61,7 @@ internal sealed record TestScopeArguments(string[] Paths, string[] BuildSwitches
                 case "-f":
                 case "--framework":
                     if (Value(ref i) is not { } target)
-                        return null;
+                        return new ParseResult<TestScopeArguments?>.Parsed(null);
                     framework = target;
                     switches.Add("-f");
                     switches.Add(target);
@@ -77,19 +77,19 @@ internal sealed record TestScopeArguments(string[] Paths, string[] BuildSwitches
                 case "-v":
                 case "--verbosity":
                     if (Value(ref i) is null)
-                        return null;
+                        return new ParseResult<TestScopeArguments?>.Parsed(null);
                     break;
                 default:
                     if (option is "-tl" or "--tl" || option.StartsWith("-tl:", StringComparison.Ordinal) || option.StartsWith("-tlp:", StringComparison.Ordinal))
                         break;
                     if (token.StartsWith('-') || Absolute(workingDirectory, token) is not { } path)
-                        return null;
+                        return new ParseResult<TestScopeArguments?>.Parsed(null);
                     paths.Add(path);
                     break;
             }
         }
 
-        return new TestScopeArguments([.. paths], [.. switches], configuration is not null || framework is not null, configuration, framework);
+        return new ParseResult<TestScopeArguments?>.Parsed(new TestScopeArguments([.. paths], [.. switches], configuration is not null || framework is not null, configuration, framework));
     }
 
     /// <summary><paramref name="path"/> as a full path from <paramref name="workingDirectory"/>, or null when it is no path.</summary>

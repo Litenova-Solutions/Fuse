@@ -1,7 +1,6 @@
-using Fuse.Check;
 using Fuse.Check.Model;
+using Fuse.Check.Pipeline;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>

@@ -1,9 +1,8 @@
 using System.Collections.Immutable;
-using Fuse.Check;
+using Fuse.Check.Diagnostics;
 using Fuse.Tests.Fixtures;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
-
 namespace Fuse.Tests.Unit;
 
 /// <summary>A baseline warm that started before HEAD moved again must not clear what the newer baseline cached.</summary>

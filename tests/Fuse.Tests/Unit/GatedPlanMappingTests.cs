@@ -1,7 +1,6 @@
 using Fuse.Engine;
 using Fuse.Protocol;
 using Fuse.Testing.Model;
-
 namespace Fuse.Tests.Unit;
 
 /// <summary>A plan's gated suites cross the pipe: the mapper carries them and a line without them reads as none.</summary>

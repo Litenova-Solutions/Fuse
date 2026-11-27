@@ -5,8 +5,9 @@ using Fuse.Engine;
 using Fuse.Operations;
 using Fuse.Protocol;
 using Fuse.Telemetry;
-using Fuse.Testing;
+using Fuse.Testing.Caching;
 using Fuse.Testing.Model;
+using Fuse.Testing.Model.Caching;
 using Fuse.Tests.Fixtures;
 namespace Fuse.Tests.Engine;
 

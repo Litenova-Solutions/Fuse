@@ -1,4 +1,4 @@
-using Fuse.Check;
+using Fuse.Check.Pipeline;
 using Fuse.Graph;
 using Fuse.Paths;
 using Fuse.Workspace.Generations;

@@ -1,7 +1,6 @@
-using Fuse.Check;
+using Fuse.Check.Diagnostics;
 using Fuse.Tests.Fixtures;
 using Microsoft.CodeAnalysis.Text;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>The baseline key covers what analyzer results depend on: an additional file's content and the global options.</summary>

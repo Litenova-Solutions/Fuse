@@ -1,7 +1,9 @@
 using System.Collections.Concurrent;
 using System.Reflection;
-using Fuse.Check;
+using Fuse.Check.Diagnostics;
 using Fuse.Check.Model;
+using Fuse.Check.Pipeline;
+using Fuse.Check.Sessions;
 using Fuse.Paths;
 using Fuse.Telemetry;
 using Fuse.Tests.Fixtures;

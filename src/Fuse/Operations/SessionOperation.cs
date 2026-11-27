@@ -296,7 +296,7 @@ internal static class SessionOperation
         return OperationResult.Unanswered(response, "session guard");
     }
 
-    /// <summary>True when <paramref name="name"/> is a name the engine registers, as <see cref="Check.SessionEdits"/> decides.</summary>
+    /// <summary>True when <paramref name="name"/> is a name the engine registers, as <see cref="Check.Sessions.SessionEdits"/> decides.</summary>
     private static bool IsValidName(string? name) =>
         !string.IsNullOrEmpty(name) && name.Length <= 64 && name.All(c => char.IsLetterOrDigit(c) || c is '-' or '_' or '.');
 

@@ -1,11 +1,12 @@
-using Fuse.Check;
+using Fuse.Check.Diagnostics;
+using Fuse.Check.Enrichment;
 using Fuse.Check.Model;
+using Fuse.Check.Pipeline;
 using Fuse.Protocol;
 using Fuse.Telemetry;
 using Fuse.Tests.Fixtures;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>

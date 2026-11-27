@@ -1,5 +1,5 @@
-using Fuse.Testing;
 using Fuse.Testing.Model;
+using Fuse.Testing.Selection;
 using Fuse.Tests.Fixtures;
 using Fuse.Workspace.Generations;
 using Microsoft.CodeAnalysis;

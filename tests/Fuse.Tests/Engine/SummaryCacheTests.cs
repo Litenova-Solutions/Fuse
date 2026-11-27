@@ -1,4 +1,4 @@
-using Fuse.Check;
+using Fuse.Check.Diagnostics;
 using Fuse.Tests.Fixtures;
 using Fuse.Workspace.Views;
 using Microsoft.CodeAnalysis;

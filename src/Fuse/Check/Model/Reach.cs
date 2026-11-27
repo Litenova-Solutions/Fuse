@@ -1,5 +1,4 @@
 using Fuse.Paths;
-
 namespace Fuse.Check.Model;
 
 /// <summary>

@@ -7,7 +7,7 @@ namespace Fuse.Operations;
 /// <summary>
 ///     Runs the tests that failed last time before the rest: which recorded failures are among a plan's selected tests,
 ///     and the two VSTest filters a split project runs with. The client builds both filters itself, since the engine
-///     answered the plan already; the spelling matches <c>Fuse.Testing.TestFilter</c>, which this namespace must not use.
+///     answered the plan already; the spelling matches <c>Fuse.Testing.Filtering.TestFilter</c>, which this namespace must not use.
 /// </summary>
 internal static class FailedFirstSplit
 {

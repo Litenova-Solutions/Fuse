@@ -1,6 +1,5 @@
-using Fuse.Check;
+using Fuse.Check.Sessions;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>

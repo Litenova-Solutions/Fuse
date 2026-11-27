@@ -1,8 +1,7 @@
-using Fuse.Check;
+using Fuse.Check.Diagnostics;
 using Fuse.Protocol;
 using Fuse.Telemetry;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Engine;
 
 public class CheckMaxErrorsTests

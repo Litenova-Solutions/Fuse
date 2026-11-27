@@ -1,8 +1,7 @@
-using Fuse.Testing;
+using Fuse.Testing.Selection;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-
 namespace Fuse.Tests.Unit;
 
 /// <summary>

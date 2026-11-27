@@ -3,7 +3,7 @@ using Fuse.Check.Model;
 using Fuse.Failures;
 using Fuse.Protocol;
 using Fuse.Testing.Model;
-
+using Fuse.Testing.Model.Caching;
 namespace Fuse.Engine;
 
 /// <summary>

@@ -2,8 +2,7 @@ using Fuse.Engine;
 using Fuse.Paths;
 using Fuse.Protocol;
 using Fuse.Telemetry;
-using Fuse.Testing;
-
+using Fuse.Testing.Planning;
 namespace Fuse.Tests.Fixtures;
 
 /// <summary>

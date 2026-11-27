@@ -1,8 +1,8 @@
 using Fuse.Dotnet.Processes;
 using Fuse.Dotnet.Test;
 using Fuse.Telemetry;
-using Fuse.Testing;
 using Fuse.Testing.Model;
+using Fuse.Testing.Selection;
 using Fuse.Tests.Fixtures;
 namespace Fuse.Tests.Engine;
 

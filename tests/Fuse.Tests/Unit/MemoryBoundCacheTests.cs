@@ -1,10 +1,9 @@
 using System.Text;
-using Fuse.Testing;
+using Fuse.Testing.Shadow;
 using Fuse.Tests.Fixtures;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
-
 namespace Fuse.Tests.Unit;
 
 /// <summary>

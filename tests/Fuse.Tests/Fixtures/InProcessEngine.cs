@@ -1,7 +1,10 @@
-using Fuse.Check;
+using Fuse.Check.Candidates;
 using Fuse.Check.Model;
+using Fuse.Check.Pipeline;
+using Fuse.Check.Sessions;
 using Fuse.Telemetry;
-using Fuse.Testing;
+using Fuse.Testing.Planning;
+using Fuse.Testing.Selection;
 using Fuse.Workspace.Generations;
 namespace Fuse.Tests.Fixtures;
 

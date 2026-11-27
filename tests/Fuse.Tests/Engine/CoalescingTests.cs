@@ -1,12 +1,11 @@
 using System.Text.Json;
-using Fuse.Check;
 using Fuse.Check.Model;
+using Fuse.Check.Pipeline;
 using Fuse.Engine;
 using Fuse.Failures;
 using Fuse.Protocol;
 using Fuse.Telemetry;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>

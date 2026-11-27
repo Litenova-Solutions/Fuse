@@ -1,10 +1,9 @@
 using Fuse.Graph;
 using Fuse.Paths;
-using Fuse.Testing;
+using Fuse.Testing.Selection;
 using Fuse.Tests.Fixtures;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-
 namespace Fuse.Tests.Unit;
 
 /// <summary>

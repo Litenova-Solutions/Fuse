@@ -1,5 +1,4 @@
 using Fuse.Paths;
-
 namespace Fuse.Testing.Model;
 
 /// <summary>What a test plan covers: the tests the changes since HEAD affect, or every test in the repository.</summary>

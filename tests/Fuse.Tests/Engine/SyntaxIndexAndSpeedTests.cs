@@ -1,5 +1,8 @@
 using System.Diagnostics;
-using Fuse.Check;
+using Fuse.Check.Candidates;
+using Fuse.Check.Diagnostics;
+using Fuse.Check.Pipeline;
+using Fuse.Check.Sessions;
 using Fuse.Telemetry;
 using Fuse.Tests.Fixtures;
 using Fuse.Workspace.Indexing;

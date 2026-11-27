@@ -1,8 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Fuse.Check;
+using Fuse.Check.Sessions;
 using Fuse.Protocol;
-
 namespace Fuse.Engine;
 
 /// <summary>

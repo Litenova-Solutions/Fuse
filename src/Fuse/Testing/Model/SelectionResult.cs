@@ -1,5 +1,4 @@
 using Fuse.Paths;
-
 namespace Fuse.Testing.Model;
 
 /// <summary>What test selection found: the selected tests, and how many changed declarations compiled to the same code as HEAD.</summary>

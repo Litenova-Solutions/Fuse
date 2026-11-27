@@ -1,9 +1,9 @@
-using Fuse.Check;
+using Fuse.Check.Candidates;
 using Fuse.Check.Model;
 using Fuse.Graph;
 using Fuse.Paths;
 using Fuse.Protocol;
-using Fuse.Testing;
+using Fuse.Testing.Selection;
 using Fuse.Workspace.Generations;
 namespace Fuse.Engine;
 

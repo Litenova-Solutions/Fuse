@@ -1,5 +1,5 @@
-using Fuse.Testing;
-using Fuse.Testing.Model;
+using Fuse.Testing.Caching;
+using Fuse.Testing.Model.Caching;
 using Fuse.Tests.Fixtures;
 using Fuse.Workspace.Generations;
 using Fuse.Workspace.Indexing;

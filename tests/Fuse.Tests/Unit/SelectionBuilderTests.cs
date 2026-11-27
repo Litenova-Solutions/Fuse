@@ -1,9 +1,8 @@
 using Fuse.Graph;
 using Fuse.Paths;
-using Fuse.Testing;
 using Fuse.Testing.Model;
+using Fuse.Testing.Selection;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Unit;
 
 /// <summary>

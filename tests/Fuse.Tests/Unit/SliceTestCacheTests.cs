@@ -1,6 +1,5 @@
-using Fuse.Testing;
-using Fuse.Testing.Model;
-
+using Fuse.Testing.Caching;
+using Fuse.Testing.Model.Caching;
 namespace Fuse.Tests.Unit;
 
 public sealed class SliceTestCacheTests : IDisposable

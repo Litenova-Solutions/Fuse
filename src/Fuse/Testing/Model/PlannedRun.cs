@@ -1,5 +1,5 @@
 using Fuse.Paths;
-
+using Fuse.Testing.Model.Caching;
 namespace Fuse.Testing.Model;
 
 /// <summary>

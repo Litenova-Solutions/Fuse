@@ -1,8 +1,7 @@
 using Fuse.Telemetry;
-using Fuse.Testing;
 using Fuse.Testing.Model;
+using Fuse.Testing.Planning;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>A test project that references Testcontainers runs only when a container runtime answers; without one its tests are left out of the plan, loudly.</summary>

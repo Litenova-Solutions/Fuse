@@ -5,7 +5,6 @@ using Fuse.Paths;
 using Fuse.Protocol;
 using Fuse.Testing.Model;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Unit;
 
 /// <summary>

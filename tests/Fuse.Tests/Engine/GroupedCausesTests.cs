@@ -1,10 +1,9 @@
-using Fuse.Check;
+using Fuse.Check.Enrichment;
 using Fuse.Check.Model;
 using Fuse.Engine;
 using Fuse.Operations;
 using Fuse.Paths;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>Every candidate error carries its cause, so errors sharing one declaration print as one group.</summary>

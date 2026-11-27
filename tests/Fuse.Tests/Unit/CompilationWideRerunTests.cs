@@ -1,9 +1,8 @@
 using System.Collections.Immutable;
-using Fuse.Check;
+using Fuse.Check.Diagnostics;
 using Fuse.Tests.Fixtures;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
-
 namespace Fuse.Tests.Unit;
 
 /// <summary>

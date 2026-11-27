@@ -1,5 +1,4 @@
 using System.Collections.Immutable;
-
 namespace Fuse.Testing.Model;
 
 /// <summary>The tests chosen in one test project.</summary>

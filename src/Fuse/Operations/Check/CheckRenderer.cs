@@ -103,7 +103,8 @@ internal static class CheckRenderer
     /// <param name="includeNonCSharp">False to leave the changed files Fuse does not check out of the summary.</param>
     /// <param name="brief">True to render <see cref="ReportedRepairPacket"/> details (and fallback source windows).</param>
     /// <param name="repoRootPath">Repository root used for fallback source windows when <paramref name="brief"/> is true.</param>
-    internal static OperationResult Render(CheckReport report, string? resultsPath = null, int maxShown = MaxShown, bool json = false, string? treeStamp = null, bool includeNonCSharp = true, bool brief = false, string? repoRootPath = null)
+    /// <param name="seconds">How long the check took, printed at the end of the summary, or null to print none.</param>
+    internal static OperationResult Render(CheckReport report, string? resultsPath = null, int maxShown = MaxShown, bool json = false, string? treeStamp = null, bool includeNonCSharp = true, bool brief = false, string? repoRootPath = null, double? seconds = null)
     {
         var text = new StringBuilder();
         IReadOnlyList<(string? Header, ReportedError Error, bool ShowCause)> shown;
@@ -159,7 +160,7 @@ internal static class CheckRenderer
         {
             var whose = report.LeftToOtherSessions > 0 ? " by this session's edits" : "";
             var where = scoped is null ? "" : $" in {scoped} and what it reaches";
-            text.Append($"fuse: no errors introduced{whose}{where} ({report.FilesChecked} file(s) checked{summaryTail}{treeStamp})");
+            text.Append($"fuse: no errors introduced{whose}{where} ({report.FilesChecked} file(s) checked{summaryTail}{treeStamp}){Duration.In(seconds)}");
             return new OperationResult(Outcome.Clean, text.ToString());
         }
 
@@ -169,7 +170,7 @@ internal static class CheckRenderer
         // The file holds every error the engine sent; the answer names it only when it left errors out, and never in JSON, which already holds them.
         var file = !json && report.ErrorCount > printed && resultsPath is not null ? $"; all {report.ErrorCount} in {resultsPath}" : "";
         var scope = scoped is null ? "" : $"; checked {scoped} and what it reaches";
-        text.Append($"fuse: {report.ErrorCount} error(s) introduced in {report.ErrorFileCount} file(s){more} ({string.Join(", ", report.Projects)}){summaryTail}{scope}{treeStamp}{file}");
+        text.Append($"fuse: {report.ErrorCount} error(s) introduced in {report.ErrorFileCount} file(s){more} ({string.Join(", ", report.Projects)}){summaryTail}{scope}{treeStamp}{file}{Duration.In(seconds)}");
         return new OperationResult(Outcome.ProblemsFound, text.ToString());
     }
 

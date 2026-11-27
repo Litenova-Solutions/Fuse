@@ -54,7 +54,8 @@ internal static class CheckCliCommand
                 IncludeTreeStamp: true,
                 IncludeNonCSharp: true,
                 Brief: arguments.Brief,
-                InteractiveFast: false),
+                InteractiveFast: false,
+                OnBusy: BusyNotice.For()),
             TimeSpan.FromMinutes(10),
             cancellationToken).ConfigureAwait(false);
         return CommandDispatcher.Print(result);

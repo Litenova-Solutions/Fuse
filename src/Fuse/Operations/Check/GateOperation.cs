@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
@@ -86,6 +87,7 @@ internal static partial class GateOperation
         TextWriter? live,
         CancellationToken cancellationToken)
     {
+        var watch = Stopwatch.StartNew();
         var parsed = Parse(args);
         if (parsed is ParseResult<GateArguments>.Refused refused)
             return new OperationResult(Outcome.Unanswered, refused.Message);
@@ -104,7 +106,8 @@ internal static partial class GateOperation
                 IncludeTreeStamp: true,
                 IncludeNonCSharp: true,
                 Brief: arguments.Brief,
-                InteractiveFast: false),
+                InteractiveFast: false,
+                OnBusy: BusyNotice.For()),
             TimeSpan.FromMinutes(10),
             cancellationToken).ConfigureAwait(false);
 
@@ -120,7 +123,8 @@ internal static partial class GateOperation
                     ErrorCount: checkReport?.ErrorCount ?? 0,
                     Errors: checkReport?.Errors ?? [],
                     CheckOutput: checkResult.Text,
-                    TestOutput: null);
+                    TestOutput: null,
+                    ElapsedMs: watch.ElapsedMilliseconds);
                 return new OperationResult(checkResult.Outcome, JsonSerializer.Serialize(payload, GateJson.Default.GateJsonReport));
             }
 
@@ -138,7 +142,8 @@ internal static partial class GateOperation
                     ErrorCount: 0,
                     Errors: [],
                     CheckOutput: checkResult.Text,
-                    TestOutput: null);
+                    TestOutput: null,
+                    ElapsedMs: watch.ElapsedMilliseconds);
                 return new OperationResult(Outcome.Clean, JsonSerializer.Serialize(payload, GateJson.Default.GateJsonReport));
             }
 
@@ -156,7 +161,8 @@ internal static partial class GateOperation
                 ErrorCount: 0,
                 Errors: [],
                 CheckOutput: checkResult.Text,
-                TestOutput: testResult.Text);
+                TestOutput: testResult.Text,
+                ElapsedMs: watch.ElapsedMilliseconds);
             return new OperationResult(testResult.Outcome, JsonSerializer.Serialize(payload, GateJson.Default.GateJsonReport));
         }
 
@@ -172,7 +178,8 @@ internal static partial class GateOperation
         int ErrorCount,
         ReportedError[] Errors,
         string CheckOutput,
-        string? TestOutput);
+        string? TestOutput,
+        long ElapsedMs);
 
     [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull, UseStringEnumConverter = true)]
     [JsonSerializable(typeof(GateJsonReport))]

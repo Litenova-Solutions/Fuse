@@ -89,13 +89,13 @@ internal static class BuildRenderer
         var warningsTail = warningsCount is null ? "" : $"; {warningsCount} warning(s)";
         if (exitCode == 0)
         {
-            text.Append($"fuse: {operation} succeeded in {seconds:0.0} s{warningsTail}{timesTail}{treeStamp}");
+            text.Append($"fuse: {operation} succeeded{Duration.In(seconds)}{warningsTail}{timesTail}{treeStamp}");
             return new OperationResult(Outcome.Clean, text.ToString());
         }
 
         if (diagnostics.Count == 0)
         {
-            text.Append($"fuse: {operation} failed (exit code {exitCode}) in {seconds:0.0} s{warningsTail}{timesTail}{treeStamp}");
+            text.Append($"fuse: {operation} failed (exit code {exitCode}){Duration.In(seconds)}{warningsTail}{timesTail}{treeStamp}");
             return new OperationResult(Outcome.ProblemsFound, text.ToString());
         }
 
@@ -106,7 +106,7 @@ internal static class BuildRenderer
         var file = capped && resultsPath is not null ? $"; all {fileTotal ?? diagnostics.Count} in {resultsPath}" : "";
         // The hinted command keeps the original arguments, so it reuses this finished build instead of building again.
         var hint = capped ? $"; {BuildOperation.AllErrorsHint(passthrough ?? [], changed)} for every error" : "";
-        text.Append($"fuse: {operation} failed with {diagnostics.Count} error(s){more} in {seconds:0.0} s{warningsTail}{timesTail}{treeStamp}{file}{hint}");
+        text.Append($"fuse: {operation} failed with {diagnostics.Count} error(s){more}{Duration.In(seconds)}{warningsTail}{timesTail}{treeStamp}{file}{hint}");
         return new OperationResult(Outcome.ProblemsFound, text.ToString());
     }
 

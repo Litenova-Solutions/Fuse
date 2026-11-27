@@ -1,5 +1,6 @@
 using Fuse.Failures;
 using Fuse.Identity;
+using Fuse.Protocol.Analysis;
 namespace Fuse.Operations.Check;
 
 /// <summary>One check of the working tree: what to check, whose edits it answers, and how to show it.</summary>
@@ -25,6 +26,10 @@ namespace Fuse.Operations.Check;
 ///     subagent's edits count as their parent's from then on. Only the stop hook sends true; <c>fuse check</c>,
 ///     <c>fuse gate</c> and MCP send false, so a working session is never marked stopped.
 /// </param>
+/// <param name="OnBusy">
+///     Told each time the engine answers Busy and the client waits; the command line passes
+///     <see cref="BusyNotice.For"/>, and a hook passes nothing so it stays silent.
+/// </param>
 internal sealed record CheckInvocation(
     IReadOnlyList<string>? Files,
     SessionId? Session,
@@ -36,4 +41,5 @@ internal sealed record CheckInvocation(
     bool IncludeNonCSharp,
     bool Brief,
     bool InteractiveFast,
-    bool IsStopping = false);
+    bool IsStopping = false,
+    Action<EngineResponse.Busy>? OnBusy = null);

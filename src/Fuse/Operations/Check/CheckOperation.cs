@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Fuse.Client;
 using Fuse.Failures;
 using Fuse.Paths;
@@ -17,14 +18,17 @@ internal static class CheckOperation
     public static async Task<(OperationResult Result, EngineResponse Response)> RunAsync(
         RepoRoot root, CheckInvocation invocation, TimeSpan timeout, CancellationToken cancellationToken)
     {
+        var watch = Stopwatch.StartNew();
         EngineRequest request = invocation.Files is null
             ? new EngineRequest.CheckChanges(invocation.WaitForLoad) { Session = invocation.Session?.StorageKey, Mode = invocation.IsStopping ? SessionCheckMode.Stop : SessionCheckMode.Check, MaxErrors = RequestedFor(invocation.Limit.ToCount(), invocation.Json), StampTree = invocation.IncludeTreeStamp, Brief = invocation.Brief }
             : new EngineRequest.CheckFiles(invocation.Files, invocation.WaitForLoad) { Session = invocation.Session?.StorageKey, LeaveOutCompilationWide = !invocation.CompilationWideAnalyzers, MaxErrors = RequestedFor(invocation.Limit.ToCount(), invocation.Json), StampTree = invocation.IncludeTreeStamp, Brief = invocation.Brief, InteractiveFast = invocation.InteractiveFast };
-        var response = await EngineClient.SendAsync(root, request, timeout, cancellationToken).ConfigureAwait(false);
+        var response = await EngineClient.SendAsync(root, request, timeout, cancellationToken, onBusy: invocation.OnBusy).ConfigureAwait(false);
         if (response is not EngineResponse.CheckAnswered answered)
             return (OperationResult.Unanswered(response, "check result"), response);
         var treeStamp = StampOf(answered.Report);
-        return (Render(answered.Report, ResultsFile.WriteCheck(root, answered.Report, treeStamp), ShownFor(invocation.Limit.ToCount(), invocation.Json), invocation.Json, treeStamp, invocation.IncludeNonCSharp, invocation.Brief, root.Path), response);
+        // The duration prints only on a stamped command-line answer; hook and MCP answers stay unstamped and print nothing new.
+        var seconds = invocation.IncludeTreeStamp ? watch.Elapsed.TotalSeconds : (double?)null;
+        return (Render(answered.Report, ResultsFile.WriteCheck(root, answered.Report, treeStamp), ShownFor(invocation.Limit.ToCount(), invocation.Json), invocation.Json, treeStamp, invocation.IncludeNonCSharp, invocation.Brief, root.Path, seconds), response);
     }
 
     /// <param name="specs">Absolute file and directory paths and absolute glob patterns, in the order named.</param>
@@ -38,12 +42,15 @@ internal static class CheckOperation
     public static async Task<(OperationResult Result, EngineResponse Response)> RunScopedAsync(
         RepoRoot root, IReadOnlyList<string> specs, int maxErrors, bool json, TimeSpan timeout, CancellationToken cancellationToken, bool includeTreeStamp = false, string? session = null, bool brief = false)
     {
+        var watch = Stopwatch.StartNew();
         var request = new EngineRequest.CheckPaths([.. specs], WaitForLoad: true) { MaxErrors = RequestedFor(maxErrors, json), StampTree = includeTreeStamp, Session = session, Brief = brief };
-        var response = await EngineClient.SendAsync(root, request, timeout, cancellationToken).ConfigureAwait(false);
+        var response = await EngineClient.SendAsync(root, request, timeout, cancellationToken, onBusy: includeTreeStamp ? BusyNotice.For() : null).ConfigureAwait(false);
         if (response is not EngineResponse.CheckAnswered answered)
             return (OperationResult.Unanswered(response, "check result"), response);
         var treeStamp = StampOf(answered.Report);
-        return (Render(answered.Report, ResultsFile.WriteCheck(root, answered.Report, treeStamp), ShownFor(maxErrors, json), json, treeStamp, brief: brief, repoRootPath: root.Path), response);
+        // The duration prints only on a stamped command-line answer; hook and MCP answers stay unstamped and print nothing new.
+        var seconds = includeTreeStamp ? watch.Elapsed.TotalSeconds : (double?)null;
+        return (Render(answered.Report, ResultsFile.WriteCheck(root, answered.Report, treeStamp), ShownFor(maxErrors, json), json, treeStamp, brief: brief, repoRootPath: root.Path, seconds: seconds), response);
     }
 
     /// <summary>How many errors the request asks the engine to send: every error for JSON and <c>--all-errors</c>, else <paramref name="maxErrors"/>.</summary>
@@ -102,6 +109,7 @@ internal static class CheckOperation
     /// <param name="includeNonCSharp">False to leave the changed files Fuse does not check out of the summary.</param>
     /// <param name="brief">True to render <see cref="ReportedRepairPacket"/> details (and fallback source windows).</param>
     /// <param name="repoRootPath">Repository root used for fallback source windows when <paramref name="brief"/> is true.</param>
-    internal static OperationResult Render(CheckReport report, string? resultsPath = null, int maxShown = CheckRenderer.MaxShown, bool json = false, string? treeStamp = null, bool includeNonCSharp = true, bool brief = false, string? repoRootPath = null) =>
-        CheckRenderer.Render(report, resultsPath, maxShown, json, treeStamp, includeNonCSharp, brief, repoRootPath);
+    /// <param name="seconds">How long the check took, printed at the end of the summary, or null to print none.</param>
+    internal static OperationResult Render(CheckReport report, string? resultsPath = null, int maxShown = CheckRenderer.MaxShown, bool json = false, string? treeStamp = null, bool includeNonCSharp = true, bool brief = false, string? repoRootPath = null, double? seconds = null) =>
+        CheckRenderer.Render(report, resultsPath, maxShown, json, treeStamp, includeNonCSharp, brief, repoRootPath, seconds);
 }

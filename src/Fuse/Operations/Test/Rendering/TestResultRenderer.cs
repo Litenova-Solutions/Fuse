@@ -81,7 +81,7 @@ internal static class TestResultRenderer
         var file = resultsPath is not null && (outcome.Failed > Math.Min(MaxFailuresShown, outcome.Failures.Count) || namesCapped)
             ? $"; all {outcome.Failed} in {resultsPath}"
             : "";
-        return $"fuse: {outcome.Failed} failed, {outcome.Passed} passed{skipped} in {seconds:0.0} s; {summary}{file}";
+        return $"fuse: {outcome.Failed} failed, {outcome.Passed} passed{skipped}{Duration.In(seconds)}; {summary}{file}";
     }
 
     /// <summary>Several answers as one, in order; it found problems when any of them did.</summary>
@@ -119,12 +119,12 @@ internal static class TestResultRenderer
     {
         // A Microsoft.Testing.Platform run that passed without printing a run summary, so there are no counts to show.
         if (result is null)
-            return new OperationResult(Outcome.Clean, $"fuse: tests passed in {seconds:0.0} s; {summary}");
+            return new OperationResult(Outcome.Clean, $"fuse: tests passed{Duration.In(seconds)}; {summary}");
         if (result.TimedOut)
         {
             var tail = BuildOperation.Tail(result.Output);
             var framework = timedOutFramework is null ? "" : $" ({timedOutFramework})";
-            var line = $"fuse: {run}{framework} timed out after {TimeoutText(TestOperation.EffectiveTimeout(inactivityTimeout))} without output in {seconds:0.0} s; the test process was killed";
+            var line = $"fuse: {run}{framework} timed out after {TimeoutText(TestOperation.EffectiveTimeout(inactivityTimeout))} without output{Duration.In(seconds)}; the test process was killed";
             return new OperationResult(Outcome.ProblemsFound, tail.Length == 0 ? line : $"{tail}\n{line}");
         }
 
@@ -138,7 +138,7 @@ internal static class TestResultRenderer
         {
             var tail = BuildOperation.Tail(result.Output);
             var where = resultsDirectory is null ? "" : $" (no result file in {resultsDirectory})";
-            var line = $"fuse: {run} exited with code {result.ExitCode} and produced no results in {seconds:0.0} s{where}";
+            var line = $"fuse: {run} exited with code {result.ExitCode} and produced no results{Duration.In(seconds)}{where}";
             return new OperationResult(Outcome.ProblemsFound, tail.Length == 0 ? line : $"{tail}\n{line}");
         }
 

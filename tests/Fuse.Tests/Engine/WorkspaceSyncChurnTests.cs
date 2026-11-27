@@ -86,8 +86,8 @@ public class WorkspaceSyncChurnTests
         Assert.Equal(afterEdit + 1, workspace.ConfigurationGeneration);
         Assert.Single(log, l => l.StartsWith("reloading: Reevaluate trigger=touched set passed", StringComparison.Ordinal));
         // A watcher event for a reverted file can arrive after the re-evaluation and touch it once more; that is
-        // churn under the bound, which re-evaluates nothing, and no file differs from HEAD.
-        Assert.True(overlay.Views.ChurnCount <= 3, $"churn {overlay.Views.ChurnCount} passed the bound");
+        // churn of the reverted files only, which a later sync bounds again, and no file differs from HEAD.
+        Assert.True(overlay.Views.ChurnCount <= reverted.Count, $"churn {overlay.Views.ChurnCount} grew past the {reverted.Count} reverted files");
         Assert.Empty(overlay.Tracker.Changed);
 
         var ids = workspace.Current.GetDocumentIdsWithFilePath(repo.Full("Lib/Calc.cs"));

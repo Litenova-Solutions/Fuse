@@ -18,6 +18,7 @@ public class AdditionalFilesCheckTests
 
         repo.Write("Lib/rules.txt", "other\n");
         var broken = await engine.CheckAllAsync();
+        Assert.True(broken.Errors.Count == 1, $"expected one error, got {broken.Errors.Count}; engine log: {string.Join(" | ", engine.Log)}");
         var error = Assert.Single(broken.Errors).Error;
         Assert.Equal("Lib/Calc.cs", error.Path);
         Assert.Equal(3, error.Line);

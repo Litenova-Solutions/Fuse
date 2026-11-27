@@ -9,12 +9,13 @@ public class ContainerGatingTests
 {
     private const string TestcontainersReference = """<ItemGroup><PackageReference Include="Testcontainers.PostgreSql" Version="3.*" /></ItemGroup>""";
 
-    /// <summary>The standard repository with Lib.Tests needing a container runtime, restored so it still loads.</summary>
+    /// <summary>The standard repository with Lib.Tests needing a container runtime, committed so the package change does not widen the affected selection.</summary>
     private static FixtureRepo WithGatedTests()
     {
         var repo = FixtureRepo.CreateStandard();
         repo.Replace("Lib.Tests/Lib.Tests.csproj", "</Project>", TestcontainersReference + "\n</Project>");
         FixtureRepo.Run(repo.Path, "dotnet", "restore", "Lib.Tests/Lib.Tests.csproj", "-nologo", "-v:q");
+        repo.Commit("mark Lib.Tests as container-gated");
         return repo;
     }
 

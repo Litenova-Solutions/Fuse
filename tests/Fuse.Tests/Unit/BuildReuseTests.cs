@@ -158,7 +158,7 @@ public class BuildReuseTests
         var lines = answer.Text.Split('\n');
         Assert.Matches($"^fuse: build reused from \\d+ s ago; tree {stamp.TreeHash}$", lines[0]);
         Assert.Equal("App/Program.cs(3,30): error CS1061: no Add", lines[1]);
-        Assert.Equal("fuse: build failed with 1 error(s) in 3.0 s; tree abc over 1 changed file(s)", lines[2]);
+        Assert.Equal("fuse: build failed with 1 error(s) in 3.0 s; 0 warning(s); tree abc over 1 changed file(s)", lines[2]);
         Assert.Contains("no Add", File.ReadAllText(Path.Combine(repo.Root.StateDirectory, "last-build-results.txt")), StringComparison.Ordinal);
     }
 
@@ -182,9 +182,9 @@ public class BuildReuseTests
         var lines = answer.Text.Split('\n');
         Assert.Equal(6, lines.Length);
         Assert.Matches($"^fuse: build \\(App\\) reused from \\d+ s ago; tree {stamp.TreeHash}$", lines[0]);
-        Assert.Equal("fuse: build (App) failed with 1 error(s) in 2.0 s", lines[2]);
+        Assert.Equal("fuse: build (App) failed with 1 error(s) in 2.0 s; 0 warning(s)", lines[2]);
         Assert.Matches($"^fuse: build \\(Lib\\) reused from \\d+ s ago; tree {stamp.TreeHash}$", lines[3]);
-        Assert.Equal("fuse: build (Lib) succeeded in 1.0 s", lines[4]);
+        Assert.Equal("fuse: build (Lib) succeeded in 1.0 s; 0 warning(s)", lines[4]);
         Assert.Equal("fuse: 1 of 2 project(s) failed", lines[5]);
     }
 

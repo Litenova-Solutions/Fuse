@@ -25,7 +25,7 @@ public class SessionGateScopeTests
             engine.Repo.Write(caller, $"public static class Use{i} {{ public static int Run() => new Lib.Calc().Add(1, 2); }}\n");
         engine.Repo.Replace("Lib/Calc.cs", "public int Add(", "public int Plus(");
         // w1 edits a clean file in its own paths.
-        engine.Repo.Replace("App/Report.cs", "public static string Line(int value)", "public static string Line(int value) // w1");
+        engine.Repo.Replace("App/Report.cs", "public static string Line(int value) => \"value=\" + Lib.Formatter.Format(value);", "public static string Line(int value) => \"value=\" + Lib.Formatter.Format(value); // w1");
         await engine.SyncAsync([.. callers, "Lib/Calc.cs", "App/Report.cs"]);
 
         var gate = await engine.CheckAllAsSessionAsync("w1");

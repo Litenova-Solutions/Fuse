@@ -28,7 +28,7 @@ public class BuildCliRenderTests
 
         var lines = answer.Text.Split('\n');
         Assert.Equal(6, lines.Length);
-        Assert.Equal("fuse: build failed with 25 error(s), first 5 shown in 3.0 s; all 25 in /state/last-build-results.txt", lines[^1]);
+        Assert.Equal("fuse: build failed with 25 error(s), first 5 shown in 3.0 s; all 25 in /state/last-build-results.txt; fuse build --all-errors for every error", lines[^1]);
     }
 
     [Fact]

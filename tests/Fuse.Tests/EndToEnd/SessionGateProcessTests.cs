@@ -19,7 +19,7 @@ public class SessionGateProcessTests
                 repo.Write($"App/Use{i}.cs", $"public static class Use{i} {{ public static int Run() => new Lib.Calc().Add(1, 2); }}\n");
             repo.Replace("Lib/Calc.cs", "public int Add(", "public int Plus(");
             // w1 edits a clean file in its own paths.
-            repo.Replace("App/Report.cs", "public static string Line(int value)", "public static string Line(int value) // w1");
+            repo.Replace("App/Report.cs", "public static string Line(int value) => \"value=\" + Lib.Formatter.Format(value);", "public static string Line(int value) => \"value=\" + Lib.Formatter.Format(value); // w1");
 
             Assert.Equal(0, (await FuseProcess.RunAsync(repo.Path, null, "session", "begin", "w1", "--paths", "App/Report.cs")).ExitCode);
             Assert.Equal(0, (await FuseProcess.RunAsync(repo.Path, null, "session", "begin", "w2", "--paths", "Lib/**", "App/Use*.cs")).ExitCode);

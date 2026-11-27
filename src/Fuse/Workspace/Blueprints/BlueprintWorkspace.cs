@@ -1,13 +1,7 @@
-using System.Collections.Immutable;
-using System.Text;
 using Fuse.Graph;
 using Fuse.Paths;
-using Fuse.Workspace.Views;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Host;
-using Microsoft.CodeAnalysis.Text;
 namespace Fuse.Workspace.Blueprints;
 
 /// <summary>
@@ -20,6 +14,7 @@ internal sealed class BlueprintWorkspace : IDisposable
 {
     private readonly AdhocWorkspace _workspace;
     private readonly BlueprintResourceCache _shared;
+    private readonly BlueprintProjectBuilder _builder;
     private readonly Dictionary<(RepoPath ProjectPath, string ProjectName), ProjectId> _projectIds = [];
     private readonly Dictionary<RepoPath, List<ProjectId>> _projectsByPath = [];
 
@@ -28,6 +23,7 @@ internal sealed class BlueprintWorkspace : IDisposable
         _workspace = new AdhocWorkspace();
         var loader = _workspace.Services.GetRequiredService<IAnalyzerService>().GetLoader();
         _shared = shared ?? new BlueprintResourceCache(loader);
+        _builder = new BlueprintProjectBuilder(_shared);
     }
 
     /// <summary>Shared immutable resources (metadata references, analyzers, HEAD source texts) reusable across worktrees.</summary>
@@ -57,7 +53,7 @@ internal sealed class BlueprintWorkspace : IDisposable
     {
         var closure = ExpandClosure(graph, targets);
         var byPath = blueprint.Projects
-            .GroupBy(p => targetRoot.PathOf(CompilationBlueprint.ResolvePath(targetRoot, p.ProjectPath)))
+            .GroupBy(p => targetRoot.PathOf(CompilationBlueprint.ResolvePath(targetRoot, p.Identity.ProjectPath)))
             .ToDictionary(g => g.Key, g => g.ToList());
 
         var wanted = new List<(RepoPath Path, ProjectNode Node, CompilationBlueprint.BlueprintProject Blueprint)>();
@@ -67,7 +63,7 @@ internal sealed class BlueprintWorkspace : IDisposable
                 continue;
             foreach (var variant in variants)
             {
-                if (!_projectIds.ContainsKey((node.Path, variant.Name)))
+                if (!_projectIds.ContainsKey((node.Path, variant.Identity.Name)))
                     wanted.Add((node.Path, node, variant));
             }
         }
@@ -78,19 +74,19 @@ internal sealed class BlueprintWorkspace : IDisposable
         var ordered = OrderTopologically(targetRoot, wanted);
         var pendingIds = new Dictionary<(RepoPath Path, string Name), ProjectId>(_projectIds);
         foreach (var (path, _, bp) in ordered)
-            pendingIds[(path, bp.Name)] = ProjectId.CreateNewId(debugName: bp.Name);
+            pendingIds[(path, bp.Identity.Name)] = ProjectId.CreateNewId(debugName: bp.Identity.Name);
 
         var knownByPath = KnownSourcesByPath(targetRoot, byPath, blueprint);
         var infos = new List<ProjectInfo>(ordered.Count);
         var addedByPath = new Dictionary<RepoPath, List<(string Name, ProjectId Id)>>();
         foreach (var (path, node, bp) in ordered)
         {
-            var id = pendingIds[(path, bp.Name)];
-            var info = BuildProjectInfo(id, targetRoot, node, bp, blueprint.SourceRoot, pendingIds, head, dirtyPaths, knownByPath[path]);
+            var id = pendingIds[(path, bp.Identity.Name)];
+            var info = _builder.BuildProjectInfo(id, targetRoot, node, bp, blueprint.SourceRoot, pendingIds, head, dirtyPaths, knownByPath[path], _projectsByPath);
             infos.Add(info);
             if (!addedByPath.TryGetValue(path, out var list))
                 addedByPath[path] = list = [];
-            list.Add((bp.Name, id));
+            list.Add((bp.Identity.Name, id));
         }
 
         var next = AddProjectsToSolution(_workspace.CurrentSolution, infos);
@@ -234,7 +230,7 @@ internal sealed class BlueprintWorkspace : IDisposable
             var recorded = false;
             foreach (var variant in variants)
             {
-                if (blueprint.KnownSources.TryGetValue(variant.ProjectPath, out var sources))
+                if (blueprint.KnownSources.TryGetValue(variant.Identity.ProjectPath, out var sources))
                 {
                     recorded = true;
                     foreach (var relative in sources)
@@ -246,7 +242,7 @@ internal sealed class BlueprintWorkspace : IDisposable
             {
                 foreach (var variant in variants)
                 {
-                    foreach (var doc in variant.Compile)
+                    foreach (var doc in variant.Paths.Compile)
                         known.Add(targetRoot.PathOf(CompilationBlueprint.ResolvePath(targetRoot, doc.Path)));
                 }
             }
@@ -257,333 +253,12 @@ internal sealed class BlueprintWorkspace : IDisposable
         return result;
     }
 
-    private ProjectInfo BuildProjectInfo(
-        ProjectId id,
-        RepoRoot targetRoot,
-        ProjectNode node,
-        CompilationBlueprint.BlueprintProject bp,
-        string sourceRoot,
-        Dictionary<(RepoPath Path, string Name), ProjectId> projectIds,
-        string? head,
-        IReadOnlySet<RepoPath>? dirtyPaths,
-        HashSet<RepoPath> knownSources)
-    {
-        var projectFile = targetRoot.PathOf(CompilationBlueprint.ResolvePath(targetRoot, bp.ProjectPath)).Absolute;
-        var projectDir = Path.GetDirectoryName(projectFile) ?? targetRoot.Path;
-        var isSecondaryWorktree = !targetRoot.PathOf(sourceRoot).Equals(targetRoot.PathOf(targetRoot.Path));
-
-        var projectReferences = new List<ProjectReference>(bp.ProjectReferences.Count);
-        foreach (var pr in bp.ProjectReferences)
-        {
-            var resolvedTarget = CompilationBlueprint.ResolvePath(targetRoot, pr.TargetProjectPath);
-            var targetPath = targetRoot.PathOf(resolvedTarget);
-            if (projectIds.TryGetValue((targetPath, pr.TargetProjectName), out var targetId))
-            {
-                projectReferences.Add(new ProjectReference(targetId, [.. pr.Aliases], pr.EmbedInteropTypes));
-            }
-            else if (_projectsByPath.TryGetValue(targetPath, out var fallbackIds) && fallbackIds.Count > 0)
-            {
-                projectReferences.Add(new ProjectReference(fallbackIds[0], [.. pr.Aliases], pr.EmbedInteropTypes));
-            }
-            else if (!targetRoot.Contains(resolvedTarget))
-            {
-                throw new InvalidOperationException($"blueprint cannot load {bp.ProjectPath}: it references {pr.TargetProjectPath} outside the repository");
-            }
-        }
-
-        var metadataReferences = new List<MetadataReference>(bp.ReferencePath.Count);
-        foreach (var refPath in bp.ReferencePath)
-        {
-            var resolved = ResolveExistingPath(targetRoot, sourceRoot, refPath, isSecondaryWorktree);
-            if (resolved is not null && _shared.GetMetadataReference(resolved) is { } metadata)
-                metadataReferences.Add(metadata);
-        }
-
-        var analyzerReferences = new List<AnalyzerReference>(bp.Analyzer.Count);
-        foreach (var analyzerPath in bp.Analyzer)
-        {
-            var resolved = ResolveExistingPath(targetRoot, sourceRoot, analyzerPath, isSecondaryWorktree);
-            if (resolved is not null && _shared.GetAnalyzerReference(resolved) is { } analyzer)
-                analyzerReferences.Add(analyzer);
-        }
-
-        var documents = new List<DocumentInfo>(bp.Compile.Count + node.Sources.Count);
-        var seenDocPaths = new HashSet<RepoPath>();
-        foreach (var doc in bp.Compile)
-        {
-            var resolved = CompilationBlueprint.ResolvePath(targetRoot, doc.Path);
-            var repoPath = targetRoot.PathOf(resolved);
-            if (!seenDocPaths.Add(repoPath))
-                continue;
-            var isGenerated = PathRules.IsBuildOutput(projectDir, resolved);
-            var textAndVersion = LoadDocumentText(targetRoot, sourceRoot, repoPath, resolved, doc.InlineText, isGenerated, isSecondaryWorktree, head, dirtyPaths);
-            if (textAndVersion is null)
-                continue;
-            documents.Add(DocumentInfo.Create(
-                DocumentId.CreateNewId(id, resolved),
-                Path.GetFileName(resolved),
-                folders: doc.Folders,
-                loader: TextLoader.From(textAndVersion),
-                filePath: resolved));
-        }
-
-        // Include working-tree sources the graph names that the extraction never evaluated: files added after
-        // the blueprint was cached. A source the extraction evaluated but this variant does not compile was left
-        // out of it on purpose (a file conditioned on another target framework), so it stays out.
-        foreach (var sourcePath in node.Sources)
-        {
-            if (knownSources.Contains(sourcePath) || !seenDocPaths.Add(sourcePath) || !File.Exists(sourcePath.Absolute))
-                continue;
-            var textAndVersion = LoadDocumentText(targetRoot, sourceRoot, sourcePath, sourcePath.Absolute, inlineText: null, isGenerated: false, isSecondaryWorktree, head, dirtyPaths);
-            if (textAndVersion is null)
-                continue;
-            var folders = RelativeFolders(node.Directory.Absolute, sourcePath.Absolute);
-            documents.Add(DocumentInfo.Create(
-                DocumentId.CreateNewId(id, sourcePath.Absolute),
-                sourcePath.FileName,
-                folders: folders,
-                loader: TextLoader.From(textAndVersion),
-                filePath: sourcePath.Absolute));
-        }
-
-        var additional = BuildSupplementaryDocuments(id, targetRoot, sourceRoot, projectDir, bp.AdditionalFiles, isSecondaryWorktree);
-        var analyzerConfigs = BuildSupplementaryDocuments(id, targetRoot, sourceRoot, projectDir, bp.AnalyzerConfigFiles, isSecondaryWorktree);
-
-        var compilationOptions = BuildCompilationOptions(bp, targetRoot);
-        var parseOptions = BuildParseOptions(bp);
-        var outputPath = ResolveOutputPath(targetRoot, bp.OutputPath);
-        var outputRefPath = ResolveOutputPath(targetRoot, bp.OutputRefPath);
-
-        return ProjectInfo.Create(
-                id,
-                VersionStamp.Create(),
-                bp.Name,
-                bp.AssemblyName,
-                LanguageNames.CSharp,
-                filePath: projectFile,
-                outputFilePath: outputPath,
-                compilationOptions: compilationOptions,
-                parseOptions: parseOptions,
-                documents: documents,
-                projectReferences: projectReferences,
-                metadataReferences: metadataReferences,
-                analyzerReferences: analyzerReferences,
-                additionalDocuments: additional)
-            .WithOutputRefFilePath(outputRefPath)
-            .WithAnalyzerConfigDocuments(analyzerConfigs);
-    }
-
     private static Solution AddProjectsToSolution(Solution solution, IEnumerable<ProjectInfo> projects)
     {
         var next = solution;
         foreach (var info in projects)
             next = next.AddProject(info);
         return next;
-    }
-
-    private static List<DocumentInfo> BuildSupplementaryDocuments(
-        ProjectId projectId,
-        RepoRoot targetRoot,
-        string sourceRoot,
-        string projectDir,
-        IReadOnlyList<CompilationBlueprint.BlueprintDocument> docs,
-        bool isSecondaryWorktree)
-    {
-        var result = new List<DocumentInfo>(docs.Count);
-        foreach (var doc in docs)
-        {
-            var resolved = CompilationBlueprint.ResolvePath(targetRoot, doc.Path);
-            var isGenerated = PathRules.IsBuildOutput(projectDir, resolved);
-            var textAndVersion = LoadSupplementaryText(targetRoot, sourceRoot, doc.Path, resolved, doc.InlineText, isGenerated, isSecondaryWorktree);
-            if (textAndVersion is null)
-                continue;
-            result.Add(DocumentInfo.Create(
-                DocumentId.CreateNewId(projectId, resolved),
-                Path.GetFileName(resolved),
-                folders: doc.Folders,
-                loader: TextLoader.From(textAndVersion),
-                filePath: resolved));
-        }
-
-        return result;
-    }
-
-    private TextAndVersion? LoadDocumentText(
-        RepoRoot targetRoot,
-        string sourceRoot,
-        RepoPath repoPath,
-        string resolvedPath,
-        string? inlineText,
-        bool isGenerated,
-        bool isSecondaryWorktree,
-        string? head,
-        IReadOnlySet<RepoPath>? dirtyPaths)
-    {
-        if (isGenerated)
-            return LoadGeneratedText(targetRoot, sourceRoot, repoPath.Relative, resolvedPath, inlineText, isSecondaryWorktree);
-
-        if (!File.Exists(resolvedPath))
-            return null;
-
-        var canShareHead = head is not null
-            && (dirtyPaths is null || !dirtyPaths.Contains(repoPath))
-            && targetRoot.Contains(resolvedPath);
-        if (canShareHead)
-            return _shared.GetOrReadHeadText(head!, repoPath.Relative, resolvedPath);
-
-        return ReadDiskText(resolvedPath);
-    }
-
-    private static TextAndVersion? LoadSupplementaryText(
-        RepoRoot targetRoot,
-        string sourceRoot,
-        string storedPath,
-        string resolvedPath,
-        string? inlineText,
-        bool isGenerated,
-        bool isSecondaryWorktree)
-    {
-        if (isGenerated)
-            return LoadGeneratedText(targetRoot, sourceRoot, storedPath, resolvedPath, inlineText, isSecondaryWorktree);
-        return File.Exists(resolvedPath) ? ReadDiskText(resolvedPath) : null;
-    }
-
-    private static TextAndVersion? LoadGeneratedText(
-        RepoRoot targetRoot,
-        string sourceRoot,
-        string storedPath,
-        string resolvedPath,
-        string? inlineText,
-        bool isSecondaryWorktree)
-    {
-        if (File.Exists(resolvedPath))
-            return ReadDiskText(resolvedPath);
-
-        if (inlineText is not null)
-        {
-            var expanded = CompilationBlueprint.UnmaskRootText(targetRoot, inlineText);
-            return TextAndVersion.Create(SourceText.From(expanded, Encoding.UTF8, SourceHashAlgorithm.Sha256), VersionStamp.Create(), resolvedPath);
-        }
-
-        if (isSecondaryWorktree && !Path.IsPathRooted(storedPath))
-        {
-            var sourceFallback = Path.GetFullPath(Path.Combine(sourceRoot, storedPath.Replace('/', Path.DirectorySeparatorChar)));
-            if (File.Exists(sourceFallback))
-                return ReadDiskText(sourceFallback, resolvedPath);
-        }
-
-        return null;
-    }
-
-    private static TextAndVersion? ReadDiskText(string diskPath, string? virtualPath = null)
-    {
-        try
-        {
-            var bytes = SharedRead.AllBytes(diskPath);
-            return TextAndVersion.Create(SolutionViews.Decode(bytes), VersionStamp.Create(), virtualPath ?? diskPath);
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-        {
-            return null;
-        }
-    }
-
-    private static string? ResolveExistingPath(RepoRoot targetRoot, string sourceRoot, string storedPath, bool isSecondaryWorktree)
-    {
-        var resolved = CompilationBlueprint.ResolvePath(targetRoot, storedPath);
-        if (File.Exists(resolved))
-            return resolved;
-        if (isSecondaryWorktree && !Path.IsPathRooted(storedPath))
-        {
-            var fromSource = Path.GetFullPath(Path.Combine(sourceRoot, storedPath.Replace('/', Path.DirectorySeparatorChar)));
-            if (File.Exists(fromSource))
-                return fromSource;
-        }
-
-        return null;
-    }
-
-    private static string? ResolveOutputPath(RepoRoot targetRoot, string? storedOutput)
-    {
-        if (string.IsNullOrEmpty(storedOutput))
-            return null;
-        return CompilationBlueprint.ResolvePath(targetRoot, storedOutput);
-    }
-
-    private static string[] RelativeFolders(string projectDirectory, string filePath)
-    {
-        var dir = Path.GetDirectoryName(filePath);
-        if (string.IsNullOrEmpty(dir))
-            return [];
-        var rel = Path.GetRelativePath(projectDirectory, dir);
-        if (rel == "." || rel == ".." || rel.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal))
-            return [];
-        return rel.Split([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar], StringSplitOptions.RemoveEmptyEntries);
-    }
-
-    private static CSharpCompilationOptions BuildCompilationOptions(CompilationBlueprint.BlueprintProject bp, RepoRoot targetRoot)
-    {
-        var outputKind = Enum.TryParse<OutputKind>(bp.OutputKind, out var ok) ? ok : OutputKind.DynamicallyLinkedLibrary;
-        var nullable = Enum.TryParse<NullableContextOptions>(bp.Nullable, out var nc) ? nc : NullableContextOptions.Disable;
-        var generalDiag = Enum.TryParse<ReportDiagnostic>(bp.GeneralDiagnosticOption, out var gd) ? gd : ReportDiagnostic.Default;
-        var platform = Enum.TryParse<Platform>(bp.Platform, out var pl) ? pl : Platform.AnyCpu;
-        var optimization = Enum.TryParse<OptimizationLevel>(bp.OptimizationLevel, out var ol) ? ol : OptimizationLevel.Debug;
-        var importOptions = Enum.TryParse<MetadataImportOptions>(bp.MetadataImportOptions, out var mio) ? mio : MetadataImportOptions.Public;
-
-        var specific = ImmutableDictionary.CreateBuilder<string, ReportDiagnostic>(StringComparer.Ordinal);
-        foreach (var (id, diag) in bp.SpecificDiagnosticOptions)
-        {
-            if (Enum.TryParse<ReportDiagnostic>(diag, out var report))
-                specific[id] = report;
-        }
-
-        var cryptoPublicKey = bp.CryptoPublicKey is null
-            ? default(ImmutableArray<byte>)
-            : ImmutableArray.CreateRange(Convert.FromHexString(bp.CryptoPublicKey));
-        StrongNameProvider? strongNameProvider = string.Equals(bp.StrongNameProvider, typeof(DesktopStrongNameProvider).FullName, StringComparison.Ordinal)
-            ? new DesktopStrongNameProvider()
-            : null;
-
-        return new CSharpCompilationOptions(
-            outputKind: outputKind,
-            reportSuppressedDiagnostics: false,
-            moduleName: bp.ModuleName,
-            mainTypeName: bp.MainTypeName,
-            scriptClassName: bp.ScriptClassName,
-            usings: bp.Usings is { Count: > 0 } ? bp.Usings : null,
-            optimizationLevel: optimization,
-            checkOverflow: bp.CheckOverflow,
-            allowUnsafe: bp.AllowUnsafe,
-            cryptoKeyContainer: bp.CryptoKeyContainer,
-            cryptoKeyFile: string.IsNullOrEmpty(bp.CryptoKeyFile) ? null : CompilationBlueprint.ResolvePath(targetRoot, bp.CryptoKeyFile),
-            cryptoPublicKey: cryptoPublicKey,
-            delaySign: bp.DelaySign,
-            strongNameProvider: strongNameProvider,
-            platform: platform,
-            generalDiagnosticOption: generalDiag,
-            warningLevel: bp.WarningLevel,
-            specificDiagnosticOptions: specific.ToImmutable(),
-            concurrentBuild: true,
-            deterministic: bp.Deterministic,
-            xmlReferenceResolver: XmlFileResolver.Default,
-            sourceReferenceResolver: SourceFileResolver.Default,
-            // MSBuildWorkspace sets its own workspace-bound resolver here, whose type Roslyn keeps internal,
-            // so no public API can build the same instance. It only resolves #r directives and missing
-            // assemblies at emit, which a check never does, so the default stays.
-            metadataReferenceResolver: null,
-            assemblyIdentityComparer: DesktopAssemblyIdentityComparer.Default,
-            nullableContextOptions: nullable)
-            .WithMetadataImportOptions(importOptions);
-    }
-
-    private static CSharpParseOptions BuildParseOptions(CompilationBlueprint.BlueprintProject bp)
-    {
-        var lang = Enum.TryParse<LanguageVersion>(bp.LanguageVersion, out var lv) ? lv : LanguageVersion.Default;
-        var docMode = Enum.TryParse<DocumentationMode>(bp.DocumentationMode, out var dm) ? dm : DocumentationMode.Parse;
-        var options = new CSharpParseOptions(lang, docMode, SourceCodeKind.Regular, bp.DefineConstants);
-        if (bp.Features is { Count: > 0 })
-            options = options.WithFeatures(bp.Features);
-        return options;
     }
 
     private static List<ProjectNode> ExpandClosure(RepoGraph graph, IEnumerable<ProjectNode> targets)
@@ -606,16 +281,16 @@ internal sealed class BlueprintWorkspace : IDisposable
         RepoRoot root,
         List<(RepoPath Path, ProjectNode Node, CompilationBlueprint.BlueprintProject Blueprint)> items)
     {
-        var byKey = items.ToDictionary(i => (i.Path, i.Blueprint.Name));
+        var byKey = items.ToDictionary(i => (i.Path, i.Blueprint.Identity.Name));
         var visited = new HashSet<(RepoPath, string)>();
         var ordered = new List<(RepoPath, ProjectNode, CompilationBlueprint.BlueprintProject)>(items.Count);
 
         void Visit((RepoPath Path, ProjectNode Node, CompilationBlueprint.BlueprintProject Blueprint) item)
         {
-            var key = (item.Path, item.Blueprint.Name);
+            var key = (item.Path, item.Blueprint.Identity.Name);
             if (!visited.Add(key))
                 return;
-            foreach (var pr in item.Blueprint.ProjectReferences)
+            foreach (var pr in item.Blueprint.References.Items)
             {
                 var targetPath = root.PathOf(CompilationBlueprint.ResolvePath(root, pr.TargetProjectPath));
                 if (byKey.TryGetValue((targetPath, pr.TargetProjectName), out var dep))

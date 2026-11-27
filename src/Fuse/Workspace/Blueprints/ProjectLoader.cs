@@ -72,8 +72,16 @@ internal sealed class ProjectLoader : IDisposable
     /// <summary>True when active projects come from a cached blueprint rather than the live MSBuild fallback workspace.</summary>
     public bool IsLoadedFromBlueprint => _activeBlueprint is not null && _msbuildFallback is null;
 
+    private LoadedWorkspaceState _state = new LoadedWorkspaceState.NotLoaded();
+
     /// <summary>Every C# project in the repository, as the last evaluation found it.</summary>
-    public RepoGraph Graph { get; private set; } = null!;
+    public RepoGraph Graph
+    {
+        get => _state is LoadedWorkspaceState.Loaded loaded
+            ? loaded.Graph
+            : throw new InvalidOperationException("Projects have not been evaluated yet.");
+        private set => _state = new LoadedWorkspaceState.Loaded(value);
+    }
 
     /// <summary>
     ///     Increments whenever every project is closed, because projects were evaluated again or reloaded, which
@@ -387,7 +395,7 @@ internal sealed class ProjectLoader : IDisposable
             _loadFailures[failedPath] = reason;
         if (outcome.Blueprint is not { } blueprint)
             return;
-        var captured = blueprint.Projects.Select(p => p.ProjectPath).ToHashSet(StringComparer.Ordinal);
+        var captured = blueprint.Projects.Select(p => p.Identity.ProjectPath).ToHashSet(StringComparer.Ordinal);
         foreach (var node in roots.SelectMany(Graph.ClosureOf).DistinctBy(p => p.Path))
         {
             if (!outcome.Failures.ContainsKey(node.Path) && captured.Contains(node.Path.Relative))
@@ -404,7 +412,7 @@ internal sealed class ProjectLoader : IDisposable
     {
         if (outcome.TransientFailure is not { } transient)
             return;
-        var captured = outcome.Blueprint?.Projects.Select(p => p.ProjectPath).ToHashSet(StringComparer.Ordinal) ?? [];
+        var captured = outcome.Blueprint?.Projects.Select(p => p.Identity.ProjectPath).ToHashSet(StringComparer.Ordinal) ?? [];
         foreach (var node in missing.SelectMany(Graph.ClosureOf))
         {
             if (!captured.Contains(node.Path.Relative))

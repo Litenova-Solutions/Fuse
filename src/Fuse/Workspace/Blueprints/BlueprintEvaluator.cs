@@ -105,7 +105,7 @@ internal static class BlueprintEvaluator
     {
         if (outcome.TransientFailure is not { } transient)
             return outcome;
-        var captured = outcome.Blueprint?.Projects.Select(p => p.ProjectPath).ToHashSet(StringComparer.Ordinal) ?? [];
+        var captured = outcome.Blueprint?.Projects.Select(p => p.Identity.ProjectPath).ToHashSet(StringComparer.Ordinal) ?? [];
         var retry = attempted.Where(p => !captured.Contains(p.Path.Relative) && !outcome.Failures.ContainsKey(p.Path)).ToList();
         if (retry.Count == 0)
             return outcome with { TransientFailure = null };
@@ -368,45 +368,47 @@ internal static class BlueprintEvaluator
         if (csharpOptions is not null && !csharpOptions.CryptoPublicKey.IsDefault)
             cryptoPublicKey = Convert.ToHexString(csharpOptions.CryptoPublicKey.AsSpan());
 
-        return new CompilationBlueprint.BlueprintProject(
-            ProjectPath: CompilationBlueprint.StorePath(root, project.FilePath),
-            Name: project.Name,
-            AssemblyName: project.AssemblyName,
-            Compile: compile,
-            ReferencePath: referencePaths,
-            Analyzer: analyzers,
-            AdditionalFiles: additional,
-            AnalyzerConfigFiles: analyzerConfigs,
-            DefineConstants: csharpParse is null ? [] : [.. csharpParse.PreprocessorSymbolNames],
-            LanguageVersion: (csharpParse?.LanguageVersion ?? LanguageVersion.Default).ToString(),
-            OutputKind: (csharpOptions?.OutputKind ?? OutputKind.DynamicallyLinkedLibrary).ToString(),
-            Nullable: (csharpOptions?.NullableContextOptions ?? NullableContextOptions.Disable).ToString(),
-            AllowUnsafe: csharpOptions?.AllowUnsafe ?? false,
-            SpecificDiagnosticOptions: specific,
-            OutputPath: string.IsNullOrEmpty(project.OutputFilePath) ? null : CompilationBlueprint.StorePath(root, project.OutputFilePath),
-            ProjectReferences: projectRefs,
-            TargetFramework: tfm,
-            IsTestProject: node?.IsTest ?? false,
-            TestFramework: node?.Framework ?? TestFramework.Unknown,
-            OutputRefPath: string.IsNullOrEmpty(project.OutputRefFilePath) ? null : CompilationBlueprint.StorePath(root, project.OutputRefFilePath),
-            GeneralDiagnosticOption: (csharpOptions?.GeneralDiagnosticOption ?? ReportDiagnostic.Default).ToString(),
-            WarningLevel: csharpOptions?.WarningLevel ?? 4,
-            CheckOverflow: csharpOptions?.CheckOverflow ?? false,
-            Deterministic: csharpOptions?.Deterministic ?? true,
-            Platform: (csharpOptions?.Platform ?? Platform.AnyCpu).ToString(),
-            OptimizationLevel: (csharpOptions?.OptimizationLevel ?? OptimizationLevel.Debug).ToString(),
-            MetadataImportOptions: (csharpOptions?.MetadataImportOptions ?? MetadataImportOptions.Public).ToString(),
-            DocumentationMode: (csharpParse?.DocumentationMode ?? DocumentationMode.Parse).ToString(),
-            Features: features,
-            Usings: csharpOptions is null ? [] : [.. csharpOptions.Usings],
-            ModuleName: csharpOptions?.ModuleName,
-            MainTypeName: csharpOptions?.MainTypeName,
-            ScriptClassName: csharpOptions?.ScriptClassName,
-            CryptoKeyFile: cryptoKeyFile,
-            CryptoKeyContainer: csharpOptions?.CryptoKeyContainer,
-            DelaySign: csharpOptions?.DelaySign,
-            CryptoPublicKey: cryptoPublicKey,
-            StrongNameProvider: csharpOptions?.StrongNameProvider?.GetType().FullName);
+        var identity = new ProjectIdentity(
+            CompilationBlueprint.StorePath(root, project.FilePath),
+            project.Name,
+            project.AssemblyName,
+            tfm,
+            node?.IsTest ?? false,
+            node?.Framework ?? TestFramework.Unknown);
+        var settings = new CompilerSettings(
+            csharpParse is null ? [] : [.. csharpParse.PreprocessorSymbolNames],
+            (csharpParse?.LanguageVersion ?? LanguageVersion.Default).ToString(),
+            (csharpOptions?.OutputKind ?? OutputKind.DynamicallyLinkedLibrary).ToString(),
+            (csharpOptions?.NullableContextOptions ?? NullableContextOptions.Disable).ToString(),
+            csharpOptions?.AllowUnsafe ?? false,
+            specific,
+            (csharpOptions?.GeneralDiagnosticOption ?? ReportDiagnostic.Default).ToString(),
+            csharpOptions?.WarningLevel ?? 4,
+            csharpOptions?.CheckOverflow ?? false,
+            csharpOptions?.Deterministic ?? true,
+            (csharpOptions?.Platform ?? Platform.AnyCpu).ToString(),
+            (csharpOptions?.OptimizationLevel ?? OptimizationLevel.Debug).ToString(),
+            (csharpOptions?.MetadataImportOptions ?? MetadataImportOptions.Public).ToString(),
+            (csharpParse?.DocumentationMode ?? DocumentationMode.Parse).ToString(),
+            features,
+            csharpOptions is null ? [] : [.. csharpOptions.Usings],
+            csharpOptions?.ModuleName,
+            csharpOptions?.MainTypeName,
+            csharpOptions?.ScriptClassName,
+            csharpOptions?.CryptoKeyContainer,
+            csharpOptions?.DelaySign,
+            cryptoPublicKey,
+            csharpOptions?.StrongNameProvider?.GetType().FullName);
+        var paths = new ProjectPaths(
+            compile,
+            referencePaths,
+            analyzers,
+            additional,
+            analyzerConfigs,
+            string.IsNullOrEmpty(project.OutputFilePath) ? null : CompilationBlueprint.StorePath(root, project.OutputFilePath),
+            string.IsNullOrEmpty(project.OutputRefFilePath) ? null : CompilationBlueprint.StorePath(root, project.OutputRefFilePath),
+            cryptoKeyFile);
+        return new CompilationBlueprint.BlueprintProject(identity, settings, paths, new ProjectReferences(projectRefs));
     }
 
     private static string? InferTargetFrameworkFromName(string projectName)
@@ -438,7 +440,7 @@ internal static class BlueprintEvaluator
     {
         if (cached is null)
             return closure;
-        var covered = new HashSet<string>(cached.Projects.Select(p => p.ProjectPath), StringComparer.Ordinal);
+        var covered = new HashSet<string>(cached.Projects.Select(p => p.Identity.ProjectPath), StringComparer.Ordinal);
         var stale = new List<ProjectNode>();
         foreach (var node in closure)
         {

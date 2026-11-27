@@ -17,16 +17,10 @@ namespace Fuse.Workspace.Blueprints;
 /// </summary>
 internal sealed partial class CompilationBlueprint
 {
-    internal const int FormatVersion = 3;
+    internal const int FormatVersion = 4;
 
     private const string RootTokenNative = "${FUSE_REPO_ROOT}";
     private const string RootTokenForward = "${FUSE_REPO_ROOT_FWD}";
-
-    private static readonly string[] AutoImportNames =
-        ["Directory.Build.props", "Directory.Build.targets", "Directory.Packages.props", "packages.lock.json", "global.json"];
-
-    private const int WriteLockAttempts = 20;
-    private const int WriteLockRetryMs = 50;
 
     /// <summary>
     ///     The blueprint file read last for each blueprints directory, with the length and write time it had when it
@@ -47,15 +41,6 @@ internal sealed partial class CompilationBlueprint
 
     /// <summary>The masked hash read last for one restore output path, and the stamp the read saw.</summary>
     private sealed record AssetsCacheEntry(long Length, DateTime WrittenUtc, string Hash);
-
-    /// <summary>
-    ///     How old a file's write time must be before a cached stamp is trusted. A file written within this window
-    ///     is read again, so a rewrite the timestamp cannot tell apart from the cached read never answers stale.
-    /// </summary>
-    private static readonly TimeSpan SettledWindow = TimeSpan.FromSeconds(2);
-
-    /// <summary>True when <paramref name="writtenUtc"/> is old enough that no live writer can still hold the file.</summary>
-    private static bool IsSettled(DateTime writtenUtc) => DateTime.UtcNow - writtenUtc >= SettledWindow;
 
     public CompilationBlueprint(
         int version,
@@ -139,24 +124,24 @@ internal sealed partial class CompilationBlueprint
             {
                 if (!File.Exists(project.Path.Absolute))
                     return null;
-                inputs[project.Path.Relative] = HashFile(project.Path.Absolute);
+                inputs[project.Path.Relative] = BlueprintFiles.HashFile(project.Path.Absolute);
                 foreach (var input in project.EvaluationInputs.OrderBy(p => p.Relative, StringComparer.Ordinal))
                 {
                     if (inputs.ContainsKey(input.Relative))
                         continue;
                     if (!File.Exists(input.Absolute))
                         return null;
-                    inputs[input.Relative] = HashFile(input.Absolute);
+                    inputs[input.Relative] = BlueprintFiles.HashFile(input.Absolute);
                 }
             }
 
-            foreach (var relative in AutoImports(root, graph))
+            foreach (var relative in BlueprintFiles.AutoImports(root, graph))
             {
                 if (inputs.ContainsKey(relative))
                     continue;
                 var absolute = root.PathOf(relative).Absolute;
                 if (File.Exists(absolute))
-                    inputs[relative] = HashFile(absolute);
+                    inputs[relative] = BlueprintFiles.HashFile(absolute);
             }
 
             var lines = new List<string>(inputs.Count + 2)
@@ -200,10 +185,10 @@ internal sealed partial class CompilationBlueprint
                 && string.Equals(cached.Path, filePath, StringComparison.Ordinal)
                 && cached.Length == info.Length
                 && cached.WrittenUtc == info.LastWriteTimeUtc
-                && IsSettled(info.LastWriteTimeUtc))
+                && BlueprintFiles.IsSettled(info.LastWriteTimeUtc))
                 return cached.Blueprint;
             var stamp = (info.Length, info.LastWriteTimeUtc);
-            var json = ReadText(filePath);
+            var json = BlueprintFiles.ReadText(filePath);
             var blueprint = JsonSerializer.Deserialize(json, BlueprintJson.Default.CompilationBlueprint);
             if (blueprint is null || blueprint.Version != FormatVersion || !string.Equals(blueprint.Build, CurrentBuild, StringComparison.Ordinal))
                 return null;
@@ -242,7 +227,7 @@ internal sealed partial class CompilationBlueprint
     /// </summary>
     public bool Covers(RepoRoot root, IEnumerable<ProjectNode> closure, bool allowZeroRestore)
     {
-        var byPath = new HashSet<string>(Projects.Select(p => p.ProjectPath), StringComparer.Ordinal);
+        var byPath = new HashSet<string>(Projects.Select(p => p.Identity.ProjectPath), StringComparer.Ordinal);
         var isSecondary = !root.PathOf(SourceRoot).Equals(root.PathOf(root.Path));
         foreach (var node in closure)
         {
@@ -279,13 +264,13 @@ internal sealed partial class CompilationBlueprint
         foreach (var (path, hash) in updatedAssets)
             mergedAssets[path] = hash;
 
-        var replacedPaths = new HashSet<string>(updatedProjects.Select(p => p.ProjectPath), StringComparer.Ordinal);
-        var mergedProjects = Projects.Where(p => !replacedPaths.Contains(p.ProjectPath)).ToList();
+        var replacedPaths = new HashSet<string>(updatedProjects.Select(p => p.Identity.ProjectPath), StringComparer.Ordinal);
+        var mergedProjects = Projects.Where(p => !replacedPaths.Contains(p.Identity.ProjectPath)).ToList();
         mergedProjects.AddRange(updatedProjects);
         mergedProjects.Sort((a, b) =>
         {
-            var byPath = string.Compare(a.ProjectPath, b.ProjectPath, StringComparison.Ordinal);
-            return byPath != 0 ? byPath : string.Compare(a.Name, b.Name, StringComparison.Ordinal);
+            var byPath = string.Compare(a.Identity.ProjectPath, b.Identity.ProjectPath, StringComparison.Ordinal);
+            return byPath != 0 ? byPath : string.Compare(a.Identity.Name, b.Identity.Name, StringComparison.Ordinal);
         });
 
         var mergedKnownSources = new Dictionary<string, List<string>>(KnownSources, StringComparer.Ordinal);
@@ -309,14 +294,16 @@ internal sealed partial class CompilationBlueprint
         var staging = filePath + ".tmp-" + Environment.ProcessId + "-" + Guid.NewGuid().ToString("N");
         try
         {
-            var directory = Path.GetDirectoryName(filePath)!;
+            var directory = Path.GetDirectoryName(filePath);
+            if (directory is null)
+                throw new ArgumentException("File path has no directory.", nameof(filePath));
             Directory.CreateDirectory(directory);
             var json = JsonSerializer.Serialize(this, BlueprintJson.Default.CompilationBlueprint);
             File.WriteAllText(staging, json);
-            using var locked = AcquireWriteLock(directory);
+            using var locked = BlueprintFiles.AcquireWriteLock(directory);
             if (locked is null)
             {
-                TryDelete(staging);
+                BlueprintFiles.TryDelete(staging);
                 return false;
             }
 
@@ -335,7 +322,7 @@ internal sealed partial class CompilationBlueprint
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException or NotSupportedException)
         {
-            TryDelete(staging);
+            BlueprintFiles.TryDelete(staging);
             return false;
         }
     }
@@ -353,7 +340,7 @@ internal sealed partial class CompilationBlueprint
                 .Skip(4)
                 .ToList())
             {
-                TryDelete(file);
+                BlueprintFiles.TryDelete(file);
             }
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
@@ -390,15 +377,15 @@ internal sealed partial class CompilationBlueprint
             var info = new FileInfo(path);
             if (!info.Exists)
                 return null;
-            if (_assetsCache.TryGetValue(path, out var cached) && cached.Length == info.Length && cached.WrittenUtc == info.LastWriteTimeUtc && IsSettled(info.LastWriteTimeUtc))
+            if (_assetsCache.TryGetValue(path, out var cached) && cached.Length == info.Length && cached.WrittenUtc == info.LastWriteTimeUtc && BlueprintFiles.IsSettled(info.LastWriteTimeUtc))
                 return cached.Hash;
             var stamp = (info.Length, info.LastWriteTimeUtc);
             string hash;
-            if (JsonNode.Parse(ReadText(path)) is not { } assets)
-                hash = HashFile(path);
+            if (JsonNode.Parse(BlueprintFiles.ReadText(path)) is not { } assets)
+                hash = BlueprintFiles.HashFile(path);
             else
             {
-                MaskWorktreePaths(assets, root);
+                BlueprintFiles.MaskWorktreePaths(assets, root);
                 hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(assets.ToJsonString())));
             }
 
@@ -410,109 +397,6 @@ internal sealed partial class CompilationBlueprint
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or JsonException)
         {
             return null;
-        }
-    }
-
-    /// <summary>
-    ///     Every MSBuild and NuGet auto-import of <paramref name="graph"/>'s projects: the well-known file names in
-    ///     each project's directory and its ancestors up to the root, which is where MSBuild and NuGet look them up.
-    ///     A same-named file with no project beneath it is never imported, so it stays out of the key.
-    /// </summary>
-    private static List<string> AutoImports(RepoRoot root, RepoGraph graph)
-    {
-        var found = new HashSet<string>(StringComparer.Ordinal);
-        HashSet<string> seenDirs = [];
-        foreach (var project in graph.Projects)
-        {
-            var directory = Path.GetDirectoryName(project.Path.Absolute);
-            while (directory is not null && root.Contains(directory) && seenDirs.Add(directory))
-            {
-                foreach (var name in AutoImportNames)
-                {
-                    var candidate = Path.Combine(directory, name);
-                    if (File.Exists(candidate) && !PathRules.IsBuildOutput(root.Path, candidate))
-                        found.Add(root.PathOf(candidate).Relative);
-                }
-
-                directory = Path.GetDirectoryName(directory);
-            }
-        }
-
-        var result = found.ToList();
-        result.Sort(StringComparer.Ordinal);
-        return result;
-    }
-
-    private static string HashFile(string path) =>
-        Convert.ToHexString(SHA256.HashData(SharedRead.AllBytes(path)));
-
-    private static string ReadText(string file)
-    {
-        using var stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-        using var reader = new StreamReader(stream, Encoding.UTF8);
-        return reader.ReadToEnd();
-    }
-
-    private static void MaskWorktreePaths(JsonNode node, RepoRoot root)
-    {
-        if (node is JsonObject obj)
-        {
-            foreach (var key in obj.Select(pair => pair.Key).ToList())
-            {
-                if (obj[key] is JsonValue value && value.TryGetValue<string>(out var text) && MaskedPath(text, root) is { } masked)
-                    obj[key] = JsonValue.Create(masked);
-                else if (obj[key] is { } child)
-                    MaskWorktreePaths(child, root);
-            }
-
-            var pairs = obj.ToList();
-            if (pairs.All(pair => MaskedPath(pair.Key, root) is null))
-                return;
-            obj.Clear();
-            foreach (var pair in pairs)
-                obj[MaskedPath(pair.Key, root) ?? pair.Key] = pair.Value;
-        }
-        else if (node is JsonArray array)
-        {
-            for (var i = 0; i < array.Count; i++)
-            {
-                if (array[i] is JsonValue value && value.TryGetValue<string>(out var text) && MaskedPath(text, root) is { } masked)
-                    array[i] = JsonValue.Create(masked);
-                else if (array[i] is { } child)
-                    MaskWorktreePaths(child, root);
-            }
-        }
-    }
-
-    private static string? MaskedPath(string value, RepoRoot root) =>
-        value.Length > root.Path.Length && root.Contains(value) ? root.PathOf(value).Relative : null;
-
-    private static FileStream? AcquireWriteLock(string directory)
-    {
-        var path = Path.Combine(directory, "write.lock");
-        for (var attempt = 0; attempt < WriteLockAttempts; attempt++)
-        {
-            try
-            {
-                return new FileStream(path, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
-            }
-            catch (IOException) when (File.Exists(path))
-            {
-                Thread.Sleep(WriteLockRetryMs);
-            }
-        }
-
-        return null;
-    }
-
-    private static void TryDelete(string file)
-    {
-        try
-        {
-            File.Delete(file);
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-        {
         }
     }
 
@@ -530,44 +414,50 @@ internal sealed partial class CompilationBlueprint
     ///     defaults, so blueprints written before them still read.
     /// </remarks>
     internal sealed record BlueprintProject(
-        string ProjectPath,
-        string Name,
-        string AssemblyName,
-        IReadOnlyList<BlueprintDocument> Compile,
-        IReadOnlyList<string> ReferencePath,
-        IReadOnlyList<string> Analyzer,
-        IReadOnlyList<BlueprintDocument> AdditionalFiles,
-        IReadOnlyList<BlueprintDocument> AnalyzerConfigFiles,
-        IReadOnlyList<string> DefineConstants,
-        string LanguageVersion,
-        string OutputKind,
-        string Nullable,
-        bool AllowUnsafe,
-        IReadOnlyDictionary<string, string> SpecificDiagnosticOptions,
-        string? OutputPath,
-        IReadOnlyList<BlueprintProjectReference> ProjectReferences,
-        string? TargetFramework,
-        bool IsTestProject,
-        TestFramework TestFramework,
-        string? OutputRefPath = null,
-        string GeneralDiagnosticOption = "Default",
-        int WarningLevel = 4,
-        bool CheckOverflow = false,
-        bool Deterministic = true,
-        string Platform = "AnyCpu",
-        string OptimizationLevel = "Debug",
-        string MetadataImportOptions = "Public",
-        string DocumentationMode = "Parse",
-        IReadOnlyDictionary<string, string>? Features = null,
-        IReadOnlyList<string>? Usings = null,
-        string? ModuleName = null,
-        string? MainTypeName = null,
-        string? ScriptClassName = null,
-        string? CryptoKeyFile = null,
-        string? CryptoKeyContainer = null,
-        bool? DelaySign = null,
-        string? CryptoPublicKey = null,
-        string? StrongNameProvider = null);
+        ProjectIdentity Identity,
+        CompilerSettings Settings,
+        ProjectPaths Paths,
+        ProjectReferences References)
+    {
+        [JsonIgnore] public string ProjectPath => Identity.ProjectPath;
+        [JsonIgnore] public string Name => Identity.Name;
+        [JsonIgnore] public string AssemblyName => Identity.AssemblyName;
+        [JsonIgnore] public string? TargetFramework => Identity.TargetFramework;
+        [JsonIgnore] public bool IsTestProject => Identity.IsTestProject;
+        [JsonIgnore] public TestFramework TestFramework => Identity.TestFramework;
+        [JsonIgnore] public IReadOnlyList<BlueprintDocument> Compile => Paths.Compile;
+        [JsonIgnore] public IReadOnlyList<string> ReferencePath => Paths.ReferencePath;
+        [JsonIgnore] public IReadOnlyList<string> Analyzer => Paths.Analyzer;
+        [JsonIgnore] public IReadOnlyList<BlueprintDocument> AdditionalFiles => Paths.AdditionalFiles;
+        [JsonIgnore] public IReadOnlyList<BlueprintDocument> AnalyzerConfigFiles => Paths.AnalyzerConfigFiles;
+        [JsonIgnore] public string? OutputPath => Paths.OutputPath;
+        [JsonIgnore] public string? OutputRefPath => Paths.OutputRefPath;
+        [JsonIgnore] public string? CryptoKeyFile => Paths.CryptoKeyFile;
+        [JsonIgnore] public IReadOnlyList<BlueprintProjectReference> ProjectReferences => References.Items;
+        [JsonIgnore] public IReadOnlyList<string> DefineConstants => Settings.DefineConstants;
+        [JsonIgnore] public string LanguageVersion => Settings.LanguageVersion;
+        [JsonIgnore] public string OutputKind => Settings.OutputKind;
+        [JsonIgnore] public string Nullable => Settings.Nullable;
+        [JsonIgnore] public bool AllowUnsafe => Settings.AllowUnsafe;
+        [JsonIgnore] public IReadOnlyDictionary<string, string> SpecificDiagnosticOptions => Settings.SpecificDiagnosticOptions;
+        [JsonIgnore] public string GeneralDiagnosticOption => Settings.GeneralDiagnosticOption;
+        [JsonIgnore] public int WarningLevel => Settings.WarningLevel;
+        [JsonIgnore] public bool CheckOverflow => Settings.CheckOverflow;
+        [JsonIgnore] public bool Deterministic => Settings.Deterministic;
+        [JsonIgnore] public string Platform => Settings.Platform;
+        [JsonIgnore] public string OptimizationLevel => Settings.OptimizationLevel;
+        [JsonIgnore] public string MetadataImportOptions => Settings.MetadataImportOptions;
+        [JsonIgnore] public string DocumentationMode => Settings.DocumentationMode;
+        [JsonIgnore] public IReadOnlyDictionary<string, string>? Features => Settings.Features;
+        [JsonIgnore] public IReadOnlyList<string>? Usings => Settings.Usings;
+        [JsonIgnore] public string? ModuleName => Settings.ModuleName;
+        [JsonIgnore] public string? MainTypeName => Settings.MainTypeName;
+        [JsonIgnore] public string? ScriptClassName => Settings.ScriptClassName;
+        [JsonIgnore] public string? CryptoKeyContainer => Settings.CryptoKeyContainer;
+        [JsonIgnore] public bool? DelaySign => Settings.DelaySign;
+        [JsonIgnore] public string? CryptoPublicKey => Settings.CryptoPublicKey;
+        [JsonIgnore] public string? StrongNameProvider => Settings.StrongNameProvider;
+    }
 
     [JsonSourceGenerationOptions(WriteIndented = false)]
     [JsonSerializable(typeof(CompilationBlueprint))]

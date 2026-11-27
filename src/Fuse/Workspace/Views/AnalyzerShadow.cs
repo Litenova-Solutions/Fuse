@@ -68,7 +68,9 @@ internal sealed class AnalyzerShadow
         var result = solution;
         foreach (var id in solution.ProjectIds)
         {
-            var references = result.GetProject(id)!.AnalyzerReferences;
+            if (result.GetProject(id) is not { } project)
+                throw new InvalidOperationException("The loader solution has no project for an open project id.");
+            var references = project.AnalyzerReferences;
             // MSBuild loads an analyzer whose file does not exist yet, such as one the repository builds itself before its
             // first build, as an UnresolvedAnalyzerReference. It supplies no analyzer, and Roslyn's checksums, which a
             // reference search computes, throw on it, so it is left out.
@@ -91,7 +93,8 @@ internal sealed class AnalyzerShadow
         try
         {
             var original = _root.PathOf(file.FullPath);
-            var source = Path.GetDirectoryName(file.FullPath)!;
+            if (Path.GetDirectoryName(file.FullPath) is not { } source)
+                return reference;
             var stamp = Stamp(source);
             if (_references.TryGetValue(original, out var known) && known.Stamp == stamp)
                 return known.Reference;

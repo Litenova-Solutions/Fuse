@@ -366,7 +366,8 @@ internal sealed class SummaryCache
         var staging = file + ".tmp-" + Environment.ProcessId + "-" + Guid.NewGuid().ToString("N");
         try
         {
-            var directory = Path.GetDirectoryName(file)!;
+            if (Path.GetDirectoryName(file) is not { } directory)
+                return false;
             System.IO.Directory.CreateDirectory(directory);
             File.WriteAllBytes(staging, bytes);
             using var locked = AcquireWriteLock(directory);

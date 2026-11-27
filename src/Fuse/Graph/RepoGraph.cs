@@ -1,6 +1,8 @@
 using Fuse.Dotnet.Processes;
 using Fuse.Failures;
 using Fuse.Paths;
+using Fuse.Repo.Tracking;
+using Fuse.Telemetry;
 using Microsoft.Build.Evaluation;
 using Microsoft.Build.Exceptions;
 namespace Fuse.Graph;
@@ -162,11 +164,20 @@ internal sealed class RepoGraph
         new(projects, failures);
 
     /// <summary>
-    ///     Every project file git knows about (tracked or untracked, not ignored), evaluated, or read from the
-    ///     stored graph (<see cref="GraphStore"/>) when the project files and their imports are as they were when
-    ///     it was stored, so a fresh engine answers without evaluating again.
+    ///     Every project file git knows about (tracked or untracked, not ignored) that discovery keeps, evaluated, or
+    ///     read from the stored graph (<see cref="GraphStore"/>) when the project files and their imports are as they
+    ///     were when it was stored, so a fresh engine answers without evaluating again. A project matched by
+    ///     <c>.fuseignore</c>, a template project, or a tokenized placeholder project is skipped with one line in the
+    ///     engine log.
     /// </summary>
-    public static async Task<RepoGraph> EvaluateAsync(RepoRoot root, CancellationToken cancellationToken)
+    public static Task<RepoGraph> EvaluateAsync(RepoRoot root, CancellationToken cancellationToken) =>
+        EvaluateAsync(root, log: null, cancellationToken);
+
+    /// <summary>
+    ///     Every project file git knows about that discovery keeps, evaluated with <paramref name="log"/> receiving
+    ///     one line per skipped project; without it the line goes to the engine log file.
+    /// </summary>
+    public static async Task<RepoGraph> EvaluateAsync(RepoRoot root, Action<string>? log, CancellationToken cancellationToken)
     {
         // -z gives one NUL-separated path per project file, exactly as it is on disk; without it git C-quotes a path that
         // holds a quote, a backslash or a control character, and the two are not the same string.
@@ -177,11 +188,37 @@ internal sealed class RepoGraph
             cancellationToken).ConfigureAwait(false);
         if (listing.ExitCode != 0)
             throw new FuseException(ErrorCode.LoadFailed, $"git cannot list the repository's files ({listing.Output.Split('\0', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()}); see `git status`");
-        var paths = listing.Output.Split('\0', StringSplitOptions.RemoveEmptyEntries)
+        var ignore = FuseIgnore.Read(root);
+        var candidates = listing.Output.Split('\0', StringSplitOptions.RemoveEmptyEntries)
             .Select(root.PathOf)
             .Where(p => File.Exists(p.Absolute))
             .Distinct()
             .ToList();
+        var paths = new List<RepoPath>(candidates.Count);
+        foreach (var candidate in candidates)
+        {
+            var reason = ReasonToSkip(root, ignore, candidate);
+            if (reason is null)
+            {
+                paths.Add(candidate);
+                continue;
+            }
+
+            var line = $"skipped {candidate.Relative}: {reason}";
+            if (log is not null)
+            {
+                log(line);
+                continue;
+            }
+
+            try
+            {
+                new EngineLog(root.StateDirectory).Write(line);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+            {
+            }
+        }
 
         // Registered before the stored graph is read too: the workspace loads projects through MSBuild either way.
         MsBuildSetup.EnsureRegistered();
@@ -190,6 +227,17 @@ internal sealed class RepoGraph
         var graph = Evaluate(root, paths, cancellationToken);
         GraphStore.Store(root, graph);
         return graph;
+    }
+
+    private static string? ReasonToSkip(RepoRoot root, FuseIgnore ignore, RepoPath candidate)
+    {
+        if (ignore.Ignores(candidate))
+            return "matched .fuseignore";
+        if (RepoProbe.IsTemplateProject(root, candidate))
+            return "template project with .template.config";
+        if (RepoProbe.IsTokenizedProject(candidate))
+            return "unrestored placeholder project";
+        return null;
     }
 
     private static RepoGraph Evaluate(RepoRoot root, List<RepoPath> paths, CancellationToken cancellationToken)

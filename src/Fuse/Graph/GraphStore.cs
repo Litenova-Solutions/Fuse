@@ -30,7 +30,7 @@ internal static partial class GraphStore
     ///     It evaluates nothing and loads no project.
     /// </summary>
     /// <param name="root">The repository the graph belongs to.</param>
-    /// <param name="paths">The project files git knows about, as <see cref="RepoGraph.EvaluateAsync"/> lists them.</param>
+    /// <param name="paths">The project files git knows about, as <see cref="RepoGraph"/> lists them.</param>
     public static RepoGraph? TryLoad(RepoRoot root, IReadOnlyList<RepoPath> paths)
     {
         try
@@ -202,8 +202,8 @@ internal static partial class GraphStore
         [.. project.PackageReferences.Order(StringComparer.OrdinalIgnoreCase)]);
 
     /// <summary>
-    ///     The key the graph of <paramref name="paths"/> is stored under: the project files and the build, hashed.
-    ///     Null when a project file cannot be read, and nothing is stored or read then.
+    ///     The key the graph of <paramref name="paths"/> is stored under: the project files, the <c>.fuseignore</c>
+    ///     file, and the build, hashed. Null when a project file cannot be read, and nothing is stored or read then.
     /// </summary>
     private static string? KeyFor(RepoRoot root, IReadOnlyList<RepoPath> paths)
     {
@@ -216,6 +216,10 @@ internal static partial class GraphStore
                     return null;
                 lines.Add("project:" + path.Relative + "=" + HashFile(path.Absolute));
             }
+
+            var ignoreFile = Path.Combine(root.Path, ".fuseignore");
+            if (File.Exists(ignoreFile))
+                lines.Add("fuseignore:" + HashFile(ignoreFile));
 
             return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join("\n", lines))));
         }

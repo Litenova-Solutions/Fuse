@@ -1,7 +1,7 @@
 using System.IO.Pipes;
 using Fuse.Check.Pipeline;
 using Fuse.Check.Sessions;
-using Fuse.Engine.Client;
+using Fuse.Client;
 using Fuse.Repo.Tracking;
 using Fuse.Tests.Fixtures;
 using Fuse.Workspace.Blueprints;

@@ -1,8 +1,11 @@
 using Fuse.Check.Model;
-using Fuse.Engine;
+using Fuse.Engine.Routing;
 using Fuse.Failures;
 using Fuse.Paths;
-using Fuse.Protocol;
+using Fuse.Protocol.Analysis;
+using Fuse.Protocol.Check;
+using Fuse.Protocol.Testing;
+using Fuse.Protocol.Transport;
 using Fuse.Testing.Model;
 using Fuse.Tests.Fixtures;
 namespace Fuse.Tests.Unit;

@@ -1,9 +1,10 @@
 using System.Text;
 using System.Text.Json;
-using Fuse.Engine.Client;
+using Fuse.Client;
 using Fuse.Paths;
-using Fuse.Protocol;
-
+using Fuse.Protocol.Analysis;
+using Fuse.Protocol.Requests;
+using Fuse.Protocol.Transport;
 namespace Fuse.Operations;
 
 /// <summary>

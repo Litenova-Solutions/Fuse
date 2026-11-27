@@ -3,9 +3,10 @@ using System.IO.Pipes;
 using System.Text;
 using Fuse.Operations;
 using Fuse.Paths;
-using Fuse.Protocol;
+using Fuse.Protocol.Analysis;
+using Fuse.Protocol.Requests;
+using Fuse.Protocol.Transport;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>

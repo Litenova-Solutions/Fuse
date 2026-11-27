@@ -1,5 +1,6 @@
-using Fuse.Engine;
-using Fuse.Protocol;
+using Fuse.Engine.Routing;
+using Fuse.Protocol.Analysis;
+using Fuse.Protocol.Transport;
 using Fuse.Testing.Model;
 namespace Fuse.Tests.Unit;
 

@@ -1,9 +1,9 @@
 using System.Globalization;
-using Fuse.Engine.Client;
+using Fuse.Client;
 using Fuse.Failures;
 using Fuse.Paths;
-using Fuse.Protocol;
-
+using Fuse.Protocol.Analysis;
+using Fuse.Protocol.Requests;
 namespace Fuse.Operations;
 
 /// <summary>

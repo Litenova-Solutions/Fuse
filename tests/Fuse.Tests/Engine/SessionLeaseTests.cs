@@ -1,7 +1,7 @@
 using Fuse.Failures;
-using Fuse.Protocol;
+using Fuse.Protocol.Analysis;
+using Fuse.Protocol.Requests;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>

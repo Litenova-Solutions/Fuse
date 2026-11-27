@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using Fuse.Check.Model;
 using Fuse.Check.Pipeline;
 using Fuse.Check.Sessions;
-using Fuse.Protocol;
+using Fuse.Protocol.Analysis;
 using Fuse.Telemetry;
 using Fuse.Tests.Fixtures;
 using Fuse.Workspace.Generations;

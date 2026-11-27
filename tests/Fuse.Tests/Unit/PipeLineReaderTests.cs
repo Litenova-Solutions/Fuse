@@ -1,6 +1,5 @@
 using System.Text;
-using Fuse.Protocol;
-
+using Fuse.Protocol.Transport;
 namespace Fuse.Tests.Unit;
 
 /// <summary>Reading lines from a stream whose messages arrive back to back, as a watch stream's do.</summary>

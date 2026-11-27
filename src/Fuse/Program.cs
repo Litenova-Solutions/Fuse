@@ -2,15 +2,15 @@ using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
-using Fuse.Engine;
+using Fuse.Engine.Server;
 using Fuse.Failures;
 using Fuse.Harnesses;
 using Fuse.Hooks;
 using Fuse.Mcp;
 using Fuse.Operations;
 using Fuse.Paths;
-using Fuse.Protocol;
-
+using Fuse.Protocol.Analysis;
+using Fuse.Protocol.Transport;
 namespace Fuse;
 
 internal static class Program

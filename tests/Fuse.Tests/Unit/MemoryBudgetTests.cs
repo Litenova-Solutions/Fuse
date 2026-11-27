@@ -1,5 +1,4 @@
-using Fuse.Engine;
-
+using Fuse.Engine.Scheduling;
 namespace Fuse.Tests.Unit;
 
 /// <summary>

@@ -1,6 +1,7 @@
-using Fuse.Protocol;
+using Fuse.Protocol.Analysis;
+using Fuse.Protocol.Requests;
+using Fuse.Protocol.Transport;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Engine;
 
 public class EngineStatusTests

@@ -1,6 +1,5 @@
 using Fuse.Engine;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Engine;
 
 public class ReportBuilderTests

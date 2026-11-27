@@ -1,7 +1,6 @@
 using Fuse.Check.Model;
 using Fuse.Operations;
-using Fuse.Protocol;
-
+using Fuse.Protocol.Check;
 namespace Fuse.Tests.Unit;
 
 /// <summary><c>fuse check</c> names the changed files it does not check, capped, and the post-edit hook leaves them out.</summary>

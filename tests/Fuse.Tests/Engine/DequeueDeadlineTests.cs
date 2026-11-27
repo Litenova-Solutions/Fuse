@@ -1,8 +1,10 @@
-using Fuse.Engine;
-using Fuse.Protocol;
+using Fuse.Engine.Routing;
+using Fuse.Engine.Scheduling;
+using Fuse.Protocol.Analysis;
+using Fuse.Protocol.Requests;
+using Fuse.Protocol.Transport;
 using Fuse.Telemetry;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>

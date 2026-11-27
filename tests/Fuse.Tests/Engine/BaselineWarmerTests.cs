@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Fuse.Check.Diagnostics;
-using Fuse.Protocol;
+using Fuse.Protocol.Analysis;
+using Fuse.Protocol.Requests;
 using Fuse.Tests.Fixtures;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;

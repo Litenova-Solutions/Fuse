@@ -2,9 +2,11 @@ using System.Text;
 using System.Text.Json;
 using Fuse.Check.Model;
 using Fuse.Operations;
-using Fuse.Protocol;
+using Fuse.Protocol.Analysis;
+using Fuse.Protocol.Check;
+using Fuse.Protocol.Requests;
+using Fuse.Protocol.Transport;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Unit;
 
 public class SwarmCliOperationsTests

@@ -4,8 +4,8 @@ using Fuse.Failures;
 using Fuse.Harnesses;
 using Fuse.Operations;
 using Fuse.Paths;
-using Fuse.Protocol;
-
+using Fuse.Protocol.Analysis;
+using Fuse.Protocol.Check;
 namespace Fuse.Hooks;
 
 /// <summary>

@@ -1,6 +1,8 @@
-using Fuse.Engine;
+using Fuse.Engine.Routing;
 using Fuse.Paths;
-using Fuse.Protocol;
+using Fuse.Protocol.Analysis;
+using Fuse.Protocol.Requests;
+using Fuse.Protocol.Transport;
 using Fuse.Telemetry;
 using Fuse.Testing.Planning;
 namespace Fuse.Tests.Fixtures;

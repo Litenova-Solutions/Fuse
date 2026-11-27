@@ -1,6 +1,6 @@
 using Fuse.Check.Enrichment;
 using Fuse.Check.Model;
-using Fuse.Engine;
+using Fuse.Engine.Routing;
 using Fuse.Operations;
 using Fuse.Paths;
 using Fuse.Tests.Fixtures;

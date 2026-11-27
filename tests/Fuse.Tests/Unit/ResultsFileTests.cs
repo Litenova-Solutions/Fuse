@@ -1,7 +1,7 @@
 using Fuse.Check.Model;
 using Fuse.Dotnet.Test;
 using Fuse.Operations;
-using Fuse.Protocol;
+using Fuse.Protocol.Check;
 using Fuse.Tests.Fixtures;
 namespace Fuse.Tests.Unit;
 

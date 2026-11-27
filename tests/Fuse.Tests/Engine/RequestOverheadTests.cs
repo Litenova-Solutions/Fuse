@@ -1,8 +1,7 @@
 using Fuse.Check.Model;
-using Fuse.Engine;
+using Fuse.Engine.Background;
 using Fuse.Hooks;
-using Fuse.Protocol;
-
+using Fuse.Protocol.Check;
 namespace Fuse.Tests.Engine;
 
 /// <summary>

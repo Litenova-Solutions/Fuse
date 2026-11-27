@@ -1,7 +1,7 @@
 using Fuse.Check.Model;
-using Fuse.Engine;
-using Fuse.Protocol;
-
+using Fuse.Engine.Routing;
+using Fuse.Protocol.Analysis;
+using Fuse.Protocol.Transport;
 namespace Fuse.Tests.Unit;
 
 /// <summary>

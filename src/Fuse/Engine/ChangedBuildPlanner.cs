@@ -1,6 +1,6 @@
 using Fuse.Graph;
 using Fuse.Paths;
-using Fuse.Protocol;
+using Fuse.Protocol.Testing;
 using Fuse.Repo.Tracking;
 namespace Fuse.Engine;
 

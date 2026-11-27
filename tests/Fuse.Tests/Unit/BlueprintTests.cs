@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text.Json.Nodes;
-using Fuse.Engine.Client;
+using Fuse.Client;
 using Fuse.Graph;
 using Fuse.Paths;
 using Fuse.Tests.Fixtures;

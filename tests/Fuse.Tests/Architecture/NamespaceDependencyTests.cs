@@ -13,7 +13,7 @@ namespace Fuse.Tests.Architecture;
 ///     A file's namespace comes from its <c>namespace</c> line. What it uses comes from its syntax: every <c>Fuse.X</c>,
 ///     <c>Microsoft.CodeAnalysis</c> and <c>Microsoft.Build</c> name in a <c>using</c> directive or a fully qualified
 ///     reference, plus every simple name of a type declared in an enclosing namespace, which C# resolves without a
-///     <c>using</c> (a file in <c>Fuse.Engine.Client</c> sees the types of <c>Fuse.Engine</c>). Comments and strings are
+///     <c>using</c> (a file in <c>Fuse.Check.Pipeline</c> sees the types of <c>Fuse.Check</c>). Comments and strings are
 ///     not code, so a name in them is not a use.
 /// </remarks>
 public class NamespaceDependencyTests
@@ -57,13 +57,12 @@ public class NamespaceDependencyTests
         ["Fuse.Engine"] = [.. Features, "Fuse.Changes", "Fuse.Changes.Model", "Fuse.Workspace", .. Sources, .. Foundation, "Fuse.Protocol"],
         // Decision D11: the wire carries the check model's CompilerError unchanged.
         ["Fuse.Protocol"] = [.. Foundation, "Fuse.Check.Model"],
-        ["Fuse.Engine.Client"] = ["Fuse.Protocol", "Fuse.Repo", "Fuse.Dotnet", .. Foundation],
         ["Fuse.Client"] = ["Fuse.Protocol", "Fuse.Repo", "Fuse.Dotnet", .. Foundation],
-        ["Fuse.Operations"] = ["Fuse.Client", "Fuse.Engine.Client", "Fuse.Protocol", "Fuse.Repo", "Fuse.Dotnet", .. Foundation],
+        ["Fuse.Operations"] = ["Fuse.Client", "Fuse.Protocol", "Fuse.Repo", "Fuse.Dotnet", .. Foundation],
         ["Fuse.Harnesses"] = ["Fuse.Operations", "Fuse.Protocol", "Fuse.Repo", .. Foundation],
         ["Fuse.Hooks"] = ["Fuse.Harnesses", "Fuse.Operations", "Fuse.Protocol", "Fuse.Repo", .. Foundation],
-        ["Fuse.Mcp"] = ["Fuse.Operations", "Fuse.Client", "Fuse.Engine.Client", "Fuse.Protocol", "Fuse.Repo", .. Foundation],
-        ["Fuse.Cli"] = ["Fuse.Hooks", "Fuse.Mcp", "Fuse.Harnesses", "Fuse.Operations", "Fuse.Client", "Fuse.Engine.Client", "Fuse.Protocol", "Fuse.Repo", "Fuse.Dotnet", .. Foundation],
+        ["Fuse.Mcp"] = ["Fuse.Operations", "Fuse.Client", "Fuse.Protocol", "Fuse.Repo", .. Foundation],
+        ["Fuse.Cli"] = ["Fuse.Hooks", "Fuse.Mcp", "Fuse.Harnesses", "Fuse.Operations", "Fuse.Client", "Fuse.Protocol", "Fuse.Repo", "Fuse.Dotnet", .. Foundation],
         ["Fuse"] = null,
     };
 
@@ -73,7 +72,7 @@ public class NamespaceDependencyTests
     ///     <c>CompilerError</c>. A hook pays for every assembly it loads.
     /// </summary>
     private static readonly string[] ClientSide =
-        ["Fuse.Cli", "Fuse.Hooks", "Fuse.Mcp", "Fuse.Harnesses", "Fuse.Operations", "Fuse.Client", "Fuse.Engine.Client", "Fuse.Protocol", "Fuse.Check.Model", "Fuse.Repo", "Fuse.Dotnet", .. Foundation];
+        ["Fuse.Cli", "Fuse.Hooks", "Fuse.Mcp", "Fuse.Harnesses", "Fuse.Operations", "Fuse.Client", "Fuse.Protocol", "Fuse.Check.Model", "Fuse.Repo", "Fuse.Dotnet", .. Foundation];
 
     /// <summary>The rows rule 2 names as using Roslyn or MSBuild, whether or not a file in them names it directly.</summary>
     private static readonly string[] EngineSide = ["Fuse.Graph", "Fuse.Workspace", "Fuse.Changes", "Fuse.Check", "Fuse.Testing", "Fuse.Judge", "Fuse.Inspection", "Fuse.Engine"];

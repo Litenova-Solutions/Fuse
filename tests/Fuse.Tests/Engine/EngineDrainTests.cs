@@ -1,14 +1,15 @@
 using System.Diagnostics;
 using System.IO.Pipes;
 using System.Text;
-using Fuse.Engine;
-using Fuse.Engine.Client;
+using Fuse.Client;
+using Fuse.Engine.Server;
 using Fuse.Paths;
-using Fuse.Protocol;
+using Fuse.Protocol.Analysis;
+using Fuse.Protocol.Requests;
+using Fuse.Protocol.Transport;
 using Fuse.Telemetry;
 using Fuse.Tests.EndToEnd;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>

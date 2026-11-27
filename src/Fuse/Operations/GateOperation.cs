@@ -3,8 +3,8 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Fuse.Paths;
-using Fuse.Protocol;
-
+using Fuse.Protocol.Analysis;
+using Fuse.Protocol.Check;
 namespace Fuse.Operations;
 
 /// <summary>

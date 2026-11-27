@@ -1,4 +1,5 @@
-using Fuse.Engine;
+using Fuse.Engine.Background;
+using Fuse.Engine.Scheduling;
 using Fuse.Failures;
 using Fuse.Tests.Fixtures;
 using Fuse.Workspace.Blueprints;

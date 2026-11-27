@@ -1,8 +1,9 @@
 using System.Text.Json;
-using Fuse.Engine;
-using Fuse.Protocol;
+using Fuse.Engine.Background;
+using Fuse.Protocol.Analysis;
+using Fuse.Protocol.Check;
+using Fuse.Protocol.Requests;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>

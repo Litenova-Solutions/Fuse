@@ -1,9 +1,8 @@
 using Fuse.Engine;
 using Fuse.Failures;
 using Fuse.Operations;
-using Fuse.Protocol;
+using Fuse.Protocol.Requests;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Engine;
 
 public class JudgeServiceTests

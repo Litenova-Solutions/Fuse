@@ -1,5 +1,5 @@
 using Fuse.Operations;
-using Fuse.Protocol;
+using Fuse.Protocol.Testing;
 using Fuse.Testing.Filtering;
 using Fuse.Testing.Model;
 using Fuse.Tests.Fixtures;

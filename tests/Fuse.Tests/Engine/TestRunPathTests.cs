@@ -1,9 +1,12 @@
 using System.Text;
 using Fuse.Dotnet.Processes;
 using Fuse.Dotnet.Test;
-using Fuse.Engine;
+using Fuse.Engine.Routing;
 using Fuse.Operations;
-using Fuse.Protocol;
+using Fuse.Protocol.Analysis;
+using Fuse.Protocol.Requests;
+using Fuse.Protocol.Testing;
+using Fuse.Protocol.Transport;
 using Fuse.Telemetry;
 using Fuse.Testing.Caching;
 using Fuse.Testing.Model;

@@ -1,8 +1,10 @@
 using System.Text;
-using Fuse.Engine.Client;
+using Fuse.Client;
 using Fuse.Failures;
 using Fuse.Paths;
-using Fuse.Protocol;
+using Fuse.Protocol.Analysis;
+using Fuse.Protocol.Check;
+using Fuse.Protocol.Requests;
 using Fuse.Repo.Tracking;
 namespace Fuse.Operations;
 

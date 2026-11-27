@@ -1,9 +1,9 @@
 using System.Text.Json;
-using Fuse.Engine;
+using Fuse.Engine.Scheduling;
+using Fuse.Engine.Server;
 using Fuse.Operations;
 using Fuse.Paths;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Unit;
 
 /// <summary>

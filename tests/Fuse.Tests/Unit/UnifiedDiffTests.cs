@@ -1,5 +1,4 @@
 using Fuse.Engine;
-
 namespace Fuse.Tests.Unit;
 
 public class UnifiedDiffTests

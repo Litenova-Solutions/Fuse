@@ -2,11 +2,11 @@ using System.Text.Json;
 using Fuse.Failures;
 using Fuse.Operations;
 using Fuse.Paths;
-using Fuse.Protocol;
+using Fuse.Protocol.Analysis;
+using Fuse.Protocol.Transport;
 using ModelContextProtocol;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
-
 namespace Fuse.Mcp;
 
 /// <summary>

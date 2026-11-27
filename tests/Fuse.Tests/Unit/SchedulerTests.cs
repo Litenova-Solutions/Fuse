@@ -1,6 +1,6 @@
-using Fuse.Engine;
-using Fuse.Protocol;
-
+using Fuse.Engine.Scheduling;
+using Fuse.Protocol.Analysis;
+using Fuse.Protocol.Requests;
 namespace Fuse.Tests.Unit;
 
 /// <summary>

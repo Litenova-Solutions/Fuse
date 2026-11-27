@@ -1,8 +1,7 @@
 using System.Text.Json;
 using Fuse.Check.Model;
 using Fuse.Operations;
-using Fuse.Protocol;
-
+using Fuse.Protocol.Check;
 namespace Fuse.Tests.Unit;
 
 public class CheckCliRenderTests

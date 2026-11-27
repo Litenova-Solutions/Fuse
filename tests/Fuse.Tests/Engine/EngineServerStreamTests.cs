@@ -1,11 +1,12 @@
 using System.IO.Pipes;
 using System.Text;
-using Fuse.Engine;
-using Fuse.Engine.Client;
-using Fuse.Protocol;
+using Fuse.Client;
+using Fuse.Engine.Server;
+using Fuse.Protocol.Analysis;
+using Fuse.Protocol.Requests;
+using Fuse.Protocol.Transport;
 using Fuse.Tests.EndToEnd;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>

@@ -1,12 +1,13 @@
 using System.Security;
 using System.Text;
 using System.Text.RegularExpressions;
+using Fuse.Client;
 using Fuse.Dotnet.Build;
 using Fuse.Dotnet.Processes;
-using Fuse.Engine.Client;
 using Fuse.Failures;
 using Fuse.Paths;
-using Fuse.Protocol;
+using Fuse.Protocol.Analysis;
+using Fuse.Protocol.Requests;
 using Fuse.Repo.Tracking;
 namespace Fuse.Operations;
 

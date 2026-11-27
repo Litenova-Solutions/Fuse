@@ -1,9 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Fuse.Engine.Client;
+using Fuse.Client;
 using Fuse.Paths;
-using Fuse.Protocol;
-
+using Fuse.Protocol.Analysis;
 namespace Fuse.Operations;
 
 /// <summary>

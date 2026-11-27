@@ -1,12 +1,14 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
+using Fuse.Client;
 using Fuse.Dotnet.Build;
 using Fuse.Dotnet.Processes;
 using Fuse.Dotnet.Test;
-using Fuse.Engine.Client;
 using Fuse.Paths;
-using Fuse.Protocol;
+using Fuse.Protocol.Analysis;
+using Fuse.Protocol.Requests;
+using Fuse.Protocol.Testing;
 namespace Fuse.Operations;
 
 /// <summary>

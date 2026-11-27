@@ -7,9 +7,9 @@ namespace Fuse.Check.Diagnostics;
 
 /// <summary>
 ///     Computes the errors of one file (in every target framework it compiles for) or of whole projects, including
-///     errors from analyzers that can report errors. Whole projects bind document by document: a document's model is
-///     kept only while its errors are read, and the compilation-wide analyzers keep their one run over the whole
-///     compilation. Baseline results whose analyzers finished are kept in the disk store, so a baseline compilation
+///     errors from analyzers that can report errors. A whole project binds its compiler errors tree by tree and its
+///     analyzer errors with one run over the whole compilation, partitioned back to files by their location's path.
+///     Baseline results whose analyzers finished are kept in the disk store, so a baseline compilation
 ///     is built only on a store miss or for the files reach searches, and its analyzer runs are released when the
 ///     check that built them ends. What one check counts and how it runs analyzers live in its
 ///     <see cref="CheckContext"/>, so checks that run at the same time share the caches below and nothing else.
@@ -282,6 +282,12 @@ internal sealed class DiagnosticCollector
     public Task<bool> WarmBaselineProjectAsync(Project baselineProject, int generation, CancellationToken shutdown) =>
         WarmBaselineProjectAsync(baselineProject, generation, Legacy, shutdown);
 
+    /// <summary>
+    ///     How long the warm's analyzers run for one project. The warm runs in the background lane, so a longer run
+    ///     would hold the warm past the checks that need the store.
+    /// </summary>
+    internal static readonly TimeSpan WarmBudget = TimeSpan.FromSeconds(30);
+
     /// <summary>Same as the call without a context, for <paramref name="context"/>.</summary>
     /// <returns>True when the project has compilation-wide analyzers that were warmed.</returns>
     public async Task<bool> WarmBaselineProjectAsync(Project baselineProject, int generation, CheckContext context, CancellationToken shutdown)
@@ -289,20 +295,29 @@ internal sealed class DiagnosticCollector
         _cache.ForgetOlderBaseline(generation);
         if (!_cache.IsCachedGeneration(generation))
             return false;
-        var compilation = await baselineProject.GetCompilationAsync(shutdown).ConfigureAwait(false);
-        if (compilation is null)
+        using var budget = new CancellationTokenSource(WarmBudget);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(shutdown, budget.Token);
+        try
+        {
+            var compilation = await baselineProject.GetCompilationAsync(linked.Token).ConfigureAwait(false);
+            if (compilation is null)
+                return false;
+            var withAnalyzers = _analyzers.For(baselineProject, compilation);
+            if (withAnalyzers is null)
+                return false;
+            if (await FirstModelAsync(baselineProject, linked.Token).ConfigureAwait(false) is not { } probe)
+                return false;
+            var plan = await _analyzers.PlanAsync(baselineProject, withAnalyzers, probe, linked.Token).ConfigureAwait(false);
+            if (plan.CompilationWide.IsEmpty)
+                return false;
+            // The shutdown token stops the wait, never the run: a run outlives the warm that started it, as it outlives a check.
+            await _execution.CompilationWideAsync(baselineProject, baseline: true, withAnalyzers, plan.CompilationWideAnalyzers, context, linked.Token).ConfigureAwait(false);
+            return true;
+        }
+        catch (OperationCanceledException) when (!shutdown.IsCancellationRequested)
+        {
             return false;
-        var withAnalyzers = _analyzers.For(baselineProject, compilation);
-        if (withAnalyzers is null)
-            return false;
-        if (await FirstModelAsync(baselineProject, shutdown).ConfigureAwait(false) is not { } probe)
-            return false;
-        var plan = await _analyzers.PlanAsync(baselineProject, withAnalyzers, probe, shutdown).ConfigureAwait(false);
-        if (plan.CompilationWide.IsEmpty)
-            return false;
-        // The shutdown token stops the wait, never the run: a run outlives the warm that started it, as it outlives a check.
-        await _execution.CompilationWideAsync(baselineProject, baseline: true, withAnalyzers, plan.CompilationWideAnalyzers, context, shutdown).ConfigureAwait(false);
-        return true;
+        }
     }
 
     /// <summary>
@@ -336,7 +351,9 @@ internal sealed class DiagnosticCollector
             compilationWide = !plan.CompilationWide.IsEmpty;
         }
 
-        var (errors, finished) = await ForProjectAsync(baselineProject, baseline: true, context, shutdown).ConfigureAwait(false);
+        using var budget = new CancellationTokenSource(WarmBudget);
+        var budgeted = new CheckContext(new AnalyzerRun(context.Run.CompilationWide, budget.Token), context.Reuse);
+        var (errors, finished) = await ForProjectAsync(baselineProject, baseline: true, budgeted, shutdown).ConfigureAwait(false);
         if (finished && baselineKey is not null)
         {
             foreach (var path in baselineProject.Documents.Select(d => d.FilePath).OfType<string>().Select(_root.PathOf).Distinct())
@@ -401,11 +418,12 @@ internal sealed class DiagnosticCollector
         (await ForProjectAsync(project, baseline: false, context, cancellationToken).ConfigureAwait(false)).Errors;
 
     /// <remarks>
-    ///     The project binds document by document: each document's model is kept only while its errors are read, so
-    ///     a project with many files never holds a model for every file at once. The compilation-wide analyzers keep
-    ///     their one run over the whole compilation, which every document of the project shares. Bound whole, every
-    ///     analyzer runs, compilation-wide or not. A project whose analyzers pass the deadline is answered with the
-    ///     compiler errors the stream read, and counts as unfinished once, by its name.
+    ///     The project binds its compiler errors tree by tree, keeping only one model at a time, and its analyzer
+    ///     errors with one run over the whole compilation, partitioned back to files by their location's path.
+    ///     Bound whole, every analyzer runs, compilation-wide or not. A project whose analyzers pass the deadline
+    ///     is answered with the compiler errors the trees read, and counts as unfinished once, by its name. A
+    ///     baseline whose analyzers did not finish leaves the working tree's analyzer errors out, as
+    ///     <see cref="IntroducedErrors"/> decides from the finished flag.
     /// </remarks>
     /// <returns>The project's errors, and whether its analyzers finished.</returns>
     private async Task<(IReadOnlyList<CompilerError> Errors, bool AnalyzersFinished)> ForProjectAsync(Project project, bool baseline, CheckContext context, CancellationToken cancellationToken)
@@ -421,28 +439,37 @@ internal sealed class DiagnosticCollector
         if (documents.Count == 0)
             return (CompilerErrors(compilation, cancellationToken), true);
 
+        var withAnalyzers = _analyzers.For(project, compilation);
         var result = new List<CompilerError>();
-        var finished = true;
         foreach (var document in documents)
         {
-            // The model of this document is the only one the stream holds; the next iteration drops it.
-            var (errors, documentFinished) = await ForDocumentAsync(document, baseline, context, cancellationToken, wholeProject: true).ConfigureAwait(false);
-            result.AddRange(errors);
-            finished &= documentFinished;
+            context.CountDocumentBound();
+            var updating = System.Diagnostics.Stopwatch.GetTimestamp();
+            var model = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
+            context.AddUpdateTicks(System.Diagnostics.Stopwatch.GetTimestamp() - updating);
+            if (model is null)
+                continue;
+            var started = System.Diagnostics.Stopwatch.GetTimestamp();
+            result.AddRange(model.GetDiagnostics(cancellationToken: cancellationToken).Where(IsError).Select(d => ToCompilerError(d, fromAnalyzer: false)).OfType<CompilerError>());
+            context.AddCompilerTicks(System.Diagnostics.Stopwatch.GetTimestamp() - started);
         }
 
-        if (finished && _analyzers.For(project, compilation) is { } withAnalyzers
-            && await FirstModelAsync(project, cancellationToken).ConfigureAwait(false) is { } probe)
+        if (withAnalyzers is null)
+            return (Distinct(result), true);
+
+        using var analyzing = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, context.Run.Deadline);
+        try
         {
-            var plan = await _analyzers.PlanAsync(project, withAnalyzers, probe, cancellationToken).ConfigureAwait(false);
-            if (!plan.CompilationWide.IsEmpty)
-            {
-                var all = await _execution.CompilationWideAsync(project, baseline, withAnalyzers, plan.CompilationWideAnalyzers, context, cancellationToken).ConfigureAwait(false);
-                result.AddRange(all.Where(d => d.Location.SourceTree is null && IsError(d)).Select(d => ToCompilerError(d, fromAnalyzer: true)).OfType<CompilerError>());
-            }
+            var all = await _execution.WholeProjectAsync(project, baseline, withAnalyzers, context, analyzing.Token).ConfigureAwait(false);
+            result.AddRange(all.Where(IsError).Select(d => ToCompilerError(d, fromAnalyzer: true)).OfType<CompilerError>());
+            return (Distinct(result), true);
         }
-
-        return (Distinct(result), finished);
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            if (!baseline)
+                context.MarkUnfinished(project.Name);
+            return (Distinct(result), false);
+        }
     }
 
     private List<CompilerError> CompilerErrors(Compilation compilation, CancellationToken cancellationToken) =>

@@ -48,7 +48,7 @@ public class StreamingTests
     }
 
     [Fact]
-    public async Task A_streamed_project_shares_the_one_compilation_wide_run()
+    public async Task A_streamed_project_starts_a_compilation_wide_analyzer_once()
     {
         using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });
         var slow = new SlowDeclAnalyzer();
@@ -69,7 +69,8 @@ public class StreamingTests
 
         var errors = await collector.ForProjectAsync(solution.Projects.Single(), cancellationToken);
 
-        Assert.Equal(afterWarm, slow.Starts);
+        // Whole-project binding runs every analyzer once over the compilation: one more start, not one per file.
+        Assert.Equal(afterWarm + 1, slow.Starts);
         Assert.Equal(["C1.cs", "C2.cs"], errors.Where(e => e.Id == "DECL2").Select(e => e.Path).Order(StringComparer.Ordinal));
     }
 

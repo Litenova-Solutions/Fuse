@@ -121,6 +121,33 @@ internal sealed class AnalyzerExecution
             context,
             wait);
 
+    /// <summary>
+    ///     The diagnostics the analyzers report anywhere in the compilation, computed once per compilation and shared
+    ///     by every check that needs it. A whole project binds with one such run instead of one per file, so a
+    ///     compilation start analyzer runs once, not once per file. The compiler diagnostics still come from each
+    ///     tree, so this holds only analyzer errors.
+    /// </summary>
+    internal Task<ImmutableArray<Diagnostic>> WholeProjectAsync(Project project, bool baseline, CompilationWithAnalyzers analyzers, CheckContext context, CancellationToken wait) =>
+        _analyses.RunAsync(
+            project.Id,
+            baseline,
+            analyzers,
+            everyAnalyzer: true,
+            async stop =>
+            {
+                var timer = System.Diagnostics.Stopwatch.GetTimestamp();
+                try
+                {
+                    return (await analyzers.GetAnalysisResultAsync(analyzers.Analyzers, stop).ConfigureAwait(false)).GetAllDiagnostics();
+                }
+                finally
+                {
+                    context.AddAnalyzerTicks(System.Diagnostics.Stopwatch.GetTimestamp() - timer);
+                }
+            },
+            context,
+            wait);
+
     private static bool IsError(Diagnostic diagnostic) =>
         diagnostic.Severity == DiagnosticSeverity.Error && !diagnostic.IsSuppressed;
 }

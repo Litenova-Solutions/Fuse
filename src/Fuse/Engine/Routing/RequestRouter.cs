@@ -63,7 +63,7 @@ internal sealed class RequestRouter : IDisposable
         var checker = new Checker(_workspace, _sessions);
         _planner = new TestPlanner(_workspace);
         _preloader = new Preloader(_workspace, _requestLock, log.Write);
-        _warmer = new BaselineWarmer(_workspace, checker, _requestLock, log.Write);
+        _warmer = new BaselineWarmer(_workspace, checker, _requestLock, scheduler, budget, log.Write);
         _requestLog = new RequestLog(log);
         _scheduler = scheduler;
         _ownsScheduler = ownsScheduler;
@@ -248,7 +248,7 @@ internal sealed class RequestRouter : IDisposable
         // The wait and the analyzer budget start at dequeue: queue time is the gate phase and counts against neither.
         using var analyzerDeadline = new CancellationTokenSource();
         if (request.WaitMs > 0)
-            analyzerDeadline.CancelAfter(TimeSpan.FromMilliseconds(request.WaitMs * AnalyzerRun.ShareOfWait));
+            analyzerDeadline.CancelAfter(AnalyzerRun.BudgetFor(TimeSpan.FromMilliseconds(request.WaitMs)));
         var analyzers = new AnalyzerRun(request is not EngineRequest.CheckFiles { LeaveOutCompilationWide: true }, analyzerDeadline.Token);
         try
         {

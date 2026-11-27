@@ -54,11 +54,11 @@ public class AnalyzerPlanTests
     }
 
     [Fact]
-    public async Task An_analyzer_whose_start_costs_less_than_a_second_stays_file_by_file()
+    public async Task An_analyzer_whose_start_costs_less_than_150_ms_stays_file_by_file()
     {
         // A whole-compilation run binds every file of the project, which costs more than a short start on each checked file.
         using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });
-        var moderate = new SlowStartAnalyzer(TimeSpan.FromMilliseconds(200));
+        var moderate = new SlowStartAnalyzer(TimeSpan.FromMilliseconds(100));
         var lines = new List<string>();
         var solution = SolutionWith(repo, moderate);
         var collector = new DiagnosticCollector(repo.Root, () => 0, lines.Add);

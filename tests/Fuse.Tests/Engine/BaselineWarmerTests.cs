@@ -98,6 +98,46 @@ public class BaselineWarmerTests
         Assert.Equal("CS0103", Assert.Single(broken.Errors).Error.Id);
     }
 
+    [Fact]
+    public void Each_project_gets_a_thirty_second_analyzer_budget()
+    {
+        Assert.Equal(TimeSpan.FromSeconds(30), DiagnosticCollector.WarmBudget);
+    }
+
+    [Fact]
+    public async Task The_warm_stops_when_a_newer_generation_cancels_its_token()
+    {
+        using var repo = CreateAnalyzerRepo(startMs: 2000);
+        await using var engine = await InProcessRequestRouter.StartAsync(repo);
+        var part = repo.Full("App/Part0.cs");
+        Assert.IsType<EngineResponse.CheckAnswered>(await engine.CheckAsync(part));
+        await WaitForLogAsync(engine, "baseline warm: App2 ");
+
+        repo.Replace("App/Part0.cs", "var total = 0;", "var total = 1;");
+        repo.Commit("second");
+        Assert.IsType<EngineResponse.CheckAnswered>(await engine.CheckAsync(part));
+
+        repo.Replace("App/Part0.cs", "var total = 1;", "var total = 2;");
+        repo.Commit("third");
+        Assert.IsType<EngineResponse.CheckAnswered>(await engine.SendAsync(new EngineRequest.CheckChanges(WaitForLoad: true)));
+
+        await Task.Delay(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        Assert.Equal(1, CountOccurrences(engine.Log, "baseline warm: App "));
+    }
+
+    private static int CountOccurrences(string text, string value)
+    {
+        var count = 0;
+        var index = 0;
+        while ((index = text.IndexOf(value, index, StringComparison.Ordinal)) >= 0)
+        {
+            count++;
+            index += value.Length;
+        }
+
+        return count;
+    }
+
     /// <summary>
     ///     A repository with a slow compilation-wide analyzer and two small app projects using it, built. The
     ///     analyzer's start sleeps <paramref name="startMs"/>, past the compilation-wide threshold.

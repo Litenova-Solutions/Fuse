@@ -17,4 +17,21 @@ internal sealed record AnalyzerRun(bool CompilationWide, CancellationToken Deadl
     ///     answer to reach the client.
     /// </summary>
     public const double ShareOfWait = 0.8;
+
+    /// <summary>
+    ///     The longest the analyzers run for one check, even when the client's wait is long: a 600 s wait would
+    ///     otherwise give them 480 s. Past it the check reports every compiler error and the analyzer errors that
+    ///     finished, and counts the unfinished analyzers as today.
+    /// </summary>
+    public static readonly TimeSpan MaxBudget = TimeSpan.FromSeconds(60);
+
+    /// <summary>
+    ///     How long the analyzers run for a client that waits <paramref name="wait"/>: the client's share, capped at
+    ///     <see cref="MaxBudget"/>.
+    /// </summary>
+    public static TimeSpan BudgetFor(TimeSpan wait)
+    {
+        var share = TimeSpan.FromMilliseconds(wait.TotalMilliseconds * ShareOfWait);
+        return share < MaxBudget ? share : MaxBudget;
+    }
 }

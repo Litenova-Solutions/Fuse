@@ -13,7 +13,9 @@ namespace Fuse.Engine.Background;
 ///     summary is emitted: off the request path, at this background priority and never under the writer lock,
 ///     so a sync only ever reads a summary that is already kept. For the same project it also indexes the token
 ///     search entries a later reference search narrows by, so a search never builds the index on the request path.
-///     Only loaded projects are filled; the warm loads none itself. Requests take precedence: it holds the gate only while it chooses a project, between
+///     Only loaded projects are filled; the warm loads none itself. Each project's warm-up runs inside a background
+///     lane lease on the generation's background token with a 30 s analyzer budget, so interactive and command
+///     checks preempt it and a newer generation or a memory shed stops it. Requests take precedence: it holds the gate only while it chooses a project, between
 ///     projects.
 /// </summary>
 internal sealed class BaselineWarmer
@@ -21,6 +23,8 @@ internal sealed class BaselineWarmer
     private readonly RepoWorkspace _workspace;
     private readonly Checker _checker;
     private readonly RequestGate _gate;
+    private readonly Scheduler _scheduler;
+    private readonly MemoryBudget _budget;
     private readonly Action<string> _log;
 
     /// <summary>Makes starting a warm run one step, so two requests that finish together cannot both start one.</summary>
@@ -34,16 +38,32 @@ internal sealed class BaselineWarmer
     /// <summary>The projects warmed for <see cref="_warmedGeneration"/>, so a project that loads after the warm still gets warmed.</summary>
     private readonly HashSet<RepoPath> _warmedProjects = [];
 
+    private readonly Lock _runLock = new();
+    private CancellationTokenSource? _current;
+
     /// <param name="workspace">The workspace whose baseline generations are warmed.</param>
     /// <param name="checker">The checker that warms one project.</param>
     /// <param name="gate">The gate it holds only while the next project is chosen, never during a warm; requests take a reader from the scheduler and never wait on it.</param>
+    /// <param name="scheduler">The scheduler whose background lane the warm holds and whose background token stops it when a newer generation is published.</param>
+    /// <param name="budget">The memory budget whose shed stops the warm.</param>
     /// <param name="log">Where each warmed project and each skipped run is written.</param>
-    public BaselineWarmer(RepoWorkspace workspace, Checker checker, RequestGate gate, Action<string> log)
+    public BaselineWarmer(RepoWorkspace workspace, Checker checker, RequestGate gate, Scheduler scheduler, MemoryBudget budget, Action<string> log)
     {
         _workspace = workspace;
         _checker = checker;
         _gate = gate;
+        _scheduler = scheduler;
+        _budget = budget;
         _log = log;
+    }
+
+    /// <summary>
+    ///     Makes a warm that runs on its own scheduler, for the tests that warm without a router. The engine itself
+    ///     always uses the call with a scheduler, so its warm holds a background lane and stops on a newer generation.
+    /// </summary>
+    public BaselineWarmer(RepoWorkspace workspace, Checker checker, RequestGate gate, Action<string> log)
+        : this(workspace, checker, gate, new Scheduler(Scheduler.DefaultReaderCount), new MemoryBudget(), log)
+    {
     }
 
     /// <summary>True while a background warm runs.</summary>
@@ -59,6 +79,15 @@ internal sealed class BaselineWarmer
                 return;
             // RunAsync checks the token between projects, so Task.Run is not given it.
             _running = Task.Run(() => RunAsync(shutdown), CancellationToken.None);
+        }
+    }
+
+    /// <summary>Stops the project that is warming, when the memory budget sheds background work at a request boundary.</summary>
+    public void CancelCurrent()
+    {
+        lock (_runLock)
+        {
+            _current?.Cancel();
         }
     }
 
@@ -100,24 +129,62 @@ internal sealed class BaselineWarmer
                 return;
             }
 
+            if (_budget.Assess().Shed.Contains(MemoryBudget.ShedStep.Background))
+            {
+                _log("baseline warm: skipped, memory shed");
+                return;
+            }
+
             _warmedProjects.Add(next.Path);
             var warming = System.Diagnostics.Stopwatch.GetTimestamp();
+            using var projectSource = CancellationTokenSource.CreateLinkedTokenSource(shutdown, _scheduler.BackgroundToken);
+            lock (_runLock)
+            {
+                _current = projectSource;
+            }
+
             try
             {
-                if (await _workspace.EmitSummaryAsync(next, shutdown).ConfigureAwait(false))
-                    _log($"summary emitted: {next.Name}");
-                if (await _checker.WarmBaselineAsync(next, shutdown).ConfigureAwait(false))
-                    _log($"baseline warm: {next.Name} compilation-wide analyzers done in {(System.Diagnostics.Stopwatch.GetTimestamp() - warming) * 1000 / System.Diagnostics.Stopwatch.Frequency} ms");
-                await _checker.WarmSearchIndexAsync(next, shutdown).ConfigureAwait(false);
+                SchedulerLease? lease;
+                try
+                {
+                    lease = await _scheduler.EnterAsync(SchedulerLane.Background, "baseline warm", waitMs: 0, projectSource.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
+
+                using (lease)
+                {
+                    try
+                    {
+                        if (await _workspace.EmitSummaryAsync(next, projectSource.Token).ConfigureAwait(false))
+                            _log($"summary emitted: {next.Name}");
+                        if (await _checker.WarmBaselineAsync(next, projectSource.Token).ConfigureAwait(false))
+                            _log($"baseline warm: {next.Name} compilation-wide analyzers done in {(System.Diagnostics.Stopwatch.GetTimestamp() - warming) * 1000 / System.Diagnostics.Stopwatch.Frequency} ms");
+                        await _checker.WarmSearchIndexAsync(next, projectSource.Token).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        return;
+                    }
+                    catch (Exception e)
+                    {
+                        _log($"baseline warm failed: {e}");
+                        return;
+                    }
+                }
             }
-            catch (OperationCanceledException)
+            finally
             {
-                return;
-            }
-            catch (Exception e)
-            {
-                _log($"baseline warm failed: {e}");
-                return;
+                lock (_runLock)
+                {
+                    if (ReferenceEquals(_current, projectSource))
+                        _current = null;
+                }
+
+                projectSource.Dispose();
             }
 
             if (_workspace.PinGeneration().BaselineGeneration != generation)

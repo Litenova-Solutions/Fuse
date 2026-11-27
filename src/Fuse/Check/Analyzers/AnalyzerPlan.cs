@@ -20,7 +20,7 @@ internal sealed record AnalyzerPlan(
     ///     each file: most analyzers start in well under 100 ms, and one that reads the whole compilation takes seconds on
     ///     a large project.
     /// </summary>
-    public static readonly TimeSpan CompilationWideStart = TimeSpan.FromSeconds(1);
+    public static readonly TimeSpan CompilationWideStart = TimeSpan.FromMilliseconds(150);
 
     /// <summary>The compilation-wide analyzers alone.</summary>
     public ImmutableArray<DiagnosticAnalyzer> CompilationWideAnalyzers { get; } = [.. CompilationWide.Select(c => c.Analyzer)];

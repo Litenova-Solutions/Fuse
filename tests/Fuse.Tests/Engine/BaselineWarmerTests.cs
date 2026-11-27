@@ -1,8 +1,12 @@
 using System.Collections.Immutable;
 using Fuse.Check.Analyzers;
 using Fuse.Check.Diagnostics;
+using Fuse.Engine.Routing;
+using Fuse.Engine.Scheduling;
 using Fuse.Protocol.Analysis;
 using Fuse.Protocol.Requests;
+using Fuse.Protocol.Transport;
+using Fuse.Telemetry;
 using Fuse.Tests.Fixtures;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
@@ -18,7 +22,7 @@ public class BaselineWarmerTests
     public async Task A_commit_starts_the_background_baseline_run()
     {
         using var repo = CreateAnalyzerRepo();
-        await using var engine = await InProcessRequestRouter.StartAsync(repo);
+        await using var engine = await UnlimitedEngine.StartAsync(repo);
         var part = repo.Full("App/Part0.cs");
         Assert.IsType<EngineResponse.CheckAnswered>(await engine.CheckAsync(part));
 
@@ -58,7 +62,7 @@ public class BaselineWarmerTests
     public async Task A_request_is_admitted_between_two_warmed_projects()
     {
         using var repo = CreateAnalyzerRepo();
-        await using var engine = await InProcessRequestRouter.StartAsync(repo);
+        await using var engine = await UnlimitedEngine.StartAsync(repo);
         Assert.IsType<EngineResponse.CheckAnswered>(await engine.CheckAsync(repo.Full("App/Part0.cs")));
         await WaitForLogAsync(engine, "baseline warm: App ");
 
@@ -76,7 +80,7 @@ public class BaselineWarmerTests
     public async Task A_second_HEAD_move_discards_the_first_warm_run()
     {
         using var repo = CreateAnalyzerRepo(startMs: 3000);
-        await using var engine = await InProcessRequestRouter.StartAsync(repo);
+        await using var engine = await UnlimitedEngine.StartAsync(repo);
         var part = repo.Full("App/Part0.cs");
         Assert.IsType<EngineResponse.CheckAnswered>(await engine.CheckAsync(part));
         await WaitForLogAsync(engine, "baseline warm: App ");
@@ -108,10 +112,10 @@ public class BaselineWarmerTests
     public async Task The_warm_stops_when_a_newer_generation_cancels_its_token()
     {
         using var repo = CreateAnalyzerRepo(startMs: 2000);
-        await using var engine = await InProcessRequestRouter.StartAsync(repo);
+        await using var engine = await UnlimitedEngine.StartAsync(repo);
         var part = repo.Full("App/Part0.cs");
         Assert.IsType<EngineResponse.CheckAnswered>(await engine.CheckAsync(part));
-        await WaitForLogAsync(engine, "baseline warm: App2 ");
+        await WaitForLogAsync(engine, "baseline warm: App compilation-wide analyzers done in ");
 
         repo.Replace("App/Part0.cs", "var total = 0;", "var total = 1;");
         repo.Commit("second");
@@ -226,11 +230,67 @@ public class BaselineWarmerTests
     }
 
     /// <summary>Waits up to a minute for the router's log to hold <paramref name="text"/>, which a background warm writes when it gets there.</summary>
-    private static async Task WaitForLogAsync(InProcessRequestRouter engine, string text)
+    private static async Task WaitForLogAsync(UnlimitedEngine engine, string text)
     {
         for (var i = 0; i < 600 && !engine.Log.Contains(text, StringComparison.Ordinal); i++)
             await Task.Delay(100, TestContext.Current.CancellationToken);
         Assert.True(engine.Log.Contains(text, StringComparison.Ordinal), $"the log never held \"{text}\":\n{engine.Log}");
+    }
+
+    /// <summary>
+    ///     The engine's request loop with a memory budget that never sheds, so a background warm runs even when
+    ///     the machine that runs the tests is short on memory. The production budget still sheds background work
+    ///     past its ceiling; this one only keeps the tests from depending on how much memory their machine holds.
+    /// </summary>
+    private sealed class UnlimitedEngine : IAsyncDisposable
+    {
+        private readonly RequestRouter _router;
+        private readonly EngineLog _log;
+        private readonly CancellationTokenSource _shutdown;
+
+        private UnlimitedEngine(RequestRouter router, EngineLog log, CancellationTokenSource shutdown)
+        {
+            _router = router;
+            _log = log;
+            _shutdown = shutdown;
+        }
+
+        public static async Task<UnlimitedEngine> StartAsync(FixtureRepo repo)
+        {
+            var log = new EngineLog(repo.Root.StateDirectory);
+            var scheduler = new Scheduler(Scheduler.DefaultReaderCount);
+            var budget = new MemoryBudget(ceilingBytes: 1L << 60, workingSet: () => 0, memoryLoad: () => 0, totalAvailable: () => 1L << 60);
+            var router = new RequestRouter(repo.Root, log, scheduler, budget);
+            var shutdown = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+            await router.InitializeAsync(shutdown.Token).ConfigureAwait(false);
+            return new UnlimitedEngine(router, log, shutdown);
+        }
+
+        public Task<EngineResponse> SendAsync(EngineRequest request, CancellationToken? cancellationToken = null) =>
+            _router.HandleAsync(request with { BuildId = EngineVersion.Build }, cancellationToken ?? TestContext.Current.CancellationToken);
+
+        public Task<EngineResponse> CheckAsync(params string[] files) =>
+            SendAsync(files.Length == 0 ? new EngineRequest.CheckChanges(WaitForLoad: true) : new EngineRequest.CheckFiles(files, WaitForLoad: true));
+
+        public string Log
+        {
+            get
+            {
+                if (!File.Exists(_log.FilePath))
+                    return "";
+                using var stream = new FileStream(_log.FilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                using var reader = new StreamReader(stream);
+                return reader.ReadToEnd();
+            }
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            await _shutdown.CancelAsync().ConfigureAwait(false);
+            await _router.WaitForPreloadAsync().ConfigureAwait(false);
+            _router.Dispose();
+            _shutdown.Dispose();
+        }
     }
 
     /// <summary>Reports every class whose name starts with Widget, after a compilation start past the compilation-wide threshold.</summary>

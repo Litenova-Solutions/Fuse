@@ -24,6 +24,16 @@ internal sealed class ProjectNode
     public IReadOnlySet<RepoPath> NonSources { get; init; } = new HashSet<RepoPath>();
 
     /// <summary>
+    ///     The files MSBuild passes to the project's analyzers and source generators as <c>AdditionalFiles</c> items, such
+    ///     as <c>AnalyzerReleases.Unshipped.md</c>. An edit to one changes what the analyzers report, so the engine binds
+    ///     the edited content and checks the project again.
+    /// </summary>
+    public IReadOnlySet<RepoPath> AdditionalFiles { get; init; } = new HashSet<RepoPath>();
+
+    /// <summary>The packages the project references directly by name (its <c>PackageReference</c> items), compared ignoring case.</summary>
+    public IReadOnlySet<string> PackageReferences { get; init; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
     ///     The project files it references with ReferenceOutputAssembly false: build this project first, with no assembly reference. A test project that starts an application as a child process declares the application this way, so the reference is its reach to the application.
     /// </summary>
     public IReadOnlyList<RepoPath> BuildOnlyReferences { get; init; } = [];

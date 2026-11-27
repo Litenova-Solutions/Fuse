@@ -18,6 +18,7 @@ internal sealed class RepoGraph
     private readonly Dictionary<RepoPath, List<ProjectNode>> _owners;
     private readonly Dictionary<RepoPath, List<ProjectNode>> _directDependents;
     private readonly Dictionary<RepoPath, List<ProjectNode>> _nonSourceOwners;
+    private readonly Dictionary<RepoPath, List<ProjectNode>> _additionalFileOwners;
 
     private RepoGraph(IReadOnlyList<ProjectNode> projects, IReadOnlyList<string> failures)
     {
@@ -26,6 +27,7 @@ internal sealed class RepoGraph
         _byPath = projects.ToDictionary(p => p.Path);
         _owners = [];
         _nonSourceOwners = [];
+        _additionalFileOwners = [];
         _directDependents = projects.ToDictionary(p => p.Path, _ => new List<ProjectNode>());
         foreach (var project in projects)
         {
@@ -41,6 +43,13 @@ internal sealed class RepoGraph
                 if (!_nonSourceOwners.TryGetValue(nonSource, out var nonSourceList))
                     _nonSourceOwners[nonSource] = nonSourceList = [];
                 nonSourceList.Add(project);
+            }
+
+            foreach (var additional in project.AdditionalFiles)
+            {
+                if (!_additionalFileOwners.TryGetValue(additional, out var additionalList))
+                    _additionalFileOwners[additional] = additionalList = [];
+                additionalList.Add(project);
             }
 
             foreach (var reference in project.References)
@@ -64,7 +73,8 @@ internal sealed class RepoGraph
     {
         if (_owners.TryGetValue(path, out var owners))
             return owners;
-        if (!PathRules.IsSource(path.Absolute))
+        // A source that a project names as a non-source, such as a .cs file shipped as Content, is not compiled.
+        if (!PathRules.IsSource(path.Absolute) || _nonSourceOwners.ContainsKey(path))
             return [];
         ProjectNode? best = null;
         foreach (var project in Projects)
@@ -80,6 +90,13 @@ internal sealed class RepoGraph
     /// <summary>The projects whose MSBuild items name <paramref name="path"/> as a non-C# file they use.</summary>
     public IReadOnlyList<ProjectNode> NonSourceOwnersOf(RepoPath path) =>
         _nonSourceOwners.TryGetValue(path, out var owners) ? owners : [];
+
+    /// <summary>The projects that pass <paramref name="path"/> to their analyzers as an <c>AdditionalFiles</c> item.</summary>
+    public IReadOnlyList<ProjectNode> AdditionalFileOwnersOf(RepoPath path) =>
+        _additionalFileOwners.TryGetValue(path, out var owners) ? owners : [];
+
+    /// <summary>True when some project passes <paramref name="path"/> to its analyzers as an <c>AdditionalFiles</c> item.</summary>
+    public bool IsAdditionalFile(RepoPath path) => _additionalFileOwners.ContainsKey(path);
 
     /// <summary>The deepest project whose directory holds <paramref name="path"/>, or null when no project directory holds it or it sits in build output.</summary>
     public ProjectNode? ContainingProject(RepoPath path)
@@ -243,6 +260,7 @@ internal sealed class RepoGraph
         var path = root.PathOf(project.FullPath);
         var sources = new HashSet<RepoPath>();
         var nonSources = new HashSet<RepoPath>();
+        var additionalFiles = new HashSet<RepoPath>();
         var buildOnlyReferences = new HashSet<RepoPath>();
         var references = new HashSet<RepoPath>();
         var packages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -257,33 +275,36 @@ internal sealed class RepoGraph
             {
                 foreach (var item in evaluation.GetItems(itemType))
                 {
-                    if (PathRules.IsSource(item.EvaluatedInclude))
+                    if (PathRules.IsRazorSource(item.EvaluatedInclude))
                         sources.Add(Full(item.EvaluatedInclude));
                 }
             }
 
             foreach (var item in evaluation.GetItems("EmbeddedResource"))
             {
-                if (item.EvaluatedInclude.Length > 0 && !PathRules.IsSource(item.EvaluatedInclude))
+                if (item.EvaluatedInclude.Length > 0 && !PathRules.IsRazorSource(item.EvaluatedInclude))
                     nonSources.Add(Full(item.EvaluatedInclude));
             }
 
             foreach (var item in evaluation.GetItems("Content"))
             {
-                if (item.EvaluatedInclude.Length > 0 && !PathRules.IsSource(item.EvaluatedInclude))
+                if (item.EvaluatedInclude.Length > 0 && !PathRules.IsRazorSource(item.EvaluatedInclude))
                     nonSources.Add(Full(item.EvaluatedInclude));
             }
 
             foreach (var item in evaluation.GetItems("AdditionalFiles"))
             {
-                if (item.EvaluatedInclude.Length > 0 && !PathRules.IsSource(item.EvaluatedInclude))
+                if (item.EvaluatedInclude.Length == 0)
+                    continue;
+                additionalFiles.Add(Full(item.EvaluatedInclude));
+                if (!PathRules.IsRazorSource(item.EvaluatedInclude))
                     nonSources.Add(Full(item.EvaluatedInclude));
             }
 
             foreach (var item in evaluation.GetItems("None"))
             {
                 var copy = item.GetMetadataValue("CopyToOutputDirectory");
-                if (item.EvaluatedInclude.Length > 0 && !PathRules.IsSource(item.EvaluatedInclude) && copy.Length > 0 && !copy.Equals("Never", StringComparison.OrdinalIgnoreCase))
+                if (item.EvaluatedInclude.Length > 0 && !PathRules.IsRazorSource(item.EvaluatedInclude) && copy.Length > 0 && !copy.Equals("Never", StringComparison.OrdinalIgnoreCase))
                     nonSources.Add(Full(item.EvaluatedInclude));
             }
 
@@ -309,6 +330,8 @@ internal sealed class RepoGraph
             }
         }
 
+        // A file the project compiles is a source even when another item also names it.
+        nonSources.ExceptWith(sources);
         var isTest = isTestProperty || packages.Any(p => TestFrameworkPackages.Contains(p, StringComparer.OrdinalIgnoreCase));
         // The project itself says whether it is a platform test application; global.json only decides how dotnet test
         // reaches it, which the client reads when it runs the plan.
@@ -333,6 +356,8 @@ internal sealed class RepoGraph
             References = [.. references],
             Sources = sources,
             NonSources = nonSources,
+            AdditionalFiles = additionalFiles,
+            PackageReferences = packages,
             BuildOnlyReferences = [.. buildOnlyReferences],
             EvaluationInputs = inputs,
             AssetsFile = Full(string.IsNullOrEmpty(assets) ? System.IO.Path.Combine("obj", "project.assets.json") : assets),

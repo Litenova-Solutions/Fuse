@@ -15,6 +15,13 @@ internal static class PathRules
     public static bool IsSource(string path) =>
         SourceExtensions.Any(e => path.EndsWith(e, StringComparison.OrdinalIgnoreCase));
 
+    /// <summary>
+    ///     True for Razor components and Razor views, which the Razor SDK compiles from <c>Content</c>, <c>None</c> and
+    ///     <c>RazorComponent</c> items. A <c>.cs</c> file in those items is shipped or copied, not compiled.
+    /// </summary>
+    public static bool IsRazorSource(string path) =>
+        path.EndsWith(".razor", StringComparison.OrdinalIgnoreCase) || path.EndsWith(".cshtml", StringComparison.OrdinalIgnoreCase);
+
     /// <summary>True for files that change how projects evaluate.</summary>
     public static bool IsProjectFile(string path)
     {

@@ -16,7 +16,7 @@ namespace Fuse.Graph;
 internal static partial class GraphStore
 {
     /// <summary>The stored form's version. A stored graph of another version is left unread.</summary>
-    private const int FormatVersion = 1;
+    private const int FormatVersion = 2;
 
     /// <summary>The files MSBuild imports without a project naming them, whose appearing or disappearing changes an evaluation as an import does.</summary>
     private static readonly string[] AutoImportNames = ["Directory.Build.props", "Directory.Build.targets", "Directory.Packages.props", "global.json"];
@@ -77,6 +77,8 @@ internal static partial class GraphStore
                     References = [.. project.References.Select(root.PathOf)],
                     Sources = new HashSet<RepoPath>(project.Sources.Select(root.PathOf)),
                     NonSources = new HashSet<RepoPath>(project.NonSources.Select(root.PathOf)),
+                    AdditionalFiles = new HashSet<RepoPath>(project.AdditionalFiles.Select(root.PathOf)),
+                    PackageReferences = new HashSet<string>(project.PackageReferences, StringComparer.OrdinalIgnoreCase),
                     BuildOnlyReferences = [.. project.BuildOnlyReferences.Select(root.PathOf)],
                     EvaluationInputs = new HashSet<RepoPath>(project.EvaluationInputs.Select(root.PathOf)),
                     AssetsFile = root.PathOf(project.AssetsFile),
@@ -195,7 +197,9 @@ internal static partial class GraphStore
         project.RequiresContainerRuntime,
         [.. project.TargetPaths],
         project.RunSettings,
-        project.IsExecutable);
+        project.IsExecutable,
+        [.. project.AdditionalFiles.Select(a => a.Relative).Order(StringComparer.Ordinal)],
+        [.. project.PackageReferences.Order(StringComparer.OrdinalIgnoreCase)]);
 
     /// <summary>
     ///     The key the graph of <paramref name="paths"/> is stored under: the project files and the build, hashed.
@@ -355,7 +359,7 @@ internal static partial class GraphStore
     }
 
     /// <summary>One stored project: every field of <see cref="ProjectNode"/>, by repository-relative path.</summary>
-    private sealed record StoredProject(string Path, string Name, string Directory, List<string> References, List<string> Sources, List<string> NonSources, List<string> BuildOnlyReferences, List<string> EvaluationInputs, string AssetsFile, bool IsTest, bool UsesTestingPlatform, string Framework, bool RequiresContainerRuntime, List<string> TargetPaths, string? RunSettings, bool IsExecutable);
+    private sealed record StoredProject(string Path, string Name, string Directory, List<string> References, List<string> Sources, List<string> NonSources, List<string> BuildOnlyReferences, List<string> EvaluationInputs, string AssetsFile, bool IsTest, bool UsesTestingPlatform, string Framework, bool RequiresContainerRuntime, List<string> TargetPaths, string? RunSettings, bool IsExecutable, List<string> AdditionalFiles, List<string> PackageReferences);
 
     /// <summary>One stored graph: its projects, and the hash of every evaluation input it was evaluated from.</summary>
     private sealed record StoredGraph(int Version, string Build, List<StoredProject>? Projects, Dictionary<string, string>? Inputs, List<string>? Failures);

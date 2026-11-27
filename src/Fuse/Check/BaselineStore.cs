@@ -5,10 +5,10 @@ using System.Text.Json.Serialization;
 using Fuse.Check.Model;
 using Fuse.Graph;
 using Fuse.Paths;
-using Fuse.Workspace;
+using Fuse.Workspace.Blueprints;
+using Fuse.Workspace.Views;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
-
 namespace Fuse.Check;
 
 /// <summary>

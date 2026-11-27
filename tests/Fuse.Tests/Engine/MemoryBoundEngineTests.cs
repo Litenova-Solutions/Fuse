@@ -4,9 +4,8 @@ using Fuse.Telemetry;
 using Fuse.Testing;
 using Fuse.Testing.Model;
 using Fuse.Tests.Fixtures;
-using Fuse.Workspace;
+using Fuse.Workspace.Generations;
 using Microsoft.CodeAnalysis;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>

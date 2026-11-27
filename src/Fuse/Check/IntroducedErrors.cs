@@ -2,9 +2,8 @@ using System.Collections.Concurrent;
 using Fuse.Check.Model;
 using Fuse.Graph;
 using Fuse.Paths;
-using Fuse.Workspace;
+using Fuse.Workspace.Generations;
 using Microsoft.CodeAnalysis;
-
 namespace Fuse.Check;
 
 /// <summary>

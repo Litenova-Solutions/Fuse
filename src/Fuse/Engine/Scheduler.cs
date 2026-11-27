@@ -13,7 +13,7 @@ namespace Fuse.Engine;
 /// <remarks>
 ///     Status, ping and session registration never enter this queue: status reads the newest generation and a
 ///     registration is a write <see cref="Fuse.Check.SessionEdits"/> applies under its own lock. The writer in
-///     <see cref="Fuse.Workspace.RepoWorkspace"/> still serializes sync and load, so readers pin a generation and
+///     <see cref="Fuse.Workspace.Generations.RepoWorkspace"/> still serializes sync and load, so readers pin a generation and
 ///     bind in parallel while the next sync publishes the generation after it.
 /// </remarks>
 internal sealed class Scheduler : IDisposable

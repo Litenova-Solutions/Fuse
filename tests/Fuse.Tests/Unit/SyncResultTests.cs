@@ -1,7 +1,6 @@
 using Fuse.Paths;
-using Fuse.Repo;
+using Fuse.Repo.Tracking;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Unit;
 
 /// <summary>

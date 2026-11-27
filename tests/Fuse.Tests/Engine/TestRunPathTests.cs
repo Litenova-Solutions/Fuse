@@ -1,5 +1,6 @@
 using System.Text;
-using Fuse.Dotnet;
+using Fuse.Dotnet.Processes;
+using Fuse.Dotnet.Test;
 using Fuse.Engine;
 using Fuse.Operations;
 using Fuse.Protocol;
@@ -7,7 +8,6 @@ using Fuse.Telemetry;
 using Fuse.Testing;
 using Fuse.Testing.Model;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>

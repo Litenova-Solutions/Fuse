@@ -4,8 +4,7 @@ using Fuse.Graph;
 using Fuse.Paths;
 using Fuse.Protocol;
 using Fuse.Testing;
-using Fuse.Workspace;
-
+using Fuse.Workspace.Generations;
 namespace Fuse.Engine;
 
 /// <summary>Builds the project, candidate file, and affected test report returned by <c>fuse impact</c>.</summary>

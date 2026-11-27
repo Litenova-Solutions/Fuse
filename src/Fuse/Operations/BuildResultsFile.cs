@@ -1,11 +1,11 @@
 using System.Globalization;
 using System.Text;
 using System.Text.Json.Nodes;
-using Fuse.Dotnet;
+using Fuse.Dotnet.Build;
 using Fuse.Failures;
 using Fuse.Paths;
-using Fuse.Repo;
-
+using Fuse.Repo.Git;
+using Fuse.Repo.Tracking;
 namespace Fuse.Operations;
 
 /// <summary>The full results of the last build, which the console answer caps.</summary>

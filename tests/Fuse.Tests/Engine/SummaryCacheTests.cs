@@ -1,10 +1,9 @@
 using Fuse.Check;
 using Fuse.Tests.Fixtures;
-using Fuse.Workspace;
+using Fuse.Workspace.Views;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>

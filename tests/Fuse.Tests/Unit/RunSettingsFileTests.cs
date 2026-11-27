@@ -1,7 +1,6 @@
 using System.Xml.Linq;
-using Fuse.Dotnet;
+using Fuse.Dotnet.Test;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Unit;
 
 public sealed class RunSettingsFileTests : IDisposable

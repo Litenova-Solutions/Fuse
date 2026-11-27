@@ -4,8 +4,7 @@ using Fuse.Check.Model;
 using Fuse.Graph;
 using Fuse.Telemetry;
 using Fuse.Tests.Fixtures;
-using Fuse.Workspace;
-
+using Fuse.Workspace.Generations;
 namespace Fuse.Tests.Engine;
 
 /// <summary>

@@ -1,9 +1,8 @@
 using Fuse.Failures;
 using Fuse.Harnesses;
-using Fuse.Repo;
+using Fuse.Repo.Tracking;
 using Fuse.Tests.Fixtures;
-using Fuse.Workspace;
-
+using Fuse.Workspace.Generations;
 namespace Fuse.Tests.Engine;
 
 public class RepositoryEdgeCaseTests

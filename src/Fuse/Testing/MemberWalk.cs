@@ -4,12 +4,12 @@ using Fuse.Changes.Model;
 using Fuse.Graph;
 using Fuse.Paths;
 using Fuse.Testing.Model;
-using Fuse.Workspace;
+using Fuse.Workspace.Generations;
+using Fuse.Workspace.Indexing;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.FindSymbols;
-
 namespace Fuse.Testing;
 
 /// <summary>

@@ -7,15 +7,16 @@ using Fuse.Check.Model;
 using Fuse.Failures;
 using Fuse.Paths;
 using Fuse.Protocol;
-using Fuse.Repo;
+using Fuse.Repo.Git;
+using Fuse.Repo.Tracking;
 using Fuse.Telemetry;
 using Fuse.Testing;
 using Fuse.Testing.Model;
-using Fuse.Workspace;
+using Fuse.Workspace.Generations;
+using Fuse.Workspace.Views;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
-
 namespace Fuse.Engine;
 
 /// <summary>

@@ -150,21 +150,28 @@ public class NamespaceDependencyTests
     [Fact]
     public void No_two_namespaces_depend_on_each_other()
     {
+        // Rows are compared, not stage folders: the stages of one layer (Fuse.Workspace.Generations and
+        // Fuse.Workspace.Views) may use each other, but no two rows may.
         var code = Code.Value;
-        var fuse = code.Edges.Keys.Where(e => e.To.StartsWith("Fuse", StringComparison.Ordinal)).ToList();
-        var reach = code.Namespaces.ToDictionary(n => n, n => Reachable(fuse, n), StringComparer.Ordinal);
+        var fuse = code.Edges.Keys
+            .Where(e => e.To.StartsWith("Fuse", StringComparison.Ordinal))
+            .Select(e => (From: RowOf(e.From) ?? e.From, To: RowOf(e.To) ?? e.To, Edge: e))
+            .Where(e => e.From != e.To)
+            .ToList();
+        var rows = code.Namespaces.Select(n => RowOf(n) ?? n).ToHashSet(StringComparer.Ordinal);
+        var reach = rows.ToDictionary(n => n, n => Reachable([.. fuse.Select(e => (e.From, e.To))], n), StringComparer.Ordinal);
         var cycles = new List<string>();
         var reported = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var name in code.Namespaces.Order(StringComparer.Ordinal))
+        foreach (var name in rows.Order(StringComparer.Ordinal))
         {
             if (reported.Contains(name))
                 continue;
-            // The namespaces that reach this one and that this one reaches form one cycle.
-            var cycle = code.Namespaces.Where(other => reach[name].Contains(other) && reach[other].Contains(name)).Order(StringComparer.Ordinal).ToList();
+            // The rows that reach this one and that this one reaches form one cycle.
+            var cycle = rows.Where(other => reach[name].Contains(other) && reach[other].Contains(name)).Order(StringComparer.Ordinal).ToList();
             if (cycle.Count < 2)
                 continue;
             reported.UnionWith(cycle);
-            var inside = fuse.Where(e => cycle.Contains(e.From) && cycle.Contains(e.To)).Select(e => $"{e.From} -> {e.To} ({code.Edges[e]})");
+            var inside = fuse.Where(e => cycle.Contains(e.From) && cycle.Contains(e.To)).Select(e => $"{e.Edge.From} -> {e.Edge.To} ({code.Edges[e.Edge]})");
             cycles.Add($"{string.Join(", ", cycle)} depend on each other: {string.Join("; ", inside)}");
         }
 

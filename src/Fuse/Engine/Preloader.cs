@@ -1,8 +1,8 @@
 using Fuse.Failures;
 using Fuse.Graph;
 using Fuse.Paths;
-using Fuse.Workspace;
-
+using Fuse.Workspace.Blueprints;
+using Fuse.Workspace.Generations;
 namespace Fuse.Engine;
 
 /// <summary>

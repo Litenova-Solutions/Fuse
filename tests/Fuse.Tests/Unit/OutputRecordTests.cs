@@ -1,6 +1,5 @@
-using Fuse.Dotnet;
+using Fuse.Dotnet.Test;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Unit;
 
 public class OutputRecordTests

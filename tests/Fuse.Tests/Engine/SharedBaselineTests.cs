@@ -5,10 +5,11 @@ using Fuse.Check.Model;
 using Fuse.Paths;
 using Fuse.Telemetry;
 using Fuse.Tests.Fixtures;
-using Fuse.Workspace;
+using Fuse.Workspace.Blueprints;
+using Fuse.Workspace.Generations;
+using Fuse.Workspace.Views;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>

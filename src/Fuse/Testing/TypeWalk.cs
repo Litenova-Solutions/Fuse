@@ -2,10 +2,9 @@ using System.Collections.Concurrent;
 using Fuse.Graph;
 using Fuse.Paths;
 using Fuse.Testing.Model;
-using Fuse.Workspace;
+using Fuse.Workspace.Generations;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-
 namespace Fuse.Testing;
 
 /// <summary>

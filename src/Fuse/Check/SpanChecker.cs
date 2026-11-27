@@ -4,13 +4,12 @@ using System.Globalization;
 using Fuse.Changes;
 using Fuse.Check.Model;
 using Fuse.Paths;
-using Fuse.Workspace;
+using Fuse.Workspace.Generations;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Text;
-
 namespace Fuse.Check;
 
 /// <summary>

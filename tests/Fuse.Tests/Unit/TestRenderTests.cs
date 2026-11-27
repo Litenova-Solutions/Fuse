@@ -1,7 +1,6 @@
-using Fuse.Dotnet;
+using Fuse.Dotnet.Processes;
 using Fuse.Operations;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Unit;
 
 /// <summary>What <c>fuse test</c> prints for a run that wrote no TRX results, which is every Microsoft.Testing.Platform run.</summary>

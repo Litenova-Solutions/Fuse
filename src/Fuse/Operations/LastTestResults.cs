@@ -1,8 +1,7 @@
 using System.Globalization;
 using System.Text.Json.Nodes;
-using Fuse.Dotnet;
+using Fuse.Dotnet.Test;
 using Fuse.Paths;
-
 namespace Fuse.Operations;
 
 /// <summary>

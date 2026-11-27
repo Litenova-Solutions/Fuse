@@ -1,7 +1,6 @@
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
-using Fuse.Dotnet;
-
+using Fuse.Dotnet.Processes;
 namespace Fuse.Evals;
 
 /// <summary>The projects a solution builds, split into test and non-test, and the non-test C# sources that mutations may touch.</summary>

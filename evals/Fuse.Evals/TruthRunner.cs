@@ -1,6 +1,7 @@
 using System.Diagnostics;
-using Fuse.Dotnet;
-
+using Fuse.Dotnet.Build;
+using Fuse.Dotnet.Processes;
+using Fuse.Dotnet.Test;
 namespace Fuse.Evals;
 
 /// <summary>

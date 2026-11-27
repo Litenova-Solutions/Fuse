@@ -1,8 +1,7 @@
 using System.Text;
-using Fuse.Dotnet;
+using Fuse.Dotnet.Test;
 using Fuse.Paths;
 using Fuse.Protocol;
-
 namespace Fuse.Operations;
 
 /// <summary>The full results of the last check and test runs, which the console answers cap.</summary>

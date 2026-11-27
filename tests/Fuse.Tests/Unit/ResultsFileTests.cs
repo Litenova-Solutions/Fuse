@@ -1,9 +1,8 @@
 using Fuse.Check.Model;
-using Fuse.Dotnet;
+using Fuse.Dotnet.Test;
 using Fuse.Operations;
 using Fuse.Protocol;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Unit;
 
 public class ResultsFileTests

@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
-using Fuse.Dotnet;
-
+using Fuse.Dotnet.Processes;
 namespace Fuse.Evals;
 
 /// <summary>

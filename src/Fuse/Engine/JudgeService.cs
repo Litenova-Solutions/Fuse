@@ -9,10 +9,9 @@ using Fuse.Failures;
 using Fuse.Graph;
 using Fuse.Paths;
 using Fuse.Protocol;
-using Fuse.Workspace;
+using Fuse.Workspace.Generations;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
-
 namespace Fuse.Engine;
 
 /// <summary>

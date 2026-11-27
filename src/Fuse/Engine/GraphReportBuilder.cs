@@ -1,9 +1,8 @@
 using Fuse.Graph;
 using Fuse.Paths;
 using Fuse.Protocol;
-using Fuse.Repo;
-using Fuse.Workspace;
-
+using Fuse.Repo.Tracking;
+using Fuse.Workspace.Generations;
 namespace Fuse.Engine;
 
 /// <summary>Builds the project graph, coupling clusters, and test ownership reported by <c>fuse graph</c>.</summary>

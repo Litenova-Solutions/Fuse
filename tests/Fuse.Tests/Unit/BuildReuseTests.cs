@@ -1,7 +1,6 @@
-using Fuse.Dotnet;
+using Fuse.Dotnet.Build;
 using Fuse.Operations;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Unit;
 
 public class BuildReuseTests

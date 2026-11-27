@@ -1,6 +1,5 @@
-using Fuse.Repo;
+using Fuse.Repo.Tracking;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Unit;
 
 public class TreeStampTests

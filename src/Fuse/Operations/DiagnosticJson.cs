@@ -1,9 +1,8 @@
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Fuse.Dotnet;
+using Fuse.Dotnet.Build;
 using Fuse.Protocol;
-
 namespace Fuse.Operations;
 
 /// <summary>One diagnostic as one JSON line, for <c>--json</c>: build and check share the shape.</summary>

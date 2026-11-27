@@ -1,7 +1,6 @@
-using Fuse.Dotnet;
+using Fuse.Dotnet.Test;
 using Fuse.Operations;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Unit;
 
 public class LastTestResultsTests

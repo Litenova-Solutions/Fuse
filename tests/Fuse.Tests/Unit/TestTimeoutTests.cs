@@ -1,8 +1,7 @@
-using Fuse.Dotnet;
+using Fuse.Dotnet.Processes;
 using Fuse.Operations;
 using Fuse.Protocol;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Unit;
 
 public class TestTimeoutTests

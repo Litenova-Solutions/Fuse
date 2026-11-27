@@ -6,8 +6,8 @@ using Fuse.Engine.Client;
 using Fuse.Failures;
 using Fuse.Paths;
 using Fuse.Protocol;
-using Fuse.Repo;
-
+using Fuse.Repo.Git;
+using Fuse.Repo.Tracking;
 namespace Fuse.Operations;
 
 /// <summary>

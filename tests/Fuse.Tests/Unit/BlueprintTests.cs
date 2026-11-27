@@ -5,9 +5,8 @@ using Fuse.Engine.Client;
 using Fuse.Graph;
 using Fuse.Paths;
 using Fuse.Tests.Fixtures;
-using Fuse.Workspace;
+using Fuse.Workspace.Blueprints;
 using Microsoft.CodeAnalysis;
-
 namespace Fuse.Tests.Unit;
 
 public class BlueprintTests

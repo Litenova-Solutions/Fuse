@@ -1,7 +1,6 @@
-using Fuse.Dotnet;
+using Fuse.Dotnet.Test;
 using Fuse.Operations;
 using Fuse.Protocol;
-
 namespace Fuse.Tests.Unit;
 
 /// <summary>What <c>fuse test</c> prints when a container runtime gates suites: nothing ran reads as blocked, and a partial plan names the skipped projects.</summary>

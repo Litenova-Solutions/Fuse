@@ -5,9 +5,9 @@ using Fuse.Failures;
 using Fuse.Graph;
 using Fuse.Paths;
 using Fuse.Telemetry;
-using Fuse.Workspace;
+using Fuse.Workspace.Generations;
+using Fuse.Workspace.Views;
 using Microsoft.CodeAnalysis;
-
 namespace Fuse.Check;
 
 /// <summary>

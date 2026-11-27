@@ -6,13 +6,14 @@ using Fuse.Changes.Model;
 using Fuse.Check.Model;
 using Fuse.Graph;
 using Fuse.Paths;
-using Fuse.Workspace;
+using Fuse.Workspace.Generations;
+using Fuse.Workspace.Indexing;
+using Fuse.Workspace.Views;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.FindSymbols;
 using Microsoft.CodeAnalysis.Text;
-
 namespace Fuse.Check;
 
 /// <summary>

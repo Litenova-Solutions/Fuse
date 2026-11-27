@@ -1,7 +1,7 @@
-using Fuse.Dotnet;
+using Fuse.Dotnet.Build;
+using Fuse.Dotnet.Processes;
 using Fuse.Operations;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Unit;
 
 public class BuildCliRenderTests

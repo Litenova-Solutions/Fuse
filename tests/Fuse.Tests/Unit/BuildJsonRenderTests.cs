@@ -1,7 +1,6 @@
 using System.Text.Json;
-using Fuse.Dotnet;
+using Fuse.Dotnet.Processes;
 using Fuse.Operations;
-
 namespace Fuse.Tests.Unit;
 
 public class BuildJsonRenderTests

@@ -8,9 +8,8 @@ using Fuse.Changes;
 using Fuse.Graph;
 using Fuse.Paths;
 using Fuse.Testing.Model;
-using Fuse.Workspace;
+using Fuse.Workspace.Generations;
 using Microsoft.CodeAnalysis;
-
 namespace Fuse.Testing;
 
 /// <summary>

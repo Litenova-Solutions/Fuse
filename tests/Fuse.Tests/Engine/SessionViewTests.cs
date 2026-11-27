@@ -1,8 +1,7 @@
 using Fuse.Check.Model;
 using Fuse.Tests.Fixtures;
-using Fuse.Workspace;
+using Fuse.Workspace.Views;
 using Microsoft.CodeAnalysis;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>

@@ -1,10 +1,10 @@
 using Fuse.Testing;
 using Fuse.Testing.Model;
 using Fuse.Tests.Fixtures;
-using Fuse.Workspace;
+using Fuse.Workspace.Generations;
+using Fuse.Workspace.Indexing;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>Verifies the idle release of the token index, the slice cache, the dynamic map and the workspace caches.</summary>

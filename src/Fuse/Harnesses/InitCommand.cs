@@ -2,8 +2,7 @@ using System.Text.Json.Nodes;
 using Fuse.Failures;
 using Fuse.Paths;
 using Fuse.Protocol;
-using Fuse.Repo;
-
+using Fuse.Repo.Tracking;
 namespace Fuse.Harnesses;
 
 /// <summary>

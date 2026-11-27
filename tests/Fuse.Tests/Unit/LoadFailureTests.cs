@@ -1,4 +1,4 @@
-using Fuse.Workspace;
+using Fuse.Workspace.Blueprints;
 
 namespace Fuse.Tests.Unit;
 

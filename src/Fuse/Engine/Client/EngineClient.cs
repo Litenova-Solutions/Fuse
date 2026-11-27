@@ -5,8 +5,7 @@ using System.Text;
 using Fuse.Failures;
 using Fuse.Paths;
 using Fuse.Protocol;
-using Fuse.Repo;
-
+using Fuse.Repo.Tracking;
 namespace Fuse.Engine.Client;
 
 /// <summary>Sends one request to the repository's engine, starting the engine when none is running.</summary>

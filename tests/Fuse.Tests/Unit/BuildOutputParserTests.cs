@@ -1,4 +1,4 @@
-using Fuse.Dotnet;
+using Fuse.Dotnet.Build;
 
 namespace Fuse.Tests.Unit;
 

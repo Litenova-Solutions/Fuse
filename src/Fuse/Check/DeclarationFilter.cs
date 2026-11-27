@@ -3,11 +3,10 @@ using Fuse.Changes;
 using Fuse.Changes.Model;
 using Fuse.Check.Model;
 using Fuse.Paths;
-using Fuse.Workspace;
+using Fuse.Workspace.Generations;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-
 namespace Fuse.Check;
 
 /// <summary>

@@ -1,9 +1,8 @@
-using Fuse.Dotnet;
+using Fuse.Dotnet.Processes;
 using Fuse.Failures;
 using Fuse.Paths;
 using Microsoft.Build.Evaluation;
 using Microsoft.Build.Exceptions;
-
 namespace Fuse.Graph;
 
 /// <summary>

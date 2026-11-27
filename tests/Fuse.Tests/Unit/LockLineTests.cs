@@ -1,4 +1,5 @@
-using Fuse.Dotnet;
+using Fuse.Dotnet.Build;
+using Fuse.Dotnet.Processes;
 
 namespace Fuse.Tests.Unit;
 

@@ -1,13 +1,13 @@
 using System.IO.Pipes;
 using Fuse.Check;
 using Fuse.Engine.Client;
-using Fuse.Repo;
+using Fuse.Repo.Tracking;
 using Fuse.Tests.Fixtures;
-using Fuse.Workspace;
+using Fuse.Workspace.Blueprints;
+using Fuse.Workspace.Views;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
-
 namespace Fuse.Tests.Unit;
 
 /// <summary>

@@ -1,13 +1,12 @@
 using System.Diagnostics;
 using System.Text;
-using Fuse.Dotnet;
+using Fuse.Dotnet.Processes;
 using Fuse.Graph;
 using Fuse.Paths;
 using Fuse.Telemetry;
 using Fuse.Testing.Model;
-using Fuse.Workspace;
+using Fuse.Workspace.Generations;
 using Microsoft.CodeAnalysis;
-
 namespace Fuse.Testing;
 
 /// <summary>

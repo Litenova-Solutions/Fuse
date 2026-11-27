@@ -11,8 +11,9 @@ using Fuse.Paths;
 using Fuse.Protocol;
 using Fuse.Telemetry;
 using Fuse.Testing;
-using Fuse.Workspace;
-
+using Fuse.Workspace.Generations;
+using Fuse.Workspace.Indexing;
+using Fuse.Workspace.Views;
 namespace Fuse.Engine;
 
 /// <summary>

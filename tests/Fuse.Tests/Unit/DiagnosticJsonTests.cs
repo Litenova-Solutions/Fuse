@@ -1,9 +1,8 @@
 using System.Text.Json;
 using Fuse.Check.Model;
-using Fuse.Dotnet;
+using Fuse.Dotnet.Build;
 using Fuse.Operations;
 using Fuse.Protocol;
-
 namespace Fuse.Tests.Unit;
 
 public class DiagnosticJsonTests

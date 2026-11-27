@@ -1,7 +1,6 @@
 using Fuse.Failures;
 using Fuse.Paths;
-using Fuse.Workspace;
-
+using Fuse.Workspace.Generations;
 namespace Fuse.Check;
 
 /// <summary>

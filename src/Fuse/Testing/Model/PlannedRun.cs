@@ -10,30 +10,9 @@ namespace Fuse.Testing.Model;
 /// <param name="Name">The project name, for output.</param>
 /// <param name="Mode">A shadow run from the assembly it names, or a build with MSBuild.</param>
 /// <param name="Filter">A VSTest filter expression, or null to run every test in the project.</param>
-/// <param name="UsesTestingPlatform">
-///     True when the project runs on Microsoft.Testing.Platform, which takes different arguments. Such a project
-///     always builds with MSBuild; its filter is its framework's <paramref name="FilterArguments"/>, or the VSTest
-///     <paramref name="Filter"/> for the frameworks that accept it there.
-/// </param>
-/// <param name="RunSettings">
-///     The absolute path of the project's own runsettings file (<c>RunSettingsFilePath</c>), which the client merges
-///     with <paramref name="Filter"/>; null when the project names none, or runs on Microsoft.Testing.Platform under a
-///     framework that does not read one.
-/// </param>
-/// <param name="FilterArguments">
-///     The filter arguments for a run on Microsoft.Testing.Platform, in its framework's spelling; empty to run every
-///     test in the project, and for every VSTest run.
-/// </param>
-/// <param name="TargetPaths">
-///     What a build of the project writes, one per target framework, for a run on Microsoft.Testing.Platform in a
-///     repository whose <c>global.json</c> does not opt <c>dotnet test</c> in: the client builds the project and runs
-///     the test application directly. Empty for every other run.
-/// </param>
-internal sealed record PlannedRun(RepoPath Project, string Name, RunMode Mode, string? Filter, bool UsesTestingPlatform, string? RunSettings, string[] FilterArguments, string[] TargetPaths)
+/// <param name="Runner">How the run reaches its test host: VSTest, or Microsoft.Testing.Platform.</param>
+internal sealed record PlannedRun(RepoPath Project, string Name, RunMode Mode, string? Filter, TestRunnerPlan Runner)
 {
-    /// <summary>Content-addressed SHA-256 slice key for per-slice test caching, or null when not computed.</summary>
-    public string? SliceKey { get; init; }
-
-    /// <summary>Cached slice test result when <see cref="SliceKey"/> hit <c>SliceTestCache</c>, or null on miss or bypass.</summary>
-    public SliceCacheResult? CachedResult { get; init; }
+    /// <summary>What the slice cache holds for this run: nothing, a key with no verdict, or a key with its verdict.</summary>
+    public SliceCacheState Cache { get; init; } = new SliceCacheState.Uncached();
 }

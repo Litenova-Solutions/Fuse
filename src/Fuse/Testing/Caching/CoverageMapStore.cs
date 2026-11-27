@@ -28,7 +28,7 @@ internal sealed partial class CoverageMapStore
     internal static string DirectoryFor(string sharedStateDirectory) => Path.Combine(sharedStateDirectory, "test-maps");
 
     /// <summary>Directory holding the test maps the client's platform runs left for the next plan to ingest.</summary>
-    internal static string IncomingDirectoryFor(string sharedStateDirectory) => Path.Combine(DirectoryFor(sharedStateDirectory), "incoming");
+    internal static string IncomingDirectoryFor(string sharedStateDirectory) => LocalState.DynamicMapIncomingDirectory(sharedStateDirectory);
 
     /// <summary>Directory holding the test maps the client's platform runs left for the next plan to ingest.</summary>
     internal string IncomingDirectory => Path.Combine(_directory, "incoming");

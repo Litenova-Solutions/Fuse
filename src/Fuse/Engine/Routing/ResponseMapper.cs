@@ -47,11 +47,11 @@ internal static class ResponseMapper
     /// <summary>A test plan as the client receives it, each run with the mode the client starts it in and its project file's absolute path.</summary>
     /// <param name="noCache">True when the plan skipped the slice cache, so no run answers from it.</param>
     public static TestPlan Plan(TestPlanResult result, bool noCache = false) => new(
-        [.. result.Runs.Select(r => new TestRun(r.Project.Absolute, r.Name, Mode(r.Mode), r.Filter, r.UsesTestingPlatform, r.RunSettings, r.FilterArguments, r.TargetPaths)
+        [.. result.Runs.Select(r => new TestRun(r.Project.Absolute, r.Name, Mode(r.Mode), r.Filter, UsesTestingPlatform(r.Runner), RunSettings(r.Runner), FilterArguments(r.Runner), TargetPaths(r.Runner))
         {
-            FromCache = !noCache && r.CachedResult is not null,
-            CacheReason = CacheReasonOf(r.CachedResult, noCache),
-            SliceKey = noCache ? null : r.SliceKey,
+            FromCache = !noCache && r.Cache is SliceCacheState.Cached,
+            CacheReason = CacheReasonOf(r.Cache, noCache),
+            SliceKey = SliceKeyOf(r.Cache, noCache),
         })],
         result.SelectedTests,
         result.TotalTests,
@@ -69,12 +69,64 @@ internal static class ResponseMapper
             SuggestedUsings: [.. packet.SuggestedUsings],
             InterfaceStub: packet.InterfaceStub);
 
+    /// <summary>Whether the run of <paramref name="runner"/> reaches its test host through Microsoft.Testing.Platform.</summary>
+    private static bool UsesTestingPlatform(TestRunnerPlan runner) => runner switch
+    {
+        TestRunnerPlan.VsTest => false,
+        TestRunnerPlan.TestingPlatform => true,
+        _ => throw new UnreachableException($"a runner is VSTest or testing platform, not {runner.GetType().Name}"),
+    };
+
+    /// <summary>The runsettings file the run of <paramref name="runner"/> carries, or null when it names none.</summary>
+    private static string? RunSettings(TestRunnerPlan runner) => runner switch
+    {
+        TestRunnerPlan.VsTest vsTest => vsTest.RunSettings,
+        TestRunnerPlan.TestingPlatform platform => platform.RunSettings,
+        _ => throw new UnreachableException($"a runner is VSTest or testing platform, not {runner.GetType().Name}"),
+    };
+
+    /// <summary>The filter arguments the run of <paramref name="runner"/> carries, empty for every VSTest run.</summary>
+    private static string[] FilterArguments(TestRunnerPlan runner) => runner switch
+    {
+        TestRunnerPlan.VsTest => [],
+        TestRunnerPlan.TestingPlatform platform => platform.FilterArguments,
+        _ => throw new UnreachableException($"a runner is VSTest or testing platform, not {runner.GetType().Name}"),
+    };
+
+    /// <summary>What a build of the run of <paramref name="runner"/> writes, empty for every VSTest run.</summary>
+    private static string[] TargetPaths(TestRunnerPlan runner) => runner switch
+    {
+        TestRunnerPlan.VsTest => [],
+        TestRunnerPlan.TestingPlatform platform => platform.TargetPaths,
+        _ => throw new UnreachableException($"a runner is VSTest or testing platform, not {runner.GetType().Name}"),
+    };
+
     /// <summary>
     ///     Why a run answers from the slice cache: its stored verdict, or null when it runs fresh. The client parses
     ///     this text to reuse a passing verdict without running, so its shape is a contract.
     /// </summary>
-    private static string? CacheReasonOf(SliceCacheResult? cached, bool noCache) =>
-        cached is null || noCache ? null : $"slice cache: {cached.Passed} passed, {cached.Failed} failed, {cached.Skipped} skipped";
+    private static string? CacheReasonOf(SliceCacheState cache, bool noCache) => cache switch
+    {
+        SliceCacheState.Cached cached when !noCache => $"slice cache: {cached.Result.Passed} passed, {cached.Result.Failed} failed, {cached.Result.Skipped} skipped",
+        SliceCacheState.Cached => null,
+        SliceCacheState.Pending => null,
+        SliceCacheState.Uncached => null,
+        _ => throw new UnreachableException($"a slice cache state is uncached, pending or cached, not {cache.GetType().Name}"),
+    };
+
+    /// <summary>The slice key the run carries, or null when it has none or the plan bypassed the cache.</summary>
+    private static string? SliceKeyOf(SliceCacheState cache, bool noCache)
+    {
+        if (noCache)
+            return null;
+        return cache switch
+        {
+            SliceCacheState.Cached cached => cached.Key,
+            SliceCacheState.Pending pending => pending.Key,
+            SliceCacheState.Uncached => null,
+            _ => throw new UnreachableException($"a slice cache state is uncached, pending or cached, not {cache.GetType().Name}"),
+        };
+    }
 
     private static ReportedCause? Reported(Cause? cause) => cause switch
     {

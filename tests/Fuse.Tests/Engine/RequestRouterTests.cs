@@ -338,16 +338,16 @@ public class RequestRouterTests
         await engine.SendAsync(new EngineRequest.CheckFiles([repo.Full("Lib/Greeting.cs")], WaitForLoad: true) { Session = "claude:a/w1" });
 
         // The subagent is still running, so the parent's stop leaves its error to it.
-        var parentFirst = await engine.SendAsync(new EngineRequest.CheckChanges(WaitForLoad: true) { Session = "claude:a", IsStopping = true });
+        var parentFirst = await engine.SendAsync(new EngineRequest.CheckChanges(WaitForLoad: true) { Session = "claude:a", Mode = SessionCheckMode.Stop });
         Assert.DoesNotContain(Assert.IsType<EngineResponse.CheckAnswered>(parentFirst).Report.Errors, e => e.Error.Message.Contains("'Greet'", StringComparison.Ordinal));
 
         // The subagent's own stop is answered with its own error, and marks it stopped.
-        var subagent = await engine.SendAsync(new EngineRequest.CheckChanges(WaitForLoad: true) { Session = "claude:a/w1", IsStopping = true });
+        var subagent = await engine.SendAsync(new EngineRequest.CheckChanges(WaitForLoad: true) { Session = "claude:a/w1", Mode = SessionCheckMode.Stop });
         var own = Assert.IsType<EngineResponse.CheckAnswered>(subagent).Report;
         Assert.Contains(own.Errors, e => e.Error.Message.Contains("'Greet'", StringComparison.Ordinal));
         Assert.DoesNotContain(own.Errors, e => e.Error.Message.Contains("'Add'", StringComparison.Ordinal));
 
-        var parentAfter = await engine.SendAsync(new EngineRequest.CheckChanges(WaitForLoad: true) { Session = "claude:a", IsStopping = true });
+        var parentAfter = await engine.SendAsync(new EngineRequest.CheckChanges(WaitForLoad: true) { Session = "claude:a", Mode = SessionCheckMode.Stop });
         var after = Assert.IsType<EngineResponse.CheckAnswered>(parentAfter).Report;
         Assert.Contains(after.Errors, e => e.Error.Message.Contains("'Greet'", StringComparison.Ordinal));
         Assert.Equal(0, after.LeftToOtherSessions);

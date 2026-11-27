@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Fuse.Identity;
 using Fuse.Check.Sessions;
 using Fuse.Paths;
 using Fuse.Protocol.Analysis;
@@ -53,7 +54,7 @@ internal sealed class TestPlanRoute
             _planner.SliceCache.Clear();
         TestScope scope = request switch
         {
-            EngineRequest.PlanAffectedTests { Session: { } session } sessioned when SessionEdits.IsValid(session) =>
+            EngineRequest.PlanAffectedTests { Session: { } session } sessioned when SessionId.IsValid(session) =>
                 new TestScope.Affected { LeftOut = await OnlyOtherSessionsWroteAsync(session, cancellationToken).ConfigureAwait(false), NamedPaths = sessioned.Projects, BuildOnly = sessioned.BuildOnly, NoCache = sessioned.NoCache },
             EngineRequest.PlanAffectedTests plan => new TestScope.Affected { NamedPaths = plan.Projects, BuildOnly = plan.BuildOnly, NoCache = plan.NoCache },
             EngineRequest.PlanAllTests allTests => new TestScope.All { NoCache = allTests.NoCache },

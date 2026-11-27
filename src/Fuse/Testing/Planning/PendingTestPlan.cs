@@ -1,9 +1,7 @@
-using Fuse.Graph;
 using Fuse.Paths;
 using Fuse.Testing.Model;
 using Fuse.Testing.Shadow;
 using Fuse.Workspace.Generations;
-using Microsoft.CodeAnalysis;
 namespace Fuse.Testing.Planning;
 
 /// <summary>
@@ -12,91 +10,32 @@ namespace Fuse.Testing.Planning;
 ///     emitter bound to that generation, so <see cref="TestPlanner.PrepareAsync"/> prepares it while other plans
 ///     select and prepare from generations of their own.
 /// </summary>
-internal sealed class PendingTestPlan
+internal abstract record PendingTestPlan
 {
-    private PendingTestPlan(
-        TestPlanResult? answered,
-        Generation generation,
-        ShadowEmitter? emitter,
-        IReadOnlyList<(ProjectNode Node, string? Filter, string[] FilterArguments, IReadOnlyList<Project> Variants)> projects,
-        int selected,
-        int total,
-        string summary,
-        bool buildOnly = false,
-        int gatedTests = 0,
-        string[]? gatedProjects = null,
-        bool noCache = false,
-        bool runner = false,
-        IReadOnlyDictionary<RepoPath, TestSelection>? selections = null)
+    private PendingTestPlan()
     {
-        Answered = answered;
-        Generation = generation;
-        Emitter = emitter;
-        Projects = projects;
-        Selected = selected;
-        Total = total;
-        Summary = summary;
-        BuildOnly = buildOnly;
-        GatedTests = gatedTests;
-        GatedProjects = gatedProjects ?? [];
-        NoCache = noCache;
-        Runner = runner;
-        Selections = selections;
     }
 
     /// <summary>The plan, when it needs no shadow preparation: nothing to run, or every test, which builds with MSBuild.</summary>
-    public TestPlanResult? Answered { get; }
+    /// <param name="Result">The answered plan.</param>
+    /// <param name="Generation">The generation the selections were made from.</param>
+    public sealed record Ready(TestPlanResult Result, Generation Generation) : PendingTestPlan;
 
-    /// <summary>The generation the selections were made from, whose views the shadow runs are emitted from.</summary>
-    public Generation Generation { get; }
-
-    /// <summary>The emitter this plan prepares its shadow runs with, bound to <see cref="Generation"/>.</summary>
-    public ShadowEmitter? Emitter { get; }
-
-    /// <summary>The project graph the selections were made with.</summary>
-    public RepoGraph Graph => Generation.Graph;
-
-    /// <summary>
-    ///     Each test project to run, in the order the plan lists them, with its filter and its Roslyn project per target
-    ///     framework from the pinned generation. A project on Microsoft.Testing.Platform has no variants: it builds with MSBuild.
-    /// </summary>
-    public IReadOnlyList<(ProjectNode Node, string? Filter, string[] FilterArguments, IReadOnlyList<Project> Variants)> Projects { get; }
-
-    /// <summary>How many tests the selections hold, counted from source.</summary>
-    public int Selected { get; }
-
-    /// <summary>How many tests the repository holds, counted from source.</summary>
-    public int Total { get; }
-
-    /// <summary>The summary of the plan when it runs anything.</summary>
-    public string Summary { get; }
-
-    /// <summary>True when every run builds with MSBuild (a configuration or framework was named), so nothing is emitted.</summary>
-    public bool BuildOnly { get; }
-
-    /// <summary>How many selected tests need a container runtime that is not running, so they run in no run.</summary>
-    public int GatedTests { get; }
-
-    /// <summary>The projects those tests are in, in ordinal order.</summary>
-    public string[] GatedProjects { get; }
-
-    /// <summary>True when slice cache lookups are bypassed for this plan (<c>--clean</c> / <c>--no-cache</c>).</summary>
-    public bool NoCache { get; }
-
-    /// <summary>Whether <c>global.json</c> opts <c>dotnet test</c> into Microsoft.Testing.Platform.</summary>
-    public bool Runner { get; }
-
-    /// <summary>Selection per test project file, for recomputing shadow-direct platform arguments when needed.</summary>
-    public IReadOnlyDictionary<RepoPath, TestSelection>? Selections { get; }
+    /// <summary>A plan whose shadow runs are still to be prepared, with the emitter that prepares them.</summary>
+    /// <param name="Generation">The generation the selections were made from.</param>
+    /// <param name="Emitter">The emitter this plan prepares its shadow runs with, bound to <paramref name="Generation"/>.</param>
+    /// <param name="Work">Each test project to run, in the order the plan lists them.</param>
+    /// <param name="Metadata">The counts, summary and switches the preparation carries.</param>
+    public sealed record NeedsPreparation(Generation Generation, ShadowEmitter Emitter, IReadOnlyList<PlannedProjectWork> Work, PlanPrepMetadata Metadata) : PendingTestPlan;
 
     /// <summary>A plan that is already answered and prepares nothing.</summary>
-    public static PendingTestPlan Of(TestPlanResult answered, Generation generation) => new(answered, generation, null, [], 0, answered.TotalTests, answered.Summary);
+    public static PendingTestPlan Of(TestPlanResult answered, Generation generation) => new Ready(answered, generation);
 
     /// <summary>A plan whose shadow runs are still to be prepared, with the emitter that prepares them.</summary>
     public static PendingTestPlan ToPrepare(
         Generation generation,
         ShadowEmitter emitter,
-        IReadOnlyList<(ProjectNode Node, string? Filter, string[] FilterArguments, IReadOnlyList<Project> Variants)> projects,
+        IReadOnlyList<PlannedProjectWork> projects,
         int selected,
         int total,
         string summary,
@@ -106,5 +45,9 @@ internal sealed class PendingTestPlan
         bool noCache = false,
         bool runner = false,
         IReadOnlyDictionary<RepoPath, TestSelection>? selections = null) =>
-        new(null, generation, emitter, projects, selected, total, summary, buildOnly, gatedTests, gatedProjects, noCache, runner, selections);
+        new NeedsPreparation(
+            generation,
+            emitter,
+            projects,
+            new PlanPrepMetadata(selected, total, summary, buildOnly, gatedTests, gatedProjects ?? [], noCache, runner, selections));
 }

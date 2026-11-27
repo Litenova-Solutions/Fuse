@@ -138,7 +138,7 @@ internal sealed class TestPlanner
                 }
             }
 
-            var everything = plain.Select(p => new PlannedRun(p.Path, p.Name, new RunMode.Build(), null, p.UsesTestingPlatform, RunSettingsOf(p), [], p.UsesTestingPlatform ? [.. p.TargetPaths] : [])).ToArray();
+            var everything = plain.Select(p => new PlannedRun(p.Path, p.Name, new RunMode.Build(), null, RunnerOf(p, RunSettingsOf(p), []))).ToArray();
             var allSummary = $"ran every test in {plain.Count} test project(s)";
             if (gatedTests > 0)
                 allSummary += $"; skipped {gatedTests} test(s) in {string.Join(", ", gatedProjects)} (no container runtime)";
@@ -168,7 +168,7 @@ internal sealed class TestPlanner
         var selections = outcome.Selections;
         phases.Add(Phase.Selection, timer);
         _workspace.Log($"test plan: selection in {timer.ElapsedMilliseconds} ms: {string.Join("; ", selections.Select(s => $"{Path.GetFileNameWithoutExtension(s.Key.Absolute)} {Describe(s.Value)}"))}");
-        var projects = new List<(ProjectNode Node, string? Filter, string[] FilterArguments, IReadOnlyList<Project> Variants)>();
+        var projects = new List<PlannedProjectWork>();
         // How dotnet test reaches a platform project decides how xUnit v3 spells its filter options.
         var runner = GlobalJson.UsesTestingPlatform(_workspace.Root.Path, _workspace.Root.Path);
         var selected = 0;
@@ -228,7 +228,7 @@ internal sealed class TestPlanner
                 // Keep the framework's platform filter for MSBuild fallback, and also resolve variants so built
                 // platform test projects execute via fast shadow runs.
                 var (platformFilter, arguments) = PlatformRun(node, selection, runner, collapsed, platformCollapsed, reasons);
-                projects.Add((node, platformFilter, arguments, RepoWorkspace.ProjectsFor(snapshot, node).ToList()));
+                projects.Add(new PlannedProjectWork(node, platformFilter, arguments, RepoWorkspace.ProjectsFor(snapshot, node).ToList()));
                 continue;
             }
 
@@ -241,7 +241,7 @@ internal sealed class TestPlanner
                 NoteCollapse(node, filter.Collapse, collapsed);
             }
 
-            projects.Add((node, filter.Expression, [], RepoWorkspace.ProjectsFor(snapshot, node).ToList()));
+            projects.Add(new PlannedProjectWork(node, filter.Expression, [], RepoWorkspace.ProjectsFor(snapshot, node).ToList()));
         }
 
         containerGatedProjects.Sort(StringComparer.Ordinal);
@@ -294,17 +294,21 @@ internal sealed class TestPlanner
     /// <param name="cancellationToken">Cancels emitting.</param>
     public async Task<TestPlanResult> PrepareAsync(PendingTestPlan pending, PhaseTimes phases, CancellationToken cancellationToken)
     {
-        if (pending.Answered is not null)
-            return pending.Answered;
+        if (pending is PendingTestPlan.Ready ready)
+            return ready.Result;
 
-        var emitter = pending.Emitter ?? EmitterFor(pending.Generation);
+        if (pending is not PendingTestPlan.NeedsPreparation preparation)
+            throw new UnreachableException($"a pending plan is answered or needs preparation, not {pending.GetType().Name}");
+
+        var metadata = preparation.Metadata;
+        var emitter = preparation.Emitter;
         try
         {
             var preparing = Stopwatch.StartNew();
             var emitting = new Stopwatch();
             var runs = new List<PlannedRun>();
-            foreach (var (node, filter, filterArguments, variants) in pending.Projects)
-                runs.AddRange(await RunsOfAsync(emitter, node, filter, filterArguments, variants, pending, emitting, preparing, cancellationToken).ConfigureAwait(false));
+            foreach (var work in preparation.Work)
+                runs.AddRange(await RunsOfAsync(emitter, work.Node, work.Filter, work.FilterArguments, work.Variants, preparation, emitting, preparing, cancellationToken).ConfigureAwait(false));
 
             // Everything in the preparation but the emit is the mirror: judging which assemblies are stale, and the copy.
             phases.Add(Phase.Mirror, preparing.Elapsed.TotalMilliseconds - emitting.Elapsed.TotalMilliseconds);
@@ -312,22 +316,22 @@ internal sealed class TestPlanner
             if (runs.Count == 0)
             {
                 // Every selected test needs a container runtime that is not running; the client answers that no test ran.
-                if (pending.GatedTests > 0)
+                if (metadata.GatedTests > 0)
                 {
-                    return new TestPlanResult([], 0, pending.Total, pending.Summary)
+                    return new TestPlanResult([], 0, metadata.Total, metadata.Summary)
                     {
-                        ContainerGatedTests = pending.GatedTests,
-                        ContainerGatedProjects = pending.GatedProjects,
+                        ContainerGatedTests = metadata.GatedTests,
+                        ContainerGatedProjects = metadata.GatedProjects,
                     };
                 }
 
-                return new TestPlanResult([], 0, pending.Total, $"no test is affected by the changes (out of {pending.Total}); fuse test --all runs everything");
+                return new TestPlanResult([], 0, metadata.Total, $"no test is affected by the changes (out of {metadata.Total}); fuse test --all runs everything");
             }
 
-            return new TestPlanResult([.. runs], pending.Selected, pending.Total, pending.Summary)
+            return new TestPlanResult([.. runs], metadata.Selected, metadata.Total, metadata.Summary)
             {
-                ContainerGatedTests = pending.GatedTests,
-                ContainerGatedProjects = pending.GatedProjects,
+                ContainerGatedTests = metadata.GatedTests,
+                ContainerGatedProjects = metadata.GatedProjects,
             };
         }
         finally
@@ -347,14 +351,15 @@ internal sealed class TestPlanner
         string? filter,
         string[] filterArguments,
         IReadOnlyList<Project> variants,
-        PendingTestPlan pending,
+        PendingTestPlan.NeedsPreparation preparation,
         Stopwatch emitting,
         Stopwatch timer,
         CancellationToken cancellationToken)
     {
+        var metadata = preparation.Metadata;
         // A configuration or framework was named, or a platform project targets .NET Framework without runtimeconfig:
         // only a build with MSBuild handles it, so no shadow run is prepared.
-        if (pending.BuildOnly || variants.Count == 0 || (node.UsesTestingPlatform && variants.Any(IsLegacyNetFramework)))
+        if (metadata.BuildOnly || variants.Count == 0 || (node.UsesTestingPlatform && variants.Any(IsLegacyNetFramework)))
         {
             if (node.UsesTestingPlatform)
             {
@@ -362,14 +367,14 @@ internal sealed class TestPlanner
                 _workspace.Log($"test plan: {node.Name} [testing platform] {reason}");
             }
 
-            return [new PlannedRun(node.Path, node.Name, new RunMode.Build(), filter, node.UsesTestingPlatform, RunSettingsOf(node), node.UsesTestingPlatform ? filterArguments : [], node.UsesTestingPlatform ? [.. node.TargetPaths] : [])];
+            return [new PlannedRun(node.Path, node.Name, new RunMode.Build(), filter, RunnerOf(node, RunSettingsOf(node), filterArguments))];
         }
 
-        var prepared = new List<(Project Variant, RunMode.Shadow Shadow, string? Filter, string[] FilterArguments, string? SliceKey, SliceCacheResult? CachedResult)>();
+        var prepared = new List<(Project Variant, RunMode.Shadow Shadow, string? Filter, string[] FilterArguments, SliceCacheState Cache)>();
         var runSettings = RunSettingsOf(node);
         foreach (var variant in variants)
         {
-            var result = await emitter.PrepareDetailedAsync(variant, pending.Graph, _workspace.Log, emitting, cancellationToken).ConfigureAwait(false);
+            var result = await emitter.PrepareDetailedAsync(variant, preparation.Generation.Graph, _workspace.Log, emitting, cancellationToken).ConfigureAwait(false);
             if (result.Mode is not RunMode.Shadow shadow)
             {
                 prepared.Clear();
@@ -388,24 +393,24 @@ internal sealed class TestPlanner
             var variantFilterArguments = filterArguments;
             if (node.UsesTestingPlatform
                 && node.Framework == TestFramework.XUnit
-                && pending.Selections is not null
-                && pending.Selections.TryGetValue(node.Path, out var selection))
+                && metadata.Selections is not null
+                && metadata.Selections.TryGetValue(node.Path, out var selection))
             {
-                var shadowRunner = await UsesMtpEntryPointAsync(variant, pending.Runner, cancellationToken).ConfigureAwait(false);
-                if (shadowRunner != pending.Runner)
+                var shadowRunner = await UsesMtpEntryPointAsync(variant, metadata.Runner, cancellationToken).ConfigureAwait(false);
+                if (shadowRunner != metadata.Runner)
                     variantFilterArguments = PlatformFilter.For(node.Framework, selection, shadowRunner).Arguments;
             }
 
             var shadowDir = Path.GetDirectoryName(shadow.Assembly);
-            var sliceKey = SliceCache.ComputeKey(variant, pending.Graph, _workspace.Root, result.Closure, result.Emitted, shadowDir, runSettings, filter, variantFilterArguments);
-            var cached = pending.NoCache ? null : SliceCache.TryGet(sliceKey, noCache: false);
-            prepared.Add((variant, shadow, filter, variantFilterArguments, sliceKey, cached));
+            var sliceKey = SliceCache.ComputeKey(variant, preparation.Generation.Graph, _workspace.Root, result.Closure, result.Emitted, shadowDir, runSettings, filter, variantFilterArguments);
+            var cached = metadata.NoCache ? null : SliceCache.TryGet(sliceKey, noCache: false);
+            prepared.Add((variant, shadow, filter, variantFilterArguments, CacheOf(sliceKey, cached)));
         }
 
         var tag = node.UsesTestingPlatform ? " [testing platform]" : "";
         _workspace.Log($"test plan: {node.Name}{tag} [{string.Join(", ", variants.Select(v => v.Name))}] {(prepared.Count == 0 ? "builds with MSBuild" : $"runs from {string.Join(", ", prepared.Select(p => p.Shadow.Assembly))}")} after {timer.ElapsedMilliseconds} ms");
         if (prepared.Count == 0)
-            return [new PlannedRun(node.Path, node.Name, new RunMode.Build(), filter, node.UsesTestingPlatform, runSettings, node.UsesTestingPlatform ? filterArguments : [], node.UsesTestingPlatform ? [.. node.TargetPaths] : [])];
+            return [new PlannedRun(node.Path, node.Name, new RunMode.Build(), filter, RunnerOf(node, runSettings, filterArguments))];
 
         return
         [
@@ -414,15 +419,29 @@ internal sealed class TestPlanner
                 node.Name,
                 p.Shadow,
                 p.Filter,
-                node.UsesTestingPlatform,
-                runSettings,
-                p.FilterArguments,
-                node.UsesTestingPlatform ? [p.Shadow.Assembly] : [])
+                RunnerOf(node, runSettings, p.FilterArguments, [p.Shadow.Assembly]))
             {
-                SliceKey = p.SliceKey,
-                CachedResult = p.CachedResult,
+                Cache = p.Cache,
             }),
         ];
+    }
+
+    /// <summary>How a run of <paramref name="node"/> reaches its test host, with its runsettings and platform paths.</summary>
+    private static TestRunnerPlan RunnerOf(ProjectNode node, string? runSettings, string[] filterArguments, string[]? targetPaths = null)
+    {
+        if (node.UsesTestingPlatform)
+            return new TestRunnerPlan.TestingPlatform(runSettings, filterArguments, targetPaths ?? [.. node.TargetPaths]);
+        return new TestRunnerPlan.VsTest(runSettings);
+    }
+
+    /// <summary>What the slice cache holds for a computed <paramref name="sliceKey"/> and its lookup answer.</summary>
+    private static SliceCacheState CacheOf(string? sliceKey, SliceCacheResult? cached)
+    {
+        if (cached is not null && sliceKey is not null)
+            return new SliceCacheState.Cached(sliceKey, cached);
+        if (sliceKey is not null)
+            return new SliceCacheState.Pending(sliceKey);
+        return new SliceCacheState.Uncached();
     }
 
     private static bool IsLegacyNetFramework(Project variant)
@@ -611,7 +630,7 @@ internal sealed class TestPlanner
         }
 
         var runner = GlobalJson.UsesTestingPlatform(_workspace.Root.Path, _workspace.Root.Path);
-        var projects = new List<(ProjectNode Node, string? Filter, string[] FilterArguments, IReadOnlyList<Project> Variants)>();
+        var projects = new List<PlannedProjectWork>();
         var collapsed = new List<string>();
         var platformCollapsed = new List<string>();
         var reasons = new HashSet<string>(StringComparer.Ordinal);
@@ -630,7 +649,7 @@ internal sealed class TestPlanner
             if (node.UsesTestingPlatform)
             {
                 var (platformFilter, arguments) = PlatformRun(node, selection, runner, collapsed, platformCollapsed, reasons);
-                projects.Add((node, platformFilter, arguments, RepoWorkspace.ProjectsFor(snapshot, node).ToList()));
+                projects.Add(new PlannedProjectWork(node, platformFilter, arguments, RepoWorkspace.ProjectsFor(snapshot, node).ToList()));
                 continue;
             }
 
@@ -642,7 +661,7 @@ internal sealed class TestPlanner
                 NoteCollapse(node, filter.Collapse, collapsed);
             }
 
-            projects.Add((node, filter.Expression, [], RepoWorkspace.ProjectsFor(snapshot, node).ToList()));
+            projects.Add(new PlannedProjectWork(node, filter.Expression, [], RepoWorkspace.ProjectsFor(snapshot, node).ToList()));
         }
 
         phases.Add(Phase.Selection, timer);

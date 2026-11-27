@@ -30,7 +30,12 @@ public class TestRunPathTests
         var cancellationToken = TestContext.Current.CancellationToken;
 
         var pending = await engine.Planner.SelectAsync(new TestScope.Affected(), PhaseTimes.None, cancellationToken);
-        var key = Assert.Single((await engine.Planner.PrepareAsync(pending, PhaseTimes.None, cancellationToken)).Runs).SliceKey;
+        var key = Assert.Single((await engine.Planner.PrepareAsync(pending, PhaseTimes.None, cancellationToken)).Runs).Cache switch
+        {
+            SliceCacheState.Pending pendingKey => pendingKey.Key,
+            SliceCacheState.Cached cachedKey => cachedKey.Key,
+            _ => null,
+        };
         Assert.NotNull(key);
         engine.Planner.SliceCache.Store(new SliceCacheResult(key, "Lib.Tests/Lib.Tests.csproj", "Lib.Tests", "", Passed: 3, Failed: 0, Skipped: 0, DurationMs: 4, CachedAtUtc: DateTime.UtcNow, Failures: []));
 
@@ -38,7 +43,11 @@ public class TestRunPathTests
             await engine.Planner.SelectAsync(new TestScope.Affected(), PhaseTimes.None, cancellationToken),
             PhaseTimes.None,
             cancellationToken);
-        var cached = Assert.Single(served.Runs).CachedResult;
+        var cached = Assert.Single(served.Runs).Cache switch
+        {
+            SliceCacheState.Cached hit => hit.Result,
+            _ => null,
+        };
 
         Assert.NotNull(cached);
         Assert.Equal((3, 0, 0), (cached.Passed, cached.Failed, cached.Skipped));
@@ -131,13 +140,9 @@ public class TestRunPathTests
             "Lib.Tests",
             new RunMode.Shadow("C:/state/shadow/Lib.Tests/Lib.Tests.dll"),
             null,
-            false,
-            null,
-            [],
-            [])
+            new TestRunnerPlan.VsTest(null))
         {
-            SliceKey = "key",
-            CachedResult = new SliceCacheResult("key", "Lib.Tests/Lib.Tests.csproj", "Lib.Tests", "", Passed: 5, Failed: 0, Skipped: 1, DurationMs: 4, CachedAtUtc: DateTime.UtcNow, Failures: []),
+            Cache = new SliceCacheState.Cached("key", new SliceCacheResult("key", "Lib.Tests/Lib.Tests.csproj", "Lib.Tests", "", Passed: 5, Failed: 0, Skipped: 1, DurationMs: 4, CachedAtUtc: DateTime.UtcNow, Failures: [])),
         };
 
         var outcome = ShadowTestRunner.CachedPassOutcome(Assert.Single(ResponseMapper.Plan(new TestPlanResult([run], 6, 6, "summary")).Runs));

@@ -44,9 +44,9 @@ public class ResponseMapperTests
 
     private static readonly TestPlanResult Plan = new(
         [
-            new PlannedRun(Root.PathOf("Lib.Tests/Lib.Tests.csproj"), "Lib.Tests(net8.0)", new RunMode.Shadow("C:/state/shadow/Lib.Tests-net8.0/Lib.Tests.dll"), "FullyQualifiedName~Lib.Tests.CalcTests.", false, "C:/repo/Lib.Tests/test.runsettings", [], []),
-            new PlannedRun(Root.PathOf("App.Tests/App.Tests.csproj"), "App.Tests", new RunMode.Build(), null, false, null, [], []),
-            new PlannedRun(Root.PathOf("Mtp.Tests/Mtp.Tests.csproj"), "Mtp.Tests", new RunMode.Build(), null, true, null, ["--filter-method", "Mtp.Tests.CalcTests.Adds"], ["C:/repo/Mtp.Tests/bin/Debug/net10.0/Mtp.Tests.dll"]),
+            new PlannedRun(Root.PathOf("Lib.Tests/Lib.Tests.csproj"), "Lib.Tests(net8.0)", new RunMode.Shadow("C:/state/shadow/Lib.Tests-net8.0/Lib.Tests.dll"), "FullyQualifiedName~Lib.Tests.CalcTests.", new TestRunnerPlan.VsTest("C:/repo/Lib.Tests/test.runsettings")),
+            new PlannedRun(Root.PathOf("App.Tests/App.Tests.csproj"), "App.Tests", new RunMode.Build(), null, new TestRunnerPlan.VsTest(null)),
+            new PlannedRun(Root.PathOf("Mtp.Tests/Mtp.Tests.csproj"), "Mtp.Tests", new RunMode.Build(), null, new TestRunnerPlan.TestingPlatform(null, ["--filter-method", "Mtp.Tests.CalcTests.Adds"], ["C:/repo/Mtp.Tests/bin/Debug/net10.0/Mtp.Tests.dll"])),
         ],
         SelectedTests: 12,
         TotalTests: 40,

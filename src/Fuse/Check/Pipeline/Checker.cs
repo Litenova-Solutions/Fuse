@@ -486,8 +486,9 @@ internal sealed class Checker
 
         var current = generation.Current;
         var ids = current.GetDocumentIdsWithFilePath(path.Absolute);
+        // A file deleted from disk is fresh once no view holds it, and stale while one still does.
         if (bytes is null)
-            return ids.IsEmpty ? FileFreshness.Unreadable : FileFreshness.Stale;
+            return ids.IsEmpty ? FileFreshness.Fresh : FileFreshness.Stale;
 
         if (ids.IsEmpty)
         {

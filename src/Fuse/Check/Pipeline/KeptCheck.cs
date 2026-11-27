@@ -27,6 +27,9 @@ internal sealed class KeptCheck
     /// <summary>The most file hashes kept; past it the hash unused the longest goes.</summary>
     internal const int MaxFileHashEntries = 128;
 
+    /// <summary>What a changed file that no longer exists on disk contributes to a key in place of its content hash.</summary>
+    internal const string DeletedHash = "<deleted>";
+
     private static readonly ConcurrentDictionary<string, (long Length, long WrittenTicks, string Hash)> FileHashes = new(StringComparer.Ordinal);
     private static readonly List<string> FileHashOrder = [];
     private static readonly Lock FileHashLock = new();
@@ -150,10 +153,13 @@ internal sealed class KeptCheck
     ///     and last write time in ticks. A file whose stamp is as it was when its hash was kept is not read or
     ///     hashed again. A hash is kept only when the file still has the stamp it had before the read,
     ///     so a write during the read keeps nothing. Past <see cref="MaxFileHashEntries"/> the hash unused the
-    ///     longest goes, as in <see cref="ChangeReach"/>.
+    ///     longest goes, as in <see cref="ChangeReach"/>. A file deleted from disk hashes to <see cref="DeletedHash"/>,
+    ///     so a deletion keys an answer like any other change and recreating the file changes the key.
     /// </summary>
     private static string FileHashFor(string absolute)
     {
+        if (!File.Exists(absolute))
+            return DeletedHash;
         var stamp = StampOf(absolute);
         lock (FileHashLock)
         {

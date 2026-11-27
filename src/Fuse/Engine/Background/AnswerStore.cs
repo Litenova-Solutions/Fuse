@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Fuse.Identity;
@@ -36,30 +37,36 @@ internal sealed partial class AnswerStore
     }
 
     /// <summary>The kept answer for <paramref name="key"/>, or false when nothing is kept for it.</summary>
-    public bool TryGet(string key, out CheckReport report)
+    public bool TryGet(string key, [NotNullWhen(true)] out CheckReport? report)
     {
         lock (_lock)
         {
-            var found = _answers.TryGetValue(key, out var entry);
-            if (found)
+            if (_answers.TryGetValue(key, out var entry) && entry?.Report is { } kept)
             {
                 _order.Remove(key);
                 _order.Add(key);
+                report = kept;
+                return true;
             }
 
-            report = entry?.Report!;
-            return found;
+            report = null;
+            return false;
         }
     }
 
     /// <summary>The newest kept answer for <paramref name="session"/>, or false when none is kept for it.</summary>
-    public bool TryGetSession(string session, out CheckReport report)
+    public bool TryGetSession(string session, [NotNullWhen(true)] out CheckReport? report)
     {
         lock (_lock)
         {
-            var found = _bySession.TryGetValue(session, out var entry);
-            report = entry?.Report!;
-            return found;
+            if (_bySession.TryGetValue(session, out var entry) && entry?.Report is { } kept)
+            {
+                report = kept;
+                return true;
+            }
+
+            report = null;
+            return false;
         }
     }
 
@@ -160,8 +167,10 @@ internal sealed partial class AnswerStore
 
     private void WriteSessionFile(Entry entry)
     {
+        if (entry.Session is not { } session)
+            throw new InvalidOperationException("kept answer has no session.");
         var stored = new StoredAnswer(
-            entry.Session!,
+            session,
             entry.Generation,
             entry.Tree,
             entry.Report.ErrorCount,
@@ -170,8 +179,8 @@ internal sealed partial class AnswerStore
         {
             try
             {
-                var path = SessionFilePath(entry.Session!);
-                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                var path = SessionFilePath(session);
+                Directory.CreateDirectory(Path.GetDirectoryName(path) ?? throw new InvalidOperationException("session file path has no directory."));
                 var temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
                 File.WriteAllText(temporary, JsonSerializer.Serialize(stored, StoredJson.Default.StoredAnswer));
                 File.Move(temporary, path, overwrite: true);

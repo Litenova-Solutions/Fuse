@@ -320,9 +320,8 @@ internal sealed class Scheduler : IDisposable
                 break;
             _waiters.Remove(next);
             var now = Stopwatch.GetTimestamp();
-            var gateHolder = _running.Count == 0
-                ? releasedHolder
-                : _running.MaxBy(r => now - r.DequeuedAt)!.Holder;
+            var longest = _running.Count == 0 ? null : _running.MaxBy(r => now - r.DequeuedAt);
+            var gateHolder = longest is { } running ? running.Holder : releasedHolder;
             releasedHolder = null;
             var lease = new SchedulerLease(this, next.Lane, next.Holder, TimeSpan.FromTicks((now - next.Since) * TimeSpan.TicksPerSecond / Stopwatch.Frequency), gateHolder, now);
             _running.Add(lease);
@@ -367,21 +366,39 @@ internal sealed class Scheduler : IDisposable
     };
 
     /// <summary>One request waiting for a reader: its lane, what it will hold the reader as, and when it arrived.</summary>
-    private sealed class Waiter(SchedulerLane lane, string holder, long since)
+    private sealed class Waiter
     {
-        public SchedulerLane Lane { get; } = lane;
+        private readonly SchedulerLane _lane;
+        private readonly string _holder;
+        private readonly long _since;
 
-        public string Holder { get; } = holder;
+        public Waiter(SchedulerLane lane, string holder, long since)
+        {
+            _lane = lane;
+            _holder = holder;
+            _since = since;
+        }
 
-        public long Since { get; } = since;
+        public SchedulerLane Lane => _lane;
+
+        public string Holder => _holder;
+
+        public long Since => _since;
 
         public TaskCompletionSource<SchedulerLease> Completion { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
     }
 
     /// <summary>One check in flight, shared by the waiters of its key: its answer, its cancellation and how many waiters hold it.</summary>
-    private sealed class Shared(string key)
+    private sealed class Shared
     {
-        public string Key { get; } = key;
+        private readonly string _key;
+
+        public Shared(string key)
+        {
+            _key = key;
+        }
+
+        public string Key => _key;
 
         public int Waiters;
 

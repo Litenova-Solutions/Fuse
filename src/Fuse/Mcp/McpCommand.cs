@@ -185,8 +185,17 @@ internal static class McpCommand
     }
 
     /// <summary>Sends each progress value to the client as a progress notification for the request's token, without waiting for it.</summary>
-    private sealed class SessionProgress(McpSession session, ProgressToken token) : IProgress<ProgressNotificationValue>
+    private sealed class SessionProgress : IProgress<ProgressNotificationValue>
     {
-        public void Report(ProgressNotificationValue value) => _ = session.NotifyProgressAsync(token, value, null, CancellationToken.None);
+        private readonly McpSession _session;
+        private readonly ProgressToken _token;
+
+        public SessionProgress(McpSession session, ProgressToken token)
+        {
+            _session = session;
+            _token = token;
+        }
+
+        public void Report(ProgressNotificationValue value) => _ = _session.NotifyProgressAsync(_token, value, null, CancellationToken.None);
     }
 }

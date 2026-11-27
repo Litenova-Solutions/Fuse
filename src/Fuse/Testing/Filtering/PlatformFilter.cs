@@ -67,7 +67,7 @@ internal static class PlatformFilter
         {
             if (entries.All(e => e.Method is not null) && entries.Count <= MaxNames)
             {
-                var chosen = entries.Select(e => e.Method!).Distinct().OrderBy(m => m, StringComparer.Ordinal).ToList();
+                var chosen = entries.Select(e => e.Method is { } method ? method : throw new UnreachableException("method pattern is missing.")).Distinct().OrderBy(m => m, StringComparer.Ordinal).ToList();
                 var method = chosen is [var one] ? one : $"({string.Join("|", chosen)})";
                 return (["--treenode-filter", $"/*/{only.Namespace}/{only.Name}/{method}"], FilterCollapse.None);
             }

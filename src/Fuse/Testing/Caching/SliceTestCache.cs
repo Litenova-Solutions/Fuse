@@ -461,9 +461,10 @@ internal sealed partial class SliceTestCache
 
         if (string.IsNullOrEmpty(referenced))
             return "";
+        var directory = Path.GetDirectoryName(runSettingsPath) ?? throw new InvalidOperationException("runsettings path has no directory.");
         var absolute = Path.IsPathRooted(referenced)
             ? referenced
-            : Path.GetFullPath(Path.Combine(Path.GetDirectoryName(runSettingsPath)!, referenced));
+            : Path.GetFullPath(Path.Combine(directory, referenced));
         return HashFile(absolute);
     }
 

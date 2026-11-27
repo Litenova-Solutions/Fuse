@@ -3,13 +3,24 @@ using System.Text;
 namespace Fuse.Dotnet.Processes;
 
 /// <summary>Runs child processes with argument lists (never a shell string) and kills the whole tree on cancellation.</summary>
-internal static class ProcessRunner
+internal sealed class ProcessRunner : IProcessRunner
 {
+    private ProcessRunner()
+    {
+    }
+
+    /// <summary>The runner that starts real processes, for a type that takes an <see cref="IProcessRunner"/>.</summary>
+    public static IProcessRunner Default { get; } = new ProcessRunner();
+
     /// <summary>The variables MSBuild Locator sets to point a process at one SDK's MSBuild.</summary>
     internal static readonly string[] MsBuildLocatorVariables = ["MSBUILD_EXE_PATH", "MSBuildExtensionsPath", "MSBuildSDKsPath"];
 
     /// <summary>How long a run waits for a process tree it killed on inactivity to exit before answering without it.</summary>
     private static readonly TimeSpan KillGrace = TimeSpan.FromSeconds(10);
+
+    /// <inheritdoc/>
+    Task<ProcessResult> IProcessRunner.RunAsync(string fileName, IEnumerable<string> arguments, string workingDirectory, TimeSpan? inactivityTimeout, CancellationToken cancellationToken) =>
+        RunAsync(fileName, arguments, workingDirectory, cancellationToken, inactivityTimeout);
 
     /// <summary>Runs a process to completion and captures its output.</summary>
     /// <param name="arguments">Arguments, passed without shell interpretation.</param>

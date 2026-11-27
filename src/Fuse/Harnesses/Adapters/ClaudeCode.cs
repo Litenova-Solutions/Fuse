@@ -88,7 +88,17 @@ internal sealed class ClaudeCode : Harness
 
     private static JsonObject WithCommand(JsonElement? input, string command)
     {
-        var result = input is { } element ? JsonNode.Parse(element.GetRawText())!.AsObject() : [];
+        JsonObject result;
+        if (input is { } element)
+        {
+            var parsed = JsonNode.Parse(element.GetRawText()) ?? throw new InvalidOperationException("the tool input is not JSON");
+            result = parsed.AsObject();
+        }
+        else
+        {
+            result = [];
+        }
+
         result["command"] = command;
         return result;
     }

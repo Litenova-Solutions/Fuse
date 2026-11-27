@@ -145,7 +145,8 @@ internal static class EngineLauncher
         foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
         {
             var destination = Path.Combine(target, Path.GetRelativePath(source, file));
-            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+            var folder = Path.GetDirectoryName(destination) ?? throw new InvalidOperationException($"the copy target has no directory: {destination}");
+            Directory.CreateDirectory(folder);
             File.Copy(file, destination, overwrite: true);
         }
 

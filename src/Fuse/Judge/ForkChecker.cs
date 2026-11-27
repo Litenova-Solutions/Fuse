@@ -129,7 +129,8 @@ internal static class ForkChecker
             foreach (var project in RepoWorkspace.ProjectsFor(fork, owner).ToList())
             {
                 var id = DocumentId.CreateNewId(project.Id, path.Absolute);
-                var folders = Path.GetRelativePath(owner.Directory.Absolute, Path.GetDirectoryName(path.Absolute)!)
+                var directory = Path.GetDirectoryName(path.Absolute) ?? throw new InvalidOperationException("file path has no directory.");
+                var folders = Path.GetRelativePath(owner.Directory.Absolute, directory)
                     .Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries)
                     .Where(f => f != ".")
                     .ToArray();

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using System.Text;
 using Fuse.Paths;
@@ -132,7 +133,7 @@ internal sealed class BuildLock : IDisposable
             while (true)
             {
                 if (TryAcquireProjectsCore(root, canonical, out var held, out var nonRetryableReason))
-                    return held!;
+                    return held;
                 if (nonRetryableReason is not null)
                     return new BuildLock(nonRetryableReason, new ArtifactIsolation.None());
                 if (!waited)
@@ -187,7 +188,7 @@ internal sealed class BuildLock : IDisposable
         var unique = string.IsNullOrWhiteSpace(workerKey);
         var slot = unique
             ? $"{Environment.ProcessId}-{Guid.NewGuid():N}"[..16]
-            : Hash(workerKey!);
+            : Hash(workerKey ?? throw new InvalidOperationException("a shared artifact slot needs a worker key"));
         var parent = Path.Combine(root.StateDirectory, "artifacts");
         var artifacts = Path.Combine(parent, slot);
         try
@@ -258,7 +259,7 @@ internal sealed class BuildLock : IDisposable
         return buildLock;
     }
 
-    private static bool TryAcquireProjectsCore(RepoRoot root, List<string> canonical, out BuildLock? held, out string? nonRetryableReason)
+    private static bool TryAcquireProjectsCore(RepoRoot root, List<string> canonical, [NotNullWhen(true)] out BuildLock? held, out string? nonRetryableReason)
     {
         held = null;
         nonRetryableReason = null;

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
@@ -52,14 +53,18 @@ internal sealed class KeptCheck
     }
 
     /// <summary>The kept answer for <paramref name="key"/>, or false when nothing is kept for it.</summary>
-    public bool TryGet(string key, out CheckResult result)
+    public bool TryGet(string key, [NotNullWhen(true)] out CheckResult? result)
     {
         lock (_lock)
         {
-            var found = _answers.TryGetValue(key, out var value);
+            if (_answers.TryGetValue(key, out var value) && value is { } kept)
+            {
+                result = kept;
+                return true;
+            }
 
-            result = value!;
-            return found;
+            result = null;
+            return false;
         }
     }
 

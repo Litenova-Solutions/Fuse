@@ -60,7 +60,9 @@ internal sealed class TypeGraph
                 if (!cache.TryGetValue(item.Document.Id, out var cached) || cached.Version != version)
                 {
                     var root = await item.Document.GetSyntaxRootAsync(ct).ConfigureAwait(false);
-                    cached = (version, FileFacts.From(root!, item.Document.FilePath ?? item.Document.Name));
+                    if (root is null)
+                        throw new InvalidOperationException($"syntax root is missing for '{item.Document.FilePath ?? item.Document.Name}'.");
+                cached = (version, FileFacts.From(root, item.Document.FilePath ?? item.Document.Name));
                     cache[item.Document.Id] = cached;
                 }
 

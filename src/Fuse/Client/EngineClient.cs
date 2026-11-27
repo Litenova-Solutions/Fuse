@@ -459,13 +459,19 @@ internal static class EngineClient
             WorktreeRoot = request.WorktreeRoot ?? root.Path,
         };
 
-    private sealed class PipeSession(RepoRoot root) : IAsyncDisposable
+    private sealed class PipeSession : IAsyncDisposable
     {
+        private readonly RepoRoot _root;
         private NamedPipeClientStream? _pipe;
+
+        public PipeSession(RepoRoot root)
+        {
+            _root = root;
+        }
 
         public async Task<EngineResponse> SendAsync(EngineRequest request, TimeSpan timeout, CancellationToken cancellationToken)
         {
-            request = Stamp(root, request, timeout);
+            request = Stamp(_root, request, timeout);
             var sendStarted = Environment.TickCount64;
             using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             deadline.CancelAfter(timeout);
@@ -493,7 +499,7 @@ internal static class EngineClient
 
                     EngineResponse? response = null;
                     if (line is not null && Read(line, out response) is { } reason)
-                        return new EngineResponse.Unanswered(ErrorCode.Internal, $"the Fuse engine sent an answer this client cannot read ({reason}; see {Path.Combine(root.StateDirectory, "engine.log")})");
+                        return new EngineResponse.Unanswered(ErrorCode.Internal, $"the Fuse engine sent an answer this client cannot read ({reason}; see {Path.Combine(_root.StateDirectory, "engine.log")})");
                     if (response is null)
                     {
                         await ResetPipeAsync().ConfigureAwait(false);
@@ -503,7 +509,7 @@ internal static class EngineClient
                             continue;
                         }
 
-                        return new EngineResponse.Unanswered(ErrorCode.Internal, $"the Fuse engine closed the connection (see {Path.Combine(root.StateDirectory, "engine.log")})");
+                        return new EngineResponse.Unanswered(ErrorCode.Internal, $"the Fuse engine closed the connection (see {Path.Combine(_root.StateDirectory, "engine.log")})");
                     }
 
                     if (response is EngineResponse.Busy busy)
@@ -552,7 +558,7 @@ internal static class EngineClient
             if (_pipe is { IsConnected: true })
                 return _pipe;
             await ResetPipeAsync().ConfigureAwait(false);
-            _pipe = await ConnectAsync(root, cancellationToken).ConfigureAwait(false);
+            _pipe = await ConnectAsync(_root, cancellationToken).ConfigureAwait(false);
             return _pipe;
         }
 

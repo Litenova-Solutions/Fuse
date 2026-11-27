@@ -94,13 +94,24 @@ internal sealed class WatchHub
     }
 
     /// <summary>One subscriber: its filter and the bounded channel that drops the oldest event when full.</summary>
-    private sealed class Subscription(string? session, bool all, Channel<WatchEvent> channel)
+    private sealed class Subscription
     {
+        private readonly string? _session;
+        private readonly bool _all;
+        private readonly Channel<WatchEvent> _channel;
+
+        public Subscription(string? session, bool all, Channel<WatchEvent> channel)
+        {
+            _session = session;
+            _all = all;
+            _channel = channel;
+        }
+
         /// <summary>The events the subscriber has not read yet.</summary>
-        public Channel<WatchEvent> Channel { get; } = channel;
+        public Channel<WatchEvent> Channel => _channel;
 
         /// <summary>True when this subscriber reads <paramref name="watchEvent"/>: every event when it reads all, else only its session's.</summary>
         public bool Matches(WatchEvent watchEvent) =>
-            all || string.Equals(watchEvent.Session, session, StringComparison.Ordinal);
+            _all || string.Equals(watchEvent.Session, _session, StringComparison.Ordinal);
     }
 }

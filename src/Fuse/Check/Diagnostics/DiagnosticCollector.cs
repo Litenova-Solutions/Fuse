@@ -120,7 +120,8 @@ internal sealed class DiagnosticCollector
 
             if (solution.GetAdditionalDocument(id) is { } additional)
             {
-                var (errors, generatedFinished) = await ForGeneratedFromAsync(solution.GetProject(additional.Project.Id)!, path, baseline, context, cancellationToken).ConfigureAwait(false);
+                var additionalProject = solution.GetProject(additional.Project.Id) ?? throw new InvalidOperationException("solution has no project for the additional document.");
+                var (errors, generatedFinished) = await ForGeneratedFromAsync(additionalProject, path, baseline, context, cancellationToken).ConfigureAwait(false);
                 result.AddRange(errors);
                 finished &= generatedFinished;
             }

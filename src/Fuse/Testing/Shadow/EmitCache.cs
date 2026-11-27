@@ -55,7 +55,7 @@ internal sealed class EmitCache
     /// </summary>
     public async Task<(EmittedImage? Image, string PeHash, string PdbHash)> GetWithHashesAsync(Project project, CancellationToken cancellationToken)
     {
-        var output = project.OutputFilePath!;
+        var output = project.OutputFilePath ?? throw new InvalidOperationException("project has no build output path.");
         var version = await project.GetDependentVersionAsync(cancellationToken).ConfigureAwait(false);
         var built = File.GetLastWriteTimeUtc(output);
         if (_entries.TryGetValue(output, out var cached) && cached.Project == project.Id && cached.Version == version && cached.BuiltUtc == built)

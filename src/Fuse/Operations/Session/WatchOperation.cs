@@ -55,7 +55,8 @@ internal static class WatchOperation
 
         if (all)
             return await PollAllAsync(root, json, output, cancellationToken).ConfigureAwait(false);
-        return await PollSessionAsync(root, session!, json, output, cancellationToken).ConfigureAwait(false);
+        var name = session ?? throw new InvalidOperationException("a watch without --all names a session");
+        return await PollSessionAsync(root, name, json, output, cancellationToken).ConfigureAwait(false);
     }
 
     private static async Task<OperationResult> PollSessionAsync(RepoRoot root, string session, bool json, TextWriter output, CancellationToken cancellationToken)

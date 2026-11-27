@@ -80,9 +80,10 @@ internal sealed partial class HookPayload
                     return value;
                 if (value.ValueKind == JsonValueKind.String)
                 {
+                    var text = value.GetString() ?? throw new InvalidOperationException("the tool input holds a string with no text");
                     try
                     {
-                        using var parsed = JsonDocument.Parse(value.GetString()!);
+                        using var parsed = JsonDocument.Parse(text);
                         return parsed.RootElement.Clone();
                     }
                     catch (JsonException)
@@ -115,7 +116,10 @@ internal sealed partial class HookPayload
             foreach (var name in new[] { "file_path", "filePath", "path", "notebook_path" })
             {
                 if (input.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String)
-                    paths.Add(value.GetString()!);
+                {
+                    var text = value.GetString() ?? throw new InvalidOperationException("the edited path has no text");
+                    paths.Add(text);
+                }
             }
 
             // A patch arrives in a field each harness names differently (command, patchText, input), so every string field
@@ -123,7 +127,10 @@ internal sealed partial class HookPayload
             foreach (var property in input.EnumerateObject())
             {
                 if (property.Value.ValueKind == JsonValueKind.String)
-                    paths.AddRange(PatchFiles(property.Value.GetString()!));
+                {
+                    var text = property.Value.GetString() ?? throw new InvalidOperationException("the patch text has no text");
+                    paths.AddRange(PatchFiles(text));
+                }
             }
         }
 

@@ -87,7 +87,8 @@ internal static class SettingsFile
         {
             if (File.Exists(path) && File.ReadAllText(path) == content)
                 return new WrittenFile(relative, Changed: false);
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            var folder = Path.GetDirectoryName(path) ?? throw new InvalidOperationException($"the settings path has no directory: {path}");
+            Directory.CreateDirectory(folder);
             File.WriteAllText(temp, content);
             MoveWithRetry(() => File.Move(temp, path, overwrite: true), Thread.Sleep);
         }
@@ -134,7 +135,8 @@ internal static class SettingsFile
             throw new IOException($"could not delete {relative} ({e.Message})", e);
         }
 
-        DeleteEmptyFolders(root, Path.GetDirectoryName(path)!);
+        var folder = Path.GetDirectoryName(path) ?? throw new InvalidOperationException($"the settings path has no directory: {path}");
+        DeleteEmptyFolders(root, folder);
         return new WrittenFile(relative, Changed: true, Deleted: true);
     }
 
@@ -157,7 +159,8 @@ internal static class SettingsFile
             throw new IOException($"could not delete {relative} ({e.Message})", e);
         }
 
-        DeleteEmptyFolders(root, Path.GetDirectoryName(path)!);
+        var parent = Path.GetDirectoryName(path) ?? throw new InvalidOperationException($"the settings path has no directory: {path}");
+        DeleteEmptyFolders(root, parent);
         return new WrittenFile(relative, Changed: true, Deleted: true);
     }
 
@@ -171,7 +174,7 @@ internal static class SettingsFile
                && !Directory.EnumerateFileSystemEntries(folder).Any())
         {
             Directory.Delete(folder);
-            folder = Path.GetDirectoryName(folder)!;
+            folder = Path.GetDirectoryName(folder) ?? throw new InvalidOperationException($"the settings folder has no parent: {folder}");
         }
     }
 

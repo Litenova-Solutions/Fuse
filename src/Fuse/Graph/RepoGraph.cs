@@ -211,7 +211,7 @@ internal sealed class RepoGraph
             {
                 try
                 {
-                    nodes[i] = EvaluateOne(root, local.Value!, paths[i]);
+                    nodes[i] = EvaluateOne(root, local.Value ?? throw new InvalidOperationException("project collection is missing."), paths[i]);
                 }
                 catch (InvalidProjectFileException e)
                 {

@@ -30,7 +30,8 @@ internal static class SurfaceDiff
             if (change is null)
                 continue;
             changes.Add(change);
-            hasBroadChange |= IsBroad(change, (now ?? old)!);
+            if ((now ?? old) is { } declaration)
+                hasBroadChange |= IsBroad(change, declaration);
         }
 
         return new FileChanges(changes, hasBroadChange);

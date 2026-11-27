@@ -104,7 +104,17 @@ internal sealed class MuseCode : Harness
     /// </summary>
     public override HookAnswer ReplaceShellCommand(JsonElement? toolInput, string command)
     {
-        var input = toolInput is { } element ? JsonNode.Parse(element.GetRawText())!.AsObject() : [];
+        JsonObject input;
+        if (toolInput is { } element)
+        {
+            var parsed = JsonNode.Parse(element.GetRawText()) ?? throw new InvalidOperationException("the tool input is not JSON");
+            input = parsed.AsObject();
+        }
+        else
+        {
+            input = [];
+        }
+
         input["command"] = command;
         return HookAnswer.Json(new JsonObject
         {

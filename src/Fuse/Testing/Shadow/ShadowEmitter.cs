@@ -135,7 +135,7 @@ internal sealed class ShadowEmitter
         // the choice of which one emits is logged, so a wrong one can be told from the engine log.
         foreach (var group in closure.GroupBy(p => p.FilePath ?? p.Id.ToString(), StringComparer.OrdinalIgnoreCase).Where(g => g.Count() > 1))
             log($"test plan: {testProject.Name} closure holds {group.Count()} variants of {Path.GetFileName(group.Key)}: {string.Join(", ", group.Select(p => p.Name).Order(StringComparer.Ordinal))}");
-        var testOutputDirectory = Path.GetDirectoryName(testOutput)!;
+        var testOutputDirectory = Path.GetDirectoryName(testOutput) ?? throw new InvalidOperationException("test output path has no directory.");
         var stale = new HashSet<ProjectId>();
         foreach (var project in closure)
         {
@@ -215,7 +215,7 @@ internal sealed class ShadowEmitter
             var dependedOn = project.ProjectReferences.Select(r => r.ProjectId).Where(emit.Contains).ToList();
             if (dependedOn.Count == 0 || dependedOn.Any(id => !declares.TryGetValue(id, out var changed) || changed))
                 continue;
-            var kept = Path.Combine(shadow, Path.GetFileName(project.OutputFilePath!));
+            var kept = Path.Combine(shadow, OutputFileName(project));
             if (HoldsWritten(kept) && HoldsWritten(Path.ChangeExtension(kept, ".pdb"))
                 && await FingerprintsMatchAsync(project, dependedOn, solution, current, cancellationToken).ConfigureAwait(false))
                 skipped.Add(project);
@@ -238,22 +238,22 @@ internal sealed class ShadowEmitter
         // Two variants writing the same shadow file overwrite each other, and the loser can be a build for
         // another framework, which then crashes at runtime. When the closure holds two, no shadow run matches the
         // build, and the project builds with MSBuild instead.
-        var outputs = emit.Select(id => solution.GetProject(id)!).Concat(skipped).ToList();
-        if (outputs.GroupBy(p => Path.GetFileName(p.OutputFilePath!), StringComparer.OrdinalIgnoreCase).FirstOrDefault(g => g.Count() > 1) is { } collision)
+        var outputs = emit.Select(id => ProjectFor(solution, id)).Concat(skipped).ToList();
+        if (outputs.GroupBy(p => OutputFileName(p), StringComparer.OrdinalIgnoreCase).FirstOrDefault(g => g.Count() > 1) is { } collision)
         {
             log($"{testProject.Name}: two variants share the shadow file {collision.Key}; building with MSBuild");
             return new PreparationResult(new RunMode.Build(), closure, new Dictionary<ProjectId, (EmittedImage, string, string)>());
         }
 
-        var targets = emit.Select(id => Path.Combine(shadow, Path.GetFileName(solution.GetProject(id)!.OutputFilePath!))).ToList();
-        var keptTargets = skipped.Select(p => Path.Combine(shadow, Path.GetFileName(p.OutputFilePath!))).ToList();
+        var targets = emit.Select(id => Path.Combine(shadow, OutputFileName(ProjectFor(solution, id)))).ToList();
+        var keptTargets = skipped.Select(p => Path.Combine(shadow, OutputFileName(p))).ToList();
         // The files about to be emitted are not copied first: the copy would only be overwritten, and when the emitted
         // image is already in place, it would make the image be written again. The kept images are not copied either.
         Mirror(testOutputDirectory, shadow, [.. targets, .. targets.Select(t => Path.ChangeExtension(t, ".pdb")), .. keptTargets, .. keptTargets.Select(t => Path.ChangeExtension(t, ".pdb"))]);
         var emittedImages = new Dictionary<ProjectId, (EmittedImage Image, string PeHash, string PdbHash)>();
         foreach (var id in emit)
         {
-            var project = solution.GetProject(id)!;
+            var project = ProjectFor(solution, id);
             emitting.Start();
             try
             {
@@ -265,7 +265,7 @@ internal sealed class ShadowEmitter
                 }
 
                 emittedImages[id] = (image, peHash, pdbHash);
-                var target = Path.Combine(shadow, Path.GetFileName(project.OutputFilePath!));
+                var target = Path.Combine(shadow, OutputFileName(project));
                 await WriteAsync(target, image.Pe, cancellationToken).ConfigureAwait(false);
                 await WriteAsync(Path.ChangeExtension(target, ".pdb"), image.Pdb, cancellationToken).ConfigureAwait(false);
                 await RecordFingerprintsAsync(project, solution, cancellationToken).ConfigureAwait(false);
@@ -448,7 +448,7 @@ internal sealed class ShadowEmitter
             && file.Exists && file.Length == written.Length && file.LastWriteTimeUtc == written.WrittenUtc)
             return;
 
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        Directory.CreateDirectory(Path.GetDirectoryName(path) ?? throw new InvalidOperationException("shadow file path has no directory."));
         var temp = path + "." + Guid.NewGuid().ToString("N")[..8] + ".tmp";
         try
         {
@@ -565,6 +565,14 @@ internal sealed class ShadowEmitter
     private static string? FrameworkFolder(Project project) =>
         project.OutputFilePath is { } output ? Path.GetFileName(Path.GetDirectoryName(output)) : null;
 
+    /// <summary>The project <paramref name="id"/> names in <paramref name="solution"/>, which the closure the plan pinned was built from.</summary>
+    private static Project ProjectFor(Solution solution, ProjectId id) =>
+        solution.GetProject(id) ?? throw new InvalidOperationException("solution has no project for an emitted id.");
+
+    /// <summary>The file name of <paramref name="project"/>'s build output, which the shadow names its copy after.</summary>
+    private static string OutputFileName(Project project) =>
+        Path.GetFileName(project.OutputFilePath ?? throw new InvalidOperationException("project has no build output path."));
+
     /// <summary>
     ///     Whether the project's C# sources are newer than its build output, and the first non-source file
     ///     in the project directory that did (a resource or content file the emitted assembly would not include). A
@@ -667,7 +675,7 @@ internal sealed class ShadowEmitter
             var to = new FileInfo(destination);
             if (to.Exists && to.Length == from.Length && to.LastWriteTimeUtc == from.LastWriteTimeUtc)
                 continue;
-            var directory = Path.GetDirectoryName(destination)!;
+            var directory = Path.GetDirectoryName(destination) ?? throw new InvalidOperationException("shadow destination path has no directory.");
             if (createdDirectories.Add(directory))
                 Directory.CreateDirectory(directory);
             var temp = destination + "." + Guid.NewGuid().ToString("N")[..8] + ".tmp";

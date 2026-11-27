@@ -268,7 +268,7 @@ internal static partial class GraphStore
         var staging = file + ".tmp-" + Environment.ProcessId + "-" + Guid.NewGuid().ToString("N");
         try
         {
-            var directory = Path.GetDirectoryName(file)!;
+            var directory = Path.GetDirectoryName(file) ?? throw new InvalidOperationException("stored graph file path has no directory.");
             System.IO.Directory.CreateDirectory(directory);
             File.WriteAllText(staging, text);
             using var locked = AcquireWriteLock(directory);

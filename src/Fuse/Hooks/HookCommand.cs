@@ -105,7 +105,8 @@ internal static class HookCommand
         var edited = payload.EditedFiles().Where(PathRules.IsSource).ToList();
         if (edited.Count == 0)
             return HookAnswer.None;
-        var root = RepoRoot.Find(Path.GetDirectoryName(edited[0])!);
+        var folder = Path.GetDirectoryName(edited[0]) ?? throw new InvalidOperationException($"the edited path has no directory: {edited[0]}");
+        var root = RepoRoot.Find(folder);
         if (root is null)
             return HookAnswer.None;
         // Each file once, however the harness spelled it; the request carries each as an absolute string.

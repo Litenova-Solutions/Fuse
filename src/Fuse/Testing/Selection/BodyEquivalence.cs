@@ -158,11 +158,12 @@ internal static class BodyEquivalence
     }
 
     /// <summary>The body as a block, so an expression body compares against a block body.</summary>
-    private static BlockSyntax BlockOf(RawBody body)
+    private static BlockSyntax? BlockOf(RawBody body)
     {
         if (body.Block is not null)
             return body.Block;
-        var arrow = body.Arrow!;
+        if (body.Arrow is not { } arrow)
+            return null;
         var semicolon = SyntaxFactory.Token(SyntaxKind.SemicolonToken);
         StatementSyntax statement = body.ReturnsValue
             ? SyntaxFactory.ReturnStatement(arrow.Expression).WithSemicolonToken(semicolon)
@@ -226,7 +227,10 @@ internal static class BodyEquivalence
         private readonly SemanticModel _model;
         private readonly Dictionary<ISymbol, string> _names = new(SymbolEqualityComparer.Default);
 
-        public Normalizer(SemanticModel model) => _model = model;
+        public Normalizer(SemanticModel model)
+        {
+            _model = model;
+        }
 
         /// <summary>True when the body holds a construct this normalizer does not rewrite, so the comparison fails.</summary>
         public bool Failed { get; private set; }
@@ -344,8 +348,8 @@ internal static class BodyEquivalence
             }
 
             var visited = (CatchDeclarationSyntax?)base.VisitCatchDeclaration(node) ?? node;
-            if (type is not null)
-                visited = visited.WithType(LocalType(node.Type!, type));
+            if (type is not null && node.Type is { } declared)
+                visited = visited.WithType(LocalType(declared, type));
             return symbol is null ? visited : visited.WithIdentifier(SyntaxFactory.Identifier(Placeholder(symbol)));
         }
 

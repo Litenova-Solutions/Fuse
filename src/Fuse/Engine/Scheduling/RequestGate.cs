@@ -145,13 +145,24 @@ internal sealed class RequestGate : IDisposable
     ///     how long each holder held the lock since. A class, not a record, so two waiters that started on the same tick
     ///     stay two entries.
     /// </summary>
-    private sealed class Waiter(string holder, bool priority, long since)
+    private sealed class Waiter
     {
-        public string Holder { get; } = holder;
+        private readonly string _holder;
+        private readonly bool _priority;
+        private readonly long _since;
 
-        public bool Priority { get; } = priority;
+        public Waiter(string holder, bool priority, long since)
+        {
+            _holder = holder;
+            _priority = priority;
+            _since = since;
+        }
 
-        public long Since { get; } = since;
+        public string Holder => _holder;
+
+        public bool Priority => _priority;
+
+        public long Since => _since;
 
         public Dictionary<string, long> Held { get; } = new(StringComparer.Ordinal);
 

@@ -23,15 +23,19 @@ internal static class RunSettingsFile
     public static string Write(string directory, string? filter, string? projectSettings)
     {
         var document = Read(projectSettings) ?? new XDocument(new XElement("RunSettings"));
-        var configuration = document.Root!.Element("RunConfiguration");
+        var root = document.Root ?? throw new InvalidOperationException("a runsettings document has no root element");
+        var configuration = root.Element("RunConfiguration");
         if (configuration is null)
         {
             configuration = new XElement("RunConfiguration");
-            document.Root.AddFirst(configuration);
+            root.AddFirst(configuration);
         }
 
         if (projectSettings is not null)
-            MakePathsAbsolute(document.Root, Path.GetDirectoryName(projectSettings)!);
+        {
+            var folder = Path.GetDirectoryName(projectSettings) ?? throw new InvalidOperationException($"the project settings path has no directory: {projectSettings}");
+            MakePathsAbsolute(root, folder);
+        }
         if (filter is not null)
         {
             var existing = configuration.Element("TestCaseFilter");

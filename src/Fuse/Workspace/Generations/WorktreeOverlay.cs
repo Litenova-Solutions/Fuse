@@ -454,12 +454,13 @@ internal sealed class WorktreeOverlay : IDisposable
     private Generation PublishInitial()
     {
         var empty = new AdhocWorkspace().CurrentSolution;
+        var graph = Projects.Graph ?? throw new InvalidOperationException("project graph is not evaluated.");
         var next = new Generation(
             _generationNumber++,
             Tracker.Head,
             (Solution?)Views.Current ?? empty,
             (Solution?)Views.Baseline ?? empty,
-            Projects.Graph!,
+            graph,
             [.. Tracker.Changed],
             [.. Tracker.NonSources],
             Tracker.NonSourceChanged,

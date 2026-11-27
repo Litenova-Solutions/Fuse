@@ -89,7 +89,9 @@ internal sealed partial class BaselineStore
             var lines = new List<string> { "2", head, typeof(Compilation).Assembly.GetName().Version?.ToString() ?? "" };
             foreach (var group in baseline.Projects.Where(p => p.FilePath is not null).GroupBy(p => p.FilePath).OrderBy(g => g.Key, StringComparer.Ordinal))
             {
-                if (graph.Find(root.PathOf(group.Key!)) is not { } node)
+                if (group.Key is not { } projectPath)
+                    return null;
+                if (graph.Find(root.PathOf(projectPath)) is not { } node)
                     return null;
                 lines.Add("project:" + node.Path.Relative);
                 foreach (var input in node.EvaluationInputs.OrderBy(p => p.Relative, StringComparer.Ordinal))
@@ -232,7 +234,7 @@ internal sealed partial class BaselineStore
     {
         try
         {
-            var directory = Path.GetDirectoryName(file)!;
+            var directory = Path.GetDirectoryName(file) ?? throw new InvalidOperationException("baseline store file path has no directory.");
             Directory.CreateDirectory(directory);
             var staging = file + ".tmp-" + Environment.ProcessId + "-" + Guid.NewGuid().ToString("N");
             File.WriteAllText(staging, JsonSerializer.Serialize(result, StoreJson.Default.StoredResult));

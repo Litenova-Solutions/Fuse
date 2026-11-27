@@ -29,7 +29,8 @@ internal static class SessionRoots
             }
             else
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                var folder = Path.GetDirectoryName(path) ?? throw new InvalidOperationException($"the session roots path has no directory: {path}");
+                Directory.CreateDirectory(folder);
             }
 
             File.AppendAllText(path, rootPath + Environment.NewLine);

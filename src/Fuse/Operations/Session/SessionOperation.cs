@@ -121,7 +121,7 @@ internal static class SessionOperation
             return new OperationResult(Outcome.Unanswered, $"fuse: {ErrorMessages.InvalidSessionName(name)}");
         var (patterns, refusal) = ValidatePatterns(root, specs);
         if (patterns is null)
-            return new OperationResult(Outcome.Unanswered, refusal!);
+            return new OperationResult(Outcome.Unanswered, refusal ?? throw new InvalidOperationException("a rejected pattern has no refusal"));
         var response = await EngineClient.SendAsync(root, new EngineRequest.BeginSession(name, [.. patterns]) { Pid = pid }, Timeout, cancellationToken).ConfigureAwait(false);
         if (response is EngineResponse.Acknowledged)
             return new OperationResult(Outcome.Clean, pid is { } tied
@@ -159,7 +159,7 @@ internal static class SessionOperation
                 return new OperationResult(Outcome.Unanswered, $"fuse: {ErrorMessages.InvalidSessionName(name)}");
             var (patterns, refusal) = ValidatePatterns(root, specs);
             if (patterns is null)
-                return new OperationResult(Outcome.Unanswered, refusal!);
+                return new OperationResult(Outcome.Unanswered, refusal ?? throw new InvalidOperationException("a rejected pattern has no refusal"));
             validated.Add((name, patterns));
         }
 
@@ -285,7 +285,7 @@ internal static class SessionOperation
         var specs = args.Skip(3).ToList();
         var (patterns, refusal) = ValidatePatterns(root, specs);
         if (patterns is null)
-            return new OperationResult(Outcome.Unanswered, refusal!);
+            return new OperationResult(Outcome.Unanswered, refusal ?? throw new InvalidOperationException("a rejected pattern has no refusal"));
 
         var response = await EngineClient.SendAsync(
             root,

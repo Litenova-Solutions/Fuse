@@ -20,7 +20,7 @@ internal sealed class OpenCode : Harness
     public override WrittenFile RegisterHooks(RepoRoot root)
     {
         var path = Path.Combine(root.Path, ".opencode", "plugins", "fuse.js");
-        using var plugin = typeof(OpenCode).Assembly.GetManifestResourceStream(PluginResource)!;
+        using var plugin = typeof(OpenCode).Assembly.GetManifestResourceStream(PluginResource) ?? throw new InvalidOperationException("the OpenCode plugin resource is missing");
         using var reader = new StreamReader(plugin);
         return SettingsFile.WriteText(root, path, reader.ReadToEnd());
     }

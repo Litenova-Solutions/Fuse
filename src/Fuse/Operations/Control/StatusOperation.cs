@@ -68,6 +68,7 @@ internal static partial class StatusOperation
 
         var now = DateTimeOffset.UtcNow;
         IReadOnlyList<ReportedSession> sessions = engine?.Sessions ?? SessionRegistrationReader.ReadLive(root, now);
+        var statusNotes = Advisories.StatusNotes(count, engine?.Limits ?? EngineLimits.Default, sessions, now);
         if (json)
         {
             var state = engine is not null ? "running" : silentEngine ? "unknown" : "stopped";
@@ -80,6 +81,7 @@ internal static partial class StatusOperation
             var view = new StatusView(state, engine?.Pid, memoryMB, count, head, tree, inReach, touched, limits.TouchedLimit, limits.KeptAnswerAt, limits.WholeProjectAt, limits.ReloadAt, limits.ReloadAt, engine?.ReloadMs, engine?.GateHolder, memoryCeilingBytes, memoryLoadBytes, engine?.WorkingSetBytes, root.PipeName, EngineVersion.Build)
             {
                 Sessions = [.. sessions],
+                Advisories = [.. statusNotes],
             };
             return new OperationResult(Outcome.Clean, JsonSerializer.Serialize(
                 ToStatusLine(view),
@@ -97,6 +99,8 @@ internal static partial class StatusOperation
             foreach (var session in sessions)
                 text.Append('\n').Append("fuse: session ").Append(SessionListOperation.FormatLine(session, now));
         }
+        foreach (var note in statusNotes)
+            text.Append('\n').Append(note);
         return new OperationResult(Outcome.Clean, text.ToString());
     }
 
@@ -172,14 +176,14 @@ internal static partial class StatusOperation
     }
 
     /// <summary>The wire line for <paramref name="view"/>.</summary>
-    private static StatusLine ToStatusLine(StatusView view) => new(view.Engine, view.Pid, view.MemoryMB, view.ChangedFiles, view.Head, view.Tree, view.ChangedSourcesInReach, view.TouchedPaths, view.TouchedLimit, view.KeptAnswerAt, view.WholeProjectAt, view.SyncReloadAt, view.ReloadAt, view.ReloadMs, view.GateHolder, view.MemoryCeilingBytes, view.MemoryLoadBytes, view.MemoryWorkingSetBytes, view.PipeName, view.BuildId, view.Sessions);
+    private static StatusLine ToStatusLine(StatusView view) => new(view.Engine, view.Pid, view.MemoryMB, view.ChangedFiles, view.Head, view.Tree, view.ChangedSourcesInReach, view.TouchedPaths, view.TouchedLimit, view.KeptAnswerAt, view.WholeProjectAt, view.SyncReloadAt, view.ReloadAt, view.ReloadMs, view.GateHolder, view.MemoryCeilingBytes, view.MemoryLoadBytes, view.MemoryWorkingSetBytes, view.Advisories, view.PipeName, view.BuildId, view.Sessions);
 
     /// <summary>
     ///     One status answer: the engine, then the tree, then the limits counted as the code counts them. The documented
     ///     <c>head</c>, <c>tree</c> and <c>reloadAt</c> names stay beside the names the branch added, so a reader of either
     ///     set finds its limit.
     /// </summary>
-    private sealed record StatusLine(string Engine, int? Pid, int? MemoryMB, int ChangedFiles, string? Head, string Tree, int? ChangedSourcesInReach, int? TouchedPaths, int TouchedLimit, int KeptAnswerAt, int WholeProjectAt, int SyncReloadAt, int ReloadAt, long? ReloadMs, string? GateHolder, long? MemoryCeilingBytes, long? MemoryLoadBytes, long? MemoryWorkingSetBytes, string? PipeName = null, string? BuildId = null, ReportedSession[]? Sessions = null);
+    private sealed record StatusLine(string Engine, int? Pid, int? MemoryMB, int ChangedFiles, string? Head, string Tree, int? ChangedSourcesInReach, int? TouchedPaths, int TouchedLimit, int KeptAnswerAt, int WholeProjectAt, int SyncReloadAt, int ReloadAt, long? ReloadMs, string? GateHolder, long? MemoryCeilingBytes, long? MemoryLoadBytes, long? MemoryWorkingSetBytes, string[] Advisories, string? PipeName = null, string? BuildId = null, ReportedSession[]? Sessions = null);
 
     [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonSerializable(typeof(StatusLine))]

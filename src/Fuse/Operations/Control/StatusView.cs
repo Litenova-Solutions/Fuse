@@ -26,4 +26,7 @@ internal sealed record StatusView(
 {
     /// <summary>The live session registrations, named without the stored prefix. Empty when none is live.</summary>
     public ReportedSession[] Sessions { get; init; } = [];
+
+    /// <summary>Every note that applies, highest priority first. Empty when none applies.</summary>
+    public string[] Advisories { get; init; } = [];
 }

@@ -16,6 +16,9 @@ internal sealed record SessionId
     /// <summary>The longest session id the engine records. A harness's ids are far shorter; a longer one is refused.</summary>
     public const int MaxLength = 256;
 
+    /// <summary>How long a registration lasts without being begun again: long enough that an idle engine dying does not end it.</summary>
+    public static readonly TimeSpan RegistrationLifetime = TimeSpan.FromHours(4);
+
     /// <summary>The longest name a registration accepts.</summary>
     public const int MaxRegistrationNameLength = 64;
 

@@ -49,6 +49,7 @@ internal static class ResponseMapper
     public static TestPlan Plan(TestPlanResult result, bool noCache = false) => new(
         [.. result.Runs.Select(r => new TestRun(r.Project.Absolute, r.Name, Mode(r.Mode), r.Filter, UsesTestingPlatform(r.Runner), RunSettings(r.Runner), FilterArguments(r.Runner), TargetPaths(r.Runner))
         {
+            ShadowSkipReason = r.ShadowSkipReason,
             FromCache = !noCache && r.Cache is SliceCacheState.Cached,
             CacheReason = CacheReasonOf(r.Cache, noCache),
             SliceKey = SliceKeyOf(r.Cache, noCache),

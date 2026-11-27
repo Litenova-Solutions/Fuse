@@ -21,6 +21,9 @@ internal sealed record CheckReport(
     int ErrorFileCount,
     int LeftToOtherSessions)
 {
+    /// <summary>How many lines a changed non-generated C# file holds before the answer names it as large.</summary>
+    public const int LargeFileLines = 1500;
+
     /// <summary>How many files or whole projects were answered before their analyzers finished; their compiler errors are complete.</summary>
     public int AnalyzersUnfinished { get; init; }
 
@@ -47,4 +50,19 @@ internal sealed record CheckReport(
 
     /// <summary>How many changed sources <see cref="Tree"/> hashes.</summary>
     public int TreeFiles { get; init; }
+
+    /// <summary>
+    ///     The live session registrations when the request named no session, named without the stored prefix. Empty
+    ///     when the request named a session or none is live. A line without the list reads as one that names none.
+    /// </summary>
+    public string[] LiveSessions { get; init; } = [];
+
+    /// <summary>
+    ///     The largest changed non-generated C# file, repository-relative with forward slashes, or null when none is
+    ///     1,500 lines or more. A line without it reads as one that names none.
+    /// </summary>
+    public string? LargestTargetFile { get; init; }
+
+    /// <summary>How many lines <see cref="LargestTargetFile"/> holds, or null when it names none.</summary>
+    public int? LargestTargetLines { get; init; }
 }

@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Globalization;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Fuse.Identity;
@@ -112,63 +111,56 @@ internal static partial class GateOperation
             cancellationToken).ConfigureAwait(false);
 
         var checkReport = (checkResponse as EngineResponse.CheckAnswered)?.Report;
+        // The check answer already prints its own note; the gate keeps at most one note over both stages.
+        var checkText = Advisories.WithoutNotes(checkResult.Text);
+        var notes = new List<string>(Advisories.NoteLines(checkResult.Text));
         if (checkResult.Outcome != Outcome.Clean)
-        {
-            if (arguments.Json)
-            {
-                var payload = new GateJsonReport(
-                    Passed: false,
-                    ExitCode: checkResult.ExitCode,
-                    Stage: "check",
-                    ErrorCount: checkReport?.ErrorCount ?? 0,
-                    Errors: checkReport?.Errors ?? [],
-                    CheckOutput: checkResult.Text,
-                    TestOutput: null,
-                    ElapsedMs: watch.ElapsedMilliseconds);
-                return new OperationResult(checkResult.Outcome, JsonSerializer.Serialize(payload, GateJson.Default.GateJsonReport));
-            }
-
-            return checkResult;
-        }
-
+            return GateAnswer(arguments, watch, checkResult, checkReport, checkText, null, notes);
         if (!arguments.RunTests)
-        {
-            if (arguments.Json)
-            {
-                var payload = new GateJsonReport(
-                    Passed: true,
-                    ExitCode: 0,
-                    Stage: "check",
-                    ErrorCount: 0,
-                    Errors: [],
-                    CheckOutput: checkResult.Text,
-                    TestOutput: null,
-                    ElapsedMs: watch.ElapsedMilliseconds);
-                return new OperationResult(Outcome.Clean, JsonSerializer.Serialize(payload, GateJson.Default.GateJsonReport));
-            }
-
-            return checkResult;
-        }
+            return GateAnswer(arguments, watch, checkResult, checkReport, checkText, null, notes);
 
         var testResult = await TestOperation.RunAsync(new TestInvocation(root, workingDirectory, [], false, session, arguments.Json ? null : live, false, false, false, ErrorLimit.FromCount(arguments.MaxFailures)), cancellationToken).ConfigureAwait(false);
+        notes.AddRange(Advisories.NoteLines(testResult.Text));
+        return GateAnswer(arguments, watch, testResult, checkReport, checkText, Advisories.WithoutNotes(testResult.Text), notes);
+    }
 
+    /// <summary>
+    ///     The gate answer over its stages with at most one note: the highest priority note either stage printed,
+    ///     in the text and in the JSON answer. Exit codes stay as the stages answered them.
+    /// </summary>
+    private static OperationResult GateAnswer(
+        GateArguments arguments,
+        Stopwatch watch,
+        OperationResult result,
+        CheckReport? checkReport,
+        string checkText,
+        string? testText,
+        List<string> notes)
+    {
+        var note = Advisories.TopNote(notes);
+        string[] advisories = note is null ? [] : [note];
+        var failedCheck = testText is null && result.Outcome != Outcome.Clean;
         if (arguments.Json)
         {
             var payload = new GateJsonReport(
-                Passed: testResult.Outcome == Outcome.Clean,
-                ExitCode: testResult.ExitCode,
-                Stage: "test",
-                ErrorCount: 0,
-                Errors: [],
-                CheckOutput: checkResult.Text,
-                TestOutput: testResult.Text,
-                ElapsedMs: watch.ElapsedMilliseconds);
-            return new OperationResult(testResult.Outcome, JsonSerializer.Serialize(payload, GateJson.Default.GateJsonReport));
+                Passed: result.Outcome == Outcome.Clean,
+                ExitCode: result.ExitCode,
+                Stage: testText is null ? "check" : "test",
+                ErrorCount: failedCheck ? (checkReport?.ErrorCount ?? 0) : 0,
+                Errors: failedCheck ? (checkReport?.Errors ?? []) : [],
+                CheckOutput: checkText,
+                TestOutput: testText,
+                ElapsedMs: watch.ElapsedMilliseconds)
+            {
+                Advisories = advisories,
+            };
+            return new OperationResult(result.Outcome, JsonSerializer.Serialize(payload, GateJson.Default.GateJsonReport));
         }
 
-        var combined = new StringBuilder();
-        combined.Append(checkResult.Text).Append('\n').Append(testResult.Text);
-        return new OperationResult(testResult.Outcome, combined.ToString());
+        var text = testText is null ? checkText : checkText + "\n" + testText;
+        if (note is not null)
+            text += "\n" + note;
+        return result with { Text = text };
     }
 
     private sealed record GateJsonReport(
@@ -179,7 +171,11 @@ internal static partial class GateOperation
         ReportedError[] Errors,
         string CheckOutput,
         string? TestOutput,
-        long ElapsedMs);
+        long ElapsedMs)
+    {
+        /// <summary>The notes the gate kept, at most one, in priority order. A line without it reads as none.</summary>
+        public string[] Advisories { get; init; } = [];
+    }
 
     [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull, UseStringEnumConverter = true)]
     [JsonSerializable(typeof(GateJsonReport))]

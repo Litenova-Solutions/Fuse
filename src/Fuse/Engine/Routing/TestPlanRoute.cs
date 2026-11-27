@@ -1,6 +1,6 @@
 using System.Diagnostics;
-using Fuse.Identity;
 using Fuse.Check.Sessions;
+using Fuse.Identity;
 using Fuse.Paths;
 using Fuse.Protocol.Analysis;
 using Fuse.Protocol.Requests;

@@ -38,11 +38,13 @@ internal static class TestResultRenderer
     }
 
     /// <summary>The answer for runs with results: the failures grouped by their shared first line, then the counts and <paramref name="summary"/>.</summary>
-    internal static OperationResult Render(TestRunSummary outcome, string summary, double seconds, string? resultsPath = null)
+    internal static OperationResult Render(TestRunSummary outcome, string summary, double seconds, string? resultsPath = null, TestPlan? plan = null)
     {
         var text = new StringBuilder();
         text.Append(RenderFailures(outcome));
         text.Append(RenderSummary(outcome, summary, seconds, resultsPath));
+        if (plan is not null && Advisories.TopNote(Advisories.TestNotes(plan)) is { } note)
+            text.Append('\n').Append(note);
         return new OperationResult(outcome.Failed > 0 ? Outcome.ProblemsFound : Outcome.Clean, text.ToString());
     }
 

@@ -297,7 +297,7 @@ internal sealed class TestPlanExecutor
         var resultsPath = aggregate.Total > 0 ? ResultsFile.WriteTestsWithPaths(root, perProject) : null;
         if (reuse is not null && aggregate.Total > 0)
             LastTestResults.WriteRun(root, reuse.Value.TreeHash, reuse.Value.FullHash, reuse.Value.AssetsHash, reuse.Value.PlanKey, DateTime.UtcNow, TestOperation.Seconds(started), $"{plan.Summary}; {mode}", aggregate, perProject, problems);
-        var tests = TestResultRenderer.Render(aggregate, $"{plan.Summary}; {mode}", TestOperation.Seconds(started), resultsPath);
+        var tests = TestResultRenderer.Render(aggregate, $"{plan.Summary}; {mode}", TestOperation.Seconds(started), resultsPath, plan);
         // The tests' answer comes first, so the last line is a failed build or run whenever there is one.
         return problems.Count == 0 ? tests : TestResultRenderer.Join([tests, .. problems]);
     }
@@ -416,7 +416,7 @@ internal sealed class TestPlanExecutor
             return problems.Count == 0 ? summaryOnly : TestResultRenderer.Join([summaryOnly, .. problems]);
         }
 
-        var tests = TestResultRenderer.Render(aggregate, $"{plan.Summary}; {mode}", TestOperation.Seconds(started), resultsPath);
+        var tests = TestResultRenderer.Render(aggregate, $"{plan.Summary}; {mode}", TestOperation.Seconds(started), resultsPath, plan);
         // The tests' answer comes first, so the last line is a failed build or run whenever there is one.
         return problems.Count == 0 ? tests : TestResultRenderer.Join([tests, .. problems]);
     }

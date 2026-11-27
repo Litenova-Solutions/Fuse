@@ -155,12 +155,16 @@ internal static class CheckRenderer
             summaryParts.Add($"{report.NonCSharpChanged} non-C# file(s) changed, which Fuse does not check: {NonCSharpSample(report)}");
         var summaryTail = summaryParts.Count > 0 ? "; " + string.Join("; ", summaryParts) : "";
         var scoped = report.ScopedPaths.Length > 0 ? string.Join(", ", report.ScopedPaths) : null;
+        // A note prints only on a stamped command-line answer; hook and MCP answers stay unstamped and print nothing new.
+        var note = treeStamp is not null ? Advisories.TopNote(Advisories.CheckNotes(report)) : null;
 
         if (report.ErrorCount == 0)
         {
             var whose = report.LeftToOtherSessions > 0 ? " by this session's edits" : "";
             var where = scoped is null ? "" : $" in {scoped} and what it reaches";
             text.Append($"fuse: no errors introduced{whose}{where} ({report.FilesChecked} file(s) checked{summaryTail}{treeStamp}){Duration.In(seconds)}");
+            if (note is not null)
+                text.Append('\n').Append(note);
             return new OperationResult(Outcome.Clean, text.ToString());
         }
 
@@ -171,6 +175,8 @@ internal static class CheckRenderer
         var file = !json && report.ErrorCount > printed && resultsPath is not null ? $"; all {report.ErrorCount} in {resultsPath}" : "";
         var scope = scoped is null ? "" : $"; checked {scoped} and what it reaches";
         text.Append($"fuse: {report.ErrorCount} error(s) introduced in {report.ErrorFileCount} file(s){more} ({string.Join(", ", report.Projects)}){summaryTail}{scope}{treeStamp}{file}{Duration.In(seconds)}");
+        if (note is not null)
+            text.Append('\n').Append(note);
         return new OperationResult(Outcome.ProblemsFound, text.ToString());
     }
 

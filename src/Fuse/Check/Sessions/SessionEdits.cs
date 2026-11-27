@@ -49,7 +49,7 @@ internal sealed class SessionEdits
     public const int MaxLiveRegistrations = 64;
 
     /// <summary>How long a registration lasts without being begun again: long enough that an idle engine dying does not end it.</summary>
-    public static readonly TimeSpan RegistrationLifetime = TimeSpan.FromHours(4);
+    public static readonly TimeSpan RegistrationLifetime = SessionId.RegistrationLifetime;
 
     private readonly RepoRoot _root;
     private readonly string? _file;

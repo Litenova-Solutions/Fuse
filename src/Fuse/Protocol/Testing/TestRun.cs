@@ -21,6 +21,9 @@ namespace Fuse.Protocol.Testing;
 /// </param>
 internal sealed record TestRun(string Project, string Name, TestRunMode Mode, string? Filter, bool UsesTestingPlatform, string? RunSettings, string[] FilterArguments, string[] TargetPaths)
 {
+    /// <summary>Why this run builds with MSBuild instead of running from a shadow copy, or null when it runs from one.</summary>
+    public string? ShadowSkipReason { get; init; }
+
     /// <summary>True when this test slice was satisfied from the content-addressed slice cache without executing.</summary>
     public bool FromCache { get; init; }
 

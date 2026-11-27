@@ -82,7 +82,10 @@ internal static class ControlCliCommand
                 return 0;
             var directory = Path.GetDirectoryName(edited[0]);
             if (directory is null)
+            {
+                LogHook(payload.Cwd, $"{harness.Name} {HookEvent.PostEdit} failed: the edited path has no directory: {edited[0]}");
                 return 0;
+            }
             var root = RepoRoot.Find(directory);
             if (root is null)
                 return 0;

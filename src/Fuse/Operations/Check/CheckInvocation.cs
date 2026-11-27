@@ -5,9 +5,9 @@ namespace Fuse.Operations.Check;
 /// <summary>One check of the working tree: what to check, whose edits it answers, and how to show it.</summary>
 /// <param name="Files">Absolute paths of the files to check, or null for every change.</param>
 /// <param name="Session">
-///     The session that wrote <paramref name="Files"/>, or that is stopping when <paramref name="Files"/> is null,
-///     as its harness identifies it, or null. With one, the answer leaves out the errors other sessions' edits caused
-///     without it.
+///     The session that wrote <paramref name="Files"/>, or the session the answer is for when <paramref name="Files"/>
+///     is null, as its harness identifies it, or null. With one, the answer leaves out the errors other sessions'
+///     edits caused without it. Only <paramref name="IsStopping"/> marks it stopped.
 /// </param>
 /// <param name="WaitForLoad">Wait for the engine to finish loading, or return immediately with <see cref="ErrorCode.Loading"/>.</param>
 /// <param name="CompilationWideAnalyzers">
@@ -20,6 +20,11 @@ namespace Fuse.Operations.Check;
 /// <param name="IncludeNonCSharp">False to leave the changed files Fuse does not check out of the summary; the post-edit hook sends false.</param>
 /// <param name="Brief">True to request and render Roslyn repair packets (<c>--brief</c>).</param>
 /// <param name="InteractiveFast">True for post-edit hooks so body-only edits can use fast span-level binding.</param>
+/// <param name="IsStopping">
+///     True when the stop hook sends the check: it also marks <paramref name="Session"/> stopped, so a stopped
+///     subagent's edits count as their parent's from then on. Only the stop hook sends true; <c>fuse check</c>,
+///     <c>fuse gate</c> and MCP send false, so a working session is never marked stopped.
+/// </param>
 internal sealed record CheckInvocation(
     IReadOnlyList<string>? Files,
     SessionId? Session,
@@ -30,4 +35,5 @@ internal sealed record CheckInvocation(
     bool IncludeTreeStamp,
     bool IncludeNonCSharp,
     bool Brief,
-    bool InteractiveFast);
+    bool InteractiveFast,
+    bool IsStopping = false);

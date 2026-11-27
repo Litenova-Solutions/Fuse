@@ -121,15 +121,19 @@ internal sealed class SessionEdits
     /// <summary>
     ///     True when <paramref name="writer"/>'s edits count as <paramref name="session"/>'s own: it is the session, or a
     ///     subagent of it that has stopped. A subagent's id is its parent's followed by a slash and the subagent's own.
+    ///     Both spellings of a registered session count: the name a gate sends and the stored id with its
+    ///     <c>registered:</c> prefix.
     /// </summary>
     public bool IsOwnEdit(string writer, string session)
     {
-        if (string.Equals(writer, session, StringComparison.Ordinal))
+        var writerName = SessionId.DisplayNameOf(writer);
+        var sessionName = SessionId.DisplayNameOf(session);
+        if (string.Equals(writerName, sessionName, StringComparison.Ordinal))
             return true;
-        if (writer.Length <= session.Length + 1 || writer[session.Length] != '/' || !writer.StartsWith(session, StringComparison.Ordinal))
+        if (writerName.Length <= sessionName.Length + 1 || writerName[sessionName.Length] != '/' || !writerName.StartsWith(sessionName, StringComparison.Ordinal))
             return false;
         lock (_lock)
-            return _stopped.Contains(writer);
+            return _stopped.Contains(writer) || _stopped.Any(stopped => string.Equals(SessionId.DisplayNameOf(stopped), writerName, StringComparison.Ordinal));
     }
 
     /// <summary>
@@ -191,6 +195,21 @@ internal sealed class SessionEdits
         {
             PruneExpired();
             return [.. _registrations];
+        }
+    }
+
+    /// <summary>
+    ///     The live registration <paramref name="session"/> names, by its bare name or its stored id, or null when none
+    ///     is live under it. A check of every change answered to a matching session narrows its starting targets to the
+    ///     changed files under this registration's patterns and the files the session is credited with.
+    /// </summary>
+    public RegisteredSession? RegistrationFor(string session)
+    {
+        lock (_lock)
+        {
+            PruneExpired();
+            var name = SessionId.DisplayNameOf(session);
+            return _registrations.FirstOrDefault(r => string.Equals(SessionId.DisplayNameOf(r.Session), name, StringComparison.Ordinal));
         }
     }
 

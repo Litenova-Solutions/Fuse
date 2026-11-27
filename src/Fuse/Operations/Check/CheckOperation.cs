@@ -18,7 +18,7 @@ internal static class CheckOperation
         RepoRoot root, CheckInvocation invocation, TimeSpan timeout, CancellationToken cancellationToken)
     {
         EngineRequest request = invocation.Files is null
-            ? new EngineRequest.CheckChanges(invocation.WaitForLoad) { Session = invocation.Session?.StorageKey, Mode = invocation.Session is not null ? SessionCheckMode.Stop : SessionCheckMode.Check, MaxErrors = RequestedFor(invocation.Limit.ToCount(), invocation.Json), StampTree = invocation.IncludeTreeStamp, Brief = invocation.Brief }
+            ? new EngineRequest.CheckChanges(invocation.WaitForLoad) { Session = invocation.Session?.StorageKey, Mode = invocation.IsStopping ? SessionCheckMode.Stop : SessionCheckMode.Check, MaxErrors = RequestedFor(invocation.Limit.ToCount(), invocation.Json), StampTree = invocation.IncludeTreeStamp, Brief = invocation.Brief }
             : new EngineRequest.CheckFiles(invocation.Files, invocation.WaitForLoad) { Session = invocation.Session?.StorageKey, LeaveOutCompilationWide = !invocation.CompilationWideAnalyzers, MaxErrors = RequestedFor(invocation.Limit.ToCount(), invocation.Json), StampTree = invocation.IncludeTreeStamp, Brief = invocation.Brief, InteractiveFast = invocation.InteractiveFast };
         var response = await EngineClient.SendAsync(root, request, timeout, cancellationToken).ConfigureAwait(false);
         if (response is not EngineResponse.CheckAnswered answered)

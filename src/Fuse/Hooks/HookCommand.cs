@@ -227,7 +227,8 @@ internal static class HookCommand
                 IncludeTreeStamp: false,
                 IncludeNonCSharp: true,
                 Brief: false,
-                InteractiveFast: false),
+                InteractiveFast: false,
+                IsStopping: true),
             LongWait,
             cancellationToken).ConfigureAwait(false);
         if (!ShouldReport(result, response))

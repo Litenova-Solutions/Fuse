@@ -161,9 +161,21 @@ internal sealed class Checker
         _sessions.Forget(generation.Changed);
 
         IReadOnlyList<string> scopedPaths = scope is CheckScope.NamedPaths namedPaths ? ScopeExpansion.DisplaySpecs(_workspace.Root, namedPaths.Named) : [];
+        // A check of every change answered to a registered session starts from that session's files alone: the
+        // changed files under its registration's patterns and the files the writers record credits it with. The
+        // reach of declaration changes in those files into the rest of the repository stays whole, so a break the
+        // session caused elsewhere is still reported. With none of its own files changed, the answer is clean.
+        HashSet<RepoPath>? sessionKeep = null;
+        if (scope is CheckScope.AllChanges && session is not null && _sessions.RegistrationFor(session) is { } registration)
+        {
+            sessionKeep = SessionKeep(generation, session, registration);
+            if (sessionKeep.Count == 0)
+                return NoTargets with { NonCSharpChanged = generation.NonSourceChanged, NonCSharpSample = [.. generation.NonSourceSample.Select(p => p.Relative)] };
+        }
+
         var targets = scope is CheckScope.NamedPaths pathScope
             ? ScopeExpansion.Expand(_workspace, generation, pathScope.Named)
-            : _targets.Resolve(scope, generation, scope is CheckScope.AllChanges && session is not null ? _sessions.OnlyOtherSessionsWrote(generation.Changed, session) : null);
+            : _targets.Resolve(scope, generation, scope is CheckScope.AllChanges && session is not null ? SessionExcluded(generation, session, sessionKeep) : null);
         // Named files that are all outside every project, or not C# sources, would check nothing and read as a pass.
         if (targets.Count == 0 && scope is CheckScope.Files { Paths.Count: > 0 } named)
             throw new FuseException(ErrorCode.InvalidPath, ErrorMessages.NothingToCheck([.. named.Paths.Select(p => p.Relative)]));
@@ -451,6 +463,39 @@ internal sealed class Checker
             }).ConfigureAwait(false);
         return [.. changed.OrderBy(p => p.Relative, StringComparer.Ordinal)];
     }
+
+    /// <summary>
+    ///     The changed files a check of every change answered to <paramref name="session"/> starts from: the changed
+    ///     files under <paramref name="registration"/>'s patterns and the changed files the writers record credits the
+    ///     session with, by either spelling of its name.
+    /// </summary>
+    private HashSet<RepoPath> SessionKeep(Generation generation, string session, RegisteredSession registration)
+    {
+        var keep = new HashSet<RepoPath>();
+        foreach (var path in generation.Changed)
+        {
+            if (registration.Patterns.Any(pattern => PathPattern.Matches(pattern, path.Relative)))
+                keep.Add(path);
+        }
+
+        foreach (var (path, sessions) in _sessions.WritersOf(generation.Changed))
+        {
+            if (sessions.Any(writer => _sessions.IsOwnEdit(writer, session)))
+                keep.Add(path);
+        }
+
+        return keep;
+    }
+
+    /// <summary>
+    ///     The files a check of every change answered to <paramref name="session"/> leaves out: with a matching
+    ///     registration, every changed file outside <paramref name="sessionKeep"/>; otherwise the files only other
+    ///     sessions wrote.
+    /// </summary>
+    private HashSet<RepoPath> SessionExcluded(Generation generation, string session, HashSet<RepoPath>? sessionKeep) =>
+        sessionKeep is not null
+            ? generation.Changed.Where(path => !sessionKeep.Contains(path)).ToHashSet()
+            : _sessions.OnlyOtherSessionsWrote(generation.Changed, session);
 
     private static Task<(List<RepoPath> Stale, int Unreadable)> FindStaleChangedAsync(Generation generation, CancellationToken cancellationToken) =>
         FindStaleChangedAsync(generation, generation.Changed, cancellationToken);

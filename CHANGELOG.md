@@ -4,6 +4,49 @@ This file lists the changes in each release. The release workflow publishes each
 
 The [changelog page](https://fuse.codes/docs/changelog) explains each release with its upgrade steps and says which versions are supported. Each release groups its changes as Added, Changed, Removed, Fixed, Security and Documentation, listing only the groups it has. Versions before 5.0.0 are deprecated.
 
+## 7.1.0
+
+Released 2026-11-28. Compared with 7.0.0, this release fixes the engine stalls and wrong answers that several agents working in one large repository ran into, scopes `fuse gate --session` to the session's own paths, picks up restores and `AdditionalFiles` edits without a restart, and makes `fuse test` and `fuse build` output complete enough for scripts to rely on. No upgrade steps are required. Update with `dotnet tool update -g Fuse`; a 7.0.0 engine restarts as 7.1.0 on the next request. Run `fuse init --instructions` again if you want the refreshed instructions block in `AGENTS.md`, `CLAUDE.md` or `GEMINI.md`.
+
+Output that scripts may match changed in four places: `fuse test` prints each failure past the first ten as `  FAILED <name>` under `also failed (N):`, a run from the shadow copy says `from shadow copy (without MSBuild)` instead of `without MSBuild`, `fuse build` prints `; 0 warning(s)` on a clean build, and `fuse check` and `fuse gate` summaries end with the time they took.
+
+### Added
+
+- `fuse session list [--json]` prints each live session registration: its name, process, path patterns and time left, or `fuse: no active sessions`. It works whether or not an engine runs. `fuse status` and `fuse status --json` list the live sessions too. See [Commands](https://fuse.codes/docs/commands#fuse-session).
+- `fuse test --all` takes a scope: `--project`, `--solution`, paths, `-c`/`--configuration`, `-f`/`--framework`, `--no-build`, `--clean`, `--no-cache` and `--max-failures`, and runs every test in it. See [Commands](https://fuse.codes/docs/commands#fuse-test).
+- An optional `.fuseignore` file at the repository root lists gitignore-style path patterns (with `#` comments, nothing else) that project discovery leaves out. Fuse never writes it. Discovery also skips, with no file, a project under a directory holding `.template.config` and an unrestored project file holding placeholder tokens such as `__NAME__`, logging one line for each. See [Best practices](https://fuse.codes/docs/best-practices).
+- `fuse check`, `fuse gate`, `fuse test` and `fuse status` print a `fuse: note: ...` line when a limit Fuse decides slows you down: 500 or more uncommitted files, sessions registered while a check names none, a registration open over 2 hours, a test project run outside the shadow copy, analyzers that did not finish, or a changed C# file of 1,500 lines or more. Each command prints at most one note, `fuse status` lists them all, and `fuse gate --json` and `fuse status --json` carry them as `advisories`. Hooks never print a note, and a note never changes an exit code. See [Best practices](https://fuse.codes/docs/best-practices).
+- `fuse check` and `fuse gate` summaries end with the time the command took, and `fuse gate --json` carries `elapsedMs`. See [Commands](https://fuse.codes/docs/commands#fuse-gate).
+- When an engine is busy, `fuse check`, `fuse gate`, `fuse test`, `fuse build --changed` and `fuse session` print `fuse: waiting for engine (position N, about M s)` once the wait passes 2 seconds. Hooks stay silent. See [Messages and fixes](https://fuse.codes/docs/messages).
+- The [Best practices](https://fuse.codes/docs/best-practices) page says how to keep checks fast and answers exact when agents share a repository, and what each `fuse: note:` line asks of you.
+
+### Changed
+
+- `fuse gate --session <name>` checks the changed files the session's registered patterns match and the files it is credited with, and follows their declaration changes across the repository, so a break the session causes in another project is still reported while a sibling's unfinished files are not. A check that names a session no longer marks it stopped; only the stop hook does. See [Subagents and parallel agents](https://fuse.codes/docs/parallel-agents).
+- A routed `dotnet test` that passes a configuration other than Debug together with `--no-build` (a release gate) runs every test in the named project or solution, or in the whole repository when it names none, instead of the affected ones. A plain `fuse test --project <path>` that finds no affected test prints `fuse: 0 tests affected in <name>` and the `fuse test --all` command that runs every test in it. See [Commands](https://fuse.codes/docs/commands#fuse-test).
+- `fuse test` prints each failure past the first ten as `  FAILED <name>` under `also failed (N):`, so a script that matches `FAILED ` finds every failure. Details stay capped at ten.
+- A test project whose code walks parent directories from `AppContext.BaseDirectory` or `Assembly.Location` runs from its own build output instead of the shadow copy, and the engine log names the file. A run from the shadow copy is labeled `from shadow copy (without MSBuild)`. See [How it works](https://fuse.codes/docs/how-it-works#without-msbuild).
+- A change to `Directory.Packages.props` selects every test project that uses a package whose version changed. A project file change to package or project references, constants, target frameworks or build properties selects that project's test projects and their dependents, and a change to `Directory.Build.props`, `Directory.Build.targets` or `global.json` selects the test projects under it. An edit to comments or whitespace selects nothing. See [How it works](https://fuse.codes/docs/how-it-works#test-selection).
+- `fuse build` prints the warning count whenever it read the build log, including `; 0 warning(s)`. When errors pass the 20 shown, its hint repeats your arguments, such as `fuse build apps/api/App.slnx --all-errors`, and running it replays the finished build's full error list. See [Commands](https://fuse.codes/docs/commands#fuse-build).
+- A check gives analyzers at most 60 seconds, where it used to give them 80% of the client's wait. Past the budget it reports every compiler error, the analyzer errors that finished, and how many analyzers did not finish. An analyzer whose compilation start takes 150 ms or more (was 1 second) runs once per project per check. Baseline warming runs in the background lane, so checks go first.
+- `fuse init --instructions` writes a refreshed block naming scoped `fuse test --all`, the `--all-errors` replay, `fuse session list`, `FUSE_SESSION=judge`, and the practices on the best practices page. See [Connect your agent](https://fuse.codes/docs/harnesses).
+- The source tree is organized into stage folders of ten files or fewer, with one type per file. Contributors read the layout and the layer rules on [Architecture](https://fuse.codes/docs/architecture).
+
+### Fixed
+
+- With more changed files than the engine's touched-path bound (2,000), every check re-evaluated every project, because each reload counted every changed file again. Only paths that no longer differ from HEAD count against the bound now, so a large working tree re-evaluates once.
+- When a changed file was deleted from disk, every check of all changes logged that changed files could not be read and skipped its kept answer. A deleted file is fresh once no view holds it, and the kept answer keys it as deleted.
+- On a large project, a whole-project check ran each compilation-start analyzer once per document. It runs every analyzer once per project.
+- Concurrent checks each ran their own sync behind the workspace writer, and `fuse status` waited behind them, so under many sessions the engine looked hung. Concurrent syncs share one, and `fuse status` answers from the current state while a sync runs.
+- After a worker added a `PackageReference` and a build restored it, checks kept reporting the package's types as missing until `fuse stop`. The engine reloads a project once its `obj/project.assets.json` changes, and reports that a restore is needed when a project file declares a package its assets file lacks. A git-ignored project file, such as a `packages.lock.json` under an ignored folder, no longer re-evaluates the projects.
+- An edit to an `AdditionalFiles` item, such as `AnalyzerReleases.Unshipped.md`, reached the analyzers only after an engine restart. The next check binds the edited file.
+- A `.cs` file shipped as `Content` or copied as `None` was compiled as a source of the project, so `fuse check` reported its errors. Only `.razor` and `.cshtml` files in those items are sources.
+- With registered sessions, a registered writer stored as `registered:<name>` did not match the session name the gate sent, so a session's own edits read as another session's.
+
+### Documentation
+
+- [Best practices](https://fuse.codes/docs/best-practices) is new. [Commands](https://fuse.codes/docs/commands), [How it works](https://fuse.codes/docs/how-it-works), [Limits](https://fuse.codes/docs/limits), [Subagents and parallel agents](https://fuse.codes/docs/parallel-agents) and [Architecture](https://fuse.codes/docs/architecture) describe the behavior above.
+
 ## 7.0.0
 
 Released 2026-11-26. Compared with 6.0.0, this release serves every worktree of a repository from one engine, adds the worker gate and judge commands for running several agents at once, and reuses more work across checks, test runs and builds. No upgrade steps are required. Update with `dotnet tool update -g Fuse`. A 6.x engine drains its queued and running requests and restarts as 7.0.0 on the next request, because every request carries its build. If you use OpenCode, run `fuse init` again to update its plugin.

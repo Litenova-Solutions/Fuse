@@ -1,6 +1,8 @@
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using Fuse.Protocol.Analysis;
+using Fuse.Protocol.Requests;
 namespace Fuse.Engine.Server;
 
 /// <summary>
@@ -28,6 +30,18 @@ internal sealed class WatchHub
             }
         }
     }
+
+    /// <summary>
+    ///     Reads the events <paramref name="scope"/> names published after this call. The subscription is registered
+    ///     before this returns, so events published before the caller starts enumerating are kept. Ends when
+    ///     <paramref name="cancellationToken"/> is cancelled, which removes the subscription.
+    /// </summary>
+    public IAsyncEnumerable<WatchEvent> SubscribeAsync(WatchScope scope, CancellationToken cancellationToken) => scope switch
+    {
+        WatchScope.AllSessions => SubscribeAsync(session: null, all: true, cancellationToken),
+        WatchScope.OneSession one => SubscribeAsync(one.Session, all: false, cancellationToken),
+        _ => throw new UnreachableException($"a watch scope is all sessions or one session, not {scope.GetType().Name}"),
+    };
 
     /// <summary>
     ///     Reads the events published after this call: every event when <paramref name="all"/> holds, else only the

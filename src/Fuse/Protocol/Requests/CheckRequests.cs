@@ -19,10 +19,11 @@ internal abstract partial record EngineRequest
         public string? Session { get; init; }
 
         /// <summary>
-        ///     True when <see cref="Session"/> is stopping, which the stop hook sends. A subagent that has stopped writes no
-        ///     more, so from then on its parent session counts its edits as its own. A line without it reads as false.
+        ///     Whether the check only answers or also marks <see cref="Session"/> stopped. The stop hook sends
+        ///     <see cref="SessionCheckMode.Stop"/>: a subagent that has stopped writes no more, so from then on its
+        ///     parent session counts its edits as its own. A line without it reads as a check.
         /// </summary>
-        public bool IsStopping { get; init; }
+        public SessionCheckMode Mode { get; init; }
 
         /// <summary>
         ///     How many errors the answer holds at most; 0 keeps the default cap. A line without it reads as 0.

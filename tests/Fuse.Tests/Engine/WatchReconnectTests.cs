@@ -51,7 +51,7 @@ public class WatchReconnectTests
         /// <summary>One pushed session event at <paramref name="generation"/>, as the wire carries it.</summary>
         private static string Pushed(long generation) =>
             ProtocolJson.Serialize(new EngineResponse.WatchEventPushed(
-                new WatchEvent("session", Session: "worker-1", Generation: generation, Tree: "0123456789ab")));
+                new WatchEvent.SessionUpdated { Session = "worker-1", Generation = generation, Tree = "0123456789ab" }));
 
         private static async Task ServeAsync(RepoRoot root, NamedPipeServerStream pipe, CancellationToken stop)
         {

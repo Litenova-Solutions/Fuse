@@ -77,11 +77,11 @@ internal sealed class SurfaceGuardStore
     /// <param name="changedFiles">Every file that differs from HEAD now.</param>
     /// <param name="changedDeclarations">The changed declaration headers of each file.</param>
     /// <returns>The violations, ordered by changed file, then guard name, then declaration.</returns>
-    public IReadOnlyList<WatchEvent> Violations(IReadOnlyList<RepoPath> changedFiles, IReadOnlyDictionary<RepoPath, IReadOnlyList<string>> changedDeclarations)
+    public IReadOnlyList<WatchEvent.GuardViolated> Violations(IReadOnlyList<RepoPath> changedFiles, IReadOnlyDictionary<RepoPath, IReadOnlyList<string>> changedDeclarations)
     {
         lock (_lock)
         {
-            var events = new List<WatchEvent>();
+            var events = new List<WatchEvent.GuardViolated>();
             foreach (var file in changedFiles)
             {
                 if (!changedDeclarations.TryGetValue(file, out var declarations))
@@ -94,12 +94,13 @@ internal sealed class SurfaceGuardStore
                         continue;
                     foreach (var declaration in declarations)
                     {
-                        events.Add(new WatchEvent(
-                            "guard_violation",
-                            GuardName: guard.Key,
-                            ViolatedPattern: matched,
-                            Declaration: declaration,
-                            Message: $"{declaration} in {relative} changed under frozen pattern {matched} of {guard.Key}"));
+                        events.Add(new WatchEvent.GuardViolated
+                        {
+                            GuardName = guard.Key,
+                            ViolatedPattern = matched,
+                            Declaration = declaration,
+                            Message = $"{declaration} in {relative} changed under frozen pattern {matched} of {guard.Key}",
+                        });
                     }
                 }
             }

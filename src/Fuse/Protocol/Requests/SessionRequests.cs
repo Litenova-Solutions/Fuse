@@ -48,10 +48,13 @@ internal abstract partial record EngineRequest
     /// </summary>
     public sealed record WatchStream : EngineRequest
     {
-        /// <summary>Session to filter to, or null when <see cref="All"/> is true.</summary>
-        public string? Session { get; init; }
+        private readonly WatchScope _scope = new WatchScope.AllSessions();
 
-        /// <summary>True to stream events for every session, worktree, and guard violation.</summary>
-        public bool All { get; init; }
+        /// <summary>Which sessions to stream: every session, or one named session. A line without it reads as every session.</summary>
+        public WatchScope Scope
+        {
+            get => _scope;
+            init => _scope = value ?? new WatchScope.AllSessions();
+        }
     }
 }

@@ -23,10 +23,10 @@ public class EngineServerStreamTests
         using var subscription = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         subscription.CancelAfter(TimeSpan.FromMilliseconds(500));
         await using var reader = hub.SubscribeAsync("a", all: false, subscription.Token).GetAsyncEnumerator(subscription.Token);
-        hub.Publish(new WatchEvent("check", Session: "a", Message: "first"));
-        hub.Publish(new WatchEvent("check", Session: "b", Message: "other"));
-        hub.Publish(new WatchEvent("reload", Message: "wide"));
-        hub.Publish(new WatchEvent("check", Session: "a", Message: "second"));
+        hub.Publish(new WatchEvent.CheckUpdated { Session = "a", Message = "first" });
+        hub.Publish(new WatchEvent.CheckUpdated { Session = "b", Message = "other" });
+        hub.Publish(new WatchEvent.Reloaded { Message = "wide" });
+        hub.Publish(new WatchEvent.CheckUpdated { Session = "a", Message = "second" });
 
         Assert.Equal(["first", "second"], (await ReadAllAsync(reader)).Select(e => e.Message));
     }
@@ -38,10 +38,10 @@ public class EngineServerStreamTests
         using var subscription = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         subscription.CancelAfter(TimeSpan.FromMilliseconds(500));
         await using var reader = hub.SubscribeAsync(session: null, all: true, subscription.Token).GetAsyncEnumerator(subscription.Token);
-        hub.Publish(new WatchEvent("check", Session: "a", Message: "first"));
-        hub.Publish(new WatchEvent("check", Session: "b", Message: "second"));
-        hub.Publish(new WatchEvent("reload", Message: "third"));
-        hub.Publish(new WatchEvent("guard_violation", Session: "a", Message: "fourth"));
+        hub.Publish(new WatchEvent.CheckUpdated { Session = "a", Message = "first" });
+        hub.Publish(new WatchEvent.CheckUpdated { Session = "b", Message = "second" });
+        hub.Publish(new WatchEvent.Reloaded { Message = "third" });
+        hub.Publish(new WatchEvent.GuardViolated { Session = "a", Message = "fourth" });
 
         Assert.Equal(["first", "second", "third", "fourth"], (await ReadAllAsync(reader)).Select(e => e.Message));
     }
@@ -54,7 +54,7 @@ public class EngineServerStreamTests
         subscription.CancelAfter(TimeSpan.FromMilliseconds(500));
         await using var reader = hub.SubscribeAsync("a", all: false, subscription.Token).GetAsyncEnumerator(subscription.Token);
         for (var i = 0; i < WatchHub.KeptEvents + 3; i++)
-            hub.Publish(new WatchEvent("check", Session: "a", Message: $"m{i}"));
+            hub.Publish(new WatchEvent.CheckUpdated { Session = "a", Message = $"m{i}" });
 
         var read = await ReadAllAsync(reader);
 
@@ -73,7 +73,7 @@ public class EngineServerStreamTests
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => { await reader.MoveNextAsync(); });
         // Publishing after the subscription ended reaches no one and throws nothing.
-        hub.Publish(new WatchEvent("check", Session: "a", Message: "after"));
+        hub.Publish(new WatchEvent.CheckUpdated { Session = "a", Message = "after" });
     }
 
     [Fact]

@@ -9,25 +9,26 @@ internal static class WatchRenderer
 {
     internal static async Task WriteWatchEventAsync(WatchEvent ev, bool json, TextWriter output, CancellationToken cancellationToken)
     {
+        var line = ev.ToLine();
         if (json)
         {
-            await output.WriteLineAsync(JsonSerializer.Serialize(ev, ProtocolJson.Default.WatchEvent)).ConfigureAwait(false);
+            await output.WriteLineAsync(JsonSerializer.Serialize(line, ProtocolJson.Default.WatchEventLine)).ConfigureAwait(false);
             await output.FlushAsync(cancellationToken).ConfigureAwait(false);
             return;
         }
 
-        if (ev.EventType == "guard_violation")
+        if (line.EventType == "guard_violation")
         {
-            await output.WriteLineAsync($"fuse: guard {ev.GuardName} violation on {ev.ViolatedPattern}: {ev.Declaration ?? ev.Message}").ConfigureAwait(false);
+            await output.WriteLineAsync($"fuse: guard {line.GuardName} violation on {line.ViolatedPattern}: {line.Declaration ?? line.Message}").ConfigureAwait(false);
         }
         else
         {
-            foreach (var error in ev.Errors)
+            foreach (var error in line.Errors)
                 await output.WriteLineAsync(error.Error.ToString()).ConfigureAwait(false);
-            var who = ev.Session is { Length: > 0 } s ? $"session {s}: " : "";
-            var summary = ev.Message ?? (ev.ErrorCount == 0
-                ? $"no errors introduced; generation {ev.Generation}; tree {ev.Tree}"
-                : $"{ev.ErrorCount} error(s) introduced; generation {ev.Generation}; tree {ev.Tree}");
+            var who = line.Session is { Length: > 0 } s ? $"session {s}: " : "";
+            var summary = line.Message ?? (line.ErrorCount == 0
+                ? $"no errors introduced; generation {line.Generation}; tree {line.Tree}"
+                : $"{line.ErrorCount} error(s) introduced; generation {line.Generation}; tree {line.Tree}");
             await output.WriteLineAsync($"fuse: {who}{summary}").ConfigureAwait(false);
         }
 
@@ -56,8 +57,8 @@ internal static class WatchRenderer
                         reported.Add(re);
                 }
 
-                var ev = new WatchEvent("session", session, null, generation, tree, count, [.. reported]);
-                await output.WriteLineAsync(JsonSerializer.Serialize(ev, ProtocolJson.Default.WatchEvent)).ConfigureAwait(false);
+                var line = new WatchEvent.SessionUpdated { Session = session, Generation = generation, Tree = tree, ErrorCount = count, Errors = [.. reported] }.ToLine();
+                await output.WriteLineAsync(JsonSerializer.Serialize(line, ProtocolJson.Default.WatchEventLine)).ConfigureAwait(false);
                 return true;
             }
 

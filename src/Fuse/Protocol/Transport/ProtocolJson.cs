@@ -11,6 +11,7 @@ namespace Fuse.Protocol.Transport;
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     UseStringEnumConverter = true)]
 [JsonSerializable(typeof(EngineRequest))]
+[JsonSerializable(typeof(WatchScope))]
 [JsonSerializable(typeof(EngineResponse))]
 [JsonSerializable(typeof(ReportedRepairPacket))]
 [JsonSerializable(typeof(JudgeRequest))]
@@ -18,6 +19,13 @@ namespace Fuse.Protocol.Transport;
 [JsonSerializable(typeof(GraphReport))]
 [JsonSerializable(typeof(ImpactReport))]
 [JsonSerializable(typeof(WatchEvent))]
+[JsonSerializable(typeof(WatchEvent.CheckUpdated))]
+[JsonSerializable(typeof(WatchEvent.SessionUpdated))]
+[JsonSerializable(typeof(WatchEvent.GuardViolated))]
+[JsonSerializable(typeof(WatchEvent.Reloaded))]
+[JsonSerializable(typeof(WatchEvent.Heartbeat))]
+[JsonSerializable(typeof(WatchEvent.Waiting))]
+[JsonSerializable(typeof(WatchEvent.Line), TypeInfoPropertyName = "WatchEventLine")]
 [JsonSerializable(typeof(FreezeGuardRequest))]
 internal sealed partial class ProtocolJson : JsonSerializerContext
 {

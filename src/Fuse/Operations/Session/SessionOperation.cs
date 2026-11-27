@@ -1,6 +1,7 @@
 using System.Globalization;
 using Fuse.Client;
 using Fuse.Failures;
+using Fuse.Identity;
 using Fuse.Paths;
 using Fuse.Protocol.Analysis;
 using Fuse.Protocol.Requests;
@@ -116,7 +117,7 @@ internal static class SessionOperation
 
         if (specs.Count == 0)
             return new OperationResult(Outcome.Unanswered, Usage);
-        if (!IsValidName(name))
+        if (!SessionId.IsValidRegistrationName(name))
             return new OperationResult(Outcome.Unanswered, $"fuse: {ErrorMessages.InvalidSessionName(name)}");
         var (patterns, refusal) = ValidatePatterns(root, specs);
         if (patterns is null)
@@ -154,7 +155,7 @@ internal static class SessionOperation
         var validated = new List<(string Name, List<string> Patterns)>(registrations.Count);
         foreach (var (name, specs) in registrations)
         {
-            if (!IsValidName(name))
+            if (!SessionId.IsValidRegistrationName(name))
                 return new OperationResult(Outcome.Unanswered, $"fuse: {ErrorMessages.InvalidSessionName(name)}");
             var (patterns, refusal) = ValidatePatterns(root, specs);
             if (patterns is null)
@@ -261,7 +262,7 @@ internal static class SessionOperation
         if (args.Count < 3 || string.IsNullOrWhiteSpace(args[1]))
             return new OperationResult(Outcome.Unanswered, Usage);
         var name = args[1];
-        if (!IsValidName(name))
+        if (!SessionId.IsValidRegistrationName(name))
             return new OperationResult(Outcome.Unanswered, $"fuse: {ErrorMessages.InvalidSessionName(name)}");
 
         if (args[2] == "--unfreeze")
@@ -295,10 +296,6 @@ internal static class SessionOperation
             return new OperationResult(Outcome.Clean, $"fuse: guard {name} frozen for {patterns.Count} path pattern(s); declaration changes will trigger watch alerts");
         return OperationResult.Unanswered(response, "session guard");
     }
-
-    /// <summary>True when <paramref name="name"/> is a name the engine registers, as <see cref="Fuse.Check.Sessions.SessionEdits"/> decides.</summary>
-    private static bool IsValidName(string? name) =>
-        !string.IsNullOrEmpty(name) && name.Length <= 64 && name.All(c => char.IsLetterOrDigit(c) || c is '-' or '_' or '.');
 
     /// <summary>
     ///     <paramref name="spec"/> as a repository-relative pattern with forward slashes, or null when an absolute pattern

@@ -54,11 +54,19 @@ internal sealed class SessionRoute
     internal async Task<EngineResponse> WatchFirstAsync(EngineRequest.WatchStream watch, CancellationToken cancellationToken)
     {
         if (_watchHub is null)
-            return new EngineResponse.WatchEventPushed(new WatchEvent("heartbeat", watch.Session, _root.Path, Message: "watching"));
-        await foreach (var watchEvent in _watchHub.SubscribeAsync(watch.Session, watch.All, cancellationToken).ConfigureAwait(false))
+            return new EngineResponse.WatchEventPushed(HeartbeatFor(watch.Scope));
+        await foreach (var watchEvent in _watchHub.SubscribeAsync(watch.Scope, cancellationToken).ConfigureAwait(false))
             return new EngineResponse.WatchEventPushed(watchEvent);
         throw new UnreachableException("a watch subscription ends only when cancelled");
     }
+
+    /// <summary>The first event of <paramref name="scope"/>'s subscription, which says the stream is up.</summary>
+    private WatchEvent.Heartbeat HeartbeatFor(WatchScope scope) => scope switch
+    {
+        WatchScope.AllSessions => new WatchEvent.Heartbeat { WorktreeRoot = _root.Path, Message = "watching" },
+        WatchScope.OneSession one => new WatchEvent.Heartbeat { Session = one.Session, WorktreeRoot = _root.Path, Message = "watching" },
+        _ => throw new UnreachableException($"a watch scope is all sessions or one session, not {scope.GetType().Name}"),
+    };
 
     /// <summary>Registers the session that <paramref name="begin"/> names.</summary>
     private EngineResponse BeginSession(EngineRequest.BeginSession begin)

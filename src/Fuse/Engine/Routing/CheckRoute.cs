@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using Fuse.Identity;
 using Fuse.Changes;
 using Fuse.Changes.Model;
 using Fuse.Check.Diagnostics;
@@ -54,7 +55,7 @@ internal sealed class CheckRoute
     /// <summary>Checks every change, answered to the session the request names, with a tree stamp.</summary>
     internal async Task<EngineResponse> CheckChangesAsync(EngineRequest.CheckChanges changes, AnalyzerRun analyzers, PhaseTimes phases, CancellationToken cancellationToken)
     {
-        var session = SessionEdits.IsValid(changes.Session) ? changes.Session : null;
+        var session = SessionId.IsValid(changes.Session) ? changes.Session : null;
         var options = new CheckOptions(IncludeRepairBrief: changes.Brief);
         var answered = Stamped(ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.AllChanges(), session, analyzers, phases, options, cancellationToken, maxReported: changes.MaxErrors).ConfigureAwait(false)), stamp: true);
         await PublishGuardViolationsAsync(cancellationToken).ConfigureAwait(false);
@@ -84,7 +85,7 @@ internal sealed class CheckRoute
             }
         }
 
-        var session = SessionEdits.IsValid(check.Session) ? check.Session : null;
+        var session = SessionId.IsValid(check.Session) ? check.Session : null;
         var options = new CheckOptions(check.InteractiveFast, check.Brief);
         var answered = Stamped(ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.Files(paths), session, analyzers, phases, options, cancellationToken, maxReported: check.MaxErrors).ConfigureAwait(false)), stamp: true);
         await PublishGuardViolationsAsync(cancellationToken).ConfigureAwait(false);
@@ -104,7 +105,7 @@ internal sealed class CheckRoute
         }
 
         var options = new CheckOptions(IncludeRepairBrief: check.Brief);
-        var answered = Stamped(ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.NamedPaths(check.Paths), SessionEdits.IsValid(check.Session) ? check.Session : null, analyzers, phases, options, cancellationToken, maxReported: check.MaxErrors).ConfigureAwait(false)), stamp: true);
+        var answered = Stamped(ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.NamedPaths(check.Paths), SessionId.IsValid(check.Session) ? check.Session : null, analyzers, phases, options, cancellationToken, maxReported: check.MaxErrors).ConfigureAwait(false)), stamp: true);
         await PublishGuardViolationsAsync(cancellationToken).ConfigureAwait(false);
         return answered;
     }
@@ -127,9 +128,9 @@ internal sealed class CheckRoute
     /// </summary>
     internal void NoteSession(EngineRequest request)
     {
-        if (request is EngineRequest.CheckFiles { Session: { } writer } written && SessionEdits.IsValid(writer))
+        if (request is EngineRequest.CheckFiles { Session: { } writer } written && SessionId.IsValid(writer))
             RecordSession(writer, written.Files);
-        if (request is EngineRequest.CheckChanges { IsStopping: true, Session: { } stopping } && SessionEdits.IsValid(stopping))
+        if (request is EngineRequest.CheckChanges { Mode: SessionCheckMode.Stop, Session: { } stopping } && SessionId.IsValid(stopping))
             _sessions.MarkStopped(stopping);
     }
 
@@ -176,19 +177,19 @@ internal sealed class CheckRoute
         {
             case EngineRequest.CheckChanges changes:
                 scopeKey = "all" + (changes.Brief ? "|brief" : "");
-                session = SessionEdits.IsValid(changes.Session) ? changes.Session : null;
+                session = SessionId.IsValid(changes.Session) ? changes.Session : null;
                 compilationWide = true;
                 maxErrors = changes.MaxErrors;
                 break;
             case EngineRequest.CheckFiles files:
                 scopeKey = "files:" + string.Join(",", files.Files.Order(StringComparer.Ordinal)) + (files.Brief ? "|brief" : "") + (files.InteractiveFast ? "|fast" : "");
-                session = SessionEdits.IsValid(files.Session) ? files.Session : null;
+                session = SessionId.IsValid(files.Session) ? files.Session : null;
                 compilationWide = !files.LeaveOutCompilationWide;
                 maxErrors = files.MaxErrors;
                 break;
             case EngineRequest.CheckPaths paths:
                 scopeKey = "paths:" + string.Join(",", paths.Paths.Order(StringComparer.Ordinal)) + (paths.Brief ? "|brief" : "");
-                session = SessionEdits.IsValid(paths.Session) ? paths.Session : null;
+                session = SessionId.IsValid(paths.Session) ? paths.Session : null;
                 compilationWide = true;
                 maxErrors = paths.MaxErrors;
                 break;
@@ -260,7 +261,15 @@ internal sealed class CheckRoute
             previous = kept;
         _answers.Keep(key, session, keyed.Number, tree, answered.Report);
         if (session is not null && _watchHub is not null && AnswerChanged(previous, answered.Report))
-            _watchHub.Publish(new WatchEvent("check", session, _root.Path, keyed.Number, tree, answered.Report.ErrorCount, answered.Report.Errors));
+            _watchHub.Publish(new WatchEvent.CheckUpdated
+            {
+                Session = session,
+                WorktreeRoot = _root.Path,
+                Generation = keyed.Number,
+                Tree = tree,
+                ErrorCount = answered.Report.ErrorCount,
+                Errors = answered.Report.Errors,
+            });
     }
 
     /// <summary>

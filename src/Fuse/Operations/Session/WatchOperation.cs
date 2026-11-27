@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Fuse.Client;
+using Fuse.Identity;
 using Fuse.Paths;
 using Fuse.Protocol.Analysis;
 using Fuse.Protocol.Requests;
@@ -40,9 +41,12 @@ internal static class WatchOperation
         // engine does not support push (false), which falls back to polling below.
         if ((all || json || EngineClient.PipeExists(root.PipeName)) && EngineClient.PipeExists(root.PipeName))
         {
+            WatchScope scope = all
+                ? new WatchScope.AllSessions()
+                : new WatchScope.OneSession(session ?? "");
             var streamed = await EngineClient.WatchStreamAsync(
                 root,
-                new EngineRequest.WatchStream { Session = session, All = all },
+                new EngineRequest.WatchStream { Scope = scope },
                 ev => WatchRenderer.WriteWatchEventAsync(ev, json, output, cancellationToken),
                 cancellationToken).ConfigureAwait(false);
             if (streamed || cancellationToken.IsCancellationRequested)
@@ -56,7 +60,9 @@ internal static class WatchOperation
 
     private static async Task<OperationResult> PollSessionAsync(RepoRoot root, string session, bool json, TextWriter output, CancellationToken cancellationToken)
     {
-        var path = SessionFilePath(root.StateDirectory, session);
+        if (!SessionId.TryParse(session, out var id) || id is null)
+            return new OperationResult(Outcome.Unanswered, Usage);
+        var path = LocalState.SessionAnswerFile(root.StateDirectory, id);
         string? printed = null;
         var waiting = false;
         try
@@ -87,8 +93,8 @@ internal static class WatchOperation
                 {
                     if (json)
                     {
-                        var ev = new WatchEvent("waiting", Session: session, Message: $"watching session {session}; no stored answer yet");
-                        await output.WriteLineAsync(JsonSerializer.Serialize(ev, ProtocolJson.Default.WatchEvent)).ConfigureAwait(false);
+                        var line = new WatchEvent.Waiting { Session = session, Message = $"watching session {session}; no stored answer yet" }.ToLine();
+                        await output.WriteLineAsync(JsonSerializer.Serialize(line, ProtocolJson.Default.WatchEventLine)).ConfigureAwait(false);
                     }
                     else
                     {
@@ -166,16 +172,4 @@ internal static class WatchOperation
         return new OperationResult(Outcome.Clean, "");
     }
 
-    /// <summary>
-    ///     The session file of <paramref name="session"/> under <paramref name="stateDirectory"/>: the same
-    ///     spelling the result store in the engine writes, with the <c>registered:</c> prefix a registration
-    ///     stores a session under taken off and every character a file name cannot hold replaced by <c>-</c>.
-    ///     This layer may not use the engine layer that writes the files, so the spelling is held here too.
-    /// </summary>
-    internal static string SessionFilePath(string stateDirectory, string session)
-    {
-        var name = session.StartsWith("registered:", StringComparison.Ordinal) ? session["registered:".Length..] : session;
-        var file = new string([.. name.Select(c => char.IsLetterOrDigit(c) || c is '-' or '_' or '.' ? c : '-')]).Trim('.');
-        return Path.Combine(stateDirectory, "sessions", (file.Length == 0 ? "session" : file) + ".json");
-    }
 }

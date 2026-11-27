@@ -83,7 +83,7 @@ internal sealed class Scheduler : IDisposable
     public static SchedulerLane LaneFor(EngineRequest request) => request switch
     {
         EngineRequest.CheckFiles { LeaveOutCompilationWide: true } => SchedulerLane.Interactive,
-        EngineRequest.CheckChanges { IsStopping: true } => SchedulerLane.Interactive,
+        EngineRequest.CheckChanges { Mode: SessionCheckMode.Stop } => SchedulerLane.Interactive,
         _ => SchedulerLane.Command,
     };
 

@@ -325,7 +325,7 @@ internal static class EngineServer
             var disconnect = WatchDisconnectAsync(pipe, subscription);
             try
             {
-                await foreach (var watchEvent in hub.SubscribeAsync(watch.Session, watch.All, subscription.Token).ConfigureAwait(false))
+                await foreach (var watchEvent in hub.SubscribeAsync(watch.Scope, subscription.Token).ConfigureAwait(false))
                 {
                     if (subscription.IsCancellationRequested)
                         break;

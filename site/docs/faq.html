@@ -45,7 +45,7 @@
       "url": "https://fuse.codes/docs/faq",
       "mainEntityOfPage": "https://fuse.codes/docs/faq",
       "inLanguage": "en",
-      "dateModified": "2026-11-25",
+      "dateModified": "2026-11-28",
       "image": "https://fuse.codes/assets/og.png",
       "isPartOf": {
         "@type": "WebSite",
@@ -140,7 +140,7 @@
           "name": "Does Fuse need configuration?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "No. Run fuse init once in the repository, and it writes the hook settings for each harness it finds. Fuse has no configuration file. Its one environment variable is FUSE_SESSION, which names a caller's session. It needs the .NET 10 SDK and restored projects. If a restore is missing, it says so and names the dotnet restore command to run."
+            "text": "No. Run fuse init once in the repository, and it writes the hook settings for each harness it finds. fuse init is the only required setup; a repository-root .fuseignore file is optional and only excludes paths. FUSE_SESSION names a caller's session, and an orchestrator sets FUSE_SESSION=judge for its final check after the workers finish. It needs the .NET 10 SDK and restored projects. If a restore is missing, it says so and names the dotnet restore command to run."
           }
         },
         {
@@ -164,7 +164,7 @@
           "name": "What can Fuse not check?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Fuse checks C# only. A check cannot see custom MSBuild targets that change compiler inputs or IL weaving. It runs compilation-end analyzers only when it compiles whole projects, which happens past 500 files in reach. fuse build runs the real build. Because test selection is static, a test that reaches code only through reflection may not be selected. Limits lists every case."
+            "text": "Fuse checks C# only. A check cannot see custom MSBuild targets that change compiler inputs or IL weaving. A check gives analyzers at most 60 seconds; past that it reports every compiler error, the analyzer errors that finished, and how many analyzers did not finish. It runs compilation-end analyzers only when it compiles whole projects, which happens past 500 files in reach. fuse build runs the real build. Because test selection is static, a test that reaches code only through reflection may not be selected. Limits lists every case."
           }
         },
         {
@@ -228,7 +228,7 @@
           "name": "How is Fuse different from test impact analysis tools?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Test impact analysis tools choose which tests to run for a change: dotnet-affected selects the projects a change affects, from the project graph, to build and test only those in CI. dotnet-tia selects the tests a git diff can reach, from Roslyn references, as a command for CI. NCrunch and Live Unit Testing in Visual Studio Enterprise run tests continuously in the IDE. They use the code coverage of earlier runs to choose the tests a change affects. Fuse selects tests from the code as written, like dotnet-tia, so it needs no earlier run. It runs when the agent runs dotnet test, which the pre-shell hook rewrites to fuse test. It selects from the changes against HEAD, skips MSBuild when only C# sources changed, and prints only the failures. Static selection misses a test that reaches the code only through reflection or configuration. Limits says when to run fuse test --all, and How Fuse selects tests gives the steps."
+            "text": "Test impact analysis tools choose which tests to run for a change: dotnet-affected selects the projects a change affects, from the project graph, to build and test only those in CI. dotnet-tia selects the tests a git diff can reach, from Roslyn references, as a command for CI. NCrunch and Live Unit Testing in Visual Studio Enterprise run tests continuously in the IDE. They use the code coverage of earlier runs to choose the tests a change affects. Fuse selects tests from the code as written, like dotnet-tia, so it needs no earlier run. It runs when the agent runs dotnet test, which the pre-shell hook rewrites to fuse test. It selects from the changes against HEAD, skips MSBuild when only C# sources changed, and prints only the failures. Static selection misses a test that reaches the code only through reflection or configuration. Limits says when to run fuse test --all over a named scope, and How Fuse selects tests gives the steps."
           }
         }
       ]
@@ -301,7 +301,7 @@
     <p>Fuse supports Claude Code, Cursor, Gemini CLI, Codex, GitHub Copilot CLI, OpenCode and Muse Code through hooks. VS Code agent mode and any other MCP host reach it through <code>fuse mcp</code>. Claude Code, OpenCode and Muse Code are tested end to end. Each of the others follows its harness's documented hook format and is covered by payload tests. <a href="harnesses">Connect your agent</a> lists what <code>fuse init</code> writes for each one.</p>
 
     <h3 id="does-fuse-need-configuration">Does Fuse need configuration? <a class="anchor" href="#does-fuse-need-configuration" aria-label="Link to this section">#</a></h3>
-    <p>No. Run <code>fuse init</code> once in the repository, and it writes the hook settings for each harness it finds. Fuse has no configuration file. Its one environment variable is <code>FUSE_SESSION</code>, which names a caller's session. It needs the .NET 10 SDK and restored projects. If a restore is missing, it says so and names the <code>dotnet restore</code> command to run.</p>
+    <p>No. Run <code>fuse init</code> once in the repository, and it writes the hook settings for each harness it finds. <code>fuse init</code> is the only required setup; a repository-root <code>.fuseignore</code> file is optional and only excludes paths. <code>FUSE_SESSION</code> names a caller's session, and an orchestrator sets <code>FUSE_SESSION=judge</code> for its final check after the workers finish. It needs the .NET 10 SDK and restored projects. If a restore is missing, it says so and names the <code>dotnet restore</code> command to run.</p>
 
     <h3 id="does-fuse-send-my-code-or-data-anywhere">Does Fuse send my code or data anywhere? <a class="anchor" href="#does-fuse-send-my-code-or-data-anywhere" aria-label="Link to this section">#</a></h3>
     <p>No. Everything runs locally: Fuse has no telemetry and makes no network calls of its own. It never edits your code. The only files it writes in your repository are the hook settings and the <code>.gitignore</code> line from <code>fuse init</code>, plus, with <code>fuse init --instructions</code>, its section in <code>AGENTS.md</code> and the other instruction files your agents read. Commands Fuse runs for you, such as <code>dotnet build</code>, act as they normally would.</p>
@@ -310,7 +310,7 @@
     <p>Fuse runs on Windows, Linux and macOS, with the .NET 10 SDK. CI builds and tests Fuse on all three. The <a href="benchmarks">benchmarks</a> come from GitHub Actions windows-latest runners.</p>
 
     <h3 id="what-can-fuse-not-check">What can Fuse not check? <a class="anchor" href="#what-can-fuse-not-check" aria-label="Link to this section">#</a></h3>
-    <p>Fuse checks C# only. A check cannot see custom MSBuild targets that change compiler inputs or IL weaving. It runs compilation-end analyzers only when it compiles whole projects, which happens past 500 files in reach. <code>fuse build</code> runs the real build. Because test selection is static, a test that reaches code only through reflection may not be selected. <a href="limits">Limits</a> lists every case.</p>
+    <p>Fuse checks C# only. A check cannot see custom MSBuild targets that change compiler inputs or IL weaving. A check gives analyzers at most 60 seconds; past that it reports every compiler error, the analyzer errors that finished, and how many analyzers did not finish. It runs compilation-end analyzers only when it compiles whole projects, which happens past 500 files in reach. <code>fuse build</code> runs the real build. Because test selection is static, a test that reaches code only through reflection may not be selected. <a href="limits">Limits</a> lists every case.</p>
 
     <h3 id="what-comes-next-for-fuse">What comes next for Fuse? <a class="anchor" href="#what-comes-next-for-fuse" aria-label="Link to this section">#</a></h3>
     <p>What comes next is even faster feedback. We are exploring an index of the solution that survives restarts, so that Fuse can answer the moment an edit is saved instead of first loading the projects. Fuse keeps a syntax token index of identifier tokens and base types to narrow reference searches, but it has no semantic code search; it answers after the edit. The <a href="changelog">changelog</a> will say when that changes.</p>
@@ -364,7 +364,7 @@
       <li><a href="https://github.com/SebHenn/dotnet-tia">dotnet-tia</a> selects the tests a git diff can reach, from Roslyn references, as a command for CI.</li>
       <li><a href="https://www.ncrunch.net/">NCrunch</a> and <a href="https://learn.microsoft.com/visualstudio/test/live-unit-testing">Live Unit Testing</a> in Visual Studio Enterprise run tests continuously in the IDE. They use the code coverage of earlier runs to choose the tests a change affects.</li>
     </ul>
-    <p>Fuse selects tests from the code as written, like dotnet-tia, so it needs no earlier run. It runs when the agent runs <code>dotnet test</code>, which the pre-shell hook rewrites to <code>fuse test</code>. It selects from the changes against HEAD, skips MSBuild when only C# sources changed, and prints only the failures. Static selection misses a test that reaches the code only through reflection or configuration. <a href="limits#test-selection">Limits</a> says when to run <code>fuse test --all</code>, and <a href="how-it-works#test-selection">How Fuse selects tests</a> gives the steps.</p>
+    <p>Fuse selects tests from the code as written, like dotnet-tia, so it needs no earlier run. It runs when the agent runs <code>dotnet test</code>, which the pre-shell hook rewrites to <code>fuse test</code>. It selects from the changes against HEAD, skips MSBuild when only C# sources changed, and prints only the failures. Static selection misses a test that reaches the code only through reflection or configuration. <a href="limits#test-selection">Limits</a> says when to run <code>fuse test --all --solution &lt;solution&gt;</code>, and <a href="how-it-works#test-selection">How Fuse selects tests</a> gives the steps.</p>
 
     <nav class="pager" aria-label="Previous and next page">
       <a href="benchmarks"><span>Previous</span>Benchmarks</a>
@@ -379,6 +379,7 @@
         <li><a href="getting-started">Getting started</a></li>
         <li><a href="harnesses">Connect your agent</a></li>
         <li><a href="parallel-agents">Subagents and parallel agents</a></li>
+        <li><a href="best-practices">Best practices</a></li>
       </ul>
       <h2>Understand</h2>
       <ul>

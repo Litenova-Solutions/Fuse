@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Best Practices for Fast and Exact Agent Checks | Fuse</title>
+<meta name="description" content="Keep Fuse checks fast and answers exact when agents share a repository: commit finished work, isolate each worker, write shadow-safe tests, exclude template trees, keep analyzers fast and files small, restore after package changes, and read each fuse note.">
+<link rel="canonical" href="https://fuse.codes/docs/best-practices">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+<meta name="author" content="Litenova Solutions">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#fcfcfb">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Fuse">
+<meta property="og:locale" content="en_US">
+<meta property="og:title" content="Best Practices for Fast and Exact Agent Checks">
+<meta property="og:description" content="Keep Fuse checks fast and answers exact when agents share a repository: commit finished work, isolate each worker, write shadow-safe tests, exclude template trees, keep analyzers fast and files small, restore after package changes, and read each fuse note.">
+<meta property="og:url" content="https://fuse.codes/docs/best-practices">
+<meta property="og:image" content="https://fuse.codes/assets/og.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 3.4x to 16.9x faster than dotnet build. dotnet tool install -g Fuse.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Best Practices for Fast and Exact Agent Checks">
+<meta name="twitter:description" content="Keep Fuse checks fast and answers exact when agents share a repository: commit finished work, isolate each worker, write shadow-safe tests, exclude template trees, keep analyzers fast and files small, restore after package changes, and read each fuse note.">
+<meta name="twitter:image" content="https://fuse.codes/assets/og.png">
+<meta name="twitter:image:alt" content="The Fuse icon and name above the text: Faster .NET build and test loop for AI coding agents. Checks each edit 3.4x to 16.9x faster than dotnet build. dotnet tool install -g Fuse.">
+<link rel="icon" href="../assets/favicon.png" type="image/png" sizes="48x48">
+<link rel="icon" href="../assets/fuse-icon.svg" type="image/svg+xml" sizes="any">
+<link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<link rel="sitemap" type="application/xml" href="../sitemap.xml">
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/docs.js" defer></script>
+<script src="../assets/highlight.js" defer></script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "@id": "https://fuse.codes/docs/best-practices#article",
+      "headline": "Best Practices for Fast and Exact Agent Checks",
+      "description": "Keep Fuse checks fast and answers exact when agents share a repository: commit finished work, isolate each worker, write shadow-safe tests, exclude template trees, keep analyzers fast and files small, restore after package changes, and read each fuse note.",
+      "url": "https://fuse.codes/docs/best-practices",
+      "mainEntityOfPage": "https://fuse.codes/docs/best-practices",
+      "inLanguage": "en",
+      "dateModified": "2026-11-28",
+      "image": "https://fuse.codes/assets/og.png",
+      "isPartOf": {
+        "@type": "WebSite",
+        "name": "Fuse",
+        "url": "https://fuse.codes/"
+      },
+      "about": {
+        "@type": "SoftwareApplication",
+        "name": "Fuse",
+        "url": "https://fuse.codes/"
+      },
+      "author": {
+        "@type": "Organization",
+        "name": "Litenova Solutions",
+        "url": "https://github.com/Litenova-Solutions"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "Litenova Solutions",
+        "url": "https://github.com/Litenova-Solutions"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Fuse",
+          "item": "https://fuse.codes/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Documentation",
+          "item": "https://fuse.codes/docs/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Best practices",
+          "item": "https://fuse.codes/docs/best-practices"
+        }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to main content</a>
+<div class="wrap wide">
+  <header class="site-header">
+    <a class="brand" href="../"><img src="../assets/fuse-icon.svg" alt="" width="26" height="26">Fuse</a>
+    <nav aria-label="Main">
+      <a href="./" aria-current="page">Docs</a>
+      <a href="benchmarks">Benchmarks</a>
+      <a class="gh" href="https://github.com/Litenova-Solutions/Fuse" aria-label="Fuse on GitHub"><svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg></a>
+    </nav>
+  </header>
+
+  <div class="docs">
+    <main id="main" class="page" tabindex="-1">
+    <p class="crumbs"><a href="./">Docs</a> / Start here</p>
+    <h1>Best practices</h1>
+    <p class="jump"><a href="#docs-nav">All documentation pages</a></p>
+    <p class="intro">Fuse stays fast and exact when the working tree stays small and each agent checks its own paths. This page lists the practices that keep it that way when agents share a repository.</p>
+    <div class="audience">
+      <p><b>This page is for</b> a developer or an orchestrator who runs agents with Fuse in one repository.</p>
+      <p><b>After reading it</b> you can keep checks fast and answers exact: commit finished work, isolate workers with sessions, write shadow-safe tests, exclude template trees, keep analyzers fast, keep files small, restore after package changes, and act on each fuse note.</p>
+    </div>
+    <nav class="toc" aria-label="On this page">
+      <p>On this page</p>
+      <ol>
+        <li><a href="#keep-the-working-tree-small">Keep the working tree small</a></li>
+        <li><a href="#give-each-worker-its-own-paths">Give each worker its own paths</a></li>
+        <li><a href="#anchor-test-paths">Anchor test paths with CallerFilePath</a></li>
+        <li><a href="#exclude-template-and-fixture-projects">Exclude template and fixture projects</a></li>
+        <li><a href="#keep-analyzers-fast">Keep analyzers fast</a></li>
+        <li><a href="#keep-files-small">Keep C# files small</a></li>
+        <li><a href="#restore-after-package-changes">Restore after package changes</a></li>
+        <li><a href="#notes">Read each fuse note</a></li>
+      </ol>
+    </nav>
+
+    <h2 id="keep-the-working-tree-small">Keep the working tree small <a class="anchor" href="#keep-the-working-tree-small" aria-label="Link to this section">#</a></h2>
+    <p>Commit finished work before you start a large wave of agents, and commit each finished wave before the next one. Keep uncommitted files well under 500. Past 500 changed files a check skips its kept answer, the earlier result it would reuse without checking again, so every check starts from scratch and takes longer. HEAD is the commit checked out, and the working tree is the files on disk: the count that matters is how far the disk has moved from HEAD.</p>
+    <p>Run <code>fuse status</code> to read the counts before a large commit: changed files, changed C# sources, and the tree stamp the command line checks carry (<a href="commands#fuse-status">Commands</a>). When the tree is large, run <code>fuse build</code> for the complete answer (<a href="commands#fuse-build">Commands</a>, <a href="limits">Limits</a>).</p>
+
+    <h2 id="give-each-worker-its-own-paths">Give each worker its own paths <a class="anchor" href="#give-each-worker-its-own-paths" aria-label="Link to this section">#</a></h2>
+    <p>A session is one agent's run. Whether a subagent is a session of its own depends on its harness (<a href="parallel-agents#subagents-per-harness">Subagents and parallel agents</a>). A worker that writes from outside any harness, such as a program or a generator, is credited to no session, so register it before it starts:</p>
+    <pre data-label="Shell"><code>fuse session begin worker-3 --paths "src/Workers/Third/**" "src/Shared/**"
+FUSE_SESSION=worker-3 fuse check</code></pre>
+    <p>List live registrations with <code>fuse session list</code>, have each worker verify with <code>fuse gate --session &lt;name&gt;</code>, and end the registration with <code>fuse session end &lt;name&gt;</code> when the worker stops. The gate checks only the files whose registered patterns match that session, plus what that session's declaration changes reach anywhere in the repository. It never marks the session stopped: only the stop hook does. <a href="parallel-agents#judges-and-workers">Judges and workers</a> explains the flow, and <a href="commands#fuse-session">Commands</a> and <a href="commands#fuse-gate">Commands</a> list the forms.</p>
+    <p>A worker that runs Fuse itself sets <code>FUSE_SESSION</code> to its name instead of registering. An orchestrator sets <code>FUSE_SESSION=judge</code> for its own integration checks after the workers finish, so the stop hook and the attribution never credit a worker's errors to the judge. Commit between waves so each wave starts from a small tree (<a href="#keep-the-working-tree-small">Keep the working tree small</a>).</p>
+
+    <h2 id="anchor-test-paths">Anchor test paths with CallerFilePath <a class="anchor" href="#anchor-test-paths" aria-label="Link to this section">#</a></h2>
+    <p>A test that walks parent directories from <code>AppContext.BaseDirectory</code> or <code>Assembly.Location</code> resolves those paths against the shadow copy, the copy of the build output a run without MSBuild works from, and may read the wrong file. Such a project runs from its build output instead of the faster shadow copy.</p>
+    <p>Find the repository root with <code>[CallerFilePath]</code> beside the test source instead of walking up from the running assembly:</p>
+    <pre data-label="C#"><code>static string RepoRoot([CallerFilePath] string path = "")
+    =&gt; Path.GetFullPath(Path.Combine(Path.GetDirectoryName(path)!, "..", ".."));</code></pre>
+    <p>A run from the copy is labeled <code>from shadow copy (without MSBuild)</code>, so you can see which form ran. <a href="how-it-works#without-msbuild">How it works</a> explains the runs, and <a href="limits#test-runs-without-msbuild">Limits</a> lists what a run from the copy does not see.</p>
+
+    <h2 id="exclude-template-and-fixture-projects">Exclude template and fixture projects <a class="anchor" href="#exclude-template-and-fixture-projects" aria-label="Link to this section">#</a></h2>
+    <p>Put generated or vendored trees that Fuse should never evaluate in a repository-root <code>.fuseignore</code> file. It holds gitignore-style path patterns and <code>#</code> comments, and nothing else. It removes the matched paths from project discovery and change tracking. Fuse never writes it. <code>fuse init</code> is the only setup a repository needs; <code>.fuseignore</code> is optional and only excludes paths.</p>
+    <p>Template and placeholder projects need no entry: a project under a <code>.template.config</code> tree is skipped, and so is an unrestored project file that holds placeholder tokens. Such files are never treated as changes. <a href="commands">Commands</a> lists what discovery skips, and <a href="limits">Limits</a> lists the scope a check covers.</p>
+
+    <h2 id="keep-analyzers-fast">Keep analyzers fast <a class="anchor" href="#keep-analyzers-fast" aria-label="Link to this section">#</a></h2>
+    <p>Keep analyzers incremental: an analyzer whose compilation start takes 150 ms or more counts as compilation-wide and runs once per project per check instead of once per file. Analyzers get at most 60 seconds per check. Past that the check reports every compiler error, the analyzer errors that finished, and how many analyzers did not finish.</p>
+    <p>Editing a file listed as an MSBuild <code>AdditionalFiles</code> item, for example <code>AnalyzerReleases.Unshipped.md</code>, reaches the analyzers on the next check, without restarting the engine. Run <code>fuse build</code> for the full analyzer answer, which runs every analyzer. <a href="how-it-works#check">How it works</a> explains the analyzer run, <a href="limits#what-a-check-does-not-see">Limits</a> lists what a check leaves out, and <a href="troubleshooting#a-slow-analyzer">Troubleshooting</a> shows how to find a slow analyzer.</p>
+
+    <h2 id="keep-files-small">Keep C# files small <a class="anchor" href="#keep-files-small" aria-label="Link to this section">#</a></h2>
+    <p>A change inside one method body is checked in the edited file, while a declaration change loads the dependent projects. Keep one type per file and split large classes, so a worker's paths and a check's change cone stay small. A changed non-generated C# file of 1,500 lines or more also prints an advisory (<a href="#notes">Read each fuse note</a>).</p>
+    <p><a href="how-it-works#check">How it works</a> explains how a declaration change reaches dependents, and <a href="architecture">Architecture</a> maps that behavior to the code.</p>
+
+    <h2 id="restore-after-package-changes">Restore after package changes <a class="anchor" href="#restore-after-package-changes" aria-label="Link to this section">#</a></h2>
+    <p>After <code>dotnet restore</code>, or a build that restores, updates a project's <code>obj/project.assets.json</code>, the next check reloads that project. When a project file declares a package its assets file lacks, the check reports that a restore is needed instead of checking against stale inputs. Fuse never restores on its own: run <code>dotnet restore</code> and check again. <a href="how-it-works#projects-and-compilations">How it works</a> explains how projects load, and <a href="messages#restoreneeded">Messages and fixes</a> shows the restore report.</p>
+    <p>A change to <code>Directory.Packages.props</code>, a project file's package or project references or build properties, or <code>Directory.Build.props</code>, <code>Directory.Build.targets</code> or <code>global.json</code> selects the dependent test projects. Comment-only edits select nothing. <a href="how-it-works#test-selection">How it works</a> explains the selection.</p>
+
+    <h2 id="notes">Read each fuse note <a class="anchor" href="#notes" aria-label="Link to this section">#</a></h2>
+    <p>A command line command prints at most one <code>fuse: note:</code> line, naming the decided limit or practice that slows you down. <code>fuse status</code> lists every active note, and <code>fuse gate --json</code> carries them as advisories. Hooks never print notes, and a note never changes an exit code.</p>
+    <div class="table-scroll" role="region" aria-label="Fuse note advisories" tabindex="0">
+      <table>
+        <thead><tr><th scope="col">Advisory</th><th scope="col">What triggers it</th><th scope="col">What to do</th></tr></thead>
+        <tbody>
+          <tr><th scope="row"><code>fuse: note: &lt;count&gt; uncommitted files since HEAD (past &lt;limit&gt;, kept-answer caching is skipped); commit completed work to keep checks fast</code></th><td>500 or more uncommitted files</td><td>Commit finished work; read the counts with <code>fuse status</code> (<a href="commands#fuse-status">Commands</a>)</td></tr>
+          <tr><th scope="row"><code>fuse: note: &lt;n&gt; session(s) are active (&lt;names&gt;); pass --session &lt;name&gt; or set FUSE_SESSION=judge to isolate results</code></th><td>Sessions are live while you run without one</td><td>Name your session, or run the final check with <code>FUSE_SESSION=judge</code> (<a href="commands#fuse-session">Commands</a>)</td></tr>
+          <tr><th scope="row"><code>fuse: note: session(s) &lt;names&gt; have been open for over 2 hours; run 'fuse session end &lt;name&gt;' if finished</code></th><td>A session registration open for over 2 hours</td><td>End it with <code>fuse session end &lt;name&gt;</code> when its worker finished (<a href="commands#fuse-session">Commands</a>)</td></tr>
+          <tr><th scope="row"><code>fuse: note: shadow run skipped for &lt;project&gt; (&lt;file&gt; walks parent directories from AppContext.BaseDirectory); use [CallerFilePath] for faster test runs</code></th><td>A test project that walks parent directories runs from its build output</td><td>Anchor fixture paths with <code>[CallerFilePath]</code> (<a href="#anchor-test-paths">Anchor test paths with CallerFilePath</a>)</td></tr>
+          <tr><th scope="row"><code>fuse: note: &lt;count&gt; analyzer(s) did not finish within the 60s budget; check their CompilationStart and AdditionalFiles cost</code></th><td>Analyzers that did not finish</td><td>Find the slow analyzer (<a href="troubleshooting#a-slow-analyzer">Troubleshooting</a>) and run <code>fuse build</code> for the full answer</td></tr>
+          <tr><th scope="row"><code>fuse: note: &lt;path&gt; is &lt;lines&gt; lines; splitting large files keeps Roslyn binding and edits fast</code></th><td>A changed non-generated C# file of 1,500 lines or more</td><td>Split the file (<a href="#keep-files-small">Keep C# files small</a>)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <nav class="pager" aria-label="Previous and next page">
+      <a href="parallel-agents"><span>Previous</span>Subagents and parallel agents</a>
+      <a class="next-page" href="how-it-works"><span>Next</span>How it works</a>
+    </nav>
+    </main>
+
+    <nav class="sidebar" id="docs-nav" aria-label="Documentation">
+      <h2>Start here</h2>
+      <ul>
+        <li><a href="./">Overview</a></li>
+        <li><a href="getting-started">Getting started</a></li>
+        <li><a href="harnesses">Connect your agent</a></li>
+        <li><a href="parallel-agents">Subagents and parallel agents</a></li>
+        <li><a href="best-practices" aria-current="page">Best practices</a></li>
+      </ul>
+      <h2>Understand</h2>
+      <ul>
+        <li><a href="how-it-works">How it works</a></li>
+        <li><a href="limits">Limits</a></li>
+        <li><a href="benchmarks">Benchmarks</a></li>
+        <li><a href="faq">FAQ</a></li>
+      </ul>
+      <h2>Reference</h2>
+      <ul>
+        <li><a href="commands">Commands</a></li>
+        <li><a href="messages">Messages and fixes</a></li>
+        <li><a href="troubleshooting">Troubleshooting</a></li>
+        <li><a href="changelog">Changelog</a></li>
+      </ul>
+      <h2>Contribute</h2>
+      <ul>
+        <li><a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/main/CONTRIBUTING.md">Contributing</a></li>
+        <li><a href="architecture">Architecture</a></li>
+        <li><a href="evals">Evals</a></li>
+        <li><a href="ai-policy">AI policy</a></li>
+        <li><a class="ext" href="https://github.com/Litenova-Solutions/Fuse/blob/main/SECURITY.md">Security</a></li>
+      </ul>
+    </nav>
+  </div>
+
+  <footer class="site-footer">
+    <a class="maker" href="https://www.litenova.solutions"><img src="../assets/litenova-mark.svg" alt="" width="20" height="20">Built by Litenova Solutions</a>
+    <nav aria-label="Footer"><a href="./">Docs</a><a href="changelog">Changelog</a><a href="https://www.nuget.org/packages/Fuse">NuGet</a><a href="https://github.com/Litenova-Solutions/Fuse">GitHub</a></nav>
+  </footer>
+</div>
+</body>
+</html>

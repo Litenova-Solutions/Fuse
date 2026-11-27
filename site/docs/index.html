@@ -45,7 +45,7 @@
       "url": "https://fuse.codes/docs/",
       "mainEntityOfPage": "https://fuse.codes/docs/",
       "inLanguage": "en",
-      "dateModified": "2026-11-25",
+      "dateModified": "2026-11-28",
       "image": "https://fuse.codes/assets/og.png",
       "isPartOf": {
         "@type": "WebSite",
@@ -148,9 +148,9 @@
       <li><strong>Errors in dependent projects.</strong> Each caller that a change breaks is listed with that change.</li>
       <li><strong>Short output.</strong> An answer holds at most 20 errors or 10 test failures, plus one summary line. It reports nothing when the edit is clean.</li>
       <li><strong>Made for subagents.</strong> All agents in a repository share one engine, so the solution is loaded once. Builds through Fuse take turns, and parallel builds reported 0 locked-file errors in the benchmarks. All git worktrees of a repository share one engine, and agents in different worktrees never wait for each other's builds.</li>
-      <li><strong>Made for judges and workers.</strong> External writers register their paths as sessions, and the judge checks one slice with <code>fuse check</code> on a folder. With <code>--json</code>, the errors split into briefs.</li>
+      <li><strong>Made for judges and workers.</strong> External writers register their paths as sessions, and each worker passes with <code>fuse gate --session &lt;name&gt;</code>, which checks only that session's files. The orchestrator runs its own final check with <code>FUSE_SESSION=judge</code>. With <code>--json</code>, the errors split into briefs. <a href="parallel-agents">Subagents and parallel agents</a> shows the session workflow.</li>
       <li><strong>Safe.</strong> If Fuse cannot answer, the hook stays silent and the agent continues. The stop hook sends the agent back at most once. Fuse never edits your code. It runs locally and has no telemetry.</li>
-      <li><strong>No configuration.</strong> <code>fuse init</code> is the only setup, and <code>dotnet tool update</code> works while Fuse runs.</li>
+      <li><strong>No configuration.</strong> <code>fuse init</code> is the only required setup, and <code>dotnet tool update</code> works while Fuse runs. A repository-root <code>.fuseignore</code> file is optional and only excludes paths.</li>
     </ul>
 
     <h2 id="what-fuse-costs">Costs <a class="anchor" href="#what-fuse-costs" aria-label="Link to this section">#</a></h2>
@@ -158,7 +158,7 @@
       <li><strong>Memory.</strong> The engine keeps loaded projects in memory until it has been idle for 30 minutes. When idle, it holds 338 MB on the 15-project NodaTime and 483 MB on the 4-project FluentValidation, and up to 1,074 MB while it checks, on runners with 16 GB of memory. On a machine with more memory, the engine uses more (<a href="benchmarks">Benchmarks</a>). All git worktrees of a repository share one engine.</li>
       <li><strong>A slow first check across projects.</strong> The first edit that affects other projects must load them. On Jellyfin (40 projects), that took up to 84.8 s. The median signature edit took 133 ms.</li>
       <li><strong>Many agents, one engine.</strong> Checks and test plans from several sessions run at the same time, each answered about its own edits.</li>
-      <li><strong>Not a full build.</strong> Fuse checks C# only and selects tests by reading the code, so a few cases still need <code>fuse build</code> or <code>fuse test --all</code>. <a href="limits">Limits</a> lists them.</li>
+      <li><strong>Not a full build.</strong> Fuse checks C# only and selects tests by reading the code, so a few cases still need <code>fuse build</code> or <code>fuse test --all --solution &lt;solution&gt;</code>. <a href="limits">Limits</a> lists them.</li>
     </ul>
 
     <h2 id="words">Words <a class="anchor" href="#words" aria-label="Link to this section">#</a></h2>
@@ -225,6 +225,7 @@
         <li><a href="getting-started">Getting started</a></li>
         <li><a href="harnesses">Connect your agent</a></li>
         <li><a href="parallel-agents">Subagents and parallel agents</a></li>
+        <li><a href="best-practices">Best practices</a></li>
       </ul>
       <h2>Understand</h2>
       <ul>

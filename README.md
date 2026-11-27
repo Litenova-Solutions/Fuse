@@ -28,7 +28,7 @@ Run `fuse init` once. After that, the harness, the program your agent runs in (C
 - **Only affected tests.** Tests the change cannot reach do not run. When only `.cs` files changed, the tests run without a rebuild.
 - **Short output.** A check prints at most 20 errors, and a test run prints at most 10 failures, plus one summary line. When the edit is clean, Fuse prints nothing at all.
 - **Made for subagents.** All agents and git worktrees in a repository share one engine, with a separate working-tree view for each. Builds through Fuse take turns, so parallel builds do not fail on locked files.
-- **Made for judges and workers.** A judge uses `fuse graph --json` and `fuse impact` to split work, `fuse session guard` to freeze declaration changes under contract paths, and `fuse watch --all --json` to follow every session. Workers can register their paths as sessions and finish with `fuse gate`; the judge evaluates patches or worktrees in memory with `fuse judge --combine` or `--race`.
+- **Made for judges and workers.** A judge uses `fuse graph --json` and `fuse impact` to split work, `fuse session guard` to freeze declaration changes under contract paths, and `fuse watch --all --json` to follow every session. Workers register their paths as sessions and finish with `fuse gate --session <name>`, which checks only that session's files and never marks the session stopped; the orchestrator runs its final check with `FUSE_SESSION=judge`. The judge evaluates patches or worktrees in memory with `fuse judge --combine` or `--race`.
 - **Safe.** If Fuse cannot answer, the hook stays silent and the agent carries on. Fuse never edits your code, runs locally and has no telemetry.
 - **No configuration.** `fuse init` is the only setup.
 
@@ -37,8 +37,8 @@ Run `fuse init` once. After that, the harness, the program your agent runs in (C
 - **Memory.** Fuse keeps the loaded projects in memory until it has been idle for 30 minutes. That costs 338 MB to 698 MB once idle in the [benchmarks](https://fuse.codes/docs/benchmarks), up to 1,074 MB while it checks, and more on a machine with more memory. The repository's git worktrees share one engine.
 - **Memory pressure.** Fuse sheds transient caches as memory runs short. `fuse slim` asks a running engine to release memory without starting one.
 - **A slow first check across projects.** The first edit that affects other projects has to load them. On Jellyfin (40 projects), that took up to 84.8 s. The median signature edit took 133 ms.
-- **Many agents, one engine.** Checks and test plans from several sessions run at the same time on pinned generations, each answered about its own edits. A worker without hooks sets `FUSE_SESSION`; a judge can `fuse watch --all --json` every session and route errors by `causedBy`.
-- **Not a full build.** Fuse checks C# only and picks tests by reading the code, so a few cases still need `fuse build` or `fuse test --all`. [Limits](https://fuse.codes/docs/limits) lists them.
+- **Many agents, one engine.** Checks and test plans from several sessions run at the same time on pinned generations, each answered about its own edits. A worker without hooks sets `FUSE_SESSION` to its name; the orchestrator sets `FUSE_SESSION=judge` for its final check after the workers finish. A judge can `fuse watch --all --json` every session and route errors by `causedBy`.
+- **Not a full build.** Fuse checks C# only and picks tests by reading the code, so a few cases still need `fuse build` or `fuse test --all --solution <solution>`. [Limits](https://fuse.codes/docs/limits) lists them.
 
 ## Supported harnesses
 
@@ -82,7 +82,7 @@ fuse init
 ```text
 wrote .claude/settings.json
 wrote .gitignore
-fuse: hooks registered by Fuse 7.0.0; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors
+fuse: hooks registered by Fuse 7.1.0; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors
 ```
 
 That is the whole setup. The agent now hears from Fuse only when an edit introduced an error.
@@ -96,7 +96,7 @@ $ fuse check
 removed: public int Add(int a, int b) (2 error(s))
 App/Program.cs(3,30): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)
 Lib.Tests/CalcTests.cs(6,54): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)
-fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations changed, 2 dependent project(s) checked; tree 9f2c41aa07b3 over 1 changed file(s)
+fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations changed, 2 dependent project(s) checked; tree 9f2c41aa07b3 over 1 changed file(s) in <seconds> s
 ```
 
 | Command | Action |
@@ -105,10 +105,10 @@ fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations chan
 | `fuse uninit` | Removes what `fuse init` wrote, keeping every other entry, then stops this repository's engine and deletes its state |
 | `fuse check [paths...] [--brief]` | Reports the errors your changes introduced since HEAD, in every project. With directories or patterns, it checks one slice. `--brief` attaches compact repair packets |
 | `fuse test [args...] [--clean] [--no-cache] [--max-failures <n>]` | Runs the tests affected by your changes. `--clean` clears cached results and runs fresh processes, `--no-cache` bypasses cached results, and `--max-failures` stops after the named number of failures |
-| `fuse test --all` | Runs every test |
+| `fuse test --all --project <path> \| --solution <path> [paths] [-c <configuration>] [-f <framework>] [--no-build]` | Runs every test in the named scope |
 | `fuse test --failed` | Reruns the tests that failed in the last run |
 | `fuse build [args...] [--changed]` | Runs `dotnet build` and prints its errors. `--changed` builds only the changed projects and their dependents |
-| `fuse gate [--session <name>] [--brief] [--test] [--max-failures <n>] [--json]` | Runs a worker's check, then affected tests when the check is clean and `--test` is set |
+| `fuse gate [--session <name>] [--brief] [--test] [--max-failures <n>] [--json]` | Checks the session's files (plus what they reach) when `--session` names one, then affected tests when the check is clean and `--test` is set; it never marks the session stopped |
 | `fuse judge (--combine \| --race) <patch-or-worktree...> [--json]` | Evaluates candidate patches or worktrees in memory. `--combine` checks them together; `--race` scores each independently and ranks the results |
 | `fuse graph [--json]` | Prints project references, coupling clusters and test ownership |
 | `fuse impact <paths...> [--json]` | Prints the projects, files and test projects the named paths affect |
@@ -117,6 +117,7 @@ fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations chan
 | `fuse status [--json]` | Shows the engine and the changed files |
 | `fuse session begin <name> [--pid <pid>] --paths <pattern>...` | Registers an external writer as a session for its paths, so a judge's stop leaves the writer's errors to the writer; `--pid` ends it when that process exits |
 | `fuse session begin --from <file>` | Registers every session in a file of name, tab and pattern lines |
+| `fuse session list [--json]` | Lists live sessions with their names, process ids, path patterns and time left |
 | `fuse session guard <name> (--freeze <pattern>... \| --unfreeze)` | Freezes declaration changes under contract path patterns, or removes the guard's frozen patterns |
 | `fuse watch (--session <name> \| --all) [--json]` | Streams check answers and guard violations for one session or every session |
 | `fuse session end <name>` | Ends the registration |

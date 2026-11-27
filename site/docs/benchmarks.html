@@ -45,7 +45,7 @@
       "url": "https://fuse.codes/docs/benchmarks",
       "mainEntityOfPage": "https://fuse.codes/docs/benchmarks",
       "inLanguage": "en",
-      "dateModified": "2026-11-25",
+      "dateModified": "2026-11-28",
       "image": "https://fuse.codes/assets/og.png",
       "isPartOf": {
         "@type": "WebSite",
@@ -447,7 +447,7 @@
         </ul>
       </li>
       <li><strong>No missed test.</strong> In the 40 selection cases, 23 of which made a test fail, <code>fuse test</code> missed no failing test: <code>missedTests</code> and <code>missedCases</code> are 0 in all 4 files.</li>
-      <li><strong>Cases too large to match name by name.</strong> In 2 NodaTime cases, 129 and 252 tests failed by name in a full run. <code>fuse test</code> prints details for the first 10 failures and the names of the next 100, then counts the rest. The suite therefore could not match those cases name by name.</li>
+      <li><strong>Cases too large to match name by name.</strong> In 2 NodaTime cases, 129 and 252 tests failed by name in a full run. <code>fuse test</code> prints details for the first 10 failures and each failure past the first ten on its own <code>FAILED</code> line under <code>also failed (N):</code>, counting names past 100 as <code>... and N more</code>. The suite therefore could not match those cases name by name.</li>
     </ul>
     <h3 id="the-other-rows">The other rows <a class="anchor" href="#the-other-rows" aria-label="Link to this section">#</a></h3>
     <ul>
@@ -478,6 +478,7 @@
         <li><a href="getting-started">Getting started</a></li>
         <li><a href="harnesses">Connect your agent</a></li>
         <li><a href="parallel-agents">Subagents and parallel agents</a></li>
+        <li><a href="best-practices">Best practices</a></li>
       </ul>
       <h2>Understand</h2>
       <ul>

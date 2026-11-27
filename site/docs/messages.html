@@ -45,7 +45,7 @@
       "url": "https://fuse.codes/docs/messages",
       "mainEntityOfPage": "https://fuse.codes/docs/messages",
       "inLanguage": "en",
-      "dateModified": "2026-11-24",
+      "dateModified": "2026-11-28",
       "image": "https://fuse.codes/assets/og.png",
       "isPartOf": {
         "@type": "WebSite",
@@ -166,8 +166,8 @@ fuse: no C# project could be evaluated: &lt;path&gt;: &lt;MSBuild message&gt;</c
 
     <h2 id="restoreneeded">RestoreNeeded <a class="anchor" href="#restoreneeded" aria-label="Link to this section">#</a></h2>
     <pre class="out" data-label="Message"><code>fuse: restore needed: run `dotnet restore Lib/Lib.csproj` (Lib/Lib.csproj not restored)</code></pre>
-    <p><strong>Cause.</strong> A project the request needs, or one that project references, has no <code>project.assets.json</code>, the file <code>dotnet restore</code> writes. The message names the first such project and lists up to three. When there are more, it adds <code>and the same for each project listed</code>. The message names a project rather than the solution, because the solution can leave out the project that needs the restore.</p>
-    <p><strong>Fix.</strong> Run the command the message names for each project listed. Fuse never restores on its own. Every hook reports this message too, so an agent sees it and can run the command.</p>
+    <p><strong>Cause.</strong> A project the request needs, or one that project references, has no <code>project.assets.json</code>, the file <code>dotnet restore</code> writes, or its project file declares a package the assets file lacks, which happens after you add a package reference and before you restore. The message names the first such project and lists up to three. When there are more, it adds <code>and the same for each project listed</code>. The message names a project rather than the solution, because the solution can leave out the project that needs the restore.</p>
+    <p><strong>Fix.</strong> Run the command the message names for each project listed. Fuse never restores on its own. After the restore the next check reloads the project, with no <code>fuse stop</code> needed. Every hook reports this message too, so an agent sees it and can run the command.</p>
 
     <h2 id="loadfailed">LoadFailed <a class="anchor" href="#loadfailed" aria-label="Link to this section">#</a></h2>
     <pre class="out" data-label="Message"><code>fuse: could not load &lt;project&gt;: &lt;message&gt;
@@ -260,12 +260,12 @@ fuse: failed reruns the tests that failed last time and cannot be combined with 
     <p><strong>Cause.</strong> Fuse could not parse the arguments, so the command ran nothing: no root lookup, no engine start, no build and no lock. The refusals are:</p>
     <ul>
       <li><code>fuse check</code> refuses every <code>--</code> option it does not take. <code>fuse build</code> and <code>fuse test</code> pass unknown tokens to <code>dotnet</code> and refuse only a near miss of one of their own options, naming the option you meant.</li>
-      <li>The command refuses a <code>--max-errors</code> with no count or 0, or with text that is no count of 1 to 100000. It also refuses <code>--all-errors</code> with <code>--max-errors</code>, <code>--all</code> and <code>--failed</code> with any other argument, and anything but <code>--json</code> to <code>fuse status</code>.</li>
+      <li>The command refuses a <code>--max-errors</code> with no count or 0, or with text that is no count of 1 to 100000. It also refuses <code>--all-errors</code> with <code>--max-errors</code>, <code>--failed</code> with any other argument, <code>--all</code> with an argument that chooses the tests itself, and anything but <code>--json</code> to <code>fuse status</code>. <code>--all</code> takes the same scope as a plain run: a directory, a project file or a solution file, <code>--project</code> and <code>--solution</code>, <code>-c</code>, <code>-f</code> and <code>--no-build</code>.</li>
       <li>A <code>fuse test --session</code> with no id prints <code>fuse: --session takes the session's id</code>. You never pass that flag yourself: the pre-shell hook passes it.</li>
       <li>The last two lines are the MCP server's, and it returns them as error results.</li>
     </ul>
     <p>On the command line, the command prints each refusal on standard error and exits with 2. The command prints the <code>--session</code>, <code>--all</code> and <code>--failed</code> lines alone, and the rest with its usage.</p>
-    <p><code>fuse init</code>, <code>fuse uninit</code>, <code>fuse stop</code>, <code>fuse mcp</code> and <code>fuse session</code> with arguments they do not take print only their usage on standard error. Three of them print one line: <code>usage: fuse init [--instructions]</code>, <code>usage: fuse uninit</code>, and <code>usage: fuse session begin &lt;name&gt; --paths &lt;pattern&gt; [&lt;pattern&gt;...] [--pid &lt;pid&gt;] | fuse session begin --from &lt;file&gt; | fuse session end &lt;name&gt; | fuse session guard &lt;name&gt; (--freeze &lt;pattern&gt;... | --unfreeze)</code>. The other two, <code>fuse stop</code> and <code>fuse mcp</code>, print their own usage block instead. An unknown command does the same: it prints the top-level usage.</p>
+    <p><code>fuse init</code>, <code>fuse uninit</code>, <code>fuse stop</code>, <code>fuse mcp</code> and <code>fuse session</code> with arguments they do not take print only their usage on standard error. Three of them print one line: <code>usage: fuse init [--instructions]</code>, <code>usage: fuse uninit</code>, and <code>usage: fuse session begin &lt;name&gt; --paths &lt;pattern&gt; [&lt;pattern&gt;...] [--pid &lt;pid&gt;] | fuse session begin --from &lt;file&gt; | fuse session list [--json] | fuse session end &lt;name&gt; | fuse session guard &lt;name&gt; (--freeze &lt;pattern&gt;... | --unfreeze)</code>. The other two, <code>fuse stop</code> and <code>fuse mcp</code>, print their own usage block instead. An unknown command does the same: it prints the top-level usage.</p>
     <p><strong>Fix.</strong> Read the usage line. Then run the command again.</p>
 
     <h2 id="no-failures-to-rerun">No failures to rerun <a class="anchor" href="#no-failures-to-rerun" aria-label="Link to this section">#</a></h2>
@@ -283,7 +283,7 @@ fuse: none of the &lt;N&gt; test(s) that failed last time ran; they may have bee
       <li>None of the failed tests ran, because you renamed or removed them.</li>
     </ul>
     <p>The command exits with 2 for the first, second and fourth lines, with 0 for the third, and with 1 for the last.</p>
-    <p><strong>Fix.</strong> Run <code>fuse test</code> or <code>fuse test --all</code> to record a run. Then rerun its failures.</p>
+    <p><strong>Fix.</strong> Run <code>fuse test</code> or <code>fuse test --all</code> over its named scope to record a run. Then rerun its failures.</p>
 
     <h2 id="no-container-runtime">No container runtime <a class="anchor" href="#no-container-runtime" aria-label="Link to this section">#</a></h2>
     <pre class="out" data-label="Message"><code>fuse: no test ran: &lt;N&gt; test(s) selected in &lt;P&gt; need a container runtime, and none is running; start Docker or Podman and run fuse test again</code></pre>
@@ -296,9 +296,20 @@ fuse: none of the &lt;N&gt; test(s) that failed last time ran; they may have bee
     </div>
     <pre class="out" data-label="Message"><code>lock file: run dotnet restore &lt;target&gt; --force-evaluate to refresh &lt;lock files&gt;
 fuse: waiting for another build or test in this repository
+fuse: waiting for engine (position &lt;position&gt;, about &lt;seconds&gt; s)
 fuse: running without the per-repository build lock: &lt;reason&gt;</code></pre>
     <p>The first line is not on standard error: it is printed indented under the first NU1403 build error, a package content hash failure, naming the one restore that refreshes the lock files and the files it changes (at most 10 named, the rest counted, or <code>the restore</code> when there are none; with no solution or several, the command names no target). Fuse prints it and never runs it.</p>
-    <p>When another build or test holds the <a href="how-it-works#builds-and-the-build-lock">build lock</a>, <code>fuse build</code> and <code>fuse test</code> print the waiting line once and keep waiting. When the state directory cannot be written, they print the second and build without the lock.</p>
+    <p>When another build or test holds the <a href="how-it-works#builds-and-the-build-lock">build lock</a>, <code>fuse build</code> and <code>fuse test</code> print the waiting line once and keep waiting. When the engine stays busy, an interactive command prints the engine line once to standard error after 2 seconds and keeps waiting; hooks stay silent on it. When the state directory cannot be written, they print the last line and build without the lock.</p>
+    <h3 id="advisories">fuse: note: advisories <a class="anchor" href="#advisories" aria-label="Link to this section">#</a></h3>
+    <p>A command that answers may print one line <code>fuse: note: ...</code> naming a limit or practice that slows the answer down. A command prints at most one note, hooks never print one, and a note never changes the exit code. <code>fuse status</code> lists every note, and <code>fuse status --json</code> and <code>fuse gate --json</code> carry them. A note names what triggered it and what to do:</p>
+    <ul>
+      <li><code>fuse: note: &lt;count&gt; uncommitted files since HEAD (past &lt;limit&gt;, kept-answer caching is skipped); commit completed work to keep checks fast</code>: 500 or more uncommitted files, so commit completed work to keep checks fast.</li>
+      <li><code>fuse: note: &lt;n&gt; session(s) are active (&lt;names&gt;); pass --session &lt;name&gt; or set FUSE_SESSION=judge to isolate results</code>: other sessions are registered while you run without one, so pass <code>--session</code> or set <code>FUSE_SESSION=judge</code> for an integration check.</li>
+      <li><code>fuse: note: session(s) &lt;names&gt; have been open for over 2 hours; run 'fuse session end &lt;name&gt;' if finished</code>: a session has been open for over 2 hours, so end it with <code>fuse session end &lt;name&gt;</code> when it is finished.</li>
+      <li><code>fuse: note: shadow run skipped for &lt;project&gt; (&lt;file&gt; walks parent directories from AppContext.BaseDirectory); use [CallerFilePath] for faster test runs</code>: a test run skipped the shadow copy because the project walks parent directories, so use <code>[CallerFilePath]</code> to find the repository root.</li>
+      <li><code>fuse: note: &lt;count&gt; analyzer(s) did not finish within the 60s budget; check their CompilationStart and AdditionalFiles cost</code>: analyzers did not finish within the 60-second budget, so keep the analyzer incremental and check its compilation start and <code>AdditionalFiles</code> cost, or run <code>fuse build</code> to run every analyzer.</li>
+      <li><code>fuse: note: &lt;path&gt; is &lt;lines&gt; lines; splitting large files keeps Roslyn binding and edits fast</code>: a changed non-generated C# file holds 1,500 lines or more, so split large files.</li>
+    </ul>
 
     <nav class="pager" aria-label="Previous and next page">
       <a href="commands"><span>Previous</span>Commands</a>
@@ -313,6 +324,7 @@ fuse: running without the per-repository build lock: &lt;reason&gt;</code></pre>
         <li><a href="getting-started">Getting started</a></li>
         <li><a href="harnesses">Connect your agent</a></li>
         <li><a href="parallel-agents">Subagents and parallel agents</a></li>
+        <li><a href="best-practices">Best practices</a></li>
       </ul>
       <h2>Understand</h2>
       <ul>

@@ -122,6 +122,16 @@ internal sealed class ChangeTracker : IDisposable
             }
         }
 
+        // A project file under a path .fuseignore lists is out of discovery, so its edit evaluates nothing again; an
+        // edit to .fuseignore itself is a project input and still does.
+        if (watched.ProjectFiles.Count > 0)
+        {
+            var fuseIgnore = FuseIgnore.Read(_root);
+            var kept = watched.ProjectFiles.Where(p => FuseIgnore.IsFile(p) || !fuseIgnore.Ignores(p)).ToList();
+            if (kept.Count != watched.ProjectFiles.Count)
+                watched = watched with { ProjectFiles = kept };
+        }
+
         // A check of every change asks for the changed set to be confirmed against disk: a write the watcher has not
         // reported yet, as a shell command's write on macOS can be late, is in no set. git lists what differs from
         // HEAD, and every source whose membership differs from what the tracker holds joins the reported paths, which

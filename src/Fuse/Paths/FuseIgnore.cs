@@ -9,12 +9,18 @@ namespace Fuse.Paths;
 /// </summary>
 internal sealed class FuseIgnore
 {
+    /// <summary>The name of the ignore file, at the repository root.</summary>
+    public const string FileName = ".fuseignore";
+
     private readonly List<string> _patterns;
 
     private FuseIgnore(List<string> patterns)
     {
         _patterns = patterns;
     }
+
+    /// <summary>True when <paramref name="path"/> is the ignore file itself, at the repository root.</summary>
+    public static bool IsFile(RepoPath path) => path.Relative == FileName;
 
     /// <summary>Reads the ignore file in <paramref name="root"/>. A missing or unreadable file ignores nothing.</summary>
     public static FuseIgnore Read(RepoRoot root)
@@ -23,7 +29,7 @@ internal sealed class FuseIgnore
         string[] lines;
         try
         {
-            var file = Path.Combine(root.Path, ".fuseignore");
+            var file = Path.Combine(root.Path, FileName);
             if (!File.Exists(file))
                 return new FuseIgnore(patterns);
             lines = File.ReadAllLines(file);

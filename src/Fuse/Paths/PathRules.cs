@@ -28,7 +28,8 @@ internal static class PathRules
         var name = Path.GetFileName(path);
         return ProjectExtensions.Any(e => name.EndsWith(e, StringComparison.OrdinalIgnoreCase))
                || name.Equals("global.json", StringComparison.OrdinalIgnoreCase)
-               || name.Equals("packages.lock.json", StringComparison.OrdinalIgnoreCase);
+               || name.Equals("packages.lock.json", StringComparison.OrdinalIgnoreCase)
+               || name.Equals(FuseIgnore.FileName, StringComparison.Ordinal);
     }
 
     /// <summary>True when <paramref name="path"/> lies in a <c>bin</c> or <c>obj</c> folder under <paramref name="directory"/>.</summary>

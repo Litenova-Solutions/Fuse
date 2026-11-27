@@ -29,7 +29,8 @@ internal static class ControlCliCommand
         byte[] stdinBytes;
         try
         {
-            await using var stdin = Console.OpenStandardInput();
+            var stdin = Console.OpenStandardInput();
+            await using var stdinLifetime = stdin.ConfigureAwait(false);
             using var buffer = new MemoryStream();
             await stdin.CopyToAsync(buffer).ConfigureAwait(false);
             stdinBytes = buffer.ToArray();

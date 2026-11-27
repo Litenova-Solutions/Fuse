@@ -47,7 +47,8 @@ internal static class EngineClient
                 string? line;
                 try
                 {
-                    await using var pipe = await ConnectAsync(root, deadline.Token).ConfigureAwait(false);
+                    var pipe = await ConnectAsync(root, deadline.Token).ConfigureAwait(false);
+                    await using var pipeLifetime = pipe.ConfigureAwait(false);
                     var bytes = Encoding.UTF8.GetBytes(ProtocolJson.Serialize(request) + "\n");
                     await pipe.WriteAsync(bytes, deadline.Token).ConfigureAwait(false);
                     await pipe.FlushAsync(deadline.Token).ConfigureAwait(false);
@@ -302,7 +303,8 @@ internal static class EngineClient
         deadline.CancelAfter(timeout);
         try
         {
-            await using var pipe = new NamedPipeClientStream(".", root.PipeName, PipeDirection.InOut, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+            var pipe = new NamedPipeClientStream(".", root.PipeName, PipeDirection.InOut, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+            await using var pipeLifetime = pipe.ConfigureAwait(false);
             await pipe.ConnectAsync(500, deadline.Token).ConfigureAwait(false);
             var bytes = Encoding.UTF8.GetBytes(ProtocolJson.Serialize(request) + "\n");
             await pipe.WriteAsync(bytes, deadline.Token).ConfigureAwait(false);
@@ -327,7 +329,8 @@ internal static class EngineClient
         Func<Func<EngineRequest, TimeSpan, CancellationToken, Task<EngineResponse>>, Task> run,
         CancellationToken cancellationToken)
     {
-        await using var session = new PipeSession(root);
+        var session = new PipeSession(root);
+        await using var sessionLifetime = session.ConfigureAwait(false);
         await run((req, timeout, ct) => session.SendAsync(req, timeout, ct)).ConfigureAwait(false);
     }
 
@@ -371,7 +374,8 @@ internal static class EngineClient
                     continue;
                 }
 
-                await using var pipe = new NamedPipeClientStream(".", root.PipeName, PipeDirection.InOut, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+                var pipe = new NamedPipeClientStream(".", root.PipeName, PipeDirection.InOut, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+                await using var pipeLifetime = pipe.ConfigureAwait(false);
                 await pipe.ConnectAsync(1000, cancellationToken).ConfigureAwait(false);
                 var bytes = Encoding.UTF8.GetBytes(ProtocolJson.Serialize(stamped) + "\n");
                 await pipe.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);

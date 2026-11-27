@@ -313,7 +313,8 @@ internal static class HookCommand
     /// </summary>
     private static async Task<string> ReadStdinAsync(CancellationToken cancellationToken)
     {
-        await using var input = Console.OpenStandardInput();
+        var input = Console.OpenStandardInput();
+        await using var inputLifetime = input.ConfigureAwait(false);
         return await ReadUtf8Async(input, cancellationToken).ConfigureAwait(false);
     }
 

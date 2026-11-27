@@ -8,9 +8,18 @@ indent_style = space
 
 [*.cs]
 indent_size = 4
-csharp_style_namespace_declarations = file_scoped:suggestion
+csharp_style_namespace_declarations = file_scoped:error
+dotnet_diagnostic.IDE0161.severity = error
+# Classes keep explicit fields and constructors; primary constructors are for records only.
+dotnet_diagnostic.IDE0290.severity = none
 # An unused using fails dotnet format --verify-no-changes.
 dotnet_diagnostic.IDE0005.severity = warning
+
+[src/Fuse/**.cs]
+# Throw helpers instead of hand-written argument checks, and ConfigureAwait(false) on every await in the tool.
+dotnet_diagnostic.CA1510.severity = warning
+dotnet_diagnostic.CA1511.severity = warning
+dotnet_diagnostic.CA2007.severity = warning
 
 [*.{csproj,props,targets,slnx,xml,json,yml,yaml,md,html,css,svg}]
 indent_size = 2

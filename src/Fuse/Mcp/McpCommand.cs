@@ -64,7 +64,8 @@ internal static class McpCommand
         // The transport reads through Console.In, which follows the console input code page rather than UTF-8, so a path
         // with a non-ASCII character would arrive as different characters. Every host writes UTF-8 over stdio.
         Console.InputEncoding = new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
-        await using var server = McpServer.Create(new StdioServerTransport("fuse"), options);
+        var server = McpServer.Create(new StdioServerTransport("fuse"), options);
+        await using var serverLifetime = server.ConfigureAwait(false);
         await server.RunAsync(cancellationToken).ConfigureAwait(false);
         return 0;
     }

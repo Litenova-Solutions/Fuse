@@ -70,7 +70,8 @@ internal static class EngineStopper
     {
         try
         {
-            await using var pipe = new NamedPipeClientStream(".", root.PipeName, PipeDirection.InOut, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+            var pipe = new NamedPipeClientStream(".", root.PipeName, PipeDirection.InOut, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+            await using var pipeLifetime = pipe.ConfigureAwait(false);
             await pipe.ConnectAsync(2000, cancellationToken).ConfigureAwait(false);
             var request = new EngineRequest.Ping { BuildId = EngineVersion.Build, WorktreeRoot = root.Path };
             var bytes = Encoding.UTF8.GetBytes(ProtocolJson.Serialize(request) + "\n");
@@ -92,7 +93,8 @@ internal static class EngineStopper
     {
         try
         {
-            await using var pipe = new NamedPipeClientStream(".", root.PipeName, PipeDirection.InOut, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+            var pipe = new NamedPipeClientStream(".", root.PipeName, PipeDirection.InOut, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+            await using var pipeLifetime = pipe.ConfigureAwait(false);
             await pipe.ConnectAsync(2000, cancellationToken).ConfigureAwait(false);
             var request = new EngineRequest.ShutDown { BuildId = EngineVersion.Build, WorktreeRoot = root.Path };
             var bytes = Encoding.UTF8.GetBytes(ProtocolJson.Serialize(request) + "\n");

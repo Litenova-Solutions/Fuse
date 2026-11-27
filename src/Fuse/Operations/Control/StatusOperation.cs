@@ -122,7 +122,8 @@ internal static partial class StatusOperation
     {
         try
         {
-            await using var pipe = new NamedPipeClientStream(".", root.PipeName, PipeDirection.InOut, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+            var pipe = new NamedPipeClientStream(".", root.PipeName, PipeDirection.InOut, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+            await using var pipeLifetime = pipe.ConfigureAwait(false);
             using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             deadline.CancelAfter(EngineWait);
             await pipe.ConnectAsync(deadline.Token).ConfigureAwait(false);

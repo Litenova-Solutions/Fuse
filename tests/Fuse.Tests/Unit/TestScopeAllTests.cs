@@ -37,7 +37,7 @@ public class TestScopeAllTests
         Assert.Equal(["-c", "Release", "--no-build"], scope.BuildSwitches);
         Assert.True(scope.BuildOnly);
         Assert.Equal("Release", scope.Configuration);
-        Assert.False(TestOperation.IsReleaseGate(scope));
+        Assert.True(TestOperation.IsReleaseGate(scope));
     }
 
     [Fact]
@@ -47,7 +47,7 @@ public class TestScopeAllTests
         Assert.True(TestOperation.IsReleaseGate(Scope(["--project", "T.csproj", "--configuration=Release", "--no-build"])!));
         Assert.False(TestOperation.IsReleaseGate(Scope(["App.slnx", "-c", "Debug", "--no-build"])!));
         Assert.False(TestOperation.IsReleaseGate(Scope(["App.slnx", "-c", "Release"])!));
-        Assert.False(TestOperation.IsReleaseGate(Scope(["-c", "Release", "--no-build"])!));
+        Assert.True(TestOperation.IsReleaseGate(Scope(["-c", "Release", "--no-build"])!));
         Assert.False(TestOperation.IsReleaseGate(Scope(["App.slnx", "-f", "net10.0", "--no-build"])!));
     }
 

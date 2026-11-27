@@ -125,11 +125,11 @@ internal static class TestOperation
 
     /// <summary>
     ///     Whether <paramref name="scope"/> is a release gate: it names a configuration other than Debug with
-    ///     <c>--no-build</c> for named test projects, so the run covers every test in that scope with the original
-    ///     switches instead of the affected tests.
+    ///     <c>--no-build</c>, so the run covers every test in the named scope, or the whole repository when it names
+    ///     none, with the original switches instead of the affected tests.
     /// </summary>
     internal static bool IsReleaseGate(TestScopeArguments scope) =>
-        scope is { Configuration: not null, Paths.Length: > 0 }
+        scope is { Configuration: not null }
         && !scope.Configuration.Equals("Debug", StringComparison.OrdinalIgnoreCase)
         && scope.BuildSwitches.Contains("--no-build");
 

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Fuse.Check.Sessions;
+using Fuse.Identity;
+using Fuse.Paths;
 using Fuse.Protocol.Check;
 namespace Fuse.Engine.Background;
 
@@ -100,7 +101,7 @@ internal sealed partial class AnswerStore
                 _order.Add(key);
             }
 
-            if (session is not null && SessionEdits.IsValid(session)
+            if (session is not null && SessionId.IsValid(session)
                 && (!_bySession.TryGetValue(session, out var newest) || generation >= newest.Generation))
             {
                 _bySession[session] = entry;
@@ -144,15 +145,18 @@ internal sealed partial class AnswerStore
     /// </summary>
     public static string FileNameFor(string session)
     {
-        var name = session.StartsWith(SessionEdits.RegisteredPrefix, StringComparison.Ordinal)
-            ? session[SessionEdits.RegisteredPrefix.Length..]
-            : session;
-        var file = new string([.. name.Select(c => char.IsLetterOrDigit(c) || c is '-' or '_' or '.' ? c : '-')]).Trim('.');
+        var display = SessionId.DisplayNameOf(session);
+        var file = new string([.. display.Select(c => char.IsLetterOrDigit(c) || c is '-' or '_' or '.' ? c : '-')]).Trim('.');
         return (file.Length == 0 ? "session" : file) + ".json";
     }
 
     /// <summary>The full path of the session file of <paramref name="session"/>.</summary>
-    public string SessionFilePath(string session) => Path.Combine(_stateDirectory, "sessions", FileNameFor(session));
+    public string SessionFilePath(string session)
+    {
+        if (SessionId.TryParse(session, out var id) && id is not null)
+            return LocalState.SessionAnswerFile(_stateDirectory, id);
+        return Path.Combine(_stateDirectory, "sessions", FileNameFor(session));
+    }
 
     private void WriteSessionFile(Entry entry)
     {

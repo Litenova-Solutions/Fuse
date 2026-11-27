@@ -62,14 +62,14 @@ public class RegisteredSessionTests
     [Fact]
     public void Beginning_again_replaces_the_patterns_and_restarts_the_hours()
     {
-        var now = new DateTimeOffset(2026, 10, 29, 10, 0, 0, TimeSpan.Zero);
+        var time = new ManualTimeProvider(new DateTimeOffset(2026, 10, 29, 10, 0, 0, TimeSpan.Zero));
         InTempFiles((sessions, registrations) =>
         {
-            var edits = new SessionEdits(Root, sessions, registrations, () => now);
+            var edits = new SessionEdits(Root, sessions, registrations, timeProvider: time);
             edits.BeginRegistration("w1", ["Lib/**"]);
-            now += TimeSpan.FromHours(3);
+            time.Advance(TimeSpan.FromHours(3));
             edits.BeginRegistration("w1", ["App/**"]);
-            now += TimeSpan.FromHours(3);
+            time.Advance(TimeSpan.FromHours(3));
 
             var writers = edits.WritersOf([Calc, Report]);
 
@@ -81,14 +81,14 @@ public class RegisteredSessionTests
     [Fact]
     public void After_expiry_the_file_is_uncredited_and_the_record_is_rewritten()
     {
-        var now = new DateTimeOffset(2026, 10, 29, 10, 0, 0, TimeSpan.Zero);
+        var time = new ManualTimeProvider(new DateTimeOffset(2026, 10, 29, 10, 0, 0, TimeSpan.Zero));
         string? logged = null;
         InTempFiles((sessions, registrations) =>
         {
-            var edits = new SessionEdits(Root, sessions, registrations, () => now, message => logged = message);
+            var edits = new SessionEdits(Root, sessions, registrations, timeProvider: time, log: message => logged = message);
             edits.BeginRegistration("w1", ["Lib/**"]);
             Assert.Single(File.ReadAllLines(registrations));
-            now += TimeSpan.FromHours(4);
+            time.Advance(TimeSpan.FromHours(4));
 
             var writers = edits.WritersOf([Calc]);
 

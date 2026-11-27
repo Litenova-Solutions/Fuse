@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using Fuse.Failures;
+using Fuse.Identity;
 using Fuse.Paths;
 namespace Fuse.Check.Sessions;
 
@@ -33,13 +34,13 @@ namespace Fuse.Check.Sessions;
 internal sealed class SessionEdits
 {
     /// <summary>The longest session id the engine records. A harness's ids are far shorter; a longer one is refused.</summary>
-    public const int MaxSessionLength = 256;
+    public const int MaxSessionLength = SessionId.MaxLength;
 
     /// <summary>What a registered writer's stored id starts with, followed by the name the launcher gave.</summary>
-    public const string RegisteredPrefix = "registered:";
+    public const string RegisteredPrefix = SessionId.RegisteredPrefix;
 
     /// <summary>The longest name a registration accepts.</summary>
-    public const int MaxRegistrationNameLength = 64;
+    public const int MaxRegistrationNameLength = SessionId.MaxRegistrationNameLength;
 
     /// <summary>The most patterns one registration holds.</summary>
     public const int MaxPatternsPerRegistration = 32;
@@ -53,7 +54,7 @@ internal sealed class SessionEdits
     private readonly RepoRoot _root;
     private readonly string? _file;
     private readonly string? _registrationsFile;
-    private readonly Func<DateTimeOffset> _clock;
+    private readonly TimeProvider _timeProvider;
     private readonly Action<string>? _log;
     private readonly Func<int, bool>? _processIsRunning;
     private readonly Lock _lock = new();
@@ -65,15 +66,15 @@ internal sealed class SessionEdits
     /// <param name="root">The repository, which turns a recorded path back into a <see cref="RepoPath"/>.</param>
     /// <param name="file">The file the record is kept in, or null to keep it in memory only.</param>
     /// <param name="registrationsFile">The file the registrations are kept in, or null to keep them in memory only.</param>
-    /// <param name="clock">What time it is, in UTC; tests move it past an expiry.</param>
+    /// <param name="timeProvider">What time it is, in UTC; tests move it past an expiry.</param>
     /// <param name="log">Where an expiry is logged, or null to log nowhere.</param>
     /// <param name="processIsRunning">Whether a process is running, or null to ask the operating system; tests say a process has exited without ending one.</param>
-    public SessionEdits(RepoRoot root, string? file, string? registrationsFile = null, Func<DateTimeOffset>? clock = null, Action<string>? log = null, Func<int, bool>? processIsRunning = null)
+    public SessionEdits(RepoRoot root, string? file, string? registrationsFile = null, TimeProvider? timeProvider = null, Action<string>? log = null, Func<int, bool>? processIsRunning = null)
     {
         _root = root;
         _file = file;
         _registrationsFile = registrationsFile;
-        _clock = clock ?? (() => DateTimeOffset.UtcNow);
+        _timeProvider = timeProvider ?? TimeProvider.System;
         _log = log;
         _processIsRunning = processIsRunning;
         Read();
@@ -81,16 +82,13 @@ internal sealed class SessionEdits
     }
 
     /// <summary>True when <paramref name="session"/> can be recorded: not blank, at most <see cref="MaxSessionLength"/> characters, no control characters.</summary>
-    public static bool IsValid(string? session) =>
-        !string.IsNullOrWhiteSpace(session) && session.Length <= MaxSessionLength && !session.Any(char.IsControl);
+    public static bool IsValid(string? session) => SessionId.IsValid(session);
 
     /// <summary>
     ///     True when <paramref name="name"/> can be registered: 1 to 64 letters, digits, <c>-</c>, <c>_</c> or <c>.</c>. No
     ///     slash or colon, so a registration never aliases a harness session or acquires subagent semantics.
     /// </summary>
-    public static bool IsValidRegistrationName(string? name) =>
-        !string.IsNullOrEmpty(name) && name.Length <= MaxRegistrationNameLength
-        && name.All(c => char.IsLetterOrDigit(c) || c is '-' or '_' or '.');
+    public static bool IsValidRegistrationName(string? name) => SessionId.IsValidRegistrationName(name);
 
     /// <summary>Records that <paramref name="session"/> wrote <paramref name="paths"/>.</summary>
     public void Record(string session, IEnumerable<RepoPath> paths)
@@ -143,7 +141,7 @@ internal sealed class SessionEdits
     /// <exception cref="FuseException">The name or a pattern is not valid, or too many sessions are registered.</exception>
     public void BeginRegistration(string name, IReadOnlyList<string> patterns, int? pid = null)
     {
-        if (!IsValidRegistrationName(name))
+        if (!SessionId.IsValidRegistrationName(name))
             throw new FuseException(ErrorCode.InvalidPath, ErrorMessages.InvalidSessionName(name));
         if (patterns.Count == 0)
             throw new FuseException(ErrorCode.InvalidPath, ErrorMessages.SessionNeedsPattern());
@@ -160,11 +158,11 @@ internal sealed class SessionEdits
         lock (_lock)
         {
             PruneExpired();
-            var session = RegisteredPrefix + name;
+            var session = SessionId.RegisteredPrefix + name;
             var known = _registrations.FindIndex(r => r.Session == session);
             if (known < 0 && _registrations.Count >= MaxLiveRegistrations)
                 throw new FuseException(ErrorCode.InvalidPath, ErrorMessages.TooManyRegisteredSessions());
-            var registration = new RegisteredSession(session, normalized, _clock().ToUniversalTime() + RegistrationLifetime, pid is > 0 ? pid : null);
+            var registration = new RegisteredSession(session, normalized, _timeProvider.GetUtcNow() + RegistrationLifetime, pid is > 0 ? pid : null);
             if (known >= 0)
                 _registrations[known] = registration;
             else
@@ -179,7 +177,7 @@ internal sealed class SessionEdits
         lock (_lock)
         {
             PruneExpired();
-            var removed = _registrations.RemoveAll(r => r.Session == RegisteredPrefix + name) > 0;
+            var removed = _registrations.RemoveAll(r => r.Session == SessionId.RegisteredPrefix + name) > 0;
             if (removed)
                 WriteRegistrations();
             return removed;
@@ -309,7 +307,7 @@ internal sealed class SessionEdits
     /// <summary>Drops every registration that has ended, by expiry or by its process exiting, logging each once. The caller holds the lock.</summary>
     private void PruneExpired()
     {
-        var now = _clock();
+        var now = _timeProvider.GetUtcNow();
         var expired = _registrations.Where(r => r.Expires <= now || (r.Pid is { } pid && !IsRunning(pid))).ToList();
         if (expired.Count == 0)
             return;
@@ -317,8 +315,8 @@ internal sealed class SessionEdits
         {
             _registrations.Remove(registration);
             _log?.Invoke(registration.Expires <= now
-                ? $"registered session {registration.Session[RegisteredPrefix.Length..]} expired; its files count as no session's now"
-                : $"registered session {registration.Session[RegisteredPrefix.Length..]} ended; its process exited, so its files count as no session's now");
+                ? $"registered session {SessionId.DisplayNameOf(registration.Session)} expired; its files count as no session's now"
+                : $"registered session {SessionId.DisplayNameOf(registration.Session)} ended; its process exited, so its files count as no session's now");
         }
 
         WriteRegistrations();
@@ -336,7 +334,7 @@ internal sealed class SessionEdits
                 if (tab < 0)
                     continue;
                 var session = line[(tab + 1)..];
-                if (!IsValid(session))
+                if (!SessionId.IsValid(session))
                     continue;
                 if (tab == 0)
                 {
@@ -389,7 +387,7 @@ internal sealed class SessionEdits
             foreach (var line in File.ReadAllLines(_registrationsFile))
             {
                 var parts = line.Split('\t');
-                if (parts.Length < 3 || !long.TryParse(parts[0], out var ticks) || !IsValidRegistrationName(parts[1]))
+                if (parts.Length < 3 || !long.TryParse(parts[0], out var ticks) || !SessionId.IsValidRegistrationName(parts[1]))
                     continue;
                 int? pid = null;
                 var named = parts[2..];
@@ -415,8 +413,8 @@ internal sealed class SessionEdits
 
                 if (!valid || pid is -1 || patterns.Count == 0 || patterns.Count > MaxPatternsPerRegistration)
                     continue;
-                _registrations.RemoveAll(r => r.Session == RegisteredPrefix + parts[1]);
-                _registrations.Add(new RegisteredSession(RegisteredPrefix + parts[1], patterns, new DateTimeOffset(ticks, TimeSpan.Zero), pid));
+                _registrations.RemoveAll(r => r.Session == SessionId.RegisteredPrefix + parts[1]);
+                _registrations.Add(new RegisteredSession(SessionId.RegisteredPrefix + parts[1], patterns, new DateTimeOffset(ticks, TimeSpan.Zero), pid));
                 if (_registrations.Count > MaxLiveRegistrations)
                     _registrations.RemoveAt(0);
             }
@@ -438,7 +436,7 @@ internal sealed class SessionEdits
         try
         {
             var lines = _registrations.OrderBy(r => r.Session, StringComparer.Ordinal)
-                .Select(r => $"{r.Expires.UtcTicks}\t{r.Session[RegisteredPrefix.Length..]}\t{string.Join("\t", r.Patterns)}{(r.Pid is { } pid ? $"\tpid:{pid.ToString(CultureInfo.InvariantCulture)}" : "")}");
+                .Select(r => $"{r.Expires.UtcTicks}\t{SessionId.DisplayNameOf(r.Session)}\t{string.Join("\t", r.Patterns)}{(r.Pid is { } pid ? $"\tpid:{pid.ToString(CultureInfo.InvariantCulture)}" : "")}");
             var temporary = _registrationsFile + ".tmp";
             File.WriteAllLines(temporary, lines);
             File.Move(temporary, _registrationsFile, overwrite: true);

@@ -23,7 +23,7 @@ public class SessionLeaseTests
 
         var begun = await engine.SendAsync(new EngineRequest.BeginSession("w1", ["Lib/**"]) { Pid = Environment.ProcessId });
         var stop = Assert.IsType<EngineResponse.CheckAnswered>(
-            await engine.SendAsync(new EngineRequest.CheckChanges(WaitForLoad: true) { Session = "claude:judge", IsStopping = true })).Report;
+            await engine.SendAsync(new EngineRequest.CheckChanges(WaitForLoad: true) { Session = "claude:judge", Mode = SessionCheckMode.Stop })).Report;
 
         Assert.IsType<EngineResponse.Acknowledged>(begun);
         Assert.Empty(stop.Errors);
@@ -43,7 +43,7 @@ public class SessionLeaseTests
         // No process holds this id, so the process the registration is tied to has exited.
         var begun = await engine.SendAsync(new EngineRequest.BeginSession("w1", ["Lib/**"]) { Pid = int.MaxValue });
         var stop = Assert.IsType<EngineResponse.CheckAnswered>(
-            await engine.SendAsync(new EngineRequest.CheckChanges(WaitForLoad: true) { Session = "claude:judge", IsStopping = true })).Report;
+            await engine.SendAsync(new EngineRequest.CheckChanges(WaitForLoad: true) { Session = "claude:judge", Mode = SessionCheckMode.Stop })).Report;
         var ended = await engine.SendAsync(new EngineRequest.EndSession("w1"));
 
         Assert.IsType<EngineResponse.Acknowledged>(begun);

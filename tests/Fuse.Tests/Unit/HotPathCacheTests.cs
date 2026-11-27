@@ -23,9 +23,9 @@ public class HotPathCacheTests
     {
         var root = FixtureRepo.CheckoutRoot;
         var calc = root.PathOf("Lib/Calc.cs");
-        var now = new DateTimeOffset(2026, 11, 6, 10, 0, 0, TimeSpan.Zero);
+        var time = new ManualTimeProvider(new DateTimeOffset(2026, 11, 6, 10, 0, 0, TimeSpan.Zero));
         var running = true;
-        var edits = new SessionEdits(root, null, null, clock: () => now, processIsRunning: _ => running);
+        var edits = new SessionEdits(root, null, null, timeProvider: time, processIsRunning: _ => running);
 
         var before = edits.RecordsHash();
         Assert.Equal(before, edits.RecordsHash());
@@ -43,7 +43,7 @@ public class HotPathCacheTests
         Assert.NotEqual(stopped, registered);
 
         // A registration that ends by its hours or by its process exiting changes the hash, kept or not.
-        now += SessionEdits.RegistrationLifetime;
+        time.Advance(SessionEdits.RegistrationLifetime);
         Assert.Equal(stopped, edits.RecordsHash());
 
         edits.BeginRegistration("w2", ["Lib/**"], pid: 4243);

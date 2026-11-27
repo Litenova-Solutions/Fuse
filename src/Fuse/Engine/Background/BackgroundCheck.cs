@@ -22,6 +22,7 @@ internal sealed class BackgroundCheck : IDisposable
     private readonly Func<SessionFiles, CancellationToken, Task> _check;
     private readonly Action<string> _log;
     private readonly TimeSpan _debounce;
+    private readonly TimeProvider _timeProvider;
     private readonly Lock _lock = new();
     private readonly Dictionary<string, (long Generation, string Files)> _checked = new(StringComparer.Ordinal);
     private long _pending = -1;
@@ -38,13 +39,15 @@ internal sealed class BackgroundCheck : IDisposable
     /// <param name="check">Runs one session's re-check in the background lane and stores its answer; cancelled by a newer generation.</param>
     /// <param name="log">Where a run that fails is written.</param>
     /// <param name="debounce">How long schedules gather before a run starts; tests name a shorter one.</param>
+    /// <param name="timeProvider">What time it is, in UTC; tests move it past the debounce.</param>
     public BackgroundCheck(
         Func<IReadOnlyList<SessionFiles>> sessions,
         Func<SessionFiles, string?> keyFor,
         AnswerStore results,
         Func<SessionFiles, CancellationToken, Task> check,
         Action<string> log,
-        TimeSpan? debounce = null)
+        TimeSpan? debounce = null,
+        TimeProvider? timeProvider = null)
     {
         _sessions = sessions;
         _keyFor = keyFor;
@@ -52,6 +55,7 @@ internal sealed class BackgroundCheck : IDisposable
         _check = check;
         _log = log;
         _debounce = debounce ?? DefaultDebounce;
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     /// <summary>The live sessions a run has re-checked, for a test that waits for a run to cover a session.</summary>
@@ -81,7 +85,7 @@ internal sealed class BackgroundCheck : IDisposable
                 return;
             if (generation > _pending)
                 _pending = generation;
-            _scheduledAt = DateTimeOffset.UtcNow;
+            _scheduledAt = _timeProvider.GetUtcNow();
             if (generation > _running && _runSource is not null)
                 cancel = _runSource;
             if (_runner is null || _runner.IsCompleted)
@@ -142,7 +146,7 @@ internal sealed class BackgroundCheck : IDisposable
                 }
             }
 
-            if (DateTimeOffset.UtcNow - _scheduledAt < _debounce)
+            if (_timeProvider.GetUtcNow() - _scheduledAt < _debounce)
             {
                 try
                 {

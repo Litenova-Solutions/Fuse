@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 using Fuse.Check.Model;
-using Fuse.Check.Sessions;
+using Fuse.Identity;
 using Fuse.Paths;
 namespace Fuse.Check.Enrichment;
 
@@ -77,10 +77,7 @@ internal static partial class CauseLines
             return null;
         if (!writers.TryGetValue(file, out var sessions) || sessions.Count != 1)
             return null;
-        var session = sessions.Single();
-        return session.StartsWith(SessionEdits.RegisteredPrefix, StringComparison.Ordinal)
-            ? session[SessionEdits.RegisteredPrefix.Length..]
-            : session;
+        return SessionId.DisplayNameOf(sessions.Single());
     }
 
     /// <summary>

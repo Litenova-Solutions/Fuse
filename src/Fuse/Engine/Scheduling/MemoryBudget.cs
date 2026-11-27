@@ -22,17 +22,19 @@ internal sealed class MemoryBudget
     private readonly Func<long> _workingSet;
     private readonly Func<long> _memoryLoad;
     private readonly Func<long> _totalAvailable;
+    private readonly TimeProvider _timeProvider;
 
     /// <summary>True when the load and the total come from the OS/GC together, so one snapshot reads both.</summary>
     private readonly bool _sharedMemoryInfo;
 
-    public MemoryBudget(long ceilingBytes = DefaultCeilingBytes, Func<long>? workingSet = null, Func<long>? memoryLoad = null, Func<long>? totalAvailable = null)
+    public MemoryBudget(long ceilingBytes = DefaultCeilingBytes, Func<long>? workingSet = null, Func<long>? memoryLoad = null, Func<long>? totalAvailable = null, TimeProvider? timeProvider = null)
     {
         CeilingBytes = Math.Max(1, ceilingBytes);
         _workingSet = workingSet ?? (() => Environment.WorkingSet);
         _memoryLoad = memoryLoad ?? (() => ReadOsMemory().MemoryLoadBytes);
         _totalAvailable = totalAvailable ?? (() => ReadOsMemory().TotalAvailableBytes);
         _sharedMemoryInfo = memoryLoad is null && totalAvailable is null;
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     /// <summary>The ceiling in bytes, past which a request is answered Busy.</summary>
@@ -85,7 +87,7 @@ internal sealed class MemoryBudget
             var snapshot = Assess();
             File.WriteAllText(
                 Path.Combine(stateDirectory, LocalState.EngineMemoryFile),
-                $"{Environment.ProcessId}\t{snapshot.WorkingSetBytes}\t{(long)idle.TotalMilliseconds}\t{DateTime.UtcNow.Ticks}");
+                $"{Environment.ProcessId}\t{snapshot.WorkingSetBytes}\t{(long)idle.TotalMilliseconds}\t{_timeProvider.GetUtcNow().UtcTicks}");
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
@@ -97,8 +99,9 @@ internal sealed class MemoryBudget
     ///     The records of every engine under <paramref name="repositories"/>, read within the last minute. A record
     ///     that does not read is left out.
     /// </summary>
-    public static IReadOnlyList<EngineRecord> ReadMachine(string repositories)
+    public static IReadOnlyList<EngineRecord> ReadMachine(string repositories, TimeProvider? timeProvider = null)
     {
+        var now = (timeProvider ?? TimeProvider.System).GetUtcNow();
         var records = new List<EngineRecord>();
         if (!Directory.Exists(repositories))
             return records;
@@ -116,7 +119,7 @@ internal sealed class MemoryBudget
                     || !long.TryParse(parts[2], out var idleMs)
                     || !long.TryParse(parts[3], out var ticks))
                     continue;
-                if (DateTime.UtcNow.Ticks - ticks > TimeSpan.FromMinutes(1).Ticks)
+                if (now.UtcTicks - ticks > TimeSpan.FromMinutes(1).Ticks)
                     continue;
                 if (pid <= 0 || workingSet < 0 || idleMs < 0)
                     continue;

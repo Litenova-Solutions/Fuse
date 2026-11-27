@@ -13,11 +13,11 @@ public class BuildReusePlanTests
         using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });
         var project = Path.Combine(repo.Root.Path, "Lib.Tests", "Lib.Tests.csproj");
         var failure = new TestFailure("Lib.Tests.CalcTests.Multiplies", "boom", ["at CalcTests in Lib/Calc.cs:line 8"]);
-        var aggregate = new TrxResults(2, 1, 0, [failure]);
+        var aggregate = new TestRunSummary(2, 1, 0, [failure]);
         var finished = new DateTime(2026, 11, 6, 12, 0, 0, DateTimeKind.Utc);
 
         LastTestResults.WriteRun(repo.Root, "tree", "full", "assets", "key", finished, 4.5, "2 tests; without MSBuild", aggregate,
-            [(project, "Lib.Tests", new TrxResults(2, 1, 0, [failure])
+            [(project, "Lib.Tests", new TestRunSummary(2, 1, 0, [failure])
             {
                 Records =
                 [
@@ -102,8 +102,8 @@ public class BuildReusePlanTests
         var key = TestOperation.PlanKey(plan, null);
         var failure = new TestFailure("Lib.Tests.CalcTests.Multiplies", "boom", []);
         LastTestResults.WriteRun(repo.Root, "9f2c41aa07b3", "full", "assets", key, DateTime.UtcNow.AddSeconds(-14), 4.0, "ran 3 test(s); built with MSBuild",
-            new TrxResults(2, 1, 0, [failure]),
-            [(project, "Lib.Tests", new TrxResults(2, 1, 0, [failure]) { Records = [new TestRecord("Lib.Tests.CalcTests.Multiplies", TestVerdict.Failed, TimeSpan.Zero)] })],
+            new TestRunSummary(2, 1, 0, [failure]),
+            [(project, "Lib.Tests", new TestRunSummary(2, 1, 0, [failure]) { Records = [new TestRecord("Lib.Tests.CalcTests.Multiplies", TestVerdict.Failed, TimeSpan.Zero)] })],
             []);
 
         var answer = TestOperation.ReusedTestRun(repo.Root, ("9f2c41aa07b3", "full", "assets", 0), key, live: null)!;
@@ -121,7 +121,7 @@ public class BuildReusePlanTests
     {
         using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });
         LastTestResults.WriteRun(repo.Root, "tree", "full", "assets", "key", DateTime.UtcNow, 1.0, "s",
-            new TrxResults(1, 0, 0, []), [("/r/T/T.csproj", "T", new TrxResults(1, 0, 0, []))], []);
+            new TestRunSummary(1, 0, 0, []), [("/r/T/T.csproj", "T", new TestRunSummary(1, 0, 0, []))], []);
 
         Assert.Null(TestOperation.ReusedTestRun(repo.Root, ("tree", "full", "assets", 0), "other", live: null));
         Assert.Null(TestOperation.ReusedTestRun(repo.Root, ("other", "full", "assets", 0), "key", live: null));
@@ -134,7 +134,7 @@ public class BuildReusePlanTests
         using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });
         var failure = new TestFailure("Lib.Tests.CalcTests.Multiplies", "boom", []);
         LastTestResults.WriteRun(repo.Root, "tree", "full", "assets", "key", DateTime.UtcNow, 4.0, "s",
-            new TrxResults(0, 1, 0, [failure]), [("/r/T/T.csproj", "T", new TrxResults(0, 1, 0, [failure]))], []);
+            new TestRunSummary(0, 1, 0, [failure]), [("/r/T/T.csproj", "T", new TestRunSummary(0, 1, 0, [failure]))], []);
         var live = new StringWriter();
 
         var answer = TestOperation.ReusedTestRun(repo.Root, ("tree", "full", "assets", 0), "key", live)!;

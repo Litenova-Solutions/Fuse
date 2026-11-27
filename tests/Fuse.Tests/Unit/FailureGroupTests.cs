@@ -72,6 +72,6 @@ public class FailureGroupTests
         Assert.Contains($"  {first}", result.Text, StringComparison.Ordinal);
     }
 
-    private static TrxResults Results(params (string Name, string Message)[] failures) =>
+    private static TestRunSummary Results(params (string Name, string Message)[] failures) =>
         new(0, failures.Length, 0, failures.Select(f => new TestFailure(f.Name, f.Message, [])).ToList());
 }

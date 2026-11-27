@@ -35,7 +35,7 @@ internal sealed class TestPlanner
     private readonly DynamicTestMap _dynamicMap;
     private readonly TestSelector _selector;
     private readonly TestCounter _counter = new();
-    private readonly ShadowEmitter.SharedState _shadow = new();
+    private readonly ShadowEmitCaches _shadow = new();
     private readonly TimeProvider _time;
     private readonly Func<bool> _containerProbe;
 
@@ -93,7 +93,7 @@ internal sealed class TestPlanner
     /// <param name="scope">The affected tests, or every test.</param>
     /// <param name="phases">Collects the <see cref="Phase.Sync"/> and <see cref="Phase.Selection"/> phases.</param>
     /// <param name="cancellationToken">Cancels the plan.</param>
-    public async Task<PendingPlan> SelectAsync(TestScope scope, PhaseTimes phases, CancellationToken cancellationToken)
+    public async Task<PendingTestPlan> SelectAsync(TestScope scope, PhaseTimes phases, CancellationToken cancellationToken)
     {
         await IngestIncomingTestMapsAsync(cancellationToken).ConfigureAwait(false);
         var syncing = phases.Start();
@@ -112,7 +112,7 @@ internal sealed class TestPlanner
         var namedNote = named is null ? "" : $"; in {string.Join(", ", testProjects.Select(p => p.Name))}";
         var total = testProjects.Sum(p => _counter.TestsIn(p).Count);
         if (testProjects.Count == 0)
-            return PendingPlan.Of(new TestPlanResult([], 0, 0, "no test projects in this repository"), generation);
+            return PendingTestPlan.Of(new TestPlanResult([], 0, 0, "no test projects in this repository"), generation);
 
         if (scope is TestScope.All)
         {
@@ -142,7 +142,7 @@ internal sealed class TestPlanner
             var allSummary = $"ran every test in {plain.Count} test project(s)";
             if (gatedTests > 0)
                 allSummary += $"; skipped {gatedTests} test(s) in {string.Join(", ", gatedProjects)} (no container runtime)";
-            return PendingPlan.Of(new TestPlanResult(everything, total - gatedTests, total, allSummary) { ContainerGatedTests = gatedTests, ContainerGatedProjects = gatedProjects }, generation);
+            return PendingTestPlan.Of(new TestPlanResult(everything, total - gatedTests, total, allSummary) { ContainerGatedTests = gatedTests, ContainerGatedProjects = gatedProjects }, generation);
         }
 
         // A plan for one session leaves out the files only other sessions wrote: the tests their changes affect are
@@ -157,9 +157,9 @@ internal sealed class TestPlanner
         var others = (owned.Count - changedSources.Count) + (allNonSources.Count - changedNonSources.Count);
         var othersNote = others > 0 ? $"; left out {others} changed file(s) only other sessions wrote" : "";
         if (changed.Count == 0 && others > 0)
-            return PendingPlan.Of(new TestPlanResult([], 0, total, $"no C# changes by this session since HEAD, so no test is affected{othersNote}{namedNote} (fuse test --all runs everything)"), generation);
+            return PendingTestPlan.Of(new TestPlanResult([], 0, total, $"no C# changes by this session since HEAD, so no test is affected{othersNote}{namedNote} (fuse test --all runs everything)"), generation);
         if (changed.Count == 0)
-            return PendingPlan.Of(new TestPlanResult([], 0, total, $"no C# changes since HEAD, so no test is affected{namedNote} (fuse test --all runs everything)"), generation);
+            return PendingTestPlan.Of(new TestPlanResult([], 0, total, $"no C# changes since HEAD, so no test is affected{namedNote} (fuse test --all runs everything)"), generation);
 
         var timer = Stopwatch.StartNew();
         var (outcome, loaded) = await _selector.SelectAsync(changed, generation, cancellationToken).ConfigureAwait(false);
@@ -251,9 +251,9 @@ internal sealed class TestPlanner
             _workspace.Log($"test plan: left out {containerGatedTests} test(s) in {string.Join(", ", containerGatedProjects)} (no container runtime)");
 
         if (projects.Count == 0 && outside.Count > 0 && containerGatedTests == 0)
-            return PendingPlan.Of(new TestPlanResult([], 0, total, OutsideSummary(outside, othersNote, namedNote)), generation);
+            return PendingTestPlan.Of(new TestPlanResult([], 0, total, OutsideSummary(outside, othersNote, namedNote)), generation);
         if (selections.Count == 0 && outcome.AllSameCode)
-            return PendingPlan.Of(new TestPlanResult([], 0, total, $"no test is affected by the changes (out of {total}); the changes compile to the same code as HEAD; fuse test --all runs everything"), generation);
+            return PendingTestPlan.Of(new TestPlanResult([], 0, total, $"no test is affected by the changes (out of {total}); the changes compile to the same code as HEAD; fuse test --all runs everything"), generation);
 
         var summary = new StringBuilder($"ran {selected} test(s) affected by your changes out of {total}");
         if (reasons.Count > 0)
@@ -269,7 +269,7 @@ internal sealed class TestPlanner
         if (outside.Count > 0)
             summary.Append($"; {outside.Count} non-C# file(s) outside every project changed ({OutsideSample(outside)}); a test that reads them by path is not selected");
         summary.Append(outside.Count > 0 ? "; fuse test --all covers them" : "; fuse test --all runs everything");
-        return PendingPlan.ToPrepare(
+        return PendingTestPlan.ToPrepare(
             generation,
             EmitterFor(generation),
             projects,
@@ -292,7 +292,7 @@ internal sealed class TestPlanner
     /// <param name="pending">The plan, with its generation.</param>
     /// <param name="phases">Collects the <see cref="Phase.Mirror"/> and <see cref="Phase.Emit"/> phases.</param>
     /// <param name="cancellationToken">Cancels emitting.</param>
-    public async Task<TestPlanResult> PrepareAsync(PendingPlan pending, PhaseTimes phases, CancellationToken cancellationToken)
+    public async Task<TestPlanResult> PrepareAsync(PendingTestPlan pending, PhaseTimes phases, CancellationToken cancellationToken)
     {
         if (pending.Answered is not null)
             return pending.Answered;
@@ -347,7 +347,7 @@ internal sealed class TestPlanner
         string? filter,
         string[] filterArguments,
         IReadOnlyList<Project> variants,
-        PendingPlan pending,
+        PendingTestPlan pending,
         Stopwatch emitting,
         Stopwatch timer,
         CancellationToken cancellationToken)
@@ -581,7 +581,7 @@ internal sealed class TestPlanner
     /// <param name="phases">Collects the <see cref="Phase.Sync"/> and <see cref="Phase.Selection"/> phases.</param>
     /// <param name="cancellationToken">Cancels the plan.</param>
     /// <param name="noCache">True to bypass the slice cache lookup for this plan (<c>--clean</c> / <c>--no-cache</c>).</param>
-    public async Task<PendingPlan> SelectFailedAsync(IReadOnlyDictionary<RepoPath, string[]> byProject, IReadOnlyList<string> unknown, PhaseTimes phases, CancellationToken cancellationToken, bool noCache = false)
+    public async Task<PendingTestPlan> SelectFailedAsync(IReadOnlyDictionary<RepoPath, string[]> byProject, IReadOnlyList<string> unknown, PhaseTimes phases, CancellationToken cancellationToken, bool noCache = false)
     {
         await IngestIncomingTestMapsAsync(cancellationToken).ConfigureAwait(false);
         var syncing = phases.Start();
@@ -591,7 +591,7 @@ internal sealed class TestPlanner
         var testProjects = graph.Projects.Where(p => p.IsTest).ToList();
         var total = testProjects.Sum(p => _counter.TestsIn(p).Count);
         if (testProjects.Count == 0)
-            return PendingPlan.Of(new TestPlanResult([], 0, 0, "no test projects in this repository"), generation);
+            return PendingTestPlan.Of(new TestPlanResult([], 0, 0, "no test projects in this repository"), generation);
 
         var timer = Stopwatch.StartNew();
         var leftOut = unknown.Where(p => p.Length > 0).Select(p => Path.GetFileNameWithoutExtension(p) ?? "").Where(n => n.Length > 0).ToList();
@@ -656,8 +656,8 @@ internal sealed class TestPlanner
         foreach (var name in leftOut.Distinct(StringComparer.Ordinal).OrderBy(n => n, StringComparer.Ordinal))
             summary.Append("; left out ").Append(name).Append(", which is not a test project in this repository");
         if (reruns.Count == 0)
-            return PendingPlan.Of(new TestPlanResult([], 0, total, summary.ToString()), generation);
-        return PendingPlan.ToPrepare(generation, EmitterFor(generation), projects, selected, total, summary.ToString(), noCache: noCache, runner: runner, selections: selections);
+            return PendingTestPlan.Of(new TestPlanResult([], 0, total, summary.ToString()), generation);
+        return PendingTestPlan.ToPrepare(generation, EmitterFor(generation), projects, selected, total, summary.ToString(), noCache: noCache, runner: runner, selections: selections);
     }
 
 }

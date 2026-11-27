@@ -8,7 +8,7 @@ using Fuse.Workspace.Generations;
 namespace Fuse.Engine;
 
 /// <summary>Builds the project, candidate file, and affected test report returned by <c>fuse impact</c>.</summary>
-internal static class ImpactReportBuilder
+internal static class ChangeImpact
 {
     /// <summary>Reports the reach and test selection for the named paths, or for every changed file when none are named.</summary>
     public static async Task<ImpactReport> BuildAsync(

@@ -39,7 +39,7 @@ public class GatedTestRenderTests
     [Fact]
     public void A_partial_plan_keeps_the_gated_fragment_and_counts_no_gated_test_as_passed()
     {
-        var outcome = new TrxResults(12, 0, 3, []);
+        var outcome = new TestRunSummary(12, 0, 3, []);
 
         var result = TestOperation.Render(outcome, "ran 12 test(s) affected by your changes out of 40; skipped 5 test(s) in Shop.Acceptance.Tests (no container runtime); fuse test --all runs everything; without MSBuild", 2.1);
 

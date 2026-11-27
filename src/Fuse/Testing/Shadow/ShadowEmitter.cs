@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.InteropServices;
@@ -52,7 +51,7 @@ internal sealed class ShadowEmitter
 
     private readonly RepoWorkspace _workspace;
     private readonly RepoRoot _root;
-    private readonly SharedState _shared;
+    private readonly ShadowEmitCaches _shared;
     private readonly Solution? _baseline;
 
     /// <summary>The copies this plan holds while it prepares them, released when its preparation ends.</summary>
@@ -64,68 +63,29 @@ internal sealed class ShadowEmitter
     /// <summary>Where this plan stands in the shared order of plans, taken when its emitter was made; a copy answered after it is not this plan's to use or remove.</summary>
     private readonly long _sequence;
 
-    /// <summary>What the emitters of one planner share, so an image one plan emits serves the next and concurrent plans agree on what each shadow file holds.</summary>
-    internal sealed class SharedState
-    {
-        /// <summary>The emitted images kept between plans.</summary>
-        internal EmitCache Cache { get; } = new();
-
-        /// <summary>Each shadow file an emitter wrote, with its 32-byte SHA-256 hash and the length and time the file had after.</summary>
-        internal ConcurrentDictionary<string, Written> Written { get; } = new(StringComparer.OrdinalIgnoreCase);
-        /// <summary>The written files in the order they were last written in, for <see cref="WrittenGate"/>.</summary>
-        internal List<string> WrittenOrder { get; } = [];
-
-        /// <summary>Guards <see cref="WrittenOrder"/>, the order the written files were last written in.</summary>
-        internal Lock WrittenGate { get; } = new();
-
-        /// <summary>For each dependent an emitter wrote, the declaration fingerprint of each project it references, as it was when the dependent was written.</summary>
-        internal ConcurrentDictionary<ProjectId, Dictionary<ProjectId, string>> Fingerprints { get; } = new();
-        /// <summary>The dependents in the order they were last written in, for <see cref="FingerprintGate"/>.</summary>
-        internal List<ProjectId> FingerprintOrder { get; } = [];
-
-        /// <summary>Guards <see cref="FingerprintOrder"/>, the order the dependents were last written in.</summary>
-        internal Lock FingerprintGate { get; } = new();
-
-        /// <summary>Serializes the choice of a shadow copy, so two plans never choose the copy the other is writing.</summary>
-        internal Lock Allocation { get; } = new();
-
-        /// <summary>The places in the order of plans and of the answers they gave taken so far, for <see cref="Answered"/>.</summary>
-        private long _sequence;
-
-        /// <summary>The next place in the order of plans and of the answers they gave.</summary>
-        internal long NextSequence() => Interlocked.Increment(ref _sequence);
-
-        /// <summary>
-        ///     Each copy a plan answered with, with the place in the order its preparation ended. A copy stays
-        ///     here until a plan that is not preparing it finds a run holding it, which says its answer was taken;
-        ///     from then on a later plan may remove it once no run holds it.
-        /// </summary>
-        internal ConcurrentDictionary<string, long> Answered { get; } = new(StringComparer.OrdinalIgnoreCase);
-    }
-
 
 
 
 
 
     public ShadowEmitter(RepoWorkspace workspace)
-        : this(workspace, (Solution?)null, new SharedState())
+        : this(workspace, (Solution?)null, new ShadowEmitCaches())
     {
     }
 
     /// <summary>An emitter over <paramref name="shared"/> state whose declarations compare against the workspace's baseline.</summary>
-    internal ShadowEmitter(RepoWorkspace workspace, SharedState shared)
+    internal ShadowEmitter(RepoWorkspace workspace, ShadowEmitCaches shared)
         : this(workspace, (Solution?)null, shared)
     {
     }
 
     /// <summary>An emitter for one plan: it compares declarations against <paramref name="generation"/>'s baseline and shares <paramref name="shared"/> with the planner's other plans.</summary>
-    internal ShadowEmitter(RepoWorkspace workspace, Generation generation, SharedState shared)
+    internal ShadowEmitter(RepoWorkspace workspace, Generation generation, ShadowEmitCaches shared)
         : this(workspace, generation.Baseline, shared)
     {
     }
 
-    private ShadowEmitter(RepoWorkspace workspace, Solution? baseline, SharedState shared)
+    private ShadowEmitter(RepoWorkspace workspace, Solution? baseline, ShadowEmitCaches shared)
     {
         _workspace = workspace;
         _root = workspace.Root;

@@ -9,7 +9,7 @@ public class ReportBuilderTests
     {
         await using var engine = await InProcessEngine.StartAsync();
 
-        var report = GraphReportBuilder.Build(engine.Workspace.PinGeneration());
+        var report = GraphAnalysis.Build(engine.Workspace.PinGeneration());
 
         Assert.Equal(
             ["App.Tests/App.Tests.csproj", "App/App.csproj", "Lib.Tests/Lib.Tests.csproj", "Lib/Lib.csproj", "Multi/Multi.csproj", "Strict/Strict.csproj"],
@@ -39,7 +39,7 @@ public class ReportBuilderTests
         var path = engine.Repo.PathOf("Lib/Calc.cs");
         var generation = await engine.Workspace.SyncAndPinAsync([path], TestContext.Current.CancellationToken);
 
-        var report = await ImpactReportBuilder.BuildAsync(engine.Workspace, generation, ["Lib/Calc.cs"], TestContext.Current.CancellationToken);
+        var report = await ChangeImpact.BuildAsync(engine.Workspace, generation, ["Lib/Calc.cs"], TestContext.Current.CancellationToken);
 
         Assert.Equal(["Lib/Calc.cs"], report.InputPaths);
         Assert.Equal(["Lib"], report.OwningProjects);
@@ -50,7 +50,7 @@ public class ReportBuilderTests
         Assert.False(report.BroadReach);
         Assert.Equal($"4 affected project(s), {report.AffectedTestProjects.Length} affected test project(s)", report.Summary);
 
-        var changed = await ImpactReportBuilder.BuildAsync(engine.Workspace, engine.Workspace.PinGeneration(), [], TestContext.Current.CancellationToken);
+        var changed = await ChangeImpact.BuildAsync(engine.Workspace, engine.Workspace.PinGeneration(), [], TestContext.Current.CancellationToken);
         Assert.Equal(report.InputPaths, changed.InputPaths);
         Assert.Equal(report.OwningProjects, changed.OwningProjects);
         Assert.Equal(report.AffectedProjects, changed.AffectedProjects);
@@ -61,7 +61,7 @@ public class ReportBuilderTests
     {
         await using var engine = await InProcessEngine.StartAsync();
 
-        var report = await ImpactReportBuilder.BuildAsync(engine.Workspace, engine.Workspace.PinGeneration(), ["Fixture.slnx"], TestContext.Current.CancellationToken);
+        var report = await ChangeImpact.BuildAsync(engine.Workspace, engine.Workspace.PinGeneration(), ["Fixture.slnx"], TestContext.Current.CancellationToken);
 
         Assert.True(report.BroadReach);
         Assert.Empty(report.OwningProjects);

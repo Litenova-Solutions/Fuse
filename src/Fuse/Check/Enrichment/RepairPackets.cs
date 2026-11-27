@@ -11,7 +11,7 @@ namespace Fuse.Check.Enrichment;
 ///     Builds compact, Roslyn-free <see cref="RepairPacket"/> hints from bound compiler diagnostics so agents can
 ///     fix common errors without reading other files.
 /// </summary>
-internal static class RepairPacketBuilder
+internal static class RepairPackets
 {
     private const int MaxSuggestions = 5;
 

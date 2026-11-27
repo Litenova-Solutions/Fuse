@@ -63,7 +63,7 @@ internal static class LastTestResults
     ///     <see cref="MaxTests"/> tests, failures first. The file is replaced atomically, through a temporary file
     ///     beside it. It never throws.
     /// </summary>
-    internal static void Write(RepoRoot root, IEnumerable<(string Project, string Name, TrxResults Outcome)> runs)
+    internal static void Write(RepoRoot root, IEnumerable<(string Project, string Name, TestRunSummary Outcome)> runs)
     {
         try
         {
@@ -125,7 +125,7 @@ internal static class LastTestResults
     /// <param name="aggregate">The combined results, with the failures in run order.</param>
     /// <param name="runs">One entry per project, with its results.</param>
     /// <param name="problems">The builds and runs that ended without results, as answered.</param>
-    internal static void WriteRun(RepoRoot root, string treeHash, string fullHash, string assetsHash, string planKey, DateTime finishedUtc, double seconds, string summary, TrxResults aggregate, IReadOnlyList<(string Project, string Name, TrxResults Outcome)> runs, IReadOnlyList<OperationResult> problems)
+    internal static void WriteRun(RepoRoot root, string treeHash, string fullHash, string assetsHash, string planKey, DateTime finishedUtc, double seconds, string summary, TestRunSummary aggregate, IReadOnlyList<(string Project, string Name, TestRunSummary Outcome)> runs, IReadOnlyList<OperationResult> problems)
     {
         try
         {
@@ -217,7 +217,7 @@ internal static class LastTestResults
     ///     entry per project, and the builds and runs that ended without results. Null when no run is recorded, or the
     ///     file is unreadable, malformed, or of another version. It never throws.
     /// </summary>
-    internal static (string TreeHash, string FullHash, string AssetsHash, string PlanKey, DateTime FinishedUtc, double Seconds, string Summary, TrxResults Aggregate, List<(string Project, string Name, TrxResults Outcome)> Runs, List<OperationResult> Problems)? ReadRun(RepoRoot root)
+    internal static (string TreeHash, string FullHash, string AssetsHash, string PlanKey, DateTime FinishedUtc, double Seconds, string Summary, TestRunSummary Aggregate, List<(string Project, string Name, TestRunSummary Outcome)> Runs, List<OperationResult> Problems)? ReadRun(RepoRoot root)
     {
         try
         {
@@ -243,7 +243,7 @@ internal static class LastTestResults
                 || parsed["runs"] is not JsonArray runs
                 || ProblemList(parsed["problems"]) is not { } problems)
                 return null;
-            var stored = new List<(string Project, string Name, TrxResults Outcome)>(runs.Count);
+            var stored = new List<(string Project, string Name, TestRunSummary Outcome)>(runs.Count);
             foreach (var run in runs)
             {
                 if (run is not JsonObject entry
@@ -255,10 +255,10 @@ internal static class LastTestResults
                     || FailureList(entry["failures"]) is not { } failures
                     || RecordList(entry["records"]) is not { } records)
                     return null;
-                stored.Add((project, name, new TrxResults(runPassed, runFailed, runSkipped, failures) { Records = records }));
+                stored.Add((project, name, new TestRunSummary(runPassed, runFailed, runSkipped, failures) { Records = records }));
             }
 
-            return (treeHash, fullHash, assetsHash, planKey, finishedUtc, seconds, summary, new TrxResults(passed, failed, skipped, aggregateFailures), stored, problems);
+            return (treeHash, fullHash, assetsHash, planKey, finishedUtc, seconds, summary, new TestRunSummary(passed, failed, skipped, aggregateFailures), stored, problems);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or FormatException or InvalidOperationException or ArgumentException or NotSupportedException)
         {

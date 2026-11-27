@@ -24,7 +24,7 @@ namespace Fuse.Engine;
 ///     writing disk, the fork is checked for the errors it introduces compared with the baseline, and the candidates
 ///     are ranked (race) or checked applied together with overlaps reported (combine).
 /// </summary>
-internal sealed class JudgeService
+internal sealed class CandidateJudge
 {
     /// <summary>How many introduced errors one verdict holds at most; the count itself is not capped.</summary>
     private const int MaxReportedErrors = 200;
@@ -43,7 +43,7 @@ internal sealed class JudgeService
 
     /// <param name="workspace">The repository's projects and views.</param>
     /// <param name="root">The repository, which turns a diff's paths into values.</param>
-    public JudgeService(RepoWorkspace workspace, RepoRoot root)
+    public CandidateJudge(RepoWorkspace workspace, RepoRoot root)
     {
         _workspace = workspace;
         _root = root;

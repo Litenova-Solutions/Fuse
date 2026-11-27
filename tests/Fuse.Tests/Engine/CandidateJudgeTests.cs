@@ -5,7 +5,7 @@ using Fuse.Protocol.Requests;
 using Fuse.Tests.Fixtures;
 namespace Fuse.Tests.Engine;
 
-public class JudgeServiceTests
+public class CandidateJudgeTests
 {
     [Fact]
     public async Task Race_prefers_a_clean_candidate_over_one_that_breaks_a_call_site()
@@ -13,7 +13,7 @@ public class JudgeServiceTests
         await using var engine = await InProcessEngine.StartAsync();
         var clean = PatchFor(engine, "Lib/Calc.cs", "a * b;", "a * b + 0;");
         var breaking = PatchFor(engine, "Lib/Calc.cs", "public int Add(", "public int Plus(");
-        var service = new JudgeService(engine.Workspace, engine.Repo.Root);
+        var service = new CandidateJudge(engine.Workspace, engine.Repo.Root);
         var report = await service.RunAsync(
             new JudgeRequest(JudgeRequest.JudgeMode.Race, [new JudgeRequest.Candidate("clean", clean), new JudgeRequest.Candidate("breaking", breaking)]),
             TestContext.Current.CancellationToken);
@@ -41,7 +41,7 @@ public class JudgeServiceTests
         await using var engine = await InProcessEngine.StartAsync();
         var first = PatchFor(engine, "Lib/Calc.cs", "public int Add(", "public int Plus(");
         var second = PatchFor(engine, "Lib/Calc.cs", "public int Add(", "public int Sum(");
-        var service = new JudgeService(engine.Workspace, engine.Repo.Root);
+        var service = new CandidateJudge(engine.Workspace, engine.Repo.Root);
         var report = await service.RunAsync(
             new JudgeRequest(JudgeRequest.JudgeMode.Combine, [new JudgeRequest.Candidate("first", first), new JudgeRequest.Candidate("second", second)]),
             TestContext.Current.CancellationToken);
@@ -66,7 +66,7 @@ public class JudgeServiceTests
         engine.Repo.Replace("Lib/Calc.cs", "a * b;", "a * existingError;");
         engine.Repo.Commit("commit a broken file");
         var clean = PatchFor(engine, "Lib/Calc.cs", "=> a + b;", "=> a + b + 0;");
-        var service = new JudgeService(engine.Workspace, engine.Repo.Root);
+        var service = new CandidateJudge(engine.Workspace, engine.Repo.Root);
         var report = await service.RunAsync(
             new JudgeRequest(JudgeRequest.JudgeMode.Race, [new JudgeRequest.Candidate("clean", clean)]),
             TestContext.Current.CancellationToken);
@@ -88,7 +88,7 @@ public class JudgeServiceTests
         engine.Repo.Delete("Lib/Extra.cs");
         Assert.Contains("public static class Extra", diff, StringComparison.Ordinal);
 
-        var service = new JudgeService(engine.Workspace, engine.Repo.Root);
+        var service = new CandidateJudge(engine.Workspace, engine.Repo.Root);
         var report = await service.RunAsync(
             new JudgeRequest(JudgeRequest.JudgeMode.Race, [new JudgeRequest.Candidate("added", diff)]),
             TestContext.Current.CancellationToken);
@@ -107,7 +107,7 @@ public class JudgeServiceTests
     {
         await using var engine = await InProcessEngine.StartAsync();
         var notes = "diff --git a/docs/notes.md b/docs/notes.md\nnew file mode 100644\n--- /dev/null\n+++ b/docs/notes.md\n@@ -0,0 +1 @@\n+hello\n";
-        var service = new JudgeService(engine.Workspace, engine.Repo.Root);
+        var service = new CandidateJudge(engine.Workspace, engine.Repo.Root);
         var report = await service.RunAsync(
             new JudgeRequest(JudgeRequest.JudgeMode.Race, [new JudgeRequest.Candidate("notes", notes)]),
             TestContext.Current.CancellationToken);
@@ -125,7 +125,7 @@ public class JudgeServiceTests
     public async Task Too_many_or_too_large_candidates_are_refused()
     {
         await using var engine = await InProcessEngine.StartAsync();
-        var service = new JudgeService(engine.Workspace, engine.Repo.Root);
+        var service = new CandidateJudge(engine.Workspace, engine.Repo.Root);
         var tiny = "diff --git a/f.cs b/f.cs\n--- a/f.cs\n+++ b/f.cs\n@@ -1 +1 @@\n-a\n+b\n";
 
         var many = Enumerable.Range(0, 17).Select(i => new JudgeRequest.Candidate($"c{i}", tiny)).ToArray();
@@ -187,7 +187,7 @@ public class JudgeServiceTests
         // The first candidate adds a line, so the second one's hunk sits a line lower once the first is applied.
         var first = PatchFor(engine, "Lib/Steps.cs", "public int Step1() => 1;", "public int Step1() => 1;\n    public int Step0() => 0;");
         var second = PatchFor(engine, "Lib/Steps.cs", "public int Step30() => 30;", "public int Step30() => 30 + 0;");
-        var service = new JudgeService(engine.Workspace, engine.Repo.Root);
+        var service = new CandidateJudge(engine.Workspace, engine.Repo.Root);
         var report = await service.RunAsync(
             new JudgeRequest(JudgeRequest.JudgeMode.Combine, [new JudgeRequest.Candidate("first", first), new JudgeRequest.Candidate("second", second)]),
             TestContext.Current.CancellationToken);
@@ -207,7 +207,7 @@ public class JudgeServiceTests
         File.WriteAllText(path, File.ReadAllText(path).Replace("public int Step1() => 1;", "public int Step1() => 1 + 0;", StringComparison.Ordinal));
         var diff = FixtureRepo.Run(engine.Repo.Root.Path, "git", "diff", "--no-color", "--", "Lib/Steps.cs");
         File.WriteAllBytes(path, original);
-        var service = new JudgeService(engine.Workspace, engine.Repo.Root);
+        var service = new CandidateJudge(engine.Workspace, engine.Repo.Root);
         var report = await service.RunAsync(
             new JudgeRequest(JudgeRequest.JudgeMode.Race, [new JudgeRequest.Candidate("clean", diff)]),
             TestContext.Current.CancellationToken);

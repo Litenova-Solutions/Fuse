@@ -89,8 +89,8 @@ public class TestRunPathTests
     {
         var shadow = new TestRunMode.Shadow("C:/state/shadow/Lib.Tests/Lib.Tests.dll");
         TestRun Run(string? key) => new("C:/repo/Lib.Tests/Lib.Tests.csproj", "Lib.Tests", shadow, null, false, null, [], []) { SliceKey = key };
-        var passed = new TrxResults(3, 0, 0, []);
-        var failed = new TrxResults(2, 1, 0, [new TestFailure("Lib.Tests.CalcTests.Multiplies", "boom", [])]);
+        var passed = new TestRunSummary(3, 0, 0, []);
+        var failed = new TestRunSummary(2, 1, 0, [new TestFailure("Lib.Tests.CalcTests.Multiplies", "boom", [])]);
 
         Assert.NotNull(TestOperation.SliceStoreFor(Run("key"), passed, 4, noCache: false));
         // A failed verdict is stored too; the client runs a cached failure fresh anyway.
@@ -101,13 +101,13 @@ public class TestRunPathTests
         Assert.Null(TestOperation.SliceStoreFor(Run(null), passed, 4, noCache: false));
         Assert.Null(TestOperation.SliceStoreFor(Run(" "), passed, 4, noCache: false));
         Assert.Null(TestOperation.SliceStoreFor(Run("key"), null, 4, noCache: false));
-        Assert.Null(TestOperation.SliceStoreFor(Run("key"), TrxResults.Empty, 4, noCache: false));
-        var early = new TrxResults(0, 2, 0, [new TestFailure("Lib.Tests.CalcTests.Multiplies", TestOperation.StoppedEarlyMessage, [])]);
+        Assert.Null(TestOperation.SliceStoreFor(Run("key"), TestRunSummary.Empty, 4, noCache: false));
+        var early = new TestRunSummary(0, 2, 0, [new TestFailure("Lib.Tests.CalcTests.Multiplies", TestOperation.StoppedEarlyMessage, [])]);
         Assert.Null(TestOperation.SliceStoreFor(Run("key"), early, 4, noCache: false));
     }
 
     /// <summary>Runs a shadow run's test assembly with <c>dotnet test</c>, the way <c>fuse test</c> does, and reads its results.</summary>
-    private static async Task<TrxResults> RunShadowAsync(FixtureRepo repo, string assembly, string? filter)
+    private static async Task<TestRunSummary> RunShadowAsync(FixtureRepo repo, string assembly, string? filter)
     {
         var results = FixtureRepo.NewDirectory();
         try

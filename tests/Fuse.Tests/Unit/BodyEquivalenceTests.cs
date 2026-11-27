@@ -8,7 +8,7 @@ namespace Fuse.Tests.Unit;
 ///     Which changed declarations compile to the same code as HEAD's and select no tests. A declaration wrongly
 ///     dropped misses a failing test; a declaration wrongly kept only runs extra tests.
 /// </summary>
-public class CompiledCodeTests
+public class BodyEquivalenceTests
 {
     private static bool SameCode(string before, string after) =>
         SameCode(before, after, m => m is MethodDeclarationSyntax or PropertyDeclarationSyntax);
@@ -20,7 +20,7 @@ public class CompiledCodeTests
         var (afterModel, afterRoot) = Bind(after, ct);
         var beforeDecl = beforeRoot.DescendantNodes().OfType<MemberDeclarationSyntax>().First(pick);
         var afterDecl = afterRoot.DescendantNodes().OfType<MemberDeclarationSyntax>().First(pick);
-        return CompiledCode.SameCode(afterModel, afterDecl, beforeModel, beforeDecl);
+        return BodyEquivalence.SameCode(afterModel, afterDecl, beforeModel, beforeDecl);
     }
 
     private static (SemanticModel Model, SyntaxNode Root) Bind(string source, CancellationToken ct)

@@ -49,7 +49,7 @@ internal sealed class ProjectLoader : IDisposable
     public ProjectLoader(
         RepoRoot root,
         Action<string> log,
-        BlueprintWorkspace.SharedResources? sharedResources = null,
+        BlueprintResourceCache? sharedResources = null,
         Func<string?>? headProvider = null,
         Func<IReadOnlySet<RepoPath>>? dirtyProvider = null)
     {
@@ -61,7 +61,7 @@ internal sealed class ProjectLoader : IDisposable
     }
 
     /// <summary>Shared immutable metadata, analyzer and HEAD text resources for this hypervisor.</summary>
-    public BlueprintWorkspace.SharedResources SharedResources => _blueprintWorkspace.Shared;
+    public BlueprintResourceCache ResourceCache => _blueprintWorkspace.Shared;
 
     /// <summary>The active blueprint supplying loaded projects, or null when not loaded from a blueprint.</summary>
     public CompilationBlueprint? ActiveBlueprint => _activeBlueprint;

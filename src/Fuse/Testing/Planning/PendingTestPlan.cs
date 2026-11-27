@@ -12,9 +12,9 @@ namespace Fuse.Testing.Planning;
 ///     emitter bound to that generation, so <see cref="TestPlanner.PrepareAsync"/> prepares it while other plans
 ///     select and prepare from generations of their own.
 /// </summary>
-internal sealed class PendingPlan
+internal sealed class PendingTestPlan
 {
-    private PendingPlan(
+    private PendingTestPlan(
         TestPlanResult? answered,
         Generation generation,
         ShadowEmitter? emitter,
@@ -90,10 +90,10 @@ internal sealed class PendingPlan
     public IReadOnlyDictionary<RepoPath, TestSelection>? Selections { get; }
 
     /// <summary>A plan that is already answered and prepares nothing.</summary>
-    public static PendingPlan Of(TestPlanResult answered, Generation generation) => new(answered, generation, null, [], 0, answered.TotalTests, answered.Summary);
+    public static PendingTestPlan Of(TestPlanResult answered, Generation generation) => new(answered, generation, null, [], 0, answered.TotalTests, answered.Summary);
 
     /// <summary>A plan whose shadow runs are still to be prepared, with the emitter that prepares them.</summary>
-    public static PendingPlan ToPrepare(
+    public static PendingTestPlan ToPrepare(
         Generation generation,
         ShadowEmitter emitter,
         IReadOnlyList<(ProjectNode Node, string? Filter, string[] FilterArguments, IReadOnlyList<Project> Variants)> projects,

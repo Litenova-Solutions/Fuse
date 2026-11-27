@@ -8,7 +8,7 @@ namespace Fuse.Tests.Unit;
 ///     A rename that changes a name the code reads as a value is not same code: an inferred member name or a captured
 ///     argument. An explicit member name still is.
 /// </summary>
-public class CompiledCodeNameValueTests
+public class BodyEquivalenceNameValueTests
 {
     private static bool SameCode(string before, string after, string method = "M")
     {
@@ -17,7 +17,7 @@ public class CompiledCodeNameValueTests
         var (afterModel, afterRoot) = Bind(after, ct);
         var beforeDecl = beforeRoot.DescendantNodes().OfType<MethodDeclarationSyntax>().First(m => m.Identifier.Text == method);
         var afterDecl = afterRoot.DescendantNodes().OfType<MethodDeclarationSyntax>().First(m => m.Identifier.Text == method);
-        return CompiledCode.SameCode(afterModel, afterDecl, beforeModel, beforeDecl);
+        return BodyEquivalence.SameCode(afterModel, afterDecl, beforeModel, beforeDecl);
     }
 
     private static (SemanticModel Model, SyntaxNode Root) Bind(string source, CancellationToken ct)

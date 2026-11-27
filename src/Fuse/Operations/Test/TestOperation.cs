@@ -375,7 +375,7 @@ internal static class TestOperation
             releaseLock();
         }
 
-        var outcomes = new System.Collections.Concurrent.ConcurrentDictionary<RepoPath, TrxResults>();
+        var outcomes = new System.Collections.Concurrent.ConcurrentDictionary<RepoPath, TestRunSummary>();
         var timeouts = new System.Collections.Concurrent.ConcurrentDictionary<RepoPath, (ProcessResult Process, string? Framework, string Name)>();
         await Parallel.ForEachAsync(
             shadowGroups,
@@ -395,7 +395,7 @@ internal static class TestOperation
 
                 if (results.Any(r => r.Ran.Outcome is null))
                     return;
-                outcomes[group.Key] = results.Aggregate(TrxResults.Empty, (sum, r) => sum.Add(r.Ran.Outcome!));
+                outcomes[group.Key] = results.Aggregate(TestRunSummary.Empty, (sum, r) => sum.Add(r.Ran.Outcome!));
             }).ConfigureAwait(false);
 
         var remainingGroups = groups.Where(g => !outcomes.ContainsKey(g.Key) && !timeouts.ContainsKey(g.Key)).ToList();
@@ -431,8 +431,8 @@ internal static class TestOperation
             }
         }
 
-        var aggregate = TrxResults.Empty;
-        var perProject = new List<(string Project, string Name, TrxResults Outcome)>();
+        var aggregate = TestRunSummary.Empty;
+        var perProject = new List<(string Project, string Name, TestRunSummary Outcome)>();
         // A project that did not build, or whose run ended without results, is part of the answer whatever the other
         // projects did. A Microsoft.Testing.Platform run that passed without printing a run summary is kept apart: it has
         // no counts to add.
@@ -441,7 +441,7 @@ internal static class TestOperation
 
         if (runRemainingInParallel)
         {
-            var parallelResults = new System.Collections.Concurrent.ConcurrentDictionary<RepoPath, (TrxResults? Outcome, ProcessResult? Process, string Log, TestRun Run, string? TimedOutFramework)>();
+            var parallelResults = new System.Collections.Concurrent.ConcurrentDictionary<RepoPath, (TestRunSummary? Outcome, ProcessResult? Process, string Log, TestRun Run, string? TimedOutFramework)>();
             var parallelScope = scope is null
                 ? new TestScopeArguments([], parallelBuiltSwitches, false, null, null)
                 : scope with { BuildSwitches = parallelBuiltSwitches };
@@ -550,7 +550,7 @@ internal static class TestOperation
     }
 
     /// <summary>What one stage of a split run produced: its combined results, answers, and which projects ran as shadow runs.</summary>
-    private sealed record StageOutcome(TrxResults Aggregate, List<(string Project, string Name, TrxResults Outcome)> PerProject, List<OperationResult> Problems, OperationResult? PassedWithoutResults, IReadOnlySet<RepoPath> Shadowed);
+    private sealed record StageOutcome(TestRunSummary Aggregate, List<(string Project, string Name, TestRunSummary Outcome)> PerProject, List<OperationResult> Problems, OperationResult? PassedWithoutResults, IReadOnlySet<RepoPath> Shadowed);
 
     /// <summary>
     ///     Runs a plan whose projects split into a first stage of last run's failures and a second stage of the rest,
@@ -641,12 +641,12 @@ internal static class TestOperation
         if (aggregate.Total == 0 && problems.Count > 0)
             return Join(problems);
 
-        var perProject = new List<(string Project, string Name, TrxResults Outcome)>();
+        var perProject = new List<(string Project, string Name, TestRunSummary Outcome)>();
         foreach (var group in groups)
         {
             var outcomes = first.PerProject.Concat(second.PerProject).Where(p => p.Project == group.First().Project).ToList();
             if (outcomes.Count > 0)
-                perProject.Add((group.First().Project, group.First().Name, outcomes.Select(o => o.Outcome).Aggregate(TrxResults.Empty, (a, b) => a.Add(b))));
+                perProject.Add((group.First().Project, group.First().Name, outcomes.Select(o => o.Outcome).Aggregate(TestRunSummary.Empty, (a, b) => a.Add(b))));
         }
 
         // A split project ran without MSBuild only when both its stages did.
@@ -674,7 +674,7 @@ internal static class TestOperation
         Func<BuildLock> takeLock, TestScopeArguments? scope, CancellationToken cancellationToken, int maxFailures = DefaultMaxFailures, bool noCache = false, TimeSpan? inactivityTimeout = null)
     {
         var shadowGroups = stage.Where(g => g.Runs.All(r => r.Mode is TestRunMode.Shadow)).ToList();
-        var outcomes = new System.Collections.Concurrent.ConcurrentDictionary<RepoPath, TrxResults>();
+        var outcomes = new System.Collections.Concurrent.ConcurrentDictionary<RepoPath, TestRunSummary>();
         var timeouts = new System.Collections.Concurrent.ConcurrentDictionary<RepoPath, (ProcessResult Process, string? Framework, string Name)>();
         await Parallel.ForEachAsync(
             shadowGroups,
@@ -693,11 +693,11 @@ internal static class TestOperation
 
                 if (results.Any(r => r.Ran.Outcome is null))
                     return;
-                outcomes[group.Key] = results.Aggregate(TrxResults.Empty, (sum, r) => sum.Add(r.Ran.Outcome!));
+                outcomes[group.Key] = results.Aggregate(TestRunSummary.Empty, (sum, r) => sum.Add(r.Ran.Outcome!));
             }).ConfigureAwait(false);
 
-        var aggregate = TrxResults.Empty;
-        var perProject = new List<(string Project, string Name, TrxResults Outcome)>();
+        var aggregate = TestRunSummary.Empty;
+        var perProject = new List<(string Project, string Name, TestRunSummary Outcome)>();
         var problems = new List<OperationResult>();
         OperationResult? passedWithoutResults = null;
         foreach (var (key, runs) in stage)
@@ -756,7 +756,7 @@ internal static class TestOperation
     ///     directory, as a test host runs it. A filtered run that ran no test is answered as the platform's own
     ///     no-test run, never as a pass.
     /// </summary>
-    private static async Task<(TrxResults? Outcome, ProcessResult? Process, string Log, string ResultsDirectory, string? TimedOutFramework)> RunPlatformAsync(
+    private static async Task<(TestRunSummary? Outcome, ProcessResult? Process, string Log, string ResultsDirectory, string? TimedOutFramework)> RunPlatformAsync(
         RepoRoot root, TestRun run, bool runner, TestScopeArguments? scope, CancellationToken cancellationToken, int maxFailures = DefaultMaxFailures, TimeSpan? inactivityTimeout = null)
     {
         string[] switches = scope?.BuildSwitches ?? [];
@@ -789,7 +789,7 @@ internal static class TestOperation
             string[] settings = run.Filter is not null || run.RunSettings is not null
                 ? ["--settings", RunSettingsFile.Write(results, run.Filter, run.RunSettings)]
                 : [];
-            var aggregate = TrxResults.Empty;
+            var aggregate = TestRunSummary.Empty;
             ProcessResult? last = null;
             foreach (var target in targets)
             {
@@ -855,7 +855,7 @@ internal static class TestOperation
     ///     The text is what the engine's plan mapper writes; the engine masks it under <c>--clean</c> and
     ///     <c>--no-cache</c>, so a masked run always reaches here uncached.
     /// </summary>
-    internal static TrxResults? CachedPassOutcome(TestRun run)
+    internal static TestRunSummary? CachedPassOutcome(TestRun run)
     {
         if (!run.FromCache || run.CacheReason is not { } reason)
             return null;
@@ -876,14 +876,14 @@ internal static class TestOperation
             || !int.TryParse(body[(first + passed.Length)..second], NumberStyles.None, CultureInfo.InvariantCulture, out var failedCount)
             || !int.TryParse(body[(second + failed.Length)..], NumberStyles.None, CultureInfo.InvariantCulture, out var skippedCount))
             return null;
-        return failedCount == 0 ? new TrxResults(passedCount, 0, skippedCount, []) : null;
+        return failedCount == 0 ? new TestRunSummary(passedCount, 0, skippedCount, []) : null;
     }
 
     /// <summary>
     ///     Runs one shadow run, or reuses its cached passing verdict without starting a process. A run that executes
     ///     stores its verdict in the slice cache, so the next identical plan reuses a passing verdict without running.
     /// </summary>
-    private static async Task<(TrxResults? Outcome, ProcessResult? Process, string Log, string ResultsDirectory, string? TimedOutFramework)> RunShadowOrCachedAsync(RepoRoot root, TestRun run, int maxFailures, CancellationToken cancellationToken, bool noCache = false, TimeSpan? inactivityTimeout = null)
+    private static async Task<(TestRunSummary? Outcome, ProcessResult? Process, string Log, string ResultsDirectory, string? TimedOutFramework)> RunShadowOrCachedAsync(RepoRoot root, TestRun run, int maxFailures, CancellationToken cancellationToken, bool noCache = false, TimeSpan? inactivityTimeout = null)
     {
         if (CachedPassOutcome(run) is { } reused)
             return (reused, null, "", "", null);
@@ -903,7 +903,7 @@ internal static class TestOperation
     ///     reaches here with its key: a split stage runs under another filter with no key, and a run that fell back
     ///     to MSBuild stores nothing.
     /// </summary>
-    internal static EngineRequest.StoreSliceResult? SliceStoreFor(TestRun run, TrxResults? outcome, double durationMs, bool noCache)
+    internal static EngineRequest.StoreSliceResult? SliceStoreFor(TestRun run, TestRunSummary? outcome, double durationMs, bool noCache)
     {
         if (noCache || outcome is null || outcome.Total == 0 || string.IsNullOrWhiteSpace(run.SliceKey))
             return null;
@@ -927,7 +927,7 @@ internal static class TestOperation
     ///     stored only costs the next identical plan its reuse, so a store never fails the run, never starts an
     ///     engine for it, and never stores for a cancelled run.
     /// </summary>
-    private static async Task StoreSliceVerdictAsync(RepoRoot root, TestRun run, TrxResults? outcome, double durationMs, bool noCache, CancellationToken cancellationToken)
+    private static async Task StoreSliceVerdictAsync(RepoRoot root, TestRun run, TestRunSummary? outcome, double durationMs, bool noCache, CancellationToken cancellationToken)
     {
         var store = SliceStoreFor(run, outcome, durationMs, noCache);
         if (store is null || cancellationToken.IsCancellationRequested || !EngineClient.PipeExists(root.PipeName))
@@ -1020,7 +1020,7 @@ internal static class TestOperation
     ///     Runs one Microsoft.Testing.Platform shadow-emitted assembly directly without MSBuild. Returns null outcome
     ///     when the shadow assembly cannot execute directly so the caller falls back cleanly to MSBuild.
     /// </summary>
-    private static async Task<(TrxResults? Outcome, ProcessResult? Process, string Log, string ResultsDirectory, string? TimedOutFramework)> RunShadowPlatformAsync(
+    private static async Task<(TestRunSummary? Outcome, ProcessResult? Process, string Log, string ResultsDirectory, string? TimedOutFramework)> RunShadowPlatformAsync(
         RepoRoot root, TestRun run, int maxFailures, CancellationToken cancellationToken, TimeSpan? inactivityTimeout = null)
     {
         var shadowAssembly = ((TestRunMode.Shadow)run.Mode).Assembly;
@@ -1194,7 +1194,7 @@ internal static class TestOperation
     ///     <c>--project</c>, reports to TRX, and reads a filter from the run settings, so a framework's own filter options
     ///     are left out and xUnit v3 and TUnit run whole; MSTest and NUnit still read their VSTest filter there.
     /// </summary>
-    private static async Task<(TrxResults? Outcome, ProcessResult? Process, string Log, string ResultsDirectory, string? TimedOutFramework)> ThroughDotnetTestAsync(
+    private static async Task<(TestRunSummary? Outcome, ProcessResult? Process, string Log, string ResultsDirectory, string? TimedOutFramework)> ThroughDotnetTestAsync(
         RepoRoot root, TestRun run, bool runner, string[] switches, CancellationToken cancellationToken, int maxFailures = DefaultMaxFailures, TimeSpan? inactivityTimeout = null)
     {
         string[] maxFailArgs = [];
@@ -1213,8 +1213,8 @@ internal static class TestOperation
     }
 
     /// <summary>A filtered platform run that ran no test, answered as the platform's own no-test run; any other run unchanged.</summary>
-    private static (TrxResults? Outcome, ProcessResult? Process, string Log, string ResultsDirectory, string? TimedOutFramework) FilteredNoTest(
-        TestRun run, (TrxResults? Outcome, ProcessResult? Process, string Log, string ResultsDirectory, string? TimedOutFramework) ran) =>
+    private static (TestRunSummary? Outcome, ProcessResult? Process, string Log, string ResultsDirectory, string? TimedOutFramework) FilteredNoTest(
+        TestRun run, (TestRunSummary? Outcome, ProcessResult? Process, string Log, string ResultsDirectory, string? TimedOutFramework) ran) =>
         ran.Outcome is { Total: 0 } && (run.Filter is not null || run.FilterArguments.Length > 0)
             ? (null, new ProcessResult(NoTestRanExitCode, ""), ran.Log, ran.ResultsDirectory, null)
             : ran;
@@ -1229,7 +1229,7 @@ internal static class TestOperation
     /// <param name="maxFailures">Maximum failures before early-stopping VSTest; 0 disables early stop.</param>
     /// <param name="inactivityTimeout">How long the test process may write no output before its tree is killed and the result reads timed out, or null for the timeout every run uses.</param>
     /// <returns>The results, or the process without them, and the build's file log (<see cref="BuildLog"/>) for a VSTest run that builds with MSBuild, or empty.</returns>
-    private static async Task<(TrxResults? Outcome, ProcessResult? Process, string Log, string ResultsDirectory, string? TimedOutFramework)> RunDotnetTestAsync(
+    private static async Task<(TestRunSummary? Outcome, ProcessResult? Process, string Log, string ResultsDirectory, string? TimedOutFramework)> RunDotnetTestAsync(
         RepoRoot root, string workingDirectory, string[] arguments, CancellationToken cancellationToken, bool testingPlatform = false, bool assembly = false, TestRun? run = null, int maxFailures = DefaultMaxFailures, TimeSpan? inactivityTimeout = null)
     {
         var results = Path.Combine(root.StateDirectory, "results", Guid.NewGuid().ToString("N")[..8]);
@@ -1339,7 +1339,7 @@ internal static class TestOperation
         }
     }
 
-    private static TrxResults SynthesizeFailures(List<string> failureNames) =>
+    private static TestRunSummary SynthesizeFailures(List<string> failureNames) =>
         new(0, failureNames.Count, 0, [.. failureNames.Select(n => new TestFailure(n, StoppedEarlyMessage, []))]);
 
     /// <summary>
@@ -1707,7 +1707,7 @@ internal static class TestOperation
     }
 
     /// <summary>The answer for runs with results: the failures grouped by their shared first line, then the counts and <paramref name="summary"/>.</summary>
-    internal static OperationResult Render(TrxResults outcome, string summary, double seconds, string? resultsPath = null)
+    internal static OperationResult Render(TestRunSummary outcome, string summary, double seconds, string? resultsPath = null)
     {
         var text = new StringBuilder();
         text.Append(RenderFailures(outcome));
@@ -1716,7 +1716,7 @@ internal static class TestOperation
     }
 
     /// <summary>The failures of <paramref name="outcome"/> as the answer prints them: each group under its shared line, then the names past the detail budget.</summary>
-    internal static string RenderFailures(TrxResults outcome)
+    internal static string RenderFailures(TestRunSummary outcome)
     {
         var text = new StringBuilder();
         var (detailed, restNames, restCount) = FailureGroups.Split(outcome.Failures, MaxFailuresShown);
@@ -1741,7 +1741,7 @@ internal static class TestOperation
     }
 
     /// <summary>The last line for runs with results: the counts, <paramref name="summary"/>, and the results file when the answer left failures or names out.</summary>
-    internal static string RenderSummary(TrxResults outcome, string summary, double seconds, string? resultsPath = null)
+    internal static string RenderSummary(TestRunSummary outcome, string summary, double seconds, string? resultsPath = null)
     {
         var skipped = outcome.Skipped > 0 ? $", {outcome.Skipped} skipped" : "";
         // The file holds every failure; the answer names it only when it left failures or names out.

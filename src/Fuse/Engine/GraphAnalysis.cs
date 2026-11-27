@@ -6,7 +6,7 @@ using Fuse.Workspace.Generations;
 namespace Fuse.Engine;
 
 /// <summary>Builds the project graph, coupling clusters, and test ownership reported by <c>fuse graph</c>.</summary>
-internal static class GraphReportBuilder
+internal static class GraphAnalysis
 {
     /// <summary>Builds a deterministic report from the graph in <paramref name="generation"/>.</summary>
     public static GraphReport Build(Generation generation)

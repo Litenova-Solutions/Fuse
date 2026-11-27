@@ -17,7 +17,7 @@ internal static partial class TestingPlatformOutput
     /// </summary>
     /// <param name="output">The run's standard output and standard error.</param>
     /// <param name="root">The repository, which frames are printed relative to.</param>
-    public static TrxResults? Read(string output, string root)
+    public static TestRunSummary? Read(string output, string root)
     {
         var lines = AnsiSequences.Strip(output).Replace("\r", "").Split('\n');
         var summary = Array.FindLastIndex(lines, l => l.StartsWith("Test run summary:", StringComparison.Ordinal));
@@ -60,7 +60,7 @@ internal static partial class TestingPlatformOutput
             records.Add(new TestRecord(name, TestVerdict.Failed, Duration(header.Groups["duration"].Value)));
         }
 
-        return new TrxResults(succeeded, failed, skipped, failures) { Records = records };
+        return new TestRunSummary(succeeded, failed, skipped, failures) { Records = records };
     }
 
     /// <summary>A duration the platform prints after a failed test name, such as <c>12ms</c> or <c>1s 200ms</c>; unreadable reads as zero.</summary>

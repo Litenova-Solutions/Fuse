@@ -116,7 +116,7 @@ public sealed class IdleReleaseTests : IDisposable
             ["Lib/Calc.cs"] = "public class Calc { public int Add(int a, int b) => a + b; }\n",
         });
         using var workspace = new RepoWorkspace(repo.Root, _ => { });
-        var shared = workspace.PrimaryOverlay.SharedResources;
+        var shared = workspace.PrimaryOverlay.ResourceCache;
         var absolute = Path.Combine(repo.Root.Path, "Lib", "Calc.cs");
 
         Assert.NotNull(shared.GetOrReadHeadText("head1", "Lib/Calc.cs", absolute));

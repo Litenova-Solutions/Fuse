@@ -10,7 +10,7 @@ namespace Fuse.Testing.Selection;
 ///     type with the type it names, so a local rename and <c>var</c> against the explicit type qualify. Anything
 ///     else, and anything undecidable, counts as changed.
 /// </summary>
-internal static class CompiledCode
+internal static class BodyEquivalence
 {
     /// <summary>
     ///     True when <paramref name="changed"/>, a declaration <see cref="Fuse.Changes.CodeDiff"/> found in

@@ -147,7 +147,7 @@ internal sealed class MemberWalk
                 ChangedDeclarations++;
                 if (changed is not CompilationUnitSyntax
                     && model is not null
-                    && await CompiledCode.SameAsHeadAsync(document, changed, model, _baseline, cancellationToken).ConfigureAwait(false))
+                    && await BodyEquivalence.SameAsHeadAsync(document, changed, model, _baseline, cancellationToken).ConfigureAwait(false))
                 {
                     DroppedSameCode++;
                     continue;

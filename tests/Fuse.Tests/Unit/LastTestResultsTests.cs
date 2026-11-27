@@ -12,7 +12,7 @@ public class LastTestResultsTests
         var lib = Path.Combine(repo.Root.Path, "Lib.Tests", "Lib.Tests.csproj");
         LastTestResults.Write(repo.Root,
         [
-            (lib, "Lib.Tests", new TrxResults(1, 1, 1,
+            (lib, "Lib.Tests", new TestRunSummary(1, 1, 1,
                 [new TestFailure("Lib.Tests.CalcTests.Multiplies", "boom", [])])
             {
                 Records =
@@ -22,7 +22,7 @@ public class LastTestResultsTests
                     new TestRecord("Lib.Tests.CalcTests.Skips", TestVerdict.Skipped, TimeSpan.Zero),
                 ],
             }),
-            ("", "", new TrxResults(0, 1, 0, [new TestFailure("Flakes", "boom", [])])),
+            ("", "", new TestRunSummary(0, 1, 0, [new TestFailure("Flakes", "boom", [])])),
         ]);
 
         var record = LastTestResults.Read(repo.Root)!;
@@ -63,7 +63,7 @@ public class LastTestResultsTests
             .Select(i => new TestRecord($"T{i}", TestVerdict.Passed, TimeSpan.FromMilliseconds(1)))
             .Prepend(new TestRecord("Fails", TestVerdict.Failed, TimeSpan.FromMilliseconds(2)))
             .ToList();
-        LastTestResults.Write(repo.Root, [(project, "Lib.Tests", new TrxResults(records.Count - 1, 1, 0, [new TestFailure("Fails", "boom", [])]) { Records = records })]);
+        LastTestResults.Write(repo.Root, [(project, "Lib.Tests", new TestRunSummary(records.Count - 1, 1, 0, [new TestFailure("Fails", "boom", [])]) { Records = records })]);
 
         var tests = Assert.Single(LastTestResults.Read(repo.Root)!).Tests;
 

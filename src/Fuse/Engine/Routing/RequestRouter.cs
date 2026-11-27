@@ -48,7 +48,7 @@ internal sealed class RequestRouter : IDisposable
     private readonly SessionEdits _sessions;
     private readonly AnswerStore _answers;
     private readonly BackgroundCheck _background;
-    private readonly JudgeService _judge;
+    private readonly CandidateJudge _judge;
     private readonly SurfaceGuardStore _guards;
     private readonly WatchHub? _watchHub;
 
@@ -85,7 +85,7 @@ internal sealed class RequestRouter : IDisposable
         _budget = budget;
         _answers = new AnswerStore(root.StateDirectory, log.Write);
         _background = new BackgroundCheck(LiveSessionFiles, BackgroundKey, _answers, RunBackgroundCheckAsync, log.Write);
-        _judge = new JudgeService(_workspace, root);
+        _judge = new CandidateJudge(_workspace, root);
         _guards = new SurfaceGuardStore(root);
         _watchHub = watchHub;
     }
@@ -1124,7 +1124,7 @@ internal sealed class RequestRouter : IDisposable
         var syncing = phases.Start();
         var generation = await _workspace.SyncAndPinAsync([], cancellationToken).ConfigureAwait(false);
         phases.Add(Phase.Sync, syncing);
-        return new EngineResponse.GraphAnswered(GraphReportBuilder.Build(generation));
+        return new EngineResponse.GraphAnswered(GraphAnalysis.Build(generation));
     }
 
     /// <summary>
@@ -1151,7 +1151,7 @@ internal sealed class RequestRouter : IDisposable
         var generation = await _workspace.SyncAndPinAsync([], cancellationToken).ConfigureAwait(false);
         phases.Add(Phase.Sync, syncing);
         var selecting = phases.Start();
-        var report = await ImpactReportBuilder.BuildAsync(_workspace, generation, impact.Paths, cancellationToken).ConfigureAwait(false);
+        var report = await ChangeImpact.BuildAsync(_workspace, generation, impact.Paths, cancellationToken).ConfigureAwait(false);
         phases.Add(Phase.Selection, selecting);
         return new EngineResponse.ImpactAnswered(report);
     }

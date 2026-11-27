@@ -17,7 +17,7 @@ internal static partial class XUnitOutput
     /// </summary>
     /// <param name="output">The run's standard output and standard error.</param>
     /// <param name="root">The repository, which frames are printed relative to.</param>
-    public static TrxResults? Read(string output, string root)
+    public static TestRunSummary? Read(string output, string root)
     {
         var lines = AnsiSequences.Strip(output).Replace("\r", "").Split('\n');
         var summary = Array.FindLastIndex(lines, l => l.StartsWith("=== TEST EXECUTION SUMMARY ===", StringComparison.Ordinal));
@@ -67,7 +67,7 @@ internal static partial class XUnitOutput
             records.Add(new TestRecord(name, TestVerdict.Failed, TimeSpan.Zero));
         }
 
-        return new TrxResults(total - failed - skipped, failed, skipped, failures) { Records = records };
+        return new TestRunSummary(total - failed - skipped, failed, skipped, failures) { Records = records };
     }
 
     private static int Count(Match counts, string name) =>

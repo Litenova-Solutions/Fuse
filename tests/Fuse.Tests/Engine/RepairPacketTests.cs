@@ -13,7 +13,7 @@ namespace Fuse.Tests.Engine;
 
 /// <summary>
 ///     Verifies <see cref="RepairPacket"/> AOT serialization and deterministic Roslyn repair hints built by
-///     <see cref="RepairPacketBuilder"/>.
+///     <see cref="RepairPackets"/>.
 /// </summary>
 public class RepairPacketTests
 {
@@ -167,11 +167,11 @@ public class RepairPacketTests
         var diagnostics = compilation.GetDiagnostics(ct);
 
         var cs0117 = Assert.Single(diagnostics, d => d.Id == "CS0117");
-        var staticPacket = RepairPacketBuilder.Build(cs0117, model, compilation, text, cancellationToken: ct);
+        var staticPacket = RepairPackets.Build(cs0117, model, compilation, text, cancellationToken: ct);
         Assert.Equal("Box Box.CreateDefault()", staticPacket.Candidates[0]);
 
         var cs1061 = Assert.Single(diagnostics, d => d.Id == "CS1061");
-        var extPacket = RepairPacketBuilder.Build(cs1061, model, compilation, text, cancellationToken: ct);
+        var extPacket = RepairPackets.Build(cs1061, model, compilation, text, cancellationToken: ct);
         Assert.Contains(extPacket.Candidates, c => c.Contains("Triple()", StringComparison.Ordinal) && c.Contains("extension", StringComparison.Ordinal));
     }
 

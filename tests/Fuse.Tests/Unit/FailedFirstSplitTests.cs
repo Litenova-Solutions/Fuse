@@ -50,7 +50,7 @@ public class FailedFirstSplitTests
         var project = Path.Combine(repo.Root.Path, "Lib.Tests", "Lib.Tests.csproj");
         LastTestResults.Write(repo.Root,
         [
-            (project, "Lib.Tests", new TrxResults(1, 2, 0,
+            (project, "Lib.Tests", new TestRunSummary(1, 2, 0,
                 [new TestFailure("Lib.Tests.CalcTests.Multiplies", "boom", []), new TestFailure("Lib.Tests.Gone.Deleted", "boom", [])])
             {
                 Records =
@@ -86,7 +86,7 @@ public class FailedFirstSplitTests
         var project = Path.Combine(repo.Root.Path, "Lib.Tests", "Lib.Tests.csproj");
         LastTestResults.Write(repo.Root,
         [
-            (project, "Lib.Tests", new TrxResults(0, 1, 0, [new TestFailure("Lib.Tests.CalcTests.Multiplies", "boom", [])])
+            (project, "Lib.Tests", new TestRunSummary(0, 1, 0, [new TestFailure("Lib.Tests.CalcTests.Multiplies", "boom", [])])
             {
                 Records = [new TestRecord("Lib.Tests.CalcTests.Multiplies", TestVerdict.Failed, TimeSpan.Zero)],
             }),

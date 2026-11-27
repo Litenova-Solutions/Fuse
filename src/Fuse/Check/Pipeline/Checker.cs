@@ -334,7 +334,7 @@ internal sealed class Checker
         reported = [.. reported.Take(maxReported == 0 ? MaxReported : maxReported)];
         reported = await _generated.AttachAsync(generation.Current, reported, cancellationToken).ConfigureAwait(false);
         if (options.IncludeRepairBrief && reported.Count > 0)
-            reported = await RepairPacketBuilder.AttachAsync(generation.Current, root, reported, cancellationToken).ConfigureAwait(false);
+            reported = await RepairPackets.AttachAsync(generation.Current, root, reported, cancellationToken).ConfigureAwait(false);
         var result = new CheckResult(
             reported,
             filesChecked,

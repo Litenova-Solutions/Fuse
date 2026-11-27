@@ -43,8 +43,8 @@ public class TrxRecordTests
     [Fact]
     public void Add_concatenates_records()
     {
-        var first = new TrxResults(1, 0, 0, []) { Records = [new TestRecord("A", TestVerdict.Passed, TimeSpan.FromMilliseconds(1))] };
-        var second = new TrxResults(0, 1, 0, [new TestFailure("B", "boom", [])]) { Records = [new TestRecord("B", TestVerdict.Failed, TimeSpan.Zero)] };
+        var first = new TestRunSummary(1, 0, 0, []) { Records = [new TestRecord("A", TestVerdict.Passed, TimeSpan.FromMilliseconds(1))] };
+        var second = new TestRunSummary(0, 1, 0, [new TestFailure("B", "boom", [])]) { Records = [new TestRecord("B", TestVerdict.Failed, TimeSpan.Zero)] };
 
         var sum = first.Add(second);
 

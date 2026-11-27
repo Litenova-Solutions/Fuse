@@ -66,7 +66,7 @@ internal static class TruthRunner
             throw new InvalidOperationException($"HEAD does not build: {string.Join("; ", build.Errors.Take(3))}");
 
         var watch = Stopwatch.StartNew();
-        var total = TrxResults.Empty;
+        var total = TestRunSummary.Empty;
         var files = 0;
         var withoutResults = new List<string>();
         foreach (var project in solution.TestProjects)
@@ -109,7 +109,7 @@ internal static class TruthRunner
         var buildFailed = run.ExitCode != 0 && errors.Count > 0;
         // A run that built but left no results would read as no failures, so it stops the suite instead.
         var outcome = Outcome(repo, run.Output, results)
-            ?? (buildFailed ? TrxResults.Empty : throw new InvalidOperationException($"dotnet test {repo.BuildTarget} produced no results, so the truth side would be missing them"));
+            ?? (buildFailed ? TestRunSummary.Empty : throw new InvalidOperationException($"dotnet test {repo.BuildTarget} produced no results, so the truth side would be missing them"));
         var files = CountResults(repo, repo.BuildTarget, run.Output, results);
         Delete(results);
         return new TruthItem([.. outcome.Failures.Select(f => f.Name).Distinct()], outcome.Total, seconds, buildFailed, files, origin);
@@ -134,7 +134,7 @@ internal static class TruthRunner
         GlobalJson.UsesTestingPlatform(Path.GetDirectoryName(Path.GetFullPath(Path.Combine(repo.Root, target)))!, repo.Root);
 
     /// <summary>The results a run left as TRX files, or else the ones a Microsoft.Testing.Platform run printed; null when neither.</summary>
-    private static TrxResults? Outcome(EvalRepo repo, string output, string results)
+    private static TestRunSummary? Outcome(EvalRepo repo, string output, string results)
     {
         if (TrxReader.ReadDirectory(results, repo.Root) is { } trx)
             return trx;

@@ -598,7 +598,7 @@ internal sealed class SolutionViews
             var closure = projects.SelectMany(graph.ClosureOf).DistinctBy(p => p.Path).ToList();
             if (closure.Count > 0 && blueprint.Covers(_root, closure, allowZeroRestore: _projects.IsUsingZeroRestoreBlueprint))
             {
-                var transient = new BlueprintWorkspace(_projects.SharedResources);
+                var transient = new BlueprintWorkspace(_projects.ResourceCache);
                 try
                 {
                     var changedSet = new HashSet<RepoPath>(_tracker.Changed);
@@ -1232,21 +1232,4 @@ internal sealed class SolutionViews
                 additionalDocuments: additional)
             .WithOutputRefFilePath(project.OutputRefFilePath)
             .WithAnalyzerConfigDocuments(analyzerConfigs);
-
-    /// <summary>An isolated transient HEAD solution whose backing workspace releases every compiled state on disposal.</summary>
-    internal sealed class TransientBaseline : IDisposable
-    {
-        private readonly IDisposable _owner;
-
-        public TransientBaseline(IDisposable owner, Solution solution)
-        {
-            _owner = owner;
-            Solution = solution;
-        }
-
-        /// <summary>The transient HEAD solution snapshot.</summary>
-        public Solution Solution { get; }
-
-        public void Dispose() => _owner.Dispose();
-    }
 }

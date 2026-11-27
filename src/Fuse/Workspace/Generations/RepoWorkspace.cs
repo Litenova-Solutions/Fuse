@@ -12,7 +12,7 @@ namespace Fuse.Workspace.Generations;
 
 /// <summary>
 ///     Shared hypervisor workspace for one git repository (<see cref="RepoRoot.GitCommonDirectory"/>). Holds one
-///     shared immutable HEAD base layer (<see cref="BlueprintWorkspace.SharedResources"/>, <see cref="SummaryCache"/>,
+///     shared immutable HEAD base layer (<see cref="BlueprintResourceCache"/>, <see cref="SummaryCache"/>,
 ///     and stored HEAD baselines) and one <see cref="WorktreeOverlay"/> per registered worktree so multiple git
 ///     worktrees share one process and keep only per-worktree deltas in memory.
 /// </summary>
@@ -46,7 +46,7 @@ internal sealed class RepoWorkspace : IDisposable
     public WorktreeOverlay PrimaryOverlay { get; }
 
     /// <summary>Shared immutable metadata references, analyzers, and HEAD texts shared across every worktree overlay.</summary>
-    public BlueprintWorkspace.SharedResources SharedResources => PrimaryOverlay.SharedResources;
+    public BlueprintResourceCache ResourceCache => PrimaryOverlay.ResourceCache;
 
     /// <summary>Snapshot of all worktree overlays registered on this hypervisor, primary first.</summary>
     public IReadOnlyCollection<WorktreeOverlay> Worktrees => [PrimaryOverlay, .. _overlays.Values];
@@ -111,7 +111,7 @@ internal sealed class RepoWorkspace : IDisposable
             if (_overlays.TryGetValue(worktreeRoot.StateDirectory, out existing))
                 return existing;
 
-            var overlay = new WorktreeOverlay(worktreeRoot, _log, PrimaryOverlay.SharedResources)
+            var overlay = new WorktreeOverlay(worktreeRoot, _log, PrimaryOverlay.ResourceCache)
             {
                 UseSummaries = UseSummaries,
             };
@@ -272,7 +272,7 @@ internal sealed class RepoWorkspace : IDisposable
     ///     Builds a transient HEAD compilation view for <paramref name="projects"/> and their dependencies directly from
     ///     git HEAD blobs so BaselineStore misses release 100% of baseline Roslyn compilations on disposal.
     /// </summary>
-    public Task<SolutionViews.TransientBaseline> BuildTransientBaselineAsync(IReadOnlyCollection<ProjectNode> projects, CancellationToken cancellationToken) =>
+    public Task<TransientBaseline> BuildTransientBaselineAsync(IReadOnlyCollection<ProjectNode> projects, CancellationToken cancellationToken) =>
         PrimaryOverlay.BuildTransientBaselineAsync(projects, cancellationToken);
 
     /// <summary>

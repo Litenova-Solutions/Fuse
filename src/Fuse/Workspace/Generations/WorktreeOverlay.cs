@@ -9,7 +9,7 @@ namespace Fuse.Workspace.Generations;
 
 /// <summary>
 ///     Per-worktree overlay mounted under one repository hypervisor (<see cref="RepoWorkspace"/>). Each worktree
-///     shares the repository's immutable HEAD base layer (<see cref="BlueprintWorkspace.SharedResources"/>,
+///     shares the repository's immutable HEAD base layer (<see cref="BlueprintResourceCache"/>,
 ///     <see cref="SummaryCache"/>, and stored HEAD baselines) and maintains a compact <c>Dictionary&lt;RepoPath, SourceText?&gt;</c>
 ///     delta map for files that differ from HEAD plus its own <see cref="SolutionViews"/> and <see cref="Generation"/>
 ///     pinning.
@@ -27,7 +27,7 @@ internal sealed class WorktreeOverlay : IDisposable
     public WorktreeOverlay(
         RepoRoot root,
         Action<string> log,
-        BlueprintWorkspace.SharedResources? sharedResources = null)
+        BlueprintResourceCache? sharedResources = null)
     {
         Root = root;
         _log = log;
@@ -48,7 +48,7 @@ internal sealed class WorktreeOverlay : IDisposable
     public WorkspaceSync Sync { get; }
 
     /// <summary>Shared immutable metadata, analyzer, and HEAD text resources shared across every overlay in the hypervisor.</summary>
-    public BlueprintWorkspace.SharedResources SharedResources => Projects.SharedResources;
+    public BlueprintResourceCache ResourceCache => Projects.ResourceCache;
 
     public RepoGraph Graph => Projects.Graph;
 
@@ -297,7 +297,7 @@ internal sealed class WorktreeOverlay : IDisposable
     }
 
     /// <summary>Builds an on-demand transient HEAD baseline solution that releases all Roslyn compilations when disposed.</summary>
-    public Task<SolutionViews.TransientBaseline> BuildTransientBaselineAsync(IReadOnlyCollection<ProjectNode> projects, CancellationToken cancellationToken) =>
+    public Task<TransientBaseline> BuildTransientBaselineAsync(IReadOnlyCollection<ProjectNode> projects, CancellationToken cancellationToken) =>
         Views.BuildTransientBaselineAsync(projects, cancellationToken);
 
     /// <summary>Drops session views and any cached baseline compilations while trimming transient delta entries.</summary>

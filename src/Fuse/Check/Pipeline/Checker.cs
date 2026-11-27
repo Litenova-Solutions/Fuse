@@ -721,7 +721,7 @@ internal sealed class Checker
         paths.SelectMany(graph.OwnersOf).DistinctBy(p => p.Path).ToList();
 
     /// <summary>The additional files that differ from HEAD, in path order, which the analyzers of their owning projects read.</summary>
-    private static List<RepoPath> ChangedAdditionalFiles(Generation generation) =>
+    internal static List<RepoPath> ChangedAdditionalFiles(Generation generation) =>
         [.. generation.NonSources.Where(generation.Graph.IsAdditionalFile).OrderBy(p => p.Relative, StringComparer.Ordinal)];
 
     /// <summary>The projects that pass a changed additional file to their analyzers, in path order.</summary>

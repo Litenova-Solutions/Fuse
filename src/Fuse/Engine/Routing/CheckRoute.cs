@@ -57,7 +57,8 @@ internal sealed class CheckRoute
     {
         var session = SessionId.IsValid(changes.Session) ? changes.Session : null;
         var options = new CheckOptions(IncludeRepairBrief: changes.Brief);
-        var answered = Stamped(ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.AllChanges(), session, analyzers, phases, options, cancellationToken, maxReported: changes.MaxErrors).ConfigureAwait(false)), stamp: true);
+        var report = ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.AllChanges(), session, analyzers, phases, options, cancellationToken, maxReported: changes.MaxErrors).ConfigureAwait(false));
+        var answered = Stamped(await WithAdvisoriesAsync(report, session, cancellationToken).ConfigureAwait(false), stamp: true);
         await PublishGuardViolationsAsync(cancellationToken).ConfigureAwait(false);
         return answered;
     }
@@ -87,7 +88,8 @@ internal sealed class CheckRoute
 
         var session = SessionId.IsValid(check.Session) ? check.Session : null;
         var options = new CheckOptions(check.InteractiveFast, check.Brief);
-        var answered = Stamped(ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.Files(paths), session, analyzers, phases, options, cancellationToken, maxReported: check.MaxErrors).ConfigureAwait(false)), stamp: true);
+        var report = ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.Files(paths), session, analyzers, phases, options, cancellationToken, maxReported: check.MaxErrors).ConfigureAwait(false));
+        var answered = Stamped(await WithAdvisoriesAsync(report, session, cancellationToken).ConfigureAwait(false), stamp: true);
         await PublishGuardViolationsAsync(cancellationToken).ConfigureAwait(false);
         return answered;
     }
@@ -104,8 +106,10 @@ internal sealed class CheckRoute
                 return new EngineResponse.Unanswered(ErrorCode.InvalidPath, ErrorMessages.EmptyPath);
         }
 
+        var session = SessionId.IsValid(check.Session) ? check.Session : null;
         var options = new CheckOptions(IncludeRepairBrief: check.Brief);
-        var answered = Stamped(ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.NamedPaths(check.Paths), SessionId.IsValid(check.Session) ? check.Session : null, analyzers, phases, options, cancellationToken, maxReported: check.MaxErrors).ConfigureAwait(false)), stamp: true);
+        var report = ResponseMapper.Answered(await _checker.CheckAsync(new CheckScope.NamedPaths(check.Paths), session, analyzers, phases, options, cancellationToken, maxReported: check.MaxErrors).ConfigureAwait(false));
+        var answered = Stamped(await WithAdvisoriesAsync(report, session, cancellationToken).ConfigureAwait(false), stamp: true);
         await PublishGuardViolationsAsync(cancellationToken).ConfigureAwait(false);
         return answered;
     }
@@ -218,7 +222,7 @@ internal sealed class CheckRoute
             generation.ConfigurationGeneration,
             generation.BaselineGeneration,
             _sessions.RecordsHash(),
-            generation.Changed.Select(path => (path.Relative, path.Absolute)));
+            generation.Changed.Concat(Checker.ChangedAdditionalFiles(generation)).Select(path => (path.Relative, path.Absolute)));
         // The stamp a request asks for is no part of the key: it names the same errors, and each waiter of a
         // shared check is stamped, or not, for itself when it is answered.
         return kept is null ? (null, null) : ($"{scopeKey}|{session ?? ""}|{compilationWide}|{kept}", generation);
@@ -301,6 +305,105 @@ internal sealed class CheckRoute
 
     /// <summary>The content key a background re-check of <paramref name="session"/> coalesces and is stored by.</summary>
     internal string? BackgroundKey(BackgroundCheck.SessionFiles session) => CoalesceKey(BackgroundRequest(session)).Key;
+
+    /// <summary>How many lines a changed non-generated C# file holds before the check answer names it, as the client prints it.</summary>
+    internal const int LargeFileLines = CheckReport.LargeFileLines;
+
+    /// <summary>
+    ///     The check answer with the notes its report carries: the live registrations when the request named no
+    ///     session, and the largest changed non-generated C# file when one is 1,500 lines or more.
+    /// </summary>
+    private async Task<EngineResponse> WithAdvisoriesAsync(EngineResponse response, string? session, CancellationToken cancellationToken)
+    {
+        if (response is not EngineResponse.CheckAnswered answered)
+            return response;
+        string[] live = SessionId.IsValid(session)
+            ? []
+            : [.. _sessions.LiveRegistrations().Select(registration => SessionId.DisplayNameOf(registration.Session))];
+        var (file, lines) = await LargestTargetAsync(cancellationToken).ConfigureAwait(false);
+        return new EngineResponse.CheckAnswered(answered.Report with
+        {
+            LiveSessions = live,
+            LargestTargetFile = file,
+            LargestTargetLines = lines,
+        });
+    }
+
+    /// <summary>
+    ///     The largest changed non-generated C# file and its lines, read from the current solution text, or no file
+    ///     when none is 1,500 lines or more. Past the kept-answer limit the check skips its kept answer, and the note
+    ///     with it, so only a count below it names a file.
+    /// </summary>
+    private async Task<(string? File, int? Lines)> LargestTargetAsync(CancellationToken cancellationToken)
+    {
+        Generation generation;
+        try
+        {
+            generation = _workspace.PinGeneration();
+        }
+        catch (Exception e) when (e is InvalidOperationException or ObjectDisposedException)
+        {
+            return (null, null);
+        }
+
+        if (generation.Changed.Count >= KeptCheck.MaxChangedFiles)
+            return (null, null);
+        var counts = new List<(string Relative, int Lines)>();
+        foreach (var path in generation.Changed)
+        {
+            if (!IsLargeFileCandidate(path.Relative))
+                continue;
+            try
+            {
+                var document = generation.Current.GetDocumentIdsWithFilePath(path.Absolute).Select(id => generation.Current.GetDocument(id)).FirstOrDefault(candidate => candidate is not null);
+                if (document is null)
+                    continue;
+                counts.Add((path.Relative, (await document.GetTextAsync(cancellationToken).ConfigureAwait(false)).Lines.Count));
+            }
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                // A file that cannot be read names no note.
+            }
+        }
+
+        return LargestLargeFile(counts) is { } largest ? (largest.Relative, largest.Lines) : (null, null);
+    }
+
+    /// <summary>True for a changed C# file the largest-file note may name: a C# source that is not generated.</summary>
+    internal static bool IsLargeFileCandidate(string relativePath)
+    {
+        if (!relativePath.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
+            return false;
+        var segments = relativePath.Split('/');
+        foreach (var segment in segments)
+        {
+            if (segment.Equals("obj", StringComparison.OrdinalIgnoreCase)
+                || segment.Equals("bin", StringComparison.OrdinalIgnoreCase)
+                || segment.Equals("Migrations", StringComparison.OrdinalIgnoreCase))
+                return false;
+        }
+
+        var file = segments[^1];
+        return !file.EndsWith(".g.cs", StringComparison.OrdinalIgnoreCase)
+            && !file.EndsWith(".Designer.cs", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>The largest file of <paramref name="counts"/> at or past the large-file limit, or null when none is.</summary>
+    internal static (string Relative, int Lines)? LargestLargeFile(IEnumerable<(string Relative, int Lines)> counts)
+    {
+        string? largest = null;
+        var lines = 0;
+        foreach (var (relative, count) in counts)
+        {
+            if (count > lines)
+            {
+                lines = count;
+                largest = relative;
+            }
+        }
+
+        return largest is not null && lines >= LargeFileLines ? (largest, lines) : null;
+    }
 
     /// <summary>
     ///     The check answer with its own tree stamp, from the changed set the check just synced, so the client does

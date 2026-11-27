@@ -1,5 +1,6 @@
 using Fuse.Dotnet.Build;
 using Fuse.Operations;
+using Fuse.Operations.Build;
 using Fuse.Tests.Fixtures;
 namespace Fuse.Tests.Unit;
 

@@ -1,5 +1,4 @@
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.EndToEnd;
 
 /// <summary><c>fuse check</c> names the changed files it does not check, and hooks stay silent about them on their own.</summary>

@@ -1,5 +1,4 @@
 using Fuse.Protocol.Transport;
-
 namespace Fuse.Tests.Unit;
 
 /// <summary>

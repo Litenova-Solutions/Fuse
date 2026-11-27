@@ -1,6 +1,5 @@
-using Fuse.Operations;
+using Fuse.Operations.Test;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Unit;
 
 /// <summary>

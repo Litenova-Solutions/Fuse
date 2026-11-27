@@ -1,5 +1,4 @@
-using Fuse.Operations;
-
+using Fuse.Operations.Check;
 namespace Fuse.Tests.Unit;
 
 public class CheckArgumentsTests

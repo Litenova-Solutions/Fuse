@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.IO.Pipes;
 using System.Text;
-using Fuse.Operations;
+using Fuse.Operations.Control;
 using Fuse.Paths;
 using Fuse.Protocol.Analysis;
 using Fuse.Protocol.Requests;

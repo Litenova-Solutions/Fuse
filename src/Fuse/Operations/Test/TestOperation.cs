@@ -1,0 +1,1755 @@
+using System.Diagnostics;
+using System.Globalization;
+using System.Text;
+using Fuse.Client;
+using Fuse.Dotnet.Build;
+using Fuse.Dotnet.Processes;
+using Fuse.Dotnet.Test;
+using Fuse.Operations.Build;
+using Fuse.Paths;
+using Fuse.Protocol.Analysis;
+using Fuse.Protocol.Requests;
+using Fuse.Protocol.Testing;
+namespace Fuse.Operations.Test;
+
+/// <summary>
+///     Runs tests and prints failures. With no arguments it runs the tests affected by the working-tree changes
+///     (planned by the engine); with arguments it passes them to <c>dotnet test</c> and adds result reporting.
+///     With <c>--failed</c> it reruns the tests that failed in the last recorded run.
+/// </summary>
+internal static class TestOperation
+{
+    private const int MaxFailuresShown = 10;
+
+    /// <summary>How long a run waits for a test process it stopped early to exit before answering without it.</summary>
+    private const int EarlyStopExitSeconds = 5;
+
+    /// <summary>
+    ///     How long a test process may write no output before its tree is killed and its run is reported as timed out.
+    ///     Thirty minutes is over twice the slowest healthy whole test run in the evals (822 seconds in
+    ///     selection-CommunityToolkit-20261017-1344), and within the scale of dotnet test's own hang timeout, whose
+    ///     default is one hour per test. A healthy run streams build output or prints failures as they happen, so one
+    ///     silent this long has hung, however long its suite is.
+    /// </summary>
+    internal static readonly TimeSpan TestInactivityTimeout = TimeSpan.FromMinutes(30);
+
+    /// <summary>The inactivity timeout a run arms: the override its caller passed, or the timeout every run uses.</summary>
+    private static TimeSpan EffectiveTimeout(TimeSpan? inactivityTimeout) => inactivityTimeout ?? TestInactivityTimeout;
+
+    /// <summary>How a timeout reads in an answer: minutes, or seconds when it is under a minute.</summary>
+    private static string TimeoutText(TimeSpan timeout) =>
+        timeout.TotalMinutes >= 1 ? $"{timeout.TotalMinutes:0} minutes" : $"{timeout.TotalSeconds:0} seconds";
+
+    private const int MaxNamesShown = 100;
+    private const int MaxTestMapSearchFolders = 8;
+    private const int MaxTestMapFilesPerFolder = 64;
+    private const int MaxTestMapsPerRun = 16;
+    private const int MaxTestMapBytes = 8_000_000;
+
+    /// <summary>
+    ///     The failure cap without <c>--max-failures</c>: 0, no cap, so every selected test runs. A run that stopped at a
+    ///     cap would leave failing tests unreported, which selection exists to prevent; a caller asks for the cap.
+    /// </summary>
+    internal const int DefaultMaxFailures = 0;
+
+    /// <summary>
+    ///     The message on every failure of counts made from watched failure lines instead of a result file: the run
+    ///     stopped early after reaching max failures, or ended without results. Such counts are partial, so the slice
+    ///     cache never stores them.
+    /// </summary>
+    internal const string StoppedEarlyMessage = "stopped early after reaching max failures";
+
+    /// <summary>How many failures a stored slice verdict carries at most, so the store request stays small.</summary>
+    private const int MaxStoredFailures = 20;
+
+    /// <summary>How long storing one slice verdict waits for the engine; the run is already answered without it.</summary>
+    private static readonly TimeSpan SliceStoreTimeout = TimeSpan.FromSeconds(30);
+
+    /// <param name="session">
+    ///     The session the run is for, as its harness identifies it, or null. With one, the affected tests leave out the
+    ///     changes only other sessions wrote. The pre-shell hook passes it to <c>fuse test</c>.
+    /// </param>
+    /// <param name="live">
+    ///     What the first stage's failures print to as soon as they are known, or null to print nothing until the answer.
+    ///     The command line passes its output; the MCP tool passes null and answers once.
+    /// </param>
+    /// <param name="failed">True to rerun the tests that failed in the last recorded run instead of planning from the changes.</param>
+    /// <param name="clean">True to clear the slice test cache and run fresh processes (<c>--clean</c>).</param>
+    /// <param name="noCache">True to bypass the slice test cache and reused test results (<c>--no-cache</c>).</param>
+    /// <param name="maxFailures">Maximum test failures before stopping early; 0 disables early stop.</param>
+    public static async Task<OperationResult> RunAsync(
+        RepoRoot root,
+        string workingDirectory,
+        IReadOnlyList<string> arguments,
+        bool all,
+        CancellationToken cancellationToken,
+        string? session = null,
+        TextWriter? live = null,
+        bool failed = false,
+        bool clean = false,
+        bool noCache = false,
+        int maxFailures = DefaultMaxFailures)
+    {
+        var started = Environment.TickCount64;
+        if (failed)
+            return await RunFailedAsync(root, live, all, arguments, started, cancellationToken, clean, noCache, maxFailures).ConfigureAwait(false);
+        // Arguments that only say where the tests are and how to build them plan the affected tests in that scope;
+        // any other argument chooses the tests itself and passes to dotnet test as it is.
+        var scope = arguments.Count > 0 ? TestScopeArguments.Parse(workingDirectory, arguments) : null;
+        if (arguments.Count > 0 && scope is null)
+        {
+            // dotnet test with the caller's arguments builds with MSBuild, so it holds the lock until it exits.
+            using var argumentsLock = BuildLock.AcquireForClient(root);
+            await BuildOperation.YieldMemoryIfTightAsync(root, cancellationToken).ConfigureAwait(false);
+            // On Microsoft.Testing.Platform the arguments go to the test application, which rejects VSTest's logger options.
+            var testingPlatform = GlobalJson.UsesTestingPlatform(workingDirectory, root.Path);
+            var normalized = NormalizeArguments(workingDirectory, arguments, testingPlatform);
+            if (testingPlatform && maxFailures > 0 && await BuildOperation.IsNet11OrLaterAsync(workingDirectory, cancellationToken).ConfigureAwait(false)
+                && !normalized.Any(a => a.StartsWith("--maximum-failed-tests", StringComparison.OrdinalIgnoreCase)))
+            {
+                normalized = [.. normalized, "--maximum-failed-tests", maxFailures.ToString(CultureInfo.InvariantCulture)];
+            }
+
+            var (outcome, process, log, resultsDirectory, timedOutFramework) = await RunDotnetTestAsync(root, workingDirectory, normalized, cancellationToken, testingPlatform, maxFailures: maxFailures).ConfigureAwait(false);
+            await BuildOperation.ShutdownBuildServerIfMemoryTightAsync(workingDirectory).ConfigureAwait(false);
+            const string summary = "ran the tests your dotnet test arguments name";
+            return outcome is null
+                ? WithoutResults(process, root, ArgumentsRun, summary, Seconds(started), log, resultsDirectory, timedOutFramework)
+                : Render(outcome, summary, Seconds(started), ResultsFile.WriteTestsWithPaths(root, [("", "", outcome)]));
+        }
+
+        // Held from before the plan request: preparing the plan makes the engine mirror and emit into the copies the runs
+        // start from, which no other build or test in this repository may do at the same time. RunPlanAsync gives it up
+        // once its runs hold their copies.
+        var buildLock = BuildLock.AcquireForClient(root);
+        try
+        {
+            EngineRequest request = all
+                ? new EngineRequest.PlanAllTests { Clean = clean, NoCache = noCache, MaxFailures = maxFailures }
+                : new EngineRequest.PlanAffectedTests { Session = session, Projects = scope?.Paths ?? [], BuildOnly = scope?.BuildOnly ?? false, Clean = clean, NoCache = noCache, MaxFailures = maxFailures };
+            var response = await EngineClient.SendAsync(root, request, TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
+            if (response is not EngineResponse.PlanAnswered answered)
+                return OperationResult.Unanswered(response, "test plan");
+            var plan = answered.Plan;
+            // When a runtime is missing the run is blocked, not clean.
+            if (plan.Runs.Length == 0 && plan.ContainerGatedTests > 0)
+                return WithoutRuntime(plan);
+            if (plan.Runs.Length == 0)
+                return new OperationResult(Outcome.Clean, $"fuse: {plan.Summary}");
+            var failedFirst = FailedFirstSplit.ForPlan(root, plan);
+            var held = buildLock;
+            buildLock = null;
+            return await RunPlanAsync(root, plan, started, cancellationToken, held, scope, live: live, failedFirstByProject: failedFirst, clean: clean, noCache: noCache, maxFailures: maxFailures).ConfigureAwait(false);
+        }
+        finally
+        {
+            buildLock?.Dispose();
+        }
+    }
+
+    /// <summary>Reruns the tests that failed in the last recorded run, or answers why there is nothing to rerun.</summary>
+    private static async Task<OperationResult> RunFailedAsync(RepoRoot root, TextWriter? live, bool all, IReadOnlyList<string> arguments, long started, CancellationToken cancellationToken, bool clean = false, bool noCache = false, int maxFailures = DefaultMaxFailures)
+    {
+        if (all || arguments.Count > 0)
+            return new OperationResult(Outcome.Unanswered, "fuse: --failed reruns the tests that failed last time and cannot be combined with other arguments; pass the arguments without --failed to choose the scope");
+        var record = LastTestResults.Read(root);
+        if (record is null)
+            return new OperationResult(Outcome.Unanswered, "fuse: no test run is recorded yet; run fuse test first");
+        var reruns = record
+            .Where(p => p.Project.Length > 0)
+            .Select(p => (p.Project, Failed: p.Tests.Where(t => t.Verdict == TestVerdict.Failed).Select(t => t.Name).Distinct(StringComparer.Ordinal).OrderBy(n => n, StringComparer.Ordinal).ToArray()))
+            .Where(x => x.Failed.Length > 0)
+            .ToList();
+        if (reruns.Count == 0)
+        {
+            if (record.Any(p => p.Project.Length == 0 && p.Tests.Any(t => t.Verdict == TestVerdict.Failed)))
+                return new OperationResult(Outcome.Unanswered, "fuse: the last test run was from dotnet test arguments, so its failures cannot be rerun; run fuse test");
+            return new OperationResult(Outcome.Clean, "fuse: the last test run had no failures");
+        }
+
+        var buildLock = BuildLock.AcquireForClient(root);
+        try
+        {
+            EngineRequest request = new EngineRequest.PlanFailedTests([.. reruns.Select(r => new EngineRequest.FailedProject(r.Project, r.Failed))]) { Clean = clean, NoCache = noCache, MaxFailures = maxFailures };
+            var response = await EngineClient.SendAsync(root, request, TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
+            if (response is not EngineResponse.PlanAnswered answered)
+                return OperationResult.Unanswered(response, "test plan");
+            var plan = answered.Plan;
+            if (plan.Runs.Length == 0)
+                return new OperationResult(Outcome.Unanswered, "fuse: none of the tests that failed last time is in a test project in this repository");
+            var held = buildLock;
+            buildLock = null;
+            return await RunPlanAsync(root, plan, started, cancellationToken, held, live: live, failedRerunCount: reruns.Sum(r => r.Failed.Length), clean: clean, noCache: noCache, maxFailures: maxFailures).ConfigureAwait(false);
+        }
+        finally
+        {
+            buildLock?.Dispose();
+        }
+    }
+
+    /// <summary>
+    ///     The last finished test run's answer when it ran the same plan on the same tree, or null. The answer prints
+    ///     the stored failures and summary with a line above them saying the run was reused and how old it is, and the
+    ///     results files hold the stored failures again.
+    /// </summary>
+    internal static OperationResult? ReusedTestRun(RepoRoot root, (string TreeHash, string FullHash, string AssetsHash, int SourceCount) stamp, string planKey, TextWriter? live)
+    {
+        var stored = LastTestResults.ReadRun(root);
+        if (stored is null
+            || stored.Value.TreeHash != stamp.TreeHash
+            || stored.Value.FullHash != stamp.FullHash
+            || stored.Value.AssetsHash != stamp.AssetsHash
+            || stored.Value.PlanKey != planKey
+            || stored.Value.Aggregate.Total == 0
+            || stored.Value.Runs.Count == 0)
+            return null;
+        var record = stored.Value;
+        var resultsPath = ResultsFile.WriteTestsWithPaths(root, record.Runs);
+        var line = $"fuse: test run reused from {BuildResultsFile.AgeAgo(record.FinishedUtc, DateTime.UtcNow)} ago; tree {record.TreeHash}";
+        if (live is not null)
+        {
+            live.Write(RenderFailures(record.Aggregate));
+            live.Flush();
+            var summaryOnly = new OperationResult(
+                record.Aggregate.Failed > 0 ? Outcome.ProblemsFound : Outcome.Clean,
+                RenderSummary(record.Aggregate, record.Summary, record.Seconds, resultsPath));
+            var answer = record.Problems.Count == 0 ? summaryOnly : Join([summaryOnly, .. record.Problems]);
+            return answer with { Text = line + "\n" + answer.Text };
+        }
+
+        var tests = Render(record.Aggregate, record.Summary, record.Seconds, resultsPath);
+        var joined = record.Problems.Count == 0 ? tests : Join([tests, .. record.Problems]);
+        return joined with { Text = line + "\n" + joined.Text };
+    }
+
+    /// <summary>
+    ///     What a test run is reused by: the plan's runs in run order, its counts and summary, and the scope's switches
+    ///     and paths. A shadow run's copy folder is not part of it, because the same plan prepares another folder next
+    ///     time. Each field carries its length, so no two different plans share a key.
+    /// </summary>
+    internal static string PlanKey(TestPlan plan, TestScopeArguments? scope)
+    {
+        var text = new StringBuilder();
+        void Field(string value) => text.Append(value.Length.ToString(CultureInfo.InvariantCulture)).Append(':').Append(value).Append('|');
+        Field(plan.SelectedTests.ToString(CultureInfo.InvariantCulture));
+        Field(plan.TotalTests.ToString(CultureInfo.InvariantCulture));
+        Field(plan.Summary);
+        Field(plan.ContainerGatedTests.ToString(CultureInfo.InvariantCulture));
+        foreach (var gated in plan.ContainerGatedProjects)
+            Field(gated);
+        text.Append('|');
+        foreach (var run in plan.Runs)
+        {
+            Field(run.Project);
+            Field(run.Name);
+            Field(run.Mode is TestRunMode.Shadow ? "shadow" : "build");
+            Field(run.Filter ?? "");
+            Field(run.UsesTestingPlatform ? "1" : "0");
+            Field(run.RunSettings ?? "");
+            foreach (var argument in run.FilterArguments)
+                Field(argument);
+            text.Append('|');
+            foreach (var target in run.TargetPaths)
+                Field(target);
+            text.Append('|');
+        }
+
+        text.Append('|');
+        if (scope is not null)
+        {
+            foreach (var path in scope.Paths)
+                Field(path);
+            text.Append('|');
+            foreach (var button in scope.BuildSwitches)
+                Field(button);
+            text.Append('|');
+            Field(scope.BuildOnly ? "1" : "0");
+        }
+
+        return text.ToString();
+    }
+
+    /// <summary>Runs every run of <paramref name="plan"/> and answers for all of them together.</summary>
+    /// <param name="root">The repository the plan is for.</param>
+    /// <param name="plan">The engine's plan, with at least one run.</param>
+    /// <param name="started">When the operation started, in <see cref="Environment.TickCount64"/> milliseconds, for the times the answer prints.</param>
+    /// <param name="cancellationToken">Kills the running <c>dotnet test</c> processes.</param>
+    /// <param name="held">
+    ///     The build lock the caller took before it asked for the plan, which this call owns and releases, or null when
+    ///     the caller holds none.
+    /// </param>
+    /// <param name="live">What the first stage's failures print to as soon as they are known, or null for one answer at the end.</param>
+    /// <param name="failedRerunCount">How many failures a <c>--failed</c> rerun asked for, so matching none of them is reported as not found; null for any other run.</param>
+    /// <param name="failedFirstByProject">Each split project's priority tests by absolute project path, or null to run one stage.</param>
+    /// <param name="inactivityTimeout">
+    ///     How long a test process may write no output before its tree is killed and its run is reported as timed out, or
+    ///     null for the timeout every run uses. Every output line renews it.
+    /// </param>
+    /// <remarks>
+    ///     Shadow runs write no build output: each holds the copy it runs from (<see cref="LocalState.HoldTestCopy"/>),
+    ///     and the build lock is released while they run, so another client's build or test plan does not wait for them.
+    ///     MSBuild runs share obj and bin folders across projects, so they run one after another, holding the lock.
+    /// </remarks>
+    internal static async Task<OperationResult> RunPlanAsync(
+        RepoRoot root,
+        TestPlan plan,
+        long started,
+        CancellationToken cancellationToken,
+        BuildLock? held = null,
+        TestScopeArguments? scope = null,
+        TextWriter? live = null,
+        int? failedRerunCount = null,
+        IReadOnlyDictionary<string, string[]>? failedFirstByProject = null,
+        bool clean = false,
+        bool noCache = false,
+        int maxFailures = DefaultMaxFailures,
+        TimeSpan? inactivityTimeout = null)
+    {
+        var stamp = await BuildResultsFile.StampForReuseAsync(root, cancellationToken).ConfigureAwait(false);
+        var planKey = stamp is null ? null : PlanKey(plan, scope);
+        if (!clean && !noCache && stamp is not null && planKey is not null && ReusedTestRun(root, stamp.Value, planKey, live) is { } reused)
+            return reused;
+        (string TreeHash, string FullHash, string AssetsHash, string PlanKey)? key = null;
+        if (stamp is not null && planKey is not null)
+            key = (stamp.Value.TreeHash, stamp.Value.FullHash, stamp.Value.AssetsHash, planKey);
+        var buildLock = held;
+        var copies = new List<IDisposable>();
+        try
+        {
+            return await RunPlanHoldingAsync(root, plan, started, copies, () =>
+            {
+                buildLock?.Dispose();
+                buildLock = null;
+            }, () => buildLock ??= BuildLock.AcquireForClient(root), scope, cancellationToken, live, failedRerunCount, failedFirstByProject, key, maxFailures, noCache, inactivityTimeout).ConfigureAwait(false);
+        }
+        finally
+        {
+            foreach (var copy in copies)
+                copy.Dispose();
+            buildLock?.Dispose();
+        }
+    }
+
+    private static async Task<OperationResult> RunPlanHoldingAsync(
+        RepoRoot root,
+        TestPlan plan,
+        long started,
+        List<IDisposable> copies,
+        Action releaseLock,
+        Func<BuildLock> takeLock,
+        TestScopeArguments? scope,
+        CancellationToken cancellationToken,
+        TextWriter? live = null,
+        int? failedRerunCount = null,
+        IReadOnlyDictionary<string, string[]>? failedFirstByProject = null,
+        (string TreeHash, string FullHash, string AssetsHash, string PlanKey)? reuse = null,
+        int maxFailures = DefaultMaxFailures,
+        bool noCache = false,
+        TimeSpan? inactivityTimeout = null)
+    {
+        if (failedFirstByProject is not null
+            && await RunStagedAsync(root, plan, started, copies, releaseLock, takeLock, scope, live, failedFirstByProject, cancellationToken, reuse, maxFailures, noCache, inactivityTimeout).ConfigureAwait(false) is { } staged)
+            return staged;
+
+        var groups = plan.Runs.GroupBy(r => root.PathOf(r.Project)).ToList();
+        // Whether dotnet test runs the platform in this repository decides how a platform run is started.
+        var runner = GlobalJson.UsesTestingPlatform(root.Path, root.Path);
+        string[] buildSwitches = scope?.BuildSwitches ?? [];
+        var shadowGroups = groups.Where(g => g.All(r => r.Mode is TestRunMode.Shadow)).ToList();
+        if (shadowGroups.Count > 0)
+        {
+            // Every copy is held before the lock goes, so no plan prepared after it writes a copy these runs start from.
+            foreach (var run in shadowGroups.SelectMany(g => g))
+            {
+                var folder = Path.GetDirectoryName(((TestRunMode.Shadow)run.Mode).Assembly)!;
+                try
+                {
+                    copies.Add(LocalState.HoldTestCopy(folder));
+                }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+                {
+                    // A copy that cannot be held still runs; only a later plan could change it under the run.
+                }
+            }
+
+            releaseLock();
+        }
+
+        var outcomes = new System.Collections.Concurrent.ConcurrentDictionary<RepoPath, TrxResults>();
+        var timeouts = new System.Collections.Concurrent.ConcurrentDictionary<RepoPath, (ProcessResult Process, string? Framework, string Name)>();
+        await Parallel.ForEachAsync(
+            shadowGroups,
+            new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2), CancellationToken = cancellationToken },
+            async (group, ct) =>
+            {
+                // One process per target framework, in parallel. Every run in a shadow group is a shadow run (VSTest or MTP).
+                var results = await Task.WhenAll(group.Select(async run => (Run: run, Ran: await RunShadowOrCachedAsync(root, run, maxFailures, ct, noCache, inactivityTimeout).ConfigureAwait(false)))).ConfigureAwait(false);
+                // A shadow run that hung is reported as timed out: its tests hang, so MSBuild would hang on them too.
+                // One that could not start (a test host or adapter problem) sends the whole project through MSBuild below.
+                var hung = results.FirstOrDefault(r => r.Ran.Process?.TimedOut is true);
+                if (hung.Run is not null)
+                {
+                    timeouts[group.Key] = (hung.Ran.Process!, hung.Ran.TimedOutFramework ?? scope?.Framework, hung.Run.Name);
+                    return;
+                }
+
+                if (results.Any(r => r.Ran.Outcome is null))
+                    return;
+                outcomes[group.Key] = results.Aggregate(TrxResults.Empty, (sum, r) => sum.Add(r.Ran.Outcome!));
+            }).ConfigureAwait(false);
+
+        var remainingGroups = groups.Where(g => !outcomes.ContainsKey(g.Key) && !timeouts.ContainsKey(g.Key)).ToList();
+        var parallelBuiltSwitches = buildSwitches;
+        var runRemainingInParallel = false;
+        if (remainingGroups.Count > 0)
+        {
+            await BuildOperation.YieldMemoryIfTightAsync(root, cancellationToken).ConfigureAwait(false);
+            takeLock();
+            if (remainingGroups.Count > 1)
+            {
+                if (buildSwitches.Contains("--no-build"))
+                {
+                    runRemainingInParallel = true;
+                }
+                else
+                {
+                    var traversalProjects = remainingGroups.Select(g => g.First().Project).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                    var (traversalResult, _, _, _) = await BuildOperation.RunTraversalBuildAsync(
+                        root,
+                        traversalProjects,
+                        ["--no-restore", .. buildSwitches, "-nologo", "-tl:off", "-v:q", "-clp:ErrorsOnly;NoSummary"],
+                        root.Path,
+                        root.StateDirectory,
+                        continueOnError: true,
+                        cancellationToken).ConfigureAwait(false);
+                    if (traversalResult.ExitCode == 0)
+                    {
+                        parallelBuiltSwitches = Built(buildSwitches);
+                        runRemainingInParallel = true;
+                    }
+                }
+            }
+        }
+
+        var aggregate = TrxResults.Empty;
+        var perProject = new List<(string Project, string Name, TrxResults Outcome)>();
+        // A project that did not build, or whose run ended without results, is part of the answer whatever the other
+        // projects did. A Microsoft.Testing.Platform run that passed without printing a run summary is kept apart: it has
+        // no counts to add.
+        var problems = new List<OperationResult>();
+        OperationResult? passedWithoutResults = null;
+
+        if (runRemainingInParallel)
+        {
+            var parallelResults = new System.Collections.Concurrent.ConcurrentDictionary<RepoPath, (TrxResults? Outcome, ProcessResult? Process, string Log, TestRun Run, string? TimedOutFramework)>();
+            var parallelScope = scope is null
+                ? new TestScopeArguments([], parallelBuiltSwitches, false, null, null)
+                : scope with { BuildSwitches = parallelBuiltSwitches };
+            await Parallel.ForEachAsync(
+                remainingGroups,
+                new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2), CancellationToken = cancellationToken },
+                async (group, ct) =>
+                {
+                    var run = group.First();
+                    var res = run.UsesTestingPlatform
+                        ? await RunPlatformAsync(root, run, runner, parallelScope, ct, maxFailures, inactivityTimeout).ConfigureAwait(false)
+                        : await RunDotnetTestAsync(root, root.Path, [run.Project, "--no-restore", .. parallelBuiltSwitches], ct, run: run, maxFailures: maxFailures, inactivityTimeout: inactivityTimeout).ConfigureAwait(false);
+                    parallelResults[group.Key] = (res.Outcome, res.Process, res.Log, run, res.TimedOutFramework ?? scope?.Framework);
+                }).ConfigureAwait(false);
+
+            foreach (var group in groups)
+            {
+                if (outcomes.TryGetValue(group.Key, out var shadowOutcome))
+                {
+                    aggregate = aggregate.Add(shadowOutcome);
+                    perProject.Add((group.First().Project, group.First().Name, shadowOutcome));
+                    continue;
+                }
+
+                if (timeouts.TryGetValue(group.Key, out var hung))
+                {
+                    problems.Add(WithoutResults(hung.Process, root, $"the test run of {hung.Name}", plan.Summary, Seconds(started), timedOutFramework: hung.Framework, inactivityTimeout: inactivityTimeout));
+                    continue;
+                }
+
+                var (outcome, process, log, run, timedOutFramework) = parallelResults[group.Key];
+                if (outcome is not null)
+                {
+                    aggregate = aggregate.Add(outcome);
+                    perProject.Add((run.Project, run.Name, outcome));
+                    continue;
+                }
+
+                var answer = WithoutResults(process, root, $"the test run of {run.Name}", plan.Summary, Seconds(started), log, timedOutFramework: timedOutFramework ?? scope?.Framework, inactivityTimeout: inactivityTimeout);
+                if (answer.Outcome == Outcome.Clean)
+                    passedWithoutResults ??= answer;
+                else
+                    problems.Add(answer);
+            }
+        }
+        else
+        {
+            foreach (var group in groups)
+            {
+                if (outcomes.TryGetValue(group.Key, out var shadowOutcome))
+                {
+                    aggregate = aggregate.Add(shadowOutcome);
+                    perProject.Add((group.First().Project, group.First().Name, shadowOutcome));
+                    continue;
+                }
+
+                if (timeouts.TryGetValue(group.Key, out var hung))
+                {
+                    problems.Add(WithoutResults(hung.Process, root, $"the test run of {hung.Name}", plan.Summary, Seconds(started), timedOutFramework: hung.Framework, inactivityTimeout: inactivityTimeout));
+                    continue;
+                }
+
+                // A run with MSBuild writes build output, so it waits for the build lock.
+                takeLock();
+                var run = group.First();
+                var (outcome, process, log, _, timedOutFramework) = run.UsesTestingPlatform
+                    ? await RunPlatformAsync(root, run, runner, scope, cancellationToken, maxFailures, inactivityTimeout).ConfigureAwait(false)
+                    : await RunDotnetTestAsync(root, root.Path, [run.Project, "--no-restore", .. buildSwitches], cancellationToken, run: run, maxFailures: maxFailures, inactivityTimeout: inactivityTimeout).ConfigureAwait(false);
+                if (outcome is not null)
+                {
+                    aggregate = aggregate.Add(outcome);
+                    perProject.Add((run.Project, run.Name, outcome));
+                    continue;
+                }
+
+                var answer = WithoutResults(process, root, $"the test run of {run.Name}", plan.Summary, Seconds(started), log, timedOutFramework: timedOutFramework ?? scope?.Framework, inactivityTimeout: inactivityTimeout);
+                if (answer.Outcome == Outcome.Clean)
+                    passedWithoutResults ??= answer;
+                else
+                    problems.Add(answer);
+            }
+        }
+
+        if (remainingGroups.Count > 0)
+            await BuildOperation.ShutdownBuildServerIfMemoryTightAsync(root.Path).ConfigureAwait(false);
+
+        if (aggregate.Total == 0 && problems.Count == 0 && passedWithoutResults is not null)
+        {
+            // A clean run leaves no stale failures behind: without this a passing platform run would keep the last failures recorded.
+            ResultsFile.WriteTestsWithPaths(root, []);
+            return passedWithoutResults;
+        }
+        if (aggregate.Total == 0 && problems.Count > 0)
+            return Join(problems);
+        if (failedRerunCount is not null && aggregate.Total == 0)
+            return new OperationResult(Outcome.ProblemsFound, $"fuse: none of the {failedRerunCount} test(s) that failed last time ran; they may have been renamed or removed");
+
+        var shadowRuns = outcomes.Count;
+        var mode = shadowRuns == groups.Count ? "without MSBuild" : shadowRuns > 0 ? $"without MSBuild for {shadowRuns} of {groups.Count} project(s)" : "built with MSBuild";
+        var resultsPath = aggregate.Total > 0 ? ResultsFile.WriteTestsWithPaths(root, perProject) : null;
+        if (reuse is not null && aggregate.Total > 0)
+            LastTestResults.WriteRun(root, reuse.Value.TreeHash, reuse.Value.FullHash, reuse.Value.AssetsHash, reuse.Value.PlanKey, DateTime.UtcNow, Seconds(started), $"{plan.Summary}; {mode}", aggregate, perProject, problems);
+        var tests = Render(aggregate, $"{plan.Summary}; {mode}", Seconds(started), resultsPath);
+        // The tests' answer comes first, so the last line is a failed build or run whenever there is one.
+        return problems.Count == 0 ? tests : Join([tests, .. problems]);
+    }
+
+    /// <summary>What one stage of a split run produced: its combined results, answers, and which projects ran as shadow runs.</summary>
+    private sealed record StageOutcome(TrxResults Aggregate, List<(string Project, string Name, TrxResults Outcome)> PerProject, List<OperationResult> Problems, OperationResult? PassedWithoutResults, IReadOnlySet<RepoPath> Shadowed);
+
+    /// <summary>
+    ///     Runs a plan whose projects split into a first stage of last run's failures and a second stage of the rest,
+    ///     printing each stage's failures to <paramref name="live"/> as soon as its stage ends. Null when no project
+    ///     splits, so the caller runs one stage instead. The two stages record once, from their combined results, so the
+    ///     summary counts each test once.
+    /// </summary>
+    private static async Task<OperationResult?> RunStagedAsync(
+        RepoRoot root, TestPlan plan, long started, List<IDisposable> copies, Action releaseLock, Func<BuildLock> takeLock,
+        TestScopeArguments? scope, TextWriter? live, IReadOnlyDictionary<string, string[]> failedFirstByProject, CancellationToken cancellationToken, (string TreeHash, string FullHash, string AssetsHash, string PlanKey)? reuse = null, int maxFailures = DefaultMaxFailures, bool noCache = false, TimeSpan? inactivityTimeout = null)
+    {
+        var groups = plan.Runs.GroupBy(r => root.PathOf(r.Project)).ToList();
+        var priority = new List<(RepoPath Key, List<TestRun> Runs)>();
+        var rest = new List<(RepoPath Key, List<TestRun> Runs)>();
+        var single = new List<IGrouping<RepoPath, TestRun>>();
+        foreach (var group in groups)
+        {
+            var runs = group.ToList();
+            // A run served from the slice cache keeps the filter its verdict was keyed by, so it never splits.
+            if (failedFirstByProject.TryGetValue(runs[0].Project, out var names)
+                && runs.All(r => !r.FromCache)
+                && runs.All(r => !r.UsesTestingPlatform)
+                && runs.All(r => r.Filter == runs[0].Filter)
+                && runs[0].Filter is string original
+                && FailedFirstSplit.TrySplit(original, names, out var priorityFilter, out var restFilter))
+            {
+                // A stage runs under another filter than the plan keyed, so it carries no slice key and stores nothing.
+                priority.Add((group.Key, runs.Select(r => r with { Filter = priorityFilter, SliceKey = null }).ToList()));
+                rest.Add((group.Key, runs.Select(r => r with { Filter = restFilter, SliceKey = null }).ToList()));
+            }
+            else
+            {
+                single.Add(group);
+            }
+        }
+
+        if (priority.Count == 0)
+            return null;
+
+        // Every copy is held before the lock goes, so no plan prepared after it writes a copy these runs start from.
+        var staged = priority.Select(p => p.Runs).Concat(rest.Select(r => r.Runs)).SelectMany(r => r).Concat(single.SelectMany(g => g)).ToList();
+        var anyShadow = false;
+        foreach (var run in staged)
+        {
+            if (run.Mode is not TestRunMode.Shadow shadowMode)
+                continue;
+            anyShadow = true;
+            try
+            {
+                copies.Add(LocalState.HoldTestCopy(Path.GetDirectoryName(shadowMode.Assembly)!));
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                // A copy that cannot be held still runs; only a later plan could change it under the run.
+            }
+        }
+
+        if (anyShadow)
+            releaseLock();
+
+        // Whether dotnet test runs the platform in this repository decides how a platform run is started.
+        var runner = GlobalJson.UsesTestingPlatform(root.Path, root.Path);
+        string[] buildSwitches = scope?.BuildSwitches ?? [];
+        var first = await RunStageAsync(root, priority, runner, buildSwitches, plan.Summary, started, takeLock, scope, cancellationToken, maxFailures, noCache, inactivityTimeout).ConfigureAwait(false);
+        if (live is not null)
+        {
+            live.Write(RenderFailures(first.Aggregate));
+            live.Flush();
+        }
+
+        releaseLock();
+        var secondGroups = rest.Concat(single.Select(g => (g.Key, g.ToList()))).ToList();
+        var second = await RunStageAsync(root, secondGroups, runner, buildSwitches, plan.Summary, started, takeLock, scope, cancellationToken, maxFailures, noCache, inactivityTimeout).ConfigureAwait(false);
+        if (live is not null)
+        {
+            live.Write(RenderFailures(second.Aggregate));
+            live.Flush();
+        }
+
+        var aggregate = first.Aggregate.Add(second.Aggregate);
+        var problems = first.Problems.Concat(second.Problems).ToList();
+        var passedWithoutResults = first.PassedWithoutResults ?? second.PassedWithoutResults;
+        if (aggregate.Total == 0 && problems.Count == 0 && passedWithoutResults is not null)
+        {
+            ResultsFile.WriteTestsWithPaths(root, []);
+            return passedWithoutResults;
+        }
+        if (aggregate.Total == 0 && problems.Count > 0)
+            return Join(problems);
+
+        var perProject = new List<(string Project, string Name, TrxResults Outcome)>();
+        foreach (var group in groups)
+        {
+            var outcomes = first.PerProject.Concat(second.PerProject).Where(p => p.Project == group.First().Project).ToList();
+            if (outcomes.Count > 0)
+                perProject.Add((group.First().Project, group.First().Name, outcomes.Select(o => o.Outcome).Aggregate(TrxResults.Empty, (a, b) => a.Add(b))));
+        }
+
+        // A split project ran without MSBuild only when both its stages did.
+        var shadowRuns = priority.Count(p => first.Shadowed.Contains(p.Key) && second.Shadowed.Contains(p.Key)) + single.Count(g => second.Shadowed.Contains(g.Key));
+        var mode = shadowRuns == groups.Count ? "without MSBuild" : shadowRuns > 0 ? $"without MSBuild for {shadowRuns} of {groups.Count} project(s)" : "built with MSBuild";
+        var resultsPath = aggregate.Total > 0 ? ResultsFile.WriteTestsWithPaths(root, perProject) : null;
+        if (reuse is not null && aggregate.Total > 0)
+            LastTestResults.WriteRun(root, reuse.Value.TreeHash, reuse.Value.FullHash, reuse.Value.AssetsHash, reuse.Value.PlanKey, DateTime.UtcNow, Seconds(started), $"{plan.Summary}; {mode}", aggregate, perProject, problems);
+        if (live is not null)
+        {
+            var summaryOnly = new OperationResult(
+                aggregate.Failed > 0 ? Outcome.ProblemsFound : Outcome.Clean,
+                RenderSummary(aggregate, $"{plan.Summary}; {mode}", Seconds(started), resultsPath));
+            return problems.Count == 0 ? summaryOnly : Join([summaryOnly, .. problems]);
+        }
+
+        var tests = Render(aggregate, $"{plan.Summary}; {mode}", Seconds(started), resultsPath);
+        // The tests' answer comes first, so the last line is a failed build or run whenever there is one.
+        return problems.Count == 0 ? tests : Join([tests, .. problems]);
+    }
+
+    /// <summary>Runs one stage's groups: its shadow runs in parallel without the lock, then the rest one after another with it.</summary>
+    private static async Task<StageOutcome> RunStageAsync(
+        RepoRoot root, IReadOnlyList<(RepoPath Key, List<TestRun> Runs)> stage, bool runner, string[] buildSwitches, string summary, long started,
+        Func<BuildLock> takeLock, TestScopeArguments? scope, CancellationToken cancellationToken, int maxFailures = DefaultMaxFailures, bool noCache = false, TimeSpan? inactivityTimeout = null)
+    {
+        var shadowGroups = stage.Where(g => g.Runs.All(r => r.Mode is TestRunMode.Shadow)).ToList();
+        var outcomes = new System.Collections.Concurrent.ConcurrentDictionary<RepoPath, TrxResults>();
+        var timeouts = new System.Collections.Concurrent.ConcurrentDictionary<RepoPath, (ProcessResult Process, string? Framework, string Name)>();
+        await Parallel.ForEachAsync(
+            shadowGroups,
+            new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2), CancellationToken = cancellationToken },
+            async (group, ct) =>
+            {
+                var results = await Task.WhenAll(group.Runs.Select(async run => (Run: run, Ran: await RunShadowOrCachedAsync(root, run, maxFailures, ct, noCache, inactivityTimeout).ConfigureAwait(false)))).ConfigureAwait(false);
+                // A shadow run that hung is reported as timed out: its tests hang, so MSBuild would hang on them too.
+                // One that could not start sends the project back through MSBuild below.
+                var hung = results.FirstOrDefault(r => r.Ran.Process?.TimedOut is true);
+                if (hung.Run is not null)
+                {
+                    timeouts[group.Key] = (hung.Ran.Process!, hung.Ran.TimedOutFramework ?? scope?.Framework, hung.Run.Name);
+                    return;
+                }
+
+                if (results.Any(r => r.Ran.Outcome is null))
+                    return;
+                outcomes[group.Key] = results.Aggregate(TrxResults.Empty, (sum, r) => sum.Add(r.Ran.Outcome!));
+            }).ConfigureAwait(false);
+
+        var aggregate = TrxResults.Empty;
+        var perProject = new List<(string Project, string Name, TrxResults Outcome)>();
+        var problems = new List<OperationResult>();
+        OperationResult? passedWithoutResults = null;
+        foreach (var (key, runs) in stage)
+        {
+            if (outcomes.TryGetValue(key, out var shadowOutcome))
+            {
+                aggregate = aggregate.Add(shadowOutcome);
+                perProject.Add((runs[0].Project, runs[0].Name, shadowOutcome));
+                continue;
+            }
+
+            if (timeouts.TryGetValue(key, out var hung))
+            {
+                problems.Add(WithoutResults(hung.Process, root, $"the test run of {hung.Name}", summary, Seconds(started), timedOutFramework: hung.Framework, inactivityTimeout: inactivityTimeout));
+                continue;
+            }
+
+            takeLock();
+            var run = runs[0];
+            var (outcome, process, log, _, timedOutFramework) = run.UsesTestingPlatform
+                ? await RunPlatformAsync(root, run, runner, scope, cancellationToken, maxFailures, inactivityTimeout).ConfigureAwait(false)
+                : await RunDotnetTestAsync(root, root.Path, [run.Project, "--no-restore", .. buildSwitches], cancellationToken, run: run, maxFailures: maxFailures, inactivityTimeout: inactivityTimeout).ConfigureAwait(false);
+            if (outcome is not null)
+            {
+                aggregate = aggregate.Add(outcome);
+                perProject.Add((run.Project, run.Name, outcome));
+                continue;
+            }
+
+            var answer = WithoutResults(process, root, $"the test run of {run.Name}", summary, Seconds(started), log, timedOutFramework: timedOutFramework ?? scope?.Framework, inactivityTimeout: inactivityTimeout);
+            if (answer.Outcome == Outcome.Clean)
+                passedWithoutResults ??= answer;
+            else
+                problems.Add(answer);
+        }
+
+        return new StageOutcome(aggregate, perProject, problems, passedWithoutResults, outcomes.Keys.ToHashSet());
+    }
+
+    /// <summary>Several answers as one, in order; it found problems when any of them did.</summary>
+    private static OperationResult Join(List<OperationResult> answers) =>
+        answers.Count == 1
+            ? answers[0]
+            : new OperationResult(
+                answers.Any(a => a.Outcome == Outcome.ProblemsFound) ? Outcome.ProblemsFound : Outcome.Clean,
+                string.Join('\n', answers.Select(a => a.Text)));
+
+    private static double Seconds(long started) => (Environment.TickCount64 - started) / 1000.0;
+
+    /// <summary>
+    ///     Runs one project on Microsoft.Testing.Platform, with its framework's filter. With the repository's
+    ///     <c>global.json</c> opt-in, <c>dotnet test</c> runs it. Without one, <c>dotnet test</c> cannot reach it: the
+    ///     project has no VSTest target to run (it exits 0 having run nothing, or its targets refuse), and
+    ///     <c>--project</c> is not a switch of that command. The project then builds and its test application runs
+    ///     directly from what the build wrote, once per target framework, with the output folder as its working
+    ///     directory, as a test host runs it. A filtered run that ran no test is answered as the platform's own
+    ///     no-test run, never as a pass.
+    /// </summary>
+    private static async Task<(TrxResults? Outcome, ProcessResult? Process, string Log, string ResultsDirectory, string? TimedOutFramework)> RunPlatformAsync(
+        RepoRoot root, TestRun run, bool runner, TestScopeArguments? scope, CancellationToken cancellationToken, int maxFailures = DefaultMaxFailures, TimeSpan? inactivityTimeout = null)
+    {
+        string[] switches = scope?.BuildSwitches ?? [];
+        if (runner || run.TargetPaths.Length == 0)
+            return await ThroughDotnetTestAsync(root, run, runner, switches, cancellationToken, maxFailures, inactivityTimeout).ConfigureAwait(false);
+
+        var results = Path.Combine(root.StateDirectory, "results", Guid.NewGuid().ToString("N")[..8]);
+        try
+        {
+            // --no-build runs what an earlier build wrote, as dotnet test --no-build does.
+            var (built, log, _) = switches.Contains("--no-build")
+                ? (new ProcessResult(0, ""), "", new List<string>())
+                : await BuildOperation.RunLoggedAsync(["build", run.Project, "--no-restore", "-nologo", "-tl:off", .. switches.Where(s => s != "--no-build")], root.Path, results, cancellationToken).ConfigureAwait(false);
+            if (built.ExitCode != 0)
+                return (null, built, log, results, null);
+            var targets = run.TargetPaths
+                .Select(t => scope?.Configuration is { } configuration ? ForConfiguration(t, configuration) : t)
+                .Where(t => scope?.Framework is not { } framework || HasSegment(t, framework))
+                .Where(File.Exists)
+                .ToList();
+            // A .NET Framework target builds an assembly with no runtimeconfig.json, which dotnet exec cannot start
+            // (hostpolicy.dll is not found), so a project with one runs through dotnet test, which starts it the right way.
+            if (targets.Count == 0 || targets.Any(t => t.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) && !File.Exists(Path.ChangeExtension(t, ".runtimeconfig.json"))))
+            {
+                // dotnet test starts such a target itself, and says in its own words when the build wrote none. The build
+                // above is done, so dotnet test does not build the project again.
+                return await ThroughDotnetTestAsync(root, run, runner, Built(switches), cancellationToken, maxFailures, inactivityTimeout).ConfigureAwait(false);
+            }
+
+            string[] settings = run.Filter is not null || run.RunSettings is not null
+                ? ["--settings", RunSettingsFile.Write(results, run.Filter, run.RunSettings)]
+                : [];
+            var aggregate = TrxResults.Empty;
+            ProcessResult? last = null;
+            foreach (var target in targets)
+            {
+                var arguments = new List<string>();
+                string file;
+                if (target.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+                {
+                    file = "dotnet";
+                    arguments.Add("exec");
+                    arguments.Add(target);
+                }
+                else
+                {
+                    file = target;
+                }
+
+                arguments.AddRange(run.FilterArguments);
+                arguments.AddRange(settings);
+                var (process, earlyFailures) = await RunWithEarlyStopAsync(file, [.. arguments], Path.GetDirectoryName(target)!, maxFailures, cancellationToken, EffectiveTimeout(inactivityTimeout)).ConfigureAwait(false);
+                // A target that hung aborts the run: the same tests hang on every target framework, so running on
+                // would only wait out another timeout. It is reported as timed out, never as passed.
+                if (process.TimedOut)
+                    return (null, process, log, results, TargetFrameworkOfPath(target));
+                var outcome = TestingPlatformOutput.Read(process.Output, root.Path) ?? XUnitOutput.Read(process.Output, root.Path);
+                if (outcome is null && earlyFailures.Count > 0)
+                    outcome = SynthesizeFailures(earlyFailures);
+                // Counts that say nothing failed from a run that exited with a code other than 0 do not explain its exit code.
+                if (outcome is { Failed: 0 } && process.ExitCode != 0)
+                    outcome = null;
+                // A target that exits 0 and prints no results is not a test application that runs itself (an NUnit or
+                // MSTest project can reference the platform without being one), so the project runs through dotnet test,
+                // which finds its tests, instead of passing with none.
+                if (outcome is null && process.ExitCode == 0)
+                    return await ThroughDotnetTestAsync(root, run, runner, Built(switches), cancellationToken, maxFailures, inactivityTimeout).ConfigureAwait(false);
+                if (outcome is null)
+                    return (null, process, log, results, null);
+                aggregate = aggregate.Add(outcome);
+                last = process;
+            }
+
+            await CollectTestMapsAsync(root, run, [results, .. targets.Select(t => Path.GetDirectoryName(t)).OfType<string>()], cancellationToken).ConfigureAwait(false);
+            if (aggregate.Total == 0 && (run.Filter is not null || run.FilterArguments.Length > 0))
+                return (null, new ProcessResult(NoTestRanExitCode, last?.Output ?? ""), log, results, null);
+            return (aggregate, null, log, results, null);
+        }
+        finally
+        {
+            try
+            {
+                if (Directory.Exists(results))
+                    Directory.Delete(results, recursive: true);
+            }
+            catch (IOException)
+            {
+            }
+        }
+    }
+
+    /// <summary>
+    ///     The outcome of a run the engine served from the slice cache, when its cached verdict passed every test, so
+    ///     the run is reused without starting a process. Null when the run is not cached, when its verdict failed a
+    ///     test (which runs fresh, so its failures print with their details), or when its reason parses to nothing.
+    ///     The text is what the engine's plan mapper writes; the engine masks it under <c>--clean</c> and
+    ///     <c>--no-cache</c>, so a masked run always reaches here uncached.
+    /// </summary>
+    internal static TrxResults? CachedPassOutcome(TestRun run)
+    {
+        if (!run.FromCache || run.CacheReason is not { } reason)
+            return null;
+        const string prefix = "slice cache: ";
+        const string passed = " passed, ";
+        const string failed = " failed, ";
+        const string skipped = " skipped";
+        if (!reason.StartsWith(prefix, StringComparison.Ordinal) || !reason.EndsWith(skipped, StringComparison.Ordinal))
+            return null;
+        var body = reason[prefix.Length..^skipped.Length];
+        var first = body.IndexOf(passed, StringComparison.Ordinal);
+        if (first < 0)
+            return null;
+        var second = body.IndexOf(failed, first + passed.Length, StringComparison.Ordinal);
+        if (second < 0)
+            return null;
+        if (!int.TryParse(body[..first], NumberStyles.None, CultureInfo.InvariantCulture, out var passedCount)
+            || !int.TryParse(body[(first + passed.Length)..second], NumberStyles.None, CultureInfo.InvariantCulture, out var failedCount)
+            || !int.TryParse(body[(second + failed.Length)..], NumberStyles.None, CultureInfo.InvariantCulture, out var skippedCount))
+            return null;
+        return failedCount == 0 ? new TrxResults(passedCount, 0, skippedCount, []) : null;
+    }
+
+    /// <summary>
+    ///     Runs one shadow run, or reuses its cached passing verdict without starting a process. A run that executes
+    ///     stores its verdict in the slice cache, so the next identical plan reuses a passing verdict without running.
+    /// </summary>
+    private static async Task<(TrxResults? Outcome, ProcessResult? Process, string Log, string ResultsDirectory, string? TimedOutFramework)> RunShadowOrCachedAsync(RepoRoot root, TestRun run, int maxFailures, CancellationToken cancellationToken, bool noCache = false, TimeSpan? inactivityTimeout = null)
+    {
+        if (CachedPassOutcome(run) is { } reused)
+            return (reused, null, "", "", null);
+        var started = Environment.TickCount64;
+        var ran = run.UsesTestingPlatform
+            ? await RunShadowPlatformAsync(root, run, maxFailures, cancellationToken, inactivityTimeout).ConfigureAwait(false)
+            : await RunDotnetTestAsync(root, root.Path, [((TestRunMode.Shadow)run.Mode).Assembly], cancellationToken, assembly: true, run: run, maxFailures: maxFailures, inactivityTimeout: inactivityTimeout).ConfigureAwait(false);
+        await StoreSliceVerdictAsync(root, run, ran.Outcome, Environment.TickCount64 - started, noCache, cancellationToken).ConfigureAwait(false);
+        return ran;
+    }
+
+    /// <summary>
+    ///     The store request for a finished shadow run's verdict, or null when the verdict is not stored: under
+    ///     <c>--no-cache</c>, when the run has no slice key, when it ended without results or ran no test, or when
+    ///     its counts were made from watched failure lines instead of a result file. A failed verdict is stored, so
+    ///     the next plan sees it; the client runs a cached failure fresh anyway. Only a run of the plan's slice
+    ///     reaches here with its key: a split stage runs under another filter with no key, and a run that fell back
+    ///     to MSBuild stores nothing.
+    /// </summary>
+    internal static EngineRequest.StoreSliceResult? SliceStoreFor(TestRun run, TrxResults? outcome, double durationMs, bool noCache)
+    {
+        if (noCache || outcome is null || outcome.Total == 0 || string.IsNullOrWhiteSpace(run.SliceKey))
+            return null;
+        if (outcome.Failures.Any(f => f.Message == StoppedEarlyMessage))
+            return null;
+        return new EngineRequest.StoreSliceResult
+        {
+            SliceKey = run.SliceKey,
+            Project = run.Project,
+            ProjectName = run.Name,
+            Passed = outcome.Passed,
+            Failed = outcome.Failed,
+            Skipped = outcome.Skipped,
+            DurationMs = durationMs,
+            Failures = [.. outcome.Failures.Take(MaxStoredFailures).Select(f => new EngineRequest.SliceFailure(f.Name, f.Message, [.. f.Frames]))],
+        };
+    }
+
+    /// <summary>
+    ///     Stores a finished shadow run's verdict in the engine's slice cache. Advisory: a verdict that is not
+    ///     stored only costs the next identical plan its reuse, so a store never fails the run, never starts an
+    ///     engine for it, and never stores for a cancelled run.
+    /// </summary>
+    private static async Task StoreSliceVerdictAsync(RepoRoot root, TestRun run, TrxResults? outcome, double durationMs, bool noCache, CancellationToken cancellationToken)
+    {
+        var store = SliceStoreFor(run, outcome, durationMs, noCache);
+        if (store is null || cancellationToken.IsCancellationRequested || !EngineClient.PipeExists(root.PipeName))
+            return;
+        try
+        {
+            // Detached from the run's cancellation: the run is over, and the timeout bounds the store on its own.
+            await EngineClient.SendAsync(root, store, SliceStoreTimeout, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            // Advisory: the next identical plan runs fresh instead of reusing this verdict.
+        }
+    }
+
+    /// <summary>
+    ///     Copies the test maps a finished Microsoft.Testing.Platform run wrote into the incoming folder the engine's
+    ///     next plan ingests, under a subfolder named for the test project. Runs only on the .NET 11 SDK, which is
+    ///     the first to write them; otherwise records nothing. Never fails the run: maps are advisory, and a missed
+    ///     one only costs the next selection its hints.
+    /// </summary>
+    private static async Task CollectTestMapsAsync(RepoRoot root, TestRun? run, IReadOnlyList<string> searchDirectories, CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (run is not { UsesTestingPlatform: true })
+                return;
+            var folders = searchDirectories.Where(Directory.Exists).Take(MaxTestMapSearchFolders).ToList();
+            if (folders.Count == 0)
+                return;
+            if (!(await SdkCapabilities.DetectAsync(root.Path, cancellationToken).ConfigureAwait(false)).SupportsMtpAffectedTests)
+                return;
+            // The engine reads this folder without the client: its path and the hex-encoded project name below match
+            // the dynamic map's incoming folder, which this layer may not name.
+            var incoming = Path.Combine(root.SharedStateDirectory, "test-maps", "incoming", Convert.ToHexStringLower(Encoding.UTF8.GetBytes(root.PathOf(run.Project).Relative)));
+            var copied = 0;
+            foreach (var folder in folders)
+            {
+                foreach (var file in TestMapFiles(folder))
+                {
+                    if (copied >= MaxTestMapsPerRun)
+                        return;
+                    try
+                    {
+                        if (new FileInfo(file).Length > MaxTestMapBytes)
+                            continue;
+                        Directory.CreateDirectory(incoming);
+                        File.Copy(file, Path.Combine(incoming, Path.GetFileName(file)), overwrite: true);
+                        copied++;
+                    }
+                    catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+                    {
+                        // One unreadable map never stops the rest.
+                    }
+                }
+            }
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            // Advisory: a missed map only costs the next selection its hints, never the run its answer.
+        }
+    }
+
+    /// <summary>The test map files under <paramref name="folder"/>: its top level and its test-results folder, bounded.</summary>
+    private static IEnumerable<string> TestMapFiles(string folder)
+    {
+        var files = EnumerateTopFiles(folder).Concat(EnumerateTopFiles(Path.Combine(folder, "TestResults"))).Take(MaxTestMapFilesPerFolder);
+        foreach (var file in files)
+        {
+            var name = Path.GetFileName(file);
+            if (name.Contains("testmap", StringComparison.OrdinalIgnoreCase) || name.Contains("test-map", StringComparison.OrdinalIgnoreCase))
+                yield return file;
+        }
+    }
+
+    /// <summary>The files directly under <paramref name="folder"/>, or none when it cannot be read.</summary>
+    private static IEnumerable<string> EnumerateTopFiles(string folder)
+    {
+        try
+        {
+            return Directory.Exists(folder) ? [.. Directory.EnumerateFiles(folder, "*", SearchOption.TopDirectoryOnly)] : [];
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return [];
+        }
+    }
+
+    /// <summary>
+    ///     Runs one Microsoft.Testing.Platform shadow-emitted assembly directly without MSBuild. Returns null outcome
+    ///     when the shadow assembly cannot execute directly so the caller falls back cleanly to MSBuild.
+    /// </summary>
+    private static async Task<(TrxResults? Outcome, ProcessResult? Process, string Log, string ResultsDirectory, string? TimedOutFramework)> RunShadowPlatformAsync(
+        RepoRoot root, TestRun run, int maxFailures, CancellationToken cancellationToken, TimeSpan? inactivityTimeout = null)
+    {
+        var shadowAssembly = ((TestRunMode.Shadow)run.Mode).Assembly;
+        if (!File.Exists(shadowAssembly))
+            return (null, null, "", "", null);
+        if (shadowAssembly.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) && !File.Exists(Path.ChangeExtension(shadowAssembly, ".runtimeconfig.json")))
+            return (null, null, "", "", null);
+
+        var results = Path.Combine(root.StateDirectory, "results", Guid.NewGuid().ToString("N")[..8]);
+        try
+        {
+            string[] settings = run.Filter is not null || run.RunSettings is not null
+                ? ["--settings", RunSettingsFile.Write(results, run.Filter, run.RunSettings)]
+                : [];
+
+            var arguments = new List<string>();
+            string file;
+            var apphost = OperatingSystem.IsWindows()
+                ? Path.ChangeExtension(shadowAssembly, ".exe")
+                : Path.Combine(Path.GetDirectoryName(shadowAssembly)!, Path.GetFileNameWithoutExtension(shadowAssembly));
+            if (shadowAssembly.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+            {
+                if (File.Exists(apphost))
+                {
+                    file = apphost;
+                }
+                else
+                {
+                    file = "dotnet";
+                    arguments.Add("exec");
+                    arguments.Add(shadowAssembly);
+                }
+            }
+            else
+            {
+                file = shadowAssembly;
+            }
+
+            arguments.AddRange(run.FilterArguments);
+            arguments.AddRange(settings);
+            var (process, earlyFailures) = await RunWithEarlyStopAsync(file, [.. arguments], Path.GetDirectoryName(shadowAssembly)!, maxFailures, cancellationToken, EffectiveTimeout(inactivityTimeout)).ConfigureAwait(false);
+            if (process.TimedOut)
+                return (null, process, "", results, TargetFrameworkOf(run));
+            var outcome = TestingPlatformOutput.Read(process.Output, root.Path)
+                ?? XUnitOutput.Read(process.Output, root.Path)
+                ?? TrxReader.ReadDirectory(results, root.Path);
+            if (outcome is null && earlyFailures.Count > 0)
+                outcome = SynthesizeFailures(earlyFailures);
+            if (outcome is { Failed: 0 } && process.ExitCode != 0)
+                outcome = null;
+            if (outcome is null)
+                return (null, process.ExitCode == 0 ? null : process, "", results, null);
+            if (outcome.Total == 0 && (run.Filter is not null || run.FilterArguments.Length > 0))
+                return (null, new ProcessResult(NoTestRanExitCode, process.Output), "", results, null);
+            await CollectTestMapsAsync(root, run, [results, Path.GetDirectoryName(shadowAssembly)!], cancellationToken).ConfigureAwait(false);
+            return (outcome, null, "", results, null);
+        }
+        finally
+        {
+            try
+            {
+                if (Directory.Exists(results))
+                    Directory.Delete(results, recursive: true);
+            }
+            catch (IOException)
+            {
+            }
+        }
+    }
+
+    /// <summary>The build switches with <c>--no-build</c>, for a <c>dotnet test</c> after the project was built.</summary>
+    private static string[] Built(string[] switches) => switches.Contains("--no-build") ? switches : [.. switches, "--no-build"];
+
+    /// <summary>
+    ///     A built test application's path under <paramref name="configuration"/>: evaluation names the default
+    ///     configuration's output, so the segment a build writes the named one to takes its place.
+    /// </summary>
+    private static string ForConfiguration(string target, string configuration)
+    {
+        var parts = target.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var bin = Array.FindIndex(parts, p => p.Equals("bin", StringComparison.OrdinalIgnoreCase));
+        if (bin < 0 || bin + 1 >= parts.Length)
+            return target;
+        parts[bin + 1] = configuration;
+        return string.Join(Path.DirectorySeparatorChar, parts);
+    }
+
+    /// <summary>Whether <paramref name="path"/> has a segment that is exactly <paramref name="segment"/>.</summary>
+    private static bool HasSegment(string path, string segment) =>
+        path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Any(p => p.Equals(segment, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    ///     The target framework a timed-out <paramref name="run"/> ran, for the timeout answer, or null when the run
+    ///     covers more than one. A shadow run names its variant's framework after the project's name in its folder
+    ///     (<c>Lib.Tests-net9.0</c>); a build run whose every target path was built for one framework ran that one.
+    /// </summary>
+    internal static string? TargetFrameworkOf(TestRun run)
+    {
+        if (run.Mode is TestRunMode.Shadow shadow)
+        {
+            // The assembly runs from a numbered copy under the folder that names the variant
+            // (<c>Lib.Tests-net9.0/g1/Lib.Tests.dll</c>); the walk finds it at any depth.
+            var prefix = run.Name + "-";
+            for (var directory = Path.GetDirectoryName(shadow.Assembly);
+                directory is not null;
+                directory = Path.GetDirectoryName(directory))
+            {
+                var folder = Path.GetFileName(directory);
+                if (folder is not null && folder.StartsWith(prefix, StringComparison.Ordinal) && IsFrameworkName(folder[prefix.Length..]))
+                    return folder[prefix.Length..];
+            }
+        }
+
+        return AgreedFramework(run.TargetPaths);
+    }
+
+    /// <summary>The one framework every path in <paramref name="targets"/> was built for, or null when they name none or disagree.</summary>
+    internal static string? AgreedFramework(string[] targets)
+    {
+        string? agreed = null;
+        foreach (var target in targets)
+        {
+            if (TargetFrameworkOfPath(target) is not { } framework)
+                return null;
+            if (agreed is null)
+                agreed = framework;
+            else if (!agreed.Equals(framework, StringComparison.OrdinalIgnoreCase))
+                return null;
+        }
+
+        return agreed;
+    }
+
+    /// <summary>
+    ///     The target framework the test application at <paramref name="target"/> was built for, from its output
+    ///     folder (<c>net9.0</c>, or <c>debug_net9.0</c> under central output), or null when the folder names none.
+    /// </summary>
+    internal static string? TargetFrameworkOfPath(string target)
+    {
+        var folder = Path.GetFileName(Path.GetDirectoryName(target));
+        if (folder is null)
+            return null;
+        var name = folder.Contains('_') ? folder[(folder.LastIndexOf('_') + 1)..] : folder;
+        return IsFrameworkName(name) ? name : null;
+    }
+
+    /// <summary>The framework the caller's <c>dotnet test</c> arguments name with <c>-f</c> or <c>--framework</c>, or null.</summary>
+    internal static string? FrameworkFromArguments(IReadOnlyList<string> arguments)
+    {
+        for (var i = 0; i < arguments.Count; i++)
+        {
+            if (arguments[i].Equals("-f", StringComparison.Ordinal) || arguments[i].Equals("--framework", StringComparison.OrdinalIgnoreCase))
+                return i + 1 < arguments.Count ? arguments[i + 1] : null;
+            if (arguments[i].StartsWith("--framework=", StringComparison.OrdinalIgnoreCase))
+                return arguments[i]["--framework=".Length..];
+        }
+
+        return null;
+    }
+
+    /// <summary>Whether <paramref name="name"/> reads as a target framework (<c>net9.0</c>, <c>netstandard2.0</c>, <c>net481</c>).</summary>
+    private static bool IsFrameworkName(string name) =>
+        name.StartsWith("net", StringComparison.OrdinalIgnoreCase)
+        && name.Length > 3
+        && (char.IsDigit(name[3]) || name.StartsWith("netstandard", StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    ///     Runs a platform project through <c>dotnet test</c> instead of starting its applications. With the platform
+    ///     runner in <c>global.json</c>, <c>dotnet test</c> takes the project by <c>--project</c> and the framework's
+    ///     filter options. Without it, <c>dotnet test</c> is VSTest's: it takes the project positionally, refuses
+    ///     <c>--project</c>, reports to TRX, and reads a filter from the run settings, so a framework's own filter options
+    ///     are left out and xUnit v3 and TUnit run whole; MSTest and NUnit still read their VSTest filter there.
+    /// </summary>
+    private static async Task<(TrxResults? Outcome, ProcessResult? Process, string Log, string ResultsDirectory, string? TimedOutFramework)> ThroughDotnetTestAsync(
+        RepoRoot root, TestRun run, bool runner, string[] switches, CancellationToken cancellationToken, int maxFailures = DefaultMaxFailures, TimeSpan? inactivityTimeout = null)
+    {
+        string[] maxFailArgs = [];
+        if (runner && maxFailures > 0
+            && await BuildOperation.IsNet11OrLaterAsync(root.Path, cancellationToken).ConfigureAwait(false)
+            && !switches.Any(s => s.StartsWith("--maximum-failed-tests", StringComparison.OrdinalIgnoreCase))
+            && !run.FilterArguments.Any(s => s.StartsWith("--maximum-failed-tests", StringComparison.OrdinalIgnoreCase)))
+        {
+            maxFailArgs = ["--maximum-failed-tests", maxFailures.ToString(CultureInfo.InvariantCulture)];
+        }
+
+        var ran = runner
+            ? await RunDotnetTestAsync(root, root.Path, ["--project", run.Project, "--no-restore", .. switches, .. maxFailArgs, .. run.FilterArguments], cancellationToken, testingPlatform: true, run: run, maxFailures: maxFailures, inactivityTimeout: inactivityTimeout).ConfigureAwait(false)
+            : await RunDotnetTestAsync(root, root.Path, [run.Project, "--no-restore", .. switches], cancellationToken, run: run, maxFailures: maxFailures, inactivityTimeout: inactivityTimeout).ConfigureAwait(false);
+        return FilteredNoTest(run, ran);
+    }
+
+    /// <summary>A filtered platform run that ran no test, answered as the platform's own no-test run; any other run unchanged.</summary>
+    private static (TrxResults? Outcome, ProcessResult? Process, string Log, string ResultsDirectory, string? TimedOutFramework) FilteredNoTest(
+        TestRun run, (TrxResults? Outcome, ProcessResult? Process, string Log, string ResultsDirectory, string? TimedOutFramework) ran) =>
+        ran.Outcome is { Total: 0 } && (run.Filter is not null || run.FilterArguments.Length > 0)
+            ? (null, new ProcessResult(NoTestRanExitCode, ""), ran.Log, ran.ResultsDirectory, null)
+            : ran;
+
+    /// <summary>
+    ///     Runs <c>dotnet test</c> and reads its results: from its TRX files, or for a Microsoft.Testing.Platform run from
+    ///     the summary and failures it prints. Without results it returns the process, which is null for a
+    ///     Microsoft.Testing.Platform run that exited with 0.
+    /// </summary>
+    /// <param name="assembly">True when <paramref name="arguments"/> name a test assembly: <c>dotnet test</c> then hands them to VSTest, which rejects MSBuild switches.</param>
+    /// <param name="run">The planned VSTest run, whose filter and project runsettings go into a runsettings file; null for none.</param>
+    /// <param name="maxFailures">Maximum failures before early-stopping VSTest; 0 disables early stop.</param>
+    /// <param name="inactivityTimeout">How long the test process may write no output before its tree is killed and the result reads timed out, or null for the timeout every run uses.</param>
+    /// <returns>The results, or the process without them, and the build's file log (<see cref="BuildLog"/>) for a VSTest run that builds with MSBuild, or empty.</returns>
+    private static async Task<(TrxResults? Outcome, ProcessResult? Process, string Log, string ResultsDirectory, string? TimedOutFramework)> RunDotnetTestAsync(
+        RepoRoot root, string workingDirectory, string[] arguments, CancellationToken cancellationToken, bool testingPlatform = false, bool assembly = false, TestRun? run = null, int maxFailures = DefaultMaxFailures, TimeSpan? inactivityTimeout = null)
+    {
+        var results = Path.Combine(root.StateDirectory, "results", Guid.NewGuid().ToString("N")[..8]);
+        try
+        {
+            string[] reporting = testingPlatform
+                ? []
+                : assembly
+                    ? ["--logger", "trx;LogFilePrefix=fuse", "--results-directory", results]
+                    : ["--logger", "trx;LogFilePrefix=fuse", "--results-directory", results, "-nologo", "-tl:off"];
+            string[] command = ["test", .. arguments, .. Settings(run, results, assembly), .. reporting];
+            // A VSTest run on a project builds it with MSBuild first, so its file log can say what a failed command printed.
+            // Arguments that name an assembly go to VSTest, which rejects MSBuild's switches.
+            var builds = !testingPlatform && !assembly && !arguments.Any(a => a.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) || a.EndsWith(".exe", StringComparison.OrdinalIgnoreCase));
+            ProcessResult result;
+            string log;
+            List<string> earlyFailures;
+            if (builds)
+            {
+                // A VSTest run that builds with MSBuild honors the failure cap the same way: the build's own
+                // lines never name a test failure, and the file log still says what a failed command printed.
+                (result, log, earlyFailures) = await RunLoggedTestAsync(command, workingDirectory, results, cancellationToken, maxFailures, inactivityTimeout).ConfigureAwait(false);
+            }
+            else
+            {
+                (result, earlyFailures) = await RunWithEarlyStopAsync("dotnet", command, workingDirectory, maxFailures, cancellationToken, EffectiveTimeout(inactivityTimeout)).ConfigureAwait(false);
+                log = "";
+            }
+
+            if (result.TimedOut)
+                return (null, result, log, results, run is null ? FrameworkFromArguments(arguments) : TargetFrameworkOf(run));
+            var outcome = TrxReader.ReadDirectory(results, root.Path) ?? (testingPlatform ? TestingPlatformOutput.Read(result.Output, root.Path) : null);
+            if (outcome is null && earlyFailures.Count > 0)
+                outcome = SynthesizeFailures(earlyFailures);
+            if (outcome is not null)
+                await CollectTestMapsAsync(root, run, [results, .. (run?.TargetPaths ?? []).Select(t => Path.GetDirectoryName(t)).OfType<string>()], cancellationToken).ConfigureAwait(false);
+            // Counts that say nothing failed from a run that exited with a code other than 0 do not explain its exit code.
+            if (testingPlatform && outcome is { Failed: 0 } && result.ExitCode != 0)
+                outcome = null;
+            if (outcome is null && testingPlatform)
+                return (null, result.ExitCode == 0 ? null : result, log, results, null);
+            if (outcome is null)
+                return (null, result, log, results, null);
+            return (outcome, null, log, results, null);
+        }
+        finally
+        {
+            try
+            {
+                if (Directory.Exists(results))
+                    Directory.Delete(results, recursive: true);
+            }
+            catch (IOException)
+            {
+            }
+        }
+    }
+
+    /// <summary>
+    ///     Runs <c>dotnet test</c> with <paramref name="arguments"/> and the file log, killing the process when it
+    ///     writes no output for the test inactivity timeout. It mirrors the logged build run, because a test run that
+    ///     builds with MSBuild is still a test process and must end too.
+    /// </summary>
+    /// <param name="logDirectory">Where the log is written; it is deleted once read.</param>
+    /// <param name="maxFailures">Maximum test failures before stopping early; 0 runs to the end.</param>
+    private static async Task<(ProcessResult Result, string Log, List<string> EarlyFailures)> RunLoggedTestAsync(string[] arguments, string workingDirectory, string logDirectory, CancellationToken cancellationToken, int maxFailures = 0, TimeSpan? inactivityTimeout = null)
+    {
+        var path = Path.Combine(logDirectory, $"build-{Guid.NewGuid():N}.log");
+        try
+        {
+            try
+            {
+                Directory.CreateDirectory(logDirectory);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                // Without a place for the log, the run goes without one.
+                var (unlogged, unloggedFailures) = await RunWithEarlyStopAsync("dotnet", arguments, workingDirectory, maxFailures, cancellationToken, EffectiveTimeout(inactivityTimeout)).ConfigureAwait(false);
+                return (unlogged, "", unloggedFailures);
+            }
+
+            var (result, failures) = await RunWithEarlyStopAsync("dotnet", [.. arguments, .. BuildLog.Arguments(path)], workingDirectory, maxFailures, cancellationToken, EffectiveTimeout(inactivityTimeout)).ConfigureAwait(false);
+            return (result, ReadLog(path), failures);
+        }
+        finally
+        {
+            try
+            {
+                File.Delete(path);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+            }
+        }
+    }
+
+    /// <summary>The build's file log, or empty when MSBuild wrote none, as for a command line it refused.</summary>
+    private static string ReadLog(string path)
+    {
+        try
+        {
+            return File.Exists(path) ? File.ReadAllText(path) : "";
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return "";
+        }
+    }
+
+    private static TrxResults SynthesizeFailures(List<string> failureNames) =>
+        new(0, failureNames.Count, 0, [.. failureNames.Select(n => new TestFailure(n, StoppedEarlyMessage, []))]);
+
+    /// <summary>
+    ///     Runs a test process while watching stdout for failure lines, terminating the process tree early once
+    ///     <paramref name="maxFailures"/> distinct failures are observed (after a short grace window for details to
+    ///     flush). With no cap it runs the process to the end, as <see cref="ProcessRunner"/> does.
+    /// </summary>
+    /// <param name="inactivityTimeout">
+    ///     How long the process may write no output before its tree is killed and the result reads timed out, or null
+    ///     to wait without a timeout. Every output line renews it.
+    /// </param>
+    internal static async Task<(ProcessResult Result, List<string> Failures)> RunWithEarlyStopAsync(
+        string fileName,
+        IReadOnlyList<string> arguments,
+        string workingDirectory,
+        int maxFailures,
+        CancellationToken cancellationToken,
+        TimeSpan? inactivityTimeout = null)
+    {
+        if (maxFailures <= 0)
+            return (await ProcessRunner.RunAsync(fileName, arguments, workingDirectory, cancellationToken, inactivityTimeout).ConfigureAwait(false), []);
+
+        var psi = new ProcessStartInfo(fileName)
+        {
+            WorkingDirectory = workingDirectory,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            RedirectStandardInput = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            StandardOutputEncoding = Encoding.UTF8,
+            StandardErrorEncoding = Encoding.UTF8,
+        };
+        foreach (var argument in arguments)
+            psi.ArgumentList.Add(argument);
+        psi.Environment["DOTNET_CLI_TELEMETRY_OPTOUT"] = "1";
+        psi.Environment["DOTNET_NOLOGO"] = "1";
+        psi.Environment["DOTNET_CLI_UI_LANGUAGE"] = "en";
+
+        var output = new StringBuilder();
+        var failures = new List<string>();
+        // When the last output line arrived, in Environment.TickCount64 milliseconds; every line renews the timeout.
+        var lastOutput = Environment.TickCount64;
+        using var earlyStopCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var killScheduled = 0;
+
+        using var process = new Process { StartInfo = psi };
+
+        void OnLine(string? line)
+        {
+            if (line is null)
+                return;
+            lock (output)
+            {
+                Volatile.Write(ref lastOutput, Environment.TickCount64);
+                output.Append(line).Append('\n');
+                if (TryParseFailureName(line) is { } failedName && !failures.Contains(failedName, StringComparer.Ordinal))
+                {
+                    failures.Add(failedName);
+                    if (failures.Count >= maxFailures && Interlocked.Exchange(ref killScheduled, 1) == 0)
+                        earlyStopCts.CancelAfter(TimeSpan.FromMilliseconds(250));
+                }
+            }
+        }
+
+        process.OutputDataReceived += (_, e) => OnLine(e.Data);
+        process.ErrorDataReceived += (_, e) => OnLine(e.Data);
+        try
+        {
+            if (!process.Start())
+                return (new ProcessResult(-1, $"could not start {fileName}"), []);
+        }
+        catch (System.ComponentModel.Win32Exception e)
+        {
+            return (new ProcessResult(-1, $"could not start {fileName}: {e.Message}"), []);
+        }
+
+        process.StandardInput.Close();
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
+        var earlyStopped = false;
+        var timedOut = false;
+        while (true)
+        {
+            if (inactivityTimeout is null)
+            {
+                try
+                {
+                    await process.WaitForExitAsync(earlyStopCts.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+                {
+                    earlyStopped = true;
+                }
+                catch (OperationCanceledException)
+                {
+                    ProcessRunner.KillProcessTree(process);
+                    throw;
+                }
+
+                break;
+            }
+
+            var remaining = inactivityTimeout.Value - TimeSpan.FromMilliseconds(Environment.TickCount64 - Volatile.Read(ref lastOutput));
+            if (remaining <= TimeSpan.Zero)
+            {
+                // The process may have exited between its last line and now; only one that is still running is
+                // killed and reported as timed out.
+                if (process.HasExited)
+                    break;
+                ProcessRunner.KillProcessTree(process);
+                timedOut = true;
+                break;
+            }
+
+            using var slice = CancellationTokenSource.CreateLinkedTokenSource(earlyStopCts.Token);
+            slice.CancelAfter(remaining);
+            try
+            {
+                await process.WaitForExitAsync(slice.Token).ConfigureAwait(false);
+                break;
+            }
+            catch (OperationCanceledException)
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    ProcessRunner.KillProcessTree(process);
+                    throw;
+                }
+
+                if (earlyStopCts.IsCancellationRequested)
+                {
+                    earlyStopped = true;
+                    break;
+                }
+                // The slice fired; output may have arrived since, so the loop recomputes instead of killing.
+            }
+        }
+
+        if (earlyStopped)
+        {
+            ProcessRunner.KillProcessTree(process);
+            try
+            {
+                using var grace = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                grace.CancelAfter(TimeSpan.FromSeconds(EarlyStopExitSeconds));
+                await process.WaitForExitAsync(grace.Token).ConfigureAwait(false);
+            }
+            catch (InvalidOperationException)
+            {
+            }
+            catch (OperationCanceledException)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+        }
+
+        if (timedOut)
+        {
+            try
+            {
+                using var grace = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                grace.CancelAfter(TimeSpan.FromSeconds(EarlyStopExitSeconds));
+                await process.WaitForExitAsync(grace.Token).ConfigureAwait(false);
+            }
+            catch (InvalidOperationException)
+            {
+            }
+            catch (OperationCanceledException)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+        }
+
+        lock (output)
+            return (new ProcessResult(process.HasExited ? process.ExitCode : -1, output.ToString()) { TimedOut = timedOut }, [.. failures]);
+    }
+
+    internal static string? TryParseFailureName(string line)
+    {
+        var stripped = AnsiSequences.Strip(line).Trim();
+        if (stripped.StartsWith("Failed ", StringComparison.Ordinal))
+        {
+            var rest = stripped["Failed ".Length..].Trim();
+            var bracket = rest.IndexOf(" [", StringComparison.Ordinal);
+            return bracket > 0 ? rest[..bracket].Trim() : rest;
+        }
+
+        if (stripped.StartsWith("failed ", StringComparison.Ordinal))
+        {
+            var rest = stripped["failed ".Length..].Trim();
+            var paren = rest.IndexOf(" (", StringComparison.Ordinal);
+            return paren > 0 ? rest[..paren].Trim() : rest;
+        }
+
+        if (stripped.StartsWith("[FAIL] ", StringComparison.Ordinal))
+            return stripped["[FAIL] ".Length..].Trim();
+
+        return null;
+    }
+
+    /// <summary>
+    ///     The caller's <c>dotnet test</c> arguments with a positional path spelled the way the runner requires:
+    ///     Microsoft.Testing.Platform refuses a project, solution or directory given positionally, so on it a first
+    ///     argument naming one becomes <c>--project</c> or <c>--solution</c> with the path. VSTest reads a positional
+    ///     path and refuses <c>--project</c>, so on VSTest the path stays positional. An assembly stays positional on
+    ///     both, and arguments that already name a project or solution pass unchanged.
+    /// </summary>
+    internal static string[] NormalizeArguments(string workingDirectory, IReadOnlyList<string> arguments, bool testingPlatform = true)
+    {
+        string[] normalized = [.. arguments];
+        for (var i = 0; i < normalized.Length; i++)
+        {
+            if (normalized[i] == "--results-directory" && i + 1 < normalized.Length)
+                normalized[i + 1] = NormalizeResultsDirectory(workingDirectory, normalized[i + 1]);
+            else if (normalized[i].StartsWith("--results-directory=", StringComparison.OrdinalIgnoreCase))
+                normalized[i] = "--results-directory=" + NormalizeResultsDirectory(workingDirectory, normalized[i]["--results-directory=".Length..]);
+        }
+
+        arguments = normalized;
+        if (!testingPlatform
+            || arguments.Count == 0
+            || arguments.Any(a => a.StartsWith("--project", StringComparison.OrdinalIgnoreCase) || a.StartsWith("--solution", StringComparison.OrdinalIgnoreCase)))
+            return [.. arguments];
+        var first = arguments[0];
+        if (first.StartsWith('-')
+            || first.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
+            || first.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+            return [.. arguments];
+        var option = first.EndsWith(".sln", StringComparison.OrdinalIgnoreCase) || first.EndsWith(".slnx", StringComparison.OrdinalIgnoreCase)
+            ? "--solution"
+            : first.EndsWith("proj", StringComparison.OrdinalIgnoreCase)
+                ? "--project"
+                : IsDirectory(workingDirectory, first) ? "--project" : null;
+        return option is null ? [.. arguments] : [option, first, .. arguments.Skip(1)];
+    }
+
+    /// <summary>Whether <paramref name="path"/>, read from <paramref name="workingDirectory"/>, is a directory; a path that cannot be read as one is not.</summary>
+    private static bool IsDirectory(string workingDirectory, string path)
+    {
+        try
+        {
+            return Directory.Exists(Path.GetFullPath(path, workingDirectory));
+        }
+        catch (Exception e) when (e is ArgumentException or NotSupportedException or IOException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    ///     A caller-named results directory as a full path <c>dotnet test</c> can use: relative paths are read from the
+    ///     working directory, and on Windows a Git Bash spelling (<c>/c/Users/...</c> or <c>/cygdrive/c/...</c>) becomes its
+    ///     Windows path, which the runner would otherwise write nowhere Fuse reads. A path that cannot be resolved
+    ///     keeps its given form.
+    /// </summary>
+    private static string NormalizeResultsDirectory(string workingDirectory, string path)
+    {
+        var value = OperatingSystem.IsWindows() && FromGitBashPath(path) is { } windows ? windows : path;
+
+        try
+        {
+            return Path.GetFullPath(value, workingDirectory);
+        }
+        catch (Exception e) when (e is ArgumentException or NotSupportedException or IOException)
+        {
+            return value;
+        }
+    }
+
+    /// <summary>
+    ///     The Windows path a Git Bash spelling names: <c>/c/Users/...</c> and <c>/cygdrive/c/Users/...</c> both become
+    ///     <c>C:\Users\...</c>. Null for any other form.
+    /// </summary>
+    private static string? FromGitBashPath(string path)
+    {
+        var rest = path.StartsWith("/cygdrive/", StringComparison.OrdinalIgnoreCase) ? path[10..]
+            : path.Length > 2 && path[0] == '/' ? path[1..] : null;
+        return rest is { Length: > 2 } && char.IsLetter(rest[0]) && rest[1] == '/'
+            ? $"{char.ToUpperInvariant(rest[0])}:\\" + rest[2..].Replace('/', '\\')
+            : null;
+    }
+
+    /// <summary>How <see cref="WithoutResults"/> names a run of the user's own <c>dotnet test</c> arguments.</summary>
+    internal const string ArgumentsRun = "dotnet test";
+
+    /// <summary>Microsoft.Testing.Platform's exit code for a run in which no test ran, such as one whose filter matched none.</summary>
+    internal const int NoTestRanExitCode = 8;
+
+    /// <summary>
+    ///     The <c>--settings</c> argument of a run whose filter is a VSTest expression (a VSTest run, or MSTest and NUnit
+    ///     on Microsoft.Testing.Platform): a runsettings file in its results folder that carries its filter,
+    ///     so a filter of any length leaves the command line short. A shadow run gets one for the project's runsettings
+    ///     too, because <c>dotnet test</c> on an assembly does not read the project; a build with MSBuild without a filter
+    ///     reads them itself.
+    /// </summary>
+    private static string[] Settings(TestRun? run, string results, bool assembly)
+    {
+        if (run is null || (run.Filter is null && !(assembly && run.RunSettings is not null)))
+            return [];
+        return ["--settings", RunSettingsFile.Write(results, run.Filter, run.RunSettings)];
+    }
+
+    /// <summary>
+    ///     The answer when every selected test needs a container runtime that is not running: no process starts, which
+    ///     reads as blocked rather than clean, and the answer names the fix.
+    /// </summary>
+    internal static OperationResult WithoutRuntime(TestPlan plan) =>
+        new(Outcome.ProblemsFound, $"fuse: no test ran: {plan.ContainerGatedTests} test(s) selected in {string.Join(", ", plan.ContainerGatedProjects)} need a container runtime, and none is running; start Docker or Podman and run fuse test again");
+
+    /// <summary>
+    ///     The answer for a run without results. A run whose process was killed after writing no output for the test
+    ///     inactivity timeout is reported as timed out, never as passed. Error lines in its output mean the project
+    ///     did not build, and print as a failed test build. A Microsoft.Testing.Platform run that exited with
+    ///     <see cref="NoTestRanExitCode"/> ran no test, which the answer says. Any other run that exited with a code
+    ///     other than 0 and printed no error line ended without results Fuse can read, which the answer says after the
+    ///     end of its output; a Microsoft.Testing.Platform run that crashed before its run summary ends this way.
+    /// </summary>
+    /// <param name="result">The <c>dotnet test</c> process, or null for a Microsoft.Testing.Platform run that exited with 0.</param>
+    /// <param name="root">The repository, which error paths are printed relative to.</param>
+    /// <param name="run">What ran, as the answer names it: "the test run of" a project, or <see cref="ArgumentsRun"/> for the user's arguments.</param>
+    /// <param name="summary">What ran and why, for a run that passed.</param>
+    /// <param name="seconds">How long the operation has taken.</param>
+    /// <param name="log">The build's file log, or empty, so a failed test build shows what a failed command printed.</param>
+    /// <param name="timedOutFramework">The target framework a timed-out run hung on, or null when the run covers more than one.</param>
+    /// <param name="inactivityTimeout">The timeout the run armed, so the answer names it, or null for the timeout every run uses.</param>
+    internal static OperationResult WithoutResults(ProcessResult? result, RepoRoot root, string run, string summary, double seconds, string log = "", string? resultsDirectory = null, string? timedOutFramework = null, TimeSpan? inactivityTimeout = null)
+    {
+        // A Microsoft.Testing.Platform run that passed without printing a run summary, so there are no counts to show.
+        if (result is null)
+            return new OperationResult(Outcome.Clean, $"fuse: tests passed in {seconds:0.0} s; {summary}");
+        if (result.TimedOut)
+        {
+            var tail = BuildOperation.Tail(result.Output);
+            var framework = timedOutFramework is null ? "" : $" ({timedOutFramework})";
+            var line = $"fuse: {run}{framework} timed out after {TimeoutText(EffectiveTimeout(inactivityTimeout))} without output in {seconds:0.0} s; the test process was killed";
+            return new OperationResult(Outcome.ProblemsFound, tail.Length == 0 ? line : $"{tail}\n{line}");
+        }
+        if (result.ExitCode == NoTestRanExitCode && BuildOutputParser.Errors(result.Output, root.Path).Count == 0)
+        {
+            var what = run == ArgumentsRun ? "no test matched the dotnet test arguments" : $"{run} ran no test";
+            return new OperationResult(Outcome.ProblemsFound, $"fuse: {what} (exit code {NoTestRanExitCode})");
+        }
+
+        if (result.ExitCode != 0 && BuildOutputParser.Errors(result.Output, root.Path).Count == 0)
+        {
+            var tail = BuildOperation.Tail(result.Output);
+            var where = resultsDirectory is null ? "" : $" (no result file in {resultsDirectory})";
+            var line = $"fuse: {run} exited with code {result.ExitCode} and produced no results in {seconds:0.0} s{where}";
+            return new OperationResult(Outcome.ProblemsFound, tail.Length == 0 ? line : $"{tail}\n{line}");
+        }
+
+        var build = BuildOperation.Render(result, root.Path, seconds, "test build", log);
+        return build with { Outcome = result.ExitCode == 0 ? Outcome.Clean : Outcome.ProblemsFound };
+    }
+
+    /// <summary>One failure as the answer prints it: its name, its message, and its frames.</summary>
+    internal static void AppendFailure(StringBuilder text, TestFailure failure)
+    {
+        text.Append("FAILED ").Append(failure.Name).Append('\n');
+        foreach (var line in failure.Message.Split('\n'))
+            text.Append("  ").Append(line).Append('\n');
+        foreach (var frame in failure.Frames)
+            text.Append("  ").Append(frame).Append('\n');
+    }
+
+    /// <summary>The answer for runs with results: the failures grouped by their shared first line, then the counts and <paramref name="summary"/>.</summary>
+    internal static OperationResult Render(TrxResults outcome, string summary, double seconds, string? resultsPath = null)
+    {
+        var text = new StringBuilder();
+        text.Append(RenderFailures(outcome));
+        text.Append(RenderSummary(outcome, summary, seconds, resultsPath));
+        return new OperationResult(outcome.Failed > 0 ? Outcome.ProblemsFound : Outcome.Clean, text.ToString());
+    }
+
+    /// <summary>The failures of <paramref name="outcome"/> as the answer prints them: each group under its shared line, then the names past the detail budget.</summary>
+    internal static string RenderFailures(TrxResults outcome)
+    {
+        var text = new StringBuilder();
+        var (detailed, restNames, restCount) = FailureGroups.Split(outcome.Failures, MaxFailuresShown);
+        foreach (var (header, failure) in detailed)
+        {
+            if (header is not null)
+                text.Append(header).Append('\n');
+            AppendFailure(text, failure);
+        }
+
+        if (restCount > 0)
+        {
+            // Names only past the detail budget, so the agent sees up to 110 failing tests by name.
+            text.Append($"also failed ({restCount}):\n");
+            foreach (var name in restNames.Take(MaxNamesShown))
+                text.Append("  ").Append(name).Append('\n');
+            if (restNames.Count > MaxNamesShown)
+                text.Append($"  ... and {restNames.Count - MaxNamesShown} more\n");
+        }
+
+        return text.ToString();
+    }
+
+    /// <summary>The last line for runs with results: the counts, <paramref name="summary"/>, and the results file when the answer left failures or names out.</summary>
+    internal static string RenderSummary(TrxResults outcome, string summary, double seconds, string? resultsPath = null)
+    {
+        var skipped = outcome.Skipped > 0 ? $", {outcome.Skipped} skipped" : "";
+        // The file holds every failure; the answer names it only when it left failures or names out.
+        var (_, restNames, _) = FailureGroups.Split(outcome.Failures, MaxFailuresShown);
+        var namesCapped = restNames.Count > MaxNamesShown;
+        var file = resultsPath is not null && (outcome.Failed > Math.Min(MaxFailuresShown, outcome.Failures.Count) || namesCapped)
+            ? $"; all {outcome.Failed} in {resultsPath}"
+            : "";
+        return $"fuse: {outcome.Failed} failed, {outcome.Passed} passed{skipped} in {seconds:0.0} s; {summary}{file}";
+    }
+}

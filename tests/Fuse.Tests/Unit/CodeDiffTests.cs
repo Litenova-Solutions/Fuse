@@ -2,7 +2,6 @@ using Fuse.Changes;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-
 namespace Fuse.Tests.Unit;
 
 public class CodeDiffTests

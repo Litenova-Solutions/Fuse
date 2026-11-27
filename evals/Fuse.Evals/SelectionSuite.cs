@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Text.RegularExpressions;
-
 namespace Fuse.Evals;
 
 /// <summary>One behavior mutation: which tests really fail, and which ones fuse test ran and reported.</summary>

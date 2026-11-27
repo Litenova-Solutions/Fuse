@@ -1,5 +1,4 @@
 using Fuse.Protocol.Check;
-
 namespace Fuse.Protocol.Analysis;
 
 /// <summary>

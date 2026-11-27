@@ -1,5 +1,4 @@
 using Fuse.Protocol.Check;
-
 namespace Fuse.Protocol.Analysis;
 
 /// <summary>Result of <c>fuse judge --combine</c> or <c>fuse judge --race</c>.</summary>

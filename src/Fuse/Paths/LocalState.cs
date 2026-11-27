@@ -1,5 +1,4 @@
 using System.Text.RegularExpressions;
-
 namespace Fuse.Paths;
 
 /// <summary>

@@ -1,5 +1,4 @@
 using System.Diagnostics;
-
 namespace Fuse.Telemetry;
 
 /// <summary>

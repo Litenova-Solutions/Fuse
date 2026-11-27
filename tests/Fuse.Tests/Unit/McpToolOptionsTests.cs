@@ -2,7 +2,6 @@ using System.Text.Json;
 using Fuse.Mcp;
 using Fuse.Tests.Fixtures;
 using ModelContextProtocol.Protocol;
-
 namespace Fuse.Tests.Unit;
 
 /// <summary>The options of <c>fuse_check</c> and <c>fuse_test</c>: <c>failed</c> reruns the last failures and is refused with <c>all</c>, and <c>max_errors</c> caps the errors shown.</summary>

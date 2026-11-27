@@ -3,7 +3,6 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Fuse.Paths;
-
 namespace Fuse.Graph;
 
 /// <summary>

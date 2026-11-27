@@ -3,6 +3,7 @@ using System.Text.Json;
 using Fuse.Failures;
 using Fuse.Harnesses;
 using Fuse.Operations;
+using Fuse.Operations.Check;
 using Fuse.Paths;
 using Fuse.Protocol.Analysis;
 using Fuse.Protocol.Check;

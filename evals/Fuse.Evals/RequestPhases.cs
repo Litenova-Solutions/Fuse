@@ -1,5 +1,4 @@
 using Fuse.Telemetry;
-
 namespace Fuse.Evals;
 
 /// <summary>

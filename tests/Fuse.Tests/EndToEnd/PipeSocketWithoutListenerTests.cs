@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.EndToEnd;
 
 /// <summary>

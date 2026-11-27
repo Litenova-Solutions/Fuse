@@ -1,5 +1,5 @@
 using Fuse.Check.Model;
-using Fuse.Operations;
+using Fuse.Operations.Check;
 using Fuse.Protocol.Check;
 namespace Fuse.Tests.Unit;
 

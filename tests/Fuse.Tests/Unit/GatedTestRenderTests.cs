@@ -1,5 +1,6 @@
 using Fuse.Dotnet.Test;
 using Fuse.Operations;
+using Fuse.Operations.Test;
 using Fuse.Protocol.Testing;
 namespace Fuse.Tests.Unit;
 

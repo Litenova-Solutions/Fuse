@@ -1,6 +1,5 @@
 using System.Text.Json.Nodes;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.EndToEnd;
 
 /// <summary>

@@ -1,7 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
 using Fuse.Paths;
-
 namespace Fuse.Hooks;
 
 /// <summary>

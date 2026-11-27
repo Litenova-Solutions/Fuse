@@ -2,7 +2,6 @@ using System.Text.Json;
 using Fuse.Mcp;
 using Fuse.Tests.Fixtures;
 using ModelContextProtocol.Protocol;
-
 namespace Fuse.Tests.Unit;
 
 /// <summary>

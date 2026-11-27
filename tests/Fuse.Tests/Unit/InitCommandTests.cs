@@ -1,7 +1,7 @@
 using System.Text.Json.Nodes;
 using Fuse.Harnesses;
+using Fuse.Harnesses.Setup;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Unit;
 
 public class InitCommandTests

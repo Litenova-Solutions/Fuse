@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using Fuse.Paths;
-
 namespace Fuse.Tests.Fixtures;
 
 /// <summary>

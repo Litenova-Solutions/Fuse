@@ -1,6 +1,7 @@
 using System.IO.Pipes;
 using System.Text;
 using Fuse.Operations;
+using Fuse.Operations.Session;
 using Fuse.Paths;
 using Fuse.Protocol.Analysis;
 using Fuse.Protocol.Transport;

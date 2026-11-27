@@ -1,7 +1,6 @@
 using System.Text;
 using System.Text.Json.Nodes;
 using Fuse.Hooks;
-
 namespace Fuse.Tests.Unit;
 
 /// <summary>

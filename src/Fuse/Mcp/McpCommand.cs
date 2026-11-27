@@ -1,6 +1,10 @@
 using System.Text.Json;
 using Fuse.Failures;
 using Fuse.Operations;
+using Fuse.Operations.Build;
+using Fuse.Operations.Check;
+using Fuse.Operations.Session;
+using Fuse.Operations.Test;
 using Fuse.Paths;
 using Fuse.Protocol.Analysis;
 using Fuse.Protocol.Transport;

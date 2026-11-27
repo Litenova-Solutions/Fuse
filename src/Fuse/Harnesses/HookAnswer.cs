@@ -1,7 +1,6 @@
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-
 namespace Fuse.Harnesses;
 
 /// <summary>What <c>fuse hook</c> writes back to the harness for one event, and the exit code it ends with.</summary>

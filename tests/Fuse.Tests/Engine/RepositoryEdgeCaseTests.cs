@@ -1,5 +1,5 @@
 using Fuse.Failures;
-using Fuse.Harnesses;
+using Fuse.Harnesses.Setup;
 using Fuse.Repo.Tracking;
 using Fuse.Tests.Fixtures;
 using Fuse.Workspace.Generations;

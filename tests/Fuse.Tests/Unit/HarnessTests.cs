@@ -1,8 +1,8 @@
 using System.Text.Json;
 using Fuse.Harnesses;
+using Fuse.Harnesses.Adapters;
 using Fuse.Paths;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Unit;
 
 /// <summary>

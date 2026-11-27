@@ -1,5 +1,4 @@
 using Fuse.Paths;
-
 namespace Fuse.Graph;
 
 /// <summary>One evaluated C# project: what it compiles, what it references, and whether it holds tests.</summary>

@@ -2,7 +2,6 @@ using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-
 namespace Fuse.Evals;
 
 /// <summary>One mutation case: what changed, what the real build reported, and what fuse check reported.</summary>

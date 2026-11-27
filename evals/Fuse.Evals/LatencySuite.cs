@@ -2,7 +2,6 @@ using Fuse.Telemetry;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-
 namespace Fuse.Evals;
 
 /// <summary>One edit that changes no compiled code: what a check and a test round cost for it.</summary>

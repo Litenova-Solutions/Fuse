@@ -1,5 +1,4 @@
 using Fuse.Dotnet.Build;
-
 namespace Fuse.Tests.Unit;
 
 public class BuildOutputParserTests

@@ -1,7 +1,6 @@
 using System.Text.Json;
-using Fuse.Operations;
+using Fuse.Operations.Control;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Unit;
 
 public class StatusOperationTests

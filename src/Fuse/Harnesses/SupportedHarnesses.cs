@@ -1,3 +1,5 @@
+using Fuse.Harnesses.Adapters;
+
 namespace Fuse.Harnesses;
 
 /// <summary>Every harness Fuse supports, and the lookup from the name on the command line to its <see cref="Harness"/>.</summary>

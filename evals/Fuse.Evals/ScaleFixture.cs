@@ -1,5 +1,4 @@
 using Fuse.Dotnet.Processes;
-
 namespace Fuse.Evals;
 
 /// <summary>

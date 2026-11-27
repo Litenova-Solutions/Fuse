@@ -1,6 +1,5 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
-
 namespace Fuse.Hooks;
 
 /// <summary>The fields Fuse needs from a harness's hook input, read leniently because each harness names them differently.</summary>

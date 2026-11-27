@@ -1,5 +1,6 @@
 using Fuse.Engine.Routing;
 using Fuse.Operations;
+using Fuse.Operations.Test;
 using Fuse.Protocol.Testing;
 using Fuse.Telemetry;
 using Fuse.Testing.Model;

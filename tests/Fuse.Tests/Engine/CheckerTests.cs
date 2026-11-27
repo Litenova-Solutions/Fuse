@@ -2,7 +2,6 @@ using Fuse.Check.Model;
 using Fuse.Failures;
 using Fuse.Paths;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Engine;
 
 public class CheckerTests

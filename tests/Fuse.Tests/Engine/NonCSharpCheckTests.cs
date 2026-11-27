@@ -1,5 +1,4 @@
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>A check names the changed files it does not check, and counts no ignored file.</summary>

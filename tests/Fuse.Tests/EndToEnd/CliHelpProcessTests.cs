@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.EndToEnd;
 
 public class CliHelpProcessTests

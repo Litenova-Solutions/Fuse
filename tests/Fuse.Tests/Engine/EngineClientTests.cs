@@ -3,6 +3,7 @@ using System.Text;
 using Fuse.Client;
 using Fuse.Failures;
 using Fuse.Operations;
+using Fuse.Operations.Check;
 using Fuse.Paths;
 using Fuse.Protocol.Analysis;
 using Fuse.Protocol.Requests;

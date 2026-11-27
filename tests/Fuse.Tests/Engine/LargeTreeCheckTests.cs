@@ -1,5 +1,4 @@
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>Large uncommitted trees stay bounded: past 500 changed files the kept answer is skipped, past 2000 touched paths the projects are evaluated again, and each check logs what each session wrote.</summary>

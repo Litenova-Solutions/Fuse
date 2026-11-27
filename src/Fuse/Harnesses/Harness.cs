@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Fuse.Harnesses.Setup;
 using Fuse.Paths;
-
 namespace Fuse.Harnesses;
 
 /// <summary>

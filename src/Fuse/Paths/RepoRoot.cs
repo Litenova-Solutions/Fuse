@@ -1,7 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
-
 namespace Fuse.Paths;
 
 /// <summary>

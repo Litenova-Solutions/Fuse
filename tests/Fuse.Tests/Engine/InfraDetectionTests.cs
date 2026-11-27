@@ -1,6 +1,5 @@
 using Fuse.Graph;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>Which packages mark a test project as needing a container runtime: Testcontainers, exactly.</summary>

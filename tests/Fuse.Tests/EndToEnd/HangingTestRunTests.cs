@@ -1,4 +1,5 @@
 using Fuse.Operations;
+using Fuse.Operations.Test;
 using Fuse.Protocol.Testing;
 using Fuse.Tests.Fixtures;
 namespace Fuse.Tests.EndToEnd;

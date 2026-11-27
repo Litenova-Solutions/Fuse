@@ -2,7 +2,7 @@ using System.Text;
 using Fuse.Dotnet.Processes;
 using Fuse.Dotnet.Test;
 using Fuse.Engine.Routing;
-using Fuse.Operations;
+using Fuse.Operations.Test;
 using Fuse.Protocol.Analysis;
 using Fuse.Protocol.Requests;
 using Fuse.Protocol.Testing;

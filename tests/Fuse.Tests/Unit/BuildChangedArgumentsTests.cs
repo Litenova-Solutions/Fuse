@@ -1,5 +1,4 @@
-using Fuse.Operations;
-
+using Fuse.Operations.Build;
 namespace Fuse.Tests.Unit;
 
 public class BuildChangedArgumentsTests

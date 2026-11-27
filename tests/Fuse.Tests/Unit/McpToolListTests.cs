@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Fuse.Mcp;
-
 namespace Fuse.Tests.Unit;
 
 /// <summary>The tool list every MCP host reads first: three tools, each with an object schema that parses.</summary>

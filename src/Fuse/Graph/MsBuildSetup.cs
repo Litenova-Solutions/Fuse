@@ -1,6 +1,5 @@
 using System.Runtime.CompilerServices;
 using Microsoft.Build.Locator;
-
 namespace Fuse.Graph;
 
 /// <summary>Points the process at the .NET SDK's MSBuild. Must run before any Microsoft.Build type loads.</summary>

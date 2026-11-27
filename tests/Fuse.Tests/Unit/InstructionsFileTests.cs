@@ -1,6 +1,5 @@
-using Fuse.Harnesses;
+using Fuse.Harnesses.Setup;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Unit;
 
 /// <summary>

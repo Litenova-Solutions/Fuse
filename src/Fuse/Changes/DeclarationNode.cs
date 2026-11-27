@@ -1,6 +1,5 @@
 using Fuse.Changes.Model;
 using Microsoft.CodeAnalysis;
-
 namespace Fuse.Changes;
 
 /// <summary>One declaration in one version of a file, with the syntax that declares it and what other files can see of it.</summary>

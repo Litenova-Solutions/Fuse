@@ -1,5 +1,7 @@
 using System.Text;
 using Fuse.Dotnet.Test;
+using Fuse.Operations.Check;
+using Fuse.Operations.Test;
 using Fuse.Paths;
 using Fuse.Protocol.Check;
 namespace Fuse.Operations;

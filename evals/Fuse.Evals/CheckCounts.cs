@@ -1,6 +1,5 @@
 using System.Text.RegularExpressions;
 using Fuse.Telemetry;
-
 namespace Fuse.Evals;
 
 /// <summary>

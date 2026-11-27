@@ -1,6 +1,5 @@
 using Fuse.Changes.Model;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-
 namespace Fuse.Changes;
 
 /// <summary>

@@ -6,10 +6,14 @@ namespace Fuse.Protocol.Analysis;
 /// <param name="ChangedFileCount">How many changed C# sources differ from HEAD.</param>
 /// <param name="Head">The commit the baseline is taken from, or null in a repository without commits.</param>
 /// <param name="Tree">The tree stamp: 12 lowercase hex characters.</param>
-internal sealed record EngineStatus(int Pid, long WorkingSetBytes, int ChangedFileCount, string? Head, string Tree)
+/// <param name="Sessions">The live session registrations. A line without the list reads as one that names none.</param>
+internal sealed record EngineStatus(int Pid, long WorkingSetBytes, int ChangedFileCount, string? Head, string Tree, ReportedSession[]? Sessions = null)
 {
     /// <summary>The stamp. A line without it reads as empty.</summary>
     public string Tree { get; init; } = Tree ?? "";
+
+    /// <summary>The live session registrations, named without the stored prefix. A line without the list reads as one that names none.</summary>
+    public ReportedSession[] Sessions { get; init; } = Sessions ?? [];
 
     /// <summary>How many changed C# sources a project owns, counted as the graph counts owners. A line without it reads as 0.</summary>
     public int ChangedSourcesInReach { get; init; }

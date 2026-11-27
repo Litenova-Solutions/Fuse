@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Fuse.Client;
 using Fuse.Failures;
+using Fuse.Operations.Session;
 using Fuse.Paths;
 using Fuse.Protocol.Analysis;
 using Fuse.Protocol.Requests;
@@ -65,6 +66,8 @@ internal static partial class StatusOperation
             }
         }
 
+        var now = DateTimeOffset.UtcNow;
+        IReadOnlyList<ReportedSession> sessions = engine?.Sessions ?? SessionRegistrationReader.ReadLive(root, now);
         if (json)
         {
             var state = engine is not null ? "running" : silentEngine ? "unknown" : "stopped";
@@ -74,7 +77,10 @@ internal static partial class StatusOperation
             int? inReach = engine is null ? null : engine.ChangedSourcesInReach;
             int? touched = engine is null ? null : engine.TouchedCount;
             var limits = engine?.Limits ?? EngineLimits.Default;
-            var view = new StatusView(state, engine?.Pid, memoryMB, count, head, tree, inReach, touched, limits.TouchedLimit, limits.KeptAnswerAt, limits.WholeProjectAt, limits.ReloadAt, limits.ReloadAt, engine?.ReloadMs, engine?.GateHolder, memoryCeilingBytes, memoryLoadBytes, engine?.WorkingSetBytes, root.PipeName, EngineVersion.Build);
+            var view = new StatusView(state, engine?.Pid, memoryMB, count, head, tree, inReach, touched, limits.TouchedLimit, limits.KeptAnswerAt, limits.WholeProjectAt, limits.ReloadAt, limits.ReloadAt, engine?.ReloadMs, engine?.GateHolder, memoryCeilingBytes, memoryLoadBytes, engine?.WorkingSetBytes, root.PipeName, EngineVersion.Build)
+            {
+                Sessions = [.. sessions],
+            };
             return new OperationResult(Outcome.Clean, JsonSerializer.Serialize(
                 ToStatusLine(view),
                 StatusJson.Default.StatusLine));
@@ -85,6 +91,12 @@ internal static partial class StatusOperation
         text.Append(LimitsLine(engine));
         if (engine?.ReloadMs is { } reloadMs)
             text.Append('\n').Append($"fuse: last sync reload took {reloadMs} ms");
+        if (sessions.Count > 0)
+        {
+            text.Append('\n').Append($"fuse: {sessions.Count} active session(s): {string.Join(", ", sessions.Select(session => session.Name))}");
+            foreach (var session in sessions)
+                text.Append('\n').Append("fuse: session ").Append(SessionListOperation.FormatLine(session, now));
+        }
         return new OperationResult(Outcome.Clean, text.ToString());
     }
 
@@ -160,14 +172,14 @@ internal static partial class StatusOperation
     }
 
     /// <summary>The wire line for <paramref name="view"/>.</summary>
-    private static StatusLine ToStatusLine(StatusView view) => new(view.Engine, view.Pid, view.MemoryMB, view.ChangedFiles, view.Head, view.Tree, view.ChangedSourcesInReach, view.TouchedPaths, view.TouchedLimit, view.KeptAnswerAt, view.WholeProjectAt, view.SyncReloadAt, view.ReloadAt, view.ReloadMs, view.GateHolder, view.MemoryCeilingBytes, view.MemoryLoadBytes, view.MemoryWorkingSetBytes, view.PipeName, view.BuildId);
+    private static StatusLine ToStatusLine(StatusView view) => new(view.Engine, view.Pid, view.MemoryMB, view.ChangedFiles, view.Head, view.Tree, view.ChangedSourcesInReach, view.TouchedPaths, view.TouchedLimit, view.KeptAnswerAt, view.WholeProjectAt, view.SyncReloadAt, view.ReloadAt, view.ReloadMs, view.GateHolder, view.MemoryCeilingBytes, view.MemoryLoadBytes, view.MemoryWorkingSetBytes, view.PipeName, view.BuildId, view.Sessions);
 
     /// <summary>
     ///     One status answer: the engine, then the tree, then the limits counted as the code counts them. The documented
     ///     <c>head</c>, <c>tree</c> and <c>reloadAt</c> names stay beside the names the branch added, so a reader of either
     ///     set finds its limit.
     /// </summary>
-    private sealed record StatusLine(string Engine, int? Pid, int? MemoryMB, int ChangedFiles, string? Head, string Tree, int? ChangedSourcesInReach, int? TouchedPaths, int TouchedLimit, int KeptAnswerAt, int WholeProjectAt, int SyncReloadAt, int ReloadAt, long? ReloadMs, string? GateHolder, long? MemoryCeilingBytes, long? MemoryLoadBytes, long? MemoryWorkingSetBytes, string? PipeName = null, string? BuildId = null);
+    private sealed record StatusLine(string Engine, int? Pid, int? MemoryMB, int ChangedFiles, string? Head, string Tree, int? ChangedSourcesInReach, int? TouchedPaths, int TouchedLimit, int KeptAnswerAt, int WholeProjectAt, int SyncReloadAt, int ReloadAt, long? ReloadMs, string? GateHolder, long? MemoryCeilingBytes, long? MemoryLoadBytes, long? MemoryWorkingSetBytes, string? PipeName = null, string? BuildId = null, ReportedSession[]? Sessions = null);
 
     [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonSerializable(typeof(StatusLine))]

@@ -14,6 +14,8 @@ namespace Fuse.Protocol.Transport;
 [JsonSerializable(typeof(WatchScope))]
 [JsonSerializable(typeof(EngineResponse))]
 [JsonSerializable(typeof(ReportedRepairPacket))]
+[JsonSerializable(typeof(ReportedSession))]
+[JsonSerializable(typeof(ReportedSession[]))]
 [JsonSerializable(typeof(JudgeRequest))]
 [JsonSerializable(typeof(JudgeReport))]
 [JsonSerializable(typeof(GraphReport))]

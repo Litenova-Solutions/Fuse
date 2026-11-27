@@ -21,10 +21,10 @@ internal static class SessionOperation
     /// <summary>The environment variable that names a caller's session, the one identity a caller passes in its environment.</summary>
     internal const string SessionVariable = "FUSE_SESSION";
 
-    private const string Usage = "usage: fuse session begin <name> --paths <pattern> [<pattern>...] [--pid <pid>] | fuse session begin --from <file> | fuse session end <name> | fuse session guard <name> (--freeze <pattern>... | --unfreeze)";
+    private const string Usage = "usage: fuse session begin <name> --paths <pattern> [<pattern>...] [--pid <pid>] | fuse session begin --from <file> | fuse session list [--json] | fuse session end <name> | fuse session guard <name> (--freeze <pattern>... | --unfreeze)";
 
     /// <param name="root">The repository whose engine keeps the registration.</param>
-    /// <param name="args">The words after <c>session</c>: <c>begin</c>, <c>end</c>, or <c>guard</c> and its arguments.</param>
+    /// <param name="args">The words after <c>session</c>: <c>begin</c>, <c>list</c>, <c>end</c>, or <c>guard</c> and its arguments.</param>
     /// <param name="cancellationToken">Cancels the wait for the answer.</param>
     public static async Task<OperationResult> RunAsync(RepoRoot root, IReadOnlyList<string> args, CancellationToken cancellationToken)
     {
@@ -33,6 +33,7 @@ internal static class SessionOperation
         return args[0] switch
         {
             "begin" => await BeginAsync(root, args, cancellationToken).ConfigureAwait(false),
+            "list" => await SessionListOperation.RunAsync(root, args, cancellationToken).ConfigureAwait(false),
             "end" => await EndAsync(root, args, cancellationToken).ConfigureAwait(false),
             "guard" => await GuardAsync(root, args, cancellationToken).ConfigureAwait(false),
             _ => new OperationResult(Outcome.Unanswered, Usage),

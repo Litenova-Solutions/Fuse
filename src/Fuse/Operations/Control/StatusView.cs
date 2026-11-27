@@ -1,3 +1,4 @@
+using Fuse.Protocol.Analysis;
 namespace Fuse.Operations.Control;
 
 /// <summary>What <c>fuse status</c> reports: the engine, then the tree, then the limits counted as the code counts them.</summary>
@@ -21,4 +22,8 @@ internal sealed record StatusView(
     long? MemoryLoadBytes,
     long? MemoryWorkingSetBytes,
     string? PipeName = null,
-    string? BuildId = null);
+    string? BuildId = null)
+{
+    /// <summary>The live session registrations, named without the stored prefix. Empty when none is live.</summary>
+    public ReportedSession[] Sessions { get; init; } = [];
+}

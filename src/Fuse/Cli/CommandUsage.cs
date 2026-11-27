@@ -30,6 +30,8 @@ internal static class CommandUsage
           fuse session begin <name> --paths <pattern> [<pattern>...]
                                     register an external writer as a session for its path patterns
           fuse session end <name>   end the registration
+          fuse session list [--json]
+                                    list the live session registrations
           fuse session guard <name> (--freeze <pattern>... | --unfreeze)
                                     freeze or unfreeze declaration changes under contract path patterns
           fuse watch (--session <name> | --all) [--json]
@@ -130,6 +132,7 @@ internal static class CommandUsage
         fuse session begin <name> [--pid <pid>] --paths <pattern> [<pattern>...]
         fuse session begin --from <file>
         fuse session end <name>
+        fuse session list [--json]
         fuse session guard <name> --freeze <pattern> [<pattern>...]
         fuse session guard <name> --unfreeze
           register an external writer as a session for its path patterns, so a judge's stop leaves that writer's
@@ -138,6 +141,7 @@ internal static class CommandUsage
           --from      register every session a file names, one "<name><TAB><pattern>" per line
           --freeze    mark declaration surfaces under matching patterns as frozen for watch alerts
           --unfreeze  remove frozen contract patterns for the named guard
+          list        print each live registration: name, process, path patterns and time left (--json: an array)
           A writer that runs fuse itself can set FUSE_SESSION=<name> instead: fuse check, fuse test and fuse mcp
           then answer as that session, and a check that names files credits them to it.
         """;

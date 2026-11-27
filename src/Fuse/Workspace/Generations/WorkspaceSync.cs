@@ -21,6 +21,12 @@ internal sealed class WorkspaceSync
     private readonly int _maxChurn;
 
     /// <summary>
+    ///     The additional files the last sync patched because they differed from HEAD. One that matches HEAD again
+    ///     leaves the tracker changed set, so the next sync patches it once more to bring its HEAD content back.
+    /// </summary>
+    private HashSet<RepoPath> _patchedAdditionalFiles = [];
+
+    /// <summary>
     ///     The result of a sync whose action did not finish, because it was cancelled or failed, or null. The tracker
     ///     has already folded that sync's changes in (a moved HEAD is not reported again), so the next sync acts on this
     ///     result followed by its own (<see cref="SyncResult.Then"/>) instead of losing it.
@@ -178,8 +184,11 @@ internal sealed class WorkspaceSync
             paths.UnionWith(_views.FilesUnder(directory));
         // The patch carries only sources, but the tracker also reports the non-sources it saw change, and an
         // edit to an additional file reaches the analyzers only when both views patch it like a source.
-        paths.UnionWith(ChangedAdditionalFiles());
+        var additional = ChangedAdditionalFiles().ToHashSet();
+        paths.UnionWith(additional);
+        paths.UnionWith(_patchedAdditionalFiles);
         await _views.PatchAsync(paths, cancellationToken).ConfigureAwait(false);
+        _patchedAdditionalFiles = additional;
     }
 
     /// <summary>The additional files that differ from HEAD, in no particular order.</summary>

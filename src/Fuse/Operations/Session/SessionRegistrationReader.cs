@@ -22,9 +22,9 @@ internal static class SessionRegistrationReader
     internal static string FilePath(RepoRoot root) => Path.Combine(root.StateDirectory, "registered-sessions.tsv");
 
     /// <summary>
-    ///     The registrations that have not ended as of <paramref name="now"/>, named without the stored prefix, after
-    ///     pruning those that have: expired ones, ones tied to a process that has exited, and lines that do not read
-    ///     back are dropped and the file is rewritten without them.
+    ///     The registrations that have not ended as of <paramref name="now"/>, named without the stored prefix, leaving
+    ///     out those that have: expired ones, ones tied to a process that has exited, and lines that do not read back.
+    ///     The file is only read: the engine is its one writer, and it prunes the file on its own writes.
     /// </summary>
     internal static IReadOnlyList<ReportedSession> ReadLive(RepoRoot root, DateTimeOffset now)
     {
@@ -43,15 +43,11 @@ internal static class SessionRegistrationReader
 
         var order = new List<string>();
         var byName = new Dictionary<string, ReportedSession>(StringComparer.Ordinal);
-        var pruned = false;
         foreach (var line in lines)
         {
             var live = ParseLine(line, now);
             if (live is null)
-            {
-                pruned = true;
                 continue;
-            }
 
             if (byName.ContainsKey(live.Name))
                 order.Remove(live.Name);
@@ -64,8 +60,6 @@ internal static class SessionRegistrationReader
             }
         }
 
-        if (pruned)
-            WriteLive(path, order.Select(name => byName[name]).ToList());
         return [.. order.Select(name => byName[name])];
     }
 
@@ -111,23 +105,6 @@ internal static class SessionRegistrationReader
         catch (Exception e) when (e is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception)
         {
             return false;
-        }
-    }
-
-    /// <summary>Replaces the file with <paramref name="sessions"/>, in the line format the engine reads back.</summary>
-    private static void WriteLive(string path, IReadOnlyList<ReportedSession> sessions)
-    {
-        try
-        {
-            var lines = sessions.OrderBy(s => s.Name, StringComparer.Ordinal)
-                .Select(s => $"{s.ExpiresAtUtc.UtcTicks.ToString(CultureInfo.InvariantCulture)}\t{s.Name}\t{string.Join("\t", s.Paths)}{(s.Pid is { } pid ? $"\tpid:{pid.ToString(CultureInfo.InvariantCulture)}" : "")}");
-            var temporary = path + ".tmp";
-            File.WriteAllLines(temporary, lines);
-            File.Move(temporary, path, overwrite: true);
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-        {
-            // The live set is still answered; only an engine that restarts reads the unpruned file.
         }
     }
 }

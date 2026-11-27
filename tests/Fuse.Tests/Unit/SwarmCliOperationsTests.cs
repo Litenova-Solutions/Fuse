@@ -8,7 +8,7 @@ using Fuse.Operations.Control;
 using Fuse.Operations.Inspection;
 using Fuse.Operations.Judge;
 using Fuse.Operations.Session;
-using Fuse.Operations.Test;
+using Fuse.Operations.Test.Rendering;
 using Fuse.Protocol.Analysis;
 using Fuse.Protocol.Check;
 using Fuse.Protocol.Requests;

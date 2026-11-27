@@ -4,6 +4,7 @@ using Fuse.Client;
 using Fuse.Dotnet.Processes;
 using Fuse.Dotnet.Test;
 using Fuse.Operations.Build;
+using Fuse.Operations.Test.Rendering;
 using Fuse.Paths;
 using Fuse.Protocol.Analysis;
 using Fuse.Protocol.Requests;

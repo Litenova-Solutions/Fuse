@@ -1,6 +1,6 @@
 using Fuse.Dotnet.Test;
 using Fuse.Operations;
-using Fuse.Operations.Test;
+using Fuse.Operations.Test.Rendering;
 namespace Fuse.Tests.Unit;
 
 public class FailureGroupTests

@@ -5,7 +5,7 @@ using Fuse.Dotnet.Test;
 using Fuse.Operations.Build;
 using Fuse.Paths;
 using Fuse.Protocol.Testing;
-namespace Fuse.Operations.Test;
+namespace Fuse.Operations.Test.Rendering;
 
 /// <summary>
 ///     Renders test answers: the failures grouped by their shared first line, the counts and summary line,

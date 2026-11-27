@@ -3,6 +3,7 @@ using System.Text;
 using Fuse.Client;
 using Fuse.Dotnet.Processes;
 using Fuse.Dotnet.Test;
+using Fuse.Operations.Test.Rendering;
 using Fuse.Paths;
 using Fuse.Protocol.Requests;
 using Fuse.Protocol.Testing;

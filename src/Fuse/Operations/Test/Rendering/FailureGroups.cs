@@ -1,6 +1,6 @@
 using Fuse.Dotnet.Processes;
 using Fuse.Dotnet.Test;
-namespace Fuse.Operations.Test;
+namespace Fuse.Operations.Test.Rendering;
 
 /// <summary>
 ///     Groups test failures that share their message's first line, so the answer prints the shared line once as a

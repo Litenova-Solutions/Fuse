@@ -5,6 +5,7 @@ using Fuse.Dotnet.Build;
 using Fuse.Dotnet.Processes;
 using Fuse.Dotnet.Test;
 using Fuse.Operations.Build;
+using Fuse.Operations.Test.Rendering;
 using Fuse.Paths;
 using Fuse.Protocol.Testing;
 namespace Fuse.Operations.Test;

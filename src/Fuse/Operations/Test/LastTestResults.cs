@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json.Nodes;
 using Fuse.Dotnet.Test;
 using Fuse.Operations.Build;
+using Fuse.Operations.Test.Rendering;
 using Fuse.Paths;
 using Fuse.Protocol.Testing;
 namespace Fuse.Operations.Test;

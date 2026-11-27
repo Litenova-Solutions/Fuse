@@ -104,12 +104,22 @@ internal sealed class ChangeTracker : IDisposable
                     watchedNonSources.Add(path);
         }
 
-        // Git-ignored files the watcher reports are not changes: one batched check-ignore call per sync names them.
-        if (watchedNonSources.Count > 0)
+        // Git-ignored files the watcher reports are not changes: one batched check-ignore call per sync names
+        // them, project files included, so a git-ignored project file never evaluates the projects again.
+        if (watchedNonSources.Count > 0 || watched.ProjectFiles.Count > 0)
         {
-            var ignored = await GitStatus.IgnoredPathsAsync(_root, watchedNonSources, cancellationToken).ConfigureAwait(false);
-            watchedNonSources.ExceptWith(ignored);
-            foreach (var ignoredPath in ignored) _nonSources.TryRemove(ignoredPath, out _);
+            var candidates = new HashSet<RepoPath>(watchedNonSources);
+            foreach (var projectFile in watched.ProjectFiles)
+                candidates.Add(projectFile);
+            var ignored = await GitStatus.IgnoredPathsAsync(_root, candidates, cancellationToken).ConfigureAwait(false);
+            if (ignored.Count > 0)
+            {
+                watchedNonSources.ExceptWith(ignored);
+                foreach (var ignoredPath in ignored) _nonSources.TryRemove(ignoredPath, out _);
+                var kept = watched.ProjectFiles.Where(p => !ignored.Contains(p)).ToList();
+                if (kept.Count != watched.ProjectFiles.Count)
+                    watched = watched with { ProjectFiles = kept };
+            }
         }
 
         // A check of every change asks for the changed set to be confirmed against disk: a write the watcher has not

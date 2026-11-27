@@ -215,20 +215,20 @@ internal sealed class Preloader
     }
 
     /// <summary>
-    ///     The state a load of <paramref name="project"/> starts from: the configuration generation, and the newest write
-    ///     time of the restore output (<c>project.assets.json</c>) in its closure. A missing file reads as the earliest
-    ///     time, so a restore that creates it changes the state.
+    ///     The state a load of <paramref name="project"/> starts from: the configuration generation, and the newest
+    ///     restore output (<c>project.assets.json</c>) stamp in its closure, the same stamp the loader notes at load.
+    ///     A missing file reads as the earliest stamp, so a restore that creates it changes the state.
     /// </summary>
     private Attempt AttemptOf(ProjectNode project, RepoGraph graph) => new(
         _workspace.ConfigurationGeneration,
-        graph.ClosureOf(project).Max(p => File.GetLastWriteTimeUtc(p.AssetsFile.Absolute)));
+        graph.ClosureOf(project).Select(p => AssetsStamp.Read(p.AssetsFile.Absolute)).Max());
 
     /// <summary>
     ///     What a failed load depended on. A project fails for the same reason while both stay the same, so it is tried
-    ///     again only when one changed: the projects were evaluated again or reloaded, or a restore wrote its closure's
+    ///     again only when one changed: the projects were evaluated again or reloaded, or a restore rewrote its closure's
     ///     assets.
     /// </summary>
     /// <param name="ConfigurationGeneration">The workspace's <see cref="RepoWorkspace.ConfigurationGeneration"/>.</param>
-    /// <param name="AssetsWrittenUtc">The newest write time of a <c>project.assets.json</c> in the project's closure.</param>
-    private readonly record struct Attempt(int ConfigurationGeneration, DateTime AssetsWrittenUtc);
+    /// <param name="Assets">The newest restore output stamp in the project's closure.</param>
+    private readonly record struct Attempt(int ConfigurationGeneration, AssetsStamp Assets);
 }

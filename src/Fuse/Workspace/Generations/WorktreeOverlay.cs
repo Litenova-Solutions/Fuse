@@ -142,6 +142,7 @@ internal sealed class WorktreeOverlay : IDisposable
         await _writer.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            NoteRestoredProjects();
             await Sync.SyncAsync(known, cancellationToken, confirmWithDisk).ConfigureAwait(false);
             RefreshAllDeltas();
             return PublishLocked();
@@ -338,6 +339,18 @@ internal sealed class WorktreeOverlay : IDisposable
     {
         lock (_deltaLock)
             return _dirtySet;
+    }
+
+    /// <summary>
+    ///     Reports the loaded projects whose restore output appeared, vanished or changed since they loaded as
+    ///     written, so the sync below evaluates the projects again the way a project file change does. The watcher
+    ///     skips build output, so without this a restore after the load stays invisible.
+    /// </summary>
+    private void NoteRestoredProjects()
+    {
+        var changed = Projects.AssetsChangedProjects();
+        if (changed.Count > 0)
+            Tracker.ReportWritten(changed);
     }
 
     private void RefreshAllDeltas()

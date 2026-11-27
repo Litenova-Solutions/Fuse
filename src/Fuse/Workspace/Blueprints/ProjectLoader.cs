@@ -27,6 +27,13 @@ internal sealed class ProjectLoader : IDisposable
     /// </summary>
     private readonly ConcurrentDictionary<RepoPath, string> _loadFailures = new();
 
+    /// <summary>
+    ///     What each loaded project's restore output looked like when the project loaded, by project file. Every
+    ///     sync stats the loaded projects' restore outputs again, and a stamp that differs reports the project
+    ///     file as written, so the sync evaluates the projects again the way a project file change does.
+    /// </summary>
+    private readonly ConcurrentDictionary<RepoPath, AssetsStamp> _assetsStamps = new();
+
     private readonly SemaphoreSlim _loadLock = new(1, 1);
     private readonly BlueprintWorkspace _blueprintWorkspace;
     private readonly Func<string?>? _headProvider;
@@ -106,6 +113,31 @@ internal sealed class ProjectLoader : IDisposable
     /// <summary>Why <paramref name="node"/> did not load, or null when no load of it has failed.</summary>
     public string? LoadFailureOf(ProjectNode node) =>
         _loadFailures.TryGetValue(node.Path, out var failure) ? failure : null;
+
+    /// <summary>
+    ///     The loaded projects whose restore output appeared, vanished or changed since they loaded, by project
+    ///     file. It only stats the loaded projects' restore outputs, so a sync pays a few file stats for it.
+    /// </summary>
+    public IReadOnlyList<RepoPath> AssetsChangedProjects()
+    {
+        var changed = new List<RepoPath>();
+        foreach (var path in LoadedPaths())
+        {
+            if (Graph.Find(path)?.AssetsFile.Absolute is not { } assets)
+                continue;
+            var current = AssetsStamp.Read(assets);
+            if (!_assetsStamps.TryGetValue(path, out var noted))
+            {
+                _assetsStamps[path] = current;
+                continue;
+            }
+
+            if (!current.Equals(noted))
+                changed.Add(path);
+        }
+
+        return changed;
+    }
 
     /// <summary>Returns the masked assets hash recorded in the active blueprint for zero-restore worktrees.</summary>
     public string? AssetsHashFallback(RepoPath assetsFile) =>
@@ -236,6 +268,10 @@ internal sealed class ProjectLoader : IDisposable
             return;
         }
 
+        var extractedStale = RestoreCheck.StaleProjects(closure);
+        if (extractedStale.Count > 0)
+            throw RestoreNeeded([.. extractedStale.Select(p => p.Path.Relative).Distinct(StringComparer.Ordinal)]);
+
         var missing = closure.Where(p => !_loaded.ContainsKey(p.Path)).ToList();
         if (missing.Count == 0)
             return;
@@ -255,6 +291,10 @@ internal sealed class ProjectLoader : IDisposable
             if (reusableZeroRestore is null)
                 throw RestoreNeeded(unrestored);
         }
+
+        var stale = RestoreCheck.StaleProjects(closure);
+        if (stale.Count > 0)
+            throw RestoreNeeded([.. stale.Select(p => p.Path.Relative).Distinct(StringComparer.Ordinal)]);
 
         // Brings the shared cache up to date before taking the load lock: a request that arrives while the
         // background preload extracts joins that extraction instead of running its own under the lock, so the
@@ -368,6 +408,8 @@ internal sealed class ProjectLoader : IDisposable
             if (!_loaded.TryAdd(loadedPath, 0))
                 continue;
             _loadFailures.TryRemove(loadedPath, out _);
+            if (Graph.Find(loadedPath)?.AssetsFile.Absolute is { } assets)
+                _assetsStamps[loadedPath] = AssetsStamp.Read(assets);
             var name = requested.Path.Matches(loadedProject.FilePath)
                 ? requested.Name
                 : Graph.Find(_root.PathOf(loadedProject.FilePath))?.Name ?? Path.GetFileNameWithoutExtension(loadedProject.FilePath);

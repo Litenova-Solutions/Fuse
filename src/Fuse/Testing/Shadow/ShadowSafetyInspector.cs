@@ -19,6 +19,9 @@ namespace Fuse.Testing.Shadow;
 /// </remarks>
 internal sealed class ShadowSafetyInspector
 {
+    /// <summary>How many document answers are kept before they are dropped and read again.</summary>
+    private const int MaxAnswers = 4096;
+
     private readonly ConcurrentDictionary<DocumentId, (VersionStamp Version, bool Unsafe)> _answers = new();
 
     /// <summary>
@@ -79,6 +82,9 @@ internal sealed class ShadowSafetyInspector
             if (await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false) is { } root)
                 unsafeDocument = ScopesOf(root).Any(scope => ReadsBase(scope) && WalksUp(scope));
 
+            // Each rebuild of the workspace names its documents anew, so the answers are dropped past a bound.
+            if (_answers.Count >= MaxAnswers)
+                _answers.Clear();
             _answers[document.Id] = (version, unsafeDocument);
             return unsafeDocument;
         }

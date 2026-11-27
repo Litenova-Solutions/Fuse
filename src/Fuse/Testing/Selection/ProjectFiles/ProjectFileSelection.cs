@@ -121,7 +121,7 @@ internal static class ProjectFileSelection
         {
             return File.Exists(path.Absolute) ? File.ReadAllText(path.Absolute) : null;
         }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
             return null;
         }

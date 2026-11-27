@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Fuse.Operations;
 using Fuse.Operations.Test;
 using Fuse.Protocol.Testing;
@@ -45,7 +46,7 @@ public class PlanRunTests
         {
             var result = await TestOperation.RunPlanAsync(repo.Root, new TestPlan([run], 1, 4, "ran 1 test(s)"), Environment.TickCount64, TestContext.Current.CancellationToken);
             Assert.Equal(Outcome.Clean, result.Outcome);
-            Assert.Matches($@"^fuse: 0 failed, 1 passed in [0-9.]+ s; ran 1 test\(s\); {mode}$", result.Text);
+            Assert.Matches($@"^fuse: 0 failed, 1 passed in [0-9.]+ s; ran 1 test\(s\); {Regex.Escape(mode)}$", result.Text);
         }
     }
 

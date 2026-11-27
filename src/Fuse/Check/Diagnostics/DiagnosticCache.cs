@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 using Fuse.Changes;
+using Fuse.Check.Analyzers;
 using Fuse.Check.Model;
 using Fuse.Check.Pipeline;
 using Fuse.Paths;

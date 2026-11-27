@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using Fuse.Check.Analyzers;
 using Fuse.Check.Diagnostics;
 using Fuse.Graph;
 using Fuse.Tests.Fixtures;

@@ -6,6 +6,7 @@ using Fuse.Graph;
 using Fuse.Paths;
 using Fuse.Tests.Fixtures;
 using Fuse.Workspace.Blueprints;
+using Fuse.Workspace.Blueprints.Projects;
 using Microsoft.CodeAnalysis;
 namespace Fuse.Tests.Unit;
 

@@ -1,5 +1,5 @@
 using System.Collections.Concurrent;
-using Fuse.Check.Diagnostics;
+using Fuse.Check.Analyzers;
 using Microsoft.CodeAnalysis;
 namespace Fuse.Check.Pipeline;
 

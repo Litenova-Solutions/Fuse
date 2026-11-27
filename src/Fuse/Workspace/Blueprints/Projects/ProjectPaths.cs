@@ -1,4 +1,4 @@
-namespace Fuse.Workspace.Blueprints;
+namespace Fuse.Workspace.Blueprints.Projects;
 
 /// <summary>
 ///     Where one blueprint entry reads its inputs from. Every path is stored repo-relative when inside the

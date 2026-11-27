@@ -1,4 +1,4 @@
-namespace Fuse.Workspace.Blueprints;
+namespace Fuse.Workspace.Blueprints.Projects;
 
 /// <summary>
 ///     How the compiler builds one evaluated project. Every field maps to a Roslyn compilation or parse

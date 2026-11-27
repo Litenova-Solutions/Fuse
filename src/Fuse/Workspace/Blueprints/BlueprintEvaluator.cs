@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using Fuse.Failures;
 using Fuse.Graph;
 using Fuse.Paths;
+using Fuse.Workspace.Blueprints.Projects;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;

@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 using Fuse.Check.Pipeline;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
-namespace Fuse.Check.Diagnostics;
+namespace Fuse.Check.Analyzers;
 
 /// <summary>
 ///     The analyzer runs over whole compilations, each one shared by every file and every check that needs it. A run

@@ -1,15 +1,15 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
-using Fuse.Identity;
 using Fuse.Changes;
 using Fuse.Changes.Model;
-using Fuse.Check.Diagnostics;
+using Fuse.Check.Analyzers;
 using Fuse.Check.Model;
 using Fuse.Check.Pipeline;
 using Fuse.Check.Sessions;
 using Fuse.Engine.Background;
 using Fuse.Engine.Server;
 using Fuse.Failures;
+using Fuse.Identity;
 using Fuse.Paths;
 using Fuse.Protocol.Analysis;
 using Fuse.Protocol.Check;

@@ -1,4 +1,4 @@
-using Fuse.Check.Diagnostics;
+using Fuse.Check.Analyzers;
 using Fuse.Protocol.Requests;
 using Fuse.Protocol.Transport;
 using Fuse.Telemetry;

@@ -1,5 +1,6 @@
 using Fuse.Graph;
 using Fuse.Paths;
+using Fuse.Workspace.Blueprints.Projects;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Host;
 namespace Fuse.Workspace.Blueprints;

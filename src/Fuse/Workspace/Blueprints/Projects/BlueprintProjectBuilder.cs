@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Text;
-namespace Fuse.Workspace.Blueprints;
+namespace Fuse.Workspace.Blueprints.Projects;
 
 /// <summary>
 ///     Builds Roslyn projects from blueprint entries. It turns each entry's stored paths and compiler

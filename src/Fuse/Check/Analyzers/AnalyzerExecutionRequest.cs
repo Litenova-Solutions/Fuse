@@ -1,6 +1,6 @@
 using Fuse.Check.Pipeline;
 using Microsoft.CodeAnalysis;
-namespace Fuse.Check.Diagnostics;
+namespace Fuse.Check.Analyzers;
 
 /// <summary>
 ///     What one run of a file's analyzers needs: the project and model to run on, whether the run is over the

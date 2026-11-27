@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis.Diagnostics;
-namespace Fuse.Check.Diagnostics;
+namespace Fuse.Check.Analyzers;
 
 /// <summary>
 ///     How a project's analyzers run in a check. Roslyn analyzes one file on a fresh copy of the compilation and runs every

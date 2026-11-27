@@ -1,4 +1,4 @@
-using Fuse.Check.Diagnostics;
+using Fuse.Check.Analyzers;
 namespace Fuse.Check.Pipeline;
 
 /// <summary>Optional controls for <see cref="Checker.CheckAsync(Model.CheckScope, string?, AnalyzerRun, Telemetry.PhaseTimes, CheckOptions, CancellationToken, int)"/>.</summary>

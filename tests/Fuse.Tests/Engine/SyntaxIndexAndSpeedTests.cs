@@ -1,6 +1,6 @@
 using System.Diagnostics;
+using Fuse.Check.Analyzers;
 using Fuse.Check.Candidates;
-using Fuse.Check.Diagnostics;
 using Fuse.Check.Pipeline;
 using Fuse.Check.Sessions;
 using Fuse.Telemetry;

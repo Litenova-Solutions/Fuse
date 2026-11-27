@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Globalization;
 using Fuse.Changes;
+using Fuse.Check.Analyzers;
 using Fuse.Check.Diagnostics;
 using Fuse.Check.Model;
 using Fuse.Paths;

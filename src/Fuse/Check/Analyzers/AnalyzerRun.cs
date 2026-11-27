@@ -1,4 +1,4 @@
-namespace Fuse.Check.Diagnostics;
+namespace Fuse.Check.Analyzers;
 
 /// <summary>
 ///     How one check runs analyzers, on the working tree and on the baseline alike. An error is introduced only when HEAD

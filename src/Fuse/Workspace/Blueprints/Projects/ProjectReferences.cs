@@ -1,4 +1,4 @@
-namespace Fuse.Workspace.Blueprints;
+namespace Fuse.Workspace.Blueprints.Projects;
 
 /// <summary>
 ///     The project references one blueprint entry keeps, with target framework identity for multi-targeted

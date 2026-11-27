@@ -5,7 +5,6 @@ using Fuse.Workspace.Views;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Text;
-
 namespace Fuse.Workspace.Blueprints;
 
 /// <summary>

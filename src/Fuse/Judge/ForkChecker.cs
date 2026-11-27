@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Text;
 using Fuse.Changes;
 using Fuse.Changes.Model;
+using Fuse.Check.Analyzers;
 using Fuse.Check.Candidates;
 using Fuse.Check.Diagnostics;
 using Fuse.Check.Model;

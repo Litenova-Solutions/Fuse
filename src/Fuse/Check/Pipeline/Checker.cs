@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using Fuse.Check.Analyzers;
 using Fuse.Check.Candidates;
 using Fuse.Check.Diagnostics;
 using Fuse.Check.Enrichment;

@@ -6,6 +6,7 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Fuse.Graph;
 using Fuse.Paths;
+using Fuse.Workspace.Blueprints.Projects;
 namespace Fuse.Workspace.Blueprints;
 
 /// <summary>

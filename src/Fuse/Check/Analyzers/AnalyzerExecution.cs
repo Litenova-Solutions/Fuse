@@ -3,7 +3,7 @@ using Fuse.Check.Pipeline;
 using Fuse.Paths;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
-namespace Fuse.Check.Diagnostics;
+namespace Fuse.Check.Analyzers;
 
 /// <summary>
 ///     Runs a file's analyzers: the per-file analyzers on its model and the compilation-wide ones once per

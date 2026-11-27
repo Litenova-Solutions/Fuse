@@ -1,4 +1,4 @@
-using Fuse.Check.Diagnostics;
+using Fuse.Check.Analyzers;
 using Fuse.Check.Enrichment;
 using Fuse.Check.Model;
 using Fuse.Check.Pipeline;

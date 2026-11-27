@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Fuse.Check.Analyzers;
 using Fuse.Check.Diagnostics;
 using Fuse.Check.Model;
 using Fuse.Check.Pipeline;

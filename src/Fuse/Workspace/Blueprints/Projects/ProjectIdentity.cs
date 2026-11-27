@@ -1,5 +1,5 @@
 using Fuse.Graph;
-namespace Fuse.Workspace.Blueprints;
+namespace Fuse.Workspace.Blueprints.Projects;
 
 /// <summary>
 ///     Which evaluated project a blueprint entry describes. The path and name tell multi-targeted variants

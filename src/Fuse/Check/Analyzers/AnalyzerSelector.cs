@@ -3,7 +3,7 @@ using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
-namespace Fuse.Check.Diagnostics;
+namespace Fuse.Check.Analyzers;
 
 /// <summary>
 ///     Picks the analyzers that can report an error under a project's configuration, so a check runs the few that

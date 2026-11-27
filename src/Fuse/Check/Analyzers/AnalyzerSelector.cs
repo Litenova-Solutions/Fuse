@@ -20,7 +20,11 @@ internal sealed class AnalyzerSelector
     private readonly Func<int> _configurationGeneration;
     private readonly Action<string> _log;
     private readonly ConcurrentDictionary<ProjectId, (int Generation, ImmutableArray<DiagnosticAnalyzer> Analyzers)> _selected = new();
-    private readonly ConditionalWeakTable<Compilation, Lazy<CompilationWithAnalyzers?>> _withAnalyzers = new();
+    /// <summary>
+    ///     The wrapper per compilation and per analyzer options. Roslyn keeps the compilation when only an additional
+    ///     document changes, while the options carry the new additional texts, so both key the wrapper.
+    /// </summary>
+    private readonly ConditionalWeakTable<Compilation, ConditionalWeakTable<AnalyzerOptions, Lazy<CompilationWithAnalyzers?>>> _withAnalyzers = new();
     /// <summary>Each project's plan, shared, so the files of a check wait for their project's plan instead of each making one.</summary>
     private readonly Dictionary<ProjectId, (int Generation, Task<AnalyzerPlan> Plan)> _plans = [];
 
@@ -102,12 +106,13 @@ internal sealed class AnalyzerSelector
     /// <summary>Returns the compilation wrapped with its error-capable analyzers, or null when none can report an error.</summary>
     /// <remarks>
     ///     The selection depends only on the project's analyzers and configuration, so it is computed once per project
-    ///     until the configuration changes. The wrapper is per compilation, created once even when files bind in parallel.
+    ///     until the configuration changes. The wrapper is per compilation and analyzer options, created once even when files bind in parallel.
     /// </remarks>
     public CompilationWithAnalyzers? For(Project project, Compilation compilation) =>
-        _withAnalyzers.GetValue(
-            compilation,
-            c => new Lazy<CompilationWithAnalyzers?>(() => Create(project, c), LazyThreadSafetyMode.ExecutionAndPublication)).Value;
+        _withAnalyzers.GetValue(compilation, _ => new ConditionalWeakTable<AnalyzerOptions, Lazy<CompilationWithAnalyzers?>>())
+            .GetValue(
+                project.AnalyzerOptions,
+                _ => new Lazy<CompilationWithAnalyzers?>(() => Create(project, compilation), LazyThreadSafetyMode.ExecutionAndPublication)).Value;
 
     private CompilationWithAnalyzers? Create(Project project, Compilation compilation)
     {

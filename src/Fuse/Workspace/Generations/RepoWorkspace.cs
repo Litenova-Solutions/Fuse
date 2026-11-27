@@ -25,6 +25,20 @@ internal sealed class RepoWorkspace : IDisposable
     private readonly ConcurrentDictionary<string, WorktreeOverlay> _overlays = new(StringComparer.Ordinal);
     private readonly SemaphoreSlim _registerLock = new(1, 1);
 
+    /// <summary>
+    ///     Mirrors the overlay writer every writer round holds: a status answer tries this gate for 100 ms instead of
+    ///     waiting on the writer. Every method below that holds the overlay writer takes this gate first, in the same
+    ///     order, so a held gate means a sync, load, patch, rebuild or shed holds the writer.
+    /// </summary>
+    private readonly SemaphoreSlim _writerGate = new(1, 1);
+
+    /// <summary>Guards the pathless coalescing slots below; it is never held while the writer gate is awaited.</summary>
+    private readonly Lock _coalesceLock = new();
+
+    private readonly PathlessCoalescer _pathlessPlain = new();
+    private readonly PathlessCoalescer _pathlessConfirming = new();
+    private long _pathlessRounds;
+
     public RepoWorkspace(RepoRoot root, Action<string> log)
     {
         Root = root;
@@ -159,52 +173,250 @@ internal sealed class RepoWorkspace : IDisposable
     /// </summary>
     public Generation PinGeneration() => PrimaryOverlay.PinGeneration();
 
+    /// <summary>How many pathless sync rounds ran, for a test that sends concurrent pathless syncs.</summary>
+    internal long PathlessSyncRounds => Interlocked.Read(ref _pathlessRounds);
+
+    /// <summary>
+    ///     Holds the writer gate until the returned value is disposed, for a test that answers status while the
+    ///     writer is held. The overlay writer itself stays free; every writer round takes this gate first, so holding
+    ///     it holds every writer round the same way.
+    /// </summary>
+    internal async Task<IDisposable> HoldWriterForTestAsync(CancellationToken cancellationToken)
+    {
+        await _writerGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        return new WriterHold(_writerGate);
+    }
+
     /// <summary>Evaluates the project graph and starts tracking changes. Compiles nothing.</summary>
-    public Task InitializeAsync(CancellationToken cancellationToken) =>
-        PrimaryOverlay.InitializeAsync(cancellationToken);
+    public async Task InitializeAsync(CancellationToken cancellationToken)
+    {
+        await _writerGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await PrimaryOverlay.InitializeAsync(cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _writerGate.Release();
+        }
+    }
 
     /// <inheritdoc cref="WorkspaceSync.SyncAsync"/>
-    public Task SyncAsync(IEnumerable<RepoPath> knownPaths, CancellationToken cancellationToken) =>
-        PrimaryOverlay.SyncAsync(knownPaths, cancellationToken);
+    public async Task SyncAsync(IEnumerable<RepoPath> knownPaths, CancellationToken cancellationToken)
+    {
+        await _writerGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await PrimaryOverlay.SyncAsync(knownPaths, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _writerGate.Release();
+        }
+    }
 
     /// <summary>Syncs the workspace under the writer lock and pins the generation that sync published.</summary>
     /// <param name="knownPaths">Files just written by the agent, checked even before their watcher event arrives.</param>
     /// <param name="cancellationToken">Cancels re-evaluation.</param>
     /// <param name="confirmWithDisk">True to confirm the changed set against disk when the watcher reported nothing, for a check of every change.</param>
-    public Task<Generation> SyncAndPinAsync(IEnumerable<RepoPath> knownPaths, CancellationToken cancellationToken, bool confirmWithDisk = false) =>
-        PrimaryOverlay.SyncAndPinAsync(knownPaths, cancellationToken, confirmWithDisk);
+    /// <remarks>
+    ///     A pathless sync (no known paths) coalesces with the pathless sync that runs now: a caller that arrives
+    ///     while one runs waits for that sync, or for one queued next sync, instead of running its own. A sync with
+    ///     known paths still runs its own round and confirms its files on disk.
+    /// </remarks>
+    public Task<Generation> SyncAndPinAsync(IEnumerable<RepoPath> knownPaths, CancellationToken cancellationToken, bool confirmWithDisk = false)
+    {
+        var known = knownPaths as IReadOnlyCollection<RepoPath> ?? [.. knownPaths];
+        if (known.Count > 0)
+            return SyncKnownAndPinAsync(known, confirmWithDisk, cancellationToken);
+        return SyncPathlessAndPinAsync(confirmWithDisk, cancellationToken);
+    }
+
+    /// <summary>
+    ///     Syncs under the writer gate when it is free within <paramref name="timeout"/>, for a status answer that
+    ///     must not wait behind a sync. False when the writer is held; the caller then answers from the current
+    ///     generation instead.
+    /// </summary>
+    internal async Task<bool> TrySyncAsync(TimeSpan timeout, CancellationToken cancellationToken)
+    {
+        if (!await _writerGate.WaitAsync(timeout, cancellationToken).ConfigureAwait(false))
+            return false;
+        try
+        {
+            await PrimaryOverlay.SyncAsync([], cancellationToken).ConfigureAwait(false);
+            return true;
+        }
+        finally
+        {
+            _writerGate.Release();
+        }
+    }
+
+    private async Task<Generation> SyncKnownAndPinAsync(IReadOnlyCollection<RepoPath> known, bool confirmWithDisk, CancellationToken cancellationToken)
+    {
+        await _writerGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            return await PrimaryOverlay.SyncAndPinAsync(known, cancellationToken, confirmWithDisk).ConfigureAwait(false);
+        }
+        finally
+        {
+            _writerGate.Release();
+        }
+    }
+
+    private Task<Generation> SyncPathlessAndPinAsync(bool confirmWithDisk, CancellationToken cancellationToken)
+    {
+        var slot = confirmWithDisk ? _pathlessConfirming : _pathlessPlain;
+        Task<Generation> shared;
+        lock (_coalesceLock)
+        {
+            if (slot.Active is { IsCompleted: false } active)
+            {
+                if (slot.Next is { IsCompleted: false } next)
+                {
+                    shared = next;
+                }
+                else
+                {
+                    slot.Next = shared = RunQueuedPathlessAsync(active, confirmWithDisk);
+                }
+            }
+            else
+            {
+                slot.Active = shared = RunPathlessRoundAsync(confirmWithDisk);
+            }
+        }
+
+        return WaitSharedAsync(shared, cancellationToken);
+    }
+
+    private async Task<Generation> RunQueuedPathlessAsync(Task<Generation> previous, bool confirmWithDisk)
+    {
+        try
+        {
+            await previous.ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            // The running sync failed; the queued sync still runs so its waiters see the tree.
+        }
+
+        return await RunPathlessRoundAsync(confirmWithDisk).ConfigureAwait(false);
+    }
+
+    private async Task<Generation> RunPathlessRoundAsync(bool confirmWithDisk)
+    {
+        // The shared round runs without any waiter's token: one waiter giving up does not cancel the sync the
+        // others wait for. Each waiter stops waiting on its own token in WaitSharedAsync.
+        await _writerGate.WaitAsync(CancellationToken.None).ConfigureAwait(false);
+        try
+        {
+            Interlocked.Increment(ref _pathlessRounds);
+            return await PrimaryOverlay.SyncAndPinAsync([], CancellationToken.None, confirmWithDisk).ConfigureAwait(false);
+        }
+        finally
+        {
+            _writerGate.Release();
+        }
+    }
+
+    private static async Task<Generation> WaitSharedAsync(Task<Generation> shared, CancellationToken cancellationToken)
+    {
+        return await shared.WaitAsync(cancellationToken).ConfigureAwait(false);
+    }
 
     /// <summary>Loads <paramref name="projects"/> and everything they reference, and makes them part of both views.</summary>
     /// <exception cref="FuseException">A project has not been restored or failed to load.</exception>
-    public Task EnsureLoadedAsync(IEnumerable<ProjectNode> projects, CancellationToken cancellationToken) =>
-        PrimaryOverlay.EnsureLoadedAsync(projects, cancellationToken);
+    public async Task EnsureLoadedAsync(IEnumerable<ProjectNode> projects, CancellationToken cancellationToken)
+    {
+        await _writerGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await PrimaryOverlay.EnsureLoadedAsync(projects, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _writerGate.Release();
+        }
+    }
 
     /// <summary>Loads <paramref name="projects"/> under the writer lock and pins the generation that load published.</summary>
     /// <exception cref="FuseException">A project has not been restored or failed to load.</exception>
-    public Task<Generation> EnsureLoadedAndPinAsync(IEnumerable<ProjectNode> projects, CancellationToken cancellationToken) =>
-        PrimaryOverlay.EnsureLoadedAndPinAsync(projects, cancellationToken);
+    public async Task<Generation> EnsureLoadedAndPinAsync(IEnumerable<ProjectNode> projects, CancellationToken cancellationToken)
+    {
+        await _writerGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            return await PrimaryOverlay.EnsureLoadedAndPinAsync(projects, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _writerGate.Release();
+        }
+    }
 
     /// <summary>Applies each of <paramref name="paths"/> to both views again: its disk content to <see cref="Current"/> and its HEAD content to <see cref="Baseline"/>.</summary>
     /// <param name="paths">The files to apply; each is also touched.</param>
     /// <param name="cancellationToken">Cancels reading file contents.</param>
-    public Task PatchViewsAsync(IReadOnlyCollection<RepoPath> paths, CancellationToken cancellationToken) =>
-        PrimaryOverlay.PatchViewsAsync(paths, cancellationToken);
+    public async Task PatchViewsAsync(IReadOnlyCollection<RepoPath> paths, CancellationToken cancellationToken)
+    {
+        await _writerGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await PrimaryOverlay.PatchViewsAsync(paths, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _writerGate.Release();
+        }
+    }
 
     /// <summary>Applies each of <paramref name="paths"/> under the writer lock and pins the generation it published.</summary>
     /// <param name="paths">The files to apply; each is also touched.</param>
     /// <param name="cancellationToken">Cancels reading file contents.</param>
-    public Task<Generation> PatchAndPinAsync(IReadOnlyCollection<RepoPath> paths, CancellationToken cancellationToken) =>
-        PrimaryOverlay.PatchAndPinAsync(paths, cancellationToken);
+    public async Task<Generation> PatchAndPinAsync(IReadOnlyCollection<RepoPath> paths, CancellationToken cancellationToken)
+    {
+        await _writerGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            return await PrimaryOverlay.PatchAndPinAsync(paths, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _writerGate.Release();
+        }
+    }
 
     /// <summary>Derives both views from the loader's solution again, re-applying every touched and every changed file.</summary>
     /// <param name="cancellationToken">Cancels reading file contents.</param>
-    public Task RebuildViewsAsync(CancellationToken cancellationToken) =>
-        PrimaryOverlay.RebuildViewsAsync(cancellationToken);
+    public async Task RebuildViewsAsync(CancellationToken cancellationToken)
+    {
+        await _writerGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await PrimaryOverlay.RebuildViewsAsync(cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _writerGate.Release();
+        }
+    }
 
     /// <summary>Derives both views again under the writer lock and pins the generation it published, for a reader whose pinned generation lacks a reached project.</summary>
     /// <param name="cancellationToken">Cancels reading file contents.</param>
-    public Task<Generation> RebuildAndPinAsync(CancellationToken cancellationToken) =>
-        PrimaryOverlay.RebuildAndPinAsync(cancellationToken);
+    public async Task<Generation> RebuildAndPinAsync(CancellationToken cancellationToken)
+    {
+        await _writerGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            return await PrimaryOverlay.RebuildAndPinAsync(cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _writerGate.Release();
+        }
+    }
 
     /// <summary>
     ///     Loads <paramref name="project"/> into the loader without touching <see cref="Current"/> or
@@ -248,24 +460,48 @@ internal sealed class RepoWorkspace : IDisposable
     /// <param name="cancellationToken">Cancels waiting for the writer lock.</param>
     public async Task ClearSessionViewsAsync(CancellationToken cancellationToken)
     {
-        foreach (var overlay in Worktrees)
-            await overlay.ClearSessionViewsAsync(cancellationToken).ConfigureAwait(false);
+        await _writerGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            foreach (var overlay in Worktrees)
+                await overlay.ClearSessionViewsAsync(cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _writerGate.Release();
+        }
     }
 
     /// <summary>Sheds the HEAD compilations under the writer lock across every registered overlay.</summary>
     /// <param name="cancellationToken">Cancels waiting for the writer lock.</param>
     public async Task ClearHeadCompilationsAsync(CancellationToken cancellationToken)
     {
-        foreach (var overlay in Worktrees)
-            await overlay.ClearHeadCompilationsAsync(cancellationToken).ConfigureAwait(false);
+        await _writerGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            foreach (var overlay in Worktrees)
+                await overlay.ClearHeadCompilationsAsync(cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _writerGate.Release();
+        }
     }
 
     /// <summary>Sheds idle cone projects under the writer lock across every registered overlay.</summary>
     /// <param name="cancellationToken">Cancels waiting for the writer lock.</param>
     public async Task ClearIdleConeProjectsAsync(CancellationToken cancellationToken)
     {
-        foreach (var overlay in Worktrees)
-            await overlay.ClearIdleConeProjectsAsync(cancellationToken).ConfigureAwait(false);
+        await _writerGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            foreach (var overlay in Worktrees)
+                await overlay.ClearIdleConeProjectsAsync(cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _writerGate.Release();
+        }
     }
 
     /// <summary>
@@ -297,13 +533,21 @@ internal sealed class RepoWorkspace : IDisposable
     /// </summary>
     public async Task YieldMemoryAsync(bool shedHeadCompilations = true, bool shedIdleConeProjects = true, CancellationToken cancellationToken = default)
     {
-        foreach (var overlay in Worktrees)
+        await _writerGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
         {
-            await overlay.ClearSessionViewsAsync(cancellationToken).ConfigureAwait(false);
-            if (shedHeadCompilations)
-                await overlay.ClearHeadCompilationsAsync(cancellationToken).ConfigureAwait(false);
-            if (shedIdleConeProjects)
-                await overlay.ClearIdleConeProjectsAsync(cancellationToken).ConfigureAwait(false);
+            foreach (var overlay in Worktrees)
+            {
+                await overlay.ClearSessionViewsAsync(cancellationToken).ConfigureAwait(false);
+                if (shedHeadCompilations)
+                    await overlay.ClearHeadCompilationsAsync(cancellationToken).ConfigureAwait(false);
+                if (shedIdleConeProjects)
+                    await overlay.ClearIdleConeProjectsAsync(cancellationToken).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            _writerGate.Release();
         }
 
         YieldMemory(clearSessionViews: true, dropCompiledBaseline: true);
@@ -354,6 +598,31 @@ internal sealed class RepoWorkspace : IDisposable
     public Task<Solution> CurrentWithHeadContentAsync(Generation generation, IEnumerable<RepoPath> paths, CancellationToken cancellationToken) =>
         PrimaryOverlay.CurrentWithHeadContentAsync(generation, paths, cancellationToken);
 
+    /// <summary>The running and the queued pathless sync of one confirmation kind: waiters share the running sync, and the first waiter starts the queued one.</summary>
+    private sealed class PathlessCoalescer
+    {
+        public Task<Generation>? Active;
+
+        public Task<Generation>? Next;
+    }
+
+    private sealed class WriterHold : IDisposable
+    {
+        private readonly SemaphoreSlim _gate;
+        private int _disposed;
+
+        public WriterHold(SemaphoreSlim gate)
+        {
+            _gate = gate;
+        }
+
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref _disposed, 1) == 0)
+                _gate.Release();
+        }
+    }
+
     public void Dispose()
     {
         PrimaryOverlay.Dispose();
@@ -361,6 +630,7 @@ internal sealed class RepoWorkspace : IDisposable
             overlay.Dispose();
         _overlays.Clear();
         _registerLock.Dispose();
+        _writerGate.Dispose();
         lock (_liveLock)
         {
             for (var i = _live.Count - 1; i >= 0; i--)

@@ -33,7 +33,8 @@ internal static class EngineClient
     /// <param name="request">The request. Its build id and request id are replaced with this build's and a fresh one, and its wait with <paramref name="timeout"/>.</param>
     /// <param name="timeout">How long to wait for the answer.</param>
     /// <param name="cancellationToken">Cancels the request; the engine stops the work when the connection closes.</param>
-    public static async Task<EngineResponse> SendAsync(RepoRoot root, EngineRequest request, TimeSpan timeout, CancellationToken cancellationToken)
+    /// <param name="onBusy">Called on each Busy answer the client retries; null stays silent, as hooks do.</param>
+    public static async Task<EngineResponse> SendAsync(RepoRoot root, EngineRequest request, TimeSpan timeout, CancellationToken cancellationToken, Action<EngineResponse.Busy>? onBusy = null)
     {
         request = Stamp(root, request, timeout);
         var sendStarted = Environment.TickCount64;
@@ -89,6 +90,7 @@ internal static class EngineClient
                     var delayMs = Math.Clamp(busy.EstimatedWaitMs, 50, 5000);
                     if (delayMs >= remainingMs)
                         return new EngineResponse.Unanswered(ErrorCode.Busy, ErrorMessages.Busy(busy.Position, busy.EstimatedWaitMs));
+                    onBusy?.Invoke(busy);
                     await Task.Delay(TimeSpan.FromMilliseconds(delayMs), deadline.Token).ConfigureAwait(false);
                     continue;
                 }
@@ -324,14 +326,16 @@ internal static class EngineClient
     ///     Runs a sequence of requests over one persistent pipe session (reconnecting automatically if the server closes
     ///     after a single response), eliminating per-request process spawns for <c>fuse batch</c>.
     /// </summary>
+    /// <param name="onBusy">Called on each Busy answer the session retries; null stays silent, as hooks do.</param>
     public static async Task RunBatchSessionAsync(
         RepoRoot root,
         Func<Func<EngineRequest, TimeSpan, CancellationToken, Task<EngineResponse>>, Task> run,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Action<EngineResponse.Busy>? onBusy = null)
     {
         var session = new PipeSession(root);
         await using var sessionLifetime = session.ConfigureAwait(false);
-        await run((req, timeout, ct) => session.SendAsync(req, timeout, ct)).ConfigureAwait(false);
+        await run((req, timeout, ct) => session.SendAsync(req, timeout, ct, onBusy)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -469,7 +473,8 @@ internal static class EngineClient
             _root = root;
         }
 
-        public async Task<EngineResponse> SendAsync(EngineRequest request, TimeSpan timeout, CancellationToken cancellationToken)
+        /// <param name="onBusy">Called on each Busy answer the session retries; null stays silent, as hooks do.</param>
+        public async Task<EngineResponse> SendAsync(EngineRequest request, TimeSpan timeout, CancellationToken cancellationToken, Action<EngineResponse.Busy>? onBusy = null)
         {
             request = Stamp(_root, request, timeout);
             var sendStarted = Environment.TickCount64;
@@ -520,6 +525,7 @@ internal static class EngineClient
                         var delayMs = Math.Clamp(busy.EstimatedWaitMs, 50, 5000);
                         if (delayMs >= remainingMs)
                             return new EngineResponse.Unanswered(ErrorCode.Busy, ErrorMessages.Busy(busy.Position, busy.EstimatedWaitMs));
+                        onBusy?.Invoke(busy);
                         await Task.Delay(TimeSpan.FromMilliseconds(delayMs), deadline.Token).ConfigureAwait(false);
                         continue;
                     }

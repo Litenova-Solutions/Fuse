@@ -26,7 +26,7 @@ internal static class ChangedBuildRunner
         var (filteredArgs, hasParallelFlag) = BuildOperation.StripParallelArtifactsFlag(arguments);
         parallelArtifacts |= hasParallelFlag;
 
-        var response = await EngineClient.SendAsync(root, new EngineRequest.PlanChangedBuild(), TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
+        var response = await EngineClient.SendAsync(root, new EngineRequest.PlanChangedBuild(), TimeSpan.FromMinutes(10), cancellationToken, onBusy: BusyNotice.For()).ConfigureAwait(false);
         if (response is not EngineResponse.ChangedBuildAnswered { Plan: not null } answered)
             return OperationResult.Unanswered(response, "changed build plan");
         var plan = answered.Plan;

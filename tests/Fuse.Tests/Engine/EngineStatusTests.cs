@@ -1,7 +1,15 @@
+using Fuse.Check.Pipeline;
+using Fuse.Check.Sessions;
+using Fuse.Engine.Background;
+using Fuse.Engine.Routing;
+using Fuse.Engine.Scheduling;
+using Fuse.Judge;
 using Fuse.Protocol.Analysis;
 using Fuse.Protocol.Requests;
 using Fuse.Protocol.Transport;
+using Fuse.Telemetry;
 using Fuse.Tests.Fixtures;
+using Fuse.Workspace.Generations;
 namespace Fuse.Tests.Engine;
 
 public class EngineStatusTests
@@ -97,6 +105,43 @@ public class EngineStatusTests
         Assert.Equal(0, answered.Engine.TouchedCount);
         Assert.Null(answered.Engine.ReloadMs);
         Assert.Null(answered.Engine.GateHolder);
+    }
+
+    [Fact]
+    public async Task Status_answers_within_half_a_second_while_the_writer_is_held()
+    {
+        using var repo = FixtureRepo.CreateStandard();
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var log = new EngineLog(repo.Root.StateDirectory);
+        using var workspace = new RepoWorkspace(repo.Root, log.Write);
+        await workspace.InitializeAsync(cancellationToken);
+        using var scheduler = new Scheduler(1);
+        using var gate = new RequestGate();
+        var requestLog = new RequestLog(log);
+        var answers = new AnswerStore(repo.Root.StateDirectory);
+        var sessions = new SessionEdits(repo.Root, Path.Combine(repo.Root.StateDirectory, "sessions.tsv"), Path.Combine(repo.Root.StateDirectory, "registered-sessions.tsv"));
+        var checker = new Checker(workspace, sessions);
+        var route = new InspectionRoute(
+            workspace,
+            scheduler,
+            requestLog,
+            log,
+            new CandidateJudge(workspace, repo.Root),
+            new MemoryBudget(),
+            answers,
+            checker,
+            new BackgroundCheck(() => [], _ => null, answers, (_, _) => Task.CompletedTask, _ => { }),
+            new Preloader(workspace, gate, log.Write),
+            new BaselineWarmer(workspace, checker, gate, log.Write));
+
+        using var held = await workspace.HoldWriterForTestAsync(cancellationToken);
+        var started = Environment.TickCount64;
+        var response = await route.StatusAsync(new EngineRequest.Status(), Task.CompletedTask, cancellationToken);
+        var elapsed = Environment.TickCount64 - started;
+
+        var answered = Assert.IsType<EngineResponse.StatusAnswered>(response);
+        Assert.True(elapsed < 500, $"status took {elapsed} ms while the writer was held, at most 500");
+        Assert.Equal("syncing", answered.Engine.GateHolder);
     }
 
     /// <summary>Waits until status sees <paramref name="expected"/> changed files, which the watcher's events reach on their own time.</summary>

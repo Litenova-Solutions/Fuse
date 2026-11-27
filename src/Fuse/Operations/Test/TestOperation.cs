@@ -99,7 +99,7 @@ internal static class TestOperation
             EngineRequest request = all || releaseGate
                 ? new EngineRequest.PlanAllTests { Projects = scope?.Paths ?? [], BuildOnly = scope?.BuildOnly ?? false, Clean = clean, NoCache = noCache, MaxFailures = maxFailures }
                 : new EngineRequest.PlanAffectedTests { Session = session, Projects = scope?.Paths ?? [], BuildOnly = scope?.BuildOnly ?? false, Clean = clean, NoCache = noCache, MaxFailures = maxFailures };
-            var response = await EngineClient.SendAsync(root, request, TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
+            var response = await EngineClient.SendAsync(root, request, TimeSpan.FromMinutes(10), cancellationToken, onBusy: BusyNotice.For()).ConfigureAwait(false);
             if (response is not EngineResponse.PlanAnswered answered)
                 return OperationResult.Unanswered(response, "test plan");
             var plan = answered.Plan;
@@ -175,7 +175,7 @@ internal static class TestOperation
         try
         {
             EngineRequest request = new EngineRequest.PlanFailedTests([.. reruns.Select(r => new EngineRequest.FailedProject(r.Project, r.Failed))]) { Clean = clean, NoCache = noCache, MaxFailures = maxFailures };
-            var response = await EngineClient.SendAsync(root, request, TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
+            var response = await EngineClient.SendAsync(root, request, TimeSpan.FromMinutes(10), cancellationToken, onBusy: BusyNotice.For()).ConfigureAwait(false);
             if (response is not EngineResponse.PlanAnswered answered)
                 return OperationResult.Unanswered(response, "test plan");
             var plan = answered.Plan;

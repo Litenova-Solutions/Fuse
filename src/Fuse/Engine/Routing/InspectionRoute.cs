@@ -82,10 +82,12 @@ internal sealed class InspectionRoute
     }
 
     /// <summary>
-    ///     Answers what the tree holds, bypassing the scheduler entirely: it syncs under the workspace writer and
-    ///     reads the newest generation the sync publishes, naming the reader that runs meanwhile when one does; it
-    ///     never waits behind a queued check, and never loads a project and never refuses a repository without one.
-    ///     Its status carries the engine's working set, its memory ceiling and its GC memory load.
+    ///     Answers what the tree holds, bypassing the scheduler entirely: it tries the workspace writer for 100 ms
+    ///     and, when held, answers from the current generation instead of waiting on it, naming syncing (or the
+    ///     scheduler's holder) as the holder; otherwise it syncs and reads the newest generation the sync publishes,
+    ///     naming the reader that runs meanwhile when one does. It never waits behind a queued check, and never
+    ///     loads a project and never refuses a repository without one. Its status carries the engine's working set,
+    ///     its memory ceiling and its GC memory load.
     /// </summary>
     internal async Task<EngineResponse> StatusAsync(EngineRequest request, Task? initialization, CancellationToken cancellationToken)
     {
@@ -116,7 +118,14 @@ internal sealed class InspectionRoute
         try
         {
             var syncing = phases.Start();
-            await _workspace.SyncAsync([], cancellationToken).ConfigureAwait(false);
+            // Status answers without waiting on the writer: it tries the writer for 100 ms and, when held, answers
+            // from the current generation within 150 ms, naming syncing (or the scheduler's holder) as the holder.
+            if (!await _workspace.TrySyncAsync(TimeSpan.FromMilliseconds(100), cancellationToken).ConfigureAwait(false))
+            {
+                var fallback = CaptureStatus(reloadMs: null) with { GateHolder = _scheduler.CurrentHolder ?? "syncing" };
+                return new EngineResponse.StatusAnswered(fallback);
+            }
+
             phases.Add(Phase.Sync, syncing);
             long? reloadMs = _workspace.ConfigurationGeneration != configurationBefore
                 ? (long)Math.Round(syncing?.Elapsed.TotalMilliseconds ?? 0)

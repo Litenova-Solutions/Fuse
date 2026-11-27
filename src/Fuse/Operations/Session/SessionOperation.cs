@@ -122,7 +122,7 @@ internal static class SessionOperation
         var (patterns, refusal) = ValidatePatterns(root, specs);
         if (patterns is null)
             return new OperationResult(Outcome.Unanswered, refusal ?? throw new InvalidOperationException("a rejected pattern has no refusal"));
-        var response = await EngineClient.SendAsync(root, new EngineRequest.BeginSession(name, [.. patterns]) { Pid = pid }, Timeout, cancellationToken).ConfigureAwait(false);
+        var response = await EngineClient.SendAsync(root, new EngineRequest.BeginSession(name, [.. patterns]) { Pid = pid }, Timeout, cancellationToken, BusyNotice.For()).ConfigureAwait(false);
         if (response is EngineResponse.Acknowledged)
             return new OperationResult(Outcome.Clean, pid is { } tied
                 ? $"fuse: session {name} registered for {patterns.Count} path pattern(s); files under them count as that session's until fuse session end {name}, process {tied} exits or 4 hours pass"
@@ -165,7 +165,7 @@ internal static class SessionOperation
 
         foreach (var (name, patterns) in validated)
         {
-            var response = await EngineClient.SendAsync(root, new EngineRequest.BeginSession(name, [.. patterns]), Timeout, cancellationToken).ConfigureAwait(false);
+            var response = await EngineClient.SendAsync(root, new EngineRequest.BeginSession(name, [.. patterns]), Timeout, cancellationToken, BusyNotice.For()).ConfigureAwait(false);
             if (response is not EngineResponse.Acknowledged)
                 return OperationResult.Unanswered(response, "session registration");
         }
@@ -251,7 +251,7 @@ internal static class SessionOperation
         if (args.Count != 2 || string.IsNullOrWhiteSpace(args[1]))
             return new OperationResult(Outcome.Unanswered, Usage);
         var name = args[1];
-        var response = await EngineClient.SendAsync(root, new EngineRequest.EndSession(name), Timeout, cancellationToken).ConfigureAwait(false);
+        var response = await EngineClient.SendAsync(root, new EngineRequest.EndSession(name), Timeout, cancellationToken, BusyNotice.For()).ConfigureAwait(false);
         if (response is EngineResponse.Acknowledged)
             return new OperationResult(Outcome.Clean, $"fuse: session {name} ended; its files now count as no session's");
         return OperationResult.Unanswered(response, "session registration");
@@ -273,7 +273,8 @@ internal static class SessionOperation
                 root,
                 new EngineRequest.SessionGuard(new FreezeGuardRequest(name, Unfreeze: true)),
                 Timeout,
-                cancellationToken).ConfigureAwait(false);
+                cancellationToken,
+                BusyNotice.For()).ConfigureAwait(false);
             if (unfreezeResponse is EngineResponse.Acknowledged)
                 return new OperationResult(Outcome.Clean, $"fuse: guard {name} unfrozen; frozen contract patterns removed");
             return OperationResult.Unanswered(unfreezeResponse, "session guard");
@@ -291,7 +292,8 @@ internal static class SessionOperation
             root,
             new EngineRequest.SessionGuard(new FreezeGuardRequest(name, Unfreeze: false, [.. patterns])),
             Timeout,
-            cancellationToken).ConfigureAwait(false);
+            cancellationToken,
+            BusyNotice.For()).ConfigureAwait(false);
         if (response is EngineResponse.Acknowledged)
             return new OperationResult(Outcome.Clean, $"fuse: guard {name} frozen for {patterns.Count} path pattern(s); declaration changes will trigger watch alerts");
         return OperationResult.Unanswered(response, "session guard");

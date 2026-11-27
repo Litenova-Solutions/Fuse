@@ -293,7 +293,7 @@ internal sealed class TestPlanExecutor
             return new OperationResult(Outcome.ProblemsFound, $"fuse: none of the {failedRerunCount} test(s) that failed last time ran; they may have been renamed or removed");
 
         var shadowRuns = outcomes.Count;
-        var mode = shadowRuns == groups.Count ? "without MSBuild" : shadowRuns > 0 ? $"without MSBuild for {shadowRuns} of {groups.Count} project(s)" : "built with MSBuild";
+        var mode = shadowRuns == groups.Count ? "from shadow copy (without MSBuild)" : shadowRuns > 0 ? $"from shadow copy (without MSBuild) for {shadowRuns} of {groups.Count} project(s)" : "built with MSBuild";
         var resultsPath = aggregate.Total > 0 ? ResultsFile.WriteTestsWithPaths(root, perProject) : null;
         if (reuse is not null && aggregate.Total > 0)
             LastTestResults.WriteRun(root, reuse.Value.TreeHash, reuse.Value.FullHash, reuse.Value.AssetsHash, reuse.Value.PlanKey, DateTime.UtcNow, TestOperation.Seconds(started), $"{plan.Summary}; {mode}", aggregate, perProject, problems);
@@ -402,9 +402,9 @@ internal sealed class TestPlanExecutor
                 perProject.Add((group.First().Project, group.First().Name, outcomes.Select(o => o.Outcome).Aggregate(TestRunSummary.Empty, (a, b) => a.Add(b))));
         }
 
-        // A split project ran without MSBuild only when both its stages did.
+        // A split project ran from a shadow copy only when both its stages did.
         var shadowRuns = priority.Count(p => first.Shadowed.Contains(p.Key) && second.Shadowed.Contains(p.Key)) + single.Count(g => second.Shadowed.Contains(g.Key));
-        var mode = shadowRuns == groups.Count ? "without MSBuild" : shadowRuns > 0 ? $"without MSBuild for {shadowRuns} of {groups.Count} project(s)" : "built with MSBuild";
+        var mode = shadowRuns == groups.Count ? "from shadow copy (without MSBuild)" : shadowRuns > 0 ? $"from shadow copy (without MSBuild) for {shadowRuns} of {groups.Count} project(s)" : "built with MSBuild";
         var resultsPath = aggregate.Total > 0 ? ResultsFile.WriteTestsWithPaths(root, perProject) : null;
         if (reuse is not null && aggregate.Total > 0)
             LastTestResults.WriteRun(root, reuse.Value.TreeHash, reuse.Value.FullHash, reuse.Value.AssetsHash, reuse.Value.PlanKey, DateTime.UtcNow, TestOperation.Seconds(started), $"{plan.Summary}; {mode}", aggregate, perProject, problems);

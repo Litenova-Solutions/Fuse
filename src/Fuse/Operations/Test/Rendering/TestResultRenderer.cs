@@ -60,10 +60,10 @@ internal static class TestResultRenderer
 
         if (restCount > 0)
         {
-            // Names only past the detail budget, so the agent sees up to 110 failing tests by name.
+            // Names only past the detail budget, each on its own FAILED line, so a script matching FAILED finds every failure.
             text.Append($"also failed ({restCount}):\n");
             foreach (var name in restNames.Take(MaxNamesShown))
-                text.Append("  ").Append(name).Append('\n');
+                text.Append("  FAILED ").Append(name).Append('\n');
             if (restNames.Count > MaxNamesShown)
                 text.Append($"  ... and {restNames.Count - MaxNamesShown} more\n");
         }

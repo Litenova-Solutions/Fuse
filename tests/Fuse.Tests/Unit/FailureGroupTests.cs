@@ -43,7 +43,7 @@ public class FailureGroupTests
         Assert.DoesNotContain(lines, l => l == "FAILED Lib.Tests.G.Test2");
         var list = lines.SkipWhile(l => !l.StartsWith("also failed (", StringComparison.Ordinal)).ToList();
         Assert.Equal("also failed (5):", list[0]);
-        Assert.Contains("  Lib.Tests.G.Test2", list);
+        Assert.Contains("  FAILED Lib.Tests.G.Test2", list);
         // Every detailed line starts at column 0 and every listed name is indented, as the evals read them.
         Assert.All(lines.Where(l => l.StartsWith("FAILED ", StringComparison.Ordinal)), l => Assert.Equal(l, l.TrimStart()));
         Assert.StartsWith("fuse: 13 failed, 0 passed in 2.0 s; ran 13 test(s)", lines[^1], StringComparison.Ordinal);

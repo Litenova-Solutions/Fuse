@@ -427,7 +427,10 @@ internal static partial class SelectionSuite
             else if (line.StartsWith("also failed", StringComparison.Ordinal))
                 inList = true;
             else if (inList && line.StartsWith("  ", StringComparison.Ordinal) && !line.StartsWith("  ... and ", StringComparison.Ordinal))
-                names.Add(line.Trim());
+            {
+                var listed = line.Trim();
+                names.Add(listed.StartsWith("FAILED ", StringComparison.Ordinal) ? listed["FAILED ".Length..] : listed);
+            }
             else if (inList)
                 inList = false;
         }

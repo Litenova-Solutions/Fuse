@@ -5,9 +5,11 @@ using Fuse.Paths;
 using Fuse.Protocol.Analysis;
 using Fuse.Protocol.Requests;
 using Fuse.Telemetry;
+using Fuse.Testing.Filtering;
 using Fuse.Testing.Model;
 using Fuse.Testing.Model.Caching;
 using Fuse.Testing.Planning;
+using Fuse.Testing.Selection;
 using Fuse.Workspace.Generations;
 namespace Fuse.Engine.Routing;
 
@@ -61,7 +63,45 @@ internal sealed class TestPlanRoute
             _ => throw new UnreachableException($"{request.GetType().Name} is answered before the scheduler"),
         };
         var pending = await _planner.SelectAsync(scope, phases, cancellationToken).ConfigureAwait(false);
+        if (request is EngineRequest.PlanAllTests scoped && scoped.Projects.Length > 0)
+            pending = FilterAllToProjects(pending, scoped.Projects);
         return (pending, noCache);
+    }
+
+    /// <summary>
+    ///     Limits an every-test plan to the named test projects. Every-test plans answer at once with no preparation,
+    ///     so only that shape is filtered; a plan that needs preparation stays whole.
+    /// </summary>
+    /// <param name="pending">The planned every-test plan.</param>
+    /// <param name="projects">Absolute paths naming test project files, solution files, or directories holding them.</param>
+    private static PendingTestPlan FilterAllToProjects(PendingTestPlan pending, string[] projects)
+    {
+        if (pending is not PendingTestPlan.Ready ready)
+            return pending;
+        // Paths the command named limit the plan to the test projects they name; none naming one is refused.
+        var named = NamedTestProjects.Resolve(ready.Generation.Graph, projects);
+        var keep = named.Select(n => n.Path).ToHashSet();
+        var runs = ready.Result.Runs.Where(r => keep.Contains(r.Project)).ToList();
+        if (runs.Count == ready.Result.Runs.Count)
+            return pending;
+        var counter = new TestCounter();
+        var nodes = ready.Generation.Graph.Projects.Where(p => keep.Contains(p.Path)).ToDictionary(p => p.Path);
+        var selected = runs.Sum(r => nodes.TryGetValue(r.Project, out var node) ? counter.TestsIn(node).Count : 0);
+        var gatedProjects = ready.Result.ContainerGatedProjects.Where(p => named.Any(n => n.Name == p)).OrderBy(p => p, StringComparer.Ordinal).ToArray();
+        var excludedGatedTests = ready.Generation.Graph.Projects
+            .Where(p => p.IsTest && ready.Result.ContainerGatedProjects.Contains(p.Name, StringComparer.Ordinal) && !keep.Contains(p.Path))
+            .Sum(p => counter.TestsIn(p).Count);
+        var gatedTests = Math.Max(0, ready.Result.ContainerGatedTests - excludedGatedTests);
+        var summary = $"ran every test in {runs.Count} test project(s)";
+        if (gatedTests > 0)
+            summary += $"; skipped {gatedTests} test(s) in {string.Join(", ", gatedProjects)} (no container runtime)";
+        summary += $"; in {string.Join(", ", named.Select(n => n.Name))}";
+        var result = new TestPlanResult(runs, selected, ready.Result.TotalTests, summary)
+        {
+            ContainerGatedTests = gatedTests,
+            ContainerGatedProjects = gatedProjects,
+        };
+        return PendingTestPlan.Of(result, ready.Generation);
     }
 
     /// <summary>Prepares the shadow runs of a selected plan and answers it.</summary>

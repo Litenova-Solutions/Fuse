@@ -96,8 +96,13 @@ internal static class TestCliCommand
 
         if (all && passthrough.Count > 0)
         {
-            Console.Error.WriteLine("fuse: --all runs every test and cannot be combined with other arguments; pass the arguments without --all to choose the scope");
-            return 2;
+            // --all takes the same scope as a plain run: project, solution and directory paths with the build
+            // switches. Any other argument chooses the tests itself and cannot be combined with it.
+            if (TestScopeArguments.Parse(Environment.CurrentDirectory, passthrough) is not ParseResult<TestScopeArguments?>.Parsed parsedAll || parsedAll.Value is null)
+            {
+                Console.Error.WriteLine("fuse: --all runs every test and cannot be combined with other arguments; pass the arguments without --all to choose the scope");
+                return 2;
+            }
         }
 
         // Only what precedes -- can mistype a Fuse option; past it every token is dotnet test's.

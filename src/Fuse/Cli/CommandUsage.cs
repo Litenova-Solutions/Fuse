@@ -54,7 +54,7 @@ internal static class CommandUsage
         fuse test [dotnet test arguments] [--all|--failed] [--clean] [--no-cache] [--max-failures <n>]
           run the tests affected by your changes. With arguments that only say where the tests are, the affected
           tests in that scope; with any other argument, the tests those arguments name.
-          --all               run every test (cannot be combined with other arguments)
+          --all               run every test in the scope the arguments name (with no scope, every test in the repository)
           --failed            rerun the tests that failed in the last recorded run (cannot be combined with other arguments)
           --clean             bypass cached results; run fresh processes
           --no-cache          bypass cached test results

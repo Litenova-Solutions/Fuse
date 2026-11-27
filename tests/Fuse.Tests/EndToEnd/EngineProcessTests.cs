@@ -328,7 +328,6 @@ public class EngineProcessTests
 
     [Theory]
     [InlineData("--all", "--filter", "Name=A")]
-    [InlineData("Lib.Tests", "--all")]
     public async Task Test_all_with_other_arguments_is_a_usage_failure(params string[] arguments)
     {
         using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });

@@ -93,8 +93,11 @@ internal static class TestOperation
         var buildLock = BuildLock.AcquireForClient(root);
         try
         {
-            EngineRequest request = all
-                ? new EngineRequest.PlanAllTests { Clean = clean, NoCache = noCache, MaxFailures = maxFailures }
+            // A routed dotnet test that names a configuration other than Debug with --no-build is a release gate:
+            // it runs every test in the named scope with the original switches instead of the affected tests.
+            var releaseGate = !all && scope is not null && IsReleaseGate(scope);
+            EngineRequest request = all || releaseGate
+                ? new EngineRequest.PlanAllTests { Projects = scope?.Paths ?? [], BuildOnly = scope?.BuildOnly ?? false, Clean = clean, NoCache = noCache, MaxFailures = maxFailures }
                 : new EngineRequest.PlanAffectedTests { Session = session, Projects = scope?.Paths ?? [], BuildOnly = scope?.BuildOnly ?? false, Clean = clean, NoCache = noCache, MaxFailures = maxFailures };
             var response = await EngineClient.SendAsync(root, request, TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
             if (response is not EngineResponse.PlanAnswered answered)
@@ -104,7 +107,11 @@ internal static class TestOperation
             if (plan.Runs.Length == 0 && plan.ContainerGatedTests > 0)
                 return TestResultRenderer.WithoutRuntime(plan);
             if (plan.Runs.Length == 0)
+            {
+                if (!all && !releaseGate && scope?.Paths.Length > 0)
+                    return new OperationResult(Outcome.Clean, ScopedEmptyMessage(scope));
                 return new OperationResult(Outcome.Clean, $"fuse: {plan.Summary}");
+            }
             var failedFirst = FailedFirstSplit.ForPlan(root, plan);
             var held = buildLock;
             buildLock = null;
@@ -114,6 +121,34 @@ internal static class TestOperation
         {
             buildLock?.Dispose();
         }
+    }
+
+    /// <summary>
+    ///     Whether <paramref name="scope"/> is a release gate: it names a configuration other than Debug with
+    ///     <c>--no-build</c> for named test projects, so the run covers every test in that scope with the original
+    ///     switches instead of the affected tests.
+    /// </summary>
+    internal static bool IsReleaseGate(TestScopeArguments scope) =>
+        scope is { Configuration: not null, Paths.Length: > 0 }
+        && !scope.Configuration.Equals("Debug", StringComparison.OrdinalIgnoreCase)
+        && scope.BuildSwitches.Contains("--no-build");
+
+    /// <summary>The answer when no test in the named scope is affected: which scope ran, and the every-test run that covers it.</summary>
+    internal static string ScopedEmptyMessage(TestScopeArguments scope)
+    {
+        var hint = string.Join(" ", scope.Paths.Select(p => $"--project {p}"));
+        return $"fuse: 0 tests affected in {string.Join(", ", scope.Paths.Select(DisplayName))}; run 'fuse test --all {hint}' to run every test in it";
+    }
+
+    /// <summary>The scope path as the answer names it: a project or solution file without its extension, else the file or directory name.</summary>
+    private static string DisplayName(string path)
+    {
+        var name = path.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase)
+            || path.EndsWith(".sln", StringComparison.OrdinalIgnoreCase)
+            || path.EndsWith(".slnx", StringComparison.OrdinalIgnoreCase)
+            ? Path.GetFileNameWithoutExtension(path)
+            : Path.GetFileName(path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        return name.Length > 0 ? name : path;
     }
 
     /// <summary>Reruns the tests that failed in the last recorded run, or answers why there is nothing to rerun.</summary>

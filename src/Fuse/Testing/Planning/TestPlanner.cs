@@ -36,6 +36,7 @@ internal sealed class TestPlanner
     private readonly TestSelector _selector;
     private readonly TestCounter _counter = new();
     private readonly ShadowEmitCaches _shadow = new();
+    private readonly ShadowSafetyInspector _safety = new();
     private readonly TimeProvider _time;
     private readonly Func<bool> _containerProbe;
 
@@ -372,6 +373,13 @@ internal sealed class TestPlanner
 
         var prepared = new List<(Project Variant, RunMode.Shadow Shadow, string? Filter, string[] FilterArguments, SliceCacheState Cache)>();
         var runSettings = RunSettingsOf(node);
+        var skipReason = await _safety.SkipReasonAsync(node, variants, preparation.Generation.Current, cancellationToken).ConfigureAwait(false);
+        if (skipReason is not null)
+        {
+            _workspace.Log($"shadow skipped for {node.Name}: {skipReason}");
+            return [new PlannedRun(node.Path, node.Name, new RunMode.Build(), filter, RunnerOf(node, runSettings, filterArguments)) { ShadowSkipReason = skipReason }];
+        }
+
         foreach (var variant in variants)
         {
             var result = await emitter.PrepareDetailedAsync(variant, preparation.Generation.Graph, _workspace.Log, emitting, cancellationToken).ConfigureAwait(false);

@@ -15,4 +15,7 @@ internal sealed record PlannedRun(RepoPath Project, string Name, RunMode Mode, s
 {
     /// <summary>What the slice cache holds for this run: nothing, a key with no verdict, or a key with its verdict.</summary>
     public SliceCacheState Cache { get; init; } = new SliceCacheState.Uncached();
+
+    /// <summary>Why this run builds with MSBuild instead of running from a shadow copy, or null when it is not a shadow skip.</summary>
+    public string? ShadowSkipReason { get; init; }
 }

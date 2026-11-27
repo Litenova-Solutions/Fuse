@@ -75,7 +75,7 @@ internal sealed class RequestRouter : IDisposable
         _testPlanRoute = new TestPlanRoute(_planner, _workspace, _sessions, log);
         _sessionRoute = new SessionRoute(_sessions, guards, watchHub, root, log);
         _background = new BackgroundCheck(_checkRoute.LiveSessionFiles, _checkRoute.BackgroundKey, _answers, RunBackgroundCheckAsync, log.Write);
-        _inspectionRoute = new InspectionRoute(_workspace, scheduler, _requestLog, log, judge, budget, _answers, checker, _background, _preloader, _warmer);
+        _inspectionRoute = new InspectionRoute(_workspace, scheduler, _requestLog, log, judge, budget, _answers, checker, _background, _preloader, _warmer, _sessions);
         _watchHub = watchHub;
     }
 

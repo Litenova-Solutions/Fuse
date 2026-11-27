@@ -1,8 +1,10 @@
 using Fuse.Check.Candidates;
 using Fuse.Check.Pipeline;
+using Fuse.Check.Sessions;
 using Fuse.Engine.Background;
 using Fuse.Engine.Scheduling;
 using Fuse.Failures;
+using Fuse.Identity;
 using Fuse.Inspection;
 using Fuse.Judge;
 using Fuse.Judge.Model;
@@ -34,13 +36,14 @@ internal sealed class InspectionRoute
     private readonly BackgroundCheck _background;
     private readonly Preloader _preloader;
     private readonly BaselineWarmer _warmer;
+    private readonly SessionEdits? _sessions;
 
     /// <summary>Guards the last completed sync's status and the distinct touched paths it counted.</summary>
     private readonly Lock _statusLock = new();
     private readonly HashSet<RepoPath> _touchedPaths = [];
     private int _touchedConfigurationGeneration;
 
-    internal InspectionRoute(RepoWorkspace workspace, Scheduler scheduler, RequestLog requestLog, EngineLog log, CandidateJudge judge, MemoryBudget budget, AnswerStore answers, Checker checker, BackgroundCheck background, Preloader preloader, BaselineWarmer warmer)
+    internal InspectionRoute(RepoWorkspace workspace, Scheduler scheduler, RequestLog requestLog, EngineLog log, CandidateJudge judge, MemoryBudget budget, AnswerStore answers, Checker checker, BackgroundCheck background, Preloader preloader, BaselineWarmer warmer, SessionEdits? sessions = null)
     {
         _workspace = workspace;
         _scheduler = scheduler;
@@ -53,6 +56,7 @@ internal sealed class InspectionRoute
         _background = background;
         _preloader = preloader;
         _warmer = warmer;
+        _sessions = sessions;
     }
 
     /// <summary>
@@ -65,6 +69,7 @@ internal sealed class InspectionRoute
         if (_budget.Assess().Shed.Contains(MemoryBudget.ShedStep.Background))
         {
             _background.CancelCurrent();
+            _warmer.CancelCurrent();
             _log.Write("memory: background load and warm shed at this request boundary");
             return;
         }
@@ -264,7 +269,8 @@ internal sealed class InspectionRoute
                 Environment.WorkingSet,
                 changed.Count,
                 generation.Head,
-                TreeStamp.Of(CheckRoute.ChangedPairs(changed)))
+                TreeStamp.Of(CheckRoute.ChangedPairs(changed)),
+                LiveSessions())
             {
                 ChangedSourcesInReach = changed.Count(path => generation.Graph.OwnersOf(path).Count > 0),
                 GateHolder = _scheduler.CurrentHolder,
@@ -280,6 +286,18 @@ internal sealed class InspectionRoute
             };
             return status;
         }
+    }
+
+    /// <summary>
+    ///     The live session registrations, named without the stored prefix, after pruning those that have ended.
+    ///     Empty when this route was built without the sessions, as a test builds it.
+    /// </summary>
+    private ReportedSession[] LiveSessions()
+    {
+        if (_sessions is null)
+            return [];
+        return [.. _sessions.LiveRegistrations()
+            .Select(r => new ReportedSession(SessionId.DisplayNameOf(r.Session), [.. r.Patterns], r.Pid, r.Expires))];
     }
 
     /// <summary>Stores the status after a sync, naming its reload when the configuration generation moved during it.</summary>

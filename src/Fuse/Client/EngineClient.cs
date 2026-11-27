@@ -11,8 +11,19 @@ using Fuse.Repo.Tracking;
 namespace Fuse.Client;
 
 /// <summary>Sends one request to the repository's engine, starting the engine when none is running.</summary>
-internal static class EngineClient
+internal sealed class EngineClient : IEngineTransport
 {
+    private EngineClient()
+    {
+    }
+
+    /// <summary>The transport that talks to the engine over its pipe, for a type that takes an <see cref="IEngineTransport"/>.</summary>
+    public static IEngineTransport Default { get; } = new EngineClient();
+
+    /// <inheritdoc/>
+    Task<EngineResponse> IEngineTransport.SendAsync(RepoRoot root, EngineRequest request, TimeSpan timeout, Action<EngineResponse.Busy>? onBusy, CancellationToken cancellationToken) =>
+        SendAsync(root, request, timeout, cancellationToken, onBusy);
+
     private static readonly TimeSpan StartTimeout = TimeSpan.FromSeconds(15);
 
     /// <summary>How long a pipe existence answer is kept, so a round trip that asks twice in quick succession enumerates the pipes once.</summary>

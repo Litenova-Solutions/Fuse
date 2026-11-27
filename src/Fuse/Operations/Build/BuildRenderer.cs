@@ -13,9 +13,9 @@ internal static class BuildRenderer
         var diagnostics = BuildOutputParser.Diagnostics(context.Result.Output, context.Root);
         List<(string Command, List<string> Lines)> commands = context.Log.Length == 0 ? [] : BuildLog.FailedCommands(context.Log);
         List<BuildWarning> warnings = context.Options.ListWarnings && context.Log.Length > 0 ? ListedWarnings(BuildLog.WarningsList(context.Log, context.Root), diagnostics) : [];
-        var warningsCount = context.Log.Length == 0 ? 0 : BuildLog.Warnings(context.Log);
+        int? warningsCount = context.Log.Length == 0 ? null : BuildLog.Warnings(context.Log);
         var times = context.Seconds >= BuildOperation.TimesFromSeconds && context.Log.Length > 0 ? BuildLog.Times(context.Log) : null;
-        return RenderCore(context.Root, diagnostics, commands, warnings, warningsCount, times, context.Result.ExitCode, BuildOperation.Tail(context.Result.Output), context.Seconds, context.Operation, context.Options, context.ResultsPath, context.TreeStamp, context.FileTotal, context.RestoreTarget);
+        return RenderCore(context.Root, diagnostics, commands, warnings, warningsCount, times, context.Result.ExitCode, BuildOperation.Tail(context.Result.Output), context.Seconds, context.Operation, context.Options, context.ResultsPath, context.TreeStamp, context.FileTotal, context.RestoreTarget, context.Passthrough, context.Changed);
     }
 
     /// <summary>Renders parsed diagnostics the way a fresh build prints them: the errors, the lock and refresh lines under them, the warnings, and the summary.</summary>
@@ -23,7 +23,7 @@ internal static class BuildRenderer
     /// <param name="diagnostics">The errors in first-seen order.</param>
     /// <param name="commands">Each failed command with the last lines it printed.</param>
     /// <param name="warnings">The warnings that are not also errors, listed only with <c>--warnings</c>.</param>
-    /// <param name="warningsCount">How many warnings the build produced.</param>
+    /// <param name="warningsCount">How many warnings the build produced, or null when its log was not read.</param>
     /// <param name="times">Where the build's time went, or null when it is not said.</param>
     /// <param name="exitCode">The code the build exited with.</param>
     /// <param name="tail">The last lines of the build's output, for a failure without an error line.</param>
@@ -34,7 +34,9 @@ internal static class BuildRenderer
     /// <param name="treeStamp">The stamp a <c>fuse build</c> summary carries, or null to print none.</param>
     /// <param name="fileTotal">How many errors the results file holds when it holds more than this build's, or null.</param>
     /// <param name="restoreTarget">What a lock refresh restores, relative to the root, or null to derive it from the repository.</param>
-    internal static OperationResult RenderCore(string root, List<BuildDiagnostic> diagnostics, IReadOnlyList<(string Command, List<string> Lines)> commands, List<BuildWarning> warnings, int warningsCount, string? times, int exitCode, string tail, double seconds, string operation, BuildOptions options, string? resultsPath, string? treeStamp, int? fileTotal, string? restoreTarget)
+    /// <param name="passthrough">The arguments for <c>dotnet build</c>, unchanged, or null when the <c>--all-errors</c> hint names none.</param>
+    /// <param name="changed">True when the build covers the changed projects, so the <c>--all-errors</c> hint keeps <c>--changed</c>.</param>
+    internal static OperationResult RenderCore(string root, List<BuildDiagnostic> diagnostics, IReadOnlyList<(string Command, List<string> Lines)> commands, List<BuildWarning> warnings, int? warningsCount, string? times, int exitCode, string tail, double seconds, string operation, BuildOptions options, string? resultsPath, string? treeStamp, int? fileTotal, string? restoreTarget, IReadOnlyList<string>? passthrough = null, bool changed = false)
     {
         var text = new StringBuilder();
         if (options.Json)
@@ -84,7 +86,7 @@ internal static class BuildRenderer
             AppendWarnings(text, warnings, resultsPath);
 
         var timesTail = times is null ? "" : $" ({times})";
-        var warningsTail = warningsCount > 0 ? $"; {warningsCount} warning(s)" : "";
+        var warningsTail = warningsCount is null ? "" : $"; {warningsCount} warning(s)";
         if (exitCode == 0)
         {
             text.Append($"fuse: {operation} succeeded in {seconds:0.0} s{warningsTail}{timesTail}{treeStamp}");
@@ -98,10 +100,13 @@ internal static class BuildRenderer
         }
 
         var shown = options.Json ? diagnostics.Count : Math.Min(options.MaxShown, diagnostics.Count);
-        var more = !options.Json && diagnostics.Count > shown ? $", first {shown} shown" : "";
+        var capped = !options.Json && diagnostics.Count > shown;
+        var more = capped ? $", first {shown} shown" : "";
         // The file holds every error; the answer names it only when it left errors out, and never in JSON, which already holds them.
-        var file = !options.Json && diagnostics.Count > shown && resultsPath is not null ? $"; all {fileTotal ?? diagnostics.Count} in {resultsPath}" : "";
-        text.Append($"fuse: {operation} failed with {diagnostics.Count} error(s){more} in {seconds:0.0} s{warningsTail}{timesTail}{treeStamp}{file}");
+        var file = capped && resultsPath is not null ? $"; all {fileTotal ?? diagnostics.Count} in {resultsPath}" : "";
+        // The hinted command keeps the original arguments, so it reuses this finished build instead of building again.
+        var hint = capped ? $"; {BuildOperation.AllErrorsHint(passthrough ?? [], changed)} for every error" : "";
+        text.Append($"fuse: {operation} failed with {diagnostics.Count} error(s){more} in {seconds:0.0} s{warningsTail}{timesTail}{treeStamp}{file}{hint}");
         return new OperationResult(Outcome.ProblemsFound, text.ToString());
     }
 

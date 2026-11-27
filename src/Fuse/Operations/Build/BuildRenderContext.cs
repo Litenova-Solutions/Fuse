@@ -12,6 +12,8 @@ namespace Fuse.Operations.Build;
 /// <param name="TreeStamp">The stamp a <c>fuse build</c> summary carries, or null to print none.</param>
 /// <param name="FileTotal">How many errors the results file holds when it holds more than this build's, or null.</param>
 /// <param name="RestoreTarget">What a lock refresh restores, relative to the root, or null to derive it from the repository.</param>
+/// <param name="Passthrough">The arguments for <c>dotnet build</c>, unchanged, or null when the <c>--all-errors</c> hint names none.</param>
+/// <param name="Changed">True when the build covers the changed projects, so the <c>--all-errors</c> hint keeps <c>--changed</c>.</param>
 internal sealed record BuildRenderContext(
     ProcessResult Result,
     string Root,
@@ -22,4 +24,6 @@ internal sealed record BuildRenderContext(
     string Log = "",
     string? TreeStamp = null,
     int? FileTotal = null,
-    string? RestoreTarget = null);
+    string? RestoreTarget = null,
+    IReadOnlyList<string>? Passthrough = null,
+    bool Changed = false);

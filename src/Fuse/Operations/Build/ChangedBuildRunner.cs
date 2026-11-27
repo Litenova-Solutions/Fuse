@@ -74,7 +74,7 @@ internal static class ChangedBuildRunner
             text.Append('\n');
             if (rerunLine is not null)
                 text.Append(rerunLine).Append('\n');
-            var rendered = BuildRenderer.Render(new BuildRenderContext(result, root.Path, seconds, label, options, resultsPath, log, treeStamp, diagnostics.Count));
+            var rendered = BuildRenderer.Render(new BuildRenderContext(result, root.Path, seconds, label, options, resultsPath, log, treeStamp, diagnostics.Count, Passthrough: filteredArgs, Changed: true));
             text.Append(rendered.Text);
             return new OperationResult(rendered.Outcome, text.ToString());
         }
@@ -101,7 +101,7 @@ internal static class ChangedBuildRunner
             text.Append('\n');
             if (rerunLine is not null)
                 text.Append(rerunLine).Append('\n');
-            var rendered = BuildRenderer.Render(new BuildRenderContext(result, root.Path, seconds, $"build ({name})", options, singleResultsPath, log, singleStamp, errors.Count, RestoreTarget: BuildOperation.RelativeProject(project, root.Path)));
+            var rendered = BuildRenderer.Render(new BuildRenderContext(result, root.Path, seconds, $"build ({name})", options, singleResultsPath, log, singleStamp, errors.Count, RestoreTarget: BuildOperation.RelativeProject(project, root.Path), Passthrough: filteredArgs, Changed: true));
             if (rendered.Outcome == Outcome.ProblemsFound)
                 failed++;
             text.Append(rendered.Text);

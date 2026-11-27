@@ -20,7 +20,7 @@ internal static class BuildCliCommand
 
         var arguments = ((ParseResult<BuildArguments>.Parsed)parsed).Value;
         if (arguments.FromRewrite)
-            Console.Error.WriteLine("fuse: dotnet build routed to fuse build (first 20 errors; fuse build --all-errors for every error)");
+            Console.Error.WriteLine($"fuse: dotnet build routed to fuse build (first 20 errors; {BuildOperation.AllErrorsHint(arguments.Passthrough, arguments.Changed)} for every error)");
         var root = RepoRoot.Find(Environment.CurrentDirectory);
         if (arguments.Changed)
         {

@@ -53,13 +53,13 @@ internal static partial class BuildOperation
         // The arguments are the user's, unchanged, so an implicit restore still happens: an agent that has just added a
         // package reference and then builds needs it. Fuse adds the lock and leaves the command as it is.
         if (root is null)
-            return await BuildAsync(workingDirectory, workingDirectory, Path.GetTempPath(), filteredArgs, options, null, includeTreeStamp: false, cancellationToken).ConfigureAwait(false);
+            return await BuildAsync(workingDirectory, workingDirectory, Path.GetTempPath(), filteredArgs, options, null, includeTreeStamp: false, filteredArgs, cancellationToken).ConfigureAwait(false);
 
         using var buildLock = parallelArtifacts
             ? BuildLock.AcquireForProjectsForClient(root, [], parallelArtifacts: true)
             : BuildLock.AcquireForClient(root);
         var effectiveArgs = WithArtifactsPath(filteredArgs, buildLock.ArtifactsPath);
-        return await BuildAsync(workingDirectory, root.Path, root.StateDirectory, effectiveArgs, options, root, includeTreeStamp, cancellationToken).ConfigureAwait(false);
+        return await BuildAsync(workingDirectory, root.Path, root.StateDirectory, effectiveArgs, options, root, includeTreeStamp, filteredArgs, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -232,7 +232,7 @@ internal static partial class BuildOperation
         }
     }
 
-    private static async Task<OperationResult> BuildAsync(string workingDirectory, string root, string logDirectory, IReadOnlyList<string> arguments, BuildOptions options, RepoRoot? resultsRoot, bool includeTreeStamp, CancellationToken cancellationToken)
+    private static async Task<OperationResult> BuildAsync(string workingDirectory, string root, string logDirectory, IReadOnlyList<string> arguments, BuildOptions options, RepoRoot? resultsRoot, bool includeTreeStamp, IReadOnlyList<string> hintArguments, CancellationToken cancellationToken)
     {
         var stamp = resultsRoot is null ? null : await BuildResultsFile.StampForReuseAsync(resultsRoot, cancellationToken).ConfigureAwait(false);
         if (resultsRoot is not null && stamp is not null && !arguments.Contains("--artifacts-path") && ReusedBuild(resultsRoot, stamp.Value, BuildResultsFile.WholeScope, [], arguments, workingDirectory, options) is { } reused)
@@ -250,7 +250,7 @@ internal static partial class BuildOperation
         var restoreTarget = resultsRoot is null ? null : RestoreTargetHint(arguments, workingDirectory, root);
         if (stamp is not null && resultsRoot is not null && !arguments.Contains("--artifacts-path") && ShouldRecord(diagnostics))
             BuildResultsFile.WriteReuse(resultsRoot, stamp.Value, BuildResultsFile.WholeScope, [], arguments, RelativeWorkingDirectory(resultsRoot, workingDirectory), DateTime.UtcNow, [BuildRun("build", result, log, seconds, diagnostics, warnings, restoreTarget)], treeStamp, null);
-        var rendered = Render(result, root, seconds, "build", options, resultsPath, log, treeStamp, restoreTarget: restoreTarget);
+        var rendered = Render(result, root, seconds, "build", options, resultsPath, log, treeStamp, restoreTarget: restoreTarget, passthrough: hintArguments);
         return rerunLine is not null ? rendered with { Text = rerunLine + "\n" + rendered.Text } : rendered;
     }
 
@@ -281,7 +281,7 @@ internal static partial class BuildOperation
         foreach (var run in record.Runs)
         {
             text.Append(ReusedLine(run.Label, record.FinishedUtc, record.TreeHash)).Append('\n');
-            var rendered = BuildRenderer.RenderCore(root.Path, run.Errors, run.Commands, options.ListWarnings ? BuildRenderer.ListedWarnings(run.Warnings, run.Errors) : [], run.WarningsCount, run.Times, run.ExitCode, run.Tail, run.Seconds, run.Label, options, resultsPath, record.TreeStamp, record.FileTotal, run.RestoreTarget);
+            var rendered = BuildRenderer.RenderCore(root.Path, run.Errors, run.Commands, options.ListWarnings ? BuildRenderer.ListedWarnings(run.Warnings, run.Errors) : [], run.WarningsCount, run.Times, run.ExitCode, run.Tail, run.Seconds, run.Label, options, resultsPath, record.TreeStamp, record.FileTotal, run.RestoreTarget, record.Arguments, record.Scope == BuildResultsFile.ChangedScope);
             if (rendered.Outcome == Outcome.ProblemsFound)
                 failed++;
             text.Append(rendered.Text).Append('\n');
@@ -331,6 +331,32 @@ internal static partial class BuildOperation
         {
             return project.Replace('\\', '/');
         }
+    }
+
+    /// <summary>
+    ///     The <c>fuse build</c> command that prints every error of a finished build: the original arguments with
+    ///     <c>--all-errors</c> last, so running it reuses the finished build through <see cref="ReusedBuild"/> instead of
+    ///     building again. The reuse record keys on the arguments for <c>dotnet build</c>, which the flags Fuse adds
+    ///     never join, so the same arguments with <c>--all-errors</c> print the stored result.
+    /// </summary>
+    /// <param name="passthrough">The arguments for <c>dotnet build</c>, unchanged.</param>
+    /// <param name="changed">True when the build covers the changed projects, which the command keeps as <c>--changed</c>.</param>
+    internal static string AllErrorsHint(IReadOnlyList<string> passthrough, bool changed)
+    {
+        var command = new StringBuilder("fuse build");
+        foreach (var argument in passthrough)
+            command.Append(' ').Append(QuoteForShell(argument));
+        if (changed)
+            command.Append(" --changed");
+        return command.Append(" --all-errors").ToString();
+    }
+
+    /// <summary>One argument as a shell command carries it: quoted when it is empty or holds whitespace or a quote.</summary>
+    internal static string QuoteForShell(string argument)
+    {
+        if (argument.Length > 0 && argument.All(character => !char.IsWhiteSpace(character) && character != '"' && character != '\''))
+            return argument;
+        return "\"" + argument.Replace("\"", "\\\"") + "\"";
     }
 
     /// <summary>What the user's build arguments already name to restore: the first project or solution among them, relative to the root, or null.</summary>
@@ -465,8 +491,10 @@ internal static partial class BuildOperation
     /// <param name="treeStamp">The stamp a <c>fuse build</c> summary carries, or null to print none.</param>
     /// <param name="fileTotal">How many errors the results file holds when it holds more than this build's, or null.</param>
     /// <param name="restoreTarget">What a lock refresh restores, relative to the root, or null to derive it from the repository.</param>
-    internal static OperationResult Render(ProcessResult result, string root, double seconds, string operation, BuildOptions options, string? resultsPath = null, string log = "", string? treeStamp = null, int? fileTotal = null, string? restoreTarget = null) =>
-        BuildRenderer.Render(new BuildRenderContext(result, root, seconds, operation, options, resultsPath, log, treeStamp, fileTotal, restoreTarget));
+    /// <param name="passthrough">The arguments for <c>dotnet build</c>, unchanged, or null when the <c>--all-errors</c> hint names none.</param>
+    /// <param name="changed">True when the build covers the changed projects, so the <c>--all-errors</c> hint keeps <c>--changed</c>.</param>
+    internal static OperationResult Render(ProcessResult result, string root, double seconds, string operation, BuildOptions options, string? resultsPath = null, string log = "", string? treeStamp = null, int? fileTotal = null, string? restoreTarget = null, IReadOnlyList<string>? passthrough = null, bool changed = false) =>
+        BuildRenderer.Render(new BuildRenderContext(result, root, seconds, operation, options, resultsPath, log, treeStamp, fileTotal, restoreTarget, passthrough, changed));
 
     /// <summary>The last 30 non-empty lines of a process's output, which is where a failure without an error line is described.</summary>
     internal static string Tail(string output) =>

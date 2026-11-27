@@ -122,7 +122,7 @@ internal sealed class ViewDocumentPatcher
             if (File.Exists(path.Absolute))
                 text = Decode(SharedRead.AllBytes(path.Absolute));
         }
-        catch (IOException)
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
             return Task.FromResult(solution);
         }

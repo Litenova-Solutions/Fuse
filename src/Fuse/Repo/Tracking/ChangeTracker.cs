@@ -139,9 +139,10 @@ internal sealed class ChangeTracker : IDisposable
         if (confirmWithDisk && !headMoved && watched.WatcherErrors.Count == 0)
         {
             HashSet<RepoPath> seeded;
+            List<RepoPath> seededNonSources;
             try
             {
-                (seeded, _) = await SeedAsync(cancellationToken).ConfigureAwait(false);
+                (seeded, seededNonSources) = await SeedAsync(cancellationToken).ConfigureAwait(false);
             }
             catch (Exception)
             {
@@ -153,6 +154,11 @@ internal sealed class ChangeTracker : IDisposable
 
             paths.UnionWith(seeded.Where(p => !_changed.ContainsKey(p)));
             paths.UnionWith(_changed.Keys.Where(p => !seeded.Contains(p)));
+            // A non-source the watcher has not reported, such as an AdditionalFiles item an analyzer reads, is
+            // confirmed the same way, so the check binds its content.
+            var seededNonSourceSet = seededNonSources.ToHashSet();
+            watchedNonSources.UnionWith(seededNonSources.Where(p => !_nonSources.ContainsKey(p)));
+            watchedNonSources.UnionWith(_nonSources.Keys.Where(p => !seededNonSourceSet.Contains(p)));
         }
 
         // After HEAD moves or the watcher loses events, the reported paths are not the whole change, and past the limit

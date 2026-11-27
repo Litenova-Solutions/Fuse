@@ -1,8 +1,7 @@
 using Fuse.Graph;
 using Fuse.Paths;
-using Fuse.Protocol.Testing;
 using Fuse.Repo.Tracking;
-namespace Fuse.Engine;
+namespace Fuse.Inspection;
 
 /// <summary>
 ///     Plans <c>fuse build --changed</c>: the projects that own the files changed since HEAD and their dependents,
@@ -20,18 +19,18 @@ internal static class ChangedBuildPlanner
     ///     The project files git reports as changed. When any changed, the selection cannot be trusted and names the whole
     ///     solution instead.
     /// </param>
-    public static ChangedBuildPlan Plan(RepoGraph graph, IReadOnlyCollection<RepoPath> changed, IReadOnlyCollection<RepoPath> projectFilesChanged)
+    public static ChangedBuild Plan(RepoGraph graph, IReadOnlyCollection<RepoPath> changed, IReadOnlyCollection<RepoPath> projectFilesChanged)
     {
         var tree = TreeStamp.Of(ChangedPairs(changed));
         var owners = changed.SelectMany(graph.OwnersOf).DistinctBy(node => node.Path).ToList();
         var changedIn = owners.Select(node => node.Name).Order(StringComparer.Ordinal).ToArray();
         if (projectFilesChanged.Count > 0)
-            return new ChangedBuildPlan([], changedIn, changed.Count, tree, ProjectFilesReason(projectFilesChanged), UnownedCount(graph, changed));
+            return new ChangedBuild([], changedIn, changed.Count, tree, ProjectFilesReason(projectFilesChanged), UnownedCount(graph, changed));
         if (owners.Count == 0)
         {
             if (changed.Count == 0)
-                return new ChangedBuildPlan([], [], 0, tree);
-            return new ChangedBuildPlan([], [], changed.Count, tree, $"{changed.Count} changed file(s) in no project", changed.Count);
+                return new ChangedBuild([], [], 0, tree);
+            return new ChangedBuild([], [], changed.Count, tree, $"{changed.Count} changed file(s) in no project", changed.Count);
         }
 
         var withDependents = owners.Concat(owners.SelectMany(graph.DependentsOf)).DistinctBy(node => node.Path).ToList();
@@ -42,7 +41,7 @@ internal static class ChangedBuildPlanner
             .OrderBy(node => node.Name, StringComparer.Ordinal)
             .ToList();
         var leaves = reduced.Count > 0 ? reduced : withDependents.OrderBy(node => node.Name, StringComparer.Ordinal).ToList();
-        return new ChangedBuildPlan([.. leaves.Select(node => node.Path.Absolute)], changedIn, changed.Count, tree, "", UnownedCount(graph, changed));
+        return new ChangedBuild([.. leaves.Select(node => node.Path.Absolute)], changedIn, changed.Count, tree, "", UnownedCount(graph, changed));
     }
 
     /// <summary>How many changed files no project compiles.</summary>

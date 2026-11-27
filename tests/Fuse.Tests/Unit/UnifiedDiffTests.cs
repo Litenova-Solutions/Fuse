@@ -1,4 +1,5 @@
-using Fuse.Engine;
+using Fuse.Judge;
+using Fuse.Judge.Model;
 namespace Fuse.Tests.Unit;
 
 public class UnifiedDiffTests
@@ -23,9 +24,8 @@ public class UnifiedDiffTests
         Assert.False(patch.IsNew);
         Assert.False(patch.IsDeleted);
 
-        var (text, error) = UnifiedDiff.ApplyToText("line1\nline2\nline3\n", patch);
-        Assert.Null(error);
-        Assert.Equal("line1\nline2 changed\nline3\n", text);
+        var applied = Assert.IsType<PatchResult.Applied>(UnifiedDiff.ApplyToText("line1\nline2\nline3\n", patch));
+        Assert.Equal("line1\nline2 changed\nline3\n", applied.Text);
     }
 
     [Fact]
@@ -34,9 +34,8 @@ public class UnifiedDiffTests
         var (files, _) = UnifiedDiff.Parse(ModifyDiff);
         var patch = Assert.Single(files);
 
-        var (text, error) = UnifiedDiff.ApplyToText("line1\r\nline2\r\nline3\r\n", patch);
-        Assert.Null(error);
-        Assert.Equal("line1\r\nline2 changed\r\nline3\r\n", text);
+        var applied = Assert.IsType<PatchResult.Applied>(UnifiedDiff.ApplyToText("line1\r\nline2\r\nline3\r\n", patch));
+        Assert.Equal("line1\r\nline2 changed\r\nline3\r\n", applied.Text);
     }
 
     [Fact]
@@ -56,9 +55,8 @@ public class UnifiedDiffTests
         Assert.False(patch.IsDeleted);
         Assert.Equal("new.cs", patch.Path);
 
-        var (text, error) = UnifiedDiff.ApplyToText("", patch);
-        Assert.Null(error);
-        Assert.Equal("line1\nline2\n", text);
+        var applied = Assert.IsType<PatchResult.Applied>(UnifiedDiff.ApplyToText("", patch));
+        Assert.Equal("line1\nline2\n", applied.Text);
     }
 
     [Fact]
@@ -78,9 +76,8 @@ public class UnifiedDiffTests
         Assert.False(patch.IsNew);
         Assert.Equal("old.cs", patch.Path);
 
-        var (text, error) = UnifiedDiff.ApplyToText("line1\nline2\n", patch);
-        Assert.Null(error);
-        Assert.Equal("", text);
+        var applied = Assert.IsType<PatchResult.Applied>(UnifiedDiff.ApplyToText("line1\nline2\n", patch));
+        Assert.Equal("", applied.Text);
     }
 
     [Fact]
@@ -89,11 +86,10 @@ public class UnifiedDiffTests
         var (files, _) = UnifiedDiff.Parse(ModifyDiff);
         var patch = Assert.Single(files);
 
-        var (text, error) = UnifiedDiff.ApplyToText("line1\nWRONG\nline3\n", patch);
-        Assert.Null(text);
-        Assert.Contains("file.cs", error, StringComparison.Ordinal);
-        Assert.Contains("hunk 1", error, StringComparison.Ordinal);
-        Assert.Contains("line 2", error, StringComparison.Ordinal);
+        var conflicted = Assert.IsType<PatchResult.Conflicted>(UnifiedDiff.ApplyToText("line1\nWRONG\nline3\n", patch));
+        Assert.Contains("file.cs", conflicted.Reason, StringComparison.Ordinal);
+        Assert.Contains("hunk 1", conflicted.Reason, StringComparison.Ordinal);
+        Assert.Contains("line 2", conflicted.Reason, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -126,9 +122,8 @@ public class UnifiedDiffTests
         Assert.Null(parseError);
         var patch = Assert.Single(files);
 
-        var (text, error) = UnifiedDiff.ApplyToText("a\nb", patch);
-        Assert.Null(error);
-        Assert.Equal("a\nB", text);
+        var applied = Assert.IsType<PatchResult.Applied>(UnifiedDiff.ApplyToText("a\nb", patch));
+        Assert.Equal("a\nB", applied.Text);
     }
 
     [Fact]
@@ -146,9 +141,8 @@ public class UnifiedDiffTests
         Assert.Null(parseError);
         var patch = Assert.Single(files);
 
-        var (text, error) = UnifiedDiff.ApplyToText("line1\nline2\nline3\n", patch);
-        Assert.Null(error);
-        Assert.Equal("line1\nline2 changed\nline3\n", text);
+        var applied = Assert.IsType<PatchResult.Applied>(UnifiedDiff.ApplyToText("line1\nline2\nline3\n", patch));
+        Assert.Equal("line1\nline2 changed\nline3\n", applied.Text);
     }
 
     [Fact]

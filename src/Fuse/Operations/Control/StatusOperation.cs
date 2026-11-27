@@ -22,29 +22,6 @@ internal static partial class StatusOperation
     private static readonly TimeSpan EngineWait = TimeSpan.FromSeconds(2);
 
     /// <summary>
-    ///     Past this many changed C# sources in one sync a sync reloads the projects. It mirrors the tracker's patch
-    ///     limit, counted per sync from the sources that sync holds, not from every file changed since HEAD.
-    /// </summary>
-    internal const int ReloadAt = 300;
-
-    /// <summary>
-    ///     Past this many changed files a check skips its kept answer. It mirrors <c>KeptCheck.MaxChangedFiles</c>, which the client may not reference: Fuse.Operations does not use Fuse.Check.
-    /// </summary>
-    internal const int KeptAnswerAt = 500;
-
-    /// <summary>
-    ///     Past this many files in reach of a change a check binds whole projects, which the limits line names. It
-    ///     mirrors <c>CandidateBinding.WholeProjectThreshold</c>, which the client may not reference.
-    /// </summary>
-    internal const int WholeProjectAt = 500;
-
-    /// <summary>
-    ///     Past this many distinct touched paths the next sync re-evaluates every project and resets the touched set.
-    ///     It mirrors the views' touched limit.
-    /// </summary>
-    internal const int TouchedLimit = 2000;
-
-    /// <summary>
     ///     The shortened idle, in minutes, after which an engine leaves when another engine needs memory. It
     ///     mirrors the engine's shortened idle, for the engine line.
     /// </summary>
@@ -96,7 +73,8 @@ internal static partial class StatusOperation
             long? memoryLoadBytes = engine?.MemoryLoadBytes;
             int? inReach = engine is null ? null : engine.ChangedSourcesInReach;
             int? touched = engine is null ? null : engine.TouchedCount;
-            var view = new StatusView(state, engine?.Pid, memoryMB, count, head, tree, inReach, touched, TouchedLimit, KeptAnswerAt, WholeProjectAt, ReloadAt, ReloadAt, engine?.ReloadMs, engine?.GateHolder, memoryCeilingBytes, memoryLoadBytes, engine?.WorkingSetBytes, root.PipeName, EngineVersion.Build);
+            var limits = engine?.Limits ?? EngineLimits.Default;
+            var view = new StatusView(state, engine?.Pid, memoryMB, count, head, tree, inReach, touched, limits.TouchedLimit, limits.KeptAnswerAt, limits.WholeProjectAt, limits.ReloadAt, limits.ReloadAt, engine?.ReloadMs, engine?.GateHolder, memoryCeilingBytes, memoryLoadBytes, engine?.WorkingSetBytes, root.PipeName, EngineVersion.Build);
             return new OperationResult(Outcome.Clean, JsonSerializer.Serialize(
                 ToStatusLine(view),
                 StatusJson.Default.StatusLine));
@@ -127,10 +105,13 @@ internal static partial class StatusOperation
     private static string TreeLine(int count, string tree, string? head) =>
         $"fuse: {count} changed file(s) since HEAD; tree {tree}" + (head is null ? "" : $"; HEAD {head[..Math.Min(12, head.Length)]}");
 
-    private static string LimitsLine(EngineStatus? engine) =>
-        engine is not null
-            ? $"fuse: {engine.ChangedSourcesInReach} changed C# source(s) in a project; {engine.TouchedCount} of {TouchedLimit} touched paths before projects re-evaluate; past {KeptAnswerAt} changed files a check skips its kept answer; past {WholeProjectAt} files in reach a check binds whole projects"
-            : $"fuse: large-tree limits: past {ReloadAt} changed C# sources in one sync a sync reloads projects; past {KeptAnswerAt} changed files a check skips its kept answer; past {WholeProjectAt} files in reach a check binds whole projects; past {TouchedLimit} touched paths projects re-evaluate";
+    private static string LimitsLine(EngineStatus? engine)
+    {
+        var limits = engine?.Limits ?? EngineLimits.Default;
+        return engine is not null
+            ? $"fuse: {engine.ChangedSourcesInReach} changed C# source(s) in a project; {engine.TouchedCount} of {limits.TouchedLimit} touched paths before projects re-evaluate; past {limits.KeptAnswerAt} changed files a check skips its kept answer; past {limits.WholeProjectAt} files in reach a check binds whole projects"
+            : $"fuse: large-tree limits: past {limits.ReloadAt} changed C# sources in one sync a sync reloads projects; past {limits.KeptAnswerAt} changed files a check skips its kept answer; past {limits.WholeProjectAt} files in reach a check binds whole projects; past {limits.TouchedLimit} touched paths projects re-evaluate";
+    }
 
     /// <summary>
     ///     Asks the running engine what the tree holds, through its pipe directly: the usual send would start an

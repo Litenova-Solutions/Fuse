@@ -16,7 +16,7 @@ internal sealed class ChangeTracker : IDisposable
     ///     The most changed sources a sync patches one at a time. Past it, reloading the projects and reading git status
     ///     again costs less than comparing and applying each file.
     /// </summary>
-    private const int MaxPatchedPaths = 300;
+    internal const int MaxPatchedPaths = 300;
 
     /// <summary>How many changed non-sources <see cref="NonSourceSample"/> keeps: the first by sorted relative path.</summary>
     private const int MaxNonSourceSample = 6;
@@ -54,6 +54,9 @@ internal sealed class ChangeTracker : IDisposable
 
     /// <summary>The C# and Razor files that differ from HEAD, including deleted ones, as a snapshot a reader can enumerate while a sync folds.</summary>
     public IReadOnlyCollection<RepoPath> Changed => [.. _changed.Keys.OrderBy(p => p.Relative, StringComparer.Ordinal)];
+
+    /// <summary>True when <paramref name="path"/> differs from HEAD now, without copying the changed set.</summary>
+    public bool IsChanged(RepoPath path) => _changed.ContainsKey(path);
 
     /// <summary>How many changed files are not sources; the check names them instead of reading them.</summary>
     public int NonSourceChanged { get; private set; }

@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using Fuse.Identity;
+using Fuse.Judge;
 using Fuse.Check.Diagnostics;
 using Fuse.Check.Pipeline;
 using Fuse.Check.Sessions;
@@ -96,7 +98,7 @@ internal sealed class RequestRouter : IDisposable
             _sessions.Forget(_workspace.PinGeneration().Changed);
             var live = _sessions.LiveRegistrations();
             if (live.Count > 0)
-                _log.Write($"registered sessions live: {string.Join(", ", live.Select(r => r.Session[SessionEdits.RegisteredPrefix.Length..]).Order(StringComparer.Ordinal))}");
+                _log.Write($"registered sessions live: {string.Join(", ", live.Select(r => SessionId.DisplayNameOf(r.Session)).Order(StringComparer.Ordinal))}");
             var initial = _workspace.PinGeneration();
             var owners = initial.Changed.SelectMany(initial.Graph.OwnersOf).DistinctBy(p => p.Path).ToList();
             if (owners.Count > 0)

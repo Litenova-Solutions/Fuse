@@ -28,4 +28,7 @@ internal sealed record EngineStatus(int Pid, long WorkingSetBytes, int ChangedFi
 
     /// <summary>The GC memory load in bytes when this status was read. A line without it reads as 0.</summary>
     public long MemoryLoadBytes { get; init; }
+
+    /// <summary>The tree-size limits the engine counts by. A line without it reads as the current limits.</summary>
+    public EngineLimits Limits { get; init; } = EngineLimits.Default;
 }

@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
-namespace Fuse.Engine;
+using Fuse.Judge.Model;
+namespace Fuse.Judge;
 
 /// <summary>
 ///     Parses git-style unified diffs and applies them to file texts without touching disk. The judge reads each
@@ -134,8 +135,8 @@ internal static class UnifiedDiff
     }
 
     /// <summary>Applies one file patch to the file's text, keeping the text's own line endings.</summary>
-    /// <returns>The new text, or the reason the hunks do not match it.</returns>
-    public static (string? Text, string? Error) ApplyToText(string baseText, FilePatch patch)
+    /// <returns>The new text, or why the hunks do not match it.</returns>
+    public static PatchResult ApplyToText(string baseText, FilePatch patch)
     {
         var newline = baseText.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
         var lines = SplitLines(baseText, out var baseEndsWithNewline);
@@ -158,22 +159,22 @@ internal static class UnifiedDiff
 
             var expected = (hunk.OldStart == 0 ? 0 : hunk.OldStart - 1) + offset;
             if (expected < 0 || expected + oldLines.Count > lines.Count)
-                return (null, $"{patch.Path}: hunk {h + 1} reaches past the end of the file");
+                return new PatchResult.Conflicted($"{patch.Path}: hunk {h + 1} reaches past the end of the file");
             var pos = NearestMatch(lines, oldLines, expected);
             if (pos < 0)
             {
                 var j = 0;
                 while (lines[expected + j] == oldLines[j])
                     j++;
-                return (null, $"{patch.Path}: hunk {h + 1} does not match at line {expected + j + 1}: expected '{oldLines[j]}' but found '{lines[expected + j]}'");
+                return new PatchResult.Conflicted($"{patch.Path}: hunk {h + 1} does not match at line {expected + j + 1}: expected '{oldLines[j]}' but found '{lines[expected + j]}'");
             }
 
             if (h == patch.Hunks.Count - 1 && hunk.OldStart + hunk.OldCount - 1 == baseCount && baseCount > 0)
             {
                 if (baseEndsWithNewline && hunk.OldNoNewline)
-                    return (null, $"{patch.Path}: hunk {h + 1} does not match: the file ends with a newline but the patch says it ends without one");
+                    return new PatchResult.Conflicted($"{patch.Path}: hunk {h + 1} does not match: the file ends with a newline but the patch says it ends without one");
                 if (!baseEndsWithNewline && !hunk.OldNoNewline)
-                    return (null, $"{patch.Path}: hunk {h + 1} does not match: the file ends without a newline but the patch says it ends with one");
+                    return new PatchResult.Conflicted($"{patch.Path}: hunk {h + 1} does not match: the file ends without a newline but the patch says it ends with one");
             }
 
             lines.RemoveRange(pos, oldLines.Count);
@@ -182,7 +183,7 @@ internal static class UnifiedDiff
         }
 
         if (lines.Count == 0)
-            return ("", null);
+            return new PatchResult.Applied("");
         var endsWithNewline = baseEndsWithNewline;
         if (patch.Hunks.Count > 0)
         {
@@ -191,7 +192,7 @@ internal static class UnifiedDiff
                 endsWithNewline = !last.NewNoNewline;
         }
 
-        return (string.Join(newline, lines) + (endsWithNewline ? newline : ""), null);
+        return new PatchResult.Applied(string.Join(newline, lines) + (endsWithNewline ? newline : ""));
     }
 
     /// <summary>

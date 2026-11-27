@@ -1,6 +1,10 @@
-using Fuse.Engine;
+using Fuse.Engine.Routing;
 using Fuse.Failures;
+using Fuse.Judge;
+using Fuse.Judge.Model;
+using Fuse.Operations;
 using Fuse.Operations.Judge;
+using Fuse.Protocol.Analysis;
 using Fuse.Protocol.Requests;
 using Fuse.Tests.Fixtures;
 namespace Fuse.Tests.Engine;
@@ -14,9 +18,7 @@ public class CandidateJudgeTests
         var clean = PatchFor(engine, "Lib/Calc.cs", "a * b;", "a * b + 0;");
         var breaking = PatchFor(engine, "Lib/Calc.cs", "public int Add(", "public int Plus(");
         var service = new CandidateJudge(engine.Workspace, engine.Repo.Root);
-        var report = await service.RunAsync(
-            new JudgeRequest(JudgeRequest.JudgeMode.Race, [new JudgeRequest.Candidate("clean", clean), new JudgeRequest.Candidate("breaking", breaking)]),
-            TestContext.Current.CancellationToken);
+        var report = await JudgeAsync(service, JudgeMode.Race, new JudgeCandidate("clean", clean), new JudgeCandidate("breaking", breaking));
 
         Assert.Equal("race", report.Mode);
         Assert.Equal("clean", report.Winner);
@@ -42,9 +44,7 @@ public class CandidateJudgeTests
         var first = PatchFor(engine, "Lib/Calc.cs", "public int Add(", "public int Plus(");
         var second = PatchFor(engine, "Lib/Calc.cs", "public int Add(", "public int Sum(");
         var service = new CandidateJudge(engine.Workspace, engine.Repo.Root);
-        var report = await service.RunAsync(
-            new JudgeRequest(JudgeRequest.JudgeMode.Combine, [new JudgeRequest.Candidate("first", first), new JudgeRequest.Candidate("second", second)]),
-            TestContext.Current.CancellationToken);
+        var report = await JudgeAsync(service, JudgeMode.Combine, new JudgeCandidate("first", first), new JudgeCandidate("second", second));
 
         Assert.Equal("combine", report.Mode);
         Assert.Null(report.Winner);
@@ -67,9 +67,7 @@ public class CandidateJudgeTests
         engine.Repo.Commit("commit a broken file");
         var clean = PatchFor(engine, "Lib/Calc.cs", "=> a + b;", "=> a + b + 0;");
         var service = new CandidateJudge(engine.Workspace, engine.Repo.Root);
-        var report = await service.RunAsync(
-            new JudgeRequest(JudgeRequest.JudgeMode.Race, [new JudgeRequest.Candidate("clean", clean)]),
-            TestContext.Current.CancellationToken);
+        var report = await JudgeAsync(service, JudgeMode.Race, new JudgeCandidate("clean", clean));
 
         var verdict = Assert.Single(report.Verdicts);
         Assert.True(verdict.Compiles);
@@ -89,9 +87,7 @@ public class CandidateJudgeTests
         Assert.Contains("public static class Extra", diff, StringComparison.Ordinal);
 
         var service = new CandidateJudge(engine.Workspace, engine.Repo.Root);
-        var report = await service.RunAsync(
-            new JudgeRequest(JudgeRequest.JudgeMode.Race, [new JudgeRequest.Candidate("added", diff)]),
-            TestContext.Current.CancellationToken);
+        var report = await JudgeAsync(service, JudgeMode.Race, new JudgeCandidate("added", diff));
 
         var verdict = Assert.Single(report.Verdicts);
         Assert.False(verdict.Compiles);
@@ -108,9 +104,7 @@ public class CandidateJudgeTests
         await using var engine = await InProcessEngine.StartAsync();
         var notes = "diff --git a/docs/notes.md b/docs/notes.md\nnew file mode 100644\n--- /dev/null\n+++ b/docs/notes.md\n@@ -0,0 +1 @@\n+hello\n";
         var service = new CandidateJudge(engine.Workspace, engine.Repo.Root);
-        var report = await service.RunAsync(
-            new JudgeRequest(JudgeRequest.JudgeMode.Race, [new JudgeRequest.Candidate("notes", notes)]),
-            TestContext.Current.CancellationToken);
+        var report = await JudgeAsync(service, JudgeMode.Race, new JudgeCandidate("notes", notes));
 
         Assert.Equal("race", report.Mode);
         Assert.Null(report.Winner);
@@ -128,24 +122,30 @@ public class CandidateJudgeTests
         var service = new CandidateJudge(engine.Workspace, engine.Repo.Root);
         var tiny = "diff --git a/f.cs b/f.cs\n--- a/f.cs\n+++ b/f.cs\n@@ -1 +1 @@\n-a\n+b\n";
 
-        var many = Enumerable.Range(0, 17).Select(i => new JudgeRequest.Candidate($"c{i}", tiny)).ToArray();
+        var many = Enumerable.Range(0, 17).Select(i => new JudgeCandidate($"c{i}", tiny)).ToArray();
         var countError = await Assert.ThrowsAsync<FuseException>(() => service.RunAsync(
-            new JudgeRequest(JudgeRequest.JudgeMode.Race, many),
+            many,
+            JudgeMode.Race,
+            TestBudget,
             TestContext.Current.CancellationToken));
         Assert.Equal(ErrorCode.InvalidPath, countError.Code);
         Assert.Contains("more than the 16", countError.Message, StringComparison.Ordinal);
 
         var big = new string('x', 1024 * 1024 + 1);
         var sizeError = await Assert.ThrowsAsync<FuseException>(() => service.RunAsync(
-            new JudgeRequest(JudgeRequest.JudgeMode.Race, [new JudgeRequest.Candidate("big", big)]),
+            [new JudgeCandidate("big", big)],
+            JudgeMode.Race,
+            TestBudget,
             TestContext.Current.CancellationToken));
         Assert.Equal(ErrorCode.InvalidPath, sizeError.Code);
         Assert.Contains("more than the 1 MB", sizeError.Message, StringComparison.Ordinal);
 
         var chunk = new string('y', 900 * 1024);
-        var heavy = Enumerable.Range(0, 10).Select(i => new JudgeRequest.Candidate($"t{i}", chunk)).ToArray();
+        var heavy = Enumerable.Range(0, 10).Select(i => new JudgeCandidate($"t{i}", chunk)).ToArray();
         var totalError = await Assert.ThrowsAsync<FuseException>(() => service.RunAsync(
-            new JudgeRequest(JudgeRequest.JudgeMode.Race, heavy),
+            heavy,
+            JudgeMode.Race,
+            TestBudget,
             TestContext.Current.CancellationToken));
         Assert.Equal(ErrorCode.InvalidPath, totalError.Code);
         Assert.Contains("more than the 8 MB", totalError.Message, StringComparison.Ordinal);
@@ -160,18 +160,16 @@ public class CandidateJudgeTests
         repo.Write("noeol.txt", "line1\nline2");
         try
         {
-            var (candidate, refusal) = await JudgeOperation.LoadCandidateAsync(repo.Root.Path, repo.Root.Path, TestContext.Current.CancellationToken);
-            Assert.Null(refusal);
-            Assert.NotNull(candidate);
+            var loaded = await JudgeOperation.LoadCandidateAsync(repo.Root.Path, repo.Root.Path, TestContext.Current.CancellationToken);
+            var candidate = Assert.IsType<ParseResult<JudgeRequest.Candidate>.Parsed>(loaded).Value;
             Assert.Contains("+a\r\n", candidate.Diff, StringComparison.Ordinal);
             Assert.Contains("\\ No newline at end of file", candidate.Diff, StringComparison.Ordinal);
 
             var (files, parseError) = UnifiedDiff.Parse(candidate.Diff);
             Assert.Null(parseError);
             var noeol = files.Single(f => f.Path == "noeol.txt");
-            var (text, error) = UnifiedDiff.ApplyToText("", noeol);
-            Assert.Null(error);
-            Assert.Equal("line1\nline2", text);
+            var applied = Assert.IsType<PatchResult.Applied>(UnifiedDiff.ApplyToText("", noeol));
+            Assert.Equal("line1\nline2", applied.Text);
         }
         finally
         {
@@ -188,9 +186,7 @@ public class CandidateJudgeTests
         var first = PatchFor(engine, "Lib/Steps.cs", "public int Step1() => 1;", "public int Step1() => 1;\n    public int Step0() => 0;");
         var second = PatchFor(engine, "Lib/Steps.cs", "public int Step30() => 30;", "public int Step30() => 30 + 0;");
         var service = new CandidateJudge(engine.Workspace, engine.Repo.Root);
-        var report = await service.RunAsync(
-            new JudgeRequest(JudgeRequest.JudgeMode.Combine, [new JudgeRequest.Candidate("first", first), new JudgeRequest.Candidate("second", second)]),
-            TestContext.Current.CancellationToken);
+        var report = await JudgeAsync(service, JudgeMode.Combine, new JudgeCandidate("first", first), new JudgeCandidate("second", second));
 
         Assert.Empty(report.Conflicts);
         Assert.True(report.Clean);
@@ -208,13 +204,21 @@ public class CandidateJudgeTests
         var diff = FixtureRepo.Run(engine.Repo.Root.Path, "git", "diff", "--no-color", "--", "Lib/Steps.cs");
         File.WriteAllBytes(path, original);
         var service = new CandidateJudge(engine.Workspace, engine.Repo.Root);
-        var report = await service.RunAsync(
-            new JudgeRequest(JudgeRequest.JudgeMode.Race, [new JudgeRequest.Candidate("clean", diff)]),
-            TestContext.Current.CancellationToken);
+        var report = await JudgeAsync(service, JudgeMode.Race, new JudgeCandidate("clean", diff));
 
         Assert.Equal("clean", report.Winner);
         Assert.Empty(report.Conflicts);
     }
+
+    /// <summary>Scores the candidates with the judge limits and maps the verdict to the wire report.</summary>
+    private static async Task<JudgeReport> JudgeAsync(CandidateJudge service, JudgeMode mode, params JudgeCandidate[] candidates)
+    {
+        var verdict = await service.RunAsync(candidates, mode, TestBudget, TestContext.Current.CancellationToken);
+        return FeatureReports.ToJudgeReport(verdict);
+    }
+
+    /// <summary>The judge budget the tests score with: the protocol limits, so the tests refuse what the engine refuses.</summary>
+    private static JudgeBudget TestBudget => new(JudgeLimits.MaxCandidates, JudgeLimits.MaxDiffBytes, JudgeLimits.MaxTotalDiffBytes);
 
     /// <summary>The standard repository with a committed <c>Lib/Steps.cs</c> of 30 one-line methods.</summary>
     private static FixtureRepo WithSteps(bool byteOrderMark = false)

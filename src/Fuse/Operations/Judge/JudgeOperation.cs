@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using Fuse.Client;
@@ -17,16 +18,12 @@ internal static class JudgeOperation
     internal const string Usage =
         "usage: fuse judge (--combine | --race) <patch-or-worktree...> [--json]";
 
-    private const int MaxCandidates = 16;
-    private const int MaxDiffBytes = 1024 * 1024;
-    private const int MaxTotalDiffBytes = 8 * 1024 * 1024;
-
     internal sealed record JudgeArguments(
         JudgeRequest.JudgeMode Mode,
         IReadOnlyList<string> Targets,
         bool Json);
 
-    public static (JudgeArguments? Arguments, string? Refusal) Parse(IReadOnlyList<string> args)
+    public static ParseResult<JudgeArguments> Parse(IReadOnlyList<string> args)
     {
         JudgeRequest.JudgeMode? mode = null;
         var json = false;
@@ -53,7 +50,7 @@ internal static class JudgeOperation
             if (token == "--combine")
             {
                 if (mode == JudgeRequest.JudgeMode.Race)
-                    return (null, "fuse: --combine and --race cannot be combined; choose one");
+                    return new ParseResult<JudgeArguments>.Refused("fuse: --combine and --race cannot be combined; choose one");
                 mode = JudgeRequest.JudgeMode.Combine;
                 continue;
             }
@@ -61,7 +58,7 @@ internal static class JudgeOperation
             if (token == "--race")
             {
                 if (mode == JudgeRequest.JudgeMode.Combine)
-                    return (null, "fuse: --combine and --race cannot be combined; choose one");
+                    return new ParseResult<JudgeArguments>.Refused("fuse: --combine and --race cannot be combined; choose one");
                 mode = JudgeRequest.JudgeMode.Race;
                 continue;
             }
@@ -73,16 +70,16 @@ internal static class JudgeOperation
             }
 
             if (token.StartsWith("--", StringComparison.Ordinal))
-                return (null, $"fuse: '{token}' is not a fuse judge option\n{Usage}");
+                return new ParseResult<JudgeArguments>.Refused($"fuse: '{token}' is not a fuse judge option\n{Usage}");
             targets.Add(token);
         }
 
         if (mode is null)
-            return (null, $"fuse: specify --combine or --race\n{Usage}");
+            return new ParseResult<JudgeArguments>.Refused($"fuse: specify --combine or --race\n{Usage}");
         if (targets.Count == 0)
-            return (null, $"fuse: name at least one patch file or worktree directory\n{Usage}");
+            return new ParseResult<JudgeArguments>.Refused($"fuse: name at least one patch file or worktree directory\n{Usage}");
 
-        return (new JudgeArguments(mode.Value, targets, json), null);
+        return new ParseResult<JudgeArguments>.Parsed(new JudgeArguments(mode.Value, targets, json));
     }
 
     public static async Task<OperationResult> RunAsync(
@@ -91,42 +88,66 @@ internal static class JudgeOperation
         IReadOnlyList<string> args,
         CancellationToken cancellationToken)
     {
-        var (parsed, refusal) = Parse(args);
-        if (parsed is null)
-            return new OperationResult(Outcome.Unanswered, refusal!);
-
-        if (parsed.Targets.Count > MaxCandidates)
-            return new OperationResult(Outcome.Unanswered, $"fuse: the {parsed.Targets.Count} candidates named are more than the {MaxCandidates} a judge call scores; name fewer");
-
-        var candidates = new List<JudgeRequest.Candidate>(parsed.Targets.Count);
-        long totalBytes = 0;
-        foreach (var target in parsed.Targets)
+        var parsed = Parse(args);
+        JudgeArguments arguments;
+        switch (parsed)
         {
-            var (candidate, loadError) = await CandidateDiffLoader.LoadCandidateAsync(target, workingDirectory, cancellationToken).ConfigureAwait(false);
-            if (loadError is not null)
-                return new OperationResult(Outcome.Unanswered, loadError);
-            var bytes = Encoding.UTF8.GetByteCount(candidate!.Diff);
-            if (bytes > MaxDiffBytes)
-                return new OperationResult(Outcome.Unanswered, $"fuse: the diff of '{candidate.Name}' holds {bytes} bytes, more than the 1 MB a candidate holds; shorten the diff");
-            totalBytes += bytes;
-            if (totalBytes > MaxTotalDiffBytes)
-                return new OperationResult(Outcome.Unanswered, $"fuse: the candidates hold {totalBytes} bytes of diff, more than the 8 MB a judge call scores; name fewer or shorten the diffs");
-            candidates.Add(candidate!);
+            case ParseResult<JudgeArguments>.Parsed ok:
+                arguments = ok.Value;
+                break;
+            case ParseResult<JudgeArguments>.Refused refused:
+                return new OperationResult(Outcome.Unanswered, refused.Message);
+            default:
+                throw new UnreachableException($"a judge parse is parsed or refused, not {parsed.GetType().Name}");
         }
 
-        var request = new EngineRequest.Judge(new JudgeRequest(parsed.Mode, [.. candidates]));
+        if (arguments.Targets.Count > JudgeLimits.MaxCandidates)
+            return new OperationResult(Outcome.Unanswered, $"fuse: the {arguments.Targets.Count} candidates named are more than the {JudgeLimits.MaxCandidates} a judge call scores; name fewer");
+
+        var candidates = new List<JudgeRequest.Candidate>(arguments.Targets.Count);
+        long totalBytes = 0;
+        foreach (var target in arguments.Targets)
+        {
+            var loaded = await LoadCandidateAsync(target, workingDirectory, cancellationToken).ConfigureAwait(false);
+            JudgeRequest.Candidate candidate;
+            switch (loaded)
+            {
+                case ParseResult<JudgeRequest.Candidate>.Parsed scored:
+                    candidate = scored.Value;
+                    break;
+                case ParseResult<JudgeRequest.Candidate>.Refused loadRefused:
+                    return new OperationResult(Outcome.Unanswered, loadRefused.Message);
+                default:
+                    throw new UnreachableException($"a judge load is parsed or refused, not {loaded.GetType().Name}");
+            }
+
+            var bytes = Encoding.UTF8.GetByteCount(candidate.Diff);
+            if (bytes > JudgeLimits.MaxDiffBytes)
+                return new OperationResult(Outcome.Unanswered, $"fuse: the diff of '{candidate.Name}' holds {bytes} bytes, more than the 1 MB a candidate holds; shorten the diff");
+            totalBytes += bytes;
+            if (totalBytes > JudgeLimits.MaxTotalDiffBytes)
+                return new OperationResult(Outcome.Unanswered, $"fuse: the candidates hold {totalBytes} bytes of diff, more than the 8 MB a judge call scores; name fewer or shorten the diffs");
+            candidates.Add(candidate);
+        }
+
+        var request = new EngineRequest.Judge(new JudgeRequest(arguments.Mode, [.. candidates]));
         var response = await EngineClient.SendAsync(root, request, TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
         if (response is not EngineResponse.JudgeAnswered answered)
             return OperationResult.Unanswered(response, "judge report");
 
-        return Render(answered.Report, parsed.Json);
+        return Render(answered.Report, arguments.Json);
     }
 
-    internal static Task<(JudgeRequest.Candidate? Candidate, string? Refusal)> LoadCandidateAsync(
+    internal static async Task<ParseResult<JudgeRequest.Candidate>> LoadCandidateAsync(
         string spec,
         string workingDirectory,
-        CancellationToken cancellationToken) =>
-        CandidateDiffLoader.LoadCandidateAsync(spec, workingDirectory, cancellationToken);
+        CancellationToken cancellationToken)
+    {
+        var (candidate, refusal) = await CandidateDiffLoader.LoadCandidateAsync(spec, workingDirectory, cancellationToken).ConfigureAwait(false);
+        if (candidate is not null)
+            return new ParseResult<JudgeRequest.Candidate>.Parsed(candidate);
+        return new ParseResult<JudgeRequest.Candidate>.Refused(refusal ?? $"fuse: patch or worktree '{spec}' does not exist");
+    }
 
     internal static OperationResult Render(JudgeReport report, bool json)
     {

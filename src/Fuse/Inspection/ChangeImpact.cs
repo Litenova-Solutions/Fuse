@@ -2,16 +2,15 @@ using Fuse.Check.Candidates;
 using Fuse.Check.Model;
 using Fuse.Graph;
 using Fuse.Paths;
-using Fuse.Protocol.Analysis;
 using Fuse.Testing.Selection;
 using Fuse.Workspace.Generations;
-namespace Fuse.Engine;
+namespace Fuse.Inspection;
 
 /// <summary>Builds the project, candidate file, and affected test report returned by <c>fuse impact</c>.</summary>
 internal static class ChangeImpact
 {
     /// <summary>Reports the reach and test selection for the named paths, or for every changed file when none are named.</summary>
-    public static async Task<ImpactReport> BuildAsync(
+    public static async Task<ImpactAssessment> BuildAsync(
         RepoWorkspace workspace,
         Generation generation,
         string[] paths,
@@ -20,7 +19,7 @@ internal static class ChangeImpact
         cancellationToken.ThrowIfCancellationRequested();
         var requested = RequestedPaths(workspace, generation, paths);
         if (requested.Length == 0)
-            return new ImpactReport(Summary: SummaryOf(0, 0));
+            return new ImpactAssessment(Summary: SummaryOf(0, 0));
 
         var broadPath = requested.Any(IsBroadPath);
         var repositoryWide = requested.Any(IsRepositoryWidePath);
@@ -46,7 +45,7 @@ internal static class ChangeImpact
             ? NamesOf(reached.Where(project => project.IsTest))
             : NamesOf(selection.Selections.Keys.Select(graph.Find).OfType<ProjectNode>());
         var broadReach = broadPath || reach is Reach.Broad;
-        return new ImpactReport(
+        return new ImpactAssessment(
             InputPaths: [.. requested.Select(path => path.Relative)],
             OwningProjects: NamesOf(owners),
             AffectedProjects: affectedProjects,

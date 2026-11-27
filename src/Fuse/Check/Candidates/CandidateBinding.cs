@@ -14,7 +14,7 @@ namespace Fuse.Check.Candidates;
 /// </summary>
 internal sealed class CandidateBinding
 {
-    private const int WholeProjectThreshold = 500;
+    internal const int WholeProjectThreshold = 500;
 
     private readonly RepoWorkspace _workspace;
     private readonly IntroducedErrors _introduced;

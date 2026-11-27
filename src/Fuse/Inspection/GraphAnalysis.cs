@@ -1,15 +1,14 @@
 using Fuse.Graph;
 using Fuse.Paths;
-using Fuse.Protocol.Analysis;
 using Fuse.Repo.Tracking;
 using Fuse.Workspace.Generations;
-namespace Fuse.Engine;
+namespace Fuse.Inspection;
 
 /// <summary>Builds the project graph, coupling clusters, and test ownership reported by <c>fuse graph</c>.</summary>
 internal static class GraphAnalysis
 {
     /// <summary>Builds a deterministic report from the graph in <paramref name="generation"/>.</summary>
-    public static GraphReport Build(Generation generation)
+    public static ProjectGraph Build(Generation generation)
     {
         var graph = generation.Graph;
         var projects = graph.Projects
@@ -19,19 +18,19 @@ internal static class GraphAnalysis
         var owners = graph.Projects
             .Where(project => project.IsTest)
             .OrderBy(project => project.Path.Relative, StringComparer.Ordinal)
-            .Select(project => new GraphReport.TestOwnership(
+            .Select(project => new TestCoverage(
                 project.Name,
                 NamesOf(graph.ClosureOf(project).Where(covered => !covered.IsTest))))
             .ToArray();
 
-        return new GraphReport(
+        return new ProjectGraph(
             TreeStamp.Of(generation.Changed.Select(path => (path.Relative, path.Absolute))),
             projects,
             CouplingClusters(graph),
             owners);
     }
 
-    private static GraphReport.ProjectNode ReportProject(RepoGraph graph, ProjectNode project) =>
+    private static GraphProject ReportProject(RepoGraph graph, ProjectNode project) =>
         new(
             project.Name,
             project.Path.Relative,
@@ -46,7 +45,7 @@ internal static class GraphAnalysis
     private static string[] NamesOf(IEnumerable<RepoPath> paths) =>
         [.. paths.OrderBy(path => path.Relative, StringComparer.Ordinal).Select(path => path.Relative)];
 
-    private static GraphReport.CouplingCluster[] CouplingClusters(RepoGraph graph)
+    private static ProjectCluster[] CouplingClusters(RepoGraph graph)
     {
         var projects = graph.Projects.Where(project => !project.IsTest).ToList();
         var byPath = projects.ToDictionary(project => project.Path);
@@ -78,7 +77,7 @@ internal static class GraphAnalysis
         }
 
         var visited = new HashSet<RepoPath>();
-        var clusters = new List<GraphReport.CouplingCluster>();
+        var clusters = new List<ProjectCluster>();
         foreach (var project in projects.OrderBy(item => item.Path.Relative, StringComparer.Ordinal))
         {
             if (!visited.Add(project.Path))
@@ -105,7 +104,7 @@ internal static class GraphAnalysis
                 .OrderBy(item => item.Path.Relative, StringComparer.Ordinal)
                 .Select(item => item.Name)
                 .ToArray();
-            clusters.Add(new GraphReport.CouplingCluster(
+            clusters.Add(new ProjectCluster(
                 string.Join('+', component.Select(item => item.Name)),
                 NamesOf(component),
                 shared));

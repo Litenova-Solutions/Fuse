@@ -1,7 +1,11 @@
+using Fuse.Check.Candidates;
 using Fuse.Check.Pipeline;
 using Fuse.Engine.Background;
 using Fuse.Engine.Scheduling;
 using Fuse.Failures;
+using Fuse.Inspection;
+using Fuse.Judge;
+using Fuse.Judge.Model;
 using Fuse.Paths;
 using Fuse.Protocol.Analysis;
 using Fuse.Protocol.Requests;
@@ -146,7 +150,7 @@ internal sealed class InspectionRoute
         var projectFiles = (await GitStatus.ChangedPathsAsync(_workspace.Root, cancellationToken).ConfigureAwait(false))
             .Where(path => PathRules.IsProjectFile(path.Absolute))
             .ToList();
-        return new EngineResponse.ChangedBuildAnswered(ChangedBuildPlanner.Plan(generation.Graph, generation.Changed, projectFiles));
+        return new EngineResponse.ChangedBuildAnswered(FeatureReports.ToChangedBuildPlan(ChangedBuildPlanner.Plan(generation.Graph, generation.Changed, projectFiles)));
     }
 
     /// <summary>Answers the project graph, coupling clusters and test ownership from the generation a sync pins.</summary>
@@ -155,7 +159,7 @@ internal sealed class InspectionRoute
         var syncing = phases.Start();
         var generation = await _workspace.SyncAndPinAsync([], cancellationToken).ConfigureAwait(false);
         phases.Add(Phase.Sync, syncing);
-        return new EngineResponse.GraphAnswered(GraphAnalysis.Build(generation));
+        return new EngineResponse.GraphAnswered(FeatureReports.ToGraphReport(GraphAnalysis.Build(generation)));
     }
 
     /// <summary>
@@ -184,12 +188,21 @@ internal sealed class InspectionRoute
         var selecting = phases.Start();
         var report = await ChangeImpact.BuildAsync(_workspace, generation, impact.Paths, cancellationToken).ConfigureAwait(false);
         phases.Add(Phase.Selection, selecting);
-        return new EngineResponse.ImpactAnswered(report);
+        return new EngineResponse.ImpactAnswered(FeatureReports.ToImpactReport(report));
     }
 
     /// <summary>Answers a judge request: the verdicts of its candidate patches, ranked.</summary>
-    internal async Task<EngineResponse> JudgeAsync(EngineRequest.Judge judge, CancellationToken cancellationToken) =>
-        new EngineResponse.JudgeAnswered(await _judge.RunAsync(judge.Spec, cancellationToken).ConfigureAwait(false));
+    internal async Task<EngineResponse> JudgeAsync(EngineRequest.Judge judge, CancellationToken cancellationToken)
+    {
+        var candidates = judge.Spec.Candidates.Select(candidate => new JudgeCandidate(candidate.Name, candidate.Diff)).ToList();
+        var budget = new JudgeBudget(JudgeLimits.MaxCandidates, JudgeLimits.MaxDiffBytes, JudgeLimits.MaxTotalDiffBytes);
+        var verdict = await _judge.RunAsync(
+            candidates,
+            judge.Spec.Mode == JudgeRequest.JudgeMode.Combine ? JudgeMode.Combine : JudgeMode.Race,
+            budget,
+            cancellationToken).ConfigureAwait(false);
+        return new EngineResponse.JudgeAnswered(FeatureReports.ToJudgeReport(verdict));
+    }
 
     /// <summary>
     ///     Sheds the transient caches and compacts the heap, answering how many bytes of working set that reclaimed
@@ -250,6 +263,11 @@ internal sealed class InspectionRoute
                 MemoryLoadBytes = _budget.Assess().MemoryLoadBytes,
                 TouchedCount = _touchedPaths.Count,
                 ReloadMs = reloadMs,
+                Limits = new EngineLimits(
+                    ChangeTracker.MaxPatchedPaths,
+                    KeptCheck.MaxChangedFiles,
+                    CandidateBinding.WholeProjectThreshold,
+                    SolutionViews.MaxTouchedPaths),
             };
             return status;
         }

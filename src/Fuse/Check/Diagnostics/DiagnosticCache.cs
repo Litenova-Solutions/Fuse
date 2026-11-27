@@ -163,6 +163,27 @@ internal sealed class DiagnosticCache
     internal void StoreBaselineProject(int generation, ProjectId project, IReadOnlyList<CompilerError> errors) =>
         _baselineProjects[(generation, project)] = errors;
 
+    /// <summary>
+    ///     Drops the working-tree results and declaration fingerprints of <paramref name="projects"/> and stops their
+    ///     analyzer runs, so an edit to an additional file they read binds them again instead of reusing results
+    ///     found under their older additional content.
+    /// </summary>
+    internal void InvalidateProjects(IEnumerable<ProjectId> projects)
+    {
+        var ids = projects as IReadOnlyCollection<ProjectId> ?? [.. projects];
+        if (ids.Count == 0)
+            return;
+        foreach (var key in _currentFiles.Keys.Where(k => ids.Contains(k.ProjectId)).ToList())
+            _currentFiles.TryRemove(key, out _);
+        foreach (var key in _declarationFingerprints.Keys.Where(k => ids.Contains(k.Project)).ToList())
+            _declarationFingerprints.TryRemove(key, out _);
+        foreach (var id in ids)
+        {
+            _analyses.Release(id, baseline: false);
+            _analyses.Release(id, baseline: true);
+        }
+    }
+
     /// <summary>True when the working-tree file <paramref name="id"/> is kept under <paramref name="key"/>.</summary>
     internal bool TryGetCurrentFile(DocumentId id, FileKey key, out IReadOnlyList<CompilerError> errors)
     {

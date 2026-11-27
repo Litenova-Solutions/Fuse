@@ -145,6 +145,9 @@ internal sealed class WorkspaceSync
             await _projects.EvaluateAsync(cancellationToken).ConfigureAwait(false);
         else
             await _projects.ResetAsync(cancellationToken).ConfigureAwait(false);
+        // The loader reads the additional files from disk when it opens their projects, but the baseline
+        // holds their HEAD content only when a rebuild applies them, so they are touched like the sources.
+        _views.Touch(ChangedAdditionalFiles());
         _views.Clear();
         _unfinished = null;
         // Reopen the projects that were loaded, so the next check does not pay for a cold load it did not ask for.
@@ -172,6 +175,13 @@ internal sealed class WorkspaceSync
         var paths = new HashSet<RepoPath>(patch.Paths);
         foreach (var directory in patch.VanishedDirectories)
             paths.UnionWith(_views.FilesUnder(directory));
+        // The patch carries only sources, but the tracker also reports the non-sources it saw change, and an
+        // edit to an additional file reaches the analyzers only when both views patch it like a source.
+        paths.UnionWith(ChangedAdditionalFiles());
         await _views.PatchAsync(paths, cancellationToken).ConfigureAwait(false);
     }
+
+    /// <summary>The additional files that differ from HEAD, in no particular order.</summary>
+    private IReadOnlyList<RepoPath> ChangedAdditionalFiles() =>
+        [.. _tracker.NonSources.Where(_projects.Graph.IsAdditionalFile)];
 }

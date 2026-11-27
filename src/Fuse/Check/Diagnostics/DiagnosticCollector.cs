@@ -397,6 +397,12 @@ internal sealed class DiagnosticCollector
     /// </summary>
     public void ReleaseBaseline() => _cache.ReleaseBaseline();
 
+    /// <summary>
+    ///     Drops the working-tree results of <paramref name="projects"/> and stops their analyzer runs, so an edit to
+    ///     an additional file they read binds them again.
+    /// </summary>
+    internal void InvalidateProjects(IEnumerable<ProjectId> projects) => _cache.InvalidateProjects(projects);
+
     /// <summary>The semantic model of the project's first document, as the probe that plans its analyzers.</summary>
     private static async Task<SemanticModel?> FirstModelAsync(Project project, CancellationToken cancellationToken)
     {

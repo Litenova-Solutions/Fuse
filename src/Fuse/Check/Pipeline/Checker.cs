@@ -176,12 +176,16 @@ internal sealed class Checker
         var targets = scope is CheckScope.NamedPaths pathScope
             ? ScopeExpansion.Expand(_workspace, generation, pathScope.Named)
             : _targets.Resolve(scope, generation, scope is CheckScope.AllChanges && session is not null ? SessionExcluded(generation, session, sessionKeep) : null);
+        // An additional file an analyzer reads is no target, so a check of every change binds its owning
+        // projects whole below, and an edit to one is analyzed without a restart.
+        var additionalFiles = ChangedAdditionalFiles(generation);
+        var additionalOwners = scope is CheckScope.AllChanges ? ChangedAdditionalOwners(generation, additionalFiles) : [];
         // Named files that are all outside every project, or not C# sources, would check nothing and read as a pass.
         if (targets.Count == 0 && scope is CheckScope.Files { Paths.Count: > 0 } named)
             throw new FuseException(ErrorCode.InvalidPath, ErrorMessages.NothingToCheck([.. named.Paths.Select(p => p.Relative)]));
         if (targets.Count == 0 && scope is CheckScope.NamedPaths)
             throw new FuseException(ErrorCode.InvalidPath, ErrorMessages.NothingToCheck([.. scopedPaths]));
-        if (targets.Count == 0)
+        if (targets.Count == 0 && additionalOwners.Count == 0)
             return NoTargets with { NonCSharpChanged = generation.NonSourceChanged, NonCSharpSample = [.. generation.NonSourceSample.Select(p => p.Relative)] };
 
         // The sync above has folded in every edit, so what the pinned generation holds keys the answer a repeat of
@@ -206,7 +210,7 @@ internal sealed class Checker
             }
         }
         // Past the bound the kept answer costs more hashing than it saves; the check runs as usual.
-        var changedFiles = generation.Changed.Count;
+        var changedFiles = generation.Changed.Count + additionalFiles.Count;
         string? keptKey = null;
         if (changedFiles > KeptCheck.MaxChangedFiles)
             _workspace.Log($"check: kept answer skipped, {changedFiles} changed file(s) past {KeptCheck.MaxChangedFiles}");
@@ -219,8 +223,12 @@ internal sealed class Checker
         }
 
         var loading = phases.Start();
-        generation = await _workspace.EnsureLoadedAndPinAsync(OwnersOf(generation.Graph, targets), cancellationToken).ConfigureAwait(false);
+        var owners = OwnersOf(generation.Graph, targets);
+        owners.AddRange(additionalOwners.Where(owner => !owners.Any(known => known.Path == owner.Path)));
+        generation = await _workspace.EnsureLoadedAndPinAsync(owners, cancellationToken).ConfigureAwait(false);
         phases.Add(Phase.Load, loading);
+        if (additionalOwners.Count > 0)
+            _introduced.InvalidateAdditionalOwners(additionalOwners, generation);
 
         var timer = Stopwatch.StartNew();
         var errors = new List<CompilerError>();
@@ -254,6 +262,14 @@ internal sealed class Checker
         {
             errors = await _introduced.InFilesAsync(targets, generation, context, cancellationToken).ConfigureAwait(false);
             surfaceCheckTargets = [.. targets];
+        }
+
+        // The owning projects bind whole, so an analyzer error the edited content causes is reported wherever
+        // it is located: in a source the analyzer names or in the additional file itself.
+        if (additionalOwners.Count > 0)
+        {
+            foreach (var owner in additionalOwners)
+                errors.AddRange(await _introduced.InProjectAsync(owner, generation, context, cancellationToken).ConfigureAwait(false));
         }
 
         var targetsMs = timer.ElapsedMilliseconds;
@@ -429,6 +445,7 @@ internal sealed class Checker
         if (options.IncludeRepairBrief)
             scopeKey += "|brief";
         // A paths scope keys by its display specs, distinct from all changes and from any file list.
+        // The changed additional files key it too, so an edit to one invalidates the kept answer.
         return KeptCheck.KeyFor(
             scopeKey,
             maxReported,
@@ -438,7 +455,7 @@ internal sealed class Checker
             generation.ConfigurationGeneration,
             generation.BaselineGeneration,
             _sessions.RecordsHash(),
-            generation.Changed.Select(path => (path.Relative, path.Absolute)));
+            generation.Changed.Concat(ChangedAdditionalFiles(generation)).Select(path => (path.Relative, path.Absolute)));
     }
 
     private async Task<List<RepoPath>> ChangedTargetsAsync(List<RepoPath> targets, Generation generation, CancellationToken cancellationToken)
@@ -702,6 +719,14 @@ internal sealed class Checker
 
     private static List<ProjectNode> OwnersOf(RepoGraph graph, IEnumerable<RepoPath> paths) =>
         paths.SelectMany(graph.OwnersOf).DistinctBy(p => p.Path).ToList();
+
+    /// <summary>The additional files that differ from HEAD, in path order, which the analyzers of their owning projects read.</summary>
+    private static List<RepoPath> ChangedAdditionalFiles(Generation generation) =>
+        [.. generation.NonSources.Where(generation.Graph.IsAdditionalFile).OrderBy(p => p.Relative, StringComparer.Ordinal)];
+
+    /// <summary>The projects that pass a changed additional file to their analyzers, in path order.</summary>
+    private static List<ProjectNode> ChangedAdditionalOwners(Generation generation, IReadOnlyList<RepoPath> additionalFiles) =>
+        [.. additionalFiles.SelectMany(generation.Graph.AdditionalFileOwnersOf).DistinctBy(p => p.Path).OrderBy(p => p.Path.Relative, StringComparer.Ordinal)];
 
     /// <summary>The writer published a newer generation that holds a project the pinned one lacked, so this attempt stops and the check restarts on it.</summary>
     private sealed class CoverageRestartException : Exception

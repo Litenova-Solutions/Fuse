@@ -170,7 +170,12 @@ internal sealed class ViewDocumentPatcher
             return solution;
         }
 
-        foreach (var owner in _projects.Graph.OwnersOf(path))
+        // A new additional file is owned only as an additional file, which OwnersOf leaves out.
+        var graph = _projects.Graph;
+        IReadOnlyList<ProjectNode> owners = graph.OwnersOf(path);
+        if (graph.IsAdditionalFile(path))
+            owners = [.. owners.Concat(graph.AdditionalFileOwnersOf(path)).DistinctBy(p => p.Path)];
+        foreach (var owner in owners)
         {
             foreach (var project in RepoWorkspace.ProjectsFor(solution, owner).ToList())
             {

@@ -70,6 +70,22 @@ internal sealed class IntroducedErrors
     public void ReleaseBaseline() => _collector.ReleaseBaseline();
 
     /// <summary>
+    ///     Drops the cached results of the projects that pass a changed additional file to their analyzers and stops
+    ///     their analyzer runs, so the next bind runs the analyzers again over the edited content.
+    /// </summary>
+    public void InvalidateAdditionalOwners(IEnumerable<ProjectNode> owners, Generation generation)
+    {
+        var ids = owners
+            .SelectMany(node => RepoWorkspace.ProjectsFor(generation.Current, node))
+            .Select(project => project.Id)
+            .Distinct()
+            .ToList();
+        if (ids.Count == 0)
+            return;
+        _collector.InvalidateProjects(ids);
+    }
+
+    /// <summary>
     ///     Writes how many stored baseline results the check read and how many it computed, when it read the store.
     /// </summary>
     public void LogBaseline() => LogBaseline(_collector.TakeBaselineReport());

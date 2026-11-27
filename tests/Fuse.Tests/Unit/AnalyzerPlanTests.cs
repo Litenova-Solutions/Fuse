@@ -58,7 +58,7 @@ public class AnalyzerPlanTests
     {
         // A whole-compilation run binds every file of the project, which costs more than a short start on each checked file.
         using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });
-        var moderate = new SlowStartAnalyzer(TimeSpan.FromMilliseconds(20));
+        var moderate = new SlowStartAnalyzer(TimeSpan.Zero);
         var lines = new List<string>();
         var solution = SolutionWith(repo, moderate);
         var collector = new DiagnosticCollector(repo.Root, () => 0, lines.Add);

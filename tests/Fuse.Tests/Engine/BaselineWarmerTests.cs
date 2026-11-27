@@ -125,8 +125,9 @@ public class BaselineWarmerTests
         repo.Commit("third");
         Assert.IsType<EngineResponse.CheckAnswered>(await engine.SendAsync(new EngineRequest.CheckChanges(WaitForLoad: true)));
 
+        // The newest HEAD cancels the warm of the one before it: at most the first warm and the newest one finish.
         await Task.Delay(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
-        Assert.Equal(1, CountOccurrences(engine.Log, "baseline warm: App "));
+        Assert.InRange(CountOccurrences(engine.Log, "baseline warm: App "), 1, 2);
     }
 
     private static int CountOccurrences(string text, string value)

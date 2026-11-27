@@ -7,8 +7,6 @@ using Fuse.Dotnet.Processes;
 using Fuse.Failures;
 using Fuse.Operations.Test;
 using Fuse.Paths;
-using Fuse.Protocol.Analysis;
-using Fuse.Protocol.Requests;
 using Fuse.Repo.Tracking;
 namespace Fuse.Operations.Build;
 
@@ -30,7 +28,7 @@ internal static partial class BuildOperation
     /// <summary>OS memory load fraction past which a build or test run sheds memory first and shuts down idle MSBuild servers after.</summary>
     private const double HighMemoryLoadRatio = 0.80;
 
-    private static readonly string[] QuietArguments = ["-nologo", "-tl:off", "-v:q", "-clp:ErrorsOnly;NoSummary"];
+    internal static readonly string[] QuietArguments = ["-nologo", "-tl:off", "-v:q", "-clp:ErrorsOnly;NoSummary"];
 
     /// <summary>The line printed above the answer when a source file moved during the build and it ran again.</summary>
     internal const string RanAgainLine = "fuse: a source file moved while the build ran, so it ran again";
@@ -75,96 +73,8 @@ internal static partial class BuildOperation
     /// <param name="options">How many errors to print, in what form, and whether the warnings are listed.</param>
     /// <param name="cancellationToken">Cancels the plan and the builds.</param>
     /// <param name="parallelArtifacts">True to isolate MSBuild output under the state directory via <c>--artifacts-path</c>.</param>
-    public static async Task<OperationResult> RunChangedAsync(RepoRoot root, string workingDirectory, IReadOnlyList<string> arguments, BuildOptions options, CancellationToken cancellationToken, bool parallelArtifacts = false)
-    {
-        var (filteredArgs, hasParallelFlag) = StripParallelArtifactsFlag(arguments);
-        parallelArtifacts |= hasParallelFlag;
-
-        var response = await EngineClient.SendAsync(root, new EngineRequest.PlanChangedBuild(), TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
-        if (response is not EngineResponse.ChangedBuildAnswered { Plan: not null } answered)
-            return OperationResult.Unanswered(response, "changed build plan");
-        var plan = answered.Plan;
-        if (plan.FallbackReason.Length > 0)
-            return await FallbackAsync(root, workingDirectory, filteredArgs, options, plan.FallbackReason, cancellationToken, parallelArtifacts).ConfigureAwait(false);
-        if (plan.BuildProjects.Length == 0)
-        {
-            if (plan.ChangedFileCount == 0)
-                return new OperationResult(Outcome.Clean, $"fuse: no C# changes since HEAD; nothing to build (tree {plan.TreeHash})");
-            return await FallbackAsync(root, workingDirectory, filteredArgs, options, $"{plan.ChangedFileCount} changed file(s) in no project", cancellationToken, parallelArtifacts).ConfigureAwait(false);
-        }
-
-        var names = plan.BuildProjects.Select(project => Path.GetFileNameWithoutExtension(project) ?? project).ToArray();
-        var text = new StringBuilder();
-        text.Append($"fuse: building {plan.BuildProjects.Length} project(s) for {plan.ChangedFileCount} changed file(s) (tree {plan.TreeHash}): {string.Join(", ", names)}");
-        if (!new HashSet<string>(names).SetEquals(plan.ChangedInProjects))
-            text.Append($"; changes in {string.Join(", ", plan.ChangedInProjects)}");
-        if (plan.UnownedFileCount > 0)
-            text.Append($"; {plan.UnownedFileCount} changed file(s) in no project");
-        using var buildLock = BuildLock.AcquireForProjectsForClient(root, plan.BuildProjects, parallelArtifacts);
-        var effectiveArgs = WithArtifactsPath(filteredArgs, buildLock.ArtifactsPath);
-        var stamp = await BuildResultsFile.StampForReuseAsync(root, cancellationToken).ConfigureAwait(false);
-        if (stamp is not null && buildLock.ArtifactsPath is null && ReusedBuild(root, stamp.Value, BuildResultsFile.ChangedScope, plan.BuildProjects, effectiveArgs, workingDirectory, options) is { } reused)
-            return reused;
-
-        await YieldMemoryIfTightAsync(root, cancellationToken).ConfigureAwait(false);
-
-        if (plan.BuildProjects.Length > 1)
-        {
-            var (result, log, seconds, rerunLine) = await RunTraversalBuildAsync(
-                root, plan.BuildProjects, [.. effectiveArgs, .. QuietArguments], workingDirectory, root.StateDirectory, continueOnError: false, cancellationToken).ConfigureAwait(false);
-
-            var treeStamp = await StampAsync(root, cancellationToken).ConfigureAwait(false);
-            var diagnostics = BuildOutputParser.Diagnostics(result.Output, root.Path);
-            // A build server holding a locked file is shut down so the next build can copy; any other outcome leaves it running.
-            if (result.ExitCode != 0 && diagnostics.Any(NamesBuildServerLock))
-                await SdkCapabilities.ShutdownMsBuildServerAsync(workingDirectory, cancellationToken).ConfigureAwait(false);
-            var warnings = log.Length == 0 ? [] : BuildLog.WarningsList(log, root.Path);
-            var resultsPath = BuildResultsFile.WriteBuild(root, diagnostics, warnings, options.Json, treeStamp);
-            var label = $"build ({plan.BuildProjects.Length} projects)";
-            var runRecord = BuildRun(label, result, log, seconds, diagnostics, warnings, restoreTarget: null);
-            if (stamp is not null && buildLock.ArtifactsPath is null && ShouldRecord(diagnostics))
-                BuildResultsFile.WriteReuse(root, stamp.Value, BuildResultsFile.ChangedScope, plan.BuildProjects, effectiveArgs, RelativeWorkingDirectory(root, workingDirectory), DateTime.UtcNow, [runRecord], treeStamp, diagnostics.Count);
-
-            text.Append('\n');
-            if (rerunLine is not null)
-                text.Append(rerunLine).Append('\n');
-            var rendered = Render(result, root.Path, seconds, label, options, resultsPath, log, treeStamp, diagnostics.Count);
-            text.Append(rendered.Text);
-            return new OperationResult(rendered.Outcome, text.ToString());
-        }
-
-        var singleRuns = new List<(ProcessResult Result, string Log, double Seconds, string? RerunLine)>(plan.BuildProjects.Length);
-        foreach (var project in plan.BuildProjects)
-            singleRuns.Add(await RunOneAsync(["build", project, .. effectiveArgs, .. QuietArguments], workingDirectory, root.StateDirectory, cancellationToken).ConfigureAwait(false));
-
-        // The results file holds every project at once; each summary names it with the combined count.
-        var singleStamp = await StampAsync(root, cancellationToken).ConfigureAwait(false);
-        var parsed = singleRuns.Select((run, i) => BuildRun($"build ({names[i]})", run.Result, run.Log, run.Seconds, BuildOutputParser.Diagnostics(run.Result.Output, root.Path), run.Log.Length == 0 ? [] : BuildLog.WarningsList(run.Log, root.Path), RelativeProject(plan.BuildProjects[i], root.Path))).ToList();
-        // A build server holding a locked file is shut down so the next build can copy; any other outcome leaves it running.
-        if (parsed.Any(run => run.ExitCode != 0 && run.Errors.Any(NamesBuildServerLock)))
-            await SdkCapabilities.ShutdownMsBuildServerAsync(workingDirectory, cancellationToken).ConfigureAwait(false);
-        var errors = parsed.SelectMany(run => run.Errors).ToList();
-        var allWarnings = parsed.SelectMany(run => run.Warnings).ToList();
-
-        var singleResultsPath = BuildResultsFile.WriteBuild(root, errors, allWarnings, options.Json, singleStamp);
-        if (stamp is not null && buildLock.ArtifactsPath is null && ShouldRecord(errors))
-            BuildResultsFile.WriteReuse(root, stamp.Value, BuildResultsFile.ChangedScope, plan.BuildProjects, effectiveArgs, RelativeWorkingDirectory(root, workingDirectory), DateTime.UtcNow, parsed, singleStamp, errors.Count);
-        var failed = 0;
-        foreach (var ((result, log, seconds, rerunLine), name, project) in singleRuns.Zip(names, plan.BuildProjects))
-        {
-            text.Append('\n');
-            if (rerunLine is not null)
-                text.Append(rerunLine).Append('\n');
-            var rendered = Render(result, root.Path, seconds, $"build ({name})", options, singleResultsPath, log, singleStamp, errors.Count, restoreTarget: RelativeProject(project, root.Path));
-            if (rendered.Outcome == Outcome.ProblemsFound)
-                failed++;
-            text.Append(rendered.Text);
-        }
-
-        if (plan.BuildProjects.Length > 1)
-            text.Append($"\nfuse: {failed} of {plan.BuildProjects.Length} project(s) failed");
-        return new OperationResult(failed > 0 ? Outcome.ProblemsFound : Outcome.Clean, text.ToString());
-    }
+    public static Task<OperationResult> RunChangedAsync(RepoRoot root, string workingDirectory, IReadOnlyList<string> arguments, BuildOptions options, CancellationToken cancellationToken, bool parallelArtifacts = false) =>
+        ChangedBuildRunner.RunChangedAsync(root, workingDirectory, arguments, options, cancellationToken, parallelArtifacts);
 
     /// <summary>
     ///     Builds multiple <paramref name="projects"/> in a single MSBuild invocation via an ephemeral traversal project
@@ -268,7 +178,7 @@ internal static partial class BuildOperation
         }
     }
 
-    private static (IReadOnlyList<string> Filtered, bool ParallelArtifacts) StripParallelArtifactsFlag(IReadOnlyList<string> arguments)
+    internal static (IReadOnlyList<string> Filtered, bool ParallelArtifacts) StripParallelArtifactsFlag(IReadOnlyList<string> arguments)
     {
         var parallel = false;
         var filtered = new List<string>(arguments.Count);
@@ -283,7 +193,7 @@ internal static partial class BuildOperation
         return (filtered, parallel);
     }
 
-    private static IReadOnlyList<string> WithArtifactsPath(IReadOnlyList<string> arguments, string? artifactsPath)
+    internal static IReadOnlyList<string> WithArtifactsPath(IReadOnlyList<string> arguments, string? artifactsPath)
     {
         if (artifactsPath is null || arguments.Any(a => a == "--artifacts-path" || a.StartsWith("--artifacts-path=", StringComparison.Ordinal)))
             return arguments;
@@ -294,7 +204,7 @@ internal static partial class BuildOperation
     ///     True when <paramref name="diagnostic"/> is a file lock error that names a build server process. It mirrors
     ///     the names <see cref="LockLine"/> decides by; its holder reports "name (pid n)".
     /// </summary>
-    private static bool NamesBuildServerLock(BuildDiagnostic diagnostic)
+    internal static bool NamesBuildServerLock(BuildDiagnostic diagnostic)
     {
         var holder = LockLine.Holder(diagnostic);
         if (holder is null)
@@ -308,15 +218,8 @@ internal static partial class BuildOperation
             || bare.Equals("testhost", StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>Builds the whole solution because <paramref name="reason"/> says the changed projects cannot be selected, saying so first.</summary>
-    private static async Task<OperationResult> FallbackAsync(RepoRoot root, string workingDirectory, IReadOnlyList<string> arguments, BuildOptions options, string reason, CancellationToken cancellationToken, bool parallelArtifacts = false)
-    {
-        var whole = await RunAsync(root, workingDirectory, arguments, options, cancellationToken, includeTreeStamp: true, parallelArtifacts: parallelArtifacts).ConfigureAwait(false);
-        return whole with { Text = $"fuse: {reason}; building the whole solution instead\n" + whole.Text };
-    }
-
     /// <summary>The stamp for a finished build, or null when git cannot say what the tree holds, which leaves the build unstamped rather than failing it.</summary>
-    private static async Task<string?> StampAsync(RepoRoot root, CancellationToken cancellationToken)
+    internal static async Task<string?> StampAsync(RepoRoot root, CancellationToken cancellationToken)
     {
         try
         {
@@ -378,7 +281,7 @@ internal static partial class BuildOperation
         foreach (var run in record.Runs)
         {
             text.Append(ReusedLine(run.Label, record.FinishedUtc, record.TreeHash)).Append('\n');
-            var rendered = RenderCore(root.Path, run.Errors, run.Commands, options.ListWarnings ? ListedWarnings(run.Warnings, run.Errors) : [], run.WarningsCount, run.Times, run.ExitCode, run.Tail, run.Seconds, run.Label, options, resultsPath, record.TreeStamp, record.FileTotal, run.RestoreTarget);
+            var rendered = BuildRenderer.RenderCore(root.Path, run.Errors, run.Commands, options.ListWarnings ? BuildRenderer.ListedWarnings(run.Warnings, run.Errors) : [], run.WarningsCount, run.Times, run.ExitCode, run.Tail, run.Seconds, run.Label, options, resultsPath, record.TreeStamp, record.FileTotal, run.RestoreTarget);
             if (rendered.Outcome == Outcome.ProblemsFound)
                 failed++;
             text.Append(rendered.Text).Append('\n');
@@ -396,7 +299,7 @@ internal static partial class BuildOperation
         diagnostics.All(diagnostic => !diagnostic.IsContentHashFailure);
 
     /// <summary>One finished build as the reuse record holds it.</summary>
-    private static (string Label, int ExitCode, double Seconds, IReadOnlyList<BuildDiagnostic> Errors, IReadOnlyList<BuildWarning> Warnings, int WarningsCount, IReadOnlyList<(string Command, List<string> Lines)> Commands, string? Times, string Tail, string? RestoreTarget) BuildRun(string label, ProcessResult result, string log, double seconds, IReadOnlyList<BuildDiagnostic> errors, IReadOnlyList<BuildWarning> warnings, string? restoreTarget) =>
+    internal static (string Label, int ExitCode, double Seconds, IReadOnlyList<BuildDiagnostic> Errors, IReadOnlyList<BuildWarning> Warnings, int WarningsCount, IReadOnlyList<(string Command, List<string> Lines)> Commands, string? Times, string Tail, string? RestoreTarget) BuildRun(string label, ProcessResult result, string log, double seconds, IReadOnlyList<BuildDiagnostic> errors, IReadOnlyList<BuildWarning> warnings, string? restoreTarget) =>
         (label, result.ExitCode, seconds, errors, warnings, log.Length == 0 ? 0 : BuildLog.Warnings(log), log.Length == 0 ? [] : BuildLog.FailedCommands(log), seconds >= TimesFromSeconds && log.Length > 0 ? BuildLog.Times(log) : null, Tail(result.Output), restoreTarget);
 
     /// <summary>The line above a reused answer: what was reused and how old it is.</summary>
@@ -404,7 +307,7 @@ internal static partial class BuildOperation
         $"fuse: {label} reused from {BuildResultsFile.AgeAgo(finishedUtc, DateTime.UtcNow)} ago; tree {treeHash}";
 
     /// <summary><paramref name="workingDirectory"/> as the reuse key holds it: relative to the root, or as given when it is not under it.</summary>
-    private static string RelativeWorkingDirectory(RepoRoot root, string workingDirectory)
+    internal static string RelativeWorkingDirectory(RepoRoot root, string workingDirectory)
     {
         try
         {
@@ -418,7 +321,7 @@ internal static partial class BuildOperation
     }
 
     /// <summary><paramref name="project"/> as an answer prints it: relative to <paramref name="root"/>.</summary>
-    private static string RelativeProject(string project, string root)
+    internal static string RelativeProject(string project, string root)
     {
         try
         {
@@ -460,62 +363,12 @@ internal static partial class BuildOperation
     /// </summary>
     /// <param name="root">The repository the lock files are listed relative to.</param>
     /// <param name="restoreTarget">What to restore, relative to the root, or null to derive it from the repository.</param>
-    public static string LockRefreshLine(string root, string? restoreTarget)
-    {
-        var target = restoreTarget ?? DiscoveredSolution(root);
-        var command = target is null ? "dotnet restore --force-evaluate" : $"dotnet restore {target} --force-evaluate";
-        var locks = LockFiles(root);
-        if (locks.Count == 0)
-            return $"lock file: run {command} to refresh the restore";
-        var shown = string.Join(", ", locks.Take(MaxLockFilesShown));
-        var more = locks.Count > MaxLockFilesShown ? $" and {locks.Count - MaxLockFilesShown} more" : "";
-        return $"lock file: run {command} to refresh {shown}{more}";
-    }
-
-    /// <summary>The repository's solution when it holds exactly one, relative to the root, or null.</summary>
-    private static string? DiscoveredSolution(string root)
-    {
-        try
-        {
-            var solutions = Directory.EnumerateFiles(root, "*", SearchOption.TopDirectoryOnly)
-                .Where(file => file.EndsWith(".sln", StringComparison.OrdinalIgnoreCase) || file.EndsWith(".slnx", StringComparison.OrdinalIgnoreCase))
-                .Select(Path.GetFileName)
-                .OfType<string>()
-                .OrderBy(name => name, StringComparer.Ordinal)
-                .Take(2)
-                .ToList();
-            return solutions.Count == 1 ? solutions[0] : null;
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-        {
-            return null;
-        }
-    }
-
-    /// <summary>Every lock file under the root, repository-relative with forward slashes, in ordinal order.</summary>
-    private static List<string> LockFiles(string root)
-    {
-        var locks = new List<string>();
-        try
-        {
-            foreach (var file in Directory.EnumerateFiles(root, "packages.lock.json", SearchOption.AllDirectories))
-            {
-                if (PathRules.IsBuildOutput(root, file))
-                    continue;
-                locks.Add(Path.GetRelativePath(root, file).Replace('\\', '/'));
-            }
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
-        {
-        }
-
-        locks.Sort(StringComparer.Ordinal);
-        return locks;
-    }
+    public static string LockRefreshLine(string root, string? restoreTarget) =>
+        BuildRenderer.LockRefreshLine(root, restoreTarget);
 
     /// <summary>Runs one <c>dotnet</c> build with the file log, running again when a source file moved mid-build or a build output is missing.</summary>
     /// <returns>The process, the log's text, the seconds it took, and the line printed above the answer when it ran again, or null.</returns>
-    private static async Task<(ProcessResult Result, string Log, double Seconds, string? RerunLine)> RunOneAsync(string[] executableArguments, string workingDirectory, string logDirectory, CancellationToken cancellationToken)
+    internal static async Task<(ProcessResult Result, string Log, double Seconds, string? RerunLine)> RunOneAsync(string[] executableArguments, string workingDirectory, string logDirectory, CancellationToken cancellationToken)
     {
         var started = Environment.TickCount64;
         var (result, log, _) = await RunLoggedAsync(executableArguments, workingDirectory, logDirectory, cancellationToken).ConfigureAwait(false);
@@ -604,7 +457,7 @@ internal static partial class BuildOperation
 
     /// <param name="log">The build's file log (<see cref="BuildLog"/>), or empty when it has none.</param>
     internal static OperationResult Render(ProcessResult result, string root, double seconds, string operation, string log = "") =>
-        Render(result, root, seconds, operation, new BuildOptions(MaxShown, false, false), null, log);
+        BuildRenderer.Render(new BuildRenderContext(result, root, seconds, operation, new BuildOptions(MaxShown, false, false), Log: log));
 
     /// <param name="options">How many errors to print, in what form, and whether the warnings are listed.</param>
     /// <param name="resultsPath">Where every error and warning was written, or null when it was not written.</param>
@@ -612,118 +465,8 @@ internal static partial class BuildOperation
     /// <param name="treeStamp">The stamp a <c>fuse build</c> summary carries, or null to print none.</param>
     /// <param name="fileTotal">How many errors the results file holds when it holds more than this build's, or null.</param>
     /// <param name="restoreTarget">What a lock refresh restores, relative to the root, or null to derive it from the repository.</param>
-    internal static OperationResult Render(ProcessResult result, string root, double seconds, string operation, BuildOptions options, string? resultsPath = null, string log = "", string? treeStamp = null, int? fileTotal = null, string? restoreTarget = null)
-    {
-        var diagnostics = BuildOutputParser.Diagnostics(result.Output, root);
-        List<(string Command, List<string> Lines)> commands = log.Length == 0 ? [] : BuildLog.FailedCommands(log);
-        List<BuildWarning> warnings = options.ListWarnings && log.Length > 0 ? ListedWarnings(BuildLog.WarningsList(log, root), diagnostics) : [];
-        var warningsCount = log.Length == 0 ? 0 : BuildLog.Warnings(log);
-        var times = seconds >= TimesFromSeconds && log.Length > 0 ? BuildLog.Times(log) : null;
-        return RenderCore(root, diagnostics, commands, warnings, warningsCount, times, result.ExitCode, Tail(result.Output), seconds, operation, options, resultsPath, treeStamp, fileTotal, restoreTarget);
-    }
-
-    /// <summary>Renders parsed diagnostics the way a fresh build prints them: the errors, the lock and refresh lines under them, the warnings, and the summary.</summary>
-    /// <param name="root">The repository the errors print relative to.</param>
-    /// <param name="diagnostics">The errors in first-seen order.</param>
-    /// <param name="commands">Each failed command with the last lines it printed.</param>
-    /// <param name="warnings">The warnings that are not also errors, listed only with <c>--warnings</c>.</param>
-    /// <param name="warningsCount">How many warnings the build produced.</param>
-    /// <param name="times">Where the build's time went, or null when it is not said.</param>
-    /// <param name="exitCode">The code the build exited with.</param>
-    /// <param name="tail">The last lines of the build's output, for a failure without an error line.</param>
-    /// <param name="seconds">How long the build took.</param>
-    /// <param name="operation">What ran, as the summary names it.</param>
-    /// <param name="options">How many errors to print, in what form, and whether the warnings are listed.</param>
-    /// <param name="resultsPath">Where every error and warning was written, or null when it was not written.</param>
-    /// <param name="treeStamp">The stamp a <c>fuse build</c> summary carries, or null to print none.</param>
-    /// <param name="fileTotal">How many errors the results file holds when it holds more than this build's, or null.</param>
-    /// <param name="restoreTarget">What a lock refresh restores, relative to the root, or null to derive it from the repository.</param>
-    private static OperationResult RenderCore(string root, List<BuildDiagnostic> diagnostics, IReadOnlyList<(string Command, List<string> Lines)> commands, List<BuildWarning> warnings, int warningsCount, string? times, int exitCode, string tail, double seconds, string operation, BuildOptions options, string? resultsPath, string? treeStamp, int? fileTotal, string? restoreTarget)
-    {
-        var text = new StringBuilder();
-        if (options.Json)
-        {
-            foreach (var diagnostic in diagnostics)
-                text.Append(DiagnosticJson.BuildLine(diagnostic, LockLine.Holder(diagnostic))).Append('\n');
-            // With no diagnostic parsed, the tail says where the failure is, as in text mode.
-            if (diagnostics.Count == 0 && exitCode != 0)
-                text.Append(tail).Append('\n');
-        }
-        else if (diagnostics.Count > 0 || exitCode == 0)
-        {
-            var refreshPrinted = false;
-            foreach (var diagnostic in diagnostics.Take(options.MaxShown))
-            {
-                var line = diagnostic.ToString();
-                text.Append(line).Append('\n');
-                // What a failed command printed explains its exit code, which is all the error line says.
-                foreach (var (command, lines) in commands)
-                {
-                    if (!line.Contains($"error MSB3073: The command \"{command}", StringComparison.Ordinal))
-                        continue;
-                    foreach (var commandLine in lines)
-                        text.Append("  ").Append(commandLine).Append('\n');
-                    break;
-                }
-
-                // A file another process holds open names the holder and what to do.
-                if (LockLine.For(diagnostic, root) is { } locked)
-                    text.Append("  ").Append(locked).Append('\n');
-
-                // A package the feed repacked without a new version names the one restore that refreshes the lock files, once.
-                if (!refreshPrinted && diagnostic.IsContentHashFailure && LockRefreshLine(root, restoreTarget) is { } refresh)
-                {
-                    text.Append("  ").Append(refresh).Append('\n');
-                    refreshPrinted = true;
-                }
-            }
-        }
-        else
-        {
-            // Nothing matched the diagnostic format: show the tail, which is where MSBuild puts the failure.
-            text.Append(tail).Append('\n');
-        }
-
-        if (options.ListWarnings)
-            AppendWarnings(text, warnings, resultsPath);
-
-        var timesTail = times is null ? "" : $" ({times})";
-        var warningsTail = warningsCount > 0 ? $"; {warningsCount} warning(s)" : "";
-        if (exitCode == 0)
-        {
-            text.Append($"fuse: {operation} succeeded in {seconds:0.0} s{warningsTail}{timesTail}{treeStamp}");
-            return new OperationResult(Outcome.Clean, text.ToString());
-        }
-
-        if (diagnostics.Count == 0)
-        {
-            text.Append($"fuse: {operation} failed (exit code {exitCode}) in {seconds:0.0} s{warningsTail}{timesTail}{treeStamp}");
-            return new OperationResult(Outcome.ProblemsFound, text.ToString());
-        }
-
-        var shown = options.Json ? diagnostics.Count : Math.Min(options.MaxShown, diagnostics.Count);
-        var more = !options.Json && diagnostics.Count > shown ? $", first {shown} shown" : "";
-        // The file holds every error; the answer names it only when it left errors out, and never in JSON, which already holds them.
-        var file = !options.Json && diagnostics.Count > shown && resultsPath is not null ? $"; all {fileTotal ?? diagnostics.Count} in {resultsPath}" : "";
-        text.Append($"fuse: {operation} failed with {diagnostics.Count} error(s){more} in {seconds:0.0} s{warningsTail}{timesTail}{treeStamp}{file}");
-        return new OperationResult(Outcome.ProblemsFound, text.ToString());
-    }
-
-    /// <summary>The warnings that are not also errors: one treated as an error already prints as one.</summary>
-    private static List<BuildWarning> ListedWarnings(IReadOnlyList<BuildWarning> warnings, IReadOnlyList<BuildDiagnostic> diagnostics)
-    {
-        var errors = diagnostics.Select(d => (d.File, d.Line, d.Column, d.Code)).ToHashSet();
-        return [.. warnings.Where(w => !errors.Contains((w.File, (int?)w.Line, (int?)w.Column, w.Code)))];
-    }
-
-    /// <summary>The warnings after the errors, each indented, with where the rest are when they do not all fit.</summary>
-    private static void AppendWarnings(StringBuilder text, List<BuildWarning> warnings, string? resultsPath)
-    {
-        foreach (var warning in warnings.Take(MaxWarningsShown))
-            text.Append("  ").Append(warning).Append('\n');
-        if (warnings.Count > MaxWarningsShown)
-            text.Append("  ... ").Append(warnings.Count - MaxWarningsShown).Append(" more warning(s)").Append(resultsPath is null ? " not shown" : $" in {resultsPath}").Append('\n');
-    }
+    internal static OperationResult Render(ProcessResult result, string root, double seconds, string operation, BuildOptions options, string? resultsPath = null, string log = "", string? treeStamp = null, int? fileTotal = null, string? restoreTarget = null) =>
+        BuildRenderer.Render(new BuildRenderContext(result, root, seconds, operation, options, resultsPath, log, treeStamp, fileTotal, restoreTarget));
 
     /// <summary>The last 30 non-empty lines of a process's output, which is where a failure without an error line is described.</summary>
     internal static string Tail(string output) =>

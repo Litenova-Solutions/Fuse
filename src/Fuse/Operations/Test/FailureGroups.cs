@@ -1,3 +1,4 @@
+using Fuse.Dotnet.Processes;
 using Fuse.Dotnet.Test;
 namespace Fuse.Operations.Test;
 
@@ -93,4 +94,30 @@ internal static class FailureGroups
 
     private static string Header(int count, string firstLine) =>
         $"{count} failure(s) with the same first message line: {(firstLine.Length > MaxHeaderFirstLine ? firstLine[..MaxHeaderFirstLine] + "..." : firstLine)}";
+
+    internal static TestRunSummary SynthesizeFailures(List<string> failureNames) =>
+        new(0, failureNames.Count, 0, [.. failureNames.Select(n => new TestFailure(n, TestOperation.StoppedEarlyMessage, []))]);
+
+    internal static string? TryParseFailureName(string line)
+    {
+        var stripped = AnsiSequences.Strip(line).Trim();
+        if (stripped.StartsWith("Failed ", StringComparison.Ordinal))
+        {
+            var rest = stripped["Failed ".Length..].Trim();
+            var bracket = rest.IndexOf(" [", StringComparison.Ordinal);
+            return bracket > 0 ? rest[..bracket].Trim() : rest;
+        }
+
+        if (stripped.StartsWith("failed ", StringComparison.Ordinal))
+        {
+            var rest = stripped["failed ".Length..].Trim();
+            var paren = rest.IndexOf(" (", StringComparison.Ordinal);
+            return paren > 0 ? rest[..paren].Trim() : rest;
+        }
+
+        if (stripped.StartsWith("[FAIL] ", StringComparison.Ordinal))
+            return stripped["[FAIL] ".Length..].Trim();
+
+        return null;
+    }
 }

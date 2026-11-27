@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using Fuse.Check.Model;
+using Fuse.Cli;
 using Fuse.Operations;
 using Fuse.Operations.Check;
 using Fuse.Operations.Control;
@@ -130,7 +131,7 @@ public class SwarmCliOperationsTests
     [InlineData("[FAIL] Lib.Tests.CalcTests.Adds", "Lib.Tests.CalcTests.Adds")]
     [InlineData("  Passed Lib.Tests.CalcTests.Multiplies [1 ms]", null)]
     public void Test_operation_parses_failure_lines_for_early_stop(string line, string? expected) =>
-        Assert.Equal(expected, TestOperation.TryParseFailureName(line));
+        Assert.Equal(expected, FailureGroups.TryParseFailureName(line));
 
     [Fact]
     public void Gate_argument_parser_handles_flags_and_refuses_invalid_values()
@@ -273,7 +274,7 @@ public class SwarmCliOperationsTests
     [InlineData("claude", """{"tool_name":"Edit","tool_input":{"file_path":"Lib/Calc.cs"}}""", false)]
     [InlineData("claude", "{not-json", false)]
     public void Pre_root_fast_peek_identifies_read_only_post_edit_payloads(string harness, string json, bool expectedFastExit) =>
-        Assert.Equal(expectedFastExit, Program.IsReadOnlyPostEditPayload(harness, Encoding.UTF8.GetBytes(json)));
+        Assert.Equal(expectedFastExit, ControlCliCommand.IsReadOnlyPostEditPayload(harness, Encoding.UTF8.GetBytes(json)));
 
     [Fact]
     public void OpenCode_plugin_carries_session_id_on_pre_shell_and_stop_and_direct_pipe_ipc()

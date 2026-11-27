@@ -74,22 +74,22 @@ public class BuildReusePlanTests
         var shadowB = shadowA with { Mode = new TestRunMode.Shadow("/s/g2/T.dll") };
         var plan = new TestPlan([shadowA], 1, 4, "s");
 
-        Assert.Equal(TestOperation.PlanKey(plan, null), TestOperation.PlanKey(new TestPlan([shadowB], 1, 4, "s"), null));
-        Assert.NotEqual(TestOperation.PlanKey(plan, null), TestOperation.PlanKey(new TestPlan([shadowA with { Filter = "G" }], 1, 4, "s"), null));
-        Assert.NotEqual(TestOperation.PlanKey(plan, null), TestOperation.PlanKey(new TestPlan([shadowA with { Mode = new TestRunMode.Build() }], 1, 4, "s"), null));
-        Assert.NotEqual(TestOperation.PlanKey(plan, null), TestOperation.PlanKey(new TestPlan([shadowA], 2, 4, "s"), null));
-        Assert.NotEqual(TestOperation.PlanKey(plan, null), TestOperation.PlanKey(new TestPlan([shadowA], 1, 4, "other"), null));
+        Assert.Equal(LastTestResults.PlanKey(plan, null), LastTestResults.PlanKey(new TestPlan([shadowB], 1, 4, "s"), null));
+        Assert.NotEqual(LastTestResults.PlanKey(plan, null), LastTestResults.PlanKey(new TestPlan([shadowA with { Filter = "G" }], 1, 4, "s"), null));
+        Assert.NotEqual(LastTestResults.PlanKey(plan, null), LastTestResults.PlanKey(new TestPlan([shadowA with { Mode = new TestRunMode.Build() }], 1, 4, "s"), null));
+        Assert.NotEqual(LastTestResults.PlanKey(plan, null), LastTestResults.PlanKey(new TestPlan([shadowA], 2, 4, "s"), null));
+        Assert.NotEqual(LastTestResults.PlanKey(plan, null), LastTestResults.PlanKey(new TestPlan([shadowA], 1, 4, "other"), null));
 
         var second = new TestRun("/r/U/U.csproj", "U", new TestRunMode.Build(), null, false, null, [], []);
         Assert.NotEqual(
-            TestOperation.PlanKey(new TestPlan([shadowA, second], 2, 4, "s"), null),
-            TestOperation.PlanKey(new TestPlan([second, shadowA], 2, 4, "s"), null));
+            LastTestResults.PlanKey(new TestPlan([shadowA, second], 2, 4, "s"), null),
+            LastTestResults.PlanKey(new TestPlan([second, shadowA], 2, 4, "s"), null));
 
         var scope = new TestScopeArguments(["/r/T"], ["-c", "Release"], true, "Release", null);
-        Assert.NotEqual(TestOperation.PlanKey(plan, null), TestOperation.PlanKey(plan, scope));
+        Assert.NotEqual(LastTestResults.PlanKey(plan, null), LastTestResults.PlanKey(plan, scope));
         Assert.NotEqual(
-            TestOperation.PlanKey(plan, scope),
-            TestOperation.PlanKey(plan, scope with { BuildSwitches = ["-c", "Debug"] }));
+            LastTestResults.PlanKey(plan, scope),
+            LastTestResults.PlanKey(plan, scope with { BuildSwitches = ["-c", "Debug"] }));
     }
 
     [Fact]
@@ -99,14 +99,14 @@ public class BuildReusePlanTests
         var project = Path.Combine(repo.Root.Path, "Lib.Tests", "Lib.Tests.csproj");
         var run = new TestRun(project, "Lib.Tests", new TestRunMode.Build(), null, false, null, [], []);
         var plan = new TestPlan([run], 3, 4, "ran 3 test(s)");
-        var key = TestOperation.PlanKey(plan, null);
+        var key = LastTestResults.PlanKey(plan, null);
         var failure = new TestFailure("Lib.Tests.CalcTests.Multiplies", "boom", []);
         LastTestResults.WriteRun(repo.Root, "9f2c41aa07b3", "full", "assets", key, DateTime.UtcNow.AddSeconds(-14), 4.0, "ran 3 test(s); built with MSBuild",
             new TestRunSummary(2, 1, 0, [failure]),
             [(project, "Lib.Tests", new TestRunSummary(2, 1, 0, [failure]) { Records = [new TestRecord("Lib.Tests.CalcTests.Multiplies", TestVerdict.Failed, TimeSpan.Zero)] })],
             []);
 
-        var answer = TestOperation.ReusedTestRun(repo.Root, ("9f2c41aa07b3", "full", "assets", 0), key, live: null)!;
+        var answer = LastTestResults.ReusedTestRun(repo.Root, ("9f2c41aa07b3", "full", "assets", 0), key, live: null)!;
 
         Assert.Equal(Outcome.ProblemsFound, answer.Outcome);
         var lines = answer.Text.Split('\n');
@@ -123,9 +123,9 @@ public class BuildReusePlanTests
         LastTestResults.WriteRun(repo.Root, "tree", "full", "assets", "key", DateTime.UtcNow, 1.0, "s",
             new TestRunSummary(1, 0, 0, []), [("/r/T/T.csproj", "T", new TestRunSummary(1, 0, 0, []))], []);
 
-        Assert.Null(TestOperation.ReusedTestRun(repo.Root, ("tree", "full", "assets", 0), "other", live: null));
-        Assert.Null(TestOperation.ReusedTestRun(repo.Root, ("other", "full", "assets", 0), "key", live: null));
-        Assert.Null(TestOperation.ReusedTestRun(repo.Root, ("tree", "other", "assets", 0), "key", live: null));
+        Assert.Null(LastTestResults.ReusedTestRun(repo.Root, ("tree", "full", "assets", 0), "other", live: null));
+        Assert.Null(LastTestResults.ReusedTestRun(repo.Root, ("other", "full", "assets", 0), "key", live: null));
+        Assert.Null(LastTestResults.ReusedTestRun(repo.Root, ("tree", "other", "assets", 0), "key", live: null));
     }
 
     [Fact]
@@ -137,7 +137,7 @@ public class BuildReusePlanTests
             new TestRunSummary(0, 1, 0, [failure]), [("/r/T/T.csproj", "T", new TestRunSummary(0, 1, 0, [failure]))], []);
         var live = new StringWriter();
 
-        var answer = TestOperation.ReusedTestRun(repo.Root, ("tree", "full", "assets", 0), "key", live)!;
+        var answer = LastTestResults.ReusedTestRun(repo.Root, ("tree", "full", "assets", 0), "key", live)!;
 
         Assert.Contains("FAILED Lib.Tests.CalcTests.Multiplies", live.ToString(), StringComparison.Ordinal);
         Assert.StartsWith("fuse: test run reused from ", answer.Text, StringComparison.Ordinal);

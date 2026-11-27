@@ -29,19 +29,12 @@ internal sealed class BuildLock : IDisposable
     private readonly string _reason;
     private readonly List<FileStream> _handles = [];
     private FileStream? _file;
+    private readonly ArtifactIsolation _isolation;
 
-    /// <summary>
-    ///     True when this lock owns its artifact slot: a unique slot this acquisition created, deleted when the lock is
-    ///     released and no build holds it. A slot shared by worker key is never owned, because another build may still
-    ///     use it after this lock goes.
-    /// </summary>
-    private readonly bool _ownsSlot;
-
-    private BuildLock(string reason, string? artifactsPath = null, bool ownsSlot = false)
+    private BuildLock(string reason, ArtifactIsolation isolation)
     {
         _reason = reason;
-        ArtifactsPath = artifactsPath;
-        _ownsSlot = ownsSlot;
+        _isolation = isolation;
     }
 
     /// <summary>Whether this process holds the lock file, or runs without it because the state directory cannot be written.</summary>
@@ -54,7 +47,12 @@ internal sealed class BuildLock : IDisposable
     ///     Isolated MSBuild <c>--artifacts-path</c> directory under the state directory when <c>--parallel-artifacts</c>
     ///     or contention isolation is active, or null when building into the repository's default output folders.
     /// </summary>
-    public string? ArtifactsPath { get; }
+    public string? ArtifactsPath => _isolation switch
+    {
+        ArtifactIsolation.Owned owned => owned.Path,
+        ArtifactIsolation.Shared shared => shared.Path,
+        _ => null,
+    };
 
     /// <summary>
     ///     Canonical deterministic lock key for a set of projects in a closure: sorted unique canonical paths hashed
@@ -76,7 +74,7 @@ internal sealed class BuildLock : IDisposable
     /// <param name="onWait">Called once, the first time the lock is not free, so a client can tell the user it is waiting.</param>
     public static BuildLock Acquire(RepoRoot root, Action? onWait = null)
     {
-        var held = new BuildLock("");
+        var held = new BuildLock("", new ArtifactIsolation.None());
         try
         {
             LocalState.RecordRoot(root);
@@ -102,7 +100,7 @@ internal sealed class BuildLock : IDisposable
                 }
                 catch (UnauthorizedAccessException)
                 {
-                    return new BuildLock($"the state directory {root.StateDirectory} is not writable");
+                    return new BuildLock($"the state directory {root.StateDirectory} is not writable", new ArtifactIsolation.None());
                 }
 
                 Thread.Sleep(RetryMs);
@@ -110,7 +108,7 @@ internal sealed class BuildLock : IDisposable
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException)
         {
-            return new BuildLock($"the lock file {Path.Combine(root.StateDirectory, "build.lock")} could not be opened: {e.Message}");
+            return new BuildLock($"the lock file {Path.Combine(root.StateDirectory, "build.lock")} could not be opened: {e.Message}", new ArtifactIsolation.None());
         }
 
         return held;
@@ -136,7 +134,7 @@ internal sealed class BuildLock : IDisposable
                 if (TryAcquireProjectsCore(root, canonical, out var held, out var nonRetryableReason))
                     return held!;
                 if (nonRetryableReason is not null)
-                    return new BuildLock(nonRetryableReason);
+                    return new BuildLock(nonRetryableReason, new ArtifactIsolation.None());
                 if (!waited)
                 {
                     waited = true;
@@ -148,7 +146,7 @@ internal sealed class BuildLock : IDisposable
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException)
         {
-            return new BuildLock($"the closure lock in {root.StateDirectory} could not be opened: {e.Message}");
+            return new BuildLock($"the closure lock in {root.StateDirectory} could not be opened: {e.Message}", new ArtifactIsolation.None());
         }
     }
 
@@ -199,7 +197,8 @@ internal sealed class BuildLock : IDisposable
             PruneStaleSlots(parent);
             Directory.CreateDirectory(artifacts);
             var lockPath = Path.Combine(artifacts, "artifacts.lock");
-            var held = new BuildLock("", artifacts, ownsSlot: unique)
+            ArtifactIsolation isolation = unique ? new ArtifactIsolation.Owned(artifacts) : new ArtifactIsolation.Shared(artifacts);
+            var held = new BuildLock("", isolation)
             {
                 _file = new FileStream(lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None),
             };
@@ -207,7 +206,7 @@ internal sealed class BuildLock : IDisposable
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException)
         {
-            return new BuildLock($"the isolated artifacts directory {artifacts} could not be locked: {e.Message}", artifacts);
+            return new BuildLock($"the isolated artifacts directory {artifacts} could not be locked: {e.Message}", new ArtifactIsolation.Shared(artifacts));
         }
     }
 
@@ -274,7 +273,7 @@ internal sealed class BuildLock : IDisposable
             return false;
         }
 
-        var attempt = new BuildLock("");
+        var attempt = new BuildLock("", new ArtifactIsolation.None());
         try
         {
             // Ensure build.lock exists without requiring Write share if an exclusive holder already created it.
@@ -419,7 +418,7 @@ internal sealed class BuildLock : IDisposable
         foreach (var handle in _handles)
             handle.Dispose();
         _handles.Clear();
-        if (_ownsSlot && held && ArtifactsPath is { } slot && !SlotHeld(slot))
-            TryDeleteDirectory(slot);
+        if (_isolation is ArtifactIsolation.Owned owned && held && !SlotHeld(owned.Path))
+            TryDeleteDirectory(owned.Path);
     }
 }

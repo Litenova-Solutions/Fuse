@@ -1,7 +1,10 @@
 using System.Globalization;
+using System.Text;
 using System.Text.Json.Nodes;
 using Fuse.Dotnet.Test;
+using Fuse.Operations.Build;
 using Fuse.Paths;
+using Fuse.Protocol.Testing;
 namespace Fuse.Operations.Test;
 
 /// <summary>
@@ -388,5 +391,87 @@ internal static class LastTestResults
         {
             return TimeSpan.Zero;
         }
+    }
+
+    /// <summary>
+    ///     What a test run is reused by: the plan's runs in run order, its counts and summary, and the scope's switches
+    ///     and paths. A shadow run's copy folder is not part of it, because the same plan prepares another folder next
+    ///     time. Each field carries its length, so no two different plans share a key.
+    /// </summary>
+    internal static string PlanKey(TestPlan plan, TestScopeArguments? scope)
+    {
+        var text = new StringBuilder();
+        void Field(string value) => text.Append(value.Length.ToString(CultureInfo.InvariantCulture)).Append(':').Append(value).Append('|');
+        Field(plan.SelectedTests.ToString(CultureInfo.InvariantCulture));
+        Field(plan.TotalTests.ToString(CultureInfo.InvariantCulture));
+        Field(plan.Summary);
+        Field(plan.ContainerGatedTests.ToString(CultureInfo.InvariantCulture));
+        foreach (var gated in plan.ContainerGatedProjects)
+            Field(gated);
+        text.Append('|');
+        foreach (var run in plan.Runs)
+        {
+            Field(run.Project);
+            Field(run.Name);
+            Field(run.Mode is TestRunMode.Shadow ? "shadow" : "build");
+            Field(run.Filter ?? "");
+            Field(run.UsesTestingPlatform ? "1" : "0");
+            Field(run.RunSettings ?? "");
+            foreach (var argument in run.FilterArguments)
+                Field(argument);
+            text.Append('|');
+            foreach (var target in run.TargetPaths)
+                Field(target);
+            text.Append('|');
+        }
+
+        text.Append('|');
+        if (scope is not null)
+        {
+            foreach (var path in scope.Paths)
+                Field(path);
+            text.Append('|');
+            foreach (var button in scope.BuildSwitches)
+                Field(button);
+            text.Append('|');
+            Field(scope.BuildOnly ? "1" : "0");
+        }
+
+        return text.ToString();
+    }
+
+    /// <summary>
+    ///     The last finished test run's answer when it ran the same plan on the same tree, or null. The answer prints
+    ///     the stored failures and summary with a line above them saying the run was reused and how old it is, and the
+    ///     results files hold the stored failures again.
+    /// </summary>
+    internal static OperationResult? ReusedTestRun(RepoRoot root, (string TreeHash, string FullHash, string AssetsHash, int SourceCount) stamp, string planKey, TextWriter? live)
+    {
+        var stored = ReadRun(root);
+        if (stored is null
+            || stored.Value.TreeHash != stamp.TreeHash
+            || stored.Value.FullHash != stamp.FullHash
+            || stored.Value.AssetsHash != stamp.AssetsHash
+            || stored.Value.PlanKey != planKey
+            || stored.Value.Aggregate.Total == 0
+            || stored.Value.Runs.Count == 0)
+            return null;
+        var record = stored.Value;
+        var resultsPath = ResultsFile.WriteTestsWithPaths(root, record.Runs);
+        var line = $"fuse: test run reused from {BuildResultsFile.AgeAgo(record.FinishedUtc, DateTime.UtcNow)} ago; tree {record.TreeHash}";
+        if (live is not null)
+        {
+            live.Write(TestResultRenderer.RenderFailures(record.Aggregate));
+            live.Flush();
+            var summaryOnly = new OperationResult(
+                record.Aggregate.Failed > 0 ? Outcome.ProblemsFound : Outcome.Clean,
+                TestResultRenderer.RenderSummary(record.Aggregate, record.Summary, record.Seconds, resultsPath));
+            var answer = record.Problems.Count == 0 ? summaryOnly : TestResultRenderer.Join([summaryOnly, .. record.Problems]);
+            return answer with { Text = line + "\n" + answer.Text };
+        }
+
+        var tests = TestResultRenderer.Render(record.Aggregate, record.Summary, record.Seconds, resultsPath);
+        var joined = record.Problems.Count == 0 ? tests : TestResultRenderer.Join([tests, .. record.Problems]);
+        return joined with { Text = line + "\n" + joined.Text };
     }
 }

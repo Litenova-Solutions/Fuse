@@ -96,8 +96,9 @@ internal static partial class StatusOperation
             long? memoryLoadBytes = engine?.MemoryLoadBytes;
             int? inReach = engine is null ? null : engine.ChangedSourcesInReach;
             int? touched = engine is null ? null : engine.TouchedCount;
+            var view = new StatusView(state, engine?.Pid, memoryMB, count, head, tree, inReach, touched, TouchedLimit, KeptAnswerAt, WholeProjectAt, ReloadAt, ReloadAt, engine?.ReloadMs, engine?.GateHolder, memoryCeilingBytes, memoryLoadBytes, engine?.WorkingSetBytes, root.PipeName, EngineVersion.Build);
             return new OperationResult(Outcome.Clean, JsonSerializer.Serialize(
-                new StatusLine(state, engine?.Pid, memoryMB, count, head, tree, inReach, touched, TouchedLimit, KeptAnswerAt, WholeProjectAt, ReloadAt, ReloadAt, engine?.ReloadMs, engine?.GateHolder, memoryCeilingBytes, memoryLoadBytes, engine?.WorkingSetBytes, root.PipeName, EngineVersion.Build),
+                ToStatusLine(view),
                 StatusJson.Default.StatusLine));
         }
         var text = new StringBuilder();
@@ -175,6 +176,9 @@ internal static partial class StatusOperation
             return null;
         }
     }
+
+    /// <summary>The wire line for <paramref name="view"/>.</summary>
+    private static StatusLine ToStatusLine(StatusView view) => new(view.Engine, view.Pid, view.MemoryMB, view.ChangedFiles, view.Head, view.Tree, view.ChangedSourcesInReach, view.TouchedPaths, view.TouchedLimit, view.KeptAnswerAt, view.WholeProjectAt, view.SyncReloadAt, view.ReloadAt, view.ReloadMs, view.GateHolder, view.MemoryCeilingBytes, view.MemoryLoadBytes, view.MemoryWorkingSetBytes, view.PipeName, view.BuildId);
 
     /// <summary>
     ///     One status answer: the engine, then the tree, then the limits counted as the code counts them. The documented

@@ -12,7 +12,7 @@ public class TestRenderTests
     {
         // Microsoft.Testing.Platform's own report of a failed test; no line of it is a build error.
         var output = "Running tests from Lib.Tests.dll\nfailed Multiplies (12ms)\n  Assert.Equal() Failure: Values differ\nTest run summary: Failed!\n  failed: 1\n";
-        var result = TestOperation.WithoutResults(new ProcessResult(2, output), FixtureRepo.CheckoutRoot, "the test run of Lib.Tests", "ran every test in 1 test project(s)", 1.5);
+        var result = TestResultRenderer.WithoutResults(new ProcessResult(2, output), FixtureRepo.CheckoutRoot, "the test run of Lib.Tests", "ran every test in 1 test project(s)", 1.5);
 
         Assert.Equal(Outcome.ProblemsFound, result.Outcome);
         var lines = result.Text.Split('\n');
@@ -25,9 +25,9 @@ public class TestRenderTests
     [Fact]
     public void A_run_without_results_names_the_directory_results_were_read_from()
     {
-        var result = TestOperation.WithoutResults(
+        var result = TestResultRenderer.WithoutResults(
             new ProcessResult(1, "Specifying a directory for 'dotnet test' should be via '--project' or '--solution'.\n"),
-            FixtureRepo.CheckoutRoot, TestOperation.ArgumentsRun, "ran the tests your dotnet test arguments name", 0.3, resultsDirectory: @"C:\state\results\a1b2c3d4");
+            FixtureRepo.CheckoutRoot, TestResultRenderer.ArgumentsRun, "ran the tests your dotnet test arguments name", 0.3, resultsDirectory: @"C:\state\results\a1b2c3d4");
 
         Assert.Equal(Outcome.ProblemsFound, result.Outcome);
         Assert.EndsWith(@"fuse: dotnet test exited with code 1 and produced no results in 0.3 s (no result file in C:\state\results\a1b2c3d4)", result.Text, StringComparison.Ordinal);
@@ -37,7 +37,7 @@ public class TestRenderTests
     public void A_testing_platform_run_of_the_arguments_that_ran_no_test_says_no_test_matched()
     {
         var output = "Zero tests ran\nTest run summary: Zero tests ran\n  total: 0\n";
-        var result = TestOperation.WithoutResults(new ProcessResult(TestOperation.NoTestRanExitCode, output), FixtureRepo.CheckoutRoot, TestOperation.ArgumentsRun, "ran the tests your dotnet test arguments name", 4.7);
+        var result = TestResultRenderer.WithoutResults(new ProcessResult(TestResultRenderer.NoTestRanExitCode, output), FixtureRepo.CheckoutRoot, TestResultRenderer.ArgumentsRun, "ran the tests your dotnet test arguments name", 4.7);
 
         Assert.Equal(Outcome.ProblemsFound, result.Outcome);
         Assert.Equal("fuse: no test matched the dotnet test arguments (exit code 8)", result.Text);
@@ -46,7 +46,7 @@ public class TestRenderTests
     [Fact]
     public void A_testing_platform_run_of_a_project_that_ran_no_test_names_the_project()
     {
-        var result = TestOperation.WithoutResults(new ProcessResult(TestOperation.NoTestRanExitCode, ""), FixtureRepo.CheckoutRoot, "the test run of Lib.Tests", "ran every test in 1 test project(s)", 1.5);
+        var result = TestResultRenderer.WithoutResults(new ProcessResult(TestResultRenderer.NoTestRanExitCode, ""), FixtureRepo.CheckoutRoot, "the test run of Lib.Tests", "ran every test in 1 test project(s)", 1.5);
 
         Assert.Equal(Outcome.ProblemsFound, result.Outcome);
         Assert.Equal("fuse: the test run of Lib.Tests ran no test (exit code 8)", result.Text);
@@ -56,7 +56,7 @@ public class TestRenderTests
     public void A_run_whose_output_holds_build_errors_is_a_failed_test_build()
     {
         var output = "C:/nowhere/App.Tests/ReportTests.cs(6,70): error CS1026: ) expected [C:/nowhere/App.Tests/App.Tests.csproj]\n";
-        var result = TestOperation.WithoutResults(new ProcessResult(1, output), FixtureRepo.CheckoutRoot, "the test run of App.Tests", "ran every test in 1 test project(s)", 1.5);
+        var result = TestResultRenderer.WithoutResults(new ProcessResult(1, output), FixtureRepo.CheckoutRoot, "the test run of App.Tests", "ran every test in 1 test project(s)", 1.5);
 
         Assert.Equal(Outcome.ProblemsFound, result.Outcome);
         var lines = result.Text.Split('\n');
@@ -67,7 +67,7 @@ public class TestRenderTests
     [Fact]
     public void A_testing_platform_run_that_passed_reports_the_summary()
     {
-        var result = TestOperation.WithoutResults(null, FixtureRepo.CheckoutRoot, "the test run of Lib.Tests", "ran every test in 1 test project(s)", 1.5);
+        var result = TestResultRenderer.WithoutResults(null, FixtureRepo.CheckoutRoot, "the test run of Lib.Tests", "ran every test in 1 test project(s)", 1.5);
 
         Assert.Equal(Outcome.Clean, result.Outcome);
         Assert.StartsWith("fuse: tests passed in ", result.Text, StringComparison.Ordinal);

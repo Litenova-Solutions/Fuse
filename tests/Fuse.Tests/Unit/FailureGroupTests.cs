@@ -13,7 +13,7 @@ public class FailureGroupTests
             ("Lib.Tests.B.Only", "bang"),
             ("Lib.Tests.C.Second", "boom\nother line"));
 
-        var result = TestOperation.Render(outcome, "ran 3 test(s)", 1.5);
+        var result = TestResultRenderer.Render(outcome, "ran 3 test(s)", 1.5);
 
         Assert.Equal(Outcome.ProblemsFound, result.Outcome);
         var lines = result.Text.Split('\n');
@@ -33,7 +33,7 @@ public class FailureGroupTests
         var others = Enumerable.Range(0, 6).Select(i => ($"Lib.Tests.Other{i}.Runs", $"bang {i}")).ToList();
         var outcome = Results([.. grouped, .. others]);
 
-        var result = TestOperation.Render(outcome, "ran 13 test(s)", 2.0);
+        var result = TestResultRenderer.Render(outcome, "ran 13 test(s)", 2.0);
 
         Assert.Equal(Outcome.ProblemsFound, result.Outcome);
         var lines = result.Text.Split('\n');
@@ -54,7 +54,7 @@ public class FailureGroupTests
     {
         var outcome = Results(("A", ""), ("B", "  \nrest"), ("C", ""));
 
-        var result = TestOperation.Render(outcome, "ran 3 test(s)", 1.0);
+        var result = TestResultRenderer.Render(outcome, "ran 3 test(s)", 1.0);
 
         Assert.DoesNotContain("failure(s) with the same", result.Text, StringComparison.Ordinal);
         Assert.Equal(3, result.Text.Split('\n').Count(l => l.StartsWith("FAILED ", StringComparison.Ordinal)));
@@ -66,7 +66,7 @@ public class FailureGroupTests
         var first = new string('x', 200);
         var outcome = Results(("A", first + "\nsecond"), ("B", first + "\nother"));
 
-        var result = TestOperation.Render(outcome, "ran 2 test(s)", 1.0);
+        var result = TestResultRenderer.Render(outcome, "ran 2 test(s)", 1.0);
 
         Assert.Contains($"2 failure(s) with the same first message line: {new string('x', 160)}...", result.Text, StringComparison.Ordinal);
         Assert.Contains($"  {first}", result.Text, StringComparison.Ordinal);

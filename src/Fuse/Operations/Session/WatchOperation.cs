@@ -2,7 +2,6 @@ using System.Text.Json;
 using Fuse.Client;
 using Fuse.Paths;
 using Fuse.Protocol.Analysis;
-using Fuse.Protocol.Check;
 using Fuse.Protocol.Requests;
 using Fuse.Protocol.Transport;
 namespace Fuse.Operations.Session;
@@ -44,7 +43,7 @@ internal static class WatchOperation
             var streamed = await EngineClient.WatchStreamAsync(
                 root,
                 new EngineRequest.WatchStream { Session = session, All = all },
-                ev => WriteWatchEventAsync(ev, json, output, cancellationToken),
+                ev => WatchRenderer.WriteWatchEventAsync(ev, json, output, cancellationToken),
                 cancellationToken).ConfigureAwait(false);
             if (streamed || cancellationToken.IsCancellationRequested)
                 return new OperationResult(Outcome.Clean, "");
@@ -77,7 +76,7 @@ internal static class WatchOperation
 
                 if (content is not null && content != printed)
                 {
-                    if (await TryEmitSessionContentAsync(content, session, json, output, cancellationToken).ConfigureAwait(false))
+                    if (await WatchRenderer.TryEmitSessionContentAsync(content, session, json, output, cancellationToken).ConfigureAwait(false))
                     {
                         printed = content;
                         waiting = false;
@@ -137,7 +136,7 @@ internal static class WatchOperation
                         if (content is null || (seen.TryGetValue(file, out var previous) && previous == content))
                             continue;
                         var fallbackName = Path.GetFileNameWithoutExtension(file);
-                        if (await TryEmitSessionContentAsync(content, fallbackName, json, output, cancellationToken).ConfigureAwait(false))
+                        if (await WatchRenderer.TryEmitSessionContentAsync(content, fallbackName, json, output, cancellationToken).ConfigureAwait(false))
                         {
                             seen[file] = content;
                             emitted = true;
@@ -167,33 +166,6 @@ internal static class WatchOperation
         return new OperationResult(Outcome.Clean, "");
     }
 
-    private static async Task WriteWatchEventAsync(WatchEvent ev, bool json, TextWriter output, CancellationToken cancellationToken)
-    {
-        if (json)
-        {
-            await output.WriteLineAsync(JsonSerializer.Serialize(ev, ProtocolJson.Default.WatchEvent)).ConfigureAwait(false);
-            await output.FlushAsync(cancellationToken).ConfigureAwait(false);
-            return;
-        }
-
-        if (ev.EventType == "guard_violation")
-        {
-            await output.WriteLineAsync($"fuse: guard {ev.GuardName} violation on {ev.ViolatedPattern}: {ev.Declaration ?? ev.Message}").ConfigureAwait(false);
-        }
-        else
-        {
-            foreach (var error in ev.Errors)
-                await output.WriteLineAsync(error.Error.ToString()).ConfigureAwait(false);
-            var who = ev.Session is { Length: > 0 } s ? $"session {s}: " : "";
-            var summary = ev.Message ?? (ev.ErrorCount == 0
-                ? $"no errors introduced; generation {ev.Generation}; tree {ev.Tree}"
-                : $"{ev.ErrorCount} error(s) introduced; generation {ev.Generation}; tree {ev.Tree}");
-            await output.WriteLineAsync($"fuse: {who}{summary}").ConfigureAwait(false);
-        }
-
-        await output.FlushAsync(cancellationToken).ConfigureAwait(false);
-    }
-
     /// <summary>
     ///     The session file of <paramref name="session"/> under <paramref name="stateDirectory"/>: the same
     ///     spelling the result store in the engine writes, with the <c>registered:</c> prefix a registration
@@ -205,76 +177,5 @@ internal static class WatchOperation
         var name = session.StartsWith("registered:", StringComparison.Ordinal) ? session["registered:".Length..] : session;
         var file = new string([.. name.Select(c => char.IsLetterOrDigit(c) || c is '-' or '_' or '.' ? c : '-')]).Trim('.');
         return Path.Combine(stateDirectory, "sessions", (file.Length == 0 ? "session" : file) + ".json");
-    }
-
-    private static async Task<bool> TryEmitSessionContentAsync(string content, string fallbackSession, bool json, TextWriter output, CancellationToken cancellationToken)
-    {
-        try
-        {
-            using var document = JsonDocument.Parse(content);
-            var stored = document.RootElement;
-            if (stored.ValueKind != JsonValueKind.Object || !stored.TryGetProperty("errors", out var errors) || errors.ValueKind != JsonValueKind.Array)
-                return false;
-            var session = stored.TryGetProperty("session", out var s) && s.ValueKind == JsonValueKind.String ? s.GetString() ?? fallbackSession : fallbackSession;
-            var generation = stored.TryGetProperty("generation", out var number) && number.ValueKind == JsonValueKind.Number ? number.GetInt64() : 0;
-            var tree = stored.TryGetProperty("tree", out var stamp) && stamp.ValueKind == JsonValueKind.String ? stamp.GetString() ?? "" : "";
-            var count = stored.TryGetProperty("errorCount", out var total) && total.ValueKind == JsonValueKind.Number ? total.GetInt32() : errors.GetArrayLength();
-
-            if (json)
-            {
-                var reported = new List<ReportedError>();
-                foreach (var error in errors.EnumerateArray())
-                {
-                    if (ToReportedError(error) is { } re)
-                        reported.Add(re);
-                }
-
-                var ev = new WatchEvent("session", session, null, generation, tree, count, [.. reported]);
-                await output.WriteLineAsync(JsonSerializer.Serialize(ev, ProtocolJson.Default.WatchEvent)).ConfigureAwait(false);
-                return true;
-            }
-
-            foreach (var error in errors.EnumerateArray())
-                output.WriteLine(TextOf(error));
-            output.WriteLine(count == 0
-                ? $"fuse: session {fallbackSession}: no errors introduced; generation {generation}; tree {tree}"
-                : $"fuse: session {fallbackSession}: {count} error(s) introduced; generation {generation}; tree {tree}");
-            return true;
-        }
-        catch (Exception e) when (e is JsonException or InvalidOperationException or FormatException)
-        {
-            return false;
-        }
-    }
-
-    private static ReportedError? ToReportedError(JsonElement error)
-    {
-        if (error.ValueKind != JsonValueKind.Object)
-            return null;
-        var path = error.TryGetProperty("path", out var p) && p.ValueKind == JsonValueKind.String ? p.GetString() ?? "" : "";
-        var line = error.TryGetProperty("line", out var l) && l.ValueKind == JsonValueKind.Number ? l.GetInt32() : 0;
-        var col = error.TryGetProperty("column", out var c) && c.ValueKind == JsonValueKind.Number ? c.GetInt32() : 0;
-        var id = error.TryGetProperty("id", out var i) && i.ValueKind == JsonValueKind.String ? i.GetString() ?? "" : "";
-        var msg = error.TryGetProperty("message", out var m) && m.ValueKind == JsonValueKind.String ? m.GetString() ?? "" : "";
-        var fromAnalyzer = error.TryGetProperty("fromAnalyzer", out var fa) && fa.ValueKind == JsonValueKind.True;
-        return ReportedError.Create(path, line, col, id, msg, fromAnalyzer);
-    }
-
-    /// <summary>One stored error as its canonical line, from its fields or from the line the writer stored with it.</summary>
-    private static string TextOf(JsonElement error)
-    {
-        if (error.ValueKind == JsonValueKind.Object)
-        {
-            if (error.TryGetProperty("text", out var text) && text.ValueKind == JsonValueKind.String && text.GetString() is { Length: > 0 } line)
-                return line;
-            if (error.TryGetProperty("path", out var path) && error.TryGetProperty("id", out var id) && error.TryGetProperty("message", out var message))
-            {
-                var lineNumber = error.TryGetProperty("line", out var l) && l.ValueKind == JsonValueKind.Number ? l.GetInt32() : 0;
-                var column = error.TryGetProperty("column", out var c) && c.ValueKind == JsonValueKind.Number ? c.GetInt32() : 0;
-                return $"{path.GetString()}({lineNumber},{column}): error {id.GetString()}: {message.GetString()}";
-            }
-        }
-
-        return error.ToString();
     }
 }

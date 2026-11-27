@@ -12,14 +12,13 @@ using Fuse.Workspace.Views;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.FindSymbols;
 using Microsoft.CodeAnalysis.Text;
 namespace Fuse.Check.Candidates;
 
 /// <summary>
 ///     Decides which other files a declaration change can break, by resolving each changed declaration to its symbol
 ///     at HEAD and asking Roslyn where that symbol is used. The baseline does not change between edits, so the
-///     reference sets are kept in a concurrent cache keyed by the baseline generation and the symbol.
+///     reference sets stay in a concurrent cache keyed by the baseline generation and the symbol.
 /// </summary>
 /// <remarks>
 ///     <para>
@@ -54,14 +53,10 @@ namespace Fuse.Check.Candidates;
 internal sealed class ChangeReach
 {
     /// <summary>The most reference sets kept; past it the set unused the longest goes.</summary>
-    internal const int MaxCacheEntries = 128;
+    internal const int MaxCacheEntries = SymbolReferenceFinder.MaxCacheEntries;
 
     private readonly RepoWorkspace _workspace;
-    private readonly SyntaxTokenIndex _tokenIndex;
-    private readonly ConcurrentDictionary<string, HashSet<RepoPath>> _cache = new(StringComparer.Ordinal);
-    private readonly List<string> _cacheOrder = [];
-    private readonly Lock _cacheLock = new();
-    private volatile bool _tokenIndexLoaded;
+    private readonly SymbolReferenceFinder _finder;
 
     public ChangeReach(RepoWorkspace workspace)
         : this(workspace, new SyntaxTokenIndex(workspace.Root, workspace.Log))
@@ -71,24 +66,24 @@ internal sealed class ChangeReach
     public ChangeReach(RepoWorkspace workspace, SyntaxTokenIndex tokenIndex)
     {
         _workspace = workspace;
-        _tokenIndex = tokenIndex;
+        _finder = new SymbolReferenceFinder(workspace.Root, tokenIndex);
     }
 
     /// <summary>Syntax token and inheritance index used to narrow symbol searches.</summary>
-    internal SyntaxTokenIndex TokenIndex => _tokenIndex;
+    internal SyntaxTokenIndex TokenIndex => _finder.TokenIndex;
 
     /// <summary>
     ///     Indexes the baseline documents of <paramref name="projects"/> for later searches, for the background warm.
     ///     A search never waits for it: what it has not indexed yet is searched fully.
     /// </summary>
     internal Task WarmIndexAsync(Solution baseline, IEnumerable<Project> projects, CancellationToken cancellationToken) =>
-        _tokenIndex.EnsureIndexedAsync(baseline, projects, cancellationToken);
+        _finder.WarmIndexAsync(baseline, projects, cancellationToken);
 
     /// <summary>Persists the search index when the background warm changed it.</summary>
-    internal void SaveIndex() => _tokenIndex.SaveIfDirty("baseline");
+    internal void SaveIndex() => _finder.SaveIndex();
 
     /// <summary>How many reference sets are kept.</summary>
-    public int CachedSets => _cache.Count;
+    public int CachedSets => _finder.CachedSets;
 
     /// <summary>
     ///     True when the file has a declaration change against HEAD in any target framework it compiles for. Syntax only;
@@ -281,17 +276,17 @@ internal sealed class ChangeReach
     private static INamedTypeSymbol? ImplicitPatternOwner(ISymbol member) => member switch
     {
         IMethodSymbol method when method.ContainingType is { } methodOwner
-            && IsImplicitPatternMember(SimpleMemberName(method.AssociatedSymbol?.Name ?? method.Name)) => methodOwner,
+            && SymbolReferenceFinder.IsImplicitPatternMember(SymbolReferenceFinder.SimpleMemberName(method.AssociatedSymbol?.Name ?? method.Name)) => methodOwner,
         IPropertySymbol property when property is { ContainingType: { } propOwner, IsIndexer: false }
-            && IsImplicitPatternMember(SimpleMemberName(property.Name)) => propOwner,
+            && SymbolReferenceFinder.IsImplicitPatternMember(SymbolReferenceFinder.SimpleMemberName(property.Name)) => propOwner,
         _ => null,
     };
 
     /// <summary>True when <paramref name="node"/> declares a method or property the language applies by pattern.</summary>
     private static bool IsImplicitPatternDeclaration(SyntaxNode? node) => node switch
     {
-        MethodDeclarationSyntax method => IsImplicitPatternMember(method.Identifier.Text),
-        PropertyDeclarationSyntax property => IsImplicitPatternMember(property.Identifier.Text),
+        MethodDeclarationSyntax method => SymbolReferenceFinder.IsImplicitPatternMember(method.Identifier.Text),
+        PropertyDeclarationSyntax property => SymbolReferenceFinder.IsImplicitPatternMember(property.Identifier.Text),
         _ => false,
     };
 
@@ -311,11 +306,7 @@ internal sealed class ChangeReach
 
         // The persisted entries are read once; what they do not hold yet is indexed in the background
         // (see WarmIndexAsync), and searched fully until then, so a search never waits for the index.
-        if (!_tokenIndexLoaded)
-        {
-            _tokenIndex.TryLoad("baseline");
-            _tokenIndexLoaded = true;
-        }
+        _finder.EnsureIndexLoaded();
 
         // The indexes in routes of the routes that reach each file.
         var reachedBy = new Dictionary<RepoPath, SortedSet<int>>();
@@ -354,30 +345,9 @@ internal sealed class ChangeReach
                 {
                     var files = new List<RepoPath>();
                     if (item.Route is Route.BySymbol symbol)
-                    {
-                        var candidateDocs = CandidateDocumentsForSymbol(symbol.Symbol, baseline, searchedIds, baselineDocuments);
-                        files.AddRange(await ReferencingFilesAsync(symbol.Symbol, searchKey, baseline, candidateDocs, generation, ct).ConfigureAwait(false));
-                        if (symbol.IncludesImplementations)
-                        {
-                            var implProjects = CandidateProjectsForImplementations(symbol.Symbol, baseline, searchedIds, baselineProjects);
-                            if (!implProjects.IsEmpty)
-                                files.AddRange(Declarations(await SymbolFinder.FindImplementationsAsync(symbol.Symbol, baseline, implProjects, ct).ConfigureAwait(false)));
-
-                            var overrideProjects = CandidateProjectsForOverrides(symbol.Symbol, baseline, searchedIds, baselineProjects);
-                            if (!overrideProjects.IsEmpty)
-                                files.AddRange(Declarations(await SymbolFinder.FindOverridesAsync(symbol.Symbol, baseline, overrideProjects, ct).ConfigureAwait(false)));
-                        }
-                    }
+                        files.AddRange(await _finder.FilesReferencingAsync(symbol.Symbol, symbol.IncludesImplementations, searchKey, searchedIds, baselineProjects, baselineDocuments, generation, ct).ConfigureAwait(false));
                     else if (item.Route is Route.ByDerivedTypes derived)
-                    {
-                        var derivedProjects = CandidateProjectsForDerived(derived.Type, baseline, searchedIds, baselineProjects);
-                        if (!derivedProjects.IsEmpty)
-                        {
-                            files.AddRange(Declarations(await SymbolFinder.FindDerivedClassesAsync(derived.Type, baseline, transitive: true, derivedProjects, ct).ConfigureAwait(false)));
-                            if (derived.Type.TypeKind == TypeKind.Interface)
-                                files.AddRange(Declarations(await SymbolFinder.FindImplementationsAsync(derived.Type, baseline, derivedProjects, ct).ConfigureAwait(false)));
-                        }
-                    }
+                        files.AddRange(await _finder.FilesDerivingAsync(derived.Type, searchedIds, baselineProjects, generation, ct).ConfigureAwait(false));
 
                     if (files.Count > 0)
                         routeHits.Add((item.Index, files));
@@ -390,213 +360,21 @@ internal sealed class ChangeReach
             }
         }
 
-        var byName = routes.Select((route, index) => (Route: route as Route.ByName, Index: index)).Where(r => r.Route is not null).ToList();
+        var byName = new List<(string Name, int Index)>();
+        for (var index = 0; index < routes.Count; index++)
+        {
+            if (routes[index] is Route.ByName named)
+                byName.Add((named.Name, index));
+        }
+
         if (byName.Count > 0)
         {
-            var textDocuments = projects.SelectMany(p => p.Documents.Concat<TextDocument>(p.AdditionalDocuments))
-                .Where(d => d.FilePath is not null)
-                .ToList();
-            var nameHits = new ConcurrentBag<(RepoPath File, int Index)>();
-            await Parallel.ForEachAsync(
-                textDocuments,
-                new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = cancellationToken },
-                async (document, ct) =>
-                {
-                    var text = (await document.GetTextAsync(ct).ConfigureAwait(false)).ToString();
-                    RepoPath? file = null;
-                    foreach (var (route, index) in byName)
-                    {
-                        if (!text.Contains(route!.Name, StringComparison.Ordinal))
-                            continue;
-                        file ??= _workspace.Root.PathOf(document.FilePath!);
-                        nameHits.Add((file.Value, index));
-                    }
-                }).ConfigureAwait(false);
-
-            foreach (var (file, index) in nameHits)
+            foreach (var (file, index) in await _finder.FilesNamingAsync(byName, projects, cancellationToken).ConfigureAwait(false))
                 Add(file, index);
         }
 
         return reachedBy.ToDictionary(f => f.Key, IReadOnlyList<Cause> (f) => [.. f.Value.Select(i => routes[i].Cause).Distinct()]);
     }
-
-    private ImmutableHashSet<Document> CandidateDocumentsForSymbol(
-        ISymbol symbol,
-        Solution baseline,
-        HashSet<ProjectId> searchedIds,
-        ImmutableHashSet<Document> allDocuments)
-    {
-        if (!TryGetSymbolFilterTokens(symbol, out var identifiers, out _))
-            return allDocuments;
-
-        var candidates = _tokenIndex.CandidateDocumentsSnapshot(baseline, identifiers, [], searchedIds);
-        return WithUnindexedAndDeclaring(candidates, symbol, baseline, searchedIds, allDocuments);
-    }
-
-    private ImmutableHashSet<Project> CandidateProjectsForImplementations(
-        ISymbol symbol,
-        Solution baseline,
-        HashSet<ProjectId> searchedIds,
-        ImmutableHashSet<Project> allProjects)
-    {
-        if (!TryGetSymbolFilterTokens(symbol, out var identifiers, out var baseTypeNames))
-            return allProjects;
-
-        var candidates = _tokenIndex.CandidateDocumentsSnapshot(baseline, identifiers, baseTypeNames, searchedIds);
-        return ProjectsForCandidates(candidates, allProjects);
-    }
-
-    private ImmutableHashSet<Project> CandidateProjectsForOverrides(
-        ISymbol symbol,
-        Solution baseline,
-        HashSet<ProjectId> searchedIds,
-        ImmutableHashSet<Project> allProjects)
-    {
-        if (!TryGetSymbolFilterTokens(symbol, out var identifiers, out _))
-            return allProjects;
-
-        var candidates = _tokenIndex.CandidateDocumentsSnapshot(baseline, identifiers, [], searchedIds);
-        return ProjectsForCandidates(candidates, allProjects);
-    }
-
-    private ImmutableHashSet<Project> CandidateProjectsForDerived(
-        INamedTypeSymbol type,
-        Solution baseline,
-        HashSet<ProjectId> searchedIds,
-        ImmutableHashSet<Project> allProjects)
-    {
-        if (type.IsAnonymousType || type.IsTupleType || string.IsNullOrEmpty(type.Name))
-            return allProjects;
-
-        var candidates = _tokenIndex.CandidateDocumentsSnapshot(baseline, [], [type.Name], searchedIds);
-        return ProjectsForCandidates(candidates, allProjects);
-    }
-
-    private static ImmutableHashSet<Document> WithUnindexedAndDeclaring(
-        ImmutableHashSet<Document> candidates,
-        ISymbol symbol,
-        Solution baseline,
-        HashSet<ProjectId> searchedIds,
-        ImmutableHashSet<Document> allDocuments)
-    {
-        var builder = candidates.ToBuilder();
-        foreach (var doc in allDocuments)
-        {
-            if (string.IsNullOrEmpty(doc.FilePath))
-                builder.Add(doc);
-        }
-
-        foreach (var syntaxRef in symbol.DeclaringSyntaxReferences)
-        {
-            if (baseline.GetDocument(syntaxRef.SyntaxTree) is { } doc && searchedIds.Contains(doc.Project.Id))
-                builder.Add(doc);
-        }
-
-        return builder.ToImmutable();
-    }
-
-    private static ImmutableHashSet<Project> ProjectsForCandidates(
-        ImmutableHashSet<Document> candidates,
-        ImmutableHashSet<Project> allProjects)
-    {
-        var builder = ImmutableHashSet.CreateBuilder<Project>();
-        foreach (var doc in candidates)
-            builder.Add(doc.Project);
-        foreach (var project in allProjects)
-        {
-            if (project.Documents.Any(d => string.IsNullOrEmpty(d.FilePath)))
-                builder.Add(project);
-        }
-
-        return builder.ToImmutable();
-    }
-
-    private static bool TryGetSymbolFilterTokens(
-        ISymbol symbol,
-        out IReadOnlyList<string> identifiers,
-        out IReadOnlyList<string> baseTypeNames)
-    {
-        identifiers = [];
-        baseTypeNames = [];
-
-        if (symbol.IsImplicitlyDeclared)
-            return false;
-
-        switch (symbol)
-        {
-            case IMethodSymbol method:
-                if (method.MethodKind is MethodKind.Constructor or MethodKind.StaticConstructor or MethodKind.SharedConstructor
-                    or MethodKind.UserDefinedOperator or MethodKind.Conversion or MethodKind.BuiltinOperator or MethodKind.Destructor)
-                    return false;
-
-                // An extension method applies without naming it (a query expression, an awaited or iterated
-                // receiver), so no token narrows its search.
-                if (method.IsExtensionMethod)
-                    return false;
-
-                if (method.AssociatedSymbol is IPropertySymbol { IsIndexer: true })
-                    return false;
-
-                var methodName = SimpleMemberName(method.AssociatedSymbol?.Name ?? method.Name);
-                if (string.IsNullOrEmpty(methodName) || IsImplicitPatternMember(methodName))
-                    return false;
-
-                identifiers = [methodName];
-                baseTypeNames = method.ContainingType is { } methodOwner ? [methodOwner.Name] : [];
-                return true;
-
-            case IPropertySymbol property:
-                if (property.IsIndexer)
-                    return false;
-                var propName = SimpleMemberName(property.Name);
-                if (string.IsNullOrEmpty(propName) || IsImplicitPatternMember(propName))
-                    return false;
-                identifiers = [propName];
-                baseTypeNames = property.ContainingType is { } propOwner ? [propOwner.Name] : [];
-                return true;
-
-            case IEventSymbol evt:
-                var evtName = SimpleMemberName(evt.Name);
-                if (string.IsNullOrEmpty(evtName))
-                    return false;
-                identifiers = [evtName];
-                baseTypeNames = evt.ContainingType is { } evtOwner ? [evtOwner.Name] : [];
-                return true;
-
-            case IFieldSymbol field:
-                // A field is always named where it is used.
-                if (string.IsNullOrEmpty(field.Name))
-                    return false;
-                identifiers = [field.Name];
-                return true;
-
-            case INamedTypeSymbol type:
-                if (type.IsAnonymousType || type.IsTupleType || string.IsNullOrEmpty(type.Name))
-                    return false;
-                identifiers = type.Name.Length > "Attribute".Length && type.Name.EndsWith("Attribute", StringComparison.Ordinal)
-                    ? [type.Name, type.Name[..^"Attribute".Length]]
-                    : [type.Name];
-                baseTypeNames = [type.Name];
-                return true;
-
-            default:
-                // A kind the narrowing cannot decide is searched without narrowing, so no call site is missed.
-                return false;
-        }
-    }
-
-    private static string SimpleMemberName(string name)
-    {
-        var dot = name.LastIndexOf('.');
-        return dot >= 0 ? name[(dot + 1)..] : name;
-    }
-
-    private static bool IsImplicitPatternMember(string name) =>
-        name is "GetEnumerator" or "GetAsyncEnumerator" or "MoveNext" or "MoveNextAsync"
-            or "Current" or "Dispose" or "DisposeAsync"
-            or "GetAwaiter" or "IsCompleted" or "GetResult" or "OnCompleted" or "UnsafeOnCompleted"
-            or "Deconstruct" or "Add" or "Slice" or "Length" or "Count"
-            or "GetPinnableReference" or "PrintMembers" or "EqualityContract" or "<Clone>$";
 
     private static async Task<SourceText?> BaselineTextAsync(RepoPath path, Solution baseline, CancellationToken cancellationToken)
     {
@@ -632,47 +410,6 @@ internal sealed class ChangeReach
     /// <summary>Every source file of <paramref name="projects"/>, for a change that a reference search cannot bound.</summary>
     private Reach.Broad Broad(IReadOnlyList<Project> projects, IReadOnlyList<(RepoPath File, Cause Cause)> broadCauses) =>
         new(projects.SelectMany(p => p.Documents).Select(d => d.FilePath).OfType<string>().Select(_workspace.Root.PathOf).ToHashSet(), broadCauses);
-
-    private async Task<IEnumerable<RepoPath>> ReferencingFilesAsync(ISymbol symbol, string searchKey, Solution baseline, IImmutableSet<Document> documents, Generation generation, CancellationToken cancellationToken)
-    {
-        var key = generation.BaselineGeneration + "|" + (symbol.GetDocumentationCommentId() ?? symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)) + "|" + searchKey;
-        lock (_cacheLock)
-        {
-            if (_cache.TryGetValue(key, out var cached))
-            {
-                _cacheOrder.Remove(key);
-                _cacheOrder.Add(key);
-                return cached;
-            }
-        }
-
-        var references = await SymbolFinder.FindReferencesAsync(symbol, baseline, documents, cancellationToken).ConfigureAwait(false);
-        var files = new HashSet<RepoPath>();
-        // A file holds many references; its path is made once.
-        foreach (var document in references.SelectMany(r => r.Locations).Select(l => l.Document).DistinctBy(d => d.Id))
-        {
-            if (document.FilePath is { } file)
-                files.Add(_workspace.Root.PathOf(file));
-        }
-
-        lock (_cacheLock)
-        {
-            _cache[key] = files;
-            _cacheOrder.Remove(key);
-            _cacheOrder.Add(key);
-            while (_cache.Count > MaxCacheEntries && _cacheOrder.Count > 0)
-            {
-                var oldest = _cacheOrder[0];
-                _cacheOrder.RemoveAt(0);
-                _cache.TryRemove(oldest, out _);
-            }
-        }
-
-        return files;
-    }
-
-    private IEnumerable<RepoPath> Declarations(IEnumerable<ISymbol> symbols) =>
-        symbols.SelectMany(s => s.Locations).Where(l => l.IsInSource).Select(l => l.SourceTree!.FilePath).Where(p => !string.IsNullOrEmpty(p)).Select(_workspace.Root.PathOf);
 
     /// <summary>
     ///     The file at HEAD and in the working tree, once for each project that compiles it: HEAD's from the baseline's

@@ -10,7 +10,7 @@ internal sealed class ShadowEmitCaches
     internal EmitCache Cache { get; } = new();
 
     /// <summary>Each shadow file an emitter wrote, with its 32-byte SHA-256 hash and the length and time the file had after.</summary>
-    internal ConcurrentDictionary<string, ShadowEmitter.Written> Written { get; } = new(StringComparer.OrdinalIgnoreCase);
+    internal ConcurrentDictionary<string, ShadowWritten> Written { get; } = new(StringComparer.OrdinalIgnoreCase);
     /// <summary>The written files in the order they were last written in, for <see cref="WrittenGate"/>.</summary>
     internal List<string> WrittenOrder { get; } = [];
 

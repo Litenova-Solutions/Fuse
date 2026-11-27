@@ -75,6 +75,43 @@ public class InstructionsFileTests
     }
 
     [Fact]
+    public void The_section_names_session_list_and_the_judge_session()
+    {
+        Assert.Contains("fuse session list", InstructionsFile.Section, StringComparison.Ordinal);
+        Assert.Contains("FUSE_SESSION=judge", InstructionsFile.Section, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Replacing_a_block_with_text_on_both_sides_keeps_that_text()
+    {
+        using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["App/App.csproj"] = "<Project />" });
+        File.WriteAllText(repo.Full("AGENTS.md"), "# Rules\n\nKeep it short.\n\n" + InstructionsFile.Begin + "\nstale-section-text\n" + InstructionsFile.End + "\n\n## After\n");
+
+        Assert.Equal(0, Init(repo, out _));
+
+        var text = File.ReadAllText(repo.Full("AGENTS.md"));
+        Assert.StartsWith("# Rules\n\nKeep it short.\n\n" + InstructionsFile.Begin + "\n", text, StringComparison.Ordinal);
+        Assert.EndsWith(InstructionsFile.End + "\n\n## After\n", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("stale-section-text", text, StringComparison.Ordinal);
+        Assert.Contains("FUSE_SESSION=judge", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_CRLF_file_with_surrounding_text_stays_CRLF_when_the_block_is_replaced()
+    {
+        using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["App/App.csproj"] = "<Project />" });
+        File.WriteAllText(repo.Full("AGENTS.md"), "# Rules\r\n\r\nKeep it short.\r\n\r\n" + InstructionsFile.Begin + "\r\nstale-section-text\r\n" + InstructionsFile.End + "\r\n\r\n## After\r\n");
+
+        Assert.Equal(0, Init(repo, out _));
+
+        var text = File.ReadAllText(repo.Full("AGENTS.md"));
+        Assert.DoesNotContain("stale-section-text", text, StringComparison.Ordinal);
+        Assert.Contains("fuse session list", text, StringComparison.Ordinal);
+        Assert.EndsWith(InstructionsFile.End + "\r\n\r\n## After\r\n", text, StringComparison.Ordinal);
+        Assert.Equal(text.Split("\r\n").Length, text.Split('\n').Length);
+    }
+
+    [Fact]
     public void Init_without_the_option_writes_no_instruction_file()
     {
         using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["App/App.csproj"] = "<Project />" });

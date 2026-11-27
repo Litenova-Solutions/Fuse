@@ -27,15 +27,35 @@ internal static class InstructionsFile
 
         This repository uses [Fuse](https://fuse.codes) to check .NET changes. Its hooks run on their own; these commands are for when you need them.
 
-        - After each edit, Fuse tells you the compiler errors that edit introduced. Fix them before you go on.
-        - Run `fuse test` to run the tests your changes can break; `fuse test --all` runs every test. `dotnet test` is rewritten to `fuse test`.
-        - `fuse test` skips test projects that need a container runtime when none is running, and says so; start Docker or Podman to run them.
-        - Fuse checks C# only; `fuse check` names changed files in other languages, which your repository's own gates cover.
-        - Run `fuse build` instead of `dotnet build`: it prints only the errors, and waits for another agent's build instead of colliding with it.
-        - When you finish, Fuse checks every change since HEAD (the commit checked out) and sends you back for the errors your edits introduced. `fuse check` runs the same check when you want it sooner.
-        - When several agents work in this working tree, each is told the errors its own edits cause, and `fuse test` runs the tests its own edits affect.
-        - If you run without hooks as one of several workers, set `FUSE_SESSION` to your worker name before `fuse check`, `fuse test` or `fuse mcp`, so you are told only your own errors; a check that names files credits them to you.
-        - If Fuse stops answering, `fuse stop` stops its engine; the next command starts a new one.
+        Day to day
+
+        - After each edit, the post-edit hook reports the compiler errors that edit introduced. Fix them before you move on.
+        - `fuse check` reports the errors the working tree has that HEAD does not, across the files a changed declaration reaches.
+        - `fuse check <paths>` checks only the changed files under the named files, directories or patterns and what they reach. `--brief` adds a repair packet to each error.
+        - `fuse check` names the changed non-C# files, which the repository's other gates cover.
+        - `fuse test` runs the tests your changes affect. `dotnet test` is rewritten to it, and `fuse test --all` runs every test.
+        - `fuse test --all --project <path>` and `fuse test --all --solution <path>` run every test in one project or solution.
+        - `fuse test` leaves out the test projects that need a container runtime when none answers. Start Docker or Podman to run them.
+        - `fuse build` replaces `dotnet build`: it prints only the errors, and waits for another agent's build instead of colliding with it.
+        - `fuse build <same arguments> --all-errors` replays every error from the finished build. `fuse build --changed` builds only the projects that own changed files and their dependents.
+        - After editing a `.csproj` file or `Directory.Packages.props`, run `dotnet restore` (or `fuse build`). Fuse never restores, and reloads once `obj/project.assets.json` updates.
+
+        Several agents
+
+        - Subagents with hooks are isolated automatically: each is told only the errors its own edits cause.
+        - A worker without hooks registers with `fuse session begin <name> --paths <paths...> --pid <pid>`, which the launcher runs for it.
+        - Check a worker with `fuse gate --session <name>`, list sessions with `fuse session list`, and end a worker with `fuse session end <name>`.
+        - A worker without hooks sets `FUSE_SESSION=<name>` before `fuse check`, `fuse test` or `fuse mcp`, so it is told only its own errors. A check that names files credits them to it.
+        - An orchestrator sets `FUSE_SESSION=judge` for its checks after workers finish.
+
+        Keeping it fast
+
+        - Read https://fuse.codes/docs/best-practices for keeping checks fast.
+        - Commit finished work so uncommitted files stay well under 500. Past 500 a check skips its kept answer.
+        - In tests, find the repository root with `[CallerFilePath]`, not by walking up from `AppContext.BaseDirectory`.
+        - Keep template and fixture projects out of the tree with `.fuseignore` or `.template.config`.
+        - `fuse status` shows the tree size, the sessions and memory.
+        - Run `fuse slim` before a heavy external build. Run `fuse stop` when the engine stops answering.
         """;
 
     /// <summary>The instruction files, relative to the root, that get the section.</summary>

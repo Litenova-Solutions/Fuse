@@ -80,11 +80,13 @@ internal sealed class TestSelector
     public async Task<(SelectionResult Result, Generation Generation)> SelectAsync(IReadOnlyList<RepoPath> changedFiles, Generation generation, CancellationToken cancellationToken)
     {
         var graph = generation.Graph;
+        var projectFileWholes = ProjectFileSelection.Select(graph, _workspace.Tracker.ReadHead, changedFiles);
         var nonSourceOwners = new Dictionary<RepoPath, IReadOnlyList<ProjectNode>>();
         foreach (var path in changedFiles.Where(p => !PathRules.IsSource(p.Absolute)))
         {
             // A project file defines how its project evaluates, and the sync has already evaluated it again; it is
-            // not a file the project holds for its tests to read, so it selects no project whole. That keeps a
+            // not a file the project holds for its tests to read, so the walks select no project whole for it.
+            // ProjectFileSelection selects whole for the named project files above instead. That keeps a
             // project's own file, such as the one a fixture rewrites to name a container package, from widening
             // the selection its code changes give.
             if (PathRules.IsProjectFile(path.Absolute))
@@ -99,7 +101,7 @@ internal sealed class TestSelector
         var changedProjects = changedFiles.SelectMany(p => PathRules.IsSource(p.Absolute) ? graph.OwnersOf(p) : nonSourceOwners.GetValueOrDefault(p, [])).DistinctBy(p => p.Path).ToList();
         var reachedProjects = changedProjects.Concat(changedProjects.SelectMany(graph.DependentsOf)).DistinctBy(p => p.Path).ToList();
         if (!reachedProjects.Any(p => p.IsTest))
-            return (new SelectionResult(new Dictionary<RepoPath, TestSelection>(), 0, false), generation);
+            return (new SelectionResult(WholeSelections(projectFileWholes), 0, false), generation);
 
         // Syntax-first short-circuit: run CodeDiff.Find on syntax BEFORE loading dependent projects or binding SemanticModels.
         var (activeFiles, allCSharp, hasTopLevelDiff) = await FilterChangedFilesBySyntaxAsync(changedFiles, generation, cancellationToken).ConfigureAwait(false);
@@ -114,7 +116,7 @@ internal sealed class TestSelector
         var activeChangedProjects = activeFiles.SelectMany(p => PathRules.IsSource(p.Absolute) ? graph.OwnersOf(p) : nonSourceOwners.GetValueOrDefault(p, [])).DistinctBy(p => p.Path).ToList();
         var effectiveReachedProjects = activeChangedProjects.Concat(activeChangedProjects.SelectMany(graph.DependentsOf)).DistinctBy(p => p.Path).ToList();
         if (!effectiveReachedProjects.Any(p => p.IsTest))
-            return (new SelectionResult(new Dictionary<RepoPath, TestSelection>(), 0, false), generation);
+            return (new SelectionResult(WholeSelections(projectFileWholes), 0, false), generation);
 
         // If all active changes are pure C# member/body edits and there are unloaded dependents, load only the owner
         // projects first so local-only edits (renames, var rewrites) short-circuit without loading dependent projects.
@@ -206,6 +208,7 @@ internal sealed class TestSelector
         {
             _workspace.Log($"test selection: {classes} test classes reachable; selecting at class level");
             AddBuildOnlySelections(graph, activeChangedProjects, effectiveReachedProjects, classLevel);
+            AddProjectFileWholes(projectFileWholes, classLevel);
             return (new SelectionResult(classLevel, walk.DroppedSameCode, allSameCode), generation);
         }
 
@@ -214,6 +217,7 @@ internal sealed class TestSelector
         {
             _workspace.Log($"test selection: member walk over budget in {outcome.Milliseconds} ms, {outcome.Symbols} symbol(s), {classes} test class(es) reachable, {PatternsOf(classLevel)} pattern(s) selected; selecting at class level");
             AddBuildOnlySelections(graph, activeChangedProjects, effectiveReachedProjects, classLevel);
+            AddProjectFileWholes(projectFileWholes, classLevel);
             return (new SelectionResult(classLevel, walk.DroppedSameCode, allSameCode), generation);
         }
 
@@ -223,6 +227,7 @@ internal sealed class TestSelector
         foreach (var (path, _) in seededWhole)
             memberLevel[path] = classLevel[path];
         AddBuildOnlySelections(graph, activeChangedProjects, effectiveReachedProjects, memberLevel);
+        AddProjectFileWholes(projectFileWholes, memberLevel);
         _workspace.Log($"test selection: member walk completed in {outcome.Milliseconds} ms, {outcome.Symbols} symbol(s), {classes} test class(es) reachable, {PatternsOf(memberLevel)} pattern(s) selected; selecting at member level");
         return (new SelectionResult(memberLevel, walk.DroppedSameCode, allSameCode), generation);
     }
@@ -387,4 +392,26 @@ internal sealed class TestSelector
     /// <summary>How many test name patterns the selections hold.</summary>
     private static int PatternsOf(IReadOnlyDictionary<RepoPath, TestSelection> selections) =>
         selections.Values.OfType<TestSelection.Methods>().Sum(m => m.Patterns.Count);
+
+    /// <summary>The whole selections project-file changes call for, as test selections.</summary>
+    private static Dictionary<RepoPath, TestSelection> WholeSelections(IReadOnlyDictionary<RepoPath, string> wholes)
+    {
+        var selections = new Dictionary<RepoPath, TestSelection>();
+        foreach (var (path, reason) in wholes)
+            selections[path] = new TestSelection.Whole(reason);
+        return selections;
+    }
+
+    /// <summary>
+    ///     Adds the whole selections project-file changes call for. A project the walks selected by name runs whole
+    ///     instead, and a project already selected whole keeps the first reason.
+    /// </summary>
+    private static void AddProjectFileWholes(IReadOnlyDictionary<RepoPath, string> wholes, Dictionary<RepoPath, TestSelection> selections)
+    {
+        foreach (var (path, reason) in wholes)
+        {
+            if (selections.GetValueOrDefault(path) is not TestSelection.Whole)
+                selections[path] = new TestSelection.Whole(reason);
+        }
+    }
 }

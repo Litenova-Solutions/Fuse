@@ -1,4 +1,7 @@
 using System.Collections.Concurrent;
+using System.Runtime.Versioning;
+using System.Security.AccessControl;
+using System.Security.Principal;
 using Fuse.Check.Model;
 using Fuse.Check.Pipeline;
 using Fuse.Check.Sessions;
@@ -8,8 +11,9 @@ using Fuse.Workspace.Generations;
 namespace Fuse.Tests.Engine;
 
 /// <summary>
-///     A check of every change never keeps an answer a changed file could not be read for: the answer is still bound
-///     from its snapshot, the engine log says it is not kept, and the next check binds again instead of reusing it.
+///     A check of every change never keeps an answer a changed file could not be read for: the file holds the
+///     broken content in the view but cannot be read from disk, the engine log says the answer is not kept,
+///     and the next check binds again instead of reusing it.
 /// </summary>
 public class CheckFreshnessTests
 {
@@ -18,46 +22,69 @@ public class CheckFreshnessTests
     {
         using var repo = FixtureRepo.CreateStandard();
         var log = new ConcurrentQueue<string>();
-        var calc = repo.Full("Lib/Calc.cs");
-        var broken = "";
-        var restoring = false;
-        // The file is readable again before the check ends, with the same content it holds in the next check, so a kept
-        // first answer would serve the next check without binding.
-        using var workspace = new RepoWorkspace(repo.Root, message =>
-        {
-            log.Enqueue(message);
-            if (restoring && message.StartsWith("check: binding ", StringComparison.Ordinal))
-            {
-                restoring = false;
-                Directory.Delete(calc);
-                File.WriteAllText(calc, broken);
-            }
-        });
+        using var workspace = new RepoWorkspace(repo.Root, log.Enqueue);
         var cancellationToken = TestContext.Current.CancellationToken;
         await workspace.InitializeAsync(cancellationToken);
         var checker = new Checker(workspace, new SessionEdits(workspace.Root, null));
 
         repo.Replace("Lib/Calc.cs", "a * b;", "a * undefinedValue;");
-        broken = repo.Read("Lib/Calc.cs");
         await workspace.SyncAsync([repo.PathOf("Lib/Calc.cs")], cancellationToken);
-        File.Delete(calc);
-        Directory.CreateDirectory(calc);
 
-        restoring = true;
-        var first = await checker.CheckAsync(new CheckScope.AllChanges(), PhaseTimes.None, cancellationToken);
-        restoring = false;
+        // The file is unreadable without changing its content, so the check binds its errors from the view
+        // yet keeps no answer under a key that leaves the file out. A file held open without sharing denies
+        // reads only on Windows, so this uses permissions, which deny reads everywhere.
+        var restore = MakeUnreadable(repo.Full("Lib/Calc.cs"));
+        try
+        {
+            var first = await checker.CheckAsync(new CheckScope.AllChanges(), PhaseTimes.None, cancellationToken);
 
-        Assert.NotEmpty(first.Errors);
-        Assert.Contains(log, l => l.Contains("changed file(s) could not be read from disk, so this answer is not kept", StringComparison.Ordinal));
-        Assert.DoesNotContain(log, l => l.StartsWith("check coverage:", StringComparison.Ordinal));
-        Assert.Equal(1, BindingCount(log));
+            Assert.NotEmpty(first.Errors);
+            Assert.Contains(log, l => l.Contains("changed file(s) could not be read from disk, so this answer is not kept", StringComparison.Ordinal));
+            Assert.DoesNotContain(log, l => l.StartsWith("check coverage:", StringComparison.Ordinal));
+            Assert.Equal(1, BindingCount(log));
 
-        var second = await checker.CheckAsync(new CheckScope.AllChanges(), PhaseTimes.None, cancellationToken);
+            var second = await checker.CheckAsync(new CheckScope.AllChanges(), PhaseTimes.None, cancellationToken);
 
-        Assert.Equal(2, BindingCount(log));
-        var error = Assert.Single(second.Errors).Error;
-        Assert.Equal("Lib/Calc.cs", error.Path);
-        Assert.Equal("CS0103", error.Id);
+            Assert.Equal(2, BindingCount(log));
+            var error = Assert.Single(second.Errors).Error;
+            Assert.Equal("Lib/Calc.cs", error.Path);
+            Assert.Equal("CS0103", error.Id);
+        }
+        finally
+        {
+            restore();
+        }
+    }
+
+    /// <summary>Makes the file at <paramref name="path"/> unreadable to the current user and returns how to make it readable again.</summary>
+    private static Action MakeUnreadable(string path)
+    {
+        if (OperatingSystem.IsWindows())
+            return DenyReadOnWindows(path);
+
+        return DenyReadOnUnix(path);
+    }
+
+    /// <summary>Removes every permission from <paramref name="path"/> and returns how to put its mode back.</summary>
+    [UnsupportedOSPlatform("windows")]
+    private static Action DenyReadOnUnix(string path)
+    {
+        var mode = File.GetUnixFileMode(path);
+        File.SetUnixFileMode(path, UnixFileMode.None);
+        return () => File.SetUnixFileMode(path, mode);
+    }
+
+    /// <summary>Denies the current user read access to <paramref name="path"/> and returns how to put its list back.</summary>
+    [SupportedOSPlatform("windows")]
+    private static Action DenyReadOnWindows(string path)
+    {
+        var info = new FileInfo(path);
+        var original = info.GetAccessControl();
+        var updated = info.GetAccessControl();
+        var user = WindowsIdentity.GetCurrent().Name ?? Environment.UserName;
+        updated.AddAccessRule(new FileSystemAccessRule(user, FileSystemRights.Read, AccessControlType.Deny));
+        info.SetAccessControl(updated);
+        return () => info.SetAccessControl(original);
     }
 
     /// <summary>How many checks bound anything: a check answered from what was kept binds nothing more.</summary>

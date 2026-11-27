@@ -48,11 +48,18 @@ public class LargeTreeCheckTests
         Assert.Empty((await engine.CheckAsync("Lib/Calc.cs")).Errors);
         var generation = engine.Workspace.ConfigurationGeneration;
 
-        var touched = Enumerable.Range(0, 2001).Select(i => engine.Repo.PathOf($"Lib/Gen{i}.cs")).ToList();
-        await engine.Workspace.PatchViewsAsync(touched, TestContext.Current.CancellationToken);
+        // 2001 files that differ from HEAD once written: touching them grows the touched set past the bound,
+        // and deleting them turns every one into churn, so the next sync re-evaluates and resets.
+        var relatives = Enumerable.Range(0, 2001).Select(i => "Lib/Gen" + i + ".cs").ToList();
+        for (var i = 0; i < relatives.Count; i++)
+            engine.Repo.Write(relatives[i], "namespace Lib;\n\npublic static class Gen" + i + "\n{\n    public static int Value() => " + i + ";\n}\n");
+        await engine.Workspace.PatchViewsAsync(relatives.Select(engine.Repo.PathOf).ToList(), TestContext.Current.CancellationToken);
+        foreach (var relative in relatives)
+            File.Delete(engine.Repo.Full(relative));
         await engine.Workspace.SyncAsync([], TestContext.Current.CancellationToken);
 
-        Assert.Contains(engine.Log, l => l.Contains("touched set passed 2000 paths; re-evaluating projects and resetting it", StringComparison.Ordinal));
+        Assert.Contains(engine.Log, l => l.Contains("touched set passed 2000 paths that no longer differ from HEAD", StringComparison.Ordinal));
+        Assert.Contains(engine.Log, l => l.Contains("re-evaluating projects and resetting it", StringComparison.Ordinal));
         Assert.Contains(engine.Log, l => l.Contains("reloading: Reevaluate trigger=touched set passed 2000 paths", StringComparison.Ordinal));
         Assert.Equal(generation + 1, engine.Workspace.ConfigurationGeneration);
 

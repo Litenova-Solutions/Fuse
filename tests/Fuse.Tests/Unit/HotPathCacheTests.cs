@@ -78,8 +78,12 @@ public class HotPathCacheTests
             File.SetLastWriteTimeUtc(file, stamp.AddSeconds(1));
             Assert.NotEqual(first, KeptCheck.KeyFor("all", 0, null, true, "head", 1, 1, "records", keyed));
 
+            // A deleted file keys as deleted: the key stays, and differs from the content key, so recreating
+            // the file changes the key.
             File.Delete(file);
-            Assert.Null(KeptCheck.KeyFor("all", 0, null, true, "head", 1, 1, "records", keyed));
+            var deleted = KeptCheck.KeyFor("all", 0, null, true, "head", 1, 1, "records", keyed);
+            Assert.NotNull(deleted);
+            Assert.NotEqual(first, deleted);
         });
     }
 

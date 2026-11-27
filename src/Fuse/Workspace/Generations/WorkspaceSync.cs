@@ -67,10 +67,11 @@ internal sealed class WorkspaceSync
         {
             // Re-evaluates the projects as a project-file change does, so the paths a rebuild re-applies beyond the
             // changed set stay bounded however long the engine runs. Changed files never count: every rebuild applies
-            // them, so a tree with more changed files than the bound does not re-evaluate on every sync.
+            // them, so a tree with more changed files than the bound does not re-evaluate on every sync. The churn
+            // paths are left out: they match HEAD again and the re-evaluation reopens the projects from disk, so
+            // re-applying them would grow the touched set past the bound again and re-evaluate on every sync.
             _log($"touched set passed {_maxChurn} paths that no longer differ from HEAD ({churn} of them, {_tracker.Changed.Count} changed file(s)); re-evaluating projects and resetting it");
-            var paths = new HashSet<RepoPath>(result.Paths);
-            paths.UnionWith(_tracker.Changed);
+            var paths = new HashSet<RepoPath>(_tracker.Changed);
             foreach (var directory in overflowing.VanishedDirectories)
                 paths.UnionWith(_views.FilesUnder(directory));
             _views.ResetTouched();

@@ -32,6 +32,9 @@ internal sealed class RepoWorkspace : IDisposable
     /// </summary>
     private readonly SemaphoreSlim _writerGate = new(1, 1);
 
+    /// <summary>Cancelled when the workspace is disposed, which stops a shared sync no waiter can cancel on its own.</summary>
+    private readonly CancellationTokenSource _lifetime = new();
+
     /// <summary>Guards the pathless coalescing slots below; it is never held while the writer gate is awaited.</summary>
     private readonly Lock _coalesceLock = new();
 
@@ -279,45 +282,107 @@ internal sealed class RepoWorkspace : IDisposable
                 }
                 else
                 {
-                    slot.Next = shared = RunQueuedPathlessAsync(active, confirmWithDisk);
+                    var queued = new TaskCompletionSource<Generation>(TaskCreationOptions.RunContinuationsAsynchronously);
+                    slot.Next = queued.Task;
+                    shared = queued.Task;
+                    _ = RunQueuedPathlessAsync(active, queued, confirmWithDisk);
                 }
+            }
+            else if (slot.Next is { IsCompleted: false } running)
+            {
+                // The running round finished while the queued one still runs: waiters share the queued
+                // round, which becomes the running one, instead of starting a third round.
+                slot.Active = running;
+                slot.Next = null;
+                shared = running;
             }
             else
             {
-                slot.Active = shared = RunPathlessRoundAsync(confirmWithDisk);
+                var current = new TaskCompletionSource<Generation>(TaskCreationOptions.RunContinuationsAsynchronously);
+                slot.Active = current.Task;
+                slot.Next = null;
+                shared = current.Task;
+                _ = RunPathlessAndCompleteAsync(current, slot, confirmWithDisk);
             }
         }
 
         return WaitSharedAsync(shared, cancellationToken);
     }
 
-    private async Task<Generation> RunQueuedPathlessAsync(Task<Generation> previous, bool confirmWithDisk)
+    private async Task RunQueuedPathlessAsync(Task<Generation> previous, TaskCompletionSource<Generation> completion, bool confirmWithDisk)
     {
         try
         {
-            await previous.ConfigureAwait(false);
-        }
-        catch (Exception)
-        {
-            // The running sync failed; the queued sync still runs so its waiters see the tree.
-        }
+            try
+            {
+                await previous.ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+                // The running sync failed; the queued sync still runs so its waiters see the tree.
+            }
 
-        return await RunPathlessRoundAsync(confirmWithDisk).ConfigureAwait(false);
+            await _writerGate.WaitAsync(_lifetime.Token).ConfigureAwait(false);
+            try
+            {
+                Interlocked.Increment(ref _pathlessRounds);
+                var generation = await PrimaryOverlay.SyncAndPinAsync([], _lifetime.Token, confirmWithDisk).ConfigureAwait(false);
+                completion.SetResult(generation);
+            }
+            finally
+            {
+                _writerGate.Release();
+            }
+        }
+        catch (Exception e)
+        {
+            completion.TrySetException(e);
+        }
     }
 
-    private async Task<Generation> RunPathlessRoundAsync(bool confirmWithDisk)
+    private async Task RunPathlessAndCompleteAsync(TaskCompletionSource<Generation> completion, PathlessCoalescer slot, bool confirmWithDisk)
     {
-        // The shared round runs without any waiter's token: one waiter giving up does not cancel the sync the
-        // others wait for. Each waiter stops waiting on its own token in WaitSharedAsync.
-        await _writerGate.WaitAsync(CancellationToken.None).ConfigureAwait(false);
+        // The shared round starts on the thread pool instead of running with the caller: every caller that
+        // arrives while this round runs shares it, and the first waiter that arrives while it runs starts one
+        // queued round, so a batch of syncs that starts together runs at most two rounds. The round runs on the
+        // workspace lifetime, not any waiter's token: one waiter giving up does not cancel the sync the others wait
+        // for, and disposing the workspace stops it.
+        await Task.Yield();
         try
         {
-            Interlocked.Increment(ref _pathlessRounds);
-            return await PrimaryOverlay.SyncAndPinAsync([], CancellationToken.None, confirmWithDisk).ConfigureAwait(false);
+            await _writerGate.WaitAsync(_lifetime.Token).ConfigureAwait(false);
+            try
+            {
+                Interlocked.Increment(ref _pathlessRounds);
+                var generation = await PrimaryOverlay.SyncAndPinAsync([], _lifetime.Token, confirmWithDisk).ConfigureAwait(false);
+                lock (_coalesceLock)
+                {
+                    if (ReferenceEquals(slot.Active, completion.Task))
+                    {
+                        slot.Active = slot.Next;
+                        slot.Next = null;
+                    }
+
+                    completion.SetResult(generation);
+                }
+            }
+            finally
+            {
+                _writerGate.Release();
+            }
         }
-        finally
+        catch (Exception e)
         {
-            _writerGate.Release();
+            lock (_coalesceLock)
+            {
+                if (ReferenceEquals(slot.Active, completion.Task))
+                {
+                    slot.Active = slot.Next;
+                    slot.Next = null;
+                }
+
+                completion.TrySetException(e);
+            }
         }
     }
 
@@ -598,7 +663,7 @@ internal sealed class RepoWorkspace : IDisposable
     public Task<Solution> CurrentWithHeadContentAsync(Generation generation, IEnumerable<RepoPath> paths, CancellationToken cancellationToken) =>
         PrimaryOverlay.CurrentWithHeadContentAsync(generation, paths, cancellationToken);
 
-    /// <summary>The running and the queued pathless sync of one confirmation kind: waiters share the running sync, and the first waiter starts the queued one.</summary>
+    /// <summary>The running and the queued pathless sync of one confirmation kind: waiters share the running sync, and the first waiter starts the queued one. Either is null when no round of its kind runs.</summary>
     private sealed class PathlessCoalescer
     {
         public Task<Generation>? Active;
@@ -625,12 +690,14 @@ internal sealed class RepoWorkspace : IDisposable
 
     public void Dispose()
     {
+        _lifetime.Cancel();
         PrimaryOverlay.Dispose();
         foreach (var overlay in _overlays.Values)
             overlay.Dispose();
         _overlays.Clear();
         _registerLock.Dispose();
         _writerGate.Dispose();
+        _lifetime.Dispose();
         lock (_liveLock)
         {
             for (var i = _live.Count - 1; i >= 0; i--)

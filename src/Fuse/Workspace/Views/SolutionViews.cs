@@ -290,8 +290,11 @@ internal sealed class SolutionViews
     /// </summary>
     public void Touch(IEnumerable<RepoPath> paths) => _patcher.Touch(paths);
 
-    /// <summary>True when the touched set holds more than <see cref="MaxTouchedPaths"/> paths, so the next sync re-evaluates the projects and resets it.</summary>
-    public bool TouchedOverflows => _patcher.TouchedOverflows;
+    /// <summary>
+    ///     How many touched paths are churn: touched once but no longer changed from HEAD. Past
+    ///     <see cref="MaxTouchedPaths"/> of them, the next sync re-evaluates the projects and resets the touched set.
+    /// </summary>
+    public int ChurnCount => _patcher.ChurnCount;
 
     /// <summary>Empties the touched set. Called only when the projects are evaluated again, which reopens them from disk.</summary>
     public void ResetTouched() => _patcher.ResetTouched();

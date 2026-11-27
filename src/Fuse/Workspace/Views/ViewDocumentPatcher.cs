@@ -85,13 +85,17 @@ internal sealed class ViewDocumentPatcher
             _touched.UnionWith(paths);
     }
 
-    /// <summary>True when the touched set holds more than <see cref="SolutionViews.MaxTouchedPaths"/> paths, so the next sync re-evaluates the projects and resets it.</summary>
-    internal bool TouchedOverflows
+    /// <summary>
+    ///     How many touched paths are churn: touched once but no longer changed from HEAD. A changed path is applied
+    ///     again by every rebuild whether or not it is touched, so only churn grows what a rebuild re-applies beyond the
+    ///     changed set, and only churn counts against <see cref="SolutionViews.MaxTouchedPaths"/>.
+    /// </summary>
+    internal int ChurnCount
     {
         get
         {
             lock (_touchedLock)
-                return _touched.Count > SolutionViews.MaxTouchedPaths;
+                return _touched.Count(path => !_tracker.IsChanged(path));
         }
     }
 

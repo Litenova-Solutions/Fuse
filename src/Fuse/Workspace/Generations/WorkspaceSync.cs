@@ -18,6 +18,7 @@ internal sealed class WorkspaceSync
     private readonly ProjectLoader _projects;
     private readonly SolutionViews _views;
     private readonly Action<string> _log;
+    private readonly int _maxChurn;
 
     /// <summary>
     ///     The result of a sync whose action did not finish, because it was cancelled or failed, or null. The tracker
@@ -26,12 +27,21 @@ internal sealed class WorkspaceSync
     /// </summary>
     private SyncResult? _unfinished;
 
-    public WorkspaceSync(ChangeTracker tracker, ProjectLoader projects, SolutionViews views, Action<string> log)
+    /// <param name="tracker">The changes since HEAD.</param>
+    /// <param name="projects">The loader that holds the open projects.</param>
+    /// <param name="views">The current and baseline views.</param>
+    /// <param name="log">Where a reload and its reason are logged.</param>
+    /// <param name="maxChurn">
+    ///     How many touched paths that no longer differ from HEAD the views may re-apply before a sync re-evaluates the
+    ///     projects; <see cref="SolutionViews.MaxTouchedPaths"/> unless a test sets a smaller bound.
+    /// </param>
+    public WorkspaceSync(ChangeTracker tracker, ProjectLoader projects, SolutionViews views, Action<string> log, int maxChurn = SolutionViews.MaxTouchedPaths)
     {
         _tracker = tracker;
         _projects = projects;
         _views = views;
         _log = log;
+        _maxChurn = maxChurn;
     }
 
     /// <summary>Evaluates every project, closes them all and empties both views. Compiles nothing.</summary>
@@ -53,17 +63,18 @@ internal sealed class WorkspaceSync
         var result = await _tracker.SyncAsync(knownPaths, cancellationToken, confirmWithDisk).ConfigureAwait(false);
         if (_unfinished is { } unfinished)
             result = unfinished.Then(result);
-        if (result is SyncResult.Patch overflowing && _views.TouchedOverflows)
+        if (result is SyncResult.Patch overflowing && _views.ChurnCount is var churn && churn > _maxChurn)
         {
-            // Re-evaluates the projects as a project-file change does, so the touched set stays bounded however
-            // long the engine runs; the log names why this sync took the expensive path.
-            _log($"touched set passed {SolutionViews.MaxTouchedPaths} paths; re-evaluating projects and resetting it");
+            // Re-evaluates the projects as a project-file change does, so the paths a rebuild re-applies beyond the
+            // changed set stay bounded however long the engine runs. Changed files never count: every rebuild applies
+            // them, so a tree with more changed files than the bound does not re-evaluate on every sync.
+            _log($"touched set passed {_maxChurn} paths that no longer differ from HEAD ({churn} of them, {_tracker.Changed.Count} changed file(s)); re-evaluating projects and resetting it");
             var paths = new HashSet<RepoPath>(result.Paths);
             paths.UnionWith(_tracker.Changed);
             foreach (var directory in overflowing.VanishedDirectories)
                 paths.UnionWith(_views.FilesUnder(directory));
             _views.ResetTouched();
-            result = new SyncResult.Reevaluate(paths, $"touched set passed {SolutionViews.MaxTouchedPaths} paths");
+            result = new SyncResult.Reevaluate(paths, $"touched set passed {_maxChurn} paths");
         }
 
         _unfinished = result;

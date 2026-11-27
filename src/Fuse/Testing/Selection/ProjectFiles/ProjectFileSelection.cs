@@ -1,7 +1,7 @@
 using System.Text;
 using Fuse.Graph;
 using Fuse.Paths;
-namespace Fuse.Testing.Selection;
+namespace Fuse.Testing.Selection.ProjectFiles;
 
 /// <summary>
 ///     The test projects a project-file change selects whole: a package version change selects the test projects

@@ -1,7 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Xml.Linq;
-namespace Fuse.Testing.Selection;
+namespace Fuse.Testing.Selection.ProjectFiles;
 
 /// <summary>
 ///     Whether a project file changed in a way that can change a build: a semantic comparison that reads the same

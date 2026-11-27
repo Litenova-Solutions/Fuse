@@ -48,7 +48,7 @@ internal static class RepoProbe
             {
                 if (Directory.Exists(Path.Combine(current, ".template.config")))
                     return true;
-                if (string.Equals(current, root.Path, RepoPath.Comparison))
+                if (root.PathOf(current) == root.PathOf(root.Path))
                     break;
                 current = Path.GetDirectoryName(current);
             }

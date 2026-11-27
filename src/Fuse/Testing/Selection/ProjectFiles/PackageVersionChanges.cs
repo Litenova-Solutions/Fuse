@@ -1,5 +1,5 @@
 using System.Xml.Linq;
-namespace Fuse.Testing.Selection;
+namespace Fuse.Testing.Selection.ProjectFiles;
 
 /// <summary>
 ///     The centrally managed packages whose versions changed between HEAD and disk, read from the

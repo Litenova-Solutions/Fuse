@@ -4,6 +4,7 @@ using Fuse.Graph;
 using Fuse.Paths;
 using Fuse.Testing.Caching;
 using Fuse.Testing.Model;
+using Fuse.Testing.Selection.ProjectFiles;
 using Fuse.Workspace.Generations;
 using Fuse.Workspace.Indexing;
 using Microsoft.CodeAnalysis;

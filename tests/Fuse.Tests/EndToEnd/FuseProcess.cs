@@ -2,8 +2,9 @@ using System.Diagnostics;
 using System.IO.Pipes;
 using System.Text;
 using Fuse.Paths;
-using Fuse.Protocol;
-
+using Fuse.Protocol.Analysis;
+using Fuse.Protocol.Requests;
+using Fuse.Protocol.Transport;
 namespace Fuse.Tests.EndToEnd;
 
 /// <summary>Runs the real <c>fuse</c> executable and talks to its engine over the pipe, as a harness would.</summary>

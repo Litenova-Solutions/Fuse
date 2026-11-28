@@ -1,9 +1,9 @@
 using System.Collections.Immutable;
-using Fuse.Check;
+using Fuse.Check.Analyzers;
+using Fuse.Check.Diagnostics;
 using Fuse.Tests.Fixtures;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>
@@ -48,7 +48,7 @@ public class StreamingTests
     }
 
     [Fact]
-    public async Task A_streamed_project_shares_the_one_compilation_wide_run()
+    public async Task A_streamed_project_starts_a_compilation_wide_analyzer_once()
     {
         using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });
         var slow = new SlowDeclAnalyzer();
@@ -67,9 +67,21 @@ public class StreamingTests
         Assert.True(await collector.WarmBaselineProjectAsync(solution.Projects.Single(), 0, cancellationToken));
         var afterWarm = slow.Starts;
 
-        var errors = await collector.ForProjectAsync(solution.Projects.Single(), cancellationToken);
+        // A fresh compilation for the working tree, as the engine holds the baseline and the working tree
+        // separately. Sharing one compilation would let the second run reuse the warm run.
+        using var working = new AdhocWorkspace();
+        var workingProject = ProjectInfo.Create(ProjectId.CreateNewId(), VersionStamp.Default, "P", "P", LanguageNames.CSharp)
+            .WithMetadataReferences([MetadataReference.CreateFromFile(typeof(object).Assembly.Location)])
+            .WithAnalyzerReferences([new AnalyzerImageReference([slow])]);
+        var workingSolution = working.CurrentSolution.AddProject(workingProject);
+        workingSolution = workingSolution.AddDocument(DocumentId.CreateNewId(workingProject.Id), "C0.cs", "public class C0 { }\n", filePath: repo.Full("C0.cs"));
+        workingSolution = workingSolution.AddDocument(DocumentId.CreateNewId(workingProject.Id), "C1.cs", "public class Widget1 { }\n", filePath: repo.Full("C1.cs"));
+        workingSolution = workingSolution.AddDocument(DocumentId.CreateNewId(workingProject.Id), "C2.cs", "public class Widget2 { }\n", filePath: repo.Full("C2.cs"));
 
-        Assert.Equal(afterWarm, slow.Starts);
+        var errors = await collector.ForProjectAsync(workingSolution.Projects.Single(), cancellationToken);
+
+        // Whole-project binding runs every analyzer once over the compilation: one more start, not one per file.
+        Assert.Equal(afterWarm + 1, slow.Starts);
         Assert.Equal(["C1.cs", "C2.cs"], errors.Where(e => e.Id == "DECL2").Select(e => e.Path).Order(StringComparer.Ordinal));
     }
 

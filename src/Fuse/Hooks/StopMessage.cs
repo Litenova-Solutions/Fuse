@@ -1,5 +1,4 @@
-using Fuse.Protocol;
-
+using Fuse.Protocol.Check;
 namespace Fuse.Hooks;
 
 /// <summary>

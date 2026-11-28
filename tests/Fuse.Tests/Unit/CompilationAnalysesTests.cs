@@ -1,10 +1,9 @@
 using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
-using Fuse.Check;
+using Fuse.Check.Analyzers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
-
 namespace Fuse.Tests.Unit;
 
 /// <summary>

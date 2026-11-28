@@ -1,7 +1,6 @@
 using Fuse.Check.Model;
 using Fuse.Telemetry;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>

@@ -1,8 +1,8 @@
-using Fuse.Dotnet;
+using Fuse.Dotnet.Processes;
+using Fuse.Dotnet.Test;
 using Fuse.Telemetry;
 using Fuse.Testing.Model;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>
@@ -39,7 +39,7 @@ public class ShadowDefaultValueTests
     }
 
     /// <summary>Runs a shadow run's test assembly with <c>dotnet test</c>, the way <c>fuse test</c> does, and reads its results.</summary>
-    private static async Task<TrxResults> RunAsync(FixtureRepo repo, RunMode.Shadow shadow, string? filter)
+    private static async Task<TestRunSummary> RunAsync(FixtureRepo repo, RunMode.Shadow shadow, string? filter)
     {
         var results = FixtureRepo.NewDirectory();
         try

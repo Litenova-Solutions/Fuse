@@ -1,12 +1,12 @@
-using Fuse.Check;
+using Fuse.Check.Candidates;
 using Fuse.Check.Model;
 using Fuse.Telemetry;
-using Fuse.Testing;
 using Fuse.Testing.Model;
+using Fuse.Testing.Selection;
+using Fuse.Testing.Shadow;
 using Fuse.Tests.Fixtures;
-using Fuse.Workspace;
+using Fuse.Workspace.Generations;
 using Microsoft.CodeAnalysis;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>

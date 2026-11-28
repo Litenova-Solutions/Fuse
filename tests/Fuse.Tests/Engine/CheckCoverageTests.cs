@@ -1,11 +1,11 @@
 using System.Collections.Concurrent;
-using Fuse.Check;
 using Fuse.Check.Model;
-using Fuse.Protocol;
+using Fuse.Check.Pipeline;
+using Fuse.Check.Sessions;
+using Fuse.Protocol.Analysis;
 using Fuse.Telemetry;
 using Fuse.Tests.Fixtures;
-using Fuse.Workspace;
-
+using Fuse.Workspace.Generations;
 namespace Fuse.Tests.Engine;
 
 /// <summary>

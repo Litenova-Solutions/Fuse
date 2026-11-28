@@ -1,6 +1,6 @@
 using Fuse.Failures;
-using Fuse.Protocol;
-
+using Fuse.Protocol.Analysis;
+using Fuse.Protocol.Transport;
 namespace Fuse.Tests.Unit;
 
 /// <summary>

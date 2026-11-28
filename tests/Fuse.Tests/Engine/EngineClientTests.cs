@@ -1,13 +1,16 @@
 using System.IO.Pipes;
 using System.Text;
-using Fuse.Engine.Client;
+using Fuse.Client;
 using Fuse.Failures;
+using Fuse.Identity;
 using Fuse.Operations;
+using Fuse.Operations.Check;
 using Fuse.Paths;
-using Fuse.Protocol;
+using Fuse.Protocol.Analysis;
+using Fuse.Protocol.Requests;
+using Fuse.Protocol.Transport;
 using Fuse.Tests.EndToEnd;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>
@@ -29,7 +32,21 @@ public class EngineClientTests
         using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });
         using var engine = new FakeEngine(repo.Root, line);
 
-        var (result, response) = await CheckOperation.RunAsync(repo.Root, ["Lib/Calc.cs"], session: null, waitForLoad: true, compilationWideAnalyzers: true, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+        var (result, response) = await CheckOperation.RunAsync(
+            repo.Root,
+            new CheckInvocation(
+                Files: ["Lib/Calc.cs"],
+                Session: null,
+                WaitForLoad: true,
+                CompilationWideAnalyzers: true,
+                Limit: ErrorLimit.Default,
+                Json: false,
+                IncludeTreeStamp: false,
+                IncludeNonCSharp: true,
+                Brief: false,
+                InteractiveFast: false),
+            TimeSpan.FromSeconds(30),
+            TestContext.Current.CancellationToken);
 
         var unanswered = Assert.IsType<EngineResponse.Unanswered>(response);
         Assert.Equal(ErrorCode.Internal, unanswered.Code);

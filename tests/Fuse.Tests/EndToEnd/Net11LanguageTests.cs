@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.EndToEnd;
 
 /// <summary>A .NET 11 repository may use C# 15: a union type checks clean, and a genuine error in the same file is still reported.</summary>

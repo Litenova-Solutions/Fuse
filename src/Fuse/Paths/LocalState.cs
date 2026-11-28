@@ -1,5 +1,5 @@
 using System.Text.RegularExpressions;
-
+using Fuse.Identity;
 namespace Fuse.Paths;
 
 /// <summary>
@@ -36,6 +36,21 @@ internal static partial class LocalState
 
     /// <summary>The directory the stored project graphs are kept in, under a shared directory.</summary>
     public static string GraphDirectory(string sharedStateDirectory) => Path.Combine(sharedStateDirectory, "graph");
+
+    /// <summary>
+    ///     The file the engine keeps <paramref name="session"/>'s last answer in, under <c>sessions</c> in
+    ///     <paramref name="stateDirectory"/>, named by <see cref="SessionId.FileKey"/>: a session registered as
+    ///     <c>worker-1</c> reads at <c>sessions/worker-1.json</c>, the spelling <c>fuse watch</c> names it by.
+    /// </summary>
+    public static string SessionAnswerFile(string stateDirectory, SessionId session) =>
+        Path.Combine(stateDirectory, "sessions", session.FileKey + ".json");
+
+    /// <summary>
+    ///     The folder a finished Microsoft.Testing.Platform run copies its test maps into for the engine's dynamic test
+    ///     map to read, one subfolder per test project, under <paramref name="sharedStateDirectory"/>.
+    /// </summary>
+    public static string DynamicMapIncomingDirectory(string sharedStateDirectory) =>
+        Path.Combine(sharedStateDirectory, "test-maps", "incoming");
 
     /// <summary>
     ///     Marks <paramref name="copy"/> as used by this process until the returned handle is disposed, with a lock file

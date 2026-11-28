@@ -1,9 +1,9 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Fuse.Harnesses;
+using Fuse.Harnesses.Adapters;
+using Fuse.Harnesses.Setup;
 using Fuse.Hooks;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Unit;
 
 /// <summary>

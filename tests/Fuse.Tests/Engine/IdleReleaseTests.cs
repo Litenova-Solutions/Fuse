@@ -1,10 +1,10 @@
-using Fuse.Testing;
-using Fuse.Testing.Model;
+using Fuse.Testing.Caching;
+using Fuse.Testing.Model.Caching;
 using Fuse.Tests.Fixtures;
-using Fuse.Workspace;
+using Fuse.Workspace.Generations;
+using Fuse.Workspace.Indexing;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>Verifies the idle release of the token index, the slice cache, the dynamic map and the workspace caches.</summary>
@@ -116,7 +116,7 @@ public sealed class IdleReleaseTests : IDisposable
             ["Lib/Calc.cs"] = "public class Calc { public int Add(int a, int b) => a + b; }\n",
         });
         using var workspace = new RepoWorkspace(repo.Root, _ => { });
-        var shared = workspace.PrimaryOverlay.SharedResources;
+        var shared = workspace.PrimaryOverlay.ResourceCache;
         var absolute = Path.Combine(repo.Root.Path, "Lib", "Calc.cs");
 
         Assert.NotNull(shared.GetOrReadHeadText("head1", "Lib/Calc.cs", absolute));

@@ -67,7 +67,7 @@
         "height": 630
       },
       "inLanguage": "en",
-      "dateModified": "2026-11-25"
+      "dateModified": "2026-11-27"
     },
     {
       "@type": "SoftwareApplication",
@@ -77,8 +77,8 @@
       "description": "Fuse makes dotnet build and dotnet test faster for AI coding agents. It keeps the solution loaded, reports the compiler errors each edit caused 3.4x to 16.9x faster than dotnet build, and runs only the affected tests.",
       "applicationCategory": "DeveloperApplication",
       "applicationSubCategory": ".NET developer tool",
-      "softwareVersion": "7.0.0",
-      "releaseNotes": "https://fuse.codes/docs/changelog#v7-0-0",
+      "softwareVersion": "7.1.0",
+      "releaseNotes": "https://fuse.codes/docs/changelog#v7-1-0",
       "installUrl": "https://www.nuget.org/packages/Fuse",
       "operatingSystem": "Windows, Linux, macOS",
       "softwareRequirements": ".NET 10 SDK",
@@ -94,7 +94,7 @@
         "Reports the compiler errors an edit introduced, including breaks in dependent projects",
         "Runs only the tests a change can reach and prints only failures",
         "Shares one engine across a repository's git worktrees, with a separate working-tree view for each, and makes their builds take turns",
-        "Gives judges and workers gate, judge, graph, impact, session guard, watch, batch and slim commands",
+        "Gives judges and workers gate, judge, graph, impact, session guard, session list, watch, batch and slim commands",
         "Runs through hooks in Claude Code, Cursor, Gemini CLI, Codex, GitHub Copilot CLI, OpenCode and Muse Code",
         "Serves the same 3 operations as an MCP server for MCP hosts that run no hooks",
         "Runs locally with no telemetry"
@@ -130,7 +130,7 @@
 
   <main id="main" tabindex="-1">
     <section class="hero">
-      <a class="release" href="docs/changelog#v7-0-0"><b>v7.0.0</b>Latest release: see what changed</a>
+      <a class="release" href="docs/changelog#v7-1-0"><b>v7.1.0</b>Latest release: see what changed</a>
       <h1>Faster .NET Build and Test Loop for AI Coding Agents</h1>
       <ul class="tags" aria-label="Requirements and license">
         <li>.NET 10 SDK</li><li>C#</li><li>Open Source</li><li>Apache-2.0</li><li>Runs Locally</li>
@@ -239,7 +239,7 @@
         <h2 id="features-heading">Features</h2>
       </div>
       <ul class="features">
-        <li class="wide" id="parallel"><a href="docs/parallel-agents"><span class="ficon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="5.5" r="2.3"/><circle cx="12" cy="5.5" r="2.3"/><circle cx="19" cy="5.5" r="2.3"/><path d="M5 7.8v1.7a3 3 0 0 0 3 3h8a3 3 0 0 0 3-3V7.8M12 7.8v8.2"/><rect x="7.5" y="16" width="9" height="5.5" rx="1.5"/></svg></span><b>Judges and parallel workers</b><span>All git worktrees share one engine, with a separate working-tree view for each. Judges split work with <code>fuse graph --json</code> and <code>fuse impact</code>, freeze declaration changes under contract paths with <code>fuse session guard</code>, and watch workers with <code>fuse watch --all --json</code>. Workers finish with <code>fuse gate</code>; <code>fuse judge --combine</code> or <code>--race</code> scores patches in memory.</span><i>Subagents and parallel agents -&gt;</i></a></li>
+        <li class="wide" id="parallel"><a href="docs/parallel-agents"><span class="ficon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="5.5" r="2.3"/><circle cx="12" cy="5.5" r="2.3"/><circle cx="19" cy="5.5" r="2.3"/><path d="M5 7.8v1.7a3 3 0 0 0 3 3h8a3 3 0 0 0 3-3V7.8M12 7.8v8.2"/><rect x="7.5" y="16" width="9" height="5.5" rx="1.5"/></svg></span><b>Judges and parallel workers</b><span>All git worktrees share one engine, with a separate working-tree view for each. Judges split work with <code>fuse graph --json</code> and <code>fuse impact</code>, freeze declaration changes under contract paths with <code>fuse session guard</code>, and watch workers with <code>fuse watch --all --json</code>. Workers finish with <code>fuse gate --session &lt;name&gt;</code>, which checks only their session's files, and the orchestrator's final check runs with <code>FUSE_SESSION=judge</code>; <code>fuse judge --combine</code> or <code>--race</code> scores patches in memory.</span><i>Subagents and parallel agents -&gt;</i></a></li>
         <li><a href="docs/how-it-works#test-selection"><span class="ficon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/></svg></span><b>Affected tests</b><span>Runs only the tests the changed code can reach, and skips the rebuild when only <code>.cs</code> files changed.</span><i>How tests are selected -&gt;</i></a></li>
         <li><a href="docs/harnesses"><span class="ficon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2.5v4.5M15 2.5v4.5"/><path d="M6 7h12v3.5a6 6 0 0 1-12 0z"/><path d="M12 16.5v5"/></svg></span><b>Supported agents</b><span>Claude Code, Cursor, Codex, Gemini CLI, GitHub Copilot CLI, OpenCode and Muse Code. One <code>fuse init</code> sets up the hooks that check every edit.</span><i>Connect your agent -&gt;</i></a></li>
         <li><a href="docs/how-it-works#privacy"><span class="ficon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10.5" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.7" r="1.2" fill="currentColor"/></svg></span><b>Runs locally</b><span>Fuse sends no telemetry, makes no network calls of its own, and has no settings to maintain.</span><i>Privacy and footprint -&gt;</i></a></li>

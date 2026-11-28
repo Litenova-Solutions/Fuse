@@ -1,0 +1,102 @@
+using System.Globalization;
+using System.Text.RegularExpressions;
+using Fuse.Dotnet.Processes;
+namespace Fuse.Dotnet.Test;
+
+/// <summary>
+///     Reads what a Microsoft.Testing.Platform run prints: the counts in its run summary, and each failed test's message
+///     and the stack frames inside the repository. Such a run writes a TRX file only through its framework's own reporter
+///     option, which each framework names differently, while every framework prints the summary and the failures the same
+///     way.
+/// </summary>
+internal static partial class TestingPlatformOutput
+{
+    /// <summary>
+    ///     The counts and failures in <paramref name="output"/>, or null when it has no run summary, as a run that did not
+    ///     build has none, or when the summary counts errors.
+    /// </summary>
+    /// <param name="output">The run's standard output and standard error.</param>
+    /// <param name="root">The repository, which frames are printed relative to.</param>
+    public static TestRunSummary? Read(string output, string root)
+    {
+        var lines = AnsiSequences.Strip(output).Replace("\r", "").Split('\n');
+        var summary = Array.FindLastIndex(lines, l => l.StartsWith("Test run summary:", StringComparison.Ordinal));
+        if (summary < 0)
+            return null;
+
+        var counts = new Dictionary<string, int>(StringComparer.Ordinal);
+        // The summary's count lines are indented, with a blank line between some of them.
+        for (var i = summary + 1; i < lines.Length && (lines[i].Length == 0 || lines[i].StartsWith("  ", StringComparison.Ordinal)); i++)
+        {
+            if (CountLine().Match(lines[i]) is { Success: true } count)
+                counts[count.Groups["name"].Value] = int.Parse(count.Groups["value"].Value, CultureInfo.InvariantCulture);
+        }
+
+        // A run with errors, such as an argument the test application rejects, did not run its tests to results.
+        if (!counts.TryGetValue("failed", out var failed) || !counts.TryGetValue("succeeded", out var succeeded) || counts.GetValueOrDefault("error") > 0)
+            return null;
+        counts.TryGetValue("skipped", out var skipped);
+
+        var failures = new List<TestFailure>();
+        var records = new List<TestRecord>();
+        for (var i = 0; i < summary; i++)
+        {
+            if (FailedLine().Match(lines[i]) is not { Success: true } header)
+                continue;
+            var message = new List<string>();
+            var stack = new List<string>();
+            for (i++; i < summary && lines[i].StartsWith("  ", StringComparison.Ordinal); i++)
+            {
+                if (lines[i].StartsWith("    at ", StringComparison.Ordinal))
+                    stack.Add(lines[i]);
+                else if (!lines[i].StartsWith("  from ", StringComparison.Ordinal))
+                    message.Add(lines[i][2..]);
+            }
+
+            i--;
+            var name = header.Groups["name"].Value;
+            failures.Add(new TestFailure(name, TrxReader.Trim(string.Join('\n', message), 12), TrxReader.Frames(string.Join('\n', stack), root)));
+            // Passed tests print no names on this surface, so a platform run records failures only.
+            records.Add(new TestRecord(name, TestVerdict.Failed, Duration(header.Groups["duration"].Value)));
+        }
+
+        return new TestRunSummary(succeeded, failed, skipped, failures) { Records = records };
+    }
+
+    /// <summary>A duration the platform prints after a failed test name, such as <c>12ms</c> or <c>1s 200ms</c>; unreadable reads as zero.</summary>
+    private static TimeSpan Duration(string text)
+    {
+        var total = TimeSpan.Zero;
+        foreach (Match part in DurationPart().Matches(text))
+        {
+            if (!int.TryParse(part.Groups["value"].Value, CultureInfo.InvariantCulture, out var value))
+                return TimeSpan.Zero;
+            try
+            {
+                total += part.Groups["unit"].Value switch
+                {
+                    "ms" => TimeSpan.FromMilliseconds(value),
+                    "s" => TimeSpan.FromSeconds(value),
+                    "m" => TimeSpan.FromMinutes(value),
+                    "h" => TimeSpan.FromHours(value),
+                    _ => TimeSpan.Zero,
+                };
+            }
+            catch (OverflowException)
+            {
+                return TimeSpan.Zero;
+            }
+        }
+
+        return total;
+    }
+
+    [GeneratedRegex(@"^  (?<name>[a-z]+): (?<value>\d+)")]
+    private static partial Regex CountLine();
+
+    [GeneratedRegex(@"^failed (?<name>.+) \((?<duration>(?:\d+(?:ms|s|m|h) ?)+)\)$")]
+    private static partial Regex FailedLine();
+
+    [GeneratedRegex(@"(?<value>\d+)(?<unit>ms|s|m|h)")]
+    private static partial Regex DurationPart();
+}

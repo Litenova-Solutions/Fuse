@@ -1,5 +1,4 @@
 using Fuse.Paths;
-
 namespace Fuse.Check.Model;
 
 /// <summary>What a check covers: every change since HEAD, the files a client names, or the paths a scoped check names.</summary>

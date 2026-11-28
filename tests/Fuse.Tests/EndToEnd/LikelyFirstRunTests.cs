@@ -1,9 +1,9 @@
 using Fuse.Operations;
-using Fuse.Protocol;
-using Fuse.Testing;
+using Fuse.Operations.Test;
+using Fuse.Protocol.Testing;
+using Fuse.Testing.Filtering;
 using Fuse.Testing.Model;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.EndToEnd;
 
 /// <summary>

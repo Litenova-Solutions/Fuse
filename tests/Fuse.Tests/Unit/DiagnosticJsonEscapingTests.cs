@@ -1,7 +1,6 @@
 using System.Text.Json;
-using Fuse.Dotnet;
+using Fuse.Dotnet.Build;
 using Fuse.Operations;
-
 namespace Fuse.Tests.Unit;
 
 /// <summary>JSON lines keep quotes and apostrophes as they are: they go to a terminal or a script, never into HTML.</summary>

@@ -1,8 +1,8 @@
-using Fuse.Check;
-using Fuse.Protocol;
+using Fuse.Check.Analyzers;
+using Fuse.Protocol.Requests;
+using Fuse.Protocol.Transport;
 using Fuse.Telemetry;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Engine;
 
 public class CheckMaxErrorsTests

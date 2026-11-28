@@ -3,7 +3,6 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Fuse.Paths;
-
 namespace Fuse.Graph;
 
 /// <summary>
@@ -17,7 +16,7 @@ namespace Fuse.Graph;
 internal static partial class GraphStore
 {
     /// <summary>The stored form's version. A stored graph of another version is left unread.</summary>
-    private const int FormatVersion = 1;
+    private const int FormatVersion = 2;
 
     /// <summary>The files MSBuild imports without a project naming them, whose appearing or disappearing changes an evaluation as an import does.</summary>
     private static readonly string[] AutoImportNames = ["Directory.Build.props", "Directory.Build.targets", "Directory.Packages.props", "global.json"];
@@ -31,7 +30,7 @@ internal static partial class GraphStore
     ///     It evaluates nothing and loads no project.
     /// </summary>
     /// <param name="root">The repository the graph belongs to.</param>
-    /// <param name="paths">The project files git knows about, as <see cref="RepoGraph.EvaluateAsync"/> lists them.</param>
+    /// <param name="paths">The project files git knows about, as <see cref="RepoGraph"/> lists them.</param>
     public static RepoGraph? TryLoad(RepoRoot root, IReadOnlyList<RepoPath> paths)
     {
         try
@@ -78,6 +77,8 @@ internal static partial class GraphStore
                     References = [.. project.References.Select(root.PathOf)],
                     Sources = new HashSet<RepoPath>(project.Sources.Select(root.PathOf)),
                     NonSources = new HashSet<RepoPath>(project.NonSources.Select(root.PathOf)),
+                    AdditionalFiles = new HashSet<RepoPath>(project.AdditionalFiles.Select(root.PathOf)),
+                    PackageReferences = new HashSet<string>(project.PackageReferences, StringComparer.OrdinalIgnoreCase),
                     BuildOnlyReferences = [.. project.BuildOnlyReferences.Select(root.PathOf)],
                     EvaluationInputs = new HashSet<RepoPath>(project.EvaluationInputs.Select(root.PathOf)),
                     AssetsFile = root.PathOf(project.AssetsFile),
@@ -196,11 +197,13 @@ internal static partial class GraphStore
         project.RequiresContainerRuntime,
         [.. project.TargetPaths],
         project.RunSettings,
-        project.IsExecutable);
+        project.IsExecutable,
+        [.. project.AdditionalFiles.Select(a => a.Relative).Order(StringComparer.Ordinal)],
+        [.. project.PackageReferences.Order(StringComparer.OrdinalIgnoreCase)]);
 
     /// <summary>
-    ///     The key the graph of <paramref name="paths"/> is stored under: the project files and the build, hashed.
-    ///     Null when a project file cannot be read, and nothing is stored or read then.
+    ///     The key the graph of <paramref name="paths"/> is stored under: the project files, the <c>.fuseignore</c>
+    ///     file, and the build, hashed. Null when a project file cannot be read, and nothing is stored or read then.
     /// </summary>
     private static string? KeyFor(RepoRoot root, IReadOnlyList<RepoPath> paths)
     {
@@ -213,6 +216,10 @@ internal static partial class GraphStore
                     return null;
                 lines.Add("project:" + path.Relative + "=" + HashFile(path.Absolute));
             }
+
+            var ignoreFile = Path.Combine(root.Path, ".fuseignore");
+            if (File.Exists(ignoreFile))
+                lines.Add("fuseignore:" + HashFile(ignoreFile));
 
             return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join("\n", lines))));
         }
@@ -265,7 +272,7 @@ internal static partial class GraphStore
         var staging = file + ".tmp-" + Environment.ProcessId + "-" + Guid.NewGuid().ToString("N");
         try
         {
-            var directory = Path.GetDirectoryName(file)!;
+            var directory = Path.GetDirectoryName(file) ?? throw new InvalidOperationException("stored graph file path has no directory.");
             System.IO.Directory.CreateDirectory(directory);
             File.WriteAllText(staging, text);
             using var locked = AcquireWriteLock(directory);
@@ -356,7 +363,7 @@ internal static partial class GraphStore
     }
 
     /// <summary>One stored project: every field of <see cref="ProjectNode"/>, by repository-relative path.</summary>
-    private sealed record StoredProject(string Path, string Name, string Directory, List<string> References, List<string> Sources, List<string> NonSources, List<string> BuildOnlyReferences, List<string> EvaluationInputs, string AssetsFile, bool IsTest, bool UsesTestingPlatform, string Framework, bool RequiresContainerRuntime, List<string> TargetPaths, string? RunSettings, bool IsExecutable);
+    private sealed record StoredProject(string Path, string Name, string Directory, List<string> References, List<string> Sources, List<string> NonSources, List<string> BuildOnlyReferences, List<string> EvaluationInputs, string AssetsFile, bool IsTest, bool UsesTestingPlatform, string Framework, bool RequiresContainerRuntime, List<string> TargetPaths, string? RunSettings, bool IsExecutable, List<string> AdditionalFiles, List<string> PackageReferences);
 
     /// <summary>One stored graph: its projects, and the hash of every evaluation input it was evaluated from.</summary>
     private sealed record StoredGraph(int Version, string Build, List<StoredProject>? Projects, Dictionary<string, string>? Inputs, List<string>? Failures);

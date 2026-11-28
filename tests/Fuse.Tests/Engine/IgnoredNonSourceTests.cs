@@ -1,8 +1,7 @@
-using Fuse.Repo;
+using Fuse.Repo.Tracking;
 using Fuse.Telemetry;
 using Fuse.Testing.Model;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>A git-ignored file the watcher reports is not a changed non-C# file, however many arrive in one sync.</summary>

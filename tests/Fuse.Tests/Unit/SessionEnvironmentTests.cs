@@ -1,5 +1,4 @@
-using Fuse.Operations;
-
+using Fuse.Operations.Session;
 namespace Fuse.Tests.Unit;
 
 /// <summary>

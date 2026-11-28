@@ -1,7 +1,6 @@
 using Fuse.Changes;
 using Fuse.Changes.Model;
 using Microsoft.CodeAnalysis.CSharp;
-
 namespace Fuse.Tests.Unit;
 
 public class SurfaceDiffTests

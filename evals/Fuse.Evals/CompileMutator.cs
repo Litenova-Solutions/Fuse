@@ -1,7 +1,6 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-
 namespace Fuse.Evals;
 
 /// <summary>One edit to one file. <see cref="NewText"/> null means the file is deleted.</summary>

@@ -1,9 +1,8 @@
-using Fuse.Engine;
+using Fuse.Engine.Server;
 using Fuse.Failures;
 using Fuse.Paths;
-using Fuse.Protocol;
+using Fuse.Protocol.Requests;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Unit;
 
 /// <summary>

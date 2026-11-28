@@ -1,8 +1,9 @@
 using System.Text;
-using Fuse.Dotnet;
+using Fuse.Dotnet.Test;
+using Fuse.Operations.Check;
+using Fuse.Operations.Test;
 using Fuse.Paths;
-using Fuse.Protocol;
-
+using Fuse.Protocol.Check;
 namespace Fuse.Operations;
 
 /// <summary>The full results of the last check and test runs, which the console answers cap.</summary>
@@ -32,7 +33,7 @@ internal static class ResultsFile
     ///     agent to read whole. Always replaces the previous file, even when nothing failed. Null when the file could
     ///     not be written.
     /// </summary>
-    internal static string? WriteTests(RepoRoot root, IEnumerable<(string Project, TrxResults Outcome)> runs)
+    internal static string? WriteTests(RepoRoot root, IEnumerable<(string Project, TestRunSummary Outcome)> runs)
     {
         var text = new StringBuilder();
         var (failed, passed) = (0, 0);
@@ -56,7 +57,7 @@ internal static class ResultsFile
     ///     structured record beside it, which <c>fuse test --failed</c> reruns from. Always replaces both files, even
     ///     when nothing failed. Null when the text file could not be written.
     /// </summary>
-    internal static string? WriteTestsWithPaths(RepoRoot root, IEnumerable<(string Project, string Name, TrxResults Outcome)> runs)
+    internal static string? WriteTestsWithPaths(RepoRoot root, IEnumerable<(string Project, string Name, TestRunSummary Outcome)> runs)
     {
         var ordered = runs.ToList();
         var path = WriteTests(root, ordered.Select(r => (r.Name, r.Outcome)));

@@ -1,5 +1,4 @@
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.EndToEnd;
 
 public class HookHelpProcessTests

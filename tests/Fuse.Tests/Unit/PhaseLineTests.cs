@@ -1,6 +1,5 @@
-using Fuse.Engine.Client;
+using Fuse.Client;
 using Fuse.Telemetry;
-
 namespace Fuse.Tests.Unit;
 
 /// <summary>

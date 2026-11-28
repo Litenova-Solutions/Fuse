@@ -1,7 +1,8 @@
-using Fuse.Dotnet;
+using Fuse.Dotnet.Build;
+using Fuse.Dotnet.Processes;
 using Fuse.Operations;
+using Fuse.Operations.Build;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Unit;
 
 public class BuildCliRenderTests
@@ -27,7 +28,7 @@ public class BuildCliRenderTests
 
         var lines = answer.Text.Split('\n');
         Assert.Equal(6, lines.Length);
-        Assert.Equal("fuse: build failed with 25 error(s), first 5 shown in 3.0 s; all 25 in /state/last-build-results.txt", lines[^1]);
+        Assert.Equal("fuse: build failed with 25 error(s), first 5 shown in 3.0 s; fuse build --all-errors for every error; all 25 in /state/last-build-results.txt", lines[^1]);
     }
 
     [Fact]

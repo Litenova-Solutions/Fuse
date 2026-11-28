@@ -1,6 +1,5 @@
 using System.Text;
-using Fuse.Repo;
-
+using Fuse.Repo.Git;
 namespace Fuse.Tests.Unit;
 
 /// <summary>

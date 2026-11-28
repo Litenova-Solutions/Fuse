@@ -45,7 +45,7 @@
       "url": "https://fuse.codes/docs/getting-started",
       "mainEntityOfPage": "https://fuse.codes/docs/getting-started",
       "inLanguage": "en",
-      "dateModified": "2026-11-24",
+      "dateModified": "2026-11-28",
       "image": "https://fuse.codes/assets/og.png",
       "isPartOf": {
         "@type": "WebSite",
@@ -147,7 +147,7 @@
     <pre data-label="bash"><code>fuse init</code></pre>
     <pre class="out" data-label="Output"><code>wrote .claude/settings.json
 wrote .gitignore
-fuse: hooks registered by Fuse 7.0.0; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors</code></pre>
+fuse: hooks registered by Fuse 7.1.0; after each edit your agent gets the compiler errors the edit introduced, `dotnet test` runs the affected tests, and `dotnet build` prints only its errors</code></pre>
     <p><code>fuse init</code> detects the harnesses your repository uses, such as <code>.cursor/</code> or <code>.gemini/</code>, and adds Fuse's hooks to each one. When it finds none, it sets up Claude Code. Run it again at any time. It replaces only its own entries. That is the whole setup. To remove it, run <a href="commands#fuse-uninit"><code>fuse uninit</code></a>.</p>
     <p>The first Fuse command you run in a repository starts a background process, which loads your solution. That process stays running until it has been idle for 30 minutes, so every later command and hook reuses it.</p>
 
@@ -158,7 +158,7 @@ fuse: hooks registered by Fuse 7.0.0; after each edit your agent gets the compil
     <pre class="out" data-label="Output"><code>removed: public int Add(int a, int b) (2 error(s))
 App/Program.cs(3,30): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)
 Lib.Tests/CalcTests.cs(6,54): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)
-fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations changed, 2 dependent project(s) checked; tree 9f2c41aa07b3 over 1 changed file(s)</code></pre>
+fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests) in &lt;seconds&gt; s; Lib declarations changed, 2 dependent project(s) checked; tree 9f2c41aa07b3 over 1 changed file(s)</code></pre>
     <ul>
       <li>The output lists only errors your change caused. It leaves out errors that were already in HEAD.</li>
       <li>The header names the change that broke them, here the removed <code>Add</code>. Errors that share a cause print under one header.</li>
@@ -175,8 +175,8 @@ fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations chan
   Expected: 6
   Actual:   7
   at Lib.Tests.CalcTests.Multiplies() in Lib.Tests/CalcTests.cs:line 9
-fuse: 1 failed, 0 passed in 2.8 s; ran 1 test(s) affected by your changes out of 2; fuse test --all runs everything; without MSBuild</code></pre>
-    <p>Fuse runs only the tests that reach the changed code, and prints only the failure. The <code>without MSBuild</code> note means Fuse skipped the rebuild: because only <code>.cs</code> files had changed, it used the code it already had compiled. To run every test, use <code>fuse test --all</code>.</p>
+fuse: 1 failed, 0 passed in 2.8 s; ran 1 test(s) affected by your changes out of 2; fuse test --all runs everything; from shadow copy (without MSBuild)</code></pre>
+    <p>Fuse runs only the tests that reach the changed code, and prints only the failure. The <code>from shadow copy (without MSBuild)</code> note means Fuse skipped the rebuild: because only <code>.cs</code> files had changed, it used the code it already had compiled. A test project that walks parent directories from <code>AppContext.BaseDirectory</code> or <code>Assembly.Location</code> runs from its build output instead. To run every test, use <code>fuse test --all --solution &lt;solution&gt;</code>.</p>
     <p>When you are done, undo your test edit with <code>git restore</code> on the file.</p>
 
     <h2 id="what-the-agent-gets">5. See what the agent gets <a class="anchor" href="#what-the-agent-gets" aria-label="Link to this section">#</a></h2>
@@ -210,6 +210,7 @@ fuse: 1 failed, 0 passed in 2.8 s; ran 1 test(s) affected by your changes out of
         <li><a href="getting-started" aria-current="page">Getting started</a></li>
         <li><a href="harnesses">Connect your agent</a></li>
         <li><a href="parallel-agents">Subagents and parallel agents</a></li>
+        <li><a href="best-practices">Best practices</a></li>
       </ul>
       <h2>Understand</h2>
       <ul>

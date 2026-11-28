@@ -1,9 +1,8 @@
 using Fuse.Check.Model;
-using Fuse.Dotnet;
+using Fuse.Dotnet.Test;
 using Fuse.Operations;
-using Fuse.Protocol;
+using Fuse.Protocol.Check;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Unit;
 
 public class ResultsFileTests
@@ -38,8 +37,8 @@ public class ResultsFileTests
         using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });
         var path = ResultsFile.WriteTests(repo.Root,
         [
-            ("Lib.Tests", new TrxResults(7, 1, 0, [new TestFailure("Multiplies", "Assert.Equal() Failure\nValues differ", ["at CalcTests.Multiplies() in Lib/CalcTests.cs:line 12"])])),
-            ("App.Tests", new TrxResults(3, 2, 1, [new TestFailure("Adds", "boom", []), new TestFailure("Divides", "bang\nsecond line", ["frame one"])])),
+            ("Lib.Tests", new TestRunSummary(7, 1, 0, [new TestFailure("Multiplies", "Assert.Equal() Failure\nValues differ", ["at CalcTests.Multiplies() in Lib/CalcTests.cs:line 12"])])),
+            ("App.Tests", new TestRunSummary(3, 2, 1, [new TestFailure("Adds", "boom", []), new TestFailure("Divides", "bang\nsecond line", ["frame one"])])),
         ]);
 
         Assert.Equal(Path.Combine(repo.Root.StateDirectory, "last-test-results.txt"), path);
@@ -64,7 +63,7 @@ public class ResultsFileTests
     public void Test_file_omits_the_section_for_a_run_without_a_project()
     {
         using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });
-        var path = ResultsFile.WriteTests(repo.Root, [("", new TrxResults(0, 1, 0, [new TestFailure("Flakes", "boom", [])]))]);
+        var path = ResultsFile.WriteTests(repo.Root, [("", new TestRunSummary(0, 1, 0, [new TestFailure("Flakes", "boom", [])]))]);
 
         Assert.Equal("FAILED Flakes\n  boom\nfuse: 1 failed, 0 passed\n", File.ReadAllText(path!));
     }
@@ -73,7 +72,7 @@ public class ResultsFileTests
     public void Clean_runs_still_replace_the_file()
     {
         using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });
-        var testPath = ResultsFile.WriteTests(repo.Root, [("Lib.Tests", TrxResults.Empty)]);
+        var testPath = ResultsFile.WriteTests(repo.Root, [("Lib.Tests", TestRunSummary.Empty)]);
         Assert.Equal("fuse: 0 failed, 0 passed\n", File.ReadAllText(testPath!));
 
         var checkPath = ResultsFile.WriteCheck(repo.Root, new CheckReport([], 1, [], [], 0, false, 0, 0, 0));

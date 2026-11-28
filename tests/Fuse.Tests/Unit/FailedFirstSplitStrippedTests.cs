@@ -1,8 +1,7 @@
-using Fuse.Dotnet;
-using Fuse.Operations;
-using Fuse.Protocol;
+using Fuse.Dotnet.Test;
+using Fuse.Operations.Test;
+using Fuse.Protocol.Testing;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Unit;
 
 /// <summary>
@@ -18,7 +17,7 @@ public class FailedFirstSplitStrippedTests
         var project = Path.Combine(repo.Root.Path, "Lib.Tests", "Lib.Tests.csproj");
         LastTestResults.Write(repo.Root,
         [
-            (project, "Lib.Tests", new TrxResults(0, 1, 0,
+            (project, "Lib.Tests", new TestRunSummary(0, 1, 0,
                 [new TestFailure("Lib.Tests.CalcTests.Case(x: 1)", "boom", [])])
             {
                 Records =
@@ -41,7 +40,7 @@ public class FailedFirstSplitStrippedTests
         var project = Path.Combine(repo.Root.Path, "Lib.Tests", "Lib.Tests.csproj");
         LastTestResults.Write(repo.Root,
         [
-            (project, "Lib.Tests", new TrxResults(0, 2, 0,
+            (project, "Lib.Tests", new TestRunSummary(0, 2, 0,
                 [new TestFailure("Lib.Tests.CalcTests.Multiplies", "boom", []), new TestFailure("Lib.Tests.Other.Case(x: 1)", "boom", [])])
             {
                 Records =

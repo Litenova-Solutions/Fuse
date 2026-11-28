@@ -1,5 +1,4 @@
-using Fuse.Dotnet;
-
+using Fuse.Dotnet.Test;
 namespace Fuse.Tests.Unit;
 
 public class TrxReaderTests

@@ -1,5 +1,4 @@
 using System.Globalization;
-
 namespace Fuse.Evals;
 
 /// <summary>

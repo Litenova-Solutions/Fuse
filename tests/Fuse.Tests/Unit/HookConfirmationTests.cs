@@ -2,8 +2,7 @@ using Fuse.Failures;
 using Fuse.Harnesses;
 using Fuse.Hooks;
 using Fuse.Operations;
-using Fuse.Protocol;
-
+using Fuse.Protocol.Analysis;
 namespace Fuse.Tests.Unit;
 
 /// <summary>

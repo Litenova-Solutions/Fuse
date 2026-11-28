@@ -1,9 +1,10 @@
+using System.Text.RegularExpressions;
 using Fuse.Operations;
-using Fuse.Protocol;
-using Fuse.Testing;
+using Fuse.Operations.Test;
+using Fuse.Protocol.Testing;
+using Fuse.Testing.Filtering;
 using Fuse.Testing.Model;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.EndToEnd;
 
 /// <summary>
@@ -41,11 +42,11 @@ public class PlanRunTests
         var shadow = new TestRun(project, "Lib.Tests", new TestRunMode.Shadow(repo.Full("Lib.Tests/bin/Debug/net10.0/Lib.Tests.dll")), filter, false, null, [], []);
         var build = shadow with { Mode = new TestRunMode.Build() };
 
-        foreach (var (run, mode) in new[] { (shadow, "without MSBuild"), (build, "built with MSBuild") })
+        foreach (var (run, mode) in new[] { (shadow, "from shadow copy (without MSBuild)"), (build, "built with MSBuild") })
         {
             var result = await TestOperation.RunPlanAsync(repo.Root, new TestPlan([run], 1, 4, "ran 1 test(s)"), Environment.TickCount64, TestContext.Current.CancellationToken);
             Assert.Equal(Outcome.Clean, result.Outcome);
-            Assert.Matches($@"^fuse: 0 failed, 1 passed in [0-9.]+ s; ran 1 test\(s\); {mode}$", result.Text);
+            Assert.Matches($@"^fuse: 0 failed, 1 passed in [0-9.]+ s; ran 1 test\(s\); {Regex.Escape(mode)}$", result.Text);
         }
     }
 
@@ -62,7 +63,27 @@ public class PlanRunTests
         foreach (var run in new[] { shadow, shadow with { Filter = "FullyQualifiedName~Lib.Tests." } })
         {
             var result = await TestOperation.RunPlanAsync(repo.Root, new TestPlan([run], 3, 4, "ran 3 test(s)"), Environment.TickCount64, TestContext.Current.CancellationToken);
-            Assert.Matches(@"^fuse: 0 failed, 1 passed in [0-9.]+ s; ran 3 test\(s\); without MSBuild$", result.Text);
+            Assert.Matches(@"^fuse: 0 failed, 1 passed in [0-9.]+ s; ran 3 test\(s\); from shadow copy \(without MSBuild\)$", result.Text);
+        }
+    }
+
+    [Fact]
+    public async Task An_every_test_run_of_one_project_runs_only_that_project()
+    {
+        using var repo = FixtureRepo.CreateStandard();
+        try
+        {
+            var result = await FuseProcess.RunAsync(repo.Path, null, "test", "--all", "--project", repo.Full("Lib.Tests/Lib.Tests.csproj"));
+
+            Assert.Equal(0, result.ExitCode);
+            Assert.Contains("0 failed, 3 passed", result.Stdout, StringComparison.Ordinal);
+            Assert.Contains("1 test project(s)", result.Stdout, StringComparison.Ordinal);
+            Assert.Contains("; in Lib.Tests", result.Stdout, StringComparison.Ordinal);
+            Assert.Contains("built with MSBuild", result.Stdout, StringComparison.Ordinal);
+        }
+        finally
+        {
+            await FuseProcess.StopEngineAsync(repo.Root);
         }
     }
 

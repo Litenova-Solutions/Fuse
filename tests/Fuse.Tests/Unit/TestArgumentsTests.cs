@@ -1,5 +1,4 @@
-using Fuse.Operations;
-
+using Fuse.Operations.Test;
 namespace Fuse.Tests.Unit;
 
 /// <summary>
@@ -13,10 +12,10 @@ public class TestArgumentsTests
     {
         Assert.Equal(
             ["--project", "tests/Lib.Tests/Lib.Tests.csproj", "--no-restore"],
-            TestOperation.NormalizeArguments(Path.GetTempPath(), ["tests/Lib.Tests/Lib.Tests.csproj", "--no-restore"]));
+            TestScopeArguments.NormalizeArguments(Path.GetTempPath(), ["tests/Lib.Tests/Lib.Tests.csproj", "--no-restore"]));
         Assert.Equal(
             ["--solution", "Shop.slnx"],
-            TestOperation.NormalizeArguments(Path.GetTempPath(), ["Shop.slnx"]));
+            TestScopeArguments.NormalizeArguments(Path.GetTempPath(), ["Shop.slnx"]));
     }
 
     [Fact]
@@ -29,16 +28,16 @@ public class TestArgumentsTests
 
             Assert.Equal(
                 ["--project", "Lib.Tests"],
-                TestOperation.NormalizeArguments(root.FullName, ["Lib.Tests"]));
+                TestScopeArguments.NormalizeArguments(root.FullName, ["Lib.Tests"]));
             Assert.Equal(
                 ["--project", tests.FullName, "--no-build"],
-                TestOperation.NormalizeArguments(root.FullName, [tests.FullName, "--no-build"]));
+                TestScopeArguments.NormalizeArguments(root.FullName, [tests.FullName, "--no-build"]));
             Assert.Equal(
                 ["Lib.Tests"],
-                TestOperation.NormalizeArguments(root.FullName, ["Lib.Tests"], testingPlatform: false));
+                TestScopeArguments.NormalizeArguments(root.FullName, ["Lib.Tests"], testingPlatform: false));
             Assert.Equal(
                 ["Lib.Tests/Lib.Tests.csproj", "--no-build"],
-                TestOperation.NormalizeArguments(root.FullName, ["Lib.Tests/Lib.Tests.csproj", "--no-build"], testingPlatform: false));
+                TestScopeArguments.NormalizeArguments(root.FullName, ["Lib.Tests/Lib.Tests.csproj", "--no-build"], testingPlatform: false));
         }
         finally
         {
@@ -49,13 +48,13 @@ public class TestArgumentsTests
     [Fact]
     public void Assemblies_switches_and_an_existing_project_switch_pass_unchanged()
     {
-        Assert.Equal(["Lib.Tests.dll"], TestOperation.NormalizeArguments(Path.GetTempPath(), ["Lib.Tests.dll"]));
-        Assert.Equal(["--filter-method", "*Name"], TestOperation.NormalizeArguments(Path.GetTempPath(), ["--filter-method", "*Name"]));
+        Assert.Equal(["Lib.Tests.dll"], TestScopeArguments.NormalizeArguments(Path.GetTempPath(), ["Lib.Tests.dll"]));
+        Assert.Equal(["--filter-method", "*Name"], TestScopeArguments.NormalizeArguments(Path.GetTempPath(), ["--filter-method", "*Name"]));
         Assert.Equal(
             ["--project", "Lib.Tests.csproj", "extra"],
-            TestOperation.NormalizeArguments(Path.GetTempPath(), ["--project", "Lib.Tests.csproj", "extra"]));
-        Assert.Equal([], TestOperation.NormalizeArguments(Path.GetTempPath(), []));
-        Assert.Equal(["no-such-folder"], TestOperation.NormalizeArguments(Path.GetTempPath(), ["no-such-folder"]));
+            TestScopeArguments.NormalizeArguments(Path.GetTempPath(), ["--project", "Lib.Tests.csproj", "extra"]));
+        Assert.Equal([], TestScopeArguments.NormalizeArguments(Path.GetTempPath(), []));
+        Assert.Equal(["no-such-folder"], TestScopeArguments.NormalizeArguments(Path.GetTempPath(), ["no-such-folder"]));
     }
 
     [Fact]
@@ -65,10 +64,10 @@ public class TestArgumentsTests
 
         Assert.Equal(
             ["--project", "Lib.Tests.csproj", "--results-directory", Path.GetFullPath("out", root)],
-            TestOperation.NormalizeArguments(root, ["Lib.Tests.csproj", "--results-directory", "out"]));
+            TestScopeArguments.NormalizeArguments(root, ["Lib.Tests.csproj", "--results-directory", "out"]));
         Assert.Equal(
             [$"--results-directory={Path.GetFullPath("out", root)}"],
-            TestOperation.NormalizeArguments(root, ["--results-directory=out"]));
+            TestScopeArguments.NormalizeArguments(root, ["--results-directory=out"]));
     }
 
     [Fact]
@@ -79,6 +78,6 @@ public class TestArgumentsTests
 
         Assert.Equal(
             ["--results-directory", @"C:\Users\me\scratch"],
-            TestOperation.NormalizeArguments(@"C:\repo", ["--results-directory", "/c/Users/me/scratch"]));
+            TestScopeArguments.NormalizeArguments(@"C:\repo", ["--results-directory", "/c/Users/me/scratch"]));
     }
 }

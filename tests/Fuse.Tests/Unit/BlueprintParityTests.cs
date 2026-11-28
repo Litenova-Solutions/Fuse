@@ -1,11 +1,10 @@
 using Fuse.Graph;
 using Fuse.Tests.Fixtures;
-using Fuse.Workspace;
+using Fuse.Workspace.Blueprints;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.MSBuild;
-
 namespace Fuse.Tests.Unit;
 
 public class BlueprintParityTests

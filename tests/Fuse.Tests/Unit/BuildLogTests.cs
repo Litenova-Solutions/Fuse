@@ -1,6 +1,6 @@
-using Fuse.Dotnet;
-using Fuse.Operations;
-
+using Fuse.Dotnet.Build;
+using Fuse.Dotnet.Processes;
+using Fuse.Operations.Build;
 namespace Fuse.Tests.Unit;
 
 /// <summary>
@@ -87,7 +87,7 @@ public class BuildLogTests
         var lines = answer.Text.Split('\n');
         var error = Array.FindIndex(lines, l => l.Contains("error MSB3073", StringComparison.Ordinal));
         Assert.Equal("  System.InvalidOperationException: Duplicate audit action 'Create' on AuditController.", lines[error + 3]);
-        Assert.StartsWith("fuse: build failed with 1 error(s) in 919.0 s (slowest tasks summed over projects: Csc 640.2 s", lines[^1], StringComparison.Ordinal);
+        Assert.StartsWith("fuse: build failed with 1 error(s) in 919.0 s; 0 warning(s) (slowest tasks summed over projects: Csc 640.2 s", lines[^1], StringComparison.Ordinal);
     }
 
     [Fact]
@@ -95,7 +95,7 @@ public class BuildLogTests
     {
         var answer = BuildOperation.Render(new ProcessResult(0, ""), "/repo", BuildOperation.TimesFromSeconds - 0.1, "build", Log);
 
-        Assert.Equal($"fuse: build succeeded in {BuildOperation.TimesFromSeconds - 0.1:0.0} s", answer.Text);
+        Assert.Equal($"fuse: build succeeded in {BuildOperation.TimesFromSeconds - 0.1:0.0} s; 0 warning(s)", answer.Text);
     }
 
     [Fact]

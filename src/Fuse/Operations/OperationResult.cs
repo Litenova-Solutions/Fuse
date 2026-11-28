@@ -1,6 +1,5 @@
 using System.Diagnostics;
-using Fuse.Protocol;
-
+using Fuse.Protocol.Analysis;
 namespace Fuse.Operations;
 
 /// <summary>What a Fuse operation prints and how it ended. The same result feeds the CLI, the hooks and the MCP tools.</summary>

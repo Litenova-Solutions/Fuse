@@ -1,7 +1,6 @@
 using Fuse.Tests.Fixtures;
-using Fuse.Workspace;
+using Fuse.Workspace.Generations;
 using Microsoft.CodeAnalysis;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>

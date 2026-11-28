@@ -1,0 +1,105 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using Fuse.Harnesses.Setup;
+using Fuse.Paths;
+namespace Fuse.Harnesses.Adapters;
+
+/// <summary>
+///     Claude Code. Its hooks go in <c>.claude/settings.json</c>, in the nested format, where <c>fuse init</c> also gives
+///     <c>fuse build</c> and <c>fuse test</c> the permissions the user already gave <c>dotnet build</c> and
+///     <c>dotnet test</c>.
+/// </summary>
+internal sealed class ClaudeCode : Harness
+{
+    public override string Name => "claude";
+
+    /// <summary>The post-edit hook is registered with <c>asyncRewake</c>, so Claude Code runs it in the background.</summary>
+    public override bool RunsPostEditInBackground => true;
+
+    /// <summary>Cursor reads <c>.claude/settings.json</c> as well as its own hooks.</summary>
+    public override bool IsAlsoRunByCursor => true;
+
+    public override bool IsUsedIn(RepoRoot root) => HasAny(root, ".claude", "CLAUDE.md");
+
+    public override WrittenFile RegisterHooks(RepoRoot root)
+    {
+        var path = Path.Combine(root.Path, ".claude", "settings.json");
+        var settings = SettingsFile.Read(root, path);
+        var hooks = SettingsFile.GetOrAddObject(settings, "hooks");
+        SetNestedHook(hooks, "PostToolUse", "Edit|Write|MultiEdit", new JsonObject { ["type"] = "command", ["command"] = Command(HookEvent.PostEdit), ["asyncRewake"] = true, ["timeout"] = LongHookSeconds });
+        SetNestedHook(hooks, "PreToolUse", "Bash", new JsonObject { ["type"] = "command", ["command"] = Command(HookEvent.PreShell), ["timeout"] = 10 });
+        SetNestedHook(hooks, "Stop", null, new JsonObject { ["type"] = "command", ["command"] = Command(HookEvent.Stop), ["timeout"] = LongHookSeconds });
+        // A subagent stops through SubagentStop, with its own agent_id, so it is held to the errors its own edits cause
+        // before it hands its work back.
+        SetNestedHook(hooks, "SubagentStop", null, new JsonObject { ["type"] = "command", ["command"] = Command(HookEvent.Stop), ["timeout"] = LongHookSeconds });
+
+        // A user who already lets the agent run dotnet build/test without asking gets the same for the rewritten commands.
+        if (settings["permissions"]?["allow"] is JsonArray allow)
+        {
+            // An entry that is not a string is the user's to keep; it matches no rule.
+            var rules = allow.Select(r => r is JsonValue value && value.TryGetValue<string>(out var rule) ? rule : "").ToList();
+            foreach (var verb in new[] { "build", "test" })
+            {
+                if (rules.Any(r => r is "Bash(dotnet:*)" or "Bash(dotnet *)" || r.StartsWith($"Bash(dotnet {verb}", StringComparison.Ordinal))
+                    && !rules.Contains($"Bash(fuse {verb}:*)"))
+                    allow.Add((JsonNode)$"Bash(fuse {verb}:*)");
+            }
+        }
+
+        return SettingsFile.Write(root, path, settings);
+    }
+
+    /// <summary>Also removes the <c>fuse build</c> and <c>fuse test</c> permissions, which name commands that are gone with Fuse.</summary>
+    public override WrittenFile? RemoveHooks(RepoRoot root) =>
+        RemoveFromSettings(root, Path.Combine(".claude", "settings.json"), settings =>
+        {
+            var removed = RemoveNestedHooks(settings);
+            if (settings["permissions"]?["allow"] is JsonArray allow)
+            {
+                foreach (var rule in allow.Where(r => r is JsonValue value && value.TryGetValue<string>(out var text) && text is "Bash(fuse build:*)" or "Bash(fuse test:*)").ToList())
+                {
+                    allow.Remove(rule);
+                    removed = true;
+                }
+            }
+
+            return removed;
+        });
+
+    /// <summary>
+    ///     <c>updatedInput</c> replaces the whole tool input, so every field the harness sent is carried over. The answer
+    ///     makes no permission decision: the rewritten command goes through the user's normal permission rules.
+    /// </summary>
+    public override HookAnswer ReplaceShellCommand(JsonElement? toolInput, string command) =>
+        HookAnswer.Json(new JsonObject
+        {
+            ["hookSpecificOutput"] = new JsonObject
+            {
+                ["hookEventName"] = "PreToolUse",
+                ["updatedInput"] = WithCommand(toolInput, command),
+            },
+        });
+
+    /// <summary>With <c>asyncRewake</c>, exit code 2 wakes the agent and shows standard error to it as a system reminder.</summary>
+    public override HookAnswer ReportAfterEdit(string report) => new("", report, 2);
+
+    public override HookAnswer AllowStop() => HookAnswer.None;
+
+
+    private static JsonObject WithCommand(JsonElement? input, string command)
+    {
+        JsonObject result;
+        if (input is { } element)
+        {
+            var parsed = JsonNode.Parse(element.GetRawText()) ?? throw new InvalidOperationException("the tool input is not JSON");
+            result = parsed.AsObject();
+        }
+        else
+        {
+            result = [];
+        }
+
+        result["command"] = command;
+        return result;
+    }
+}

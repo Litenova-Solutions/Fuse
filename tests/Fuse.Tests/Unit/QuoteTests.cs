@@ -1,5 +1,4 @@
-using Fuse.Engine.Client;
-
+using Fuse.Client;
 namespace Fuse.Tests.Unit;
 
 public class QuoteTests

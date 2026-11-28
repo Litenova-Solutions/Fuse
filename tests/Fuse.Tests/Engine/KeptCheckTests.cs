@@ -1,10 +1,13 @@
-using Fuse.Check;
 using Fuse.Check.Model;
-using Fuse.Engine;
-using Fuse.Protocol;
+using Fuse.Check.Pipeline;
+using Fuse.Check.Sessions;
+using Fuse.Engine.Routing;
+using Fuse.Engine.Scheduling;
+using Fuse.Protocol.Analysis;
+using Fuse.Protocol.Requests;
+using Fuse.Protocol.Transport;
 using Fuse.Telemetry;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>
@@ -48,14 +51,17 @@ public class KeptCheckTests
         });
 
     [Fact]
-    public void A_file_that_cannot_be_read_has_no_key() =>
+    public void A_deleted_file_keys_as_deleted() =>
         InTempDirectory(directory =>
         {
             var file = Path.Combine(directory, "Missing.cs");
             File.WriteAllText(file, "class Missing {}\n");
+            var present = KeptCheck.KeyFor("all", 0, null, true, "head", 1, 1, "records", [("Missing.cs", file)]);
             File.Delete(file);
 
-            Assert.Null(KeptCheck.KeyFor("all", 0, null, true, "head", 1, 1, "records", [("Missing.cs", file)]));
+            var deleted = KeptCheck.KeyFor("all", 0, null, true, "head", 1, 1, "records", [("Missing.cs", file)]);
+            Assert.NotNull(deleted);
+            Assert.NotEqual(present, deleted);
         });
 
     [Fact]

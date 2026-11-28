@@ -1,9 +1,9 @@
 using System.Collections.Immutable;
-using Fuse.Check;
+using Fuse.Check.Analyzers;
+using Fuse.Check.Diagnostics;
 using Fuse.Tests.Fixtures;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
-
 namespace Fuse.Tests.Unit;
 
 /// <summary>
@@ -54,24 +54,21 @@ public class AnalyzerPlanTests
     }
 
     [Fact]
-    public async Task An_analyzer_whose_start_costs_less_than_a_second_stays_file_by_file()
+    public async Task An_analyzer_without_a_compilation_start_stays_file_by_file_across_checks()
     {
-        // A whole-compilation run binds every file of the project, which costs more than a short start on each checked file.
+        // An analyzer with no compilation start never pays for a whole-compilation run, however slow the machine is.
         using var repo = FixtureRepo.CreateEmpty(new Dictionary<string, string> { ["a.txt"] = "x" });
-        var moderate = new SlowStartAnalyzer(TimeSpan.FromMilliseconds(200));
         var lines = new List<string>();
-        var solution = SolutionWith(repo, moderate);
+        var solution = SolutionWith(repo, new CheapAnalyzer());
         var collector = new DiagnosticCollector(repo.Root, () => 0, lines.Add);
 
         foreach (var i in new[] { 1, 2 })
         {
             var errors = await collector.ForFileAsync(solution, repo.Root.PathOf(repo.Full($"C{i}.cs")), TestContext.Current.CancellationToken);
-            Assert.Equal([($"C{i}.cs", "SLOW1")], errors.Select(e => (e.Path, e.Id)));
+            Assert.Equal([($"C{i}.cs", "CHEAP1")], errors.Select(e => (e.Path, e.Id)));
         }
 
         Assert.Empty(lines);
-        // The two probes' syntax and semantic calls, each on a wrapper of its own, then one per-file call on each file.
-        Assert.Equal(6, moderate.Starts);
     }
 
     [Fact]

@@ -1,7 +1,6 @@
-using Fuse.Testing;
+using Fuse.Testing.Shadow;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-
 namespace Fuse.Tests.Unit;
 
 public class BuiltResourcesTests

@@ -1,5 +1,4 @@
 using Fuse.Hooks;
-
 namespace Fuse.Tests.Unit;
 
 public class HookPayloadTests

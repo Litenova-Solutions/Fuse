@@ -1,13 +1,17 @@
 using System.Text;
-using Fuse.Dotnet;
-using Fuse.Engine;
-using Fuse.Operations;
-using Fuse.Protocol;
+using Fuse.Dotnet.Processes;
+using Fuse.Dotnet.Test;
+using Fuse.Engine.Routing;
+using Fuse.Operations.Test;
+using Fuse.Protocol.Analysis;
+using Fuse.Protocol.Requests;
+using Fuse.Protocol.Testing;
+using Fuse.Protocol.Transport;
 using Fuse.Telemetry;
-using Fuse.Testing;
+using Fuse.Testing.Caching;
 using Fuse.Testing.Model;
+using Fuse.Testing.Model.Caching;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>
@@ -26,7 +30,12 @@ public class TestRunPathTests
         var cancellationToken = TestContext.Current.CancellationToken;
 
         var pending = await engine.Planner.SelectAsync(new TestScope.Affected(), PhaseTimes.None, cancellationToken);
-        var key = Assert.Single((await engine.Planner.PrepareAsync(pending, PhaseTimes.None, cancellationToken)).Runs).SliceKey;
+        var key = Assert.Single((await engine.Planner.PrepareAsync(pending, PhaseTimes.None, cancellationToken)).Runs).Cache switch
+        {
+            SliceCacheState.Pending pendingKey => pendingKey.Key,
+            SliceCacheState.Cached cachedKey => cachedKey.Key,
+            _ => null,
+        };
         Assert.NotNull(key);
         engine.Planner.SliceCache.Store(new SliceCacheResult(key, "Lib.Tests/Lib.Tests.csproj", "Lib.Tests", "", Passed: 3, Failed: 0, Skipped: 0, DurationMs: 4, CachedAtUtc: DateTime.UtcNow, Failures: []));
 
@@ -34,7 +43,11 @@ public class TestRunPathTests
             await engine.Planner.SelectAsync(new TestScope.Affected(), PhaseTimes.None, cancellationToken),
             PhaseTimes.None,
             cancellationToken);
-        var cached = Assert.Single(served.Runs).CachedResult;
+        var cached = Assert.Single(served.Runs).Cache switch
+        {
+            SliceCacheState.Cached hit => hit.Result,
+            _ => null,
+        };
 
         Assert.NotNull(cached);
         Assert.Equal((3, 0, 0), (cached.Passed, cached.Failed, cached.Skipped));
@@ -60,7 +73,7 @@ public class TestRunPathTests
         var outcome = await RunShadowAsync(repo, shadow.Assembly, run.Filter);
         Assert.True(outcome.Total > 0);
         Assert.Equal(0, outcome.Failed);
-        var store = TestOperation.SliceStoreFor(run, outcome, Environment.TickCount64 - started, noCache: false);
+        var store = ShadowTestRunner.SliceStoreFor(run, outcome, Environment.TickCount64 - started, noCache: false);
         Assert.NotNull(store);
         // Through the pipe records, the way the client sends it.
         var sent = Assert.IsType<EngineRequest.StoreSliceResult>(ProtocolJson.ReadRequest(ProtocolJson.Serialize(store)));
@@ -71,7 +84,7 @@ public class TestRunPathTests
         Assert.True(cached.FromCache);
         Assert.NotNull(cached.CacheReason);
         // A cached passing verdict reuses its counts, so the client starts no test process.
-        Assert.NotNull(TestOperation.CachedPassOutcome(cached));
+        Assert.NotNull(ShadowTestRunner.CachedPassOutcome(cached));
 
         repo.Replace("Lib/Calc.cs", "a + b", "a + b + 0");
         Assert.IsType<EngineResponse.CheckAnswered>(await engine.SendAsync(new EngineRequest.CheckFiles([repo.Full("Lib/Calc.cs")], WaitForLoad: true)));
@@ -85,25 +98,25 @@ public class TestRunPathTests
     {
         var shadow = new TestRunMode.Shadow("C:/state/shadow/Lib.Tests/Lib.Tests.dll");
         TestRun Run(string? key) => new("C:/repo/Lib.Tests/Lib.Tests.csproj", "Lib.Tests", shadow, null, false, null, [], []) { SliceKey = key };
-        var passed = new TrxResults(3, 0, 0, []);
-        var failed = new TrxResults(2, 1, 0, [new TestFailure("Lib.Tests.CalcTests.Multiplies", "boom", [])]);
+        var passed = new TestRunSummary(3, 0, 0, []);
+        var failed = new TestRunSummary(2, 1, 0, [new TestFailure("Lib.Tests.CalcTests.Multiplies", "boom", [])]);
 
-        Assert.NotNull(TestOperation.SliceStoreFor(Run("key"), passed, 4, noCache: false));
+        Assert.NotNull(ShadowTestRunner.SliceStoreFor(Run("key"), passed, 4, noCache: false));
         // A failed verdict is stored too; the client runs a cached failure fresh anyway.
-        var storedFailure = TestOperation.SliceStoreFor(Run("key"), failed, 4, noCache: false);
+        var storedFailure = ShadowTestRunner.SliceStoreFor(Run("key"), failed, 4, noCache: false);
         Assert.NotNull(storedFailure);
         Assert.Equal(1, storedFailure.Failed);
-        Assert.Null(TestOperation.SliceStoreFor(Run("key"), passed, 4, noCache: true));
-        Assert.Null(TestOperation.SliceStoreFor(Run(null), passed, 4, noCache: false));
-        Assert.Null(TestOperation.SliceStoreFor(Run(" "), passed, 4, noCache: false));
-        Assert.Null(TestOperation.SliceStoreFor(Run("key"), null, 4, noCache: false));
-        Assert.Null(TestOperation.SliceStoreFor(Run("key"), TrxResults.Empty, 4, noCache: false));
-        var early = new TrxResults(0, 2, 0, [new TestFailure("Lib.Tests.CalcTests.Multiplies", TestOperation.StoppedEarlyMessage, [])]);
-        Assert.Null(TestOperation.SliceStoreFor(Run("key"), early, 4, noCache: false));
+        Assert.Null(ShadowTestRunner.SliceStoreFor(Run("key"), passed, 4, noCache: true));
+        Assert.Null(ShadowTestRunner.SliceStoreFor(Run(null), passed, 4, noCache: false));
+        Assert.Null(ShadowTestRunner.SliceStoreFor(Run(" "), passed, 4, noCache: false));
+        Assert.Null(ShadowTestRunner.SliceStoreFor(Run("key"), null, 4, noCache: false));
+        Assert.Null(ShadowTestRunner.SliceStoreFor(Run("key"), TestRunSummary.Empty, 4, noCache: false));
+        var early = new TestRunSummary(0, 2, 0, [new TestFailure("Lib.Tests.CalcTests.Multiplies", TestOperation.StoppedEarlyMessage, [])]);
+        Assert.Null(ShadowTestRunner.SliceStoreFor(Run("key"), early, 4, noCache: false));
     }
 
     /// <summary>Runs a shadow run's test assembly with <c>dotnet test</c>, the way <c>fuse test</c> does, and reads its results.</summary>
-    private static async Task<TrxResults> RunShadowAsync(FixtureRepo repo, string assembly, string? filter)
+    private static async Task<TestRunSummary> RunShadowAsync(FixtureRepo repo, string assembly, string? filter)
     {
         var results = FixtureRepo.NewDirectory();
         try
@@ -127,16 +140,12 @@ public class TestRunPathTests
             "Lib.Tests",
             new RunMode.Shadow("C:/state/shadow/Lib.Tests/Lib.Tests.dll"),
             null,
-            false,
-            null,
-            [],
-            [])
+            new TestRunnerPlan.VsTest(null))
         {
-            SliceKey = "key",
-            CachedResult = new SliceCacheResult("key", "Lib.Tests/Lib.Tests.csproj", "Lib.Tests", "", Passed: 5, Failed: 0, Skipped: 1, DurationMs: 4, CachedAtUtc: DateTime.UtcNow, Failures: []),
+            Cache = new SliceCacheState.Cached("key", new SliceCacheResult("key", "Lib.Tests/Lib.Tests.csproj", "Lib.Tests", "", Passed: 5, Failed: 0, Skipped: 1, DurationMs: 4, CachedAtUtc: DateTime.UtcNow, Failures: [])),
         };
 
-        var outcome = TestOperation.CachedPassOutcome(Assert.Single(ResponseMapper.Plan(new TestPlanResult([run], 6, 6, "summary")).Runs));
+        var outcome = ShadowTestRunner.CachedPassOutcome(Assert.Single(ResponseMapper.Plan(new TestPlanResult([run], 6, 6, "summary")).Runs));
 
         Assert.NotNull(outcome);
         Assert.Equal((5, 0, 1), (outcome.Passed, outcome.Failed, outcome.Skipped));
@@ -155,9 +164,9 @@ public class TestRunPathTests
         var fresh = new TestRun("C:/repo/Lib.Tests/Lib.Tests.csproj", "Lib.Tests", shadow, null, false, null, [], []);
         var malformed = fresh with { FromCache = true, CacheReason = "slice cache: someday" };
 
-        Assert.Null(TestOperation.CachedPassOutcome(failed));
-        Assert.Null(TestOperation.CachedPassOutcome(fresh));
-        Assert.Null(TestOperation.CachedPassOutcome(malformed));
+        Assert.Null(ShadowTestRunner.CachedPassOutcome(failed));
+        Assert.Null(ShadowTestRunner.CachedPassOutcome(fresh));
+        Assert.Null(ShadowTestRunner.CachedPassOutcome(malformed));
     }
 
     [Fact]

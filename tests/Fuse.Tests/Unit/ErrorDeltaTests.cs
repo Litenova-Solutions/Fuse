@@ -1,6 +1,5 @@
-using Fuse.Check;
+using Fuse.Check.Diagnostics;
 using Fuse.Check.Model;
-
 namespace Fuse.Tests.Unit;
 
 public class ErrorDeltaTests

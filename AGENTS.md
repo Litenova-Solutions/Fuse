@@ -5,17 +5,18 @@ Fuse is one .NET tool (`fuse`) that keeps a warm Roslyn compilation of a reposit
 ## Layout
 
 - `src/Fuse`: the only product project, packed as the `Fuse` dotnet tool. Its namespaces are layers; [site/docs/architecture.html](site/docs/architecture.html) says which may use which, in what order to read them, and what its words mean. From the top:
-  - `Program.cs`: parses the command line and picks a surface or the engine.
-  - `Hooks/`, `Mcp/`, `Harnesses/`: `fuse hook`, `fuse mcp`, and `fuse init` with one class per harness.
-  - `Operations/`: the check, test and build operations shared by every surface, and their output.
-  - `Engine/Client/`: finds, starts and calls the engine.
+  - `Program.cs` and `Cli/`: `Program` starts the engine or hands the command line to `Cli/`, which parses each command and picks a surface.
+  - `Hooks/`, `Mcp/`, `Harnesses/`: `fuse hook`, `fuse mcp`, and `fuse init` with one class per harness in `Harnesses/Adapters/`.
+  - `Operations/`: the check, test, build, session, judge, inspection and control operations shared by every surface, one folder per command, and their output.
+  - `Client/`: finds, starts and calls the engine (`IEngineTransport`).
   - `Protocol/`: the pipe's request and response records.
-  - `Engine/`: the engine process: pipe server, request routing, preload, mapping results to `Protocol`.
-  - `Check/`, `Testing/`: the check algorithm and test selection, each with a `Model/` folder read first.
+  - `Engine/`: the engine process: pipe server, request routing, scheduling, background work, mapping results to `Protocol`.
+  - `Check/`, `Testing/`, `Judge/`, `Inspection/`: the check algorithm, test selection, candidate judging, and graph and impact reports, in stage folders, with a `Model/` folder read first where there is one.
   - `Changes/`: which declarations differ between HEAD and the working tree.
   - `Workspace/`: the current and baseline Roslyn solutions.
-  - `Repo/`, `Graph/`, `Dotnet/`: git and the working tree, MSBuild evaluation, child processes and their output parsers.
-  - `Paths/`, `Failures/`, `Telemetry/`: `RepoRoot` and `RepoPath`, `FuseException` and `ErrorCode`, `PhaseTimes` and `EngineLog`.
+  - `Repo/`, `Graph/`, `Dotnet/`: git and the working tree, MSBuild evaluation, child processes (`IProcessRunner`) and their output parsers.
+  - `Identity/`, `Paths/`, `Failures/`, `Telemetry/`: `SessionId` and the other validated values, `RepoRoot`, `RepoPath` and `FuseIgnore`, `FuseException` and `ErrorCode`, `PhaseTimes` and `EngineLog`.
+  - Every folder holds ten files or fewer, one type per file; a namespace follows the dependency row of the longest layer root that encloses it.
 - `tests/Fuse.Tests`: unit, engine and process tests over generated fixture repositories, and `Architecture/NamespaceDependencyTests`, which fails the build when a namespace uses one it may not.
 - `evals/Fuse.Evals`: the correctness, selection and latency evals, and the chart renderer; results in `evals/results`.
 - `site/`: the website at fuse.codes, static HTML deployed from `main` with no build step. Cloudflare Workers serves it as static assets, configured by `wrangler.jsonc` at the repository root.

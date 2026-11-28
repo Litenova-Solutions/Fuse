@@ -1,6 +1,6 @@
-using Fuse.Engine;
-using Fuse.Protocol;
-
+using Fuse.Engine.Scheduling;
+using Fuse.Protocol.Analysis;
+using Fuse.Protocol.Requests;
 namespace Fuse.Tests.Unit;
 
 /// <summary>
@@ -119,7 +119,7 @@ public class SchedulerTests
     public void Lanes_follow_the_request_kind()
     {
         Assert.Equal(SchedulerLane.Interactive, Scheduler.LaneFor(new EngineRequest.CheckFiles(["a.cs"], WaitForLoad: true) { LeaveOutCompilationWide = true }));
-        Assert.Equal(SchedulerLane.Interactive, Scheduler.LaneFor(new EngineRequest.CheckChanges(WaitForLoad: true) { IsStopping = true }));
+        Assert.Equal(SchedulerLane.Interactive, Scheduler.LaneFor(new EngineRequest.CheckChanges(WaitForLoad: true) { Mode = SessionCheckMode.Stop }));
         Assert.Equal(SchedulerLane.Command, Scheduler.LaneFor(new EngineRequest.CheckFiles(["a.cs"], WaitForLoad: true)));
         Assert.Equal(SchedulerLane.Command, Scheduler.LaneFor(new EngineRequest.CheckChanges(WaitForLoad: true)));
         Assert.Equal(SchedulerLane.Command, Scheduler.LaneFor(new EngineRequest.PlanAllTests()));

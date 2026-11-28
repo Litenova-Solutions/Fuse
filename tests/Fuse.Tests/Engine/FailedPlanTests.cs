@@ -1,6 +1,5 @@
 using Fuse.Telemetry;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Engine;
 
 public class FailedPlanTests

@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Fuse.Harnesses.Setup;
 using Fuse.Paths;
-
 namespace Fuse.Harnesses;
 
 /// <summary>
@@ -202,5 +202,5 @@ internal abstract class Harness
     ///     matches every <c>fuse hook</c> command, including one whose event <c>fuse hook</c> does not accept, so rerunning <c>fuse init</c> removes it.
     /// </summary>
     protected static bool IsFuse(JsonObject handler) =>
-        handler["command"]?.GetValueKind() == JsonValueKind.String && handler["command"]!.GetValue<string>().StartsWith("fuse hook", StringComparison.Ordinal);
+        handler["command"] is JsonValue command && command.GetValueKind() == JsonValueKind.String && command.GetValue<string>().StartsWith("fuse hook", StringComparison.Ordinal);
 }

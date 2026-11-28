@@ -1,7 +1,7 @@
 using System.Text;
 using Fuse.Operations;
+using Fuse.Operations.Session;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.EndToEnd;
 
 /// <summary>

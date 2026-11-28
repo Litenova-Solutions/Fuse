@@ -1,11 +1,10 @@
-using Fuse.Dotnet;
+using Fuse.Dotnet.Processes;
 using Fuse.Telemetry;
-using Fuse.Testing;
+using Fuse.Testing.Caching;
 using Fuse.Testing.Model;
 using Fuse.Tests.Fixtures;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>

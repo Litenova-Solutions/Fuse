@@ -56,7 +56,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Harnesses/opencode-plugin.js" LogicalName="Fuse.Harnesses.opencode-plugin.js" />
+    <EmbeddedResource Include="Harnesses/Adapters/opencode-plugin.js" LogicalName="Fuse.Harnesses.opencode-plugin.js" />
     <None Include="icon.png" Pack="true" PackagePath="/" />
     <InternalsVisibleTo Include="Fuse.Tests" />
     <InternalsVisibleTo Include="Fuse.Evals" />

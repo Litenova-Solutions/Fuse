@@ -3,7 +3,6 @@ using Fuse.Changes.Model;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-
 namespace Fuse.Changes;
 
 /// <summary>
@@ -283,7 +282,7 @@ internal sealed class FileDeclarations
     /// <summary>
     ///     The node's tokens separated by single spaces. A line break inside a token, in a multi-line string, reads as LF,
     ///     because a checkout with <c>core.autocrlf</c> writes CRLF where HEAD has LF and that is not an edit
-    ///     (<see cref="Repo.HeadComparison"/> ignores it too).
+    ///     (<see cref="Repo.Git.HeadComparison"/> ignores it too).
     /// </summary>
     private static string Flat(SyntaxNode? node)
     {

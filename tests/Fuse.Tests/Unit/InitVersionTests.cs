@@ -1,7 +1,6 @@
-using Fuse.Harnesses;
-using Fuse.Protocol;
+using Fuse.Harnesses.Setup;
+using Fuse.Protocol.Transport;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Unit;
 
 /// <summary>
@@ -58,8 +57,8 @@ public class InitVersionTests
         Init(repo, instructions: true);
         var text = File.ReadAllText(repo.Full("AGENTS.md"));
 
-        Assert.Contains("- `fuse test` skips test projects that need a container runtime when none is running, and says so; start Docker or Podman to run them.", text, StringComparison.Ordinal);
-        Assert.Contains("- Fuse checks C# only; `fuse check` names changed files in other languages, which your repository's own gates cover.", text, StringComparison.Ordinal);
+        Assert.Contains("- `fuse test` leaves out the test projects that need a container runtime when none answers. Start Docker or Podman to run them.", text, StringComparison.Ordinal);
+        Assert.Contains("- `fuse check` names the changed non-C# files, which the repository's other gates cover.", text, StringComparison.Ordinal);
     }
 
     [Fact]

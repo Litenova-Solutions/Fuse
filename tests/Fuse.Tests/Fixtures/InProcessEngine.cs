@@ -1,9 +1,11 @@
-using Fuse.Check;
+using Fuse.Check.Candidates;
 using Fuse.Check.Model;
+using Fuse.Check.Pipeline;
+using Fuse.Check.Sessions;
 using Fuse.Telemetry;
-using Fuse.Testing;
-using Fuse.Workspace;
-
+using Fuse.Testing.Planning;
+using Fuse.Testing.Selection;
+using Fuse.Workspace.Generations;
 namespace Fuse.Tests.Fixtures;
 
 /// <summary>Runs the engine's workspace, checker and test planner in the test process, over a fixture repository.</summary>

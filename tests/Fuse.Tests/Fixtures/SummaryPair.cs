@@ -1,5 +1,4 @@
 using Fuse.Check.Model;
-
 namespace Fuse.Tests.Fixtures;
 
 /// <summary>

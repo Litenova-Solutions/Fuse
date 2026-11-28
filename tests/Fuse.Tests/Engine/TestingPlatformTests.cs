@@ -1,10 +1,10 @@
-using Fuse.Engine;
+using Fuse.Engine.Routing;
 using Fuse.Operations;
-using Fuse.Protocol;
+using Fuse.Operations.Test;
+using Fuse.Protocol.Testing;
 using Fuse.Telemetry;
 using Fuse.Testing.Model;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>

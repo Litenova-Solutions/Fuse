@@ -1,14 +1,16 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
-using Fuse.Check;
+using Fuse.Check.Analyzers;
+using Fuse.Check.Diagnostics;
 using Fuse.Check.Model;
+using Fuse.Check.Pipeline;
+using Fuse.Check.Sessions;
 using Fuse.Graph;
 using Fuse.Telemetry;
 using Fuse.Tests.Fixtures;
-using Fuse.Workspace;
+using Fuse.Workspace.Generations;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>

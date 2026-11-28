@@ -1,7 +1,7 @@
 using Fuse.Failures;
-using Fuse.Protocol;
+using Fuse.Protocol.Analysis;
+using Fuse.Protocol.Requests;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>
@@ -52,13 +52,13 @@ public class SessionRegistrationTests
         await engine.SendAsync(new EngineRequest.BeginSession("w1", ["Lib/**"]));
 
         var stop = Assert.IsType<EngineResponse.CheckAnswered>(
-            await engine.SendAsync(new EngineRequest.CheckChanges(WaitForLoad: true) { Session = "claude:judge", IsStopping = true })).Report;
+            await engine.SendAsync(new EngineRequest.CheckChanges(WaitForLoad: true) { Session = "claude:judge", Mode = SessionCheckMode.Stop })).Report;
 
         Assert.Empty(stop.Errors);
         Assert.True(stop.LeftToOtherSessions > 0);
         await engine.SendAsync(new EngineRequest.EndSession("w1"));
         var after = Assert.IsType<EngineResponse.CheckAnswered>(
-            await engine.SendAsync(new EngineRequest.CheckChanges(WaitForLoad: true) { Session = "claude:judge", IsStopping = true })).Report;
+            await engine.SendAsync(new EngineRequest.CheckChanges(WaitForLoad: true) { Session = "claude:judge", Mode = SessionCheckMode.Stop })).Report;
         Assert.NotEmpty(after.Errors);
         Assert.Equal(0, after.LeftToOtherSessions);
     }

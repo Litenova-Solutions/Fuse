@@ -1,5 +1,5 @@
-using Fuse.Protocol;
-
+using Fuse.Protocol.Requests;
+using Fuse.Protocol.Transport;
 namespace Fuse.Tests.Unit;
 
 public class FailedRequestTests

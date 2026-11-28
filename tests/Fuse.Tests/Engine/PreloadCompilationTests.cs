@@ -1,7 +1,7 @@
 using Fuse.Check.Model;
-using Fuse.Engine;
+using Fuse.Engine.Background;
+using Fuse.Engine.Scheduling;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>

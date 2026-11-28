@@ -1,12 +1,12 @@
 using System.Text.Json;
-using Fuse.Check;
+using Fuse.Check.Enrichment;
 using Fuse.Check.Model;
-using Fuse.Engine;
+using Fuse.Engine.Routing;
 using Fuse.Operations;
+using Fuse.Operations.Check;
 using Fuse.Paths;
-using Fuse.Protocol;
+using Fuse.Protocol.Check;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Unit;
 
 /// <summary>

@@ -1,8 +1,8 @@
 using System.Diagnostics;
 using System.Text.RegularExpressions;
-using Fuse.Dotnet;
+using Fuse.Dotnet.Build;
+using Fuse.Dotnet.Processes;
 using Fuse.Paths;
-
 namespace Fuse.Evals;
 
 /// <summary>A git repository under evaluation: how to build it, how to run fuse in it, and how to put it back to HEAD.</summary>

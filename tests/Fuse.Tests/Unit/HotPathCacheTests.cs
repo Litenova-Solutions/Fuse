@@ -1,13 +1,14 @@
 using System.IO.Pipes;
-using Fuse.Check;
-using Fuse.Engine.Client;
-using Fuse.Repo;
+using Fuse.Check.Pipeline;
+using Fuse.Check.Sessions;
+using Fuse.Client;
+using Fuse.Repo.Tracking;
 using Fuse.Tests.Fixtures;
-using Fuse.Workspace;
+using Fuse.Workspace.Blueprints;
+using Fuse.Workspace.Views;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
-
 namespace Fuse.Tests.Unit;
 
 /// <summary>
@@ -22,9 +23,9 @@ public class HotPathCacheTests
     {
         var root = FixtureRepo.CheckoutRoot;
         var calc = root.PathOf("Lib/Calc.cs");
-        var now = new DateTimeOffset(2026, 11, 6, 10, 0, 0, TimeSpan.Zero);
+        var time = new ManualTimeProvider(new DateTimeOffset(2026, 11, 6, 10, 0, 0, TimeSpan.Zero));
         var running = true;
-        var edits = new SessionEdits(root, null, null, clock: () => now, processIsRunning: _ => running);
+        var edits = new SessionEdits(root, null, null, timeProvider: time, processIsRunning: _ => running);
 
         var before = edits.RecordsHash();
         Assert.Equal(before, edits.RecordsHash());
@@ -42,7 +43,7 @@ public class HotPathCacheTests
         Assert.NotEqual(stopped, registered);
 
         // A registration that ends by its hours or by its process exiting changes the hash, kept or not.
-        now += SessionEdits.RegistrationLifetime;
+        time.Advance(SessionEdits.RegistrationLifetime);
         Assert.Equal(stopped, edits.RecordsHash());
 
         edits.BeginRegistration("w2", ["Lib/**"], pid: 4243);
@@ -77,8 +78,12 @@ public class HotPathCacheTests
             File.SetLastWriteTimeUtc(file, stamp.AddSeconds(1));
             Assert.NotEqual(first, KeptCheck.KeyFor("all", 0, null, true, "head", 1, 1, "records", keyed));
 
+            // A deleted file keys as deleted: the key stays, and differs from the content key, so recreating
+            // the file changes the key.
             File.Delete(file);
-            Assert.Null(KeptCheck.KeyFor("all", 0, null, true, "head", 1, 1, "records", keyed));
+            var deleted = KeptCheck.KeyFor("all", 0, null, true, "head", 1, 1, "records", keyed);
+            Assert.NotNull(deleted);
+            Assert.NotEqual(first, deleted);
         });
     }
 

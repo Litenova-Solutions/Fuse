@@ -1,9 +1,8 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
-using Fuse.Dotnet;
+using Fuse.Dotnet.Processes;
 using Fuse.Telemetry;
-
 namespace Fuse.Evals;
 
 /// <summary>

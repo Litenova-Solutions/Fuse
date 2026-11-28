@@ -1,10 +1,19 @@
 using System.Text;
 using System.Text.Json;
 using Fuse.Check.Model;
+using Fuse.Cli;
 using Fuse.Operations;
-using Fuse.Protocol;
+using Fuse.Operations.Check;
+using Fuse.Operations.Control;
+using Fuse.Operations.Inspection;
+using Fuse.Operations.Judge;
+using Fuse.Operations.Session;
+using Fuse.Operations.Test.Rendering;
+using Fuse.Protocol.Analysis;
+using Fuse.Protocol.Check;
+using Fuse.Protocol.Requests;
+using Fuse.Protocol.Transport;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Unit;
 
 public class SwarmCliOperationsTests
@@ -22,7 +31,7 @@ public class SwarmCliOperationsTests
             new EngineRequest.Graph { WorktreeRoot = @"C:\wt1" },
             new EngineRequest.Impact(["Lib/Calc.cs"]) { WorktreeRoot = @"C:\wt1" },
             new EngineRequest.SessionGuard(new FreezeGuardRequest("contracts", Unfreeze: false, ["src/Contracts/**"])) { WorktreeRoot = @"C:\wt1" },
-            new EngineRequest.WatchStream { Session = "w1", All = true, WorktreeRoot = @"C:\wt1" },
+            new EngineRequest.WatchStream { Scope = new WatchScope.AllSessions(), WorktreeRoot = @"C:\wt1" },
             new EngineRequest.CheckFiles(["Lib/Calc.cs"], WaitForLoad: false) { Brief = true, InteractiveFast = true, WorktreeRoot = @"C:\wt1" },
             new EngineRequest.PlanAffectedTests { Clean = true, NoCache = true, MaxFailures = 5, WorktreeRoot = @"C:\wt1" },
         ];
@@ -64,7 +73,7 @@ public class SwarmCliOperationsTests
                 [new GraphReport.CouplingCluster("core", ["Lib", "App"])],
                 [new GraphReport.TestOwnership("Lib.Tests", ["Lib"])])),
             new EngineResponse.ImpactAnswered(new ImpactReport(["Lib/Calc.cs"], ["Lib"], ["Lib", "App"], ["App/Program.cs"], ["Lib.Tests"], false, "2 projects affected")),
-            new EngineResponse.WatchEventPushed(new WatchEvent("guard_violation", Session: "w1", Generation: 3, Tree: "0123456789ab", GuardName: "contracts", ViolatedPattern: "src/Contracts/**", Declaration: "public interface IOrder")),
+            new EngineResponse.WatchEventPushed(new WatchEvent.GuardViolated { Session = "w1", Generation = 3, Tree = "0123456789ab", GuardName = "contracts", ViolatedPattern = "src/Contracts/**", Declaration = "public interface IOrder" }),
         ];
 
         foreach (var response in responses)
@@ -108,10 +117,9 @@ public class SwarmCliOperationsTests
     [Fact]
     public void Check_arguments_parses_brief_flag()
     {
-        var (parsed, refusal) = CheckArguments.Parse(["--brief", "--json", "Lib/Calc.cs"]);
+        var parsed = Assert.IsType<ParseResult<CheckArguments>.Parsed>(CheckArguments.Parse(["--brief", "--json", "Lib/Calc.cs"])).Value;
 
-        Assert.Null(refusal);
-        Assert.True(parsed!.Brief);
+        Assert.True(parsed.Brief);
         Assert.True(parsed.Json);
         Assert.Equal(["Lib/Calc.cs"], parsed.Files);
     }
@@ -122,18 +130,16 @@ public class SwarmCliOperationsTests
     [InlineData("[FAIL] Lib.Tests.CalcTests.Adds", "Lib.Tests.CalcTests.Adds")]
     [InlineData("  Passed Lib.Tests.CalcTests.Multiplies [1 ms]", null)]
     public void Test_operation_parses_failure_lines_for_early_stop(string line, string? expected) =>
-        Assert.Equal(expected, TestOperation.TryParseFailureName(line));
+        Assert.Equal(expected, FailureGroups.TryParseFailureName(line));
 
     [Fact]
     public void Gate_argument_parser_handles_flags_and_refuses_invalid_values()
     {
-        var (parsed, refusal) = GateOperation.Parse(["--session", "worker-1", "--brief", "--test", "--max-failures=5", "--json"]);
-        Assert.Null(refusal);
-        Assert.Equal(("worker-1", true, true, 5, true), (parsed!.Session, parsed.Brief, parsed.RunTests, parsed.MaxFailures, parsed.Json));
+        var parsed = Assert.IsType<ParseResult<GateOperation.GateArguments>.Parsed>(GateOperation.Parse(["--session", "worker-1", "--brief", "--test", "--max-failures=5", "--json"])).Value;
+        Assert.Equal(("worker-1", true, true, 5, true), (parsed.Session, parsed.Brief, parsed.RunTests, parsed.MaxFailures, parsed.Json));
 
-        var (bad, badRefusal) = GateOperation.Parse(["--max-failures", "0"]);
-        Assert.Null(bad);
-        Assert.NotNull(badRefusal);
+        var bad = GateOperation.Parse(["--max-failures", "0"]);
+        Assert.IsType<ParseResult<GateOperation.GateArguments>.Refused>(bad);
     }
 
     [Fact]
@@ -144,17 +150,14 @@ public class SwarmCliOperationsTests
         repo.Replace("Lib/Calc.cs", "{}", "{ public int B => 2; }");
         repo.Write("Lib/NewFile.cs", "public class NewFile {}\n");
 
-        var (parsed, refusal) = JudgeOperation.Parse(["--race", "cand1.patch", ".", "--json"]);
-        Assert.Null(refusal);
-        Assert.Equal(JudgeRequest.JudgeMode.Race, parsed!.Mode);
+        var parsed = Assert.IsType<ParseResult<JudgeOperation.JudgeArguments>.Parsed>(JudgeOperation.Parse(["--race", "cand1.patch", ".", "--json"])).Value;
+        Assert.Equal(JudgeRequest.JudgeMode.Race, parsed.Mode);
         Assert.True(parsed.Json);
 
-        var (c1, e1) = await JudgeOperation.LoadCandidateAsync("cand1.patch", repo.Path, TestContext.Current.CancellationToken);
-        var (c2, e2) = await JudgeOperation.LoadCandidateAsync(".", repo.Path, TestContext.Current.CancellationToken);
-        Assert.Null(e1);
-        Assert.Null(e2);
-        Assert.Contains("public int A => 1", c1!.Diff, StringComparison.Ordinal);
-        Assert.Contains("public int B => 2", c2!.Diff, StringComparison.Ordinal);
+        var c1 = Assert.IsType<ParseResult<JudgeRequest.Candidate>.Parsed>(await JudgeOperation.LoadCandidateAsync("cand1.patch", repo.Path, TestContext.Current.CancellationToken)).Value;
+        var c2 = Assert.IsType<ParseResult<JudgeRequest.Candidate>.Parsed>(await JudgeOperation.LoadCandidateAsync(".", repo.Path, TestContext.Current.CancellationToken)).Value;
+        Assert.Contains("public int A => 1", c1.Diff, StringComparison.Ordinal);
+        Assert.Contains("public int B => 2", c2.Diff, StringComparison.Ordinal);
         Assert.Contains("+++ b/Lib/NewFile.cs", c2.Diff, StringComparison.Ordinal);
 
         var report = new JudgeReport(
@@ -177,10 +180,9 @@ public class SwarmCliOperationsTests
     [InlineData("--max-failures")]
     public void Judge_refuses_removed_test_options_as_unknown(string option)
     {
-        var (parsed, refusal) = JudgeOperation.Parse(["--race", "cand1.patch", option]);
+        var refused = Assert.IsType<ParseResult<JudgeOperation.JudgeArguments>.Refused>(JudgeOperation.Parse(["--race", "cand1.patch", option]));
 
-        Assert.Null(parsed);
-        Assert.Contains($"fuse: '{option}' is not a fuse judge option", refusal, StringComparison.Ordinal);
+        Assert.Contains($"fuse: '{option}' is not a fuse judge option", refused.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -265,7 +267,7 @@ public class SwarmCliOperationsTests
     [InlineData("claude", """{"tool_name":"Edit","tool_input":{"file_path":"Lib/Calc.cs"}}""", false)]
     [InlineData("claude", "{not-json", false)]
     public void Pre_root_fast_peek_identifies_read_only_post_edit_payloads(string harness, string json, bool expectedFastExit) =>
-        Assert.Equal(expectedFastExit, Program.IsReadOnlyPostEditPayload(harness, Encoding.UTF8.GetBytes(json)));
+        Assert.Equal(expectedFastExit, ControlCliCommand.IsReadOnlyPostEditPayload(harness, Encoding.UTF8.GetBytes(json)));
 
     [Fact]
     public void OpenCode_plugin_carries_session_id_on_pre_shell_and_stop_and_direct_pipe_ipc()

@@ -1,8 +1,8 @@
-using Fuse.Engine;
-using Fuse.Protocol;
+using Fuse.Engine.Background;
+using Fuse.Engine.Scheduling;
+using Fuse.Protocol.Analysis;
 using Fuse.Tests.Fixtures;
 using Microsoft.CodeAnalysis;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>

@@ -1,7 +1,6 @@
 using Fuse.Check.Model;
 using Fuse.Hooks;
-using Fuse.Protocol;
-
+using Fuse.Protocol.Check;
 namespace Fuse.Tests.Unit;
 
 /// <summary>

@@ -1,12 +1,17 @@
 using System.Text.Json;
 using Fuse.Failures;
+using Fuse.Identity;
 using Fuse.Operations;
+using Fuse.Operations.Build;
+using Fuse.Operations.Check;
+using Fuse.Operations.Session;
+using Fuse.Operations.Test;
 using Fuse.Paths;
-using Fuse.Protocol;
+using Fuse.Protocol.Analysis;
+using Fuse.Protocol.Transport;
 using ModelContextProtocol;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
-
 namespace Fuse.Mcp;
 
 /// <summary>
@@ -59,7 +64,8 @@ internal static class McpCommand
         // The transport reads through Console.In, which follows the console input code page rather than UTF-8, so a path
         // with a non-ASCII character would arrive as different characters. Every host writes UTF-8 over stdio.
         Console.InputEncoding = new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
-        await using var server = McpServer.Create(new StdioServerTransport("fuse"), options);
+        var server = McpServer.Create(new StdioServerTransport("fuse"), options);
+        await using var serverLifetime = server.ConfigureAwait(false);
         await server.RunAsync(cancellationToken).ConfigureAwait(false);
         return 0;
     }
@@ -109,14 +115,28 @@ internal static class McpCommand
 
                 // FUSE_SESSION names the caller's session in its environment, as a hook names one in its payload: with files
                 // it credits them to the session, and without files it answers for that session alone.
-                (result, answered) = await CheckOperation.RunAsync(root, files, session: SessionOperation.EnvironmentSession, waitForLoad: true, compilationWideAnalyzers: true, TimeSpan.FromMinutes(10), cancellationToken, maxErrors).ConfigureAwait(false);
+                (result, answered) = await CheckOperation.RunAsync(
+                    root,
+                    new CheckInvocation(
+                        Files: files,
+                        Session: SessionId.TryParse(SessionOperation.EnvironmentSession, out var checkSession) ? checkSession : null,
+                        WaitForLoad: true,
+                        CompilationWideAnalyzers: true,
+                        Limit: ErrorLimit.FromCount(maxErrors),
+                        Json: false,
+                        IncludeTreeStamp: false,
+                        IncludeNonCSharp: true,
+                        Brief: false,
+                        InteractiveFast: false),
+                    TimeSpan.FromMinutes(10),
+                    cancellationToken).ConfigureAwait(false);
                 break;
             case "fuse_test":
                 var all = arguments.TryGetValue("all", out var flag) && flag.ValueKind == JsonValueKind.True;
                 var failed = arguments.TryGetValue("failed", out var retry) && retry.ValueKind == JsonValueKind.True;
                 if (all && failed)
                     return Text("fuse: failed reruns the tests that failed last time and cannot be combined with all; set only one of them", isError: true);
-                result = await TestOperation.RunAsync(root, root.Path, [], all, cancellationToken, session: SessionOperation.EnvironmentSession, failed: failed).ConfigureAwait(false);
+                result = await TestOperation.RunAsync(new TestInvocation(root, root.Path, [], all, SessionOperation.EnvironmentSession, null, failed, false, false, ErrorLimit.FromCount(TestOperation.DefaultMaxFailures)), cancellationToken).ConfigureAwait(false);
                 break;
             case "fuse_build":
                 var target = arguments.TryGetValue("target", out var t) && t.ValueKind == JsonValueKind.String ? t.GetString() : null;
@@ -165,8 +185,17 @@ internal static class McpCommand
     }
 
     /// <summary>Sends each progress value to the client as a progress notification for the request's token, without waiting for it.</summary>
-    private sealed class SessionProgress(McpSession session, ProgressToken token) : IProgress<ProgressNotificationValue>
+    private sealed class SessionProgress : IProgress<ProgressNotificationValue>
     {
-        public void Report(ProgressNotificationValue value) => _ = session.NotifyProgressAsync(token, value, null, CancellationToken.None);
+        private readonly McpSession _session;
+        private readonly ProgressToken _token;
+
+        public SessionProgress(McpSession session, ProgressToken token)
+        {
+            _session = session;
+            _token = token;
+        }
+
+        public void Report(ProgressNotificationValue value) => _ = _session.NotifyProgressAsync(_token, value, null, CancellationToken.None);
     }
 }

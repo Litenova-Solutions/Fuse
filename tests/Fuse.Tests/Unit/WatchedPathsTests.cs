@@ -1,6 +1,6 @@
-using Fuse.Repo;
+using Fuse.Repo.Git;
+using Fuse.Repo.Tracking;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Unit;
 
 /// <summary>

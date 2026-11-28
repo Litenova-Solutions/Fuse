@@ -1,12 +1,14 @@
 using System.Diagnostics;
-using Fuse.Check;
+using Fuse.Check.Analyzers;
+using Fuse.Check.Candidates;
+using Fuse.Check.Pipeline;
+using Fuse.Check.Sessions;
 using Fuse.Telemetry;
 using Fuse.Tests.Fixtures;
-using Fuse.Workspace;
+using Fuse.Workspace.Indexing;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>

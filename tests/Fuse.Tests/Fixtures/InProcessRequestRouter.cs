@@ -1,9 +1,11 @@
-using Fuse.Engine;
+using Fuse.Engine.Routing;
+using Fuse.Engine.Scheduling;
 using Fuse.Paths;
-using Fuse.Protocol;
+using Fuse.Protocol.Analysis;
+using Fuse.Protocol.Requests;
+using Fuse.Protocol.Transport;
 using Fuse.Telemetry;
-using Fuse.Testing;
-
+using Fuse.Testing.Planning;
 namespace Fuse.Tests.Fixtures;
 
 /// <summary>
@@ -36,12 +38,24 @@ internal sealed class InProcessRequestRouter : IAsyncDisposable
 
     /// <summary>Starts a router over <paramref name="repo"/>, initialized as the engine initializes it.</summary>
     /// <param name="repo">The repository to serve, which the test disposes; a standard fixture this router disposes when null.</param>
-    public static async Task<InProcessRequestRouter> StartAsync(FixtureRepo? repo = null)
+    public static Task<InProcessRequestRouter> StartAsync(FixtureRepo? repo = null) => StartAsync(repo, budget: null);
+
+    /// <summary>A memory budget that never sheds and never answers Busy, whatever memory the machine holds.</summary>
+    public static MemoryBudget NeverShedding() =>
+        new(ceilingBytes: 1L << 60, workingSet: () => 0, memoryLoad: () => 0, totalAvailable: () => 1L << 60);
+
+    /// <summary>
+    ///     Starts a router with <paramref name="budget"/> as its memory budget, or the engine default when null. A test
+    ///     whose answer must not depend on the runner's memory passes <see cref="NeverShedding"/>.
+    /// </summary>
+    public static async Task<InProcessRequestRouter> StartAsync(FixtureRepo? repo, MemoryBudget? budget)
     {
         var owned = repo is null ? FixtureRepo.CreateStandard() : null;
         var fixture = repo ?? owned!;
         var log = new EngineLog(fixture.Root.StateDirectory);
-        var router = new RequestRouter(fixture.Root, log);
+        var router = budget is null
+            ? new RequestRouter(fixture.Root, log)
+            : new RequestRouter(fixture.Root, log, new Scheduler(Scheduler.DefaultReaderCount), budget);
         // The engine's shutdown token, which a real engine cancels before it disposes the router: the background preload
         // watches it, and would otherwise keep loading into a disposed workspace.
         var shutdown = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);

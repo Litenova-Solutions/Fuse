@@ -1,10 +1,10 @@
 using System.Collections.Concurrent;
-using Fuse.Check;
 using Fuse.Check.Model;
+using Fuse.Check.Pipeline;
+using Fuse.Check.Sessions;
 using Fuse.Telemetry;
 using Fuse.Tests.Fixtures;
-using Fuse.Workspace;
-
+using Fuse.Workspace.Generations;
 namespace Fuse.Tests.Engine;
 
 /// <summary>
@@ -14,7 +14,7 @@ namespace Fuse.Tests.Engine;
 public class CheckFreshnessTests
 {
     [Fact]
-    public async Task A_check_of_every_change_does_not_keep_an_answer_a_changed_file_could_not_be_read_for()
+    public async Task An_answer_bound_while_a_changed_file_was_replaced_is_not_served_after_it_returns()
     {
         using var repo = FixtureRepo.CreateStandard();
         var log = new ConcurrentQueue<string>();
@@ -48,7 +48,8 @@ public class CheckFreshnessTests
         restoring = false;
 
         Assert.NotEmpty(first.Errors);
-        Assert.Contains(log, l => l.Contains("changed file(s) could not be read from disk, so this answer is not kept", StringComparison.Ordinal));
+        // A directory where the file was reads as a deleted file, so the first answer is keyed by the deletion and the
+        // file that comes back before the next check keys that check differently: it binds again.
         Assert.DoesNotContain(log, l => l.StartsWith("check coverage:", StringComparison.Ordinal));
         Assert.Equal(1, BindingCount(log));
 

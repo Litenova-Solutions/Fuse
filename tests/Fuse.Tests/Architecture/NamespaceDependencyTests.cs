@@ -1,7 +1,6 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-
 namespace Fuse.Tests.Architecture;
 
 /// <summary>
@@ -13,7 +12,7 @@ namespace Fuse.Tests.Architecture;
 ///     A file's namespace comes from its <c>namespace</c> line. What it uses comes from its syntax: every <c>Fuse.X</c>,
 ///     <c>Microsoft.CodeAnalysis</c> and <c>Microsoft.Build</c> name in a <c>using</c> directive or a fully qualified
 ///     reference, plus every simple name of a type declared in an enclosing namespace, which C# resolves without a
-///     <c>using</c> (a file in <c>Fuse.Engine.Client</c> sees the types of <c>Fuse.Engine</c>). Comments and strings are
+///     <c>using</c> (a file in <c>Fuse.Check.Pipeline</c> sees the types of <c>Fuse.Check</c>). Comments and strings are
 ///     not code, so a name in them is not a use.
 /// </remarks>
 public class NamespaceDependencyTests
@@ -22,13 +21,21 @@ public class NamespaceDependencyTests
     private const string MsBuild = "Microsoft.Build";
     private const string Rule2 = "rule 2 of site/docs/architecture.html: no client namespace uses Microsoft.CodeAnalysis, Microsoft.Build, or a Fuse namespace that does";
 
-    private static readonly string[] Foundation = ["Fuse.Paths", "Fuse.Failures", "Fuse.Telemetry"];
+    private static readonly string[] Foundation = ["Fuse.Identity", "Fuse.Paths", "Fuse.Failures", "Fuse.Telemetry"];
     private static readonly string[] Sources = ["Fuse.Repo", "Fuse.Graph", "Fuse.Dotnet"];
+    private static readonly string[] Features = ["Fuse.Check", "Fuse.Check.Model", "Fuse.Testing", "Fuse.Testing.Model", "Fuse.Judge", "Fuse.Judge.Model", "Fuse.Inspection"];
 
-    /// <summary>The table under "Dependency rules": each namespace and the Fuse namespaces it may use. Null means any.</summary>
+    /// <summary>
+    ///     The table under "Dependency rules": each layer root and the Fuse layer roots it may use. Null means any. A
+    ///     namespace belongs to the longest row that equals it or encloses it (<c>Fuse.Check.Diagnostics</c> belongs to
+    ///     <c>Fuse.Check</c>, <c>Fuse.Check.Model</c> to its own row), and namespaces of one row may use each other. The
+    ///     row <c>Fuse</c> holds only the namespace <c>Fuse</c> itself.
+    /// </summary>
     private static readonly Dictionary<string, string[]?> MayUse = new(StringComparer.Ordinal)
     {
-        ["Fuse.Paths"] = [],
+        ["Fuse.Identity"] = [],
+        // LocalState names files by a session's identity.
+        ["Fuse.Paths"] = ["Fuse.Identity"],
         ["Fuse.Failures"] = [],
         ["Fuse.Telemetry"] = [],
         ["Fuse.Dotnet"] = [.. Foundation],
@@ -40,29 +47,34 @@ public class NamespaceDependencyTests
         // A feature's model may use the model of Fuse.Changes, which has no Roslyn, but not Fuse.Changes itself.
         ["Fuse.Check.Model"] = ["Fuse.Changes.Model", .. Foundation],
         ["Fuse.Testing.Model"] = ["Fuse.Changes.Model", .. Foundation],
+        ["Fuse.Judge.Model"] = ["Fuse.Changes.Model", .. Foundation],
         ["Fuse.Check"] = ["Fuse.Check.Model", "Fuse.Changes", "Fuse.Changes.Model", "Fuse.Workspace", .. Sources, .. Foundation],
         ["Fuse.Testing"] = ["Fuse.Testing.Model", "Fuse.Changes", "Fuse.Changes.Model", "Fuse.Workspace", .. Sources, .. Foundation],
-        ["Fuse.Engine"] = ["Fuse.Check", "Fuse.Check.Model", "Fuse.Testing", "Fuse.Testing.Model", "Fuse.Changes", "Fuse.Changes.Model", "Fuse.Workspace", .. Sources, .. Foundation, "Fuse.Protocol"],
+        // The judge scores candidates with the check's own steps.
+        ["Fuse.Judge"] = ["Fuse.Judge.Model", "Fuse.Check", "Fuse.Check.Model", "Fuse.Changes", "Fuse.Changes.Model", "Fuse.Workspace", .. Sources, .. Foundation],
+        ["Fuse.Inspection"] = ["Fuse.Check", "Fuse.Check.Model", "Fuse.Testing", "Fuse.Testing.Model", "Fuse.Changes", "Fuse.Changes.Model", "Fuse.Workspace", .. Sources, .. Foundation],
+        ["Fuse.Engine"] = [.. Features, "Fuse.Changes", "Fuse.Changes.Model", "Fuse.Workspace", .. Sources, .. Foundation, "Fuse.Protocol"],
         // Decision D11: the wire carries the check model's CompilerError unchanged.
         ["Fuse.Protocol"] = [.. Foundation, "Fuse.Check.Model"],
-        ["Fuse.Engine.Client"] = ["Fuse.Protocol", "Fuse.Repo", "Fuse.Dotnet", .. Foundation],
-        ["Fuse.Operations"] = ["Fuse.Engine.Client", "Fuse.Protocol", "Fuse.Repo", "Fuse.Dotnet", .. Foundation],
+        ["Fuse.Client"] = ["Fuse.Protocol", "Fuse.Repo", "Fuse.Dotnet", .. Foundation],
+        ["Fuse.Operations"] = ["Fuse.Client", "Fuse.Protocol", "Fuse.Repo", "Fuse.Dotnet", .. Foundation],
         ["Fuse.Harnesses"] = ["Fuse.Operations", "Fuse.Protocol", "Fuse.Repo", .. Foundation],
         ["Fuse.Hooks"] = ["Fuse.Harnesses", "Fuse.Operations", "Fuse.Protocol", "Fuse.Repo", .. Foundation],
-        ["Fuse.Mcp"] = ["Fuse.Operations", "Fuse.Engine.Client", "Fuse.Protocol", "Fuse.Repo", .. Foundation],
+        ["Fuse.Mcp"] = ["Fuse.Operations", "Fuse.Client", "Fuse.Protocol", "Fuse.Repo", .. Foundation],
+        ["Fuse.Cli"] = ["Fuse.Hooks", "Fuse.Mcp", "Fuse.Harnesses", "Fuse.Operations", "Fuse.Client", "Fuse.Protocol", "Fuse.Repo", "Fuse.Dotnet", .. Foundation],
         ["Fuse"] = null,
     };
 
     /// <summary>
-    ///     The namespaces whose code runs in the short-lived client: the surfaces, the operations and the client, and the
+    ///     The rows whose code runs in the short-lived client: the surfaces, the operations and the client, and the
     ///     layers the client shares with the engine, which include the check model because the wire carries its
     ///     <c>CompilerError</c>. A hook pays for every assembly it loads.
     /// </summary>
     private static readonly string[] ClientSide =
-        ["Fuse.Hooks", "Fuse.Mcp", "Fuse.Harnesses", "Fuse.Operations", "Fuse.Engine.Client", "Fuse.Protocol", "Fuse.Check.Model", "Fuse.Repo", "Fuse.Dotnet", .. Foundation];
+        ["Fuse.Cli", "Fuse.Hooks", "Fuse.Mcp", "Fuse.Harnesses", "Fuse.Operations", "Fuse.Client", "Fuse.Protocol", "Fuse.Check.Model", "Fuse.Repo", "Fuse.Dotnet", .. Foundation];
 
-    /// <summary>The namespaces rule 2 names as using Roslyn or MSBuild, whether or not a file in them names it directly.</summary>
-    private static readonly string[] EngineSide = ["Fuse.Graph", "Fuse.Workspace", "Fuse.Changes", "Fuse.Check", "Fuse.Testing", "Fuse.Engine"];
+    /// <summary>The rows rule 2 names as using Roslyn or MSBuild, whether or not a file in them names it directly.</summary>
+    private static readonly string[] EngineSide = ["Fuse.Graph", "Fuse.Workspace", "Fuse.Changes", "Fuse.Check", "Fuse.Testing", "Fuse.Judge", "Fuse.Inspection", "Fuse.Engine"];
 
     private static readonly Lazy<Scan> Code = new(Scan.Read);
 
@@ -71,7 +83,7 @@ public class NamespaceDependencyTests
     {
         Assert.NotEmpty(Code.Value.Files);
         var missing = Code.Value.Files
-            .Where(f => !MayUse.ContainsKey(f.Namespace))
+            .Where(f => RowOf(f.Namespace) is null)
             .Select(f => $"{f.Path}: {f.Namespace} has no row in the dependency table of site/docs/architecture.html; decide its layer and add the row there and in this test")
             .ToList();
         Assert.True(missing.Count == 0, string.Join('\n', missing));
@@ -83,12 +95,14 @@ public class NamespaceDependencyTests
         var broken = new List<string>();
         foreach (var file in Code.Value.Files)
         {
-            if (!MayUse.TryGetValue(file.Namespace, out var allowed) || allowed is null)
+            var row = RowOf(file.Namespace);
+            if (row is null || MayUse[row] is not { } allowed)
                 continue;
             foreach (var used in file.Uses.Where(u => u.StartsWith("Fuse", StringComparison.Ordinal) && u != file.Namespace))
             {
-                if (!allowed.Contains(used))
-                    broken.Add($"{file.Path}: {file.Namespace} uses {used}, which its row in site/docs/architecture.html does not allow; {file.Namespace} may use {Describe(allowed)}");
+                var usedRow = RowOf(used) ?? used;
+                if (usedRow != row && !allowed.Contains(usedRow))
+                    broken.Add($"{file.Path}: {file.Namespace} uses {used}, which its row {row} in site/docs/architecture.html does not allow; {row} may use {Describe(allowed)}");
             }
         }
 
@@ -100,7 +114,7 @@ public class NamespaceDependencyTests
     {
         var code = Code.Value;
         var broken = new List<string>();
-        foreach (var start in ClientSide.Where(code.Namespaces.Contains))
+        foreach (var start in code.Namespaces.Where(n => RowOf(n) is { } row && ClientSide.Contains(row)).Order(StringComparer.Ordinal))
         {
             // Breadth first, so the chain reported for each finding is the shortest one.
             var cameFrom = new Dictionary<string, string> { [start] = "" };
@@ -108,7 +122,7 @@ public class NamespaceDependencyTests
             while (queue.Count > 0)
             {
                 var current = queue.Dequeue();
-                if (current != start && EngineSide.Contains(current))
+                if (current != start && RowOf(current) is { } currentRow && EngineSide.Contains(currentRow))
                 {
                     broken.Add($"{Chain(code, cameFrom, current)}: {current} runs only in the engine; {Rule2}");
                     continue;
@@ -134,25 +148,47 @@ public class NamespaceDependencyTests
     [Fact]
     public void No_two_namespaces_depend_on_each_other()
     {
+        // Rows are compared, not stage folders: the stages of one layer (Fuse.Workspace.Generations and
+        // Fuse.Workspace.Views) may use each other, but no two rows may.
         var code = Code.Value;
-        var fuse = code.Edges.Keys.Where(e => e.To.StartsWith("Fuse", StringComparison.Ordinal)).ToList();
-        var reach = code.Namespaces.ToDictionary(n => n, n => Reachable(fuse, n), StringComparer.Ordinal);
+        var fuse = code.Edges.Keys
+            .Where(e => e.To.StartsWith("Fuse", StringComparison.Ordinal))
+            .Select(e => (From: RowOf(e.From) ?? e.From, To: RowOf(e.To) ?? e.To, Edge: e))
+            .Where(e => e.From != e.To)
+            .ToList();
+        var rows = code.Namespaces.Select(n => RowOf(n) ?? n).ToHashSet(StringComparer.Ordinal);
+        var reach = rows.ToDictionary(n => n, n => Reachable([.. fuse.Select(e => (e.From, e.To))], n), StringComparer.Ordinal);
         var cycles = new List<string>();
         var reported = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var name in code.Namespaces.Order(StringComparer.Ordinal))
+        foreach (var name in rows.Order(StringComparer.Ordinal))
         {
             if (reported.Contains(name))
                 continue;
-            // The namespaces that reach this one and that this one reaches form one cycle.
-            var cycle = code.Namespaces.Where(other => reach[name].Contains(other) && reach[other].Contains(name)).Order(StringComparer.Ordinal).ToList();
+            // The rows that reach this one and that this one reaches form one cycle.
+            var cycle = rows.Where(other => reach[name].Contains(other) && reach[other].Contains(name)).Order(StringComparer.Ordinal).ToList();
             if (cycle.Count < 2)
                 continue;
             reported.UnionWith(cycle);
-            var inside = fuse.Where(e => cycle.Contains(e.From) && cycle.Contains(e.To)).Select(e => $"{e.From} -> {e.To} ({code.Edges[e]})");
+            var inside = fuse.Where(e => cycle.Contains(e.From) && cycle.Contains(e.To)).Select(e => $"{e.Edge.From} -> {e.Edge.To} ({code.Edges[e.Edge]})");
             cycles.Add($"{string.Join(", ", cycle)} depend on each other: {string.Join("; ", inside)}");
         }
 
         Assert.True(cycles.Count == 0, string.Join('\n', cycles));
+    }
+
+    /// <summary>The row a namespace belongs to: the longest row that equals it or encloses it, or null when none does.</summary>
+    private static string? RowOf(string name)
+    {
+        if (MayUse.ContainsKey(name))
+            return name;
+        for (var dot = name.LastIndexOf('.'); dot > 0; dot = name.LastIndexOf('.', dot - 1))
+        {
+            var enclosing = name[..dot];
+            if (enclosing != "Fuse" && MayUse.ContainsKey(enclosing))
+                return enclosing;
+        }
+
+        return null;
     }
 
     private static string Describe(string[] allowed) => allowed.Length == 0 ? "no Fuse namespace" : string.Join(", ", allowed);

@@ -1,7 +1,6 @@
-using Fuse.Check;
+using Fuse.Check.Sessions;
 using Fuse.Paths;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Unit;
 
 /// <summary>

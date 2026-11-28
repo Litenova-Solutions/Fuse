@@ -1,5 +1,4 @@
 using Fuse.Testing.Model;
-
 namespace Fuse.Tests.Unit;
 
 public class TargetFrameworkTests

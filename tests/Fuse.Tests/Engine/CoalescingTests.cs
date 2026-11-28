@@ -1,12 +1,16 @@
 using System.Text.Json;
-using Fuse.Check;
 using Fuse.Check.Model;
-using Fuse.Engine;
+using Fuse.Check.Pipeline;
+using Fuse.Engine.Background;
+using Fuse.Engine.Routing;
+using Fuse.Engine.Scheduling;
 using Fuse.Failures;
-using Fuse.Protocol;
+using Fuse.Protocol.Analysis;
+using Fuse.Protocol.Check;
+using Fuse.Protocol.Requests;
+using Fuse.Protocol.Transport;
 using Fuse.Telemetry;
 using Fuse.Tests.Fixtures;
-
 namespace Fuse.Tests.Engine;
 
 /// <summary>

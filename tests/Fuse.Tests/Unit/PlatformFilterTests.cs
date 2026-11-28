@@ -1,8 +1,7 @@
 using System.Collections.Immutable;
 using Fuse.Graph;
-using Fuse.Testing;
+using Fuse.Testing.Filtering;
 using Fuse.Testing.Model;
-
 namespace Fuse.Tests.Unit;
 
 /// <summary>

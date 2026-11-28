@@ -1,5 +1,4 @@
-using Fuse.Dotnet;
-
+using Fuse.Dotnet.Processes;
 namespace Fuse.Tests.Unit;
 
 /// <summary>Whether a container runtime answers: <c>docker</c> first, then <c>podman</c>, each by exit code, never throwing.</summary>

@@ -10,6 +10,7 @@ Fuse needs the .NET 10 SDK. Install it with `dotnet tool install -g Fuse`. Then 
 - [Getting started](https://fuse.codes/docs/getting-started): install Fuse, set it up in your repository, and see what it reports
 - [Connect your agent](https://fuse.codes/docs/harnesses): what `fuse init` writes for each harness, and how an MCP host runs `fuse mcp`
 - [Subagents and parallel agents](https://fuse.codes/docs/parallel-agents): several agents in one repository, what each is told, `fuse init --instructions` and `fuse stop`
+- [Best practices](https://fuse.codes/docs/best-practices): how to keep Fuse fast and its answers exact: commit hygiene, sessions for several agents, shadow-safe tests, `.fuseignore`, fast analyzers, and what each `fuse: note:` line asks of you
 - [How it works](https://fuse.codes/docs/how-it-works): how Fuse checks an edit, selects tests and runs them
 - [Limits](https://fuse.codes/docs/limits): what Fuse cannot check, and what to do about it
 - [Benchmarks](https://fuse.codes/docs/benchmarks): benchmarks on four repositories, with the result file behind each number

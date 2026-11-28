@@ -56,8 +56,9 @@ public class LargeTreeCheckTests
         await engine.Workspace.PatchViewsAsync(relatives.Select(engine.Repo.PathOf).ToList(), TestContext.Current.CancellationToken);
         foreach (var relative in relatives)
             File.Delete(engine.Repo.Full(relative));
-        await engine.Workspace.SyncAsync([], TestContext.Current.CancellationToken);
-        await engine.Workspace.SyncAsync([], TestContext.Current.CancellationToken);
+        // A slow watcher can report the deletions after a sync, so sync until the touched set is bounded again.
+        for (var round = 0; round < 5 && (round < 2 || engine.Workspace.PrimaryOverlay.Views.ChurnCount > 2000); round++)
+            await engine.Workspace.SyncAsync([], TestContext.Current.CancellationToken);
 
         // When the watcher has reported the deletions, the sync reloads for them; when it has not, the churn passes the
         // bound and the sync re-evaluates. Either way the projects reload and the touched set is bounded again.

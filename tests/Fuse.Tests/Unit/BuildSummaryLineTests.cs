@@ -32,7 +32,7 @@ public class BuildSummaryLineTests
 
         var answer = BuildOperation.Render(new ProcessResult(1, output), "/repo", 3, "build", new BuildOptions(5, false, false), "/state/last-build-results.txt", passthrough: ["apps/api/App.slnx", "-c", "Release"]);
 
-        Assert.Equal("fuse: build failed with 25 error(s), first 5 shown in 3.0 s; all 25 in /state/last-build-results.txt; fuse build apps/api/App.slnx -c Release --all-errors for every error", answer.Text.Split('\n')[^1]);
+        Assert.Equal("fuse: build failed with 25 error(s), first 5 shown in 3.0 s; fuse build apps/api/App.slnx -c Release --all-errors for every error; all 25 in /state/last-build-results.txt", answer.Text.Split('\n')[^1]);
     }
 
     [Fact]

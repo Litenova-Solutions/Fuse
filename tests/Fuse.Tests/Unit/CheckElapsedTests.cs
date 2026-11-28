@@ -23,13 +23,22 @@ public class CheckElapsedTests
     }
 
     [Fact]
-    public void An_error_summary_with_seconds_ends_with_a_duration()
+    public void An_error_summary_with_seconds_names_the_duration_after_the_projects()
     {
         ReportedError[] errors = [new(new CompilerError("App/Program.cs", 2, 28, "CS1061", "no Add"))];
         var result = CheckOperation.Render(new CheckReport(errors, 3, ["App"], [], 0, false, 1, 1, 0), seconds: 1.26);
 
         Assert.Equal(1, result.ExitCode);
-        Assert.Matches(@" in \d+\.\d s$", result.Text.Split('\n')[^1]);
+        Assert.Matches(@"\(App\) in \d+\.\d s$", result.Text.Split('\n')[^1]);
+    }
+
+    [Fact]
+    public void A_capped_error_summary_keeps_the_results_file_last()
+    {
+        ReportedError[] errors = [.. Enumerable.Range(1, 30).Select(i => new ReportedError(new CompilerError("App/Program.cs", i, 1, "CS1061", "no Add")))];
+        var result = CheckOperation.Render(new CheckReport(errors, 3, ["App"], [], 0, false, 30, 1, 0), resultsPath: "/state/last-check-results.txt", seconds: 1.26);
+
+        Assert.Matches(@"\(App\) in \d+\.\d s; .*/state/last-check-results\.txt$", result.Text.Split('\n')[^1]);
     }
 
     [Fact]

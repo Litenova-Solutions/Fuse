@@ -103,7 +103,7 @@ internal static class CheckRenderer
     /// <param name="includeNonCSharp">False to leave the changed files Fuse does not check out of the summary.</param>
     /// <param name="brief">True to render <see cref="ReportedRepairPacket"/> details (and fallback source windows).</param>
     /// <param name="repoRootPath">Repository root used for fallback source windows when <paramref name="brief"/> is true.</param>
-    /// <param name="seconds">How long the check took, printed at the end of the summary, or null to print none.</param>
+    /// <param name="seconds">How long the check took, printed after the counts and before the results file, which stays last on the line, or null to print none.</param>
     internal static OperationResult Render(CheckReport report, string? resultsPath = null, int maxShown = MaxShown, bool json = false, string? treeStamp = null, bool includeNonCSharp = true, bool brief = false, string? repoRootPath = null, double? seconds = null)
     {
         var text = new StringBuilder();
@@ -174,7 +174,7 @@ internal static class CheckRenderer
         // The file holds every error the engine sent; the answer names it only when it left errors out, and never in JSON, which already holds them.
         var file = !json && report.ErrorCount > printed && resultsPath is not null ? $"; all {report.ErrorCount} in {resultsPath}" : "";
         var scope = scoped is null ? "" : $"; checked {scoped} and what it reaches";
-        text.Append($"fuse: {report.ErrorCount} error(s) introduced in {report.ErrorFileCount} file(s){more} ({string.Join(", ", report.Projects)}){summaryTail}{scope}{treeStamp}{file}{Duration.In(seconds)}");
+        text.Append($"fuse: {report.ErrorCount} error(s) introduced in {report.ErrorFileCount} file(s){more} ({string.Join(", ", report.Projects)}){Duration.In(seconds)}{summaryTail}{scope}{treeStamp}{file}");
         if (note is not null)
             text.Append('\n').Append(note);
         return new OperationResult(Outcome.ProblemsFound, text.ToString());

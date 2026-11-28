@@ -106,7 +106,7 @@ internal static class BuildRenderer
         var file = capped && resultsPath is not null ? $"; all {fileTotal ?? diagnostics.Count} in {resultsPath}" : "";
         // The hinted command keeps the original arguments, so it reuses this finished build instead of building again.
         var hint = capped ? $"; {BuildOperation.AllErrorsHint(passthrough ?? [], changed)} for every error" : "";
-        text.Append($"fuse: {operation} failed with {diagnostics.Count} error(s){more}{Duration.In(seconds)}{warningsTail}{timesTail}{treeStamp}{file}{hint}");
+        text.Append($"fuse: {operation} failed with {diagnostics.Count} error(s){more}{Duration.In(seconds)}{warningsTail}{timesTail}{treeStamp}{hint}{file}");
         return new OperationResult(Outcome.ProblemsFound, text.ToString());
     }
 

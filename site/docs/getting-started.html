@@ -158,7 +158,7 @@ fuse: hooks registered by Fuse 7.1.0; after each edit your agent gets the compil
     <pre class="out" data-label="Output"><code>removed: public int Add(int a, int b) (2 error(s))
 App/Program.cs(3,30): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)
 Lib.Tests/CalcTests.cs(6,54): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)
-fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations changed, 2 dependent project(s) checked; tree 9f2c41aa07b3 over 1 changed file(s) in &lt;seconds&gt; s</code></pre>
+fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests) in &lt;seconds&gt; s; Lib declarations changed, 2 dependent project(s) checked; tree 9f2c41aa07b3 over 1 changed file(s)</code></pre>
     <ul>
       <li>The output lists only errors your change caused. It leaves out errors that were already in HEAD.</li>
       <li>The header names the change that broke them, here the removed <code>Add</code>. Errors that share a cause print under one header.</li>

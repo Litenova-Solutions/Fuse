@@ -269,7 +269,7 @@ fuse: removed Fuse from this repository; `dotnet tool uninstall -g Fuse` removes
 removed: public int Add(int a, int b) (2 error(s))
 App/Program.cs(3,30): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)
 Lib.Tests/CalcTests.cs(6,54): error CS1061: 'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)
-fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests); Lib declarations changed, 2 dependent project(s) checked; tree 9f2c41aa07b3 over 3 changed file(s) in &lt;seconds&gt; s</code></pre>
+fuse: 2 error(s) introduced in 2 file(s) (App, Lib.Tests) in &lt;seconds&gt; s; Lib declarations changed, 2 dependent project(s) checked; tree 9f2c41aa07b3 over 3 changed file(s)</code></pre>
     <h3 id="reading-the-output">Reading the output <a class="anchor" href="#reading-the-output" aria-label="Link to this section">#</a></h3>
     <p>The output has four kinds of line.</p>
     <ul>
@@ -301,7 +301,7 @@ App/Program.cs(4,26): error CS0103: The name 'unknownVar' does not exist in the 
     &gt;    4:     void Run() { var x = unknownVar; }
          5:     void Other() { }
          6: }
-fuse: 1 error(s) introduced in 1 file(s) (App); tree 9f2c41aa07b3 over 3 changed file(s) in &lt;seconds&gt; s</code></pre>
+fuse: 1 error(s) introduced in 1 file(s) (App) in &lt;seconds&gt; s; tree 9f2c41aa07b3 over 3 changed file(s)</code></pre>
     <p>The summary ends with any of these parts, separated by semicolons. In the second form they sit inside the parentheses, after <code>F file(s) checked</code>, as in <code>fuse: no errors introduced (3 file(s) checked; Lib declarations changed, 2 dependent project(s) checked; tree 9f2c41aa07b3 over 3 changed file(s)) in &lt;seconds&gt; s</code>.</p>
     <div class="table-scroll" role="region" aria-label="Parts of a check summary" tabindex="0">
       <table>
@@ -321,7 +321,7 @@ fuse: 1 error(s) introduced in 1 file(s) (App); tree 9f2c41aa07b3 over 3 changed
     <p>With <code>--json</code> each error prints as one JSON object with <code>file</code>, <code>line</code>, <code>column</code>, <code>code</code> and <code>message</code>. It adds <code>cause</code> when the error has one, <code>generated</code> when a generated file declares what the error is about, and <code>causedBy</code> when exactly one session wrote the file holding the cause's declaration, so a judge can route the error to that session. The text answer prints no <code>causedBy</code>. With <code>--brief</code> it adds <code>repair</code> with <code>sourceWindow</code>, <code>candidates</code>, <code>suggestedUsings</code> and <code>interfaceStub</code>, leaving out each part that has nothing to say. <code>line</code> and <code>column</code> are left out for a general error. The results file is still written:</p>
     <pre class="out" data-label="Output"><code>$ fuse check --json
 {"file":"App/Program.cs","line":3,"column":30,"code":"CS1061","message":"'Calc' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'Calc' could be found (are you missing a using directive or an assembly reference?)","cause":"removed: public int Add(int a, int b)"}
-fuse: 1 error(s) introduced in 1 file(s) (App); tree 9f2c41aa07b3 over 3 changed file(s) in &lt;seconds&gt; s</code></pre>
+fuse: 1 error(s) introduced in 1 file(s) (App) in &lt;seconds&gt; s; tree 9f2c41aa07b3 over 3 changed file(s)</code></pre>
     <p>An error counts as introduced when HEAD has fewer errors with the same file, id and message than the working tree. Line numbers are ignored, so an error that only moved is not reported. A file renamed since HEAD is compared with the errors HEAD had under its old name. Errors are compiler errors, warnings the project treats as errors, and analyzer diagnostics at error severity. Warnings are not reported.</p>
     <p>When an error was introduced, the exit code is 1. When none was, it is 0. When Fuse could not answer or the arguments did not parse, it is 2.</p>
 

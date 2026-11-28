@@ -1,0 +1,53 @@
+{
+  "suite": "attribution",
+  "repo": "NodaTime",
+  "commit": "fcd80e11216ba403ccce0abbcedc41ba37bb352e",
+  "fuseBuild": "7.1.0/6cf989c25a664e37b1db4f777c7e2bf3",
+  "pairs": [
+    {
+      "renamedIn": "src/NodaTime/CalendarSystem.cs",
+      "method": "GetHebrewCalendar",
+      "brokenIn": "src/NodaTime.Benchmarks/NodaTimeTests/Calendars/HebrewCalendarBenchmarks.cs",
+      "ownWithoutSessions": 12,
+      "otherWithoutSessions": 3,
+      "ownWithSessions": 12,
+      "otherWithSessions": 0,
+      "leftToOtherSessions": 3,
+      "msWithoutSessions": 290.3521,
+      "msWithSessions": 966.8611
+    }
+  ],
+  "external": [
+    {
+      "renamedIn": "src/NodaTime/CalendarSystem.cs",
+      "method": "GetHebrewCalendar",
+      "brokenIn": "src/NodaTime.Benchmarks/NodaTimeTests/Calendars/HebrewCalendarBenchmarks.cs",
+      "otherWithRegistration": 0,
+      "blockedWhileRegistered": true,
+      "blockedAfterEnd": true,
+      "expiredShielding": null,
+      "msWithRegistration": 363.5519,
+      "msAfterEnd": 102.8284,
+      "note": null
+    }
+  ],
+  "externalSkipped": null,
+  "ownWithoutSessions": 12,
+  "otherWithoutSessions": 3,
+  "ownWithSessions": 12,
+  "otherWithSessions": 0,
+  "leftToOtherSessions": 3,
+  "msWithoutSessions": {
+    "p50": 290.4,
+    "p95": 290.4,
+    "max": 290.4,
+    "n": 1
+  },
+  "msWithSessions": {
+    "p50": 966.9,
+    "p95": 966.9,
+    "max": 966.9,
+    "n": 1
+  },
+  "treeCleanAfter": true
+}

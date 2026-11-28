@@ -1,0 +1,159 @@
+{
+  "suite": "swarm",
+  "repo": "Polly",
+  "commit": "31d7ac300743b10163d00ef72fccea88f3acabad",
+  "fuseBuild": "7.1.0/6cf989c25a664e37b1db4f777c7e2bf3",
+  "dotnetSdk": "10.0.404",
+  "worktrees": {
+    "secondaryWorktrees": 3,
+    "singleWorktreeEngineCount": 1,
+    "singleWorktreeWorkingSetMb": 302.3,
+    "singleWorktreePeakWorkingSetMb": 310.2,
+    "multiWorktreeEngineCount": 1,
+    "sharedEnginePidCount": 1,
+    "multiWorktreeWorkingSetMb": 670.7,
+    "multiWorktreePeakWorkingSetMb": 670.8,
+    "multiWorktreeIdleWorkingSetMb": 1235.5,
+    "workingSetPerWorktreeMb": 167.7,
+    "zeroRestoreColdCheck": {
+      "p50": 590,
+      "p95": 715.7,
+      "max": 715.7,
+      "n": 3
+    },
+    "zeroRestoreEditCheck": {
+      "p50": 4755.3,
+      "p95": 5784,
+      "max": 5784,
+      "n": 3
+    }
+  },
+  "slim": {
+    "wallMs": 660.8,
+    "exitCode": 0,
+    "beforeWorkingSetMb": 692.9,
+    "afterWorkingSetMb": 662.1,
+    "reclaimedMb": 30.7
+  },
+  "checkBrief": {
+    "target": "src/Polly.Core/CircuitBreaker/BrokenCircuitException.cs",
+    "latency": {
+      "p50": 171.7,
+      "p95": 2773.4,
+      "max": 2773.4,
+      "n": 5
+    },
+    "hintsFound": 5,
+    "rounds": 5
+  },
+  "gate": {
+    "failCheckMs": 33042.8,
+    "failCheckExitCode": 1,
+    "passTest": {
+      "p50": 432.8,
+      "p95": 8364.2,
+      "max": 8364.2,
+      "n": 3
+    },
+    "passFailures": 0,
+    "passFailureOutputs": []
+  },
+  "judge": {
+    "combine": {
+      "p50": 863.3,
+      "p95": 1136.2,
+      "max": 1136.2,
+      "n": 3
+    },
+    "combinePassed": true,
+    "race": {
+      "p50": 1805.3,
+      "p95": 2352,
+      "max": 2352,
+      "n": 3
+    },
+    "racePassed": true
+  },
+  "batch": {
+    "requests": 20,
+    "responses": 20,
+    "totalMs": 212.1,
+    "perRequestMs": 10.6,
+    "exitCode": 0
+  },
+  "graph": {
+    "graphJson": {
+      "p50": 82.1,
+      "p95": 127.3,
+      "max": 127.3,
+      "n": 5
+    },
+    "graphBytes": 49285,
+    "impactJson": {
+      "p50": 411.9,
+      "p95": 543.2,
+      "max": 543.2,
+      "n": 5
+    },
+    "impactBytes": 527
+  },
+  "shadow": {
+    "target": "bench/Polly.Benchmarks/Cache.cs",
+    "testRound": {
+      "p50": 118.3,
+      "p95": 156,
+      "max": 156,
+      "n": 3
+    },
+    "shadowRuns": 0,
+    "msbuildRuns": 0,
+    "phases": {
+      "phases": {
+        "emit": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 3
+        },
+        "gate": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 3
+        },
+        "mirror": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 3
+        },
+        "selection": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 3
+        },
+        "sync": {
+          "p50": 60.5,
+          "p95": 85.8,
+          "max": 85.8,
+          "n": 3
+        },
+        "total": {
+          "p50": 78,
+          "p95": 110,
+          "max": 110,
+          "n": 3
+        }
+      },
+      "outsideEngine": {
+        "p50": 42.3,
+        "p95": 46,
+        "max": 46,
+        "n": 3
+      },
+      "n": 3
+    }
+  },
+  "treeCleanAfter": true
+}

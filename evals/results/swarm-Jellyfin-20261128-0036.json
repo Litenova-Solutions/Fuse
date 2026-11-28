@@ -1,0 +1,159 @@
+{
+  "suite": "swarm",
+  "repo": "Jellyfin",
+  "commit": "1d7c6af520da5c84ceac1c21a1d2da34837540ac",
+  "fuseBuild": "7.1.0/6cf989c25a664e37b1db4f777c7e2bf3",
+  "dotnetSdk": "10.0.404",
+  "worktrees": {
+    "secondaryWorktrees": 3,
+    "singleWorktreeEngineCount": 1,
+    "singleWorktreeWorkingSetMb": 301.1,
+    "singleWorktreePeakWorkingSetMb": 304.8,
+    "multiWorktreeEngineCount": 1,
+    "sharedEnginePidCount": 1,
+    "multiWorktreeWorkingSetMb": 729.7,
+    "multiWorktreePeakWorkingSetMb": 743.9,
+    "multiWorktreeIdleWorkingSetMb": 1156.1,
+    "workingSetPerWorktreeMb": 182.4,
+    "zeroRestoreColdCheck": {
+      "p50": 577.5,
+      "p95": 1903.9,
+      "max": 1903.9,
+      "n": 3
+    },
+    "zeroRestoreEditCheck": {
+      "p50": 5202.7,
+      "p95": 5616.1,
+      "max": 5616.1,
+      "n": 3
+    }
+  },
+  "slim": {
+    "wallMs": 838.4,
+    "exitCode": 0,
+    "beforeWorkingSetMb": 749.4,
+    "afterWorkingSetMb": 739.2,
+    "reclaimedMb": 10.2
+  },
+  "checkBrief": {
+    "target": "MediaBrowser.Model/Configuration/LibraryOptions.cs",
+    "latency": {
+      "p50": 161.3,
+      "p95": 2618.7,
+      "max": 2618.7,
+      "n": 5
+    },
+    "hintsFound": 5,
+    "rounds": 5
+  },
+  "gate": {
+    "failCheckMs": 45472.4,
+    "failCheckExitCode": 1,
+    "passTest": {
+      "p50": 956.1,
+      "p95": 16082.8,
+      "max": 16082.8,
+      "n": 3
+    },
+    "passFailures": 0,
+    "passFailureOutputs": []
+  },
+  "judge": {
+    "combine": {
+      "p50": 348.4,
+      "p95": 957.5,
+      "max": 957.5,
+      "n": 3
+    },
+    "combinePassed": true,
+    "race": {
+      "p50": 3030,
+      "p95": 4663.4,
+      "max": 4663.4,
+      "n": 3
+    },
+    "racePassed": true
+  },
+  "batch": {
+    "requests": 20,
+    "responses": 20,
+    "totalMs": 111.5,
+    "perRequestMs": 5.58,
+    "exitCode": 0
+  },
+  "graph": {
+    "graphJson": {
+      "p50": 87.5,
+      "p95": 980.7,
+      "max": 980.7,
+      "n": 5
+    },
+    "graphBytes": 144620,
+    "impactJson": {
+      "p50": 99.4,
+      "p95": 828.8,
+      "max": 828.8,
+      "n": 5
+    },
+    "impactBytes": 1190
+  },
+  "shadow": {
+    "target": "Jellyfin.Server/CoreAppHost.cs",
+    "testRound": {
+      "p50": 300.6,
+      "p95": 381.3,
+      "max": 381.3,
+      "n": 3
+    },
+    "shadowRuns": 0,
+    "msbuildRuns": 0,
+    "phases": {
+      "phases": {
+        "emit": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 3
+        },
+        "gate": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 3
+        },
+        "mirror": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 3
+        },
+        "selection": {
+          "p50": 147,
+          "p95": 209.7,
+          "max": 209.7,
+          "n": 3
+        },
+        "sync": {
+          "p50": 86.7,
+          "p95": 117.6,
+          "max": 117.6,
+          "n": 3
+        },
+        "total": {
+          "p50": 250,
+          "p95": 344,
+          "max": 344,
+          "n": 3
+        }
+      },
+      "outsideEngine": {
+        "p50": 37.3,
+        "p95": 50.6,
+        "max": 50.6,
+        "n": 3
+      },
+      "n": 3
+    }
+  },
+  "treeCleanAfter": true
+}

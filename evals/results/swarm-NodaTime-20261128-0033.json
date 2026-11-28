@@ -1,0 +1,159 @@
+{
+  "suite": "swarm",
+  "repo": "NodaTime",
+  "commit": "fcd80e11216ba403ccce0abbcedc41ba37bb352e",
+  "fuseBuild": "7.1.0/6cf989c25a664e37b1db4f777c7e2bf3",
+  "dotnetSdk": "10.0.404",
+  "worktrees": {
+    "secondaryWorktrees": 3,
+    "singleWorktreeEngineCount": 1,
+    "singleWorktreeWorkingSetMb": 320.2,
+    "singleWorktreePeakWorkingSetMb": 321,
+    "multiWorktreeEngineCount": 1,
+    "sharedEnginePidCount": 1,
+    "multiWorktreeWorkingSetMb": 648.5,
+    "multiWorktreePeakWorkingSetMb": 648.6,
+    "multiWorktreeIdleWorkingSetMb": 713.8,
+    "workingSetPerWorktreeMb": 162.1,
+    "zeroRestoreColdCheck": {
+      "p50": 493.7,
+      "p95": 1178.8,
+      "max": 1178.8,
+      "n": 3
+    },
+    "zeroRestoreEditCheck": {
+      "p50": 4815.6,
+      "p95": 5868.4,
+      "max": 5868.4,
+      "n": 3
+    }
+  },
+  "slim": {
+    "wallMs": 661,
+    "exitCode": 0,
+    "beforeWorkingSetMb": 660,
+    "afterWorkingSetMb": 522.5,
+    "reclaimedMb": 137.5
+  },
+  "checkBrief": {
+    "target": "src/NodaTime/AnnualDate.cs",
+    "latency": {
+      "p50": 201,
+      "p95": 998.4,
+      "max": 998.4,
+      "n": 5
+    },
+    "hintsFound": 5,
+    "rounds": 5
+  },
+  "gate": {
+    "failCheckMs": 9771.3,
+    "failCheckExitCode": 1,
+    "passTest": {
+      "p50": 762.6,
+      "p95": 2808.5,
+      "max": 2808.5,
+      "n": 3
+    },
+    "passFailures": 0,
+    "passFailureOutputs": []
+  },
+  "judge": {
+    "combine": {
+      "p50": 503.4,
+      "p95": 2410.6,
+      "max": 2410.6,
+      "n": 3
+    },
+    "combinePassed": true,
+    "race": {
+      "p50": 793.7,
+      "p95": 904,
+      "max": 904,
+      "n": 3
+    },
+    "racePassed": true
+  },
+  "batch": {
+    "requests": 20,
+    "responses": 20,
+    "totalMs": 368.5,
+    "perRequestMs": 18.43,
+    "exitCode": 0
+  },
+  "graph": {
+    "graphJson": {
+      "p50": 78.1,
+      "p95": 89.5,
+      "max": 89.5,
+      "n": 5
+    },
+    "graphBytes": 28573,
+    "impactJson": {
+      "p50": 158,
+      "p95": 316.8,
+      "max": 316.8,
+      "n": 5
+    },
+    "impactBytes": 517
+  },
+  "shadow": {
+    "target": "src/NodaTime.Benchmarks/Program.cs",
+    "testRound": {
+      "p50": 104,
+      "p95": 117.8,
+      "max": 117.8,
+      "n": 3
+    },
+    "shadowRuns": 0,
+    "msbuildRuns": 0,
+    "phases": {
+      "phases": {
+        "emit": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 3
+        },
+        "gate": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 3
+        },
+        "mirror": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 3
+        },
+        "selection": {
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "n": 3
+        },
+        "sync": {
+          "p50": 52.5,
+          "p95": 53.8,
+          "max": 53.8,
+          "n": 3
+        },
+        "total": {
+          "p50": 63,
+          "p95": 63,
+          "max": 63,
+          "n": 3
+        }
+      },
+      "outsideEngine": {
+        "p50": 41.6,
+        "p95": 54.8,
+        "max": 54.8,
+        "n": 3
+      },
+      "n": 3
+    }
+  },
+  "treeCleanAfter": true
+}

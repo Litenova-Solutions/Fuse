@@ -111,7 +111,10 @@ internal sealed class ViewDocumentPatcher
         List<RepoPath> touched;
         lock (_touchedLock)
             touched = [.. _touched];
-        return [.. touched.Concat(_tracker.Changed).Distinct()];
+        // A changed additional file is no source, so the tracker changed set leaves it out; a rebuild still gives the
+        // baseline its HEAD text, or a project loaded after the edit would hold the edited text in both views.
+        var additional = _projects.Graph is { } graph ? _tracker.NonSources.Where(graph.IsAdditionalFile) : [];
+        return [.. touched.Concat(_tracker.Changed).Concat(additional).Distinct()];
     }
 
     internal Task<Solution> WithDiskContentAsync(Solution solution, RepoPath path, CancellationToken cancellationToken)

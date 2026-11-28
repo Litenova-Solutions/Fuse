@@ -138,7 +138,7 @@ public class BackgroundCheckTests
     public async Task A_registered_session_is_rechecked_in_the_background_and_written_as_its_session_file()
     {
         using var repo = FixtureRepo.CreateStandard();
-        await using var engine = await InProcessRequestRouter.StartAsync(repo);
+        await using var engine = await InProcessRequestRouter.StartAsync(repo, InProcessRequestRouter.NeverShedding());
         repo.Replace("Lib/Calc.cs", "a * b;", "a * undefinedValue;");
         await Task.Delay(400, TestContext.Current.CancellationToken);
         Assert.IsType<EngineResponse.Acknowledged>(await engine.SendAsync(new EngineRequest.BeginSession("worker-2", ["Lib/**"])));
